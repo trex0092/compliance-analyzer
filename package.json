@@ -1,0 +1,24 @@
+{
+  "name": "repo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "analytics-dashboard.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://x-access-token:ghs_SFcRLZGcDwcnDRguoQvK10Swzwe9rt2vgzrH@github.com/trex0092/compliance-analyzer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/trex0092/compliance-analyzer/issues"
+  },
+  "homepage": "https://github.com/trex0092/compliance-analyzer#readme",
+  "dependencies": {
+    "@netlify/blobs": "^10.7.4",
+    "@netlify/functions": "^5.1.5"
+  }
+}
