@@ -392,7 +392,9 @@
     },
 
     async searchFiles(accessToken, folderId, query) {
-      const q = `'${folderId}' in parents and name contains '${query}' and trashed = false`;
+      const safeQuery = String(query || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeFolderId = String(folderId || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const q = `'${safeFolderId}' in parents and name contains '${safeQuery}' and trashed = false`;
       const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,modifiedTime,size)`, {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       });

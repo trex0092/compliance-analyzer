@@ -115,24 +115,37 @@ const AuthRBAC = (function () {
     }
 
     // --------------- Init: Default Admin ---------------
+    function generateRandomPassword(length = 16) {
+        const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
+        const values = crypto.getRandomValues(new Uint8Array(length));
+        return Array.from(values, v => charset[v % charset.length]).join('');
+    }
+
     async function ensureDefaultAdmin() {
         // If users already exist (created by index.html setup wizard or prior sessions), skip
         let users = loadData(STORAGE_KEYS.users);
         if (users && users.length > 0) return;
-        // No users at all — this path only triggers if AuthRBAC.login() is called
-        // before the setup wizard runs. Create a compatible default admin.
-        const legacy = await legacyHash('admin123');
+        // No users at all — generate a cryptographically random temporary password.
+        // The setup wizard should always run first; this is a safety fallback.
+        const tempPassword = generateRandomPassword(20);
+        const { hash, salt } = await hashPassword(tempPassword);
         users = [{
             id: String(Date.now()),
             username: 'admin',
             displayName: 'Admin',
-            passwordHash: legacy,
+            passwordHash: hash,
+            passwordSalt: salt,
             role: 'admin',
             createdAt: new Date().toISOString(),
             mustChangePassword: true,
             active: true
         }];
         saveData(STORAGE_KEYS.users, users);
+        // Surface the temp password so admin can log in once, then must change it
+        console.warn('[AuthRBAC] Default admin created with temporary password. Run the setup wizard to set a permanent password.');
+        if (typeof toast === 'function') {
+            toast('Default admin created — please use the setup wizard to set your password.', 'error', 10000);
+        }
     }
 
     // --------------- Sessions ---------------
@@ -160,13 +173,46 @@ const AuthRBAC = (function () {
         return sessions.find(s => s.token === token) || null;
     }
 
+    // --------------- Brute Force Protection ---------------
+    const MAX_FAILED_ATTEMPTS = 5;
+    const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+    const failedAttempts = {}; // { username: { count, lockedUntil } }
+
+    function checkLockout(username) {
+        const record = failedAttempts[username];
+        if (!record) return false;
+        if (record.lockedUntil && Date.now() < record.lockedUntil) {
+            const minutesLeft = Math.ceil((record.lockedUntil - Date.now()) / 60000);
+            throw new Error(`Account locked. Try again in ${minutesLeft} minute(s).`);
+        }
+        if (record.lockedUntil && Date.now() >= record.lockedUntil) {
+            delete failedAttempts[username];
+        }
+        return false;
+    }
+
+    function recordFailedAttempt(username) {
+        if (!failedAttempts[username]) failedAttempts[username] = { count: 0 };
+        failedAttempts[username].count++;
+        if (failedAttempts[username].count >= MAX_FAILED_ATTEMPTS) {
+            failedAttempts[username].lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+            writeLog({ event: 'account_locked', username, reason: `${MAX_FAILED_ATTEMPTS} failed attempts` });
+        }
+    }
+
+    function clearFailedAttempts(username) {
+        delete failedAttempts[username];
+    }
+
     // --------------- Core Auth ---------------
     async function login(username, password) {
         await ensureDefaultAdmin();
+        checkLockout(username);
         const users = loadData(STORAGE_KEYS.users) || [];
         const user = users.find(u => u.username === username && u.active);
 
         if (!user) {
+            recordFailedAttempt(username);
             writeLog({ event: 'login_failed', username, reason: 'User not found' });
             throw new Error('Invalid username or password.');
         }
@@ -189,9 +235,16 @@ const AuthRBAC = (function () {
         }
 
         if (!passwordValid) {
+            recordFailedAttempt(username);
             writeLog({ event: 'login_failed', username, reason: 'Wrong password' });
+            const record = failedAttempts[username];
+            if (record && record.lockedUntil) {
+                throw new Error('Too many failed attempts. Account locked for 15 minutes.');
+            }
             throw new Error('Invalid username or password.');
         }
+
+        clearFailedAttempts(username);
 
         const token = generateToken();
         const session = {

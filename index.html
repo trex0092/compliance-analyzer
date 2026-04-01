@@ -4692,6 +4692,7 @@ function exportShipmentsPDF() {
   if (!shipments.length) { toast('No shipment records to export','info'); return; }
   const html = shipmentTableHTML(shipments, 'IAR Shipment Register');
   const win = window.open('', '_blank');
+  if (!win) { toast('Pop-up blocked — allow pop-ups for this site','error'); return; }
   win.document.write(html + '<script>setTimeout(function(){window.print();},500)<\/script>');
   win.document.close();
   toast('PDF print dialog opened','success');
@@ -7748,6 +7749,7 @@ function exportLocalShipmentsPDF() {
   if (!list.length) { toast('No local shipments to export','error'); return; }
   const html = shipmentTableHTML(list, 'Local Shipment Register');
   const win = window.open('', '_blank');
+  if (!win) { toast('Pop-up blocked — allow pop-ups for this site','error'); return; }
   win.document.write(html + '<script>setTimeout(function(){window.print();},500)<\/script>');
   win.document.close();
   toast('PDF print dialog opened','success');
