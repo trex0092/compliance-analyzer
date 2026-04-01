@@ -14,6 +14,15 @@
 <link rel="manifest" href="manifest.json">
 <title>Compliance Tasks - Compliance Analyzer v2.5</title>
 <script>
+// KILL all service workers and caches — must run FIRST
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    regs.forEach(function(r) { r.unregister(); });
+  });
+  caches.keys().then(function(names) {
+    names.forEach(function(n) { caches.delete(n); });
+  });
+}
 // Global error handler — prevent white screen on any JS error
 window._appErrors = [];
 window.onerror = function(msg, src, line, col, err) {
@@ -11233,19 +11242,7 @@ function initNewFeatures() {
   }
 })();
 
-// Register Service Worker — force update to clear stale caches
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.getRegistrations().then(function(regs) {
-      regs.forEach(function(r) { r.update(); });
-    });
-    navigator.serviceWorker.register('/sw.js?v=20260401b').then(function(reg) {
-      console.log('[SW] Registered:', reg.scope);
-    }).catch(function(err) {
-      console.warn('[SW] Registration failed:', err.message);
-    });
-  });
-}
+// Service worker disabled — Netlify no-cache headers handle freshness
 </script>
 </body>
 </html>
