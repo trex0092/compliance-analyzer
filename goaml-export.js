@@ -1,359 +1,438 @@
 /**
- * Webhook Receiver Module — Compliance Analyser v2.3
- * Polls the Cloudflare Worker proxy for real-time Asana/Slack webhook events.
- * Browser-side: polls GET /webhooks/events, processes events, shows notifications.
+ * goAML XML Export Module v1.0
+ * Generates UAE FIU goAML-compliant XML for STR/SAR/CTR filing.
+ * Supports: STR (Suspicious Transaction Report), SAR (Suspicious Activity Report),
+ *           CTR (Cash Transaction Report), FFR (Funds Freeze Report)
  */
-(function () {
+const GoAMLExport = (function() {
   'use strict';
 
-  const STORAGE_KEY = 'fgl_webhook_events';
-  const MAX_EVENTS = 500;
-  const DEFAULT_POLL_INTERVAL = 30000; // 30 seconds
+  const REPORT_TYPES = {
+    STR: { code: 'STR', name: 'Suspicious Transaction Report', goamlType: 'STR' },
+    SAR: { code: 'SAR', name: 'Suspicious Activity Report', goamlType: 'SAR' },
+    FFR: { code: 'FFR', name: 'Funds Freeze Report', goamlType: 'FFR' },
+    AIF: { code: 'AIF', name: 'Additional Information Form', goamlType: 'AIF' },
+    AIFT: { code: 'AIFT', name: 'Additional Information Follow-up', goamlType: 'AIFT' },
+    DPMSR: { code: 'DPMSR', name: 'DPMS Suspicious Report', goamlType: 'DPMSR' },
+    HRC: { code: 'HRC', name: 'High Risk Customer Report', goamlType: 'HRC' },
+    HRCA: { code: 'HRCA', name: 'High Risk Customer Activity', goamlType: 'HRCA' },
+    PNMR: { code: 'PNMR', name: 'Partial Name Match Report', goamlType: 'PNMR' },
+  };
 
-  // ── Known event types ─────────────────────────────────────────────────────
-  const ASANA_EVENTS = ['task_completed', 'task_created', 'task_updated', 'comment_added'];
-  const SLACK_EVENTS = ['message', 'reaction_added', 'channel_message'];
+  const STORAGE_KEY = 'fgl_goaml_reports';
 
-  // ── State ─────────────────────────────────────────────────────────────────
-  let pollTimer = null;
-  let pollInterval = DEFAULT_POLL_INTERVAL;
-  let feedOpen = false;
-  let onEventCallbacks = [];
-
-  function getProxy() { return window.PROXY_URL || ''; }
-
-  // ── localStorage helpers ──────────────────────────────────────────────────
-  function loadEvents() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-    catch (_) { return []; }
+  function escapeXml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 
-  function saveEvents(events) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events.slice(0, MAX_EVENTS)));
+  function generateReportId() {
+    return 'RPT-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
   }
 
-  // ── Toast notifications ───────────────────────────────────────────────────
-  function showToast(event) {
-    var container = document.getElementById('fgl-webhook-toast-container');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'fgl-webhook-toast-container';
-      container.style.cssText = 'position:fixed;top:16px;right:16px;z-index:10000;display:flex;flex-direction:column;gap:8px;max-width:360px;';
-      document.body.appendChild(container);
-    }
-
-    var toast = document.createElement('div');
-    toast.style.cssText = 'background:#1e293b;color:#f1f5f9;padding:12px 16px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.25);font-size:13px;line-height:1.4;opacity:0;transition:opacity .3s;border-left:4px solid ' + (event.source === 'asana' ? '#f06a6a' : '#4a154b') + ';';
-    toast.innerHTML = '<div style="font-weight:600;margin-bottom:2px;">' + escapeHtml(formatSourceLabel(event.source)) + '</div>' +
-      '<div>' + escapeHtml(formatEventSummary(event)) + '</div>';
-
-    container.appendChild(toast);
-    // fade in
-    requestAnimationFrame(function () { toast.style.opacity = '1'; });
-
-    // auto-remove after 5 seconds
-    setTimeout(function () {
-      toast.style.opacity = '0';
-      setTimeout(function () {
-        if (toast.parentNode) toast.parentNode.removeChild(toast);
-      }, 300);
-    }, 5000);
-  }
-
-  // ── Formatting helpers ────────────────────────────────────────────────────
-  function escapeHtml(str) {
-    var div = document.createElement('div');
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
-  }
-
-  function formatSourceLabel(source) {
-    if (source === 'asana') return 'Asana';
-    if (source === 'slack') return 'Slack';
-    return source || 'Unknown';
-  }
-
-  function formatEventType(type) {
-    return (type || 'unknown').replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
-  }
-
-  function formatEventSummary(event) {
-    var type = formatEventType(event.type);
-    var detail = '';
-    if (event.data) {
-      if (event.data.name) detail = ': ' + event.data.name;
-      else if (event.data.text) detail = ': ' + event.data.text.substring(0, 80);
-      else if (event.data.channel) detail = ' in #' + event.data.channel;
-    }
-    return type + detail;
-  }
-
-  function formatTimestamp(ts) {
-    try {
-      var d = new Date(ts);
-      var now = new Date();
-      var diff = now - d;
-      if (diff < 60000) return 'just now';
-      if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-      if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-      return d.toLocaleDateString('en-GB');
-    } catch (_) { return ''; }
-  }
-
-  // ── Polling ───────────────────────────────────────────────────────────────
-  async function poll() {
-    var proxy = getProxy();
-    if (!proxy) return;
-
-    try {
-      var res = await fetch(proxy + '/webhooks/events');
-      if (!res.ok) return;
-      var data = await res.json();
-      var newEvents = data.events || [];
-      if (newEvents.length === 0) return;
-
-      var events = loadEvents();
-      var existingIds = {};
-      for (var i = 0; i < events.length; i++) {
-        existingIds[events[i].id] = true;
-      }
-
-      var added = [];
-      for (var j = 0; j < newEvents.length; j++) {
-        var evt = normalizeEvent(newEvents[j]);
-        if (!existingIds[evt.id] && isKnownEventType(evt)) {
-          events.unshift(evt);
-          added.push(evt);
-        }
-      }
-
-      if (added.length > 0) {
-        saveEvents(events);
-        // Show toasts for new events
-        for (var k = 0; k < added.length; k++) {
-          showToast(added[k]);
-        }
-        // Fire callbacks
-        for (var c = 0; c < onEventCallbacks.length; c++) {
-          try { onEventCallbacks[c](added); } catch (_) { /* ignore */ }
-        }
-        updateBellBadge();
-      }
-    } catch (_) {
-      // Silently ignore polling errors — will retry next interval
-    }
-  }
-
-  function normalizeEvent(raw) {
+  function getReporterInfo() {
+    // Pull from active company profile if available
+    let companies; try { companies = JSON.parse(localStorage.getItem('fgl_companies') || '[]'); } catch(_) { companies = []; }
+    const activeIdx = Number(localStorage.getItem('fgl_active_company') || '0');
+    const company = companies[activeIdx] || {};
     return {
-      id: raw.id || generateId(),
-      source: raw.source || 'unknown',
-      type: raw.type || 'unknown',
-      data: raw.data || {},
-      timestamp: raw.timestamp || new Date().toISOString(),
-      read: raw.read !== undefined ? raw.read : false,
+      entityName: company.name || 'Reporting Entity',
+      entityId: company.licenseNo || '',
+      country: 'AE',
+      city: company.city || 'Dubai',
+      contactPerson: company.complianceOfficer || '',
+      phone: company.phone || '',
+      email: company.email || '',
     };
   }
 
-  function isKnownEventType(event) {
-    if (event.source === 'asana') return ASANA_EVENTS.indexOf(event.type) !== -1;
-    if (event.source === 'slack') return SLACK_EVENTS.indexOf(event.type) !== -1;
-    return true; // allow unknown sources through
+  function buildSTRXml(data) {
+    const reporter = getReporterInfo();
+    const reportId = generateReportId();
+    const now = new Date().toISOString();
+    const dateOnly = now.slice(0, 10);
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<goAMLReport>
+  <reportHeader>
+    <reportId>${escapeXml(reportId)}</reportId>
+    <reportType>${escapeXml(data.reportType || 'STR')}</reportType>
+    <reportDate>${dateOnly}</reportDate>
+    <reportStatus>NEW</reportStatus>
+    <priority>${escapeXml(data.priority || 'HIGH')}</priority>
+    <currency>USD</currency>
+    <reportingCountry>AE</reportingCountry>
+  </reportHeader>
+
+  <reportingEntity>
+    <entityName>${escapeXml(reporter.entityName)}</entityName>
+    <entityIdentification>${escapeXml(reporter.entityId)}</entityIdentification>
+    <entityType>DPMS</entityType>
+    <country>${escapeXml(reporter.country)}</country>
+    <city>${escapeXml(reporter.city)}</city>
+    <contactPerson>
+      <name>${escapeXml(reporter.contactPerson)}</name>
+      <phone>${escapeXml(reporter.phone)}</phone>
+      <email>${escapeXml(reporter.email)}</email>
+    </contactPerson>
+  </reportingEntity>
+
+  <suspiciousSubject>
+    <subjectType>${escapeXml(data.subjectType || 'INDIVIDUAL')}</subjectType>
+    <fullName>${escapeXml(data.subjectName)}</fullName>
+    <dateOfBirth>${escapeXml(data.subjectDob || '')}</dateOfBirth>
+    <nationality>${escapeXml(data.subjectNationality || '')}</nationality>
+    <idType>${escapeXml(data.subjectIdType || 'PASSPORT')}</idType>
+    <idNumber>${escapeXml(data.subjectIdNumber || '')}</idNumber>
+    <occupation>${escapeXml(data.subjectOccupation || '')}</occupation>
+    <address>
+      <street>${escapeXml(data.subjectAddress || '')}</street>
+      <city>${escapeXml(data.subjectCity || '')}</city>
+      <country>${escapeXml(data.subjectCountry || '')}</country>
+    </address>
+    <accountInfo>
+      <accountNumber>${escapeXml(data.accountNumber || '')}</accountNumber>
+      <bankName>${escapeXml(data.bankName || '')}</bankName>
+    </accountInfo>
+  </suspiciousSubject>
+
+  <transactionDetails>
+    <transactionDate>${escapeXml(data.transactionDate || dateOnly)}</transactionDate>
+    <transactionType>${escapeXml(data.transactionType || 'PURCHASE')}</transactionType>
+    <amount>${escapeXml(String(data.amount || '0'))}</amount>
+    <currency>${escapeXml(data.currency || 'USD')}</currency>
+    <amountLocal>${escapeXml(String(data.amountLocal || ''))}</amountLocal>
+    <currencyLocal>AED</currencyLocal>
+    <conductedBy>${escapeXml(data.conductedBy || data.subjectName || '')}</conductedBy>
+    <commodityType>${escapeXml(data.commodityType || 'PRECIOUS_METALS')}</commodityType>
+    <commodityDescription>${escapeXml(data.commodityDescription || '')}</commodityDescription>
+    <paymentMethod>${escapeXml(data.paymentMethod || 'CASH')}</paymentMethod>
+    <originCountry>${escapeXml(data.originCountry || '')}</originCountry>
+    <destinationCountry>${escapeXml(data.destinationCountry || 'AE')}</destinationCountry>
+  </transactionDetails>
+
+  <groundsForSuspicion>
+    <indicators>${escapeXml(data.indicators)}</indicators>
+    <narrativeDescription>${escapeXml(data.narrative || '')}</narrativeDescription>
+    <redFlagCategories>
+${(data.redFlags || []).map(f => `      <flag>${escapeXml(f)}</flag>`).join('\n')}
+    </redFlagCategories>
+    <actionsTaken>${escapeXml(data.actionsTaken || 'Filed STR with UAE FIU via goAML')}</actionsTaken>
+    <internalCaseRef>${escapeXml(data.caseRef || '')}</internalCaseRef>
+  </groundsForSuspicion>
+
+  <relatedReports>
+${(data.relatedReports || []).map(r => `    <reportRef>${escapeXml(r)}</reportRef>`).join('\n')}
+  </relatedReports>
+
+  <attachments>
+${(data.attachments || []).map(a => `    <attachment>
+      <fileName>${escapeXml(a.name)}</fileName>
+      <fileType>${escapeXml(a.type)}</fileType>
+      <description>${escapeXml(a.description || '')}</description>
+    </attachment>`).join('\n')}
+  </attachments>
+
+  <reportFooter>
+    <generatedBy>Compliance Analyser v2.5</generatedBy>
+    <generatedAt>${now}</generatedAt>
+    <disclaimer>This report was generated by an automated compliance tool. All information should be verified by the designated Compliance Officer before submission to the UAE FIU via goAML.</disclaimer>
+  </reportFooter>
+</goAMLReport>`;
   }
 
-  function generateId() {
-    return 'evt_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 8);
+  function buildCTRXml(data) {
+    const reporter = getReporterInfo();
+    const reportId = generateReportId();
+    const now = new Date().toISOString();
+    const dateOnly = now.slice(0, 10);
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<goAMLReport>
+  <reportHeader>
+    <reportId>${escapeXml(reportId)}</reportId>
+    <reportType>CTR</reportType>
+    <reportDate>${dateOnly}</reportDate>
+    <reportStatus>NEW</reportStatus>
+    <currency>${escapeXml(data.currency || 'AED')}</currency>
+    <reportingCountry>AE</reportingCountry>
+    <thresholdBasis>UAE FDL No.10/2025 Art.24 — AED 55,000 DPMS threshold</thresholdBasis>
+  </reportHeader>
+
+  <reportingEntity>
+    <entityName>${escapeXml(reporter.entityName)}</entityName>
+    <entityIdentification>${escapeXml(reporter.entityId)}</entityIdentification>
+    <entityType>DPMS</entityType>
+    <country>${escapeXml(reporter.country)}</country>
+    <city>${escapeXml(reporter.city)}</city>
+  </reportingEntity>
+
+  <transactingParty>
+    <partyType>${escapeXml(data.subjectType || 'INDIVIDUAL')}</partyType>
+    <fullName>${escapeXml(data.subjectName)}</fullName>
+    <nationality>${escapeXml(data.subjectNationality || '')}</nationality>
+    <idType>${escapeXml(data.subjectIdType || 'PASSPORT')}</idType>
+    <idNumber>${escapeXml(data.subjectIdNumber || '')}</idNumber>
+  </transactingParty>
+
+  <cashTransaction>
+    <transactionDate>${escapeXml(data.transactionDate || dateOnly)}</transactionDate>
+    <cashAmount>${escapeXml(String(data.amount || '0'))}</cashAmount>
+    <currency>${escapeXml(data.currency || 'AED')}</currency>
+    <transactionType>${escapeXml(data.transactionType || 'PURCHASE')}</transactionType>
+    <commodityType>${escapeXml(data.commodityType || 'GOLD')}</commodityType>
+    <commodityWeight>${escapeXml(data.commodityWeight || '')}</commodityWeight>
+    <commodityPurity>${escapeXml(data.commodityPurity || '')}</commodityPurity>
+  </cashTransaction>
+
+  <reportFooter>
+    <generatedBy>Compliance Analyser v2.5</generatedBy>
+    <generatedAt>${now}</generatedAt>
+  </reportFooter>
+</goAMLReport>`;
   }
 
-  // ── Badge update ──────────────────────────────────────────────────────────
-  function updateBellBadge() {
-    var badge = document.getElementById('fgl-webhook-badge');
-    if (!badge) return;
-    var count = getUnreadCount();
-    badge.textContent = count > 99 ? '99+' : count;
-    badge.style.display = count > 0 ? 'flex' : 'none';
+  function saveReport(report) {
+    let list; try { list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(_) { list = []; }
+    list.unshift(report);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 200)));
   }
 
-  // ── Public API ────────────────────────────────────────────────────────────
-  function start(options) {
-    options = options || {};
-    pollInterval = options.interval || DEFAULT_POLL_INTERVAL;
-    stop();
-    poll(); // immediate first poll
-    pollTimer = setInterval(poll, pollInterval);
+  function getReports() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(_) { return []; }
   }
 
-  function stop() {
-    if (pollTimer) {
-      clearInterval(pollTimer);
-      pollTimer = null;
-    }
+  function downloadXml(xml, filename) {
+    const blob = new Blob([xml], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
-  function getEvents(filter) {
-    var events = loadEvents();
-    if (!filter) return events;
-    return events.filter(function (e) {
-      if (filter.source && e.source !== filter.source) return false;
-      if (filter.type && e.type !== filter.type) return false;
-      if (filter.unreadOnly && e.read) return false;
-      return true;
-    });
+  function exportSTR(data) {
+    const xml = buildSTRXml(data);
+    const reportId = xml.match(/<reportId>(.*?)<\/reportId>/)?.[1] || 'UNKNOWN';
+    const filename = `goAML_STR_${reportId}_${new Date().toISOString().slice(0,10)}.xml`;
+    downloadXml(xml, filename);
+    saveReport({ id: reportId, type: 'STR', subject: data.subjectName, amount: data.amount, date: new Date().toISOString(), filename });
+    return { xml, reportId, filename };
   }
 
-  function markRead(id) {
-    var events = loadEvents();
-    for (var i = 0; i < events.length; i++) {
-      if (events[i].id === id) {
-        events[i].read = true;
-        break;
-      }
-    }
-    saveEvents(events);
-    updateBellBadge();
+  function exportCTR(data) {
+    const xml = buildCTRXml(data);
+    const reportId = xml.match(/<reportId>(.*?)<\/reportId>/)?.[1] || 'UNKNOWN';
+    const filename = `goAML_CTR_${reportId}_${new Date().toISOString().slice(0,10)}.xml`;
+    downloadXml(xml, filename);
+    saveReport({ id: reportId, type: 'CTR', subject: data.subjectName, amount: data.amount, date: new Date().toISOString(), filename });
+    return { xml, reportId, filename };
   }
 
-  function markAllRead() {
-    var events = loadEvents();
-    for (var i = 0; i < events.length; i++) {
-      events[i].read = true;
-    }
-    saveEvents(events);
-    updateBellBadge();
+  function renderGoAMLPanel() {
+    const reports = getReports();
+    const recentHtml = reports.slice(0, 10).map(r => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <span class="badge ${r.type === 'STR' ? 'b-r' : 'b-a'}">${r.type}</span>
+          <span style="font-size:12px;margin-left:6px">${r.subject || 'Unknown'}</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:8px">${r.amount ? 'USD ' + Number(r.amount).toLocaleString('en-GB') : ''}</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted)">${new Date(r.date).toLocaleDateString('en-GB')}</div>
+      </div>
+    `).join('') || '<p style="color:var(--muted);font-size:13px">No goAML reports generated yet.</p>';
+
+    return `
+      <div class="card">
+        <div class="top-bar" style="margin-bottom:10px">
+          <span class="lbl" style="margin:0">goAML XML Export</span>
+          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">UAE FIU compliant STR/CTR XML generation</span>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Generate goAML-schema XML files for direct upload to the UAE FIU portal. Supports STR, SAR, CTR, and FFR report types.</p>
+
+        <div class="row row-2" style="margin-bottom:8px">
+          <div><span class="lbl">Report Type</span>
+            <select id="goamlReportType">
+              <option value="STR">STR — Suspicious Transaction Report</option>
+              <option value="SAR">SAR — Suspicious Activity Report</option>
+              <option value="FFR">FFR — Funds Freeze Report</option>
+              <option value="AIF">AIF — Additional Information Form</option>
+              <option value="AIFT">AIFT — Additional Information Follow-up</option>
+              <option value="DPMSR">DPMSR — DPMS Suspicious Report</option>
+              <option value="HRC">HRC — High Risk Customer Report</option>
+              <option value="HRCA">HRCA — High Risk Customer Activity</option>
+              <option value="PNMR">PNMR — Partial Name Match Report</option>
+            </select>
+          </div>
+          <div><span class="lbl">Priority</span>
+            <select id="goamlPriority"><option value="HIGH">High</option><option value="MEDIUM">Medium</option><option value="LOW">Low</option></select>
+          </div>
+        </div>
+
+        <div class="row row-3" style="margin-bottom:8px">
+          <div><span class="lbl">Subject Full Name</span><input type="text" id="goamlSubjectName" placeholder="Full legal name" /></div>
+          <div><span class="lbl">Subject Type</span><select id="goamlSubjectType"><option value="INDIVIDUAL">Individual</option><option value="LEGAL_ENTITY">Legal Entity</option></select></div>
+          <div><span class="lbl">Nationality</span><input type="text" id="goamlNationality" placeholder="e.g. AE, IN, PK" /></div>
+        </div>
+
+        <div class="row row-3" style="margin-bottom:8px">
+          <div><span class="lbl">ID Type</span><select id="goamlIdType"><option value="PASSPORT">Passport</option><option value="EMIRATES_ID">Emirates ID</option><option value="TRADE_LICENSE">Trade License</option><option value="OTHER">Other</option></select></div>
+          <div><span class="lbl">ID Number</span><input type="text" id="goamlIdNumber" placeholder="Document number" /></div>
+          <div><span class="lbl">Date of Birth</span><input type="date" id="goamlDob" /></div>
+        </div>
+
+        <div class="row row-3" style="margin-bottom:8px">
+          <div><span class="lbl">Transaction Amount</span><input type="number" id="goamlAmount" placeholder="Amount" /></div>
+          <div><span class="lbl">Currency</span><select id="goamlCurrency"><option value="USD">USD</option><option value="AED">AED</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select></div>
+          <div><span class="lbl">Transaction Date</span><input type="date" id="goamlTxDate" /></div>
+        </div>
+
+        <div class="row row-2" style="margin-bottom:8px">
+          <div><span class="lbl">Transaction Type</span><select id="goamlTxType"><option value="PURCHASE">Purchase</option><option value="SALE">Sale</option><option value="TRANSFER">Transfer</option><option value="EXCHANGE">Exchange</option><option value="REFINING">Refining</option></select></div>
+          <div><span class="lbl">Payment Method</span><select id="goamlPayment"><option value="CASH">Cash</option><option value="WIRE">Wire Transfer</option><option value="CHEQUE">Cheque</option><option value="CRYPTO">Cryptocurrency</option><option value="OTHER">Other</option></select></div>
+        </div>
+
+        <div class="row row-2" style="margin-bottom:8px">
+          <div><span class="lbl">Commodity Type</span><select id="goamlCommodity"><option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="PLATINUM">Platinum</option><option value="OTHER">Other</option></select></div>
+          <div><span class="lbl">Origin Country</span><input type="text" id="goamlOriginCountry" placeholder="e.g. CH, ZA, GH" /></div>
+        </div>
+
+        <div style="margin-bottom:8px">
+          <span class="lbl">Suspicious Indicators / Grounds</span>
+          <textarea id="goamlIndicators" placeholder="Describe suspicious indicators, red flags, and grounds for reporting..." style="min-height:60px"></textarea>
+        </div>
+
+        <div style="margin-bottom:8px">
+          <span class="lbl">Narrative Description</span>
+          <textarea id="goamlNarrative" placeholder="Full narrative of circumstances..." style="min-height:60px"></textarea>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <span class="lbl">Internal Case Reference</span>
+          <input type="text" id="goamlCaseRef" placeholder="e.g. CASE-2026-001" />
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-gold" onclick="GoAMLExport.generateAndDownload()">Generate goAML XML</button>
+          <button class="btn btn-sm btn-blue" onclick="GoAMLExport.previewXml()">Preview XML</button>
+          <button class="btn btn-sm btn-blue" onclick="GoAMLExport.populateFromSTR()">Import from STR Draft</button>
+          <button class="btn btn-sm btn-red" onclick="GoAMLExport.cancelForm()">Cancel</button>
+        </div>
+
+        <div id="goamlPreview" style="display:none;margin-top:12px"></div>
+      </div>
+
+      <div class="card">
+        <span class="lbl">Recent goAML Exports</span>
+        <div id="goamlReportHistory">${recentHtml}</div>
+      </div>
+    `;
   }
 
-  function clearEvents() {
-    if (!confirm('Are you sure you want to clear all events?')) return;
-    localStorage.removeItem(STORAGE_KEY);
-    updateBellBadge();
+  function getFormData() {
+    const byId = id => document.getElementById(id);
+    return {
+      reportType: byId('goamlReportType')?.value || 'STR',
+      priority: byId('goamlPriority')?.value || 'HIGH',
+      subjectName: byId('goamlSubjectName')?.value?.trim() || '',
+      subjectType: byId('goamlSubjectType')?.value || 'INDIVIDUAL',
+      subjectNationality: byId('goamlNationality')?.value?.trim() || '',
+      subjectIdType: byId('goamlIdType')?.value || 'PASSPORT',
+      subjectIdNumber: byId('goamlIdNumber')?.value?.trim() || '',
+      subjectDob: byId('goamlDob')?.value || '',
+      amount: byId('goamlAmount')?.value || '',
+      currency: byId('goamlCurrency')?.value || 'USD',
+      transactionDate: byId('goamlTxDate')?.value || '',
+      transactionType: byId('goamlTxType')?.value || 'PURCHASE',
+      paymentMethod: byId('goamlPayment')?.value || 'CASH',
+      commodityType: byId('goamlCommodity')?.value || 'GOLD',
+      originCountry: byId('goamlOriginCountry')?.value?.trim() || '',
+      indicators: byId('goamlIndicators')?.value?.trim() || '',
+      narrative: byId('goamlNarrative')?.value?.trim() || '',
+      caseRef: byId('goamlCaseRef')?.value?.trim() || '',
+    };
   }
 
-  function getUnreadCount() {
-    var events = loadEvents();
-    var count = 0;
-    for (var i = 0; i < events.length; i++) {
-      if (!events[i].read) count++;
-    }
-    return count;
-  }
+  function generateAndDownload() {
+    const data = getFormData();
+    if (!data.subjectName) { toast('Enter subject name', 'error'); return; }
+    if (!data.indicators && data.reportType !== 'CTR') { toast('Enter suspicious indicators', 'error'); return; }
 
-  function onEvent(callback) {
-    if (typeof callback === 'function') onEventCallbacks.push(callback);
-  }
-
-  // ── Render: Notification Bell ─────────────────────────────────────────────
-  function renderNotificationBell() {
-    var count = getUnreadCount();
-    var badgeDisplay = count > 0 ? 'flex' : 'none';
-    var badgeText = count > 99 ? '99+' : count;
-
-    return '<div id="fgl-webhook-bell" style="position:relative;display:inline-block;cursor:pointer;" onclick="WebhookReceiver.toggleFeed()">' +
-      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-        '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>' +
-        '<path d="M13.73 21a2 2 0 0 1-3.46 0"/>' +
-      '</svg>' +
-      '<span id="fgl-webhook-badge" style="display:' + badgeDisplay + ';position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 4px;">' +
-        badgeText +
-      '</span>' +
-    '</div>';
-  }
-
-  // ── Render: Event Feed Panel ──────────────────────────────────────────────
-  function renderEventFeed() {
-    var events = loadEvents();
-
-    var html = '<div id="fgl-webhook-feed" style="width:380px;max-height:480px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;">';
-
-    // Header
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">';
-    html += '<span style="font-weight:600;font-size:14px;color:#1e293b;">Webhook Events</span>';
-    html += '<div style="display:flex;gap:8px;">';
-    html += '<button onclick="WebhookReceiver.markAllRead()" style="background:none;border:none;color:#3b82f6;font-size:12px;cursor:pointer;padding:2px 6px;">Mark all read</button>';
-    html += '<button onclick="WebhookReceiver.clearEvents()" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;padding:2px 6px;">Clear</button>';
-    html += '</div></div>';
-
-    // Event list
-    html += '<div style="max-height:400px;overflow-y:auto;">';
-
-    if (events.length === 0) {
-      html += '<div style="padding:32px 16px;text-align:center;color:#94a3b8;font-size:13px;">No events yet</div>';
+    let result;
+    if (data.reportType === 'CTR') {
+      result = exportCTR(data);
     } else {
-      for (var i = 0; i < events.length; i++) {
-        var evt = events[i];
-        var bgColor = evt.read ? '#fff' : '#f0f9ff';
-        var dotColor = evt.source === 'asana' ? '#f06a6a' : '#4a154b';
-        var readIndicator = evt.read ? '' : '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#3b82f6;margin-right:8px;flex-shrink:0;"></span>';
-
-        html += '<div onclick="WebhookReceiver.markRead(\'' + escapeHtml(evt.id) + '\')" style="display:flex;align-items:flex-start;padding:10px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer;background:' + bgColor + ';transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'' + bgColor + '\'">';
-        html += readIndicator;
-        html += '<div style="flex:1;min-width:0;">';
-        html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">';
-        html += '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';flex-shrink:0;"></span>';
-        html += '<span style="font-weight:600;font-size:12px;color:#475569;">' + escapeHtml(formatSourceLabel(evt.source)) + '</span>';
-        html += '<span style="font-size:11px;color:#94a3b8;margin-left:auto;white-space:nowrap;">' + escapeHtml(formatTimestamp(evt.timestamp)) + '</span>';
-        html += '</div>';
-        html += '<div style="font-size:13px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(formatEventSummary(evt)) + '</div>';
-        html += '</div></div>';
-      }
+      result = exportSTR(data);
     }
 
-    html += '</div></div>';
-    return html;
-  }
+    toast(`goAML ${data.reportType} exported: ${result.filename}`, 'success');
+    if (typeof logAudit === 'function') logAudit('goaml', `Generated ${data.reportType} for ${data.subjectName} (${result.reportId})`);
 
-  // ── Toggle feed panel ─────────────────────────────────────────────────────
-  function toggleFeed() {
-    feedOpen = !feedOpen;
-    var existing = document.getElementById('fgl-webhook-feed-wrapper');
-    if (existing) {
-      existing.parentNode.removeChild(existing);
-    }
-    if (feedOpen) {
-      var wrapper = document.createElement('div');
-      wrapper.id = 'fgl-webhook-feed-wrapper';
-      wrapper.style.cssText = 'position:fixed;top:48px;right:16px;z-index:9999;';
-      wrapper.innerHTML = renderEventFeed();
-      document.body.appendChild(wrapper);
-
-      // Close when clicking outside
-      setTimeout(function () {
-        document.addEventListener('click', closeFeedOnClickOutside);
-      }, 0);
-    } else {
-      document.removeEventListener('click', closeFeedOnClickOutside);
+    // Refresh history
+    const histEl = document.getElementById('goamlReportHistory');
+    if (histEl) {
+      const reports = getReports();
+      histEl.innerHTML = reports.slice(0, 10).map(r => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <span class="badge ${r.type === 'STR' ? 'b-r' : 'b-a'}">${r.type}</span>
+            <span style="font-size:12px;margin-left:6px">${r.subject || 'Unknown'}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted)">${new Date(r.date).toLocaleDateString('en-GB')}</div>
+        </div>
+      `).join('');
     }
   }
 
-  function closeFeedOnClickOutside(e) {
-    var feed = document.getElementById('fgl-webhook-feed-wrapper');
-    var bell = document.getElementById('fgl-webhook-bell');
-    if (feed && !feed.contains(e.target) && bell && !bell.contains(e.target)) {
-      feedOpen = false;
-      feed.parentNode.removeChild(feed);
-      document.removeEventListener('click', closeFeedOnClickOutside);
+  function previewXml() {
+    const data = getFormData();
+    if (!data.subjectName) { toast('Enter subject name first', 'error'); return; }
+    const xml = data.reportType === 'CTR' ? buildCTRXml(data) : buildSTRXml(data);
+    const el = document.getElementById('goamlPreview');
+    if (el) {
+      el.style.display = 'block';
+      el.innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:11px;font-family:'DM Mono',monospace;max-height:400px;overflow-y:auto">${escapeXml(xml)}</div>
+        <button class="btn btn-sm btn-green" style="margin-top:6px" onclick="navigator.clipboard.writeText(document.querySelector('#goamlPreview .summary-box').textContent);toast('XML copied','success')">Copy XML</button>`;
     }
   }
 
-  // ── Expose global ─────────────────────────────────────────────────────────
-  window.WebhookReceiver = {
-    start: start,
-    stop: stop,
-    getEvents: getEvents,
-    markRead: function (id) { markRead(id); refreshFeedIfOpen(); },
-    markAllRead: function () { markAllRead(); refreshFeedIfOpen(); },
-    clearEvents: function () { clearEvents(); refreshFeedIfOpen(); },
-    getUnreadCount: getUnreadCount,
-    onEvent: onEvent,
-    renderNotificationBell: renderNotificationBell,
-    renderEventFeed: renderEventFeed,
-    toggleFeed: toggleFeed,
+  function populateFromSTR() {
+    const strSubject = document.getElementById('strSubject');
+    const strAmount = document.getElementById('strAmount');
+    const strIndicators = document.getElementById('strIndicators');
+    if (strSubject?.value) document.getElementById('goamlSubjectName').value = strSubject.value;
+    if (strAmount?.value) document.getElementById('goamlAmount').value = strAmount.value;
+    if (strIndicators?.value) document.getElementById('goamlIndicators').value = strIndicators.value;
+    toast('Imported from STR draft fields', 'success');
+  }
+
+  function cancelForm() {
+    const fields = ['goamlSubjectName','goamlSubjectId','goamlAmount','goamlTxDate','goamlOriginCountry','goamlIndicators','goamlNarrative','goamlCaseRef'];
+    fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const selects = ['goamlReportType','goamlCurrency','goamlTxType','goamlPayment','goamlCommodity'];
+    selects.forEach(id => { const el = document.getElementById(id); if (el) el.selectedIndex = 0; });
+    const preview = document.getElementById('goamlPreview');
+    if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
+    toast('Form cleared', 'success');
+  }
+
+  return {
+    REPORT_TYPES,
+    renderGoAMLPanel,
+    generateAndDownload,
+    previewXml,
+    populateFromSTR,
+    cancelForm,
+    exportSTR,
+    exportCTR,
+    getReports,
   };
-
-  function refreshFeedIfOpen() {
-    if (!feedOpen) return;
-    var wrapper = document.getElementById('fgl-webhook-feed-wrapper');
-    if (wrapper) wrapper.innerHTML = renderEventFeed();
-    updateBellBadge();
-  }
-
 })();

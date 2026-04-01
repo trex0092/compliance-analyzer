@@ -1,749 +1,518 @@
 /**
- * ComplianceDB - IndexedDB Backend for Compliance Analyser
- *
- * Provides persistent storage using IndexedDB, replacing localStorage
- * for large datasets while maintaining backwards compatibility through
- * a one-time migration path.
+ * VaultEncryption Module
+ * Data encryption at rest for the Vault tab using the Web Crypto API.
+ * AES-GCM 256-bit encryption with PBKDF2 key derivation.
+ * Each encrypted item has its own random IV (12 bytes) and salt (16 bytes).
  */
-(function (global) {
-  'use strict';
+var VaultEncryption = (function() {
+    'use strict';
 
-  const DB_NAME = 'ComplianceAnalyserDB';
-  const DB_VERSION = 1;
-  const MIGRATION_KEY = '__compliancedb_migrated';
+    var STORAGE_KEY = 'fgl_vault_encrypted';
+    var PBKDF2_ITERATIONS = 100000;
+    var cachedKey = null;
+    var cachedPassphrase = null;
+    var locked = true;
 
-  // Store definitions: name -> { keyPath, autoIncrement, indexes }
-  const STORE_DEFINITIONS = {
-    shipments: {
-      keyPath: 'id',
-      autoIncrement: true,
-      indexes: [
-        { name: 'date', keyPath: 'date', options: {} },
-        { name: 'companyId', keyPath: 'companyId', options: {} },
-        { name: 'status', keyPath: 'status', options: {} },
-        { name: 'severity', keyPath: 'severity', options: {} },
-      ],
-    },
-    evidence: {
-      keyPath: 'id',
-      autoIncrement: true,
-      indexes: [
-        { name: 'date', keyPath: 'date', options: {} },
-        { name: 'companyId', keyPath: 'companyId', options: {} },
-        { name: 'status', keyPath: 'status', options: {} },
-        { name: 'severity', keyPath: 'severity', options: {} },
-      ],
-    },
-    reports: {
-      keyPath: 'id',
-      autoIncrement: true,
-      indexes: [
-        { name: 'date', keyPath: 'date', options: {} },
-        { name: 'companyId', keyPath: 'companyId', options: {} },
-        { name: 'status', keyPath: 'status', options: {} },
-        { name: 'severity', keyPath: 'severity', options: {} },
-      ],
-    },
-    incidents: {
-      keyPath: 'id',
-      autoIncrement: true,
-      indexes: [
-        { name: 'date', keyPath: 'date', options: {} },
-        { name: 'companyId', keyPath: 'companyId', options: {} },
-        { name: 'status', keyPath: 'status', options: {} },
-        { name: 'severity', keyPath: 'severity', options: {} },
-      ],
-    },
-    auditTrail: {
-      keyPath: 'id',
-      autoIncrement: true,
-      indexes: [
-        { name: 'date', keyPath: 'date', options: {} },
-        { name: 'companyId', keyPath: 'companyId', options: {} },
-        { name: 'status', keyPath: 'status', options: {} },
-        { name: 'severity', keyPath: 'severity', options: {} },
-      ],
-    },
-    screeningHistory: {
-      keyPath: 'id',
-      autoIncrement: true,
-      indexes: [
-        { name: 'date', keyPath: 'date', options: {} },
-        { name: 'companyId', keyPath: 'companyId', options: {} },
-        { name: 'status', keyPath: 'status', options: {} },
-        { name: 'severity', keyPath: 'severity', options: {} },
-      ],
-    },
-    onboarding: {
-      keyPath: 'id',
-      autoIncrement: true,
-      indexes: [
-        { name: 'date', keyPath: 'date', options: {} },
-        { name: 'companyId', keyPath: 'companyId', options: {} },
-        { name: 'status', keyPath: 'status', options: {} },
-        { name: 'severity', keyPath: 'severity', options: {} },
-      ],
-    },
-    calendar: {
-      keyPath: 'id',
-      autoIncrement: true,
-      indexes: [
-        { name: 'date', keyPath: 'date', options: {} },
-        { name: 'companyId', keyPath: 'companyId', options: {} },
-        { name: 'status', keyPath: 'status', options: {} },
-        { name: 'severity', keyPath: 'severity', options: {} },
-      ],
-    },
-    training: {
-      keyPath: 'id',
-      autoIncrement: true,
-      indexes: [
-        { name: 'date', keyPath: 'date', options: {} },
-        { name: 'companyId', keyPath: 'companyId', options: {} },
-        { name: 'status', keyPath: 'status', options: {} },
-        { name: 'severity', keyPath: 'severity', options: {} },
-      ],
-    },
-    analysisHistory: {
-      keyPath: 'id',
-      autoIncrement: true,
-      indexes: [
-        { name: 'date', keyPath: 'date', options: {} },
-        { name: 'companyId', keyPath: 'companyId', options: {} },
-        { name: 'status', keyPath: 'status', options: {} },
-        { name: 'severity', keyPath: 'severity', options: {} },
-      ],
-    },
-  };
+    // ---- Utility helpers ----
 
-  const STORE_NAMES = Object.keys(STORE_DEFINITIONS);
-
-  // ── Internal: Database Connection ──────────────────────────────────
-
-  let _dbInstance = null;
-
-  /**
-   * Open (or return cached) database connection.
-   * Creates object stores and indexes on first run or version upgrade.
-   */
-  function _openDB() {
-    if (_dbInstance) {
-      return Promise.resolve(_dbInstance);
-    }
-
-    return new Promise(function (resolve, reject) {
-      var request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onerror = function () {
-        reject(new Error('Failed to open IndexedDB: ' + request.error));
-      };
-
-      request.onupgradeneeded = function (event) {
-        var db = event.target.result;
-
-        STORE_NAMES.forEach(function (storeName) {
-          if (db.objectStoreNames.contains(storeName)) {
-            return;
-          }
-
-          var def = STORE_DEFINITIONS[storeName];
-          var store = db.createObjectStore(storeName, {
-            keyPath: def.keyPath,
-            autoIncrement: def.autoIncrement,
-          });
-
-          def.indexes.forEach(function (idx) {
-            store.createIndex(idx.name, idx.keyPath, idx.options);
-          });
-        });
-      };
-
-      request.onsuccess = function () {
-        _dbInstance = request.result;
-
-        _dbInstance.onclose = function () {
-          _dbInstance = null;
-        };
-
-        resolve(_dbInstance);
-      };
-    });
-  }
-
-  /**
-   * Execute a transaction against one or more stores.
-   * Returns a promise that resolves when the transaction completes.
-   *
-   * @param {string|string[]} storeNames
-   * @param {string} mode - 'readonly' or 'readwrite'
-   * @param {function} callback - receives (transaction) and should return the IDBRequest to track
-   */
-  function _withTransaction(storeNames, mode, callback) {
-    return _openDB().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var tx = db.transaction(storeNames, mode);
-        var result;
-
-        tx.onerror = function () {
-          reject(tx.error);
-        };
-
-        tx.oncomplete = function () {
-          resolve(result);
-        };
-
-        var req = callback(tx);
-        if (req && typeof req.onsuccess !== 'undefined') {
-          req.onsuccess = function () {
-            result = req.result;
-          };
-        }
-      });
-    });
-  }
-
-  // ── Validation ─────────────────────────────────────────────────────
-
-  function _validateStore(storeName) {
-    if (STORE_NAMES.indexOf(storeName) === -1) {
-      throw new Error(
-        'Unknown store: "' + storeName + '". Valid stores: ' + STORE_NAMES.join(', ')
-      );
-    }
-  }
-
-  // ── CRUD Operations ────────────────────────────────────────────────
-
-  /**
-   * Add a record to a store. Returns the auto-generated key.
-   */
-  function add(storeName, record) {
-    _validateStore(storeName);
-    var entry = Object.assign({}, record);
-    // Remove id so auto-increment assigns one
-    delete entry.id;
-
-    return _withTransaction(storeName, 'readwrite', function (tx) {
-      return tx.objectStore(storeName).add(entry);
-    });
-  }
-
-  /**
-   * Get a single record by its primary key.
-   */
-  function get(storeName, id) {
-    _validateStore(storeName);
-
-    return _withTransaction(storeName, 'readonly', function (tx) {
-      return tx.objectStore(storeName).get(id);
-    });
-  }
-
-  /**
-   * Get all records from a store, optionally filtered by a predicate function.
-   *
-   * @param {string} storeName
-   * @param {function} [filter] - Optional predicate: function(record) => boolean
-   */
-  function getAll(storeName, filter) {
-    _validateStore(storeName);
-
-    return _openDB().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var tx = db.transaction(storeName, 'readonly');
-        var store = tx.objectStore(storeName);
-        var results = [];
-
-        var request = store.openCursor();
-
-        request.onerror = function () {
-          reject(request.error);
-        };
-
-        request.onsuccess = function (event) {
-          var cursor = event.target.result;
-          if (cursor) {
-            if (!filter || filter(cursor.value)) {
-              results.push(cursor.value);
-            }
-            cursor.continue();
-          }
-        };
-
-        tx.oncomplete = function () {
-          resolve(results);
-        };
-
-        tx.onerror = function () {
-          reject(tx.error);
-        };
-      });
-    });
-  }
-
-  /**
-   * Update an existing record. Merges the provided fields into the record
-   * at the given id.
-   */
-  function update(storeName, id, record) {
-    _validateStore(storeName);
-
-    return get(storeName, id).then(function (existing) {
-      if (!existing) {
-        throw new Error('Record not found in "' + storeName + '" with id: ' + id);
-      }
-
-      var updated = Object.assign({}, existing, record, { id: id });
-
-      return _withTransaction(storeName, 'readwrite', function (tx) {
-        return tx.objectStore(storeName).put(updated);
-      });
-    });
-  }
-
-  /**
-   * Delete a record by its primary key.
-   */
-  function del(storeName, id) {
-    _validateStore(storeName);
-
-    return _withTransaction(storeName, 'readwrite', function (tx) {
-      return tx.objectStore(storeName).delete(id);
-    });
-  }
-
-  /**
-   * Query records by a specific index value.
-   */
-  function query(storeName, indexName, value) {
-    _validateStore(storeName);
-
-    return _openDB().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var tx = db.transaction(storeName, 'readonly');
-        var store = tx.objectStore(storeName);
-        var index = store.index(indexName);
-        var request = index.getAll(value);
-
-        request.onerror = function () {
-          reject(request.error);
-        };
-
-        request.onsuccess = function () {
-          resolve(request.result);
-        };
-      });
-    });
-  }
-
-  /**
-   * Count the number of records in a store.
-   */
-  function count(storeName) {
-    _validateStore(storeName);
-
-    return _withTransaction(storeName, 'readonly', function (tx) {
-      return tx.objectStore(storeName).count();
-    });
-  }
-
-  /**
-   * Clear all records from a store.
-   */
-  function clear(storeName) {
-    _validateStore(storeName);
-
-    return _withTransaction(storeName, 'readwrite', function (tx) {
-      return tx.objectStore(storeName).clear();
-    });
-  }
-
-  // ── Migration from localStorage ────────────────────────────────────
-
-  /**
-   * Map of localStorage keys to their target store names.
-   * Keys that do not match any known store are skipped.
-   */
-  var LOCAL_STORAGE_KEY_MAP = {};
-  STORE_NAMES.forEach(function (name) {
-    // Try common key formats: exact name, camelCase, prefixed variants
-    LOCAL_STORAGE_KEY_MAP[name] = name;
-    LOCAL_STORAGE_KEY_MAP['compliance_' + name] = name;
-    LOCAL_STORAGE_KEY_MAP['complianceAnalyser_' + name] = name;
-  });
-
-  /**
-   * Check whether a migration from localStorage has already occurred.
-   */
-  function _isMigrated() {
-    try {
-      return localStorage.getItem(MIGRATION_KEY) === 'true';
-    } catch (e) {
-      // localStorage unavailable; nothing to migrate
-      return true;
-    }
-  }
-
-  /**
-   * One-time migration of existing localStorage data into IndexedDB.
-   * Detects stored JSON arrays or objects and writes them into the
-   * corresponding object stores. Sets a flag to prevent repeat migration.
-   *
-   * @returns {Promise<object>} Summary of migrated counts per store.
-   */
-  function migrateFromLocalStorage() {
-    if (_isMigrated()) {
-      return Promise.resolve({ alreadyMigrated: true });
-    }
-
-    var migrationSummary = {};
-    var dataToMigrate = {};
-
-    try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var key = localStorage.key(i);
-        var targetStore = LOCAL_STORAGE_KEY_MAP[key];
-
-        if (!targetStore) {
-          continue;
-        }
-
-        var raw = localStorage.getItem(key);
-        if (!raw) continue;
-
+    function getVaultStore() {
         try {
-          var parsed = JSON.parse(raw);
-          var records = Array.isArray(parsed) ? parsed : [parsed];
-          dataToMigrate[targetStore] = (dataToMigrate[targetStore] || []).concat(records);
-        } catch (parseErr) {
-          // Skip non-JSON values
-          continue;
+            var raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+            return {};
         }
-      }
-    } catch (e) {
-      return Promise.resolve({ error: 'localStorage not accessible', migrated: false });
     }
 
-    var storeNames = Object.keys(dataToMigrate);
-    if (storeNames.length === 0) {
-      try {
-        localStorage.setItem(MIGRATION_KEY, 'true');
-      } catch (e) {
-        // Ignore
-      }
-      return Promise.resolve({ migrated: true, stores: {} });
+    function saveVaultStore(store) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
     }
 
-    return _openDB().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var tx = db.transaction(storeNames, 'readwrite');
+    function arrayBufferToBase64(buffer) {
+        var bytes = new Uint8Array(buffer);
+        var binary = '';
+        for (var i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+    }
 
-        tx.onerror = function () {
-          reject(tx.error);
-        };
+    function base64ToArrayBuffer(base64) {
+        var binary = atob(base64);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
 
-        tx.oncomplete = function () {
-          try {
-            localStorage.setItem(MIGRATION_KEY, 'true');
-          } catch (e) {
-            // Ignore
-          }
-          resolve({ migrated: true, stores: migrationSummary });
-        };
+    // ---- Core crypto methods ----
 
-        storeNames.forEach(function (storeName) {
-          var store = tx.objectStore(storeName);
-          var records = dataToMigrate[storeName];
-          migrationSummary[storeName] = records.length;
-
-          records.forEach(function (record) {
-            var entry = Object.assign({}, record);
-            delete entry.id; // Let auto-increment assign keys
-            store.add(entry);
-          });
+    /**
+     * Derive an AES-GCM 256-bit key from a passphrase and salt using PBKDF2.
+     * @param {string} passphrase
+     * @param {ArrayBuffer|Uint8Array} salt - 16-byte salt
+     * @returns {Promise<CryptoKey>}
+     */
+    function deriveKey(passphrase, salt) {
+        var enc = new TextEncoder();
+        return crypto.subtle.importKey(
+            'raw',
+            enc.encode(passphrase),
+            'PBKDF2',
+            false,
+            ['deriveKey']
+        ).then(function(baseKey) {
+            return crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: salt instanceof Uint8Array ? salt : new Uint8Array(salt),
+                    iterations: PBKDF2_ITERATIONS,
+                    hash: 'SHA-256'
+                },
+                baseKey,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
         });
-      });
-    });
-  }
+    }
 
-  // ── Export / Import ────────────────────────────────────────────────
+    /**
+     * Encrypt JSON-serialisable data with a passphrase.
+     * @param {*} data - Any JSON-serialisable value
+     * @param {string} passphrase
+     * @returns {Promise<{iv: string, salt: string, ciphertext: string}>} Base64-encoded strings
+     */
+    function encrypt(data, passphrase) {
+        var iv = crypto.getRandomValues(new Uint8Array(12));
+        var salt = crypto.getRandomValues(new Uint8Array(16));
+        var enc = new TextEncoder();
+        var plaintext = enc.encode(JSON.stringify(data));
 
-  /**
-   * Export the contents of a single object store as an array of records.
-   */
-  function exportStore(storeName) {
-    _validateStore(storeName);
-
-    return _openDB().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var tx = db.transaction(storeName, 'readonly');
-        var store = tx.objectStore(storeName);
-        var request = store.getAll();
-
-        request.onerror = function () {
-          reject(request.error);
-        };
-
-        request.onsuccess = function () {
-          resolve(request.result);
-        };
-      });
-    });
-  }
-
-  /**
-   * Export the entire database as a JSON-serialisable object.
-   * Structure: { storeName: [ records... ], ... }
-   */
-  function exportAll() {
-    return _openDB().then(function (db) {
-      var promises = STORE_NAMES.map(function (storeName) {
-        return new Promise(function (resolve, reject) {
-          var tx = db.transaction(storeName, 'readonly');
-          var store = tx.objectStore(storeName);
-          var request = store.getAll();
-
-          request.onerror = function () {
-            reject(request.error);
-          };
-
-          request.onsuccess = function () {
-            resolve({ name: storeName, data: request.result });
-          };
+        return deriveKey(passphrase, salt).then(function(key) {
+            return crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                plaintext
+            );
+        }).then(function(cipherBuffer) {
+            return {
+                iv: arrayBufferToBase64(iv.buffer),
+                salt: arrayBufferToBase64(salt.buffer),
+                ciphertext: arrayBufferToBase64(cipherBuffer)
+            };
         });
-      });
+    }
 
-      return Promise.all(promises).then(function (results) {
-        var output = {};
-        results.forEach(function (r) {
-          output[r.name] = r.data;
+    /**
+     * Decrypt an encrypted object back to parsed JSON.
+     * @param {{iv: string, salt: string, ciphertext: string}} encryptedObj
+     * @param {string} passphrase
+     * @returns {Promise<*>} Parsed JSON data
+     */
+    function decrypt(encryptedObj, passphrase) {
+        var iv = new Uint8Array(base64ToArrayBuffer(encryptedObj.iv));
+        var salt = new Uint8Array(base64ToArrayBuffer(encryptedObj.salt));
+        var ciphertext = base64ToArrayBuffer(encryptedObj.ciphertext);
+
+        return deriveKey(passphrase, salt).then(function(key) {
+            return crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                ciphertext
+            );
+        }).then(function(plainBuffer) {
+            var dec = new TextDecoder();
+            try { return JSON.parse(dec.decode(plainBuffer)); } catch(e) { return null; }
         });
-        return output;
-      });
-    });
-  }
-
-  /**
-   * Import data from a JSON backup object (as produced by exportAll).
-   * Clears existing data in each store before importing.
-   *
-   * @param {object} data - { storeName: [ records... ], ... }
-   */
-  function importAll(data) {
-    if (!data || typeof data !== 'object') {
-      return Promise.reject(new Error('importAll expects an object with store data'));
     }
 
-    var storeNames = Object.keys(data).filter(function (key) {
-      return STORE_NAMES.indexOf(key) !== -1;
-    });
-
-    if (storeNames.length === 0) {
-      return Promise.resolve({ imported: true, stores: {} });
-    }
-
-    return _openDB().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var tx = db.transaction(storeNames, 'readwrite');
-        var summary = {};
-
-        tx.onerror = function () {
-          reject(tx.error);
-        };
-
-        tx.oncomplete = function () {
-          resolve({ imported: true, stores: summary });
-        };
-
-        storeNames.forEach(function (storeName) {
-          var store = tx.objectStore(storeName);
-          store.clear();
-
-          var records = Array.isArray(data[storeName]) ? data[storeName] : [];
-          summary[storeName] = records.length;
-
-          records.forEach(function (record) {
-            store.put(record);
-          });
+    /**
+     * Encrypt and store data under a named key in the vault.
+     * @param {string} key
+     * @param {*} data
+     * @param {string} passphrase
+     * @returns {Promise<void>}
+     */
+    function storeSecure(key, data, passphrase) {
+        return encrypt(data, passphrase).then(function(encObj) {
+            var store = getVaultStore();
+            store[key] = encObj;
+            saveVaultStore(store);
         });
-      });
-    });
-  }
-
-  // ── Search ─────────────────────────────────────────────────────────
-
-  /**
-   * Full-text search across one or all stores. Searches all string-valued
-   * fields of each record for a case-insensitive match.
-   *
-   * @param {string} text - The search term.
-   * @param {string} [storeName] - Optional store to limit the search to.
-   * @returns {Promise<object[]>} Matching records with a _store property.
-   */
-  function search(text, storeName) {
-    var targets = storeName ? [storeName] : STORE_NAMES;
-
-    if (storeName) {
-      _validateStore(storeName);
     }
 
-    var needle = (text || '').toLowerCase();
-    if (!needle) {
-      return Promise.resolve([]);
+    /**
+     * Retrieve and decrypt data for a named key from the vault.
+     * @param {string} key
+     * @param {string} passphrase
+     * @returns {Promise<*>}
+     */
+    function retrieveSecure(key, passphrase) {
+        var store = getVaultStore();
+        if (!store[key]) {
+            return Promise.reject(new Error('Key not found: ' + key));
+        }
+        return decrypt(store[key], passphrase);
     }
 
-    var promises = targets.map(function (name) {
-      return getAll(name, function (record) {
-        return _recordMatchesText(record, needle);
-      }).then(function (records) {
-        return records.map(function (r) {
-          return Object.assign({}, r, { _store: name });
-        });
-      });
-    });
-
-    return Promise.all(promises).then(function (arrays) {
-      var merged = [];
-      arrays.forEach(function (arr) {
-        merged = merged.concat(arr);
-      });
-      return merged;
-    });
-  }
-
-  /**
-   * Check whether any string field in a record contains the needle.
-   */
-  function _recordMatchesText(record, needle) {
-    var keys = Object.keys(record);
-    for (var i = 0; i < keys.length; i++) {
-      var val = record[keys[i]];
-      if (typeof val === 'string' && val.toLowerCase().indexOf(needle) !== -1) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Query records within a date range on the "date" index.
-   *
-   * @param {string} storeName
-   * @param {string} startDate - ISO date string (inclusive lower bound)
-   * @param {string} endDate   - ISO date string (inclusive upper bound)
-   * @returns {Promise<object[]>}
-   */
-  function dateRangeQuery(storeName, startDate, endDate) {
-    _validateStore(storeName);
-
-    return _openDB().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var tx = db.transaction(storeName, 'readonly');
-        var store = tx.objectStore(storeName);
-        var index = store.index('date');
-        var range = IDBKeyRange.bound(startDate, endDate);
-        var results = [];
-
-        var request = index.openCursor(range);
-
-        request.onerror = function () {
-          reject(request.error);
-        };
-
-        request.onsuccess = function (event) {
-          var cursor = event.target.result;
-          if (cursor) {
-            results.push(cursor.value);
-            cursor.continue();
-          }
-        };
-
-        tx.oncomplete = function () {
-          resolve(results);
-        };
-
-        tx.onerror = function () {
-          reject(tx.error);
-        };
-      });
-    });
-  }
-
-  /**
-   * Compound filter: query a store applying multiple field conditions.
-   *
-   * @param {string} storeName
-   * @param {object} filters - Key/value pairs. Each key is a field name;
-   *   value can be a primitive (exact match), a RegExp, or an object with
-   *   { from, to } for range comparisons.
-   * @returns {Promise<object[]>}
-   */
-  function compoundFilter(storeName, filters) {
-    _validateStore(storeName);
-
-    if (!filters || Object.keys(filters).length === 0) {
-      return getAll(storeName);
+    /**
+     * List all encrypted item keys without decrypting.
+     * @returns {string[]}
+     */
+    function listKeys() {
+        return Object.keys(getVaultStore());
     }
 
-    var filterKeys = Object.keys(filters);
+    /**
+     * Remove an encrypted item by key.
+     * @param {string} key
+     */
+    function deleteKey(key) {
+        var store = getVaultStore();
+        delete store[key];
+        saveVaultStore(store);
+    }
 
-    return getAll(storeName, function (record) {
-      return filterKeys.every(function (key) {
-        var condition = filters[key];
-        var value = record[key];
-
-        // Range filter: { from, to }
-        if (condition && typeof condition === 'object' && !('test' in condition)) {
-          if (condition.from !== undefined && condition.to !== undefined) {
-            return value >= condition.from && value <= condition.to;
-          }
-          if (condition.from !== undefined) {
-            return value >= condition.from;
-          }
-          if (condition.to !== undefined) {
-            return value <= condition.to;
-          }
-          return true;
+    /**
+     * Re-encrypt all vault items with a new passphrase.
+     * @param {string} oldPass
+     * @param {string} newPass
+     * @returns {Promise<void>}
+     */
+    function changePassphrase(oldPass, newPass) {
+        var store = getVaultStore();
+        var keys = Object.keys(store);
+        if (keys.length === 0) {
+            cachedPassphrase = newPass;
+            cachedKey = null;
+            return Promise.resolve();
         }
 
-        // RegExp filter
-        if (condition instanceof RegExp) {
-          return condition.test(String(value));
+        var decryptPromises = keys.map(function(k) {
+            return decrypt(store[k], oldPass).then(function(data) {
+                return { key: k, data: data };
+            });
+        });
+
+        return Promise.all(decryptPromises).then(function(items) {
+            var reEncryptPromises = items.map(function(item) {
+                return encrypt(item.data, newPass).then(function(encObj) {
+                    return { key: item.key, encObj: encObj };
+                });
+            });
+            return Promise.all(reEncryptPromises);
+        }).then(function(reEncrypted) {
+            var newStore = {};
+            reEncrypted.forEach(function(item) {
+                newStore[item.key] = item.encObj;
+            });
+            saveVaultStore(newStore);
+            cachedPassphrase = newPass;
+            cachedKey = null;
+        });
+    }
+
+    /**
+     * Check whether the vault is locked.
+     * @returns {boolean}
+     */
+    function isLocked() {
+        return locked;
+    }
+
+    /**
+     * Clear the derived key from memory, locking the vault.
+     */
+    function lock() {
+        cachedKey = null;
+        cachedPassphrase = null;
+        locked = true;
+    }
+
+    /**
+     * Derive and cache a key for the session, unlocking the vault.
+     * Validates the passphrase against the first stored item if one exists.
+     * @param {string} passphrase
+     * @returns {Promise<boolean>} Resolves true on success
+     */
+    function unlock(passphrase) {
+        var keys = listKeys();
+        if (keys.length > 0) {
+            // Validate passphrase against first item
+            return retrieveSecure(keys[0], passphrase).then(function() {
+                cachedPassphrase = passphrase;
+                locked = false;
+                return true;
+            });
+        }
+        // No items yet -- accept any passphrase
+        cachedPassphrase = passphrase;
+        locked = false;
+        return Promise.resolve(true);
+    }
+
+    // ---- UI rendering ----
+
+    function esc(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    /**
+     * Render the full vault management UI as an HTML string.
+     * @returns {string}
+     */
+    function renderVaultUI() {
+        var keys = listKeys();
+        var lockIcon = locked ? '&#x1F512;' : '&#x1F513;';
+        var lockLabel = locked ? 'Locked' : 'Unlocked';
+        var lockColour = locked ? '#e74c3c' : '#27ae60';
+
+        var html = '';
+
+        // Header
+        html += '<div style="max-width:800px;margin:0 auto;padding:20px;">';
+        html += '<h2 style="margin-bottom:4px;">&#x1F512; Encrypted Vault</h2>';
+        html += '<p style="color:#666;margin-top:0;">AES-GCM 256-bit encryption at rest with PBKDF2 key derivation.</p>';
+
+        // Lock status indicator
+        html += '<div id="vault-lock-status" style="display:inline-block;padding:6px 14px;border-radius:20px;font-weight:bold;margin-bottom:18px;';
+        html += 'background:' + lockColour + ';color:#fff;">' + lockIcon + ' ' + lockLabel + '</div>';
+
+        // Unlock / Lock panel
+        html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:18px;">';
+        if (locked) {
+            html += '<h3 style="margin-top:0;">Unlock Vault</h3>';
+            html += '<div style="display:flex;gap:8px;align-items:center;">';
+            html += '<input type="password" id="vault-passphrase" placeholder="Enter passphrase" ';
+            html += 'style="flex:1;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;" ';
+            html += 'onkeydown="if(event.key===\'Enter\')document.getElementById(\'vault-unlock-btn\').click()">';
+            html += '<button id="vault-unlock-btn" onclick="VaultEncryption._uiUnlock()" ';
+            html += 'style="padding:8px 18px;background:#3498db;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">Unlock</button>';
+            html += '</div>';
+            html += '<div id="vault-unlock-error" style="color:#e74c3c;margin-top:8px;display:none;"></div>';
+        } else {
+            html += '<h3 style="margin-top:0;">Vault Unlocked</h3>';
+            html += '<button onclick="VaultEncryption._uiLock()" ';
+            html += 'style="padding:8px 18px;background:#e74c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">Lock Vault</button>';
+        }
+        html += '</div>';
+
+        // Only show management UI when unlocked
+        if (!locked) {
+            // Add new item form
+            html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:18px;">';
+            html += '<h3 style="margin-top:0;">Add New Item</h3>';
+            html += '<div style="margin-bottom:8px;">';
+            html += '<input type="text" id="vault-new-key" placeholder="Item key (e.g. api-token)" ';
+            html += 'style="width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;">';
+            html += '</div>';
+            html += '<div style="margin-bottom:8px;">';
+            html += '<textarea id="vault-new-value" placeholder="Secret value or data (JSON or plain text)" ';
+            html += 'rows="3" style="width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;resize:vertical;"></textarea>';
+            html += '</div>';
+            html += '<button onclick="VaultEncryption._uiAddItem()" ';
+            html += 'style="padding:8px 18px;background:#27ae60;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">Encrypt &amp; Store</button>';
+            html += '<div id="vault-add-error" style="color:#e74c3c;margin-top:8px;display:none;"></div>';
+            html += '<div id="vault-add-success" style="color:#27ae60;margin-top:8px;display:none;"></div>';
+            html += '</div>';
+
+            // Stored items list
+            html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:18px;">';
+            html += '<h3 style="margin-top:0;">Stored Items (' + keys.length + ')</h3>';
+            if (keys.length === 0) {
+                html += '<p style="color:#999;font-style:italic;">No encrypted items stored yet.</p>';
+            } else {
+                html += '<table style="width:100%;border-collapse:collapse;">';
+                html += '<thead><tr style="border-bottom:2px solid #ddd;">';
+                html += '<th style="text-align:left;padding:8px;">Key</th>';
+                html += '<th style="text-align:right;padding:8px;width:200px;">Actions</th>';
+                html += '</tr></thead><tbody>';
+                keys.forEach(function(k) {
+                    html += '<tr style="border-bottom:1px solid #eee;">';
+                    html += '<td style="padding:8px;font-family:monospace;">' + esc(k) + '</td>';
+                    html += '<td style="padding:8px;text-align:right;">';
+                    html += '<button onclick="VaultEncryption._uiViewItem(\'' + esc(k).replace(/'/g, "\\'") + '\')" ';
+                    html += 'style="padding:4px 12px;margin-left:4px;background:#3498db;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">View</button>';
+                    html += '<button onclick="VaultEncryption._uiDeleteItem(\'' + esc(k).replace(/'/g, "\\'") + '\')" ';
+                    html += 'style="padding:4px 12px;margin-left:4px;background:#e74c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Delete</button>';
+                    html += '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+            }
+            html += '<div id="vault-item-display" style="margin-top:12px;display:none;background:#fff;border:1px solid #ccc;border-radius:4px;padding:12px;"></div>';
+            html += '</div>';
+
+            // Change passphrase form
+            html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:18px;">';
+            html += '<h3 style="margin-top:0;">Change Passphrase</h3>';
+            html += '<div style="margin-bottom:8px;">';
+            html += '<input type="password" id="vault-old-pass" placeholder="Current passphrase" ';
+            html += 'style="width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;">';
+            html += '</div>';
+            html += '<div style="margin-bottom:8px;">';
+            html += '<input type="password" id="vault-new-pass" placeholder="New passphrase" ';
+            html += 'style="width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;">';
+            html += '</div>';
+            html += '<div style="margin-bottom:8px;">';
+            html += '<input type="password" id="vault-confirm-pass" placeholder="Confirm new passphrase" ';
+            html += 'style="width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;">';
+            html += '</div>';
+            html += '<button onclick="VaultEncryption._uiChangePass()" ';
+            html += 'style="padding:8px 18px;background:#f39c12;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">Change Passphrase</button>';
+            html += '<div id="vault-pass-error" style="color:#e74c3c;margin-top:8px;display:none;"></div>';
+            html += '<div id="vault-pass-success" style="color:#27ae60;margin-top:8px;display:none;"></div>';
+            html += '</div>';
         }
 
-        // Exact match
-        return value === condition;
-      });
-    });
-  }
+        html += '</div>';
+        return html;
+    }
 
-  // ── Public API ─────────────────────────────────────────────────────
+    // ---- Internal UI action handlers ----
 
-  global.ComplianceDB = {
-    // CRUD
-    add: add,
-    get: get,
-    getAll: getAll,
-    update: update,
-    delete: del,
-    query: query,
-    count: count,
-    clear: clear,
+    function _refreshVaultTab() {
+        var el = document.getElementById('tab-vault');
+        if (el) el.innerHTML = renderVaultUI();
+    }
 
-    // Migration
-    migrateFromLocalStorage: migrateFromLocalStorage,
+    function _uiUnlock() {
+        var input = document.getElementById('vault-passphrase');
+        var errEl = document.getElementById('vault-unlock-error');
+        if (!input || !input.value) {
+            if (errEl) { errEl.textContent = 'Please enter a passphrase.'; errEl.style.display = 'block'; }
+            return;
+        }
+        unlock(input.value).then(function() {
+            _refreshVaultTab();
+        }).catch(function() {
+            if (errEl) { errEl.textContent = 'Incorrect passphrase. Could not decrypt vault.'; errEl.style.display = 'block'; }
+        });
+    }
 
-    // Export / Import
-    exportAll: exportAll,
-    importAll: importAll,
-    exportStore: exportStore,
+    function _uiLock() {
+        lock();
+        _refreshVaultTab();
+    }
 
-    // Search
-    search: search,
-    dateRangeQuery: dateRangeQuery,
-    compoundFilter: compoundFilter,
+    function _uiAddItem() {
+        var keyInput = document.getElementById('vault-new-key');
+        var valInput = document.getElementById('vault-new-value');
+        var errEl = document.getElementById('vault-add-error');
+        var successEl = document.getElementById('vault-add-success');
 
-    // Meta
-    storeNames: STORE_NAMES.slice(),
-  };
-})(typeof window !== 'undefined' ? window : globalThis);
+        if (errEl) errEl.style.display = 'none';
+        if (successEl) successEl.style.display = 'none';
+
+        if (!keyInput || !keyInput.value.trim()) {
+            if (errEl) { errEl.textContent = 'Please enter an item key.'; errEl.style.display = 'block'; }
+            return;
+        }
+        if (!valInput || !valInput.value.trim()) {
+            if (errEl) { errEl.textContent = 'Please enter a value.'; errEl.style.display = 'block'; }
+            return;
+        }
+
+        var itemKey = keyInput.value.trim();
+        var rawValue = valInput.value.trim();
+        var data;
+        try {
+            data = JSON.parse(rawValue);
+        } catch (e) {
+            data = rawValue;
+        }
+
+        storeSecure(itemKey, data, cachedPassphrase).then(function() {
+            _refreshVaultTab();
+        }).catch(function(err) {
+            if (errEl) { errEl.textContent = 'Encryption error: ' + err.message; errEl.style.display = 'block'; }
+        });
+    }
+
+    function _uiViewItem(key) {
+        var display = document.getElementById('vault-item-display');
+        if (!display) return;
+
+        display.style.display = 'block';
+        display.innerHTML = '<em>Decrypting...</em>';
+
+        retrieveSecure(key, cachedPassphrase).then(function(data) {
+            var formatted = typeof data === 'string' ? esc(data) : '<pre style="margin:0;white-space:pre-wrap;word-break:break-all;">' + esc(JSON.stringify(data, null, 2)) + '</pre>';
+            display.innerHTML = '<strong>' + esc(key) + '</strong><hr style="border:none;border-top:1px solid #ddd;margin:8px 0;">' + formatted;
+        }).catch(function(err) {
+            display.innerHTML = '<span style="color:#e74c3c;">Decryption failed: ' + esc(err.message) + '</span>';
+        });
+    }
+
+    function _uiDeleteItem(key) {
+        if (!confirm('Delete encrypted item "' + key + '"? This cannot be undone.')) return;
+        deleteKey(key);
+        _refreshVaultTab();
+    }
+
+    function _uiChangePass() {
+        var oldInput = document.getElementById('vault-old-pass');
+        var newInput = document.getElementById('vault-new-pass');
+        var confirmInput = document.getElementById('vault-confirm-pass');
+        var errEl = document.getElementById('vault-pass-error');
+        var successEl = document.getElementById('vault-pass-success');
+
+        if (errEl) errEl.style.display = 'none';
+        if (successEl) successEl.style.display = 'none';
+
+        if (!oldInput || !oldInput.value) {
+            if (errEl) { errEl.textContent = 'Please enter current passphrase.'; errEl.style.display = 'block'; }
+            return;
+        }
+        if (!newInput || !newInput.value) {
+            if (errEl) { errEl.textContent = 'Please enter a new passphrase.'; errEl.style.display = 'block'; }
+            return;
+        }
+        if (newInput.value !== confirmInput.value) {
+            if (errEl) { errEl.textContent = 'New passphrases do not match.'; errEl.style.display = 'block'; }
+            return;
+        }
+        if (newInput.value.length < 8) {
+            if (errEl) { errEl.textContent = 'New passphrase must be at least 8 characters.'; errEl.style.display = 'block'; }
+            return;
+        }
+
+        changePassphrase(oldInput.value, newInput.value).then(function() {
+            if (successEl) { successEl.textContent = 'Passphrase changed successfully. All items re-encrypted.'; successEl.style.display = 'block'; }
+            if (oldInput) oldInput.value = '';
+            if (newInput) newInput.value = '';
+            if (confirmInput) confirmInput.value = '';
+        }).catch(function(err) {
+            if (errEl) { errEl.textContent = 'Failed to change passphrase: ' + err.message; errEl.style.display = 'block'; }
+        });
+    }
+
+    // ---- Public API ----
+
+    return {
+        deriveKey: deriveKey,
+        encrypt: encrypt,
+        decrypt: decrypt,
+        storeSecure: storeSecure,
+        retrieveSecure: retrieveSecure,
+        listKeys: listKeys,
+        deleteKey: deleteKey,
+        changePassphrase: changePassphrase,
+        isLocked: isLocked,
+        lock: lock,
+        unlock: unlock,
+        renderVaultUI: renderVaultUI,
+        // Internal UI handlers (exposed for onclick bindings)
+        _uiUnlock: _uiUnlock,
+        _uiLock: _uiLock,
+        _uiAddItem: _uiAddItem,
+        _uiViewItem: _uiViewItem,
+        _uiDeleteItem: _uiDeleteItem,
+        _uiChangePass: _uiChangePass
+    };
+
+})();

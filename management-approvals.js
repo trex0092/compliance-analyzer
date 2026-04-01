@@ -1,414 +1,543 @@
 /**
- * Supply Chain Traceability Module v1.0
- * LBMA Responsible Gold Guidance (RGG) v9 Steps 1-5
- * OECD Due Diligence Guidance for Responsible Supply Chains
- * Tracks mine-to-market chain of custody, CAHRA risk, and audit compliance.
+ * Management Approvals Module — Customer & Counterparty Due Diligence
+ * 7 Sections: Customer Info, Sanctions Screening, Adverse Media, Identifications,
+ * PF Assessment, RBA Customer Risk Scoring, Sign-Off & Authorization
  */
-const SupplyChain = (function() {
+(function () {
   'use strict';
 
-  const STORAGE_KEY = 'fgl_supply_chain';
-  const CAHRA_KEY = 'fgl_cahra_countries';
-  const AUDIT_KEY = 'fgl_sc_audits';
+  const MA_STORAGE = 'fgl_mgmt_approvals';
 
-  // Default CAHRA (Conflict-Affected and High-Risk Areas) list
-  // Based on EU Conflict Minerals Regulation + OECD guidance
-  const DEFAULT_CAHRA = [
-    { code: 'CD', name: 'DR Congo', risk: 'CRITICAL', source: 'UN/EU/OECD' },
-    { code: 'CF', name: 'Central African Republic', risk: 'CRITICAL', source: 'UN' },
-    { code: 'SS', name: 'South Sudan', risk: 'CRITICAL', source: 'UN' },
-    { code: 'SD', name: 'Sudan', risk: 'HIGH', source: 'UN/OFAC' },
-    { code: 'ML', name: 'Mali', risk: 'HIGH', source: 'EU' },
-    { code: 'BF', name: 'Burkina Faso', risk: 'HIGH', source: 'EU' },
-    { code: 'NE', name: 'Niger', risk: 'HIGH', source: 'EU' },
-    { code: 'MM', name: 'Myanmar', risk: 'HIGH', source: 'UN/OFAC' },
-    { code: 'VE', name: 'Venezuela', risk: 'HIGH', source: 'OFAC' },
-    { code: 'RU', name: 'Russia', risk: 'HIGH', source: 'LBMA/EU/OFAC' },
-    { code: 'KP', name: 'North Korea', risk: 'CRITICAL', source: 'UN/OFAC' },
-    { code: 'IR', name: 'Iran', risk: 'CRITICAL', source: 'UN/OFAC' },
-    { code: 'SY', name: 'Syria', risk: 'CRITICAL', source: 'UN/OFAC' },
-    { code: 'ZW', name: 'Zimbabwe', risk: 'MEDIUM', source: 'OFAC' },
-    { code: 'NI', name: 'Nicaragua', risk: 'MEDIUM', source: 'OFAC' },
-    { code: 'CU', name: 'Cuba', risk: 'HIGH', source: 'OFAC' },
-    { code: 'LY', name: 'Libya', risk: 'HIGH', source: 'UN' },
-    { code: 'SO', name: 'Somalia', risk: 'CRITICAL', source: 'UN' },
-    { code: 'YE', name: 'Yemen', risk: 'HIGH', source: 'UN' },
-    { code: 'ER', name: 'Eritrea', risk: 'HIGH', source: 'UN' },
-  ];
-
-  // FATF Gray List — Jurisdictions under increased monitoring (February 2026)
-  const FATF_GRAY_LIST = [
-    { code: 'DZ', name: 'Algeria', added: '2025-02' },
-    { code: 'AO', name: 'Angola', added: '2023-10' },
-    { code: 'BG', name: 'Bulgaria', added: '2024-10' },
-    { code: 'BF', name: 'Burkina Faso', added: '2021-02' },
-    { code: 'CM', name: 'Cameroon', added: '2023-10' },
-    { code: 'HR', name: 'Croatia', added: '2024-06' },
-    { code: 'CD', name: 'DR Congo', added: '2022-10' },
-    { code: 'HT', name: 'Haiti', added: '2020-10' },
-    { code: 'KE', name: 'Kenya', added: '2024-10' },
-    { code: 'LB', name: 'Lebanon', added: '2024-10' },
-    { code: 'ML', name: 'Mali', added: '2021-10' },
-    { code: 'MC', name: 'Monaco', added: '2024-06' },
-    { code: 'MZ', name: 'Mozambique', added: '2023-10' },
-    { code: 'NA', name: 'Namibia', added: '2024-10' },
-    { code: 'NG', name: 'Nigeria', added: '2023-02' },
-    { code: 'PH', name: 'Philippines', added: '2021-06' },
-    { code: 'ZA', name: 'South Africa', added: '2023-02' },
-    { code: 'SS', name: 'South Sudan', added: '2021-06' },
-    { code: 'SY', name: 'Syria', added: '2010-02' },
-    { code: 'TZ', name: 'Tanzania', added: '2022-10' },
-    { code: 'VN', name: 'Vietnam', added: '2023-06' },
-    { code: 'YE', name: 'Yemen', added: '2010-02' },
-    { code: 'VE', name: 'Venezuela', added: '2024-10' },
-  ];
-
-  // EU High-Risk Third Countries — Delegated Regulation (EU) 2016/1675 (latest update 2026)
-  const EU_HIGH_RISK_COUNTRIES = [
-    { code: 'AF', name: 'Afghanistan', source: 'EU Delegated Reg.' },
-    { code: 'BF', name: 'Burkina Faso', source: 'EU Delegated Reg.' },
-    { code: 'CM', name: 'Cameroon', source: 'EU Delegated Reg.' },
-    { code: 'CF', name: 'Central African Republic', source: 'EU Delegated Reg.' },
-    { code: 'TD', name: 'Chad', source: 'EU Delegated Reg.' },
-    { code: 'CD', name: 'DR Congo', source: 'EU Delegated Reg.' },
-    { code: 'HT', name: 'Haiti', source: 'EU Delegated Reg.' },
-    { code: 'KE', name: 'Kenya', source: 'EU Delegated Reg.' },
-    { code: 'ML', name: 'Mali', source: 'EU Delegated Reg.' },
-    { code: 'MM', name: 'Myanmar', source: 'EU Delegated Reg.' },
-    { code: 'MZ', name: 'Mozambique', source: 'EU Delegated Reg.' },
-    { code: 'NG', name: 'Nigeria', source: 'EU Delegated Reg.' },
-    { code: 'PH', name: 'Philippines', source: 'EU Delegated Reg.' },
-    { code: 'SN', name: 'Senegal', source: 'EU Delegated Reg.' },
-    { code: 'ZA', name: 'South Africa', source: 'EU Delegated Reg.' },
-    { code: 'SS', name: 'South Sudan', source: 'EU Delegated Reg.' },
-    { code: 'SY', name: 'Syria', source: 'EU Delegated Reg.' },
-    { code: 'TZ', name: 'Tanzania', source: 'EU Delegated Reg.' },
-    { code: 'TT', name: 'Trinidad and Tobago', source: 'EU Delegated Reg.' },
-    { code: 'VN', name: 'Vietnam', source: 'EU Delegated Reg.' },
-    { code: 'YE', name: 'Yemen', source: 'EU Delegated Reg.' },
-  ];
-
-  // LBMA RGG v9 Five-Step Framework
-  const RGG_STEPS = [
-    { step: 1, title: 'Strong Management Systems', description: 'Establish strong company management systems including supply chain policy, internal compliance team, grievance mechanism, and record-keeping.', status: 'NOT_STARTED' },
-    { step: 2, title: 'Identify and Assess Risk', description: 'Identify and assess risks in the supply chain. Map supply chain, identify CAHRA origins, assess counterparty risk.', status: 'NOT_STARTED' },
-    { step: 3, title: 'Design and Implement Strategy', description: 'Design and implement a strategy to respond to identified risks. Implement enhanced due diligence, suspend or disengage from high-risk suppliers.', status: 'NOT_STARTED' },
-    { step: 4, title: 'Independent Third-Party Audit', description: 'Carry out independent third-party audit of supply chain due diligence. Engage qualified auditor, provide access to records.', status: 'NOT_STARTED' },
-    { step: 5, title: 'Report Annually', description: 'Report annually on supply chain due diligence. Publish findings, submit to LBMA, include in corporate reporting.', status: 'NOT_STARTED' },
-  ];
-
-  function getEntries() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(_) { return []; } }
-  function saveEntries(arr) { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr.slice(0, 1000))); }
-  function getCAHRA() { try { return JSON.parse(localStorage.getItem(CAHRA_KEY) || 'null') || DEFAULT_CAHRA; } catch(_) { return DEFAULT_CAHRA; } }
-  function saveCAHRA(arr) { localStorage.setItem(CAHRA_KEY, JSON.stringify(arr)); }
-  function getAudits() { try { return JSON.parse(localStorage.getItem(AUDIT_KEY) || '[]'); } catch(_) { return []; } }
-  function saveAudits(arr) { localStorage.setItem(AUDIT_KEY, JSON.stringify(arr.slice(0, 100))); }
-
-  function getRGGStatus() {
-    let saved; try { saved = JSON.parse(localStorage.getItem('fgl_rgg_status') || 'null'); } catch(_) { saved = null; }
-    if (saved) return saved;
-    return RGG_STEPS.map(s => ({ ...s }));
+  function parse(key, fb) {
+    return typeof safeLocalParse === 'function' ? safeLocalParse(key, fb) : (() => { try { return JSON.parse(localStorage.getItem(key)) || fb; } catch (_) { return fb; } })();
   }
-  function saveRGGStatus(steps) { localStorage.setItem('fgl_rgg_status', JSON.stringify(steps)); }
-
-  function checkCAHRA(countryCode) {
-    const list = getCAHRA();
-    return list.find(c => c.code === (countryCode || '').toUpperCase());
+  function save(key, v) {
+    if (typeof safeLocalSave === 'function') safeLocalSave(key, v);
+    else localStorage.setItem(key, JSON.stringify(v));
   }
 
-  function checkFATFGray(countryCode) {
-    return FATF_GRAY_LIST.find(c => c.code === (countryCode || '').toUpperCase());
+  function getApprovals() { return parse(MA_STORAGE, []); }
+  function saveApprovals(list) { save(MA_STORAGE, list); }
+
+  function esc(s) {
+    if (typeof window.escHtml === 'function') return window.escHtml(s);
+    const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
   }
 
-  function checkEUHighRisk(countryCode) {
-    return EU_HIGH_RISK_COUNTRIES.find(c => c.code === (countryCode || '').toUpperCase());
-  }
+  // ══════════════════════════════════════════════════════════════
+  // RENDER MAIN TAB
+  // ══════════════════════════════════════════════════════════════
 
-  function assessSupplierRisk(supplier) {
-    let score = 0;
-    const flags = [];
-    const cahra = checkCAHRA(supplier.originCountry);
-    if (cahra) {
-      score += cahra.risk === 'CRITICAL' ? 40 : cahra.risk === 'HIGH' ? 25 : 15;
-      flags.push(`Origin country ${cahra.name} is CAHRA-listed (${cahra.risk})`);
+  function renderApprovalsTab() {
+    const approvals = getApprovals();
+    const company = typeof getActiveCompany === 'function' ? getActiveCompany() : { name: '' };
+
+    let html = `
+<div class="card">
+  <div class="top-bar" style="margin-bottom:10px">
+    <span class="sec-title" style="margin:0;border:none;padding:0">Management Approvals — Customer & Counterparty Due Diligence</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-blue" onclick="ManagementApprovals.newApproval()">+ New Assessment</button>
+      <button class="btn btn-sm btn-green" onclick="ManagementApprovals.exportCurrentPDF()">Export PDF</button>
+      <button class="btn btn-sm btn-green" onclick="ManagementApprovals.exportCurrentDOCX()">Export Word</button>
+      <button class="btn btn-sm btn-red" onclick="ManagementApprovals.clearAllApprovals()">Clear</button>
+    </div>
+  </div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+    Compliance Assessment — Customer & Counterparty Due Diligence ${new Date().getFullYear()}.
+    Complete all 7 sections for each customer/counterparty.
+  </p>
+</div>
+
+<!-- Assessment List -->
+<div class="card">
+  <span class="sec-title">Saved Assessments <span style="color:var(--muted);font-size:10px">(${approvals.length})</span></span>`;
+
+    if (approvals.length) {
+      html += approvals.map((a, idx) => {
+        const riskColor = a.riskClassification === 'High-Risk' ? 'var(--red)' : a.riskClassification === 'Medium-Risk' ? 'var(--amber)' : 'var(--green)';
+        return `
+  <div class="asana-item">
+    <div style="flex:1">
+      <div class="asana-name">${esc(a.customerInfo?.companyName || 'Unnamed')}</div>
+      <div class="asana-meta">${a.customerInfo?.country || 'N/A'} | Risk: <span style="color:${riskColor};font-weight:600">${a.riskClassification || 'Not assessed'}</span> | CDD: ${a.cddLevel || 'N/A'} | ${a.businessDecision || 'Pending'}</div>
+      <div class="asana-meta">Created: ${new Date(a.createdAt).toLocaleDateString('en-GB')}</div>
+    </div>
+    <div style="display:flex;gap:4px">
+      <button class="btn-sm btn-green" onclick="ManagementApprovals.editApproval(${idx})">Edit</button>
+      <button class="btn-sm btn-red" onclick="ManagementApprovals.deleteApproval(${idx})">Del</button>
+    </div>
+  </div>`;
+      }).join('');
+    } else {
+      html += '<p style="color:var(--muted);font-size:13px">No assessments yet. Click "+ New Assessment" to create one.</p>';
     }
-    const fatf = checkFATFGray(supplier.originCountry);
-    if (fatf) {
-      score += 15;
-      flags.push(`Origin country ${fatf.name} is on the FATF Gray List (increased monitoring since ${fatf.added})`);
-    }
-    const euHR = checkEUHighRisk(supplier.originCountry);
-    if (euHR) {
-      score += 15;
-      flags.push(`Origin country ${euHR.name} is an EU High-Risk Third Country`);
-    }
-    if (!supplier.mineOfOrigin) { score += 15; flags.push('Mine of origin not documented'); }
-    if (!supplier.refinerName) { score += 10; flags.push('Refiner/smelter not identified'); }
-    const auditSt = (supplier.auditStatus || '').toLowerCase();
-    if (!auditSt || auditSt === 'not_yet') { score += 15; flags.push('No third-party audit completed'); }
-    else if (auditSt === 'under_process') { score += 5; flags.push('Third-party audit under process'); }
-    else if (auditSt === 'na') { score += 10; flags.push('Audit marked N/A — review justification required'); }
-    if (supplier.isASM) { score += 15; flags.push('Artisanal/small-scale mining (ASM) source — enhanced DD required'); }
-    if (!supplier.kycCompleted) { score += 10; flags.push('KYC/CDD not completed for this supplier'); }
+    html += '</div>';
 
-    const level = score >= 50 ? 'HIGH' : score >= 25 ? 'MEDIUM' : 'LOW';
-    return { score, level, flags };
+    // Editor form (hidden by default, shown when editing)
+    html += `<div id="maEditorPanel" style="display:none">${renderEditorForm()}</div>`;
+
+    return html;
   }
 
-  function addEntry() {
-    const byId = id => document.getElementById(id);
-    const entry = {
-      id: Date.now(),
-      supplierName: byId('scSupplierName')?.value?.trim(),
-      originCountry: byId('scOriginCountry')?.value?.trim()?.toUpperCase(),
-      mineOfOrigin: byId('scMineOfOrigin')?.value?.trim(),
-      invoiceNo: byId('scInvoiceNo')?.value?.trim(),
-      refinerName: byId('scRefinerName')?.value?.trim(),
-      isASM: false,
-      kycCompleted: true,
-      commodityType: byId('scCommodityType')?.value || 'GOLD',
-      weight: byId('scWeight')?.value,
-      purity: byId('scPurity')?.value,
-      auditStatus: byId('scAuditStatus')?.value || '',
-      auditDate: byId('scAuditDate')?.value,
-      notes: byId('scNotes')?.value?.trim(),
-      createdAt: new Date().toISOString(),
-    };
+  // ══════════════════════════════════════════════════════════════
+  // EDITOR FORM — All 7 Sections
+  // ══════════════════════════════════════════════════════════════
 
-    if (!entry.supplierName) { toast('Enter supplier name', 'error'); return; }
-
-    const risk = assessSupplierRisk(entry);
-    entry.riskScore = risk.score;
-    entry.riskLevel = risk.level;
-    entry.riskFlags = risk.flags;
-
-    const list = getEntries();
-    list.unshift(entry);
-    saveEntries(list);
-
-    if (typeof logAudit === 'function') logAudit('supply-chain', `Added supplier ${entry.supplierName} (risk: ${entry.riskLevel}, score: ${entry.riskScore})`);
-    toast(`Supplier added — Risk: ${entry.riskLevel} (${entry.riskScore}/100)`, entry.riskLevel === 'HIGH' ? 'error' : 'success');
-
-    if (entry.riskLevel === 'HIGH' && typeof sendSlackAlert === 'function') {
-      sendSlackAlert('High-Risk Supplier Alert', `${entry.supplierName} from ${entry.originCountry} scored ${entry.riskScore}/100. Flags: ${risk.flags.join('; ')}`);
-    }
-
-    refresh();
-  }
-
-  function updateRGGStep(stepNum, newStatus) {
-    const steps = getRGGStatus();
-    const step = steps.find(s => s.step === stepNum);
-    if (step) {
-      step.status = newStatus;
-      step.updatedAt = new Date().toISOString();
-      saveRGGStatus(steps);
-      if (typeof logAudit === 'function') logAudit('rgg', `RGG Step ${stepNum} updated to ${newStatus}`);
-      refresh();
-    }
-  }
-
-  function renderSupplyChainTab() {
-    const entries = getEntries();
-    const cahra = getCAHRA();
-    const rggSteps = getRGGStatus();
-
-    const statusColors = { 'NOT_STARTED': '#D94F4F', 'IN_PROGRESS': '#E8A838', 'COMPLETED': '#27AE60', 'NEEDS_UPDATE': '#9B59B6', 'NOT_APPLICABLE': '#4A8FC1' };
-    const statusLabels = { 'NOT_STARTED': 'Not Started', 'IN_PROGRESS': 'In Progress', 'COMPLETED': 'Completed', 'NEEDS_UPDATE': 'Needs Update', 'NOT_APPLICABLE': 'Not Applicable' };
-
-    const statusBg = { 'NOT_STARTED': 'rgba(217,79,79,0.15)', 'IN_PROGRESS': 'rgba(232,168,56,0.15)', 'COMPLETED': 'rgba(39,174,96,0.15)', 'NEEDS_UPDATE': 'rgba(155,89,182,0.15)', 'NOT_APPLICABLE': 'rgba(74,143,193,0.15)' };
-    const statusBorder = { 'NOT_STARTED': '#D94F4F', 'IN_PROGRESS': '#E8A838', 'COMPLETED': '#27AE60', 'NEEDS_UPDATE': '#9B59B6', 'NOT_APPLICABLE': '#4A8FC1' };
-    const rggHtml = rggSteps.map(s => `
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid ${statusBorder[s.status]};border-radius:10px;margin-bottom:6px;background:${statusBg[s.status]}">
-        <div style="min-width:30px;width:30px;height:30px;border-radius:50%;background:${statusColors[s.status]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0">${s.step}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600">${s.title}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:1px">${s.description}</div>
-        </div>
-        <select onchange="SupplyChain.updateRGGStep(${s.step}, this.value)" style="width:120px;max-width:120px;flex-shrink:0;padding:4px 6px;border-radius:6px;font-size:10px;font-weight:600;border:2px solid ${statusBorder[s.status]};background:${statusBg[s.status]};color:${statusColors[s.status]};cursor:pointer">
-          ${Object.entries(statusLabels).map(([k, v]) => `<option value="${k}" ${s.status === k ? 'selected' : ''}>${v}</option>`).join('')}
-        </select>
-      </div>
-    `).join('');
-
-    const entriesHtml = entries.slice(0, 20).map(e => `
-      <div style="padding:10px;border:1px solid ${e.riskLevel === 'HIGH' ? 'var(--red)' : e.riskLevel === 'MEDIUM' ? 'var(--amber)' : 'var(--border)'};border-radius:8px;margin-bottom:8px;background:var(--surface2)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <div>
-            <span class="badge ${e.riskLevel === 'HIGH' ? 'b-r' : e.riskLevel === 'MEDIUM' ? 'b-a' : 'b-g'}">${e.riskLevel} (${e.riskScore})</span>
-            <span style="font-size:13px;font-weight:500;margin-left:8px">${e.supplierName}</span>
-          </div>
-          <span style="font-size:11px;color:var(--muted)">${e.originCountry || '??'} · ${e.commodityType}</span>
-        </div>
-        <div style="font-size:11px;color:var(--muted)">
-          ${e.invoiceNo ? 'Inv: ' + e.invoiceNo + ' · ' : ''}Mine: ${e.mineOfOrigin || '—'} · Refiner: ${e.refinerName || '—'} ${e.isASM ? '· ASM' : ''} · Audit: ${e.auditStatus === 'completed' ? (e.auditDate || 'Completed') : e.auditStatus === 'under_process' ? 'Under Process' : e.auditStatus === 'na' ? 'N/A' : 'Not Yet'}
-        </div>
-        ${e.riskFlags?.length ? `<div style="margin-top:4px;font-size:11px;color:var(--red)">${e.riskFlags.map(f => '• ' + f).join('<br>')}</div>` : ''}
-      </div>
-    `).join('') || '<p style="color:var(--muted);font-size:13px">No supply chain entries yet.</p>';
-
-    const cahraHtml = cahra.map(c => `
-      <span style="display:inline-block;padding:3px 8px;margin:2px;border-radius:4px;font-size:11px;background:rgba(217,79,79,0.25);color:#D94F4F">${c.code} ${c.name}</span>
-    `).join('');
-
-    const fatfHtml = FATF_GRAY_LIST.map(c => `
-      <span style="display:inline-block;padding:3px 8px;margin:2px;border-radius:4px;font-size:11px;background:rgba(232,160,48,0.25);color:var(--amber)">${c.code} ${c.name}</span>
-    `).join('');
-
-    const euHrHtml = EU_HIGH_RISK_COUNTRIES.map(c => `
-      <span style="display:inline-block;padding:3px 8px;margin:2px;border-radius:4px;font-size:11px;background:rgba(74,143,193,0.25);color:var(--blue)">${c.code} ${c.name}</span>
-    `).join('');
-
+  function renderEditorForm() {
     return `
-      <div class="card">
-        <div class="top-bar" style="margin-bottom:10px">
-          <span class="lbl" style="margin:0">LBMA RGG v9 — Five-Step Framework</span>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Responsible Gold Guidance compliance tracker</span>
-        </div>
-        ${rggHtml}
-      </div>
+<!-- SECTION 1: CUSTOMER INFORMATION -->
+<div class="card">
+  <span class="sec-title" style="color:var(--gold)">SECTION 1 — CUSTOMER INFORMATION</span>
+  <div class="row row-2" style="margin-bottom:8px">
+    <div><span class="lbl">Company Name</span><input type="text" id="maCompanyName" placeholder="Full legal name" /></div>
+    <div><span class="lbl">Country of Registration</span><input type="text" id="maCountry" placeholder="e.g., United Arab Emirates" /></div>
+  </div>
+  <div class="row row-3" style="margin-bottom:8px">
+    <div><span class="lbl">Date of Registration</span><input type="date" id="maRegDate" /></div>
+    <div><span class="lbl">Commercial Register</span><input type="text" id="maCommRegister" placeholder="e.g., DMCC-31770" /></div>
+    <div><span class="lbl">License Expiry Date</span><input type="date" id="maLicenseExpiry" /></div>
+  </div>
+  <div class="row row-3" style="margin-bottom:8px">
+    <div><span class="lbl">GoAML Registration Status</span><select id="maGoAML"><option value="Registered">Registered</option><option value="Not Registered">Not Registered</option><option value="Pending">Pending</option></select></div>
+    <div><span class="lbl">FATF Grey List Status</span><select id="maFATF" onchange="this.style.color=this.value==='Negative'?'var(--green)':'var(--red)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option></select></div>
+    <div><span class="lbl">CAHRA Status</span><select id="maCAHRA" onchange="this.style.color=this.value==='Negative'?'var(--green)':'var(--red)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option></select></div>
+  </div>
+  <div class="row row-2">
+    <div><span class="lbl">PEP Status</span><select id="maPEP" onchange="this.style.color=this.value==='Negative'?'var(--green)':'var(--red)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option></select></div>
+  </div>
+</div>
 
-      <div class="card">
-        <div class="top-bar" style="margin-bottom:10px">
-          <span class="lbl" style="margin:0">Supply Chain Due Diligence</span>
-          <button class="btn btn-sm btn-green" onclick="SupplyChain.addEntry()">Add Supplier/Shipment</button>
-        </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Track mine-to-market chain of custody per LBMA RGG Step 2 and OECD DDG. Each entry is auto-scored for CAHRA, ASM, KYC, and audit risk.</p>
+<!-- SECTION 2: SANCTIONS SCREENING -->
+<div class="card">
+  <span class="sec-title" style="color:var(--gold)">SECTION 2 — SANCTIONS SCREENING</span>
+  ${renderSanctionsRow('maS_UAE', 'UAE Local Terrorist List (EOCN / Executive Office)')}
+  ${renderSanctionsRow('maS_UN', 'UN Consolidated Sanctions List (UNSC)')}
+  ${renderSanctionsRow('maS_OFAC', 'OFAC Specially Designated Nationals List (SDN)')}
+  ${renderSanctionsRow('maS_UK', 'UK OFSI Consolidated Financial Sanctions List')}
+  ${renderSanctionsRow('maS_EU', 'EU Consolidated Financial Sanctions List')}
+  ${renderSanctionsRow('maS_INTERPOL', 'INTERPOL Red Notices (where applicable)')}
+</div>
 
-        <div class="row row-3" style="margin-bottom:8px">
-          <div><span class="lbl">Supplier Name</span><input type="text" id="scSupplierName" placeholder="Legal entity name" /></div>
-          <div><span class="lbl">Origin Country (ISO)</span><input type="text" id="scOriginCountry" placeholder="e.g. GH, ZA, CH" maxlength="2" /></div>
-          <div><span class="lbl">Mine of Origin</span><input type="text" id="scMineOfOrigin" placeholder="Mine name / location" /></div>
-        </div>
-        <div class="row row-3" style="margin-bottom:8px">
-          <div><span class="lbl">Invoice Number</span><input type="text" id="scInvoiceNo" placeholder="Invoice reference" /></div>
-          <div><span class="lbl">Refiner / Smelter</span><input type="text" id="scRefinerName" placeholder="Refinery name" /></div>
-          <div><span class="lbl">Commodity</span><select id="scCommodityType"><option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="PLATINUM">Platinum</option><option value="PALLADIUM">Palladium</option></select></div>
-        </div>
-        <div class="row row-3" style="margin-bottom:8px">
-          <div><span class="lbl">Weight (g)</span><input type="number" id="scWeight" placeholder="Grams" /></div>
-          <div><span class="lbl">Purity</span><input type="text" id="scPurity" placeholder="e.g. 999.9" /></div>
-          <div><span class="lbl">Last Audit Status</span><select id="scAuditStatus"><option value="">Select...</option><option value="completed">Completed</option><option value="under_process">Under Process</option><option value="not_yet">Not Yet</option><option value="na">N/A</option></select></div>
-        </div>
-        <div class="row row-3" style="margin-bottom:8px">
-          <div><span class="lbl">Last Audit Date</span><input type="date" id="scAuditDate" /></div>
-          <div></div>
-          <div></div>
-        </div>
-        <div style="margin-bottom:8px"><span class="lbl">Notes</span><textarea id="scNotes" placeholder="Additional due diligence notes..." style="min-height:40px"></textarea></div>
+<!-- SECTION 3: ADVERSE MEDIA SCREENING -->
+<div class="card">
+  <span class="sec-title" style="color:var(--gold)">SECTION 3 — ADVERSE MEDIA SCREENING</span>
+  ${renderAdverseRow('maA_Criminal', 'Criminal / Fraud Allegations')}
+  ${renderAdverseRow('maA_ML', 'Money Laundering')}
+  ${renderAdverseRow('maA_TF', 'Terrorist Financing, or Proliferation Financing Links')}
+  ${renderAdverseRow('maA_Regulatory', 'Regulatory Actions, Fines, or Investigations')}
+  ${renderAdverseRow('maA_Reputation', 'Negative Reputation or Commercial Disputes')}
+  ${renderAdverseRow('maA_Political', 'Political Controversy or PEP Connections')}
+  ${renderAdverseRow('maA_HR', 'Human Rights, Environmental, or Ethical Violations')}
+</div>
 
-        <div style="margin-top:12px">${entriesHtml}</div>
-      </div>
+<!-- SECTION 4: IDENTIFICATIONS -->
+<div class="card">
+  <span class="sec-title" style="color:var(--gold)">SECTION 4 — IDENTIFICATIONS</span>
+  <div id="maIndividualsContainer"></div>
+  <button class="btn btn-sm btn-green" onclick="ManagementApprovals.addIndividual()" style="margin-top:8px">+ Add Individual</button>
+</div>
 
-      <div class="card">
-        <div class="top-bar" style="margin-bottom:10px">
-          <span class="lbl" style="margin:0">CAHRA Country List</span>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Conflict-Affected and High-Risk Areas</span>
-            <button class="btn btn-sm btn-green" onclick="SupplyChain.checkListUpdate('cahra')" style="padding:3px 10px;font-size:10px">Update</button>
-          </div>
-        </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Countries flagged as CAHRA per OECD guidance, LBMA requirements, and sanctions regimes (UN, OFAC, EU). Auto-checked on supplier entry.</p>
-        <div>${cahraHtml}</div>
-        <div id="cahraUpdateNotif"></div>
-      </div>
+<!-- SECTION 5: PROLIFERATION FINANCING (PF) ASSESSMENT -->
+<div class="card">
+  <span class="sec-title" style="color:var(--gold)">SECTION 5 — PROLIFERATION FINANCING (PF) ASSESSMENT</span>
+  ${renderPFRow('maPF_DPMS', 'DPMS Sector Inherent PF Exposure (NRA 2024)')}
+  ${renderPFRow('maPF_Jurisdiction', 'Jurisdictional Exposure - Counterparty or Transaction Origin')}
+  ${renderPFRow('maPF_DualUse', 'Dual-Use Goods or Materials (Cabinet Resolution No. 156 of 2025)')}
+  ${renderPFRow('maPF_UNPF', 'UN PF Sanctions List Match (UNSCR 1718/2231/1540)')}
+  ${renderPFRow('maPF_Unusual', 'Unusual Trade Patterns or Transaction Volumes')}
+  ${renderPFRow('maPF_Links', 'Links to Proliferation Networks or Controlled Technology')}
+  ${renderPFRow('maPF_Overall', 'Overall PF Risk Conclusion')}
+</div>
 
-      <div class="card">
-        <div class="top-bar" style="margin-bottom:10px">
-          <span class="lbl" style="margin:0">FATF Gray List</span>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Jurisdictions Under Increased Monitoring — February 2026</span>
-            <button class="btn btn-sm btn-green" onclick="SupplyChain.checkListUpdate('fatf')" style="padding:3px 10px;font-size:10px">Update</button>
-          </div>
-        </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Countries identified by FATF as having strategic deficiencies in their AML/CFT/CPF regimes and committed to action plans. Enhanced due diligence required for business relationships involving these jurisdictions. Auto-checked on supplier entry.</p>
-        <div>${fatfHtml}</div>
-        <p style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">Source: FATF — fatf-gafi.org/en/countries/jurisdictions-under-increased-monitoring</p>
-        <div id="fatfUpdateNotif"></div>
-      </div>
+<!-- SECTION 6: RISK-BASED ASSESSMENT (RBA) -->
+<div class="card">
+  <span class="sec-title" style="color:var(--gold)">SECTION 6 — RISK-BASED ASSESSMENT (RBA) — CUSTOMER RISK SCORING</span>
+  <div class="row row-2" style="margin-bottom:8px">
+    <div><span class="lbl">Overall Risk Classification</span><select id="maRiskClass" onchange="this.style.color=this.value==='Low-Risk'?'var(--green)':this.value==='Medium-Risk'?'var(--amber)':'var(--red)'" style="color:var(--green)"><option value="Low-Risk" style="color:var(--green)">Low-Risk</option><option value="Medium-Risk" style="color:var(--amber)">Medium-Risk</option><option value="High-Risk" style="color:var(--red)">High-Risk</option></select></div>
+    <div><span class="lbl">CDD Level Required</span><select id="maCDDLevel" onchange="this.style.color=this.value==='CDD'?'var(--green)':this.value==='SDD'?'var(--amber)':'var(--red)'" style="color:var(--green)"><option value="CDD" style="color:var(--green)">Standard CDD</option><option value="SDD" style="color:var(--amber)">Simplified DD (SDD)</option><option value="EDD" style="color:var(--red)">Enhanced DD (EDD)</option></select></div>
+  </div>
+  <div class="row row-2" style="margin-bottom:8px">
+    <div><span class="lbl">Business Relationship Decision</span><select id="maBusinessDecision" onchange="this.style.color=this.value==='Approved'?'var(--green)':this.value==='Not Approved'?'var(--red)':'#FF69B4'" style="color:var(--green)"><option value="Approved" style="color:var(--green)">Approved</option><option value="Not Approved" style="color:var(--red)">Not Approved</option><option value="Pending" style="color:#FF69B4">Pending Review</option></select></div>
+    <div><span class="lbl">Trigger Events Requiring Immediate Review</span><select id="maTriggerEvents"><option value="No">No</option><option value="Yes">Yes</option></select></div>
+  </div>
+  <div><span class="lbl">Assessment Notes</span><textarea id="maAssessmentNotes" rows="3" placeholder="Additional risk assessment notes..."></textarea></div>
+</div>
 
-      <div class="card">
-        <div class="top-bar" style="margin-bottom:10px">
-          <span class="lbl" style="margin:0">EU High-Risk Third Countries</span>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Delegated Regulation (EU) 2016/1675 — Latest Update 2026</span>
-            <button class="btn btn-sm btn-green" onclick="SupplyChain.checkListUpdate('eu')" style="padding:3px 10px;font-size:10px">Update</button>
-          </div>
-        </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Third countries identified by the European Commission as having strategic deficiencies in their AML/CFT frameworks. Enhanced due diligence is mandatory under EU AMLD for business relationships and transactions involving these jurisdictions. Auto-checked on supplier entry.</p>
-        <div>${euHrHtml}</div>
-        <p style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">Source: European Commission — Delegated Regulation (EU) 2016/1675 as amended</p>
-        <div id="euUpdateNotif"></div>
-      </div>
-    `;
+<!-- SECTION 7: SIGN-OFF & AUTHORIZATION -->
+<div class="card">
+  <span class="sec-title" style="color:var(--gold)">SECTION 7 — SIGN-OFF & AUTHORIZATION</span>
+  <div class="row row-2" style="margin-bottom:8px">
+    <div><span class="lbl">Approved By (Name)</span><input type="text" id="maApprovedBy" placeholder="e.g., Shiyad Kattuparambil Abdulkareem" /></div>
+    <div><span class="lbl">Approved By (Title)</span><input type="text" id="maApprovedTitle" placeholder="e.g., Managing Director" /></div>
+  </div>
+  <div class="row row-2" style="margin-bottom:8px">
+    <div><span class="lbl">Prepared By (Name)</span><input type="text" id="maPreparedBy" placeholder="e.g., Luisa Fernanda" /></div>
+    <div><span class="lbl">Prepared By (Title)</span><input type="text" id="maPreparedTitle" placeholder="e.g., Compliance Officer" /></div>
+  </div>
+  <div class="row row-2">
+    <div><span class="lbl">Approval Date</span><input type="date" id="maApprovalDate" /></div>
+  </div>
+</div>
+
+<div style="display:flex;gap:8px;margin-top:10px">
+  <button class="btn btn-gold" onclick="ManagementApprovals.saveCurrentApproval()" style="flex:1">Save Assessment</button>
+  <button class="btn btn-sm" onclick="ManagementApprovals.cancelEdit()">Cancel</button>
+</div>`;
   }
+
+  function renderSanctionsRow(prefix, label) {
+    return `<div style="display:grid;grid-template-columns:1fr 100px 120px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
+      <span style="font-size:11px;color:var(--text)">${label}</span>
+      <select id="${prefix}_result" onchange="this.style.color=this.value==='Negative'?'var(--green)':this.value==='Positive'?'var(--red)':'var(--amber)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option><option value="Pending" style="color:var(--amber)">Pending</option></select>
+      <input type="date" id="${prefix}_date" style="font-size:10px" />
+      <input type="text" id="${prefix}_remarks" placeholder="Remarks..." style="font-size:10px" />
+    </div>`;
+  }
+
+  function renderAdverseRow(prefix, label) {
+    return `<div style="display:grid;grid-template-columns:1fr 100px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
+      <span style="font-size:11px;color:var(--text)">${label}</span>
+      <select id="${prefix}_finding" onchange="this.style.color=this.value==='Negative'?'var(--green)':this.value==='Positive'?'var(--red)':'var(--amber)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option><option value="Pending" style="color:var(--amber)">Pending</option></select>
+      <input type="text" id="${prefix}_details" placeholder="Details / Source..." style="font-size:10px" />
+    </div>`;
+  }
+
+  function renderPFRow(prefix, label) {
+    return `<div style="display:grid;grid-template-columns:1fr 100px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
+      <span style="font-size:11px;color:var(--text)">${label}</span>
+      <select id="${prefix}_level" onchange="this.style.color=this.value==='Low'?'var(--green)':this.value==='Medium'?'var(--amber)':'var(--red)'" style="color:var(--green)"><option value="Low" style="color:var(--green)">Low</option><option value="Medium" style="color:var(--amber)">Medium</option><option value="High" style="color:var(--red)">High</option></select>
+      <input type="text" id="${prefix}_notes" placeholder="Assessment notes..." style="font-size:10px" />
+    </div>`;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // INDIVIDUALS (dynamic add/remove)
+  // ══════════════════════════════════════════════════════════════
+
+  let currentIndividuals = [];
+  let editIndex = -1;
+
+  function renderIndividuals() {
+    const container = document.getElementById('maIndividualsContainer');
+    if (!container) return;
+    if (!currentIndividuals.length) currentIndividuals.push(emptyIndividual(1));
+    container.innerHTML = currentIndividuals.map((ind, i) => `
+      <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid var(--gold)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:12px;font-weight:600;color:var(--gold)">Individual ${i + 1}</span>
+          ${currentIndividuals.length > 1 ? `<button class="btn-sm btn-red" onclick="ManagementApprovals.removeIndividual(${i})" style="font-size:9px">Remove</button>` : ''}
+        </div>
+        <div class="row row-3" style="margin-bottom:6px">
+          <div><span class="lbl">Designation</span><input type="text" class="maInd_designation" value="${esc(ind.designation)}" placeholder="e.g., Shareholder & Director" /></div>
+          <div><span class="lbl">Name</span><input type="text" class="maInd_name" value="${esc(ind.name)}" placeholder="Full name" /></div>
+          <div><span class="lbl">Shares %</span><input type="text" class="maInd_shares" value="${esc(ind.shares)}" placeholder="e.g., 50%" /></div>
+        </div>
+        <div class="row row-3" style="margin-bottom:6px">
+          <div><span class="lbl">Individual/Corporate</span><select class="maInd_type"><option value="Individual" ${ind.type==='Individual'?'selected':''}>Individual</option><option value="Corporate" ${ind.type==='Corporate'?'selected':''}>Corporate</option></select></div>
+          <div><span class="lbl">Nationality</span><input type="text" class="maInd_nationality" value="${esc(ind.nationality)}" placeholder="e.g., UAE" /></div>
+          <div><span class="lbl">Passport Number/ID</span><input type="text" class="maInd_passport" value="${esc(ind.passport)}" /></div>
+        </div>
+        <div class="row row-3" style="margin-bottom:6px">
+          <div><span class="lbl">Passport Expiry Date</span><input type="date" class="maInd_passportExpiry" value="${ind.passportExpiry}" /></div>
+          <div><span class="lbl">Gender</span><select class="maInd_gender"><option value="Male" ${ind.gender==='Male'?'selected':''}>Male</option><option value="Female" ${ind.gender==='Female'?'selected':''}>Female</option></select></div>
+          <div><span class="lbl">Date of Birth/Registration</span><input type="date" class="maInd_dob" value="${ind.dob}" /></div>
+        </div>
+        <div class="row row-3" style="margin-bottom:6px">
+          <div><span class="lbl">Emirates ID</span><input type="text" class="maInd_eid" value="${esc(ind.eid)}" placeholder="784-XXXX-XXXXXXX-X" /></div>
+          <div><span class="lbl">Emirates ID Expiry</span><input type="date" class="maInd_eidExpiry" value="${ind.eidExpiry}" /></div>
+          <div><span class="lbl">Proof of Address</span><input type="text" class="maInd_proofAddr" value="${esc(ind.proofAddr)}" placeholder="e.g., Lease Agreement" /></div>
+        </div>
+        <div class="row row-2">
+          <div><span class="lbl">PEP Status</span><select class="maInd_pep" onchange="this.style.color=this.value==='Negative'?'var(--green)':'var(--red)'" style="color:${ind.pep==='Positive'?'var(--red)':'var(--green)'}"><option value="Negative" style="color:var(--green)" ${ind.pep==='Negative'?'selected':''}>Negative</option><option value="Positive" style="color:var(--red)" ${ind.pep==='Positive'?'selected':''}>Positive</option></select></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function emptyIndividual(num) {
+    return { designation: '', name: '', shares: '', type: 'Individual', nationality: '', passport: '', passportExpiry: '', gender: 'Male', dob: '', eid: '', eidExpiry: '', proofAddr: '', pep: 'Negative' };
+  }
+
+  function addIndividual() {
+    currentIndividuals.push(emptyIndividual(currentIndividuals.length + 1));
+    renderIndividuals();
+  }
+
+  function removeIndividual(idx) {
+    currentIndividuals.splice(idx, 1);
+    renderIndividuals();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // COLLECT / POPULATE FORM DATA
+  // ══════════════════════════════════════════════════════════════
+
+  function val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+  function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v || ''; }
+
+  function collectIndividuals() {
+    const fields = ['designation','name','shares','type','nationality','passport','passportExpiry','gender','dob','eid','eidExpiry','proofAddr','pep'];
+    const result = [];
+    const containers = document.querySelectorAll('#maIndividualsContainer > div');
+    containers.forEach(c => {
+      const ind = {};
+      fields.forEach(f => {
+        const el = c.querySelector('.maInd_' + f);
+        if (el) ind[f] = el.value;
+      });
+      result.push(ind);
+    });
+    return result;
+  }
+
+  function collectSanctions(prefix) {
+    return { result: val(prefix + '_result'), date: val(prefix + '_date'), remarks: val(prefix + '_remarks') };
+  }
+
+  function collectAdverse(prefix) {
+    return { finding: val(prefix + '_finding'), details: val(prefix + '_details') };
+  }
+
+  function collectPF(prefix) {
+    return { level: val(prefix + '_level'), notes: val(prefix + '_notes') };
+  }
+
+  function collectFormData() {
+    return {
+      customerInfo: {
+        companyName: val('maCompanyName'), country: val('maCountry'), regDate: val('maRegDate'),
+        commRegister: val('maCommRegister'), licenseExpiry: val('maLicenseExpiry'),
+        goAML: val('maGoAML'), fatf: val('maFATF'), cahra: val('maCAHRA'), pep: val('maPEP')
+      },
+      sanctions: {
+        UAE: collectSanctions('maS_UAE'), UN: collectSanctions('maS_UN'), OFAC: collectSanctions('maS_OFAC'),
+        UK: collectSanctions('maS_UK'), EU: collectSanctions('maS_EU'), INTERPOL: collectSanctions('maS_INTERPOL')
+      },
+      adverse: {
+        criminal: collectAdverse('maA_Criminal'), ml: collectAdverse('maA_ML'), tf: collectAdverse('maA_TF'),
+        regulatory: collectAdverse('maA_Regulatory'), reputation: collectAdverse('maA_Reputation'),
+        political: collectAdverse('maA_Political'), hr: collectAdverse('maA_HR')
+      },
+      individuals: collectIndividuals(),
+      pf: {
+        dpms: collectPF('maPF_DPMS'), jurisdiction: collectPF('maPF_Jurisdiction'), dualUse: collectPF('maPF_DualUse'),
+        unPF: collectPF('maPF_UNPF'), unusual: collectPF('maPF_Unusual'), links: collectPF('maPF_Links'), overall: collectPF('maPF_Overall')
+      },
+      riskClassification: val('maRiskClass'),
+      cddLevel: val('maCDDLevel'),
+      businessDecision: val('maBusinessDecision'),
+      triggerEvents: val('maTriggerEvents'),
+      assessmentNotes: val('maAssessmentNotes'),
+      signOff: {
+        approvedBy: val('maApprovedBy'), approvedTitle: val('maApprovedTitle'),
+        preparedBy: val('maPreparedBy'), preparedTitle: val('maPreparedTitle'),
+        approvalDate: val('maApprovalDate')
+      }
+    };
+  }
+
+  function populateForm(data) {
+    if (!data) return;
+    const ci = data.customerInfo || {};
+    setVal('maCompanyName', ci.companyName); setVal('maCountry', ci.country);
+    setVal('maRegDate', ci.regDate); setVal('maCommRegister', ci.commRegister);
+    setVal('maLicenseExpiry', ci.licenseExpiry); setVal('maGoAML', ci.goAML);
+    setVal('maFATF', ci.fatf); setVal('maCAHRA', ci.cahra); setVal('maPEP', ci.pep);
+
+    const s = data.sanctions || {};
+    ['UAE','UN','OFAC','UK','EU','INTERPOL'].forEach(k => {
+      const v = s[k] || {};
+      setVal('maS_' + k + '_result', v.result); setVal('maS_' + k + '_date', v.date); setVal('maS_' + k + '_remarks', v.remarks);
+    });
+
+    const a = data.adverse || {};
+    ['criminal','ml','tf','regulatory','reputation','political','hr'].forEach(k => {
+      const pfx = 'maA_' + k.charAt(0).toUpperCase() + k.slice(1);
+      const v = a[k] || {};
+      setVal(pfx + '_finding', v.finding); setVal(pfx + '_details', v.details);
+    });
+    // Fix capitalized keys
+    if (a.Criminal) { setVal('maA_Criminal_finding', a.Criminal.finding); setVal('maA_Criminal_details', a.Criminal.details); }
+    if (a.ML) { setVal('maA_ML_finding', a.ML.finding); setVal('maA_ML_details', a.ML.details); }
+    if (a.TF) { setVal('maA_TF_finding', a.TF.finding); setVal('maA_TF_details', a.TF.details); }
+    if (a.Regulatory) { setVal('maA_Regulatory_finding', a.Regulatory.finding); setVal('maA_Regulatory_details', a.Regulatory.details); }
+    if (a.Reputation) { setVal('maA_Reputation_finding', a.Reputation.finding); setVal('maA_Reputation_details', a.Reputation.details); }
+    if (a.Political) { setVal('maA_Political_finding', a.Political.finding); setVal('maA_Political_details', a.Political.details); }
+    if (a.HR) { setVal('maA_HR_finding', a.HR.finding); setVal('maA_HR_details', a.HR.details); }
+
+    currentIndividuals = (data.individuals && data.individuals.length) ? data.individuals : [emptyIndividual(1)];
+    renderIndividuals();
+
+    const pf = data.pf || {};
+    ['dpms','jurisdiction','dualUse','unPF','unusual','links','overall'].forEach(k => {
+      const pfx = 'maPF_' + k.charAt(0).toUpperCase() + k.slice(1);
+      const v = pf[k] || {};
+      setVal(pfx + '_level', v.level); setVal(pfx + '_notes', v.notes);
+    });
+    // Fix capitalized keys
+    if (pf.DPMS) { setVal('maPF_DPMS_level', pf.DPMS.level); setVal('maPF_DPMS_notes', pf.DPMS.notes); }
+    if (pf.Jurisdiction) { setVal('maPF_Jurisdiction_level', pf.Jurisdiction.level); setVal('maPF_Jurisdiction_notes', pf.Jurisdiction.notes); }
+    if (pf.DualUse) { setVal('maPF_DualUse_level', pf.DualUse.level); setVal('maPF_DualUse_notes', pf.DualUse.notes); }
+    if (pf.UNPF) { setVal('maPF_UNPF_level', pf.UNPF.level); setVal('maPF_UNPF_notes', pf.UNPF.notes); }
+    if (pf.Unusual) { setVal('maPF_Unusual_level', pf.Unusual.level); setVal('maPF_Unusual_notes', pf.Unusual.notes); }
+    if (pf.Links) { setVal('maPF_Links_level', pf.Links.level); setVal('maPF_Links_notes', pf.Links.notes); }
+    if (pf.Overall) { setVal('maPF_Overall_level', pf.Overall.level); setVal('maPF_Overall_notes', pf.Overall.notes); }
+
+    setVal('maRiskClass', data.riskClassification); setVal('maCDDLevel', data.cddLevel);
+    setVal('maBusinessDecision', data.businessDecision); setVal('maTriggerEvents', data.triggerEvents);
+    setVal('maAssessmentNotes', data.assessmentNotes);
+
+    const so = data.signOff || {};
+    setVal('maApprovedBy', so.approvedBy); setVal('maApprovedTitle', so.approvedTitle);
+    setVal('maPreparedBy', so.preparedBy); setVal('maPreparedTitle', so.preparedTitle);
+    setVal('maApprovalDate', so.approvalDate);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // CRUD OPERATIONS
+  // ══════════════════════════════════════════════════════════════
+
+  function newApproval() {
+    editIndex = -1;
+    currentIndividuals = [emptyIndividual(1)];
+    refresh();
+    setTimeout(() => {
+      const panel = document.getElementById('maEditorPanel');
+      if (panel) { panel.style.display = 'block'; renderIndividuals(); panel.scrollIntoView({ behavior: 'smooth' }); }
+    }, 50);
+  }
+
+  function editApproval(idx) {
+    const approvals = getApprovals();
+    if (!approvals[idx]) return;
+    editIndex = idx;
+    refresh();
+    setTimeout(() => {
+      const panel = document.getElementById('maEditorPanel');
+      if (panel) { panel.style.display = 'block'; populateForm(approvals[idx]); panel.scrollIntoView({ behavior: 'smooth' }); }
+    }, 50);
+  }
+
+  function saveCurrentApproval() {
+    const data = collectFormData();
+    if (!data.customerInfo.companyName) { if (typeof toast === 'function') toast('Company name is required', 'error'); return; }
+    data.updatedAt = new Date().toISOString();
+
+    const approvals = getApprovals();
+    if (editIndex >= 0 && approvals[editIndex]) {
+      data.createdAt = approvals[editIndex].createdAt;
+      approvals[editIndex] = data;
+    } else {
+      data.createdAt = new Date().toISOString();
+      approvals.unshift(data);
+    }
+    saveApprovals(approvals);
+    editIndex = -1;
+    refresh();
+    if (typeof toast === 'function') toast('Assessment saved', 'success');
+    // Asana sync
+    if (typeof autoSyncToAsana === 'function') {
+      autoSyncToAsana(
+        `Approval: ${data.entityName||'Entity'} — ${data.decision||'Pending'}`,
+        `Management Approval Assessment\nEntity: ${data.entityName||''}\nType: ${data.assessmentType||''}\nRisk Level: ${data.riskLevel||''}\nDecision: ${data.decision||''}\nApproved By: ${data.approvedBy||''}\nDate: ${data.assessmentDate||''}\nConditions: ${data.conditions||''}\nNotes: ${data.notes||''}`,
+        14
+      ).then(gid => { if (gid && typeof toast === 'function') toast('Approval synced to Asana','success',2000); });
+    }
+  }
+
+  function deleteApproval(idx) {
+    if (!confirm('Delete this assessment?')) return;
+    const approvals = getApprovals();
+    approvals.splice(idx, 1);
+    saveApprovals(approvals);
+    refresh();
+    if (typeof toast === 'function') toast('Assessment deleted', 'info');
+  }
+
+  function cancelEdit() {
+    editIndex = -1;
+    const panel = document.getElementById('maEditorPanel');
+    if (panel) panel.style.display = 'none';
+  }
+
+  function clearAllApprovals() {
+    if (!confirm('Clear ALL assessments? This cannot be undone.')) return;
+    saveApprovals([]);
+    refresh();
+    if (typeof toast === 'function') toast('All assessments cleared', 'success');
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // EXPORT PDF
+  // ══════════════════════════════════════════════════════════════
+
+  function exportCurrentPDF() {
+    const approvals = getApprovals();
+    if (!approvals.length) { if (typeof toast === 'function') toast('No assessments to export', 'error'); return; }
+    if (typeof window.jspdf === 'undefined') { if (typeof toast === 'function') toast('jsPDF not loaded', 'error'); return; }
+    const a = approvals[0];
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const ci = a.customerInfo || {};
+    doc.setFontSize(14); doc.setTextColor(30, 42, 56);
+    doc.text('COMPLIANCE ASSESSMENT - CUSTOMER & COUNTERPARTY DUE DILIGENCE ' + new Date().getFullYear(), 14, 18);
+    doc.setFontSize(10); doc.text((ci.companyName || '') + ' | ' + (ci.country || ''), 14, 26);
+    doc.setFontSize(9); doc.setTextColor(80);
+    let y = 36;
+    doc.text('Section 1: Customer Information', 14, y); y += 8;
+    ['Company Name: ' + (ci.companyName || ''), 'Country: ' + (ci.country || ''), 'Registration: ' + (ci.regDate || ''), 'Commercial Register: ' + (ci.commRegister || ''), 'GoAML: ' + (ci.goAML || ''), 'FATF: ' + (ci.fatf || ''), 'CAHRA: ' + (ci.cahra || ''), 'PEP: ' + (ci.pep || '')]
+      .forEach(line => { doc.text(line, 18, y); y += 5; });
+    y += 4;
+    doc.text('Risk Classification: ' + (a.riskClassification || 'N/A'), 14, y); y += 5;
+    doc.text('CDD Level: ' + (a.cddLevel || 'N/A'), 14, y); y += 5;
+    doc.text('Business Decision: ' + (a.businessDecision || 'N/A'), 14, y);
+    doc.save((ci.companyName || 'Assessment').replace(/\s+/g, '_') + '_CDD.pdf');
+    if (typeof toast === 'function') toast('PDF exported', 'success');
+  }
+
+  function exportCurrentDOCX() {
+    const approvals = getApprovals();
+    if (!approvals.length) { if (typeof toast === 'function') toast('No assessments', 'error'); return; }
+    const a = approvals[0];
+    const ci = a.customerInfo || {};
+    let html = window.wordDocHeader ? window.wordDocHeader('Compliance Assessment - Customer & Counterparty Due Diligence') : '<html><head><meta charset="utf-8"></head><body>';
+    html += '<h2>Section 1: Customer Information</h2><table>';
+    [['Company Name', ci.companyName], ['Country', ci.country], ['Registration Date', ci.regDate], ['Commercial Register', ci.commRegister], ['License Expiry', ci.licenseExpiry], ['GoAML', ci.goAML], ['FATF Grey List', ci.fatf], ['CAHRA', ci.cahra], ['PEP', ci.pep]]
+      .forEach(r => html += '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1] || '') + '</td></tr>');
+    html += '</table>';
+    html += '<h2>Section 6: Risk-Based Assessment</h2><table>';
+    [['Risk Classification', a.riskClassification], ['CDD Level', a.cddLevel], ['Business Decision', a.businessDecision], ['Trigger Events', a.triggerEvents]]
+      .forEach(r => html += '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1] || '') + '</td></tr>');
+    html += '</table>' + (window.wordDocFooter ? window.wordDocFooter() : '</body></html>');
+    const fn = (ci.companyName || 'Assessment').replace(/\s+/g, '_') + '_CDD.doc';
+    if (window.downloadWordDoc) { window.downloadWordDoc(html, fn); }
+    else { const blob = new Blob(['\ufeff' + html], { type: 'application/msword' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = fn; link.click(); URL.revokeObjectURL(link.href); }
+    if (typeof toast === 'function') toast('Word exported', 'success');
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // REFRESH & PUBLIC API
+  // ══════════════════════════════════════════════════════════════
 
   function refresh() {
-    const el = document.getElementById('tab-supplychain');
-    if (el) el.innerHTML = renderSupplyChainTab();
+    const el = document.getElementById('tab-approvals');
+    if (el) el.innerHTML = renderApprovalsTab();
   }
 
-  async function checkListUpdate(listType) {
-    const notifId = listType === 'cahra' ? 'cahraUpdateNotif' : listType === 'fatf' ? 'fatfUpdateNotif' : 'euUpdateNotif';
-    const notifEl = document.getElementById(notifId);
-    if (!notifEl) return;
-    notifEl.innerHTML = '<p style="color:var(--muted);font-size:12px;padding:8px 0">Checking for updates...</p>';
-
-    const listNames = { cahra: 'CAHRA (Conflict-Affected and High-Risk Areas)', fatf: 'FATF Gray List (Jurisdictions Under Increased Monitoring)', eu: 'EU High-Risk Third Countries (Delegated Regulation 2016/1675)' };
-    const currentLists = {
-      cahra: DEFAULT_CAHRA.map(c => c.code + ' ' + c.name).join(', '),
-      fatf: FATF_GRAY_LIST.map(c => c.code + ' ' + c.name).join(', '),
-      eu: EU_HIGH_RISK_COUNTRIES.map(c => c.code + ' ' + c.name).join(', ')
-    };
-
-    const prompt = `You are a compliance analyst. I need you to check for the latest updates to the ${listNames[listType]}.
-
-My current list (as of my last update): ${currentLists[listType]}
-
-Please provide:
-1. The current date of this check
-2. Any countries ADDED to the official list since my version
-3. Any countries REMOVED from the official list since my version
-4. Any status changes (e.g. risk level upgrades/downgrades)
-5. The date of the latest official update to this list
-6. Required compliance measures for any changes (e.g. EDD requirements, screening updates, customer reviews)
-
-If the list appears up to date, confirm that and note when the next review is expected.
-
-Format your response as a structured compliance update notification. Be concise but thorough on regulatory implications.`;
-
-    try {
-      if (typeof callAI !== 'function') { notifEl.innerHTML = '<p style="color:var(--red);font-size:12px;padding:8px 0">AI not available. Configure API key or proxy in Settings.</p>'; return; }
-
-      const data = await callAI({ model: 'claude-sonnet-4-5-20241022', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] });
-      const text = data?.content?.[0]?.text || data?.error?.message || 'No response received.';
-
-      const now = new Date().toLocaleString('en-GB');
-      notifEl.innerHTML = `
-        <div style="margin-top:12px;padding:12px;background:rgba(180,151,90,0.08);border:1px solid rgba(180,151,90,0.25);border-radius:8px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-size:12px;font-weight:700;color:var(--gold);font-family:'DM Mono',monospace">LIST UPDATE CHECK</span>
-            <span style="font-size:10px;color:var(--muted)">${now}</span>
-          </div>
-          <div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-        </div>`;
-      if (typeof logAudit === 'function') logAudit('list-update', `${listNames[listType]} update check completed`);
-      toast('Update check completed', 'success');
-    } catch (err) {
-      notifEl.innerHTML = `<p style="color:var(--red);font-size:12px;padding:8px 0">Update check failed: ${err.message}</p>`;
-    }
-  }
-
-  return {
-    checkCAHRA,
-    assessSupplierRisk,
-    addEntry,
-    updateRGGStep,
-    renderSupplyChainTab,
+  window.ManagementApprovals = {
+    renderApprovalsTab,
     refresh,
-    getEntries,
-    getRGGStatus,
-    DEFAULT_CAHRA,
-    checkListUpdate,
+    newApproval,
+    editApproval,
+    saveCurrentApproval,
+    deleteApproval,
+    cancelEdit,
+    addIndividual,
+    removeIndividual,
+    exportCurrentPDF,
+    exportCurrentDOCX,
+    clearAllApprovals
   };
+
 })();

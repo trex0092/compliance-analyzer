@@ -1,647 +1,656 @@
 /**
- * Enhanced Integrations Module — Compliance Analyser v2.3
- * Improved Asana, Notion, Slack, Google Drive, ClickUp + health monitor
+ * Analytics Dashboard Module — Compliance Analyser v2.5
+ * Chart.js-powered visual analytics with Asana task metrics
+ * Provides: trend charts, risk distribution, gap analysis, screening activity, Asana KPIs
  */
 (function () {
   'use strict';
 
-  const INTEGRATION_STATUS_KEY = 'fgl_integration_status';
-  const INTEGRATION_LOG_KEY = 'fgl_integration_log';
+  const ANALYTICS_HISTORY_KEY = 'fgl_analytics_history';
+  const ANALYTICS_SNAPSHOT_KEY = 'fgl_analytics_snapshots';
+  const MAX_SNAPSHOTS = 365;
 
-  function getProxy() { return window.PROXY_URL || ''; }
-
-  function getStatus() {
-    try { return JSON.parse(localStorage.getItem(INTEGRATION_STATUS_KEY) || '{}'); } catch (_) { return {}; }
+  // ── Helper: read localStorage via host app's scoping ──
+  function parse(key, fb) {
+    return typeof safeLocalParse === 'function' ? safeLocalParse(key, fb) : (() => { try { return JSON.parse(localStorage.getItem(key)) || fb; } catch (_) { return fb; } })();
   }
-  function saveStatus(s) { localStorage.setItem(INTEGRATION_STATUS_KEY, JSON.stringify(s)); }
-
-  function getLog() {
-    try { return JSON.parse(localStorage.getItem(INTEGRATION_LOG_KEY) || '[]'); } catch (_) { return []; }
-  }
-  function saveLog(l) { localStorage.setItem(INTEGRATION_LOG_KEY, JSON.stringify(l.slice(0, 500))); }
-
-  function logEvent(integration, action, success, details) {
-    const log = getLog();
-    log.unshift({ integration, action, success, details, timestamp: new Date().toISOString() });
-    saveLog(log);
+  function save(key, v) {
+    if (typeof safeLocalSave === 'function') safeLocalSave(key, v);
+    else localStorage.setItem(key, JSON.stringify(v));
   }
 
-  function updateStatus(integration, connected, lastSync, errorRate) {
-    const status = getStatus();
-    status[integration] = { connected, lastSync: lastSync || new Date().toISOString(), errorRate: errorRate || 0, checkedAt: new Date().toISOString() };
-    saveStatus(status);
+  // ── Snapshot: capture daily KPI point ──
+  function captureSnapshot() {
+    const snaps = parse(ANALYTICS_SNAPSHOT_KEY, []);
+    const today = new Date().toISOString().slice(0, 10);
+    if (snaps.length && snaps[snaps.length - 1].date === today) return; // already captured today
+
+    const gaps = parse('fgl_gaps_v2', []);
+    const incidents = parse('fgl_incidents', []);
+    const screenings = parse('fgl_screenings', []);
+    const customers = parse('fgl_onboarding', []);
+    const training = parse('fgl_employee_training', []);
+    const thresholdAlerts = parse('fgl_threshold_alerts', []);
+    const auditTrail = parse('fgl_audit_trail', []);
+
+    const openGaps = gaps.filter(g => g.status !== 'closed' && g.status !== 'resolved').length;
+    const closedGaps = gaps.filter(g => g.status === 'closed' || g.status === 'resolved').length;
+    const critGaps = gaps.filter(g => g.severity === 'critical' && g.status !== 'closed' && g.status !== 'resolved').length;
+    const highGaps = gaps.filter(g => g.severity === 'high' && g.status !== 'closed' && g.status !== 'resolved').length;
+    const medGaps = gaps.filter(g => g.severity === 'medium' && g.status !== 'closed' && g.status !== 'resolved').length;
+    const lowGaps = gaps.filter(g => g.severity === 'low' && g.status !== 'closed' && g.status !== 'resolved').length;
+
+    const openIncidents = incidents.filter(i => i.status === 'open').length;
+    const avgRisk = customers.length ? Math.round(customers.reduce((s, c) => s + (c.risk?.score || 0), 0) / customers.length) : 0;
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+    const recentScreenings = screenings.filter(s => new Date(s.date) > thirtyDaysAgo).length;
+
+    const completedTraining = (training || []).filter(t => t.status === 'completed' || t.completed).length;
+    const totalTraining = (training || []).length;
+
+    snaps.push({
+      date: today,
+      openGaps, closedGaps, critGaps, highGaps, medGaps, lowGaps,
+      totalGaps: gaps.length,
+      openIncidents, totalIncidents: incidents.length,
+      screenings30d: recentScreenings, totalScreenings: screenings.length,
+      avgRisk, totalCustomers: customers.length,
+      completedTraining, totalTraining,
+      thresholdAlerts: thresholdAlerts.length,
+      auditEvents: auditTrail.length,
+      critCustomers: customers.filter(c => c.risk?.level === 'CRITICAL').length,
+      highCustomers: customers.filter(c => c.risk?.level === 'HIGH').length,
+      medCustomers: customers.filter(c => c.risk?.level === 'MEDIUM').length,
+      lowCustomers: customers.filter(c => c.risk?.level === 'LOW' || !c.risk?.level).length
+    });
+
+    save(ANALYTICS_SNAPSHOT_KEY, snaps.slice(-MAX_SNAPSHOTS));
   }
 
-  async function proxyFetch(path, options = {}) {
-    const proxy = getProxy();
-    if (!proxy) throw new Error('Proxy URL not configured. Use Settings to add a Proxy URL or Asana Token.');
-    const res = await fetch(proxy + path, options);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    return res.json();
+  // ── Chart instances cache ──
+  let charts = {};
+
+  function destroyCharts() {
+    Object.values(charts).forEach(c => { try { c.destroy(); } catch (_) {} });
+    charts = {};
   }
 
-  // ══════════════════════════════════════════════════════════════════
-  // ASANA ENHANCED
-  // ══════════════════════════════════════════════════════════════════
-  const asana = {
-    async batchCreateTasks(tasks) {
-      const results = [];
-      const useAsanaFetch = typeof asanaFetch === 'function';
-      for (const task of tasks) {
-        try {
-          let res;
-          if (useAsanaFetch) {
-            const r = await asanaFetch('/tasks', { method: 'POST', body: JSON.stringify({ data: task }) });
-            res = await r.json();
-          } else {
-            res = await proxyFetch('/asana/tasks', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ data: task }),
-            });
-          }
-          results.push({ success: true, task: res.data });
-          logEvent('asana', 'batch_create_task', true, task.name);
-        } catch (e) {
-          results.push({ success: false, error: e.message });
-          logEvent('asana', 'batch_create_task', false, e.message);
-        }
-      }
-      return results;
-    },
-
-    TASK_TEMPLATES: {
-      // ── CDD / KYC / KYS ──
-      cdd_review: { name: 'CDD Review: {entity}', notes: 'Perform Customer Due Diligence review per UAE FDL No.10/2025 Art.16.\n\n1. Verify identity documents (passport, trade license, incorporation docs)\n2. Screen against UN/OFAC/EU/UK/UAE sanctions lists\n3. Verify UBO (25%+ ownership threshold)\n4. Assess risk rating (Low/Medium/High)\n5. Document findings and retain records\n6. Obtain senior management approval for high-risk\n\nRef: Cabinet Resolution No.134/2025, FATF Rec 10', tags: ['compliance', 'cdd'] },
-      edd_escalation: { name: 'EDD Escalation: {entity}', notes: 'Enhanced Due Diligence required per UAE FDL No.10/2025 Art.17.\n\n1. Source of wealth verification and documentation\n2. Source of funds documentation with supporting evidence\n3. Obtain senior management approval (documented)\n4. PEP screening and adverse media check\n5. Establish ongoing enhanced monitoring plan\n6. Document rationale for business relationship\n\nRef: FATF Rec 10, Cabinet Resolution No.134/2025 Art.8', tags: ['compliance', 'edd'] },
-      sdd_review: { name: 'SDD Assessment: {entity}', notes: 'Simplified Due Diligence assessment per UAE FDL No.10/2025 Art.18.\n\n1. Confirm entity meets low-risk criteria per EWRA\n2. Verify risk category against NRA 2024 findings\n3. Document justification for SDD application\n4. Obtain compliance officer approval\n5. Schedule periodic review for continued eligibility\n\nNote: SDD cannot be applied where ML/TF suspicion exists', tags: ['compliance', 'sdd'] },
-      kyc_refresh: { name: 'KYC Refresh: {entity}', notes: 'Periodic KYC refresh per risk-based approach.\n\n1. Update customer identification data\n2. Re-screen against all sanctions/PEP lists\n3. Review transaction patterns for consistency\n4. Update risk rating if circumstances changed\n5. Verify UBO information remains current\n6. Document review outcome\n\nFrequency: High=6mo, Medium=12mo, Low=24mo', tags: ['compliance', 'kyc'] },
-      kys_review: { name: 'KYS Review: {entity}', notes: 'Know Your Supplier due diligence per LBMA RGG v9 & UAE FDL No.10/2025.\n\n1. Verify supplier trade license and registration\n2. Assess supply chain origin and CAHRA exposure\n3. Screen supplier against sanctions and adverse media\n4. Verify supplier AML/CFT compliance program\n5. Review LBMA certification status (if applicable)\n6. Document supply chain mapping\n7. Obtain compliance officer sign-off\n\nRef: OECD Due Diligence Guidance for Responsible Supply Chains', tags: ['compliance', 'kys'] },
-      kyb_review: { name: 'KYB Review: {entity}', notes: 'Know Your Business counterparty assessment.\n\n1. Verify legal entity registration and good standing\n2. Identify and verify all UBOs (25%+ threshold)\n3. Assess ownership structure complexity\n4. Verify authorized signatories\n5. Review financial statements (last 2 years)\n6. Screen directors/officers against PEP/sanctions\n7. Assess jurisdictional risk\n\nRef: UAE FDL No.10/2025 Art.16, FATF Rec 10', tags: ['compliance', 'kyb'] },
-      kye_review: { name: 'KYE Review: {entity}', notes: 'Know Your Employee screening per UAE FDL No.10/2025.\n\n1. Verify employee identity and background\n2. Screen against sanctions and PEP lists\n3. Criminal background check (where permitted)\n4. Verify qualifications and references\n5. Assess conflict of interest declarations\n6. Review access levels vs role requirements\n7. Document screening results and retain\n\nRef: Cabinet Resolution No.134/2025, FATF Rec 18', tags: ['compliance', 'kye'] },
-
-      // ── STR / SAR / goAML ──
-      str_filing: { name: 'STR Filing: {entity}', notes: 'Prepare and file Suspicious Transaction Report per UAE FDL No.10/2025 Art.26.\n\n1. Document suspicious indicators and red flags\n2. Gather all supporting transaction evidence\n3. Draft STR narrative with timeline and analysis\n4. Obtain MLRO review and approval\n5. Submit to FIU via goAML portal\n6. Record filing reference number\n7. Implement enhanced monitoring\n8. DO NOT tip off the subject\n\nDeadline: Within 10 business days. Ref: FATF Rec 20', tags: ['compliance', 'str'] },
-      sar_filing: { name: 'SAR Filing: {entity}', notes: 'Prepare and file Suspicious Activity Report.\n\n1. Document the suspicious activity/behavior\n2. Compile supporting documentation\n3. Draft SAR narrative with factual analysis\n4. MLRO review and sign-off\n5. Submit to FIU via goAML\n6. Retain copy with filing reference\n7. Continue monitoring (do not close relationship without FIU guidance)\n\nRef: UAE FDL No.10/2025 Art.26-28, FATF Rec 20', tags: ['compliance', 'sar'] },
-
-      // ── TFS / Sanctions ──
-      tfs_screening: { name: 'TFS Screening: {entity}', notes: 'Targeted Financial Sanctions screening per UAE FDL No.10/2025 Art.35.\n\n1. Screen entity name against UN Consolidated List\n2. Screen against OFAC SDN and EU/UK sanctions lists\n3. Screen against UAE Local Terrorist List\n4. Screen UBOs and authorized signatories\n5. Document results (clear/match/potential match)\n6. For matches: freeze assets immediately and report to EOCN\n7. Retain screening records for minimum 5 years\n\nRef: FATF Rec 6 & 7, Cabinet Resolution No.74/2020', tags: ['compliance', 'tfs'] },
-      tfs_list_update: { name: 'TFS List Update: {entity}', notes: 'Process new TFS list update per UAE FDL No.10/2025 Art.35.\n\n1. Download and review new designations\n2. Screen entire customer database against new entries\n3. Report any matches to EOCN within 24 hours\n4. Freeze identified assets without delay\n5. Notify compliance committee of results\n6. Document screening completion and findings\n7. Update internal screening database\n\nRef: UNSC Resolution implementation, Cabinet Resolution No.74/2020', tags: ['compliance', 'tfs'] },
-      false_positive: { name: 'False Positive Resolution: {entity}', notes: 'Resolve TFS/sanctions screening false positive.\n\n1. Document the match details and screening system used\n2. Analyze discrepancies (name, DOB, nationality, ID)\n3. Gather additional identifying information\n4. Document rationale for false positive determination\n5. Obtain compliance officer sign-off\n6. Update screening records\n7. Retain evidence for 5 years minimum\n\nRef: UAE FDL No.10/2025 Art.35(5)', tags: ['compliance', 'tfs'] },
-
-      // ── PEP Management ──
-      pep_identification: { name: 'PEP Assessment: {entity}', notes: 'Politically Exposed Person identification per UAE FDL No.10/2025 Art.18.\n\n1. Screen entity against PEP databases\n2. Identify domestic and foreign PEP status\n3. Check family members and close associates\n4. If PEP confirmed: obtain senior management approval\n5. Establish source of wealth and source of funds\n6. Apply enhanced ongoing monitoring\n7. Document all PEP assessment findings\n\nRef: FATF Rec 12, Cabinet Resolution No.134/2025', tags: ['compliance', 'pep'] },
-
-      // ── Risk Assessment ──
-      ewra_review: { name: 'EWRA Review: {entity}', notes: 'Enterprise-Wide Risk Assessment per UAE FDL No.10/2025 Art.5.\n\n1. Identify and assess ML/TF/PF risk categories\n2. Review customer risk (type, geography, channel)\n3. Assess product/service risk factors\n4. Evaluate delivery channel risks\n5. Consider jurisdictional risk (FATF grey/black lists)\n6. Update risk scoring methodology\n7. Present findings to senior management/Board\n8. Document risk mitigation measures\n\nRef: FATF Rec 1, UAE NRA 2024', tags: ['compliance', 'risk'] },
-      risk_appetite: { name: 'Risk Appetite Review: {entity}', notes: 'Review and update risk appetite statement.\n\n1. Review current risk appetite thresholds\n2. Assess alignment with EWRA findings\n3. Evaluate risk tolerance by customer/product type\n4. Define acceptable risk boundaries\n5. Obtain Board/senior management approval\n6. Communicate to all relevant staff\n7. Document version control and approval records\n\nRef: UAE FDL No.10/2025, FATF Rec 1', tags: ['compliance', 'risk'] },
-
-      // ── Audit & Compliance Review ──
-      audit_preparation: { name: 'Audit Preparation: {entity}', notes: 'Prepare for regulatory/internal compliance audit per UAE FDL No.10/2025 Art.22.\n\n1. Review and update all compliance documentation\n2. Verify evidence tracker completeness\n3. Ensure all policies are current and approved\n4. Prepare staff for potential interviews\n5. Verify record retention compliance (5 years)\n6. Test sanctions screening system\n7. Review training completion records\n8. Prepare compliance metrics dashboard\n\nRef: MOE inspection requirements, FATF Rec 18', tags: ['compliance', 'audit'] },
-      internal_audit: { name: 'Internal Compliance Audit: {entity}', notes: 'Conduct internal AML/CFT compliance audit per UAE FDL No.10/2025 Art.22.\n\n1. Review AML/CFT policy framework adequacy\n2. Test CDD/KYC procedures (sample testing)\n3. Verify TFS screening effectiveness\n4. Assess STR filing processes and timeliness\n5. Review training program effectiveness\n6. Test record retention compliance\n7. Evaluate governance and reporting structures\n8. Prepare audit findings report with recommendations\n9. Track remediation actions\n\nRef: FATF Rec 18, LBMA RGG v9', tags: ['compliance', 'audit'] },
-      gap_remediation: { name: 'Gap Remediation: {entity}', notes: 'Remediate identified compliance gap.\n\n1. Document the gap and its regulatory reference\n2. Assess risk impact (Critical/High/Medium/Low)\n3. Define remediation action plan with timelines\n4. Assign responsible person(s)\n5. Implement corrective measures\n6. Test effectiveness of remediation\n7. Obtain sign-off from compliance officer\n8. Update gap register with closure date\n\nRef: UAE FDL No.10/2025, MOE inspection follow-up', tags: ['compliance', 'gap'] },
-
-      // ── Training ──
-      training_completion: { name: 'Training: {entity}', notes: 'Complete AML/CFT compliance training per UAE FDL No.10/2025 Art.21.\n\n1. Complete designated training module\n2. Pass knowledge assessment (min 70%)\n3. Obtain completion certificate\n4. Log completion in training register\n5. Schedule refresher (annual minimum)\n\nRequired topics: AML/CFT framework, TFS/sanctions, CDD/EDD, STR filing, PEP, responsible sourcing, tipping off\n\nRef: FATF Rec 18, Cabinet Resolution No.134/2025', tags: ['compliance', 'training'] },
-      training_program: { name: 'Training Program Review: {entity}', notes: 'Annual review of compliance training program.\n\n1. Review training needs assessment results\n2. Update curriculum for regulatory changes (FDL No.10/2025)\n3. Verify role-based training assignments\n4. Check completion rates by department\n5. Assess training effectiveness (test scores)\n6. Add new topics (PF, ESG, AI governance)\n7. Schedule annual training calendar\n8. Present findings to senior management\n\nRef: UAE FDL No.10/2025 Art.21, FATF Rec 18', tags: ['compliance', 'training'] },
-
-      // ── Policy & Procedures ──
-      policy_review: { name: 'Policy Review: {entity}', notes: 'Annual review and update of AML/CFT/CPF policies per UAE FDL No.10/2025.\n\n1. Review all compliance policies against current regulations\n2. Incorporate FDL No.10/2025 and Cabinet Resolution No.134/2025 changes\n3. Update FATF and LBMA RGG v9 references\n4. Ensure alignment with UAE NRA 2024 findings\n5. Obtain senior management/Board approval\n6. Communicate changes to all staff\n7. Update version control log\n8. Distribute updated policies\n\nRef: FATF Rec 1, MOE requirements', tags: ['compliance', 'policy'] },
-      compliance_manual: { name: 'Compliance Manual Update: {entity}', notes: 'Update Internal Controls & Procedures Guide.\n\nSections to review:\n- Legal & Regulatory Framework\n- AML/CFT/CPF Policies\n- KYC/KYS/KYB/KYE Protocols\n- TFS Screening Procedures\n- SOF/SOW Verification\n- PEP Management\n- Transaction Monitoring\n- STR/SAR Filing Guidelines\n- Responsible Sourcing\n- Record Retention\n- Whistleblower Protection\n- Data Destruction Policy\n- AI Systems Usage\n\nRef: UAE FDL No.10/2025, LBMA RGG v9', tags: ['compliance', 'policy'] },
-
-      // ── Responsible Sourcing ──
-      responsible_sourcing: { name: 'Responsible Sourcing Review: {entity}', notes: 'LBMA RGG v9 / OECD responsible sourcing due diligence.\n\n1. Map supply chain from mine to market\n2. Identify CAHRA-origin materials\n3. Verify supplier conformance with LBMA standards\n4. Review conflict minerals documentation\n5. Assess environmental and human rights risks\n6. Check LBMA Responsible Gold Guidance compliance\n7. Document supply chain due diligence\n8. Report to LBMA if required\n\nRef: OECD DDG, LBMA RGG v9, EU CAHRA Regulation', tags: ['compliance', 'sourcing'] },
-      supply_chain_audit: { name: 'Supply Chain Audit: {entity}', notes: 'Audit supplier compliance with responsible sourcing standards.\n\n1. Verify supplier AML/CFT policies exist\n2. Review supplier CDD procedures\n3. Assess CAHRA exposure and mitigation\n4. Verify chain of custody documentation\n5. Check responsible sourcing certifications\n6. Review cultural heritage protection measures\n7. Assess ESG compliance\n8. Document findings and corrective actions required\n\nRef: LBMA RGG v9, OECD DDG, UAE FDL No.10/2025', tags: ['compliance', 'sourcing'] },
-
-      // ── Transaction Monitoring ──
-      transaction_monitoring: { name: 'Transaction Monitoring Review: {entity}', notes: 'Review transaction monitoring effectiveness per UAE FDL No.10/2025 Art.26.\n\n1. Review red flag indicators and thresholds\n2. Analyze alert volumes and false positive rates\n3. Assess coverage of cash/non-cash transactions\n4. Review wire transfer monitoring (above AED 3,500)\n5. Check unusual transaction pattern detection\n6. Verify escalation procedures are followed\n7. Test system effectiveness with scenarios\n8. Update monitoring rules as needed\n\nRef: FATF Rec 20, UAE AML Guidelines for DPMS', tags: ['compliance', 'monitoring'] },
-      threshold_review: { name: 'Threshold Monitoring: {entity}', notes: 'Review DPMS transaction thresholds per Cabinet Resolution No.134/2025.\n\n1. Verify AED 55,000 cash transaction threshold monitoring\n2. Check wire transfer threshold (AED 3,500) compliance\n3. Review occasional transaction CDD triggers\n4. Assess structuring/smurfing detection rules\n5. Verify automated alerts are functioning\n6. Document all threshold breaches and actions taken\n7. Report required transactions to FIU\n\nRef: UAE FDL No.10/2025, FATF Rec 22', tags: ['compliance', 'monitoring'] },
-
-      // ── Record Retention & Data ──
-      record_retention: { name: 'Record Retention Audit: {entity}', notes: 'Audit record retention compliance per UAE FDL No.10/2025 Art.24.\n\n1. Verify CDD records retained for minimum 5 years after relationship end\n2. Check transaction records retention (5 years post-transaction)\n3. Verify STR/SAR records maintained per FIU requirements\n4. Assess data storage security and access controls\n5. Review data destruction procedures for expired records\n6. Check backup and recovery procedures\n7. Verify compliance with UAE data protection requirements\n\nRef: FATF Rec 11, UAE FDL No.10/2025 Art.24', tags: ['compliance', 'records'] },
-      data_destruction: { name: 'Data Destruction: {entity}', notes: 'Execute approved data destruction per retention policy.\n\n1. Identify records past retention period\n2. Verify no legal hold or ongoing investigation\n3. Obtain compliance officer approval\n4. Destroy records using approved method\n5. Document destruction (date, method, witness)\n6. Update records inventory\n7. Retain destruction certificate\n\nRef: UAE FDL No.10/2025 Art.24, Data Protection requirements', tags: ['compliance', 'records'] },
-
-      // ── Governance & Compliance Officer ──
-      co_report: { name: 'CO Annual Report: {entity}', notes: 'Prepare Compliance Officer annual report to Board/senior management per UAE FDL No.10/2025 Art.20.\n\n1. Summary of compliance program activities\n2. STR/SAR filing statistics and trends\n3. TFS screening results and false positive rates\n4. Training completion metrics\n5. Gap register status and remediation progress\n6. EWRA findings and risk trends\n7. Regulatory examination results\n8. Budget and resource requirements\n9. Recommendations for improvements\n\nRef: FATF Rec 18, Cabinet Resolution No.134/2025', tags: ['compliance', 'governance'] },
-      compliance_committee: { name: 'Compliance Committee Meeting: {entity}', notes: 'Prepare and conduct compliance committee meeting.\n\n1. Circulate agenda and prior meeting minutes\n2. Review open action items\n3. Present compliance metrics dashboard\n4. Discuss new regulatory developments\n5. Review high-risk customer approvals\n6. Discuss STR/SAR filing decisions\n7. Review training program status\n8. Document meeting minutes and action items\n9. Distribute minutes to committee members\n\nRef: UAE FDL No.10/2025 Art.19-20', tags: ['compliance', 'governance'] },
-
-      // ── Proliferation Financing ──
-      pf_assessment: { name: 'PF Risk Assessment: {entity}', notes: 'Proliferation Financing risk assessment per UAE FDL No.10/2025.\n\n1. Identify PF risk indicators in customer base\n2. Screen against WMD-related sanctions lists\n3. Review dual-use goods exposure\n4. Assess EOCN list compliance\n5. Check UNSC PF-related resolutions compliance\n6. Review end-user certificates where applicable\n7. Document PF risk assessment findings\n8. Update policies to address identified PF risks\n\nRef: FATF Rec 1 & 7, UNSC Resolutions', tags: ['compliance', 'pf'] },
-
-      // ── ESG & Ethics ──
-      esg_review: { name: 'ESG Compliance Review: {entity}', notes: 'Environmental, Social & Governance review.\n\n1. Assess environmental compliance (chemical management)\n2. Review social responsibility practices\n3. Evaluate governance framework adequacy\n4. Check gender equality and empowerment policies\n5. Review code of conduct compliance\n6. Assess cultural heritage protection measures\n7. Document ESG metrics and findings\n8. Prepare ESG report for stakeholders\n\nRef: LBMA RGG v9, UAE ESG guidelines', tags: ['compliance', 'esg'] },
-      anti_corruption: { name: 'Anti-Corruption Review: {entity}', notes: 'Anti-bribery and corruption compliance review.\n\n1. Review anti-corruption policy currency\n2. Assess gifts and hospitality register\n3. Check facilitation payment controls\n4. Review third-party due diligence for corruption risk\n5. Verify conflict of interest declarations\n6. Test whistleblower mechanism effectiveness\n7. Review training on anti-corruption\n8. Document findings and recommendations\n\nRef: UAE Federal Law on Anti-Corruption, LBMA RGG v9', tags: ['compliance', 'ethics'] },
-
-      // ── Whistleblower & Grievance ──
-      whistleblower_review: { name: 'Whistleblower Program Review: {entity}', notes: 'Review whistleblower and grievance mechanism per UAE FDL No.(32)/2021.\n\n1. Verify reporting channels are accessible and confidential\n2. Test anonymous reporting mechanism\n3. Review non-retaliation protections\n4. Assess investigation procedures (independence, timeliness)\n5. Review case resolution and closure process\n6. Check employee awareness of reporting channels\n7. Document review findings\n\nRef: UAE Federal Decree-Law No.(32)/2021, FATF Rec 18', tags: ['compliance', 'whistleblower'] },
-
-      // ── Cash-Free / Virtual Assets ──
-      cash_free_review: { name: 'Cash-Free Business Policy Review: {entity}', notes: 'Review cash-free business policy compliance.\n\n1. Verify no cash transactions above AED 55,000 threshold\n2. Review virtual asset payment prohibitions\n3. Assess alternative payment channel controls\n4. Verify remuneration traceability\n5. Check compliance with Cabinet Resolution No.134/2025\n6. Document any exceptions and approvals\n\nRef: UAE FDL No.10/2025, FATF Rec 22 for DPMS', tags: ['compliance', 'policy'] },
-
-      // ── AI Governance ──
-      ai_governance: { name: 'AI Governance Review: {entity}', notes: 'Review AI systems usage in compliance per emerging UAE standards.\n\n1. Inventory all AI/ML tools used in compliance\n2. Assess bias and accuracy in screening systems\n3. Review human oversight and override procedures\n4. Verify data protection in AI processing\n5. Document AI decision-making transparency\n6. Assess vendor AI system compliance\n7. Review regulatory guidance on AI in AML/CFT\n\nRef: UAE AI Strategy, FATF guidance on digital transformation', tags: ['compliance', 'technology'] },
-
-      // ── DPMS Specific ──
-      dpms_reporting: { name: 'DPMS Reporting: {entity}', notes: 'Prepare DPMS regulatory report per MOE requirements.\n\n1. Compile transaction data for reporting period\n2. Verify all transactions above threshold reported\n3. Document precious metals/stones inventory\n4. Prepare compliance program status report\n5. Report any suspicious activity indicators\n6. Submit to MOE within deadline\n7. Retain copies for minimum 5 years\n\nRef: UAE FDL No.10/2025, Cabinet Decision No.10/2019', tags: ['compliance', 'dpms'] },
-
-      // ── Confidentiality & Information Security ──
-      infosec_review: { name: 'Information Security Review: {entity}', notes: 'Review compliance data security measures.\n\n1. Assess access controls for compliance systems\n2. Review data encryption standards\n3. Check backup and disaster recovery procedures\n4. Verify secure document destruction processes\n5. Test cyber incident response plan\n6. Review staff security awareness\n7. Assess third-party data handling\n8. Document findings and remediation\n\nRef: UAE FDL No.10/2025 Art.24, Data Protection regulations', tags: ['compliance', 'security'] },
-
-      // ── Beneficial Ownership ──
-      ubo_verification: { name: 'UBO Verification: {entity}', notes: 'Ultimate Beneficial Owner identification and verification per UAE FDL No.10/2025 Art.16.\n\n1. Identify all natural persons with 25%+ ownership\n2. Verify identity of each UBO (passport, Emirates ID)\n3. Obtain certified ownership structure chart\n4. Screen all UBOs against sanctions/PEP lists\n5. Verify source of wealth for each UBO\n6. Document complex ownership layers\n7. Flag nominee shareholders or bearer shares\n8. Obtain compliance officer sign-off\n\nRef: FATF Rec 10 & 24, Cabinet Resolution No.134/2025', tags: ['compliance', 'ubo'] },
-
-      // ── Correspondent Banking / Relationships ──
-      correspondent_dd: { name: 'Correspondent DD: {entity}', notes: 'Correspondent relationship due diligence per FATF Rec 13.\n\n1. Assess respondent institution AML/CFT controls\n2. Review supervisory regime and licensing\n3. Obtain senior management approval\n4. Document responsibilities of each institution\n5. Verify no shell bank relationship\n6. Screen against sanctions and adverse media\n7. Establish ongoing monitoring plan\n\nRef: UAE FDL No.10/2025, FATF Rec 13', tags: ['compliance', 'correspondent'] },
-
-      // ── Wire Transfer Compliance ──
-      wire_transfer_review: { name: 'Wire Transfer Review: {entity}', notes: 'Wire transfer compliance review per FATF Rec 16.\n\n1. Verify originator information completeness\n2. Verify beneficiary information accuracy\n3. Check AED 3,500 threshold compliance\n4. Screen originator/beneficiary against sanctions\n5. Review cross-border transfer documentation\n6. Assess missing information handling procedures\n7. Document review findings\n\nRef: UAE FDL No.10/2025, FATF Rec 16, Cabinet Resolution No.134/2025', tags: ['compliance', 'wire_transfer'] },
-
-      // ── Regulatory Examination ──
-      moe_inspection: { name: 'MOE Inspection Prep: {entity}', notes: 'Prepare for Ministry of Economy inspection.\n\n1. Review all compliance documentation currency\n2. Verify AML/CFT policy framework completeness\n3. Prepare compliance officer credentials\n4. Organize CDD/KYC file samples for review\n5. Prepare STR filing log and statistics\n6. Verify training records are complete\n7. Ensure sanctions screening logs available\n8. Prepare EWRA/BWRA documentation\n9. Brief staff on inspection procedures\n10. Prepare responses to common inspection queries\n\nRef: UAE FDL No.10/2025, MOE DPMS inspection framework', tags: ['compliance', 'regulatory'] },
-
-      // ── Sanctions List Update Response ──
-      sanctions_update: { name: 'Sanctions List Update: {entity}', notes: 'Respond to new sanctions designations per UAE FDL No.10/2025 Art.35.\n\n1. Download latest consolidated sanctions list\n2. Compare against previous version for new entries\n3. Re-screen entire customer database immediately\n4. Check all pending transactions against new names\n5. Report any matches to EOCN within 24 hours\n6. Freeze identified assets without delay\n7. Document screening completion timestamp\n8. Notify senior management of results\n\nRef: UNSC Resolutions, Cabinet Resolution No.74/2020', tags: ['compliance', 'sanctions'] },
-
-      // ── Business Continuity ──
-      bcp_review: { name: 'BCP Review: {entity}', notes: 'Business Continuity Plan review for compliance operations.\n\n1. Review compliance function continuity procedures\n2. Verify backup access to screening systems\n3. Ensure alternative STR filing capability\n4. Test remote compliance monitoring procedures\n5. Verify key person succession for CO/MLRO\n6. Review disaster recovery for compliance data\n7. Document and test communication protocols\n8. Update BCP with lessons learned\n\nRef: UAE FDL No.10/2025, FATF operational continuity guidance', tags: ['compliance', 'bcp'] },
-
-      // ── Customer Risk Rating ──
-      risk_rating_review: { name: 'Risk Rating Review: {entity}', notes: 'Periodic customer risk rating reassessment.\n\n1. Review current risk rating methodology\n2. Reassess customer against updated risk criteria\n3. Consider changes in transaction patterns\n4. Review any new adverse media or sanctions hits\n5. Check jurisdiction risk changes (FATF grey/black list)\n6. Update risk rating if warranted\n7. Adjust monitoring frequency accordingly\n8. Document rationale and obtain approval\n\nRef: UAE FDL No.10/2025, FATF risk-based approach', tags: ['compliance', 'risk'] },
-
-      // ── Regulatory Change Impact ──
-      reg_change_impact: { name: 'Regulatory Change Impact: {entity}', notes: 'Assess impact of new regulation or guidance.\n\n1. Identify the regulatory change and effective date\n2. Map affected policies and procedures\n3. Perform gap analysis against current controls\n4. Define remediation actions and timeline\n5. Update affected documentation\n6. Communicate changes to relevant staff\n7. Provide targeted training if needed\n8. Monitor implementation effectiveness\n\nRef: UAE regulatory change management requirements', tags: ['compliance', 'regulatory'] },
-
-      // ── Tipping Off Prevention ──
-      tipping_off_review: { name: 'Tipping Off Prevention: {entity}', notes: 'Review tipping off controls per UAE FDL No.10/2025 Art.29.\n\n1. Review staff awareness of tipping off prohibition\n2. Verify restricted access to STR/SAR filings\n3. Test information barriers effectiveness\n4. Review communication protocols during investigations\n5. Assess system access controls for sensitive data\n6. Document annual review findings\n7. Update training materials if gaps found\n\nRef: UAE FDL No.10/2025 Art.29, FATF Rec 21', tags: ['compliance', 'tipping_off'] },
-
-      // ── Annual Compliance Calendar ──
-      annual_calendar: { name: 'Annual Compliance Calendar: {entity}', notes: 'Prepare annual compliance activity calendar.\n\n1. Schedule quarterly EWRA/BWRA reviews\n2. Plan annual policy review dates\n3. Set training program schedule (all staff)\n4. Schedule KYC refresh cycles by risk rating\n5. Plan compliance committee meeting dates\n6. Set regulatory filing deadlines\n7. Schedule internal audit activities\n8. Plan sanctions list refresh frequency\n9. Set CO annual report deadline\n10. Coordinate with external audit timeline\n\nRef: UAE FDL No.10/2025, compliance best practices', tags: ['compliance', 'governance'] },
-
-      // ── Incident Management ──
-      incident_response: { name: 'Compliance Incident: {entity}', notes: 'Manage AML/CFT compliance incident.\n\n1. Document incident details (date, type, description)\n2. Assess severity and regulatory impact\n3. Initiate containment measures immediately\n4. Notify MLRO/Compliance Officer within 24 hours\n5. Determine if STR/SAR filing is required\n6. Investigate root cause\n7. Implement corrective actions\n8. Report to senior management/Board\n9. Update risk register and controls\n10. Retain all incident documentation\n\nRef: UAE FDL No.10/2025, incident management best practices', tags: ['compliance', 'incident'] },
-      breach_notification: { name: 'Regulatory Breach Notification: {entity}', notes: 'Handle regulatory breach notification.\n\n1. Identify nature and scope of the breach\n2. Assess regulatory reporting obligations\n3. Notify supervisor/regulator within required timeframe\n4. Document timeline of events\n5. Implement immediate remedial measures\n6. Conduct internal investigation\n7. Prepare formal breach report\n8. Submit to relevant authority (CBUAE/MOE)\n9. Track remediation completion\n10. Update compliance procedures to prevent recurrence\n\nRef: UAE FDL No.10/2025, CBUAE reporting requirements', tags: ['compliance', 'incident'] },
-
-      // ── DMCC / Free Zone Compliance ──
-      dmcc_compliance: { name: 'DMCC Compliance Review: {entity}', notes: 'DMCC Rules & Regulations compliance assessment.\n\n1. Verify DMCC member registration status\n2. Review compliance with DMCC Rule Book\n3. Check Kimberley Process certification (if diamonds)\n4. Verify DMCC Good Delivery standards compliance\n5. Review DMCC Tradeflow transaction records\n6. Assess compliance with DMCC AML/CFT requirements\n7. Verify annual compliance declaration submission\n8. Document findings and remediation plan\n\nRef: DMCC Rules & Regulations, DMCC AML Guidelines', tags: ['compliance', 'dmcc'] },
-      free_zone_audit: { name: 'Free Zone Compliance Audit: {entity}', notes: 'Free zone entity compliance audit.\n\n1. Verify trade license validity and scope\n2. Review free zone authority registration\n3. Check customs documentation compliance\n4. Verify import/export permit requirements\n5. Review warehousing and storage regulations\n6. Assess JAFZA/DMCC/SAIF zone-specific rules\n7. Verify annual reporting submissions\n8. Document audit findings\n\nRef: Relevant free zone authority regulations', tags: ['compliance', 'free_zone'] },
-
-      // ── Precious Metals Specific ──
-      hallmarking_verification: { name: 'Hallmarking Verification: {entity}', notes: 'Verify precious metals hallmarking and assay compliance.\n\n1. Verify assay certificate authenticity\n2. Check hallmark stamps match documentation\n3. Verify fineness/purity declarations\n4. Cross-reference with assay office records\n5. Review chain of custody from refinery\n6. Verify LBMA Good Delivery status of bars\n7. Document serial numbers and weight reconciliation\n8. Flag discrepancies for investigation\n\nRef: UAE Standards & Metrology Authority, LBMA Good Delivery Rules', tags: ['compliance', 'metals'] },
-      refinery_dd: { name: 'Refinery Due Diligence: {entity}', notes: 'Refinery/smelter due diligence per LBMA RGG v9.\n\n1. Verify refinery LBMA Good Delivery accreditation\n2. Review refinery AML/CFT compliance program\n3. Assess CAHRA material exposure and controls\n4. Verify responsible sourcing certifications\n5. Review refinery audit reports (last 2 years)\n6. Check for adverse media and sanctions hits\n7. Assess recycled vs mined material ratios\n8. Document findings and risk rating\n\nRef: LBMA RGG v9, OECD DDG Annex II', tags: ['compliance', 'sourcing'] },
-      gold_import_clearance: { name: 'Gold Import Clearance: {entity}', notes: 'Gold/precious metals import compliance clearance.\n\n1. Verify import license and permit validity\n2. Check origin country risk assessment\n3. Review Kimberley Process certificates (if applicable)\n4. Verify supplier CDD/KYS is current\n5. Screen supplier against sanctions lists\n6. Check customs declaration accuracy\n7. Verify assay certificates match shipment\n8. Reconcile weight and purity declarations\n9. Document chain of custody\n10. Obtain compliance clearance sign-off\n\nRef: UAE Customs regulations, LBMA RGG v9', tags: ['compliance', 'metals'] },
-
-      // ── CTR / Cash Transaction Reporting ──
-      ctr_filing: { name: 'CTR Filing: {entity}', notes: 'Cash Transaction Report filing per UAE FDL No.10/2025.\n\n1. Identify cash transaction at/above AED 55,000 threshold\n2. Verify customer identity and CDD status\n3. Document source of cash funds\n4. Complete CTR form with all required fields\n5. Submit to FIU via goAML portal within deadline\n6. Record filing reference number\n7. Flag if structuring is suspected (file STR separately)\n8. Retain all supporting documentation\n\nRef: UAE FDL No.10/2025, Cabinet Resolution No.134/2025, FATF Rec 22', tags: ['compliance', 'ctr'] },
-
-      // ── Vendor / Third-Party Management ──
-      vendor_risk_assessment: { name: 'Vendor Risk Assessment: {entity}', notes: 'Third-party vendor compliance risk assessment.\n\n1. Assess vendor AML/CFT compliance program\n2. Review vendor screening and monitoring capabilities\n3. Evaluate data protection and security controls\n4. Check regulatory compliance certifications\n5. Assess concentration risk and alternatives\n6. Review SLA and contractual compliance obligations\n7. Verify vendor staff training and background checks\n8. Document risk rating and mitigation measures\n9. Schedule periodic reassessment\n\nRef: FATF Rec 17, UAE outsourcing guidelines', tags: ['compliance', 'vendor'] },
-      outsourcing_review: { name: 'Outsourcing Compliance Review: {entity}', notes: 'Review outsourced compliance function per regulatory requirements.\n\n1. Verify outsourcing arrangement is permissible\n2. Review service provider qualifications\n3. Assess retained oversight and control\n4. Check data handling and confidentiality terms\n5. Verify regulatory notification requirements met\n6. Review performance metrics and reporting\n7. Test contingency arrangements\n8. Document review findings and actions\n\nRef: UAE FDL No.10/2025, FATF outsourcing guidance', tags: ['compliance', 'vendor'] },
-
-      // ── Sanctions Evasion Detection ──
-      sanctions_evasion: { name: 'Sanctions Evasion Review: {entity}', notes: 'Review controls for detecting sanctions evasion techniques.\n\n1. Assess name variation/transliteration screening\n2. Review vessel/shipping route monitoring\n3. Check for transshipment red flags\n4. Evaluate front company detection capabilities\n5. Review trade-based sanctions evasion indicators\n6. Assess cryptocurrency/virtual asset controls\n7. Check for oil/gold price cap circumvention\n8. Document gaps and enhancement plan\n\nRef: OFAC advisories, EU sanctions guidance, FATF typologies', tags: ['compliance', 'sanctions'] },
-
-      // ── Regulatory Reporting ──
-      quarterly_report: { name: 'Quarterly Compliance Report: {entity}', notes: 'Prepare quarterly compliance report for management.\n\n1. Compile KPI metrics (CDD completion, screening, STRs)\n2. Summarize new regulatory developments\n3. Report training completion statistics\n4. Detail sanctions screening results\n5. List open audit findings and remediation status\n6. Present risk trend analysis\n7. Highlight resource needs and budget status\n8. Provide recommendations for next quarter\n\nRef: Internal governance requirements', tags: ['compliance', 'reporting'] },
-      board_reporting: { name: 'Board Compliance Report: {entity}', notes: 'Prepare Board-level compliance report per UAE FDL No.10/2025.\n\n1. Executive summary of compliance program health\n2. Key risk indicators and trends\n3. Regulatory examination outcomes\n4. Major incident summary\n5. STR/SAR filing statistics\n6. Budget utilization and resource requirements\n7. Regulatory change impact assessment\n8. Strategic recommendations\n9. Compliance roadmap update\n\nRef: UAE FDL No.10/2025 Art.19-20, corporate governance', tags: ['compliance', 'governance'] },
-
-      // ── Cross-Border Compliance ──
-      cross_border_review: { name: 'Cross-Border Transaction Review: {entity}', notes: 'Review cross-border precious metals transaction compliance.\n\n1. Verify export/import licenses and permits\n2. Screen all parties against sanctions lists\n3. Check origin and destination country risk ratings\n4. Review customs declarations for accuracy\n5. Verify transportation and insurance documentation\n6. Assess trade-based money laundering indicators\n7. Check correspondent relationship compliance\n8. Document end-use/end-user verification\n9. File CTR if cash component exceeds threshold\n\nRef: UAE FDL No.10/2025, FATF Rec 16 & 22, UAE Customs Law', tags: ['compliance', 'cross_border'] },
-
-      // ── Compliance Technology ──
-      system_validation: { name: 'Compliance System Validation: {entity}', notes: 'Validate compliance technology systems effectiveness.\n\n1. Test sanctions screening system accuracy\n2. Verify transaction monitoring alert thresholds\n3. Review false positive/negative rates\n4. Validate data quality and completeness\n5. Test system integration points\n6. Review audit trail and logging\n7. Assess system access controls\n8. Document validation results and gaps\n9. Plan remediation for identified issues\n\nRef: FATF digital transformation guidance, UAE technology standards', tags: ['compliance', 'technology'] },
-    },
-
-    createFromTemplate(templateKey, variables, projectId) {
-      const tmpl = this.TASK_TEMPLATES[templateKey];
-      if (!tmpl) return Promise.reject(new Error('Unknown template'));
-      let name = tmpl.name;
-      let notes = tmpl.notes;
-      Object.entries(variables || {}).forEach(([k, v]) => {
-        name = name.replaceAll(`{${k}}`, v);
-        notes = notes.replaceAll(`{${k}}`, v);
-      });
-      const body = JSON.stringify({ data: { name, notes, projects: [projectId] } });
-      if (typeof asanaFetch === 'function') {
-        return asanaFetch('/tasks', { method: 'POST', body });
-      }
-      return proxyFetch('/asana/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      });
-    },
-
-    async createSubtask(parentTaskId, subtaskData) {
-      const body = JSON.stringify({ data: subtaskData });
-      if (typeof asanaFetch === 'function') {
-        return asanaFetch(`/tasks/${parentTaskId}/subtasks`, { method: 'POST', body });
-      }
-      return proxyFetch(`/asana/tasks/${parentTaskId}/subtasks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      });
-    },
-
-    async getTaskProgress(projectId) {
-      let tasks = [];
-      if (typeof asanaFetch === 'function') {
-        const r = await asanaFetch(`/projects/${projectId}/tasks?opt_fields=completed,name,due_on`);
-        const json = await r.json();
-        tasks = json.data || [];
-      } else {
-        const res = await proxyFetch(`/asana/projects/${projectId}/tasks?opt_fields=completed,name,due_on`);
-        tasks = res.data || [];
-      }
-      const total = tasks.length;
-      const completed = tasks.filter(t => t.completed).length;
-      return { total, completed, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
-    },
-
-    async healthCheck() {
-      const projectId = localStorage.getItem('asanaProjectId') || '1213759768596515';
-      const hasToken = !!window.ASANA_TOKEN;
-      const hasProxy = !!getProxy();
-      // If token or proxy available, try live check
-      if (hasToken || hasProxy) {
-        try {
-          if (typeof asanaFetch === 'function') {
-            const r = await asanaFetch('/users/me');
-            if (r.ok || r.data) { updateStatus('asana', true); return true; }
-          } else {
-            await proxyFetch('/asana/users/me');
-            updateStatus('asana', true);
-            return true;
-          }
-        } catch (e) {
-          if (hasToken) {
-            try {
-              const r = await fetch('https://app.asana.com/api/1.0/users/me', {
-                headers: { 'Authorization': 'Bearer ' + window.ASANA_TOKEN }
-              });
-              if (r.ok) { updateStatus('asana', true); return true; }
-            } catch (_) {}
-          }
-        }
-      }
-      // If project ID is configured, treat as configured (tasks will queue for sync)
-      if (projectId) {
-        updateStatus('asana', true);
-        return true;
-      }
-      updateStatus('asana', false, null, 0);
-      return false;
-    },
+  // ── Chart color palette matching app theme ──
+  const C = {
+    gold: '#C9A84C', goldLight: '#E8C97A', goldDim: 'rgba(201,168,76,0.15)',
+    red: '#D94F4F', redDim: 'rgba(217,79,79,0.4)',
+    green: '#3DA876', greenDim: 'rgba(61,168,118,0.4)',
+    amber: '#E8A030', amberDim: 'rgba(232,160,48,0.4)',
+    blue: '#4A8FC1', blueDim: 'rgba(74,143,193,0.4)',
+    muted: '#7A7870', surface: '#161719', surface2: '#1E2023',
+    text: '#F0EDE8', border: 'rgba(255,255,255,0.07)'
   };
 
-  // ══════════════════════════════════════════════════════════════════
-  // NOTION ENHANCED
-  // ══════════════════════════════════════════════════════════════════
-  const notion = {
-    async syncFindings(databaseId, findings) {
-      const results = [];
-      for (const finding of findings) {
-        try {
-          const res = await proxyFetch('/notion/pages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              parent: { database_id: databaseId },
-              properties: {
-                Title: { title: [{ text: { content: finding.title || 'Finding' } }] },
-                Severity: { select: { name: finding.severity || 'Medium' } },
-                Status: { select: { name: 'Open' } },
-                Reference: { rich_text: [{ text: { content: finding.regulatory_ref || '' } }] },
-                Date: { date: { start: new Date().toISOString().split('T')[0] } },
-              },
-              children: [
-                { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ text: { content: finding.body || '' } }] } },
-                { object: 'block', type: 'heading_3', heading_3: { rich_text: [{ text: { content: 'Recommendation' } }] } },
-                { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ text: { content: finding.recommendation || '' } }] } },
-              ],
-            }),
-          });
-          results.push({ success: true, pageId: res.id });
-          logEvent('notion', 'sync_finding', true, finding.title);
-        } catch (e) {
-          results.push({ success: false, error: e.message });
-          logEvent('notion', 'sync_finding', false, e.message);
+  // ── Chart.js global defaults ──
+  function applyChartDefaults() {
+    if (!window.Chart) return;
+    Chart.defaults.color = C.muted;
+    Chart.defaults.borderColor = C.border;
+    Chart.defaults.font.family = "'DM Sans', sans-serif";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.pointStyleWidth = 10;
+    Chart.defaults.plugins.tooltip.backgroundColor = C.surface2;
+    Chart.defaults.plugins.tooltip.borderColor = C.border;
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.titleFont = { family: "'DM Mono', monospace", size: 11 };
+    Chart.defaults.plugins.tooltip.bodyFont = { family: "'DM Sans', sans-serif", size: 12 };
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // CHART BUILDERS
+  // ══════════════════════════════════════════════════════════════
+
+  function buildComplianceTrendChart(canvas, snapshots) {
+    const labels = snapshots.map(s => s.date);
+    charts.complianceTrend = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Open Gaps', data: snapshots.map(s => s.openGaps), borderColor: C.red, backgroundColor: C.redDim, tension: 0.3, fill: false, pointRadius: 2 },
+          { label: 'Closed Gaps', data: snapshots.map(s => s.closedGaps), borderColor: C.green, backgroundColor: C.greenDim, tension: 0.3, fill: false, pointRadius: 2 },
+          { label: 'Open Incidents', data: snapshots.map(s => s.openIncidents), borderColor: C.amber, backgroundColor: C.amberDim, tension: 0.3, fill: false, pointRadius: 2 },
+          { label: 'Avg Risk Score', data: snapshots.map(s => s.avgRisk), borderColor: C.blue, backgroundColor: C.blueDim, tension: 0.3, fill: false, pointRadius: 2, yAxisID: 'y1' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: { beginAtZero: true, grid: { color: C.border }, title: { display: true, text: 'Count' } },
+          y1: { position: 'right', beginAtZero: true, max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: 'Risk Score' } },
+          x: { grid: { color: C.border }, ticks: { maxRotation: 45 } }
+        },
+        plugins: { legend: { position: 'top' } }
+      }
+    });
+  }
+
+  function buildRiskDistributionChart(canvas, snapshot) {
+    charts.riskDist = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: ['Critical', 'High', 'Medium', 'Low'],
+        datasets: [{
+          data: [snapshot.critCustomers || 0, snapshot.highCustomers || 0, snapshot.medCustomers || 0, snapshot.lowCustomers || 0],
+          backgroundColor: [C.red, C.amber, C.blue, C.green],
+          borderColor: C.surface, borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} customer${ctx.raw !== 1 ? 's' : ''}` } }
         }
       }
-      return results;
-    },
+    });
+  }
 
-    async queryDatabase(databaseId, filter) {
-      return proxyFetch(`/notion/databases/${databaseId}/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filter: filter || {} }),
+  function buildGapSeverityChart(canvas, snapshot) {
+    charts.gapSeverity = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: ['Critical', 'High', 'Medium', 'Low'],
+        datasets: [{
+          label: 'Open Gaps by Severity',
+          data: [snapshot.critGaps || 0, snapshot.highGaps || 0, snapshot.medGaps || 0, snapshot.lowGaps || 0],
+          backgroundColor: [C.redDim, C.amberDim, C.blueDim, C.greenDim],
+          borderColor: [C.red, C.amber, C.blue, C.green],
+          borderWidth: 1, borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, grid: { color: C.border }, ticks: { stepSize: 1 } },
+          x: { grid: { display: false } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  function buildScreeningActivityChart(canvas, snapshots) {
+    const labels = snapshots.map(s => s.date);
+    charts.screeningActivity = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Screenings (30d rolling)',
+          data: snapshots.map(s => s.screenings30d),
+          backgroundColor: C.goldDim, borderColor: C.gold, borderWidth: 1, borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, grid: { color: C.border }, ticks: { stepSize: 1 } },
+          x: { grid: { display: false }, ticks: { maxRotation: 45 } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  function buildTrainingProgressChart(canvas, snapshot) {
+    const completed = snapshot.completedTraining || 0;
+    const pending = (snapshot.totalTraining || 0) - completed;
+    charts.trainingProgress = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: ['Completed', 'Pending'],
+        datasets: [{
+          data: [completed, Math.max(0, pending)],
+          backgroundColor: [C.green, C.surface2],
+          borderColor: C.surface, borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} record${ctx.raw !== 1 ? 's' : ''}` } }
+        }
+      }
+    });
+  }
+
+  function buildIncidentTrendChart(canvas, snapshots) {
+    charts.incidentTrend = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: snapshots.map(s => s.date),
+        datasets: [
+          { label: 'Open Incidents', data: snapshots.map(s => s.openIncidents), borderColor: C.red, backgroundColor: 'rgba(217,79,79,0.1)', tension: 0.3, fill: true, pointRadius: 2 },
+          { label: 'Total Incidents', data: snapshots.map(s => s.totalIncidents), borderColor: C.muted, backgroundColor: 'transparent', tension: 0.3, fill: false, pointRadius: 2, borderDash: [5, 3] }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, grid: { color: C.border }, ticks: { stepSize: 1 } },
+          x: { grid: { color: C.border }, ticks: { maxRotation: 45 } }
+        },
+        plugins: { legend: { position: 'top' } }
+      }
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // ASANA ANALYTICS
+  // ══════════════════════════════════════════════════════════════
+
+  function getAsanaTaskStats() {
+    const tasks = parse('fgl_asana_tasks', []);
+    if (!tasks.length) return null;
+    const completed = tasks.filter(t => t.completed).length;
+    const overdue = tasks.filter(t => !t.completed && t.due_on && new Date(t.due_on) < new Date()).length;
+    const inProgress = tasks.filter(t => !t.completed && !t.due_on || (t.due_on && new Date(t.due_on) >= new Date())).length;
+
+    // Group by section/tag
+    const bySection = {};
+    tasks.forEach(t => {
+      const section = (t.memberships && t.memberships[0]?.section?.name) || t.section || 'Unassigned';
+      if (!bySection[section]) bySection[section] = { total: 0, completed: 0, overdue: 0 };
+      bySection[section].total++;
+      if (t.completed) bySection[section].completed++;
+      else if (t.due_on && new Date(t.due_on) < new Date()) bySection[section].overdue++;
+    });
+
+    return { total: tasks.length, completed, overdue, inProgress, bySection };
+  }
+
+  function buildAsanaChart(canvas, stats) {
+    if (!stats) return;
+    charts.asanaTasks = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: ['Completed', 'In Progress', 'Overdue'],
+        datasets: [{
+          data: [stats.completed, stats.inProgress, stats.overdue],
+          backgroundColor: [C.green, C.blue, C.red],
+          borderColor: C.surface, borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+
+  function buildAsanaSectionChart(canvas, stats) {
+    if (!stats) return;
+    const sections = Object.keys(stats.bySection);
+    const data = sections.map(s => stats.bySection[s]);
+    charts.asanaSections = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: sections.map(s => s.length > 20 ? s.slice(0, 18) + '…' : s),
+        datasets: [
+          { label: 'Completed', data: data.map(d => d.completed), backgroundColor: C.greenDim, borderColor: C.green, borderWidth: 1, borderRadius: 4 },
+          { label: 'Overdue', data: data.map(d => d.overdue), backgroundColor: C.redDim, borderColor: C.red, borderWidth: 1, borderRadius: 4 },
+          { label: 'Remaining', data: data.map(d => d.total - d.completed - d.overdue), backgroundColor: C.blueDim, borderColor: C.blue, borderWidth: 1, borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        indexAxis: 'y',
+        scales: {
+          x: { stacked: true, beginAtZero: true, grid: { color: C.border }, ticks: { stepSize: 1 } },
+          y: { stacked: true, grid: { display: false } }
+        },
+        plugins: { legend: { position: 'top' } }
+      }
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // KPI CARDS
+  // ══════════════════════════════════════════════════════════════
+
+  function kpiCard(label, value, color, subtitle, icon) {
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;text-align:center">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:6px">${icon ? icon + ' ' : ''}${label}</div>
+      <div style="font-size:28px;font-weight:700;color:${color};font-family:'Inter',sans-serif">${value}</div>
+      ${subtitle ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${subtitle}</div>` : ''}
+    </div>`;
+  }
+
+  function trendIndicator(current, previous) {
+    if (previous === undefined || previous === null) return '';
+    const diff = current - previous;
+    if (diff === 0) return '<span style="color:var(--muted)">→ no change</span>';
+    const arrow = diff > 0 ? '↑' : '↓';
+    const color = diff > 0 ? 'var(--red)' : 'var(--green)';
+    return `<span style="color:${color}">${arrow} ${Math.abs(diff)}</span>`;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // EXPORT FUNCTIONS
+  // ══════════════════════════════════════════════════════════════
+
+  function exportAnalyticsCSV() {
+    const snaps = parse(ANALYTICS_SNAPSHOT_KEY, []);
+    if (!snaps.length) { if (typeof toast === 'function') toast('No analytics data to export', 'error'); return; }
+    const headers = Object.keys(snaps[0]);
+    const csv = [headers.join(',')].concat(snaps.map(s => headers.map(h => JSON.stringify(s[h] ?? '')).join(','))).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `Compliance_Analytics_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    if (typeof toast === 'function') toast('Analytics CSV exported', 'success');
+    if (typeof logAudit === 'function') logAudit('analytics_export', 'CSV analytics data exported');
+  }
+
+  function exportChartPNG(chartKey, filename) {
+    if (!charts[chartKey]) return;
+    const a = document.createElement('a');
+    a.href = charts[chartKey].toBase64Image();
+    a.download = filename || `chart_${chartKey}_${new Date().toISOString().slice(0, 10)}.png`;
+    a.click();
+    if (typeof toast === 'function') toast('Chart exported as PNG', 'success');
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SYNC TO ASANA: push analytics summary as task/comment
+  // ══════════════════════════════════════════════════════════════
+
+  async function syncAnalyticsSummaryToAsana() {
+    const proxy = window.PROXY_URL;
+    const asanaToken = window.ASANA_TOKEN;
+    if (!proxy && !asanaToken) { if (typeof toast === 'function') toast('Asana not connected. Add your Asana Token or Proxy URL in Settings first.', 'error', 4000); return; }
+
+    const snap = getCurrentSnapshot();
+    const summary = [
+      `📊 Compliance Analytics Summary — ${new Date().toLocaleDateString('en-AE', { timeZone: 'Asia/Dubai' })}`,
+      '',
+      `Open Gaps: ${snap.openGaps} (Crit: ${snap.critGaps}, High: ${snap.highGaps})`,
+      `Closed Gaps: ${snap.closedGaps}`,
+      `Open Incidents: ${snap.openIncidents} / ${snap.totalIncidents} total`,
+      `Screenings (30d): ${snap.screenings30d}`,
+      `Avg Risk Score: ${snap.avgRisk}/100`,
+      `Customers: ${snap.totalCustomers} (Crit: ${snap.critCustomers}, High: ${snap.highCustomers})`,
+      `Training: ${snap.completedTraining}/${snap.totalTraining} completed`,
+      `Threshold Alerts: ${snap.thresholdAlerts}`,
+      '',
+      `Generated by Compliance Analyzer v2.5`
+    ].join('\n');
+
+    try {
+      const asanaProjectId = localStorage.getItem('asanaProjectId') || '1213759768596515';
+      const taskBody = JSON.stringify({
+        data: {
+          name: `📊 Analytics Report — ${new Date().toISOString().slice(0, 10)}`,
+          notes: summary,
+          projects: [asanaProjectId],
+          due_on: new Date().toISOString().slice(0, 10)
+        }
       });
-    },
+      const res = typeof asanaFetch === 'function'
+        ? await asanaFetch('/tasks', { method: 'POST', body: taskBody })
+        : await fetch(proxy + '/asana/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: taskBody });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      if (typeof toast === 'function') toast('Analytics summary synced to Asana', 'success');
+      if (typeof logAudit === 'function') logAudit('analytics_asana_sync', 'Analytics summary pushed to Asana');
+    } catch (e) {
+      if (typeof toast === 'function') toast(`Asana sync failed: ${e.message}`, 'error');
+    }
+  }
 
-    async healthCheck() {
-      if (!window.NOTION_TOKEN && !getProxy()) {
-        updateStatus('notion', false, null, 0);
-        return false;
-      }
-      try {
-        await proxyFetch('/notion/users/me');
-        updateStatus('notion', true);
-        return true;
-      } catch (e) {
-        // Notion doesn't support direct browser CORS — mark connected if token is set and proxy exists
-        if (window.NOTION_TOKEN && getProxy()) {
-          updateStatus('notion', true);
-          return true;
-        }
-        updateStatus('notion', false, null, 1);
-        return false;
-      }
-    },
-  };
+  // ── Get current snapshot without saving ──
+  function getCurrentSnapshot() {
+    const gaps = parse('fgl_gaps_v2', []);
+    const incidents = parse('fgl_incidents', []);
+    const screenings = parse('fgl_screenings', []);
+    const customers = parse('fgl_onboarding', []);
+    const training = parse('fgl_employee_training', []);
+    const thresholdAlerts = parse('fgl_threshold_alerts', []);
 
-  // Slack removed — not supported in browser-only deployment
-  const slack = {
-    async sendRichMessage() { return false; },
-    async sendComplianceDigest() { return false; },
-    async sendFindingAlert() { return false; },
-    healthCheck() { updateStatus('slack', false); return false; },
-  };
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
 
-  // ══════════════════════════════════════════════════════════════════
-  // GOOGLE DRIVE ENHANCED
-  // ══════════════════════════════════════════════════════════════════
-  const gdrive = {
-    FOLDER_STRUCTURE: {
-      root: 'Compliance Analyser',
-      children: ['Reports', 'Evidence', 'Audits', 'Training Records', 'Policies', 'STR Filings', 'Incident Reports'],
-    },
+    return {
+      date: new Date().toISOString().slice(0, 10),
+      openGaps: gaps.filter(g => g.status !== 'closed' && g.status !== 'resolved').length,
+      closedGaps: gaps.filter(g => g.status === 'closed' || g.status === 'resolved').length,
+      critGaps: gaps.filter(g => g.severity === 'critical' && g.status !== 'closed' && g.status !== 'resolved').length,
+      highGaps: gaps.filter(g => g.severity === 'high' && g.status !== 'closed' && g.status !== 'resolved').length,
+      medGaps: gaps.filter(g => g.severity === 'medium' && g.status !== 'closed' && g.status !== 'resolved').length,
+      lowGaps: gaps.filter(g => g.severity === 'low' && g.status !== 'closed' && g.status !== 'resolved').length,
+      totalGaps: gaps.length,
+      openIncidents: incidents.filter(i => i.status === 'open').length,
+      totalIncidents: incidents.length,
+      screenings30d: screenings.filter(s => new Date(s.date) > thirtyDaysAgo).length,
+      totalScreenings: screenings.length,
+      avgRisk: customers.length ? Math.round(customers.reduce((s, c) => s + (c.risk?.score || 0), 0) / customers.length) : 0,
+      totalCustomers: customers.length,
+      completedTraining: (training || []).filter(t => t.status === 'completed' || t.completed).length,
+      totalTraining: (training || []).length,
+      thresholdAlerts: (thresholdAlerts || []).length,
+      critCustomers: customers.filter(c => c.risk?.level === 'CRITICAL').length,
+      highCustomers: customers.filter(c => c.risk?.level === 'HIGH').length,
+      medCustomers: customers.filter(c => c.risk?.level === 'MEDIUM').length,
+      lowCustomers: customers.filter(c => c.risk?.level === 'LOW' || !c.risk?.level).length
+    };
+  }
 
-    async createFolderStructure(accessToken, parentFolderId) {
-      const results = {};
-      for (const folder of this.FOLDER_STRUCTURE.children) {
-        try {
-          const res = await fetch('https://www.googleapis.com/drive/v3/files', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: folder,
-              mimeType: 'application/vnd.google-apps.folder',
-              parents: [parentFolderId],
-            }),
-          });
-          const data = await res.json();
-          results[folder] = data.id;
-          logEvent('gdrive', 'create_folder', true, folder);
-        } catch (e) {
-          logEvent('gdrive', 'create_folder', false, e.message);
-        }
-      }
-      return results;
-    },
+  // ══════════════════════════════════════════════════════════════
+  // RENDER FULL ANALYTICS TAB
+  // ══════════════════════════════════════════════════════════════
 
-    async uploadFile(accessToken, folderId, fileName, content, mimeType) {
-      const metadata = { name: fileName, parents: [folderId] };
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', new Blob([content], { type: mimeType || 'application/octet-stream' }));
-
-      try {
-        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          body: form,
-        });
-        const data = await res.json();
-        logEvent('gdrive', 'upload_file', true, fileName);
-        return data;
-      } catch (e) {
-        logEvent('gdrive', 'upload_file', false, e.message);
-        throw e;
-      }
-    },
-
-    async searchFiles(accessToken, folderId, query) {
-      const q = `'${folderId}' in parents and name contains '${query}' and trashed = false`;
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,modifiedTime,size)`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-      });
-      return res.json();
-    },
-
-    async batchUpload(accessToken, folderId, files) {
-      const results = [];
-      for (const file of files) {
-        const res = await this.uploadFile(accessToken, folderId, file.name, file.content, file.mimeType);
-        results.push(res);
-      }
-      return results;
-    },
-
-    healthCheck() {
-      // GDrive is connected if OAuth token exists OR if client ID is configured
-      const connected = !!(window.gdriveAccessToken || window.GDRIVE_CLIENT_ID);
-      updateStatus('gdrive', connected);
-      return connected;
-    },
-  };
-
-  // ══════════════════════════════════════════════════════════════════
-  // CLICKUP ENHANCED
-  // ══════════════════════════════════════════════════════════════════
-  const clickup = {
-    COMPLIANCE_STATUSES: ['to do', 'in progress', 'under review', 'approved', 'completed', 'rejected'],
-
-    async createTaskWithPriority(listId, taskData) {
-      const priorities = { Critical: 1, High: 2, Medium: 3, Low: 4 };
-      return proxyFetch(`/clickup/list/${listId}/task`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...taskData,
-          priority: priorities[taskData.severity] || 3,
-        }),
-      });
-    },
-
-    async batchCreateTasks(listId, tasks) {
-      const results = [];
-      for (const task of tasks) {
-        try {
-          const res = await this.createTaskWithPriority(listId, task);
-          results.push({ success: true, task: res });
-          logEvent('clickup', 'create_task', true, task.name);
-        } catch (e) {
-          results.push({ success: false, error: e.message });
-          logEvent('clickup', 'create_task', false, e.message);
-        }
-      }
-      return results;
-    },
-
-    async addTimeEntry(taskId, duration, description) {
-      return proxyFetch(`/clickup/task/${taskId}/time`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration, description, start: Date.now() }),
-      });
-    },
-
-    async healthCheck() {
-      if (!window.CLICKUP_TOKEN && !getProxy()) {
-        updateStatus('clickup', false, null, 0);
-        return false;
-      }
-      try {
-        await proxyFetch('/clickup/user');
-        updateStatus('clickup', true);
-        return true;
-      } catch (e) {
-        // If token is configured, consider it connected even if API check fails (could be rate limit)
-        if (window.CLICKUP_TOKEN || getProxy()) {
-          updateStatus('clickup', true);
-          return true;
-        }
-        updateStatus('clickup', false, null, 1);
-        return false;
-      }
-    },
-  };
-
-  // ══════════════════════════════════════════════════════════════════
-  // HEALTH MONITOR
-  // ══════════════════════════════════════════════════════════════════
-  async function healthCheckAll() {
-    const results = {};
-    const checks = [
-      { name: 'asana', fn: () => asana.healthCheck() },
-      { name: 'notion', fn: () => notion.healthCheck() },
-      { name: 'gdrive', fn: () => gdrive.healthCheck() },
-      { name: 'clickup', fn: () => clickup.healthCheck() },
-    ];
-
-    for (const check of checks) {
-      try { results[check.name] = await check.fn(); }
-      catch (_) { results[check.name] = false; }
+  function renderAnalyticsTab() {
+    if (!window.Chart) {
+      return `<div class="card"><p style="color:var(--red);font-size:13px">Chart.js library not loaded. Please check your internet connection and refresh.</p></div>`;
     }
 
-    // AI providers — check if key or proxy is configured
-    if (window.ANTHROPIC_KEY || getProxy()) {
-      try {
-        await proxyFetch('/anthropic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"model":"claude-sonnet-4-5-20241022","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}' });
-        results.anthropic = true; updateStatus('anthropic', true);
-      } catch (_) {
-        // If key or proxy exists, mark as connected (API might rate-limit pings)
-        const configured = !!(window.ANTHROPIC_KEY || getProxy());
-        results.anthropic = configured; updateStatus('anthropic', configured);
-      }
-    } else {
-      results.anthropic = false; updateStatus('anthropic', false);
-    }
+    applyChartDefaults();
+    captureSnapshot();
 
-    return results;
-  }
+    const snaps = parse(ANALYTICS_SNAPSHOT_KEY, []);
+    const current = snaps.length ? snaps[snaps.length - 1] : getCurrentSnapshot();
+    const prev = snaps.length > 1 ? snaps[snaps.length - 2] : null;
+    const asanaStats = getAsanaTaskStats();
 
-  function renderStatusDashboard() {
-    const status = getStatus();
-    const log = getLog();
-    const services = [
-      { key: 'anthropic', name: 'Claude (Anthropic)', icon: '🤖', required: true },
-      { key: 'asana', name: 'Asana', icon: '📋', required: true },
-      { key: 'notion', name: 'Notion', icon: '📝', required: false },
-      { key: 'gdrive', name: 'Google Drive', icon: '📁', required: false },
-      { key: 'clickup', name: 'ClickUp', icon: '✅', required: false },
-    ];
+    const completionRate = current.totalGaps ? Math.round((current.closedGaps / current.totalGaps) * 100) : 0;
+    const trainingRate = current.totalTraining ? Math.round((current.completedTraining / current.totalTraining) * 100) : 0;
 
     let html = `
-<div class="card">
-  <div class="sec-title">INTEGRATION HEALTH MONITOR</div>
-  <button class="btn-sm btn-green" onclick="IntegrationsEnhanced.runHealthCheck()" style="margin-bottom:12px">Run Health Check</button>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">`;
-
-    services.forEach(svc => {
-      const s = status[svc.key] || {};
-      const connected = s.connected === true;
-      const color = connected ? 'var(--green)' : 'var(--red)';
-      const statusText = connected ? 'Connected' : 'Disconnected';
-      const lastSync = s.lastSync ? new Date(s.lastSync).toLocaleString('en-GB') : 'Never';
-
-      html += `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:13px;font-weight:500">${svc.icon} ${svc.name}</span>
-        <span style="width:8px;height:8px;border-radius:50%;background:${color}"></span>
+      <div class="card">
+        <div class="top-bar" style="margin-bottom:10px">
+          <span class="sec-title" style="margin:0;border:none;padding:0">Analytics Dashboard</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-blue" onclick="AnalyticsDashboard.refresh()">Refresh</button>
+            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportCSV()">Export CSV</button>
+            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.syncToAsana()" title="Push analytics summary to Asana">Sync to Asana</button>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Visual compliance analytics with trend tracking. Snapshots are captured daily for historical analysis.</p>
       </div>
-      <div style="font-size:10px;color:${color};margin-top:4px;font-family:'DM Mono',monospace">${statusText}</div>
-      <div style="font-size:9px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace">Last: ${lastSync}</div>
-      ${svc.required ? '<div style="font-size:9px;color:var(--amber);margin-top:2px">Required</div>' : ''}
-    </div>`;
-    });
 
-    html += `</div></div>`;
+      <!-- KPI Summary Cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px">
+        ${kpiCard('Open Gaps', current.openGaps, 'var(--red)', trendIndicator(current.openGaps, prev?.openGaps), '🔴')}
+        ${kpiCard('Closed Gaps', current.closedGaps, 'var(--green)', `${completionRate}% closure rate`, '✅')}
+        ${kpiCard('Open Incidents', current.openIncidents, 'var(--amber)', trendIndicator(current.openIncidents, prev?.openIncidents), '⚠️')}
+        ${kpiCard('Screenings (30d)', current.screenings30d, 'var(--gold)', trendIndicator(current.screenings30d, prev?.screenings30d), '🔍')}
+        ${kpiCard('Avg Risk', current.avgRisk + '/100', current.avgRisk > 60 ? 'var(--red)' : current.avgRisk > 40 ? 'var(--amber)' : 'var(--green)', trendIndicator(current.avgRisk, prev?.avgRisk), '📊')}
+        ${kpiCard('Training', trainingRate + '%', trainingRate >= 80 ? 'var(--green)' : trainingRate >= 50 ? 'var(--amber)' : 'var(--red)', `${current.completedTraining}/${current.totalTraining}`, '🎓')}
+      </div>
 
-    // Recent log
-    html += `
-<div class="card">
-  <div class="sec-title">INTEGRATION LOG <span style="color:var(--muted);font-size:10px">(${log.length} events)</span></div>`;
+      <!-- Compliance Trend Chart -->
+      <div class="card">
+        <div class="top-bar" style="margin-bottom:10px">
+          <span class="sec-title" style="margin:0;border:none;padding:0">Compliance Trend</span>
+          <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('complianceTrend','Compliance_Trend.png')">Export PNG</button>
+        </div>
+        <div style="height:300px;position:relative"><canvas id="chartComplianceTrend"></canvas></div>
+        ${snaps.length < 2 ? '<p style="font-size:11px;color:var(--muted);margin-top:8px">Trend data will accumulate as daily snapshots are captured. Visit this tab daily to build history.</p>' : ''}
+      </div>
 
-    if (log.length) {
-      html += log.slice(0, 30).map(l => `
-    <div style="display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border);font-size:11px">
-      <span style="color:var(--text)">${l.integration} → ${l.action}</span>
-      <span style="color:${l.success ? 'var(--green)' : 'var(--red)'};font-family:'DM Mono',monospace">${l.success ? 'OK' : 'FAIL'} ${new Date(l.timestamp).toLocaleTimeString()}</span>
-    </div>`).join('');
-    } else {
-      html += '<p style="color:var(--muted);font-size:13px">No events logged.</p>';
-    }
-    html += `</div>`;
+      <!-- Risk Distribution + Gap Severity (side by side) -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="card">
+          <div class="top-bar" style="margin-bottom:10px">
+            <span class="sec-title" style="margin:0;border:none;padding:0">Customer Risk Distribution</span>
+            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('riskDist','Risk_Distribution.png')">PNG</button>
+          </div>
+          <div style="height:250px;position:relative"><canvas id="chartRiskDist"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="top-bar" style="margin-bottom:10px">
+            <span class="sec-title" style="margin:0;border:none;padding:0">Open Gaps by Severity</span>
+            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('gapSeverity','Gap_Severity.png')">PNG</button>
+          </div>
+          <div style="height:250px;position:relative"><canvas id="chartGapSeverity"></canvas></div>
+        </div>
+      </div>
 
-    // Asana task templates
-    html += `
-<div class="card">
-  <div class="sec-title">ASANA TASK TEMPLATES</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">`;
-    Object.entries(asana.TASK_TEMPLATES).forEach(([key, tmpl]) => {
-      html += `
-    <div style="background:var(--surface2);border-radius:8px;padding:10px;border:1px solid var(--border)">
-      <div style="font-size:12px;font-weight:500;color:var(--gold)">${tmpl.name.replace(/:\s*\{.*?\}/, '')}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">${tmpl.tags.join(', ')}</div>
-      <button class="btn btn-sm btn-green" style="margin-top:6px;font-size:10px" onclick="IntegrationsEnhanced.showTemplateDialog('${key}')">Create Task</button>
-    </div>`;
-    });
-    html += `</div></div>`;
+      <!-- Screening Activity + Incident Trend -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+        <div class="card">
+          <div class="top-bar" style="margin-bottom:10px">
+            <span class="sec-title" style="margin:0;border:none;padding:0">Screening Activity</span>
+            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('screeningActivity','Screening_Activity.png')">PNG</button>
+          </div>
+          <div style="height:250px;position:relative"><canvas id="chartScreeningActivity"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="top-bar" style="margin-bottom:10px">
+            <span class="sec-title" style="margin:0;border:none;padding:0">Incident Trend</span>
+            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('incidentTrend','Incident_Trend.png')">PNG</button>
+          </div>
+          <div style="height:250px;position:relative"><canvas id="chartIncidentTrend"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Training Progress + Asana Task Overview -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+        <div class="card">
+          <div class="top-bar" style="margin-bottom:10px">
+            <span class="sec-title" style="margin:0;border:none;padding:0">Training Completion</span>
+            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('trainingProgress','Training_Progress.png')">PNG</button>
+          </div>
+          <div style="height:250px;position:relative"><canvas id="chartTrainingProgress"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="top-bar" style="margin-bottom:10px">
+            <span class="sec-title" style="margin:0;border:none;padding:0">Asana Task Overview</span>
+            ${asanaStats ? `<button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('asanaTasks','Asana_Tasks.png')">PNG</button>` : ''}
+          </div>
+          ${asanaStats ? `<div style="height:250px;position:relative"><canvas id="chartAsanaTasks"></canvas></div>` : '<p style="font-size:12px;color:var(--muted);padding:20px 0">No Asana tasks synced yet. Connect Asana in Settings and sync tasks to see analytics here.</p>'}
+        </div>
+      </div>
+
+      ${asanaStats ? `
+      <!-- Asana Section Breakdown -->
+      <div class="card" style="margin-top:12px">
+        <div class="top-bar" style="margin-bottom:10px">
+          <span class="sec-title" style="margin:0;border:none;padding:0">Asana Tasks by Section</span>
+          <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('asanaSections','Asana_Sections.png')">PNG</button>
+        </div>
+        <div style="height:${Math.max(200, Object.keys(asanaStats.bySection).length * 40)}px;position:relative"><canvas id="chartAsanaSections"></canvas></div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px">
+          <div style="padding:8px;background:var(--surface2);border-radius:8px;text-align:center"><span style="color:var(--green);font-weight:600">${asanaStats.completed}</span> <span style="color:var(--muted)">Completed</span></div>
+          <div style="padding:8px;background:var(--surface2);border-radius:8px;text-align:center"><span style="color:var(--blue);font-weight:600">${asanaStats.inProgress}</span> <span style="color:var(--muted)">In Progress</span></div>
+          <div style="padding:8px;background:var(--surface2);border-radius:8px;text-align:center"><span style="color:var(--red);font-weight:600">${asanaStats.overdue}</span> <span style="color:var(--muted)">Overdue</span></div>
+        </div>
+      </div>` : ''}
+
+      <!-- Data Info -->
+      <div class="card" style="margin-top:12px">
+        <span class="sec-title">Analytics Data</span>
+        <p style="font-size:12px;color:var(--muted)">
+          ${snaps.length} daily snapshot${snaps.length !== 1 ? 's' : ''} recorded
+          ${snaps.length ? ` (${snaps[0].date} → ${snaps[snaps.length - 1].date})` : ''}.
+          Snapshots are captured each time you visit the Analytics tab.
+        </p>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-sm btn-red" onclick="if(confirm('Clear all analytics history? This cannot be undone.')){localStorage.removeItem('${ANALYTICS_SNAPSHOT_KEY}');AnalyticsDashboard.refresh();}" >Clear History</button>
+        </div>
+      </div>`;
 
     return html;
   }
 
-  async function runHealthCheck() {
-    if (typeof toast === 'function') toast('Running health checks...', 'info');
-    const results = await healthCheckAll();
-    const connected = Object.values(results).filter(Boolean).length;
-    const total = Object.keys(results).length;
-    if (typeof toast === 'function') toast(`Health check: ${connected}/${total} services connected`, connected === total ? 'success' : 'error');
-    if (typeof switchTab === 'function') switchTab('integrations');
+  // ── Post-render: initialize charts after DOM is ready ──
+  function initCharts() {
+    if (!window.Chart) return;
+
+    destroyCharts();
+
+    const snaps = parse(ANALYTICS_SNAPSHOT_KEY, []);
+    const current = snaps.length ? snaps[snaps.length - 1] : getCurrentSnapshot();
+    const asanaStats = getAsanaTaskStats();
+
+    // Use at least current snapshot for charts that need data points
+    const chartSnaps = snaps.length ? snaps : [current];
+
+    const trendCanvas = document.getElementById('chartComplianceTrend');
+    if (trendCanvas) buildComplianceTrendChart(trendCanvas, chartSnaps);
+
+    const riskCanvas = document.getElementById('chartRiskDist');
+    if (riskCanvas) buildRiskDistributionChart(riskCanvas, current);
+
+    const gapCanvas = document.getElementById('chartGapSeverity');
+    if (gapCanvas) buildGapSeverityChart(gapCanvas, current);
+
+    const screenCanvas = document.getElementById('chartScreeningActivity');
+    if (screenCanvas) buildScreeningActivityChart(screenCanvas, chartSnaps);
+
+    const incidentCanvas = document.getElementById('chartIncidentTrend');
+    if (incidentCanvas) buildIncidentTrendChart(incidentCanvas, chartSnaps);
+
+    const trainingCanvas = document.getElementById('chartTrainingProgress');
+    if (trainingCanvas) buildTrainingProgressChart(trainingCanvas, current);
+
+    if (asanaStats) {
+      const asanaCanvas = document.getElementById('chartAsanaTasks');
+      if (asanaCanvas) buildAsanaChart(asanaCanvas, asanaStats);
+
+      const asanaSectCanvas = document.getElementById('chartAsanaSections');
+      if (asanaSectCanvas) buildAsanaSectionChart(asanaSectCanvas, asanaStats);
+    }
   }
 
-  function showTemplateDialog(templateKey) {
-    const tmpl = asana.TASK_TEMPLATES[templateKey];
-    if (!tmpl) return;
-    const activeComp = typeof getActiveCompany === 'function' ? getActiveCompany() : {};
-    const defaultName = activeComp.name || '';
-    const entity = prompt('Enter company or entity name for "' + tmpl.name + '":', defaultName);
-    if (!entity) return;
-    const projectId = window.ASANA_PROJECT || prompt('Enter Asana Project ID:');
-    if (!projectId) return;
-    asana.createFromTemplate(templateKey, { entity, framework: entity, topic: entity }, projectId)
-      .then(() => { if (typeof toast === 'function') toast('Task created from template', 'success'); })
-      .catch(e => { if (typeof toast === 'function') toast('Failed: ' + e.message, 'error'); });
+  function refresh() {
+    const el = document.getElementById('tab-analytics');
+    if (el) {
+      el.innerHTML = renderAnalyticsTab();
+      setTimeout(initCharts, 50);
+    }
   }
 
-  window.IntegrationsEnhanced = {
-    asana, notion, slack, gdrive, clickup,
-    healthCheckAll, runHealthCheck,
-    renderStatusDashboard,
-    showTemplateDialog,
-    getStatus, getLog,
+  // ══════════════════════════════════════════════════════════════
+  // PUBLIC API
+  // ══════════════════════════════════════════════════════════════
+
+  window.AnalyticsDashboard = {
+    renderAnalyticsTab,
+    initCharts,
+    refresh,
+    captureSnapshot,
+    getCurrentSnapshot,
+    exportCSV: exportAnalyticsCSV,
+    exportChart: exportChartPNG,
+    syncToAsana: syncAnalyticsSummaryToAsana,
+    getAsanaTaskStats
   };
+
 })();

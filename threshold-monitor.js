@@ -1,438 +1,246 @@
 /**
- * goAML XML Export Module v1.0
- * Generates UAE FIU goAML-compliant XML for STR/SAR/CTR filing.
- * Supports: STR (Suspicious Transaction Report), SAR (Suspicious Activity Report),
- *           CTR (Cash Transaction Report), FFR (Funds Freeze Report)
+ * Threshold Monitor & CTR Workflow Module v1.0
+ * UAE FDL No.10/2025 Art.24 — AED 55,000 DPMS cash transaction threshold
+ * Auto-detects threshold breaches, structuring patterns, and generates CTR alerts.
  */
-const GoAMLExport = (function() {
+const ThresholdMonitor = (function() {
   'use strict';
 
-  const REPORT_TYPES = {
-    STR: { code: 'STR', name: 'Suspicious Transaction Report', goamlType: 'STR' },
-    SAR: { code: 'SAR', name: 'Suspicious Activity Report', goamlType: 'SAR' },
-    FFR: { code: 'FFR', name: 'Funds Freeze Report', goamlType: 'FFR' },
-    AIF: { code: 'AIF', name: 'Additional Information Form', goamlType: 'AIF' },
-    AIFT: { code: 'AIFT', name: 'Additional Information Follow-up', goamlType: 'AIFT' },
-    DPMSR: { code: 'DPMSR', name: 'DPMS Suspicious Report', goamlType: 'DPMSR' },
-    HRC: { code: 'HRC', name: 'High Risk Customer Report', goamlType: 'HRC' },
-    HRCA: { code: 'HRCA', name: 'High Risk Customer Activity', goamlType: 'HRCA' },
-    PNMR: { code: 'PNMR', name: 'Partial Name Match Report', goamlType: 'PNMR' },
-  };
+  const AED_THRESHOLD = 55000;
+  const USD_TO_AED = 3.6725; // Fixed peg
+  const STRUCTURING_WINDOW_DAYS = 7;
+  const STRUCTURING_COMBINED_FACTOR = 0.8; // 80% of threshold = suspicious if split
+  const ALERTS_KEY = 'fgl_threshold_alerts';
+  const CTR_QUEUE_KEY = 'fgl_ctr_queue';
 
-  const STORAGE_KEY = 'fgl_goaml_reports';
+  function getAlerts() { try { return JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch(_) { return []; } }
+  function saveAlerts(arr) { localStorage.setItem(ALERTS_KEY, JSON.stringify(arr.slice(0, 500))); }
+  function getCTRQueue() { try { return JSON.parse(localStorage.getItem(CTR_QUEUE_KEY) || '[]'); } catch(_) { return []; } }
+  function saveCTRQueue(arr) { localStorage.setItem(CTR_QUEUE_KEY, JSON.stringify(arr.slice(0, 200))); }
 
-  function escapeXml(str) {
-    if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
+  function toAED(amount, currency) {
+    if (!amount) return 0;
+    const num = Number(amount);
+    if (currency === 'AED') return num;
+    if (currency === 'USD') return num * USD_TO_AED;
+    if (currency === 'EUR') return num * USD_TO_AED * 1.08;
+    if (currency === 'GBP') return num * USD_TO_AED * 1.27;
+    return num * USD_TO_AED; // default assume USD
   }
 
-  function generateReportId() {
-    return 'RPT-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+  function scanShipments() {
+    let shipments; try { shipments = JSON.parse(localStorage.getItem('fgl_shipments') || '[]'); } catch(_) { shipments = []; }
+    const alerts = [];
+    const now = new Date();
+
+    // Group by customer
+    const byCustomer = {};
+    for (const s of shipments) {
+      const cust = s.customerId || s.supplier || 'UNKNOWN';
+      if (!byCustomer[cust]) byCustomer[cust] = [];
+      byCustomer[cust].push(s);
+    }
+
+    for (const [customer, custShipments] of Object.entries(byCustomer)) {
+      for (const s of custShipments) {
+        const amountAED = toAED(s.valueUSD || s.value || 0, s.currency || 'USD');
+
+        // Direct threshold breach
+        if (amountAED >= AED_THRESHOLD && (s.paymentMethod || '').toLowerCase().includes('cash')) {
+          alerts.push({
+            id: 'THR-' + (s.id || Date.now()),
+            type: 'THRESHOLD_BREACH',
+            severity: 'CRITICAL',
+            customer,
+            shipmentId: s.id,
+            amount: amountAED,
+            currency: 'AED',
+            date: s.date || s.shipmentDate,
+            message: `Cash transaction AED ${amountAED.toLocaleString('en-GB')} exceeds DPMS threshold of AED ${AED_THRESHOLD.toLocaleString('en-GB')}. CTR filing required under FDL Art.24.`,
+            requiresCTR: true,
+            ctrStatus: 'PENDING',
+          });
+        }
+      }
+
+      // Structuring detection: multiple transactions by same customer within window
+      const recentCash = custShipments
+        .filter(s => (s.paymentMethod || '').toLowerCase().includes('cash'))
+        .filter(s => {
+          const d = new Date(s.date || s.shipmentDate);
+          return (now - d) / 86400000 <= STRUCTURING_WINDOW_DAYS;
+        });
+
+      if (recentCash.length >= 2) {
+        const totalAED = recentCash.reduce((sum, s) => sum + toAED(s.valueUSD || s.value || 0, s.currency || 'USD'), 0);
+        const avgPerTx = totalAED / recentCash.length;
+        const thresholdStructuring = AED_THRESHOLD * STRUCTURING_COMBINED_FACTOR;
+
+        if (totalAED >= AED_THRESHOLD && avgPerTx < AED_THRESHOLD) {
+          alerts.push({
+            id: 'STR-' + customer + '-' + Date.now(),
+            type: 'STRUCTURING_SUSPECTED',
+            severity: 'HIGH',
+            customer,
+            amount: totalAED,
+            currency: 'AED',
+            txCount: recentCash.length,
+            window: STRUCTURING_WINDOW_DAYS,
+            date: new Date().toISOString(),
+            message: `Potential structuring: ${recentCash.length} cash transactions totaling AED ${totalAED.toLocaleString('en-GB')} within ${STRUCTURING_WINDOW_DAYS} days. Individual amounts below threshold but combined exceeds AED ${AED_THRESHOLD.toLocaleString('en-GB')}.`,
+            requiresCTR: false,
+            requiresSTR: true,
+          });
+        }
+      }
+    }
+
+    // Save new alerts (avoid duplicates by ID)
+    const existing = getAlerts();
+    const existingIds = new Set(existing.map(a => a.id));
+    const newAlerts = alerts.filter(a => !existingIds.has(a.id));
+    if (newAlerts.length > 0) {
+      saveAlerts([...newAlerts, ...existing]);
+      newAlerts.forEach(function(a) {
+        if (typeof WorkflowEngine !== 'undefined') WorkflowEngine.processTrigger('threshold_breach', { type: a.type, severity: a.severity, customer: a.customer, amount: a.amountAED, details: a.description || a.type + ' — ' + a.customer });
+      });
+    }
+
+    return { alerts: [...newAlerts, ...existing.filter(a => a.type === 'THRESHOLD_BREACH' || a.type === 'STRUCTURING_SUSPECTED')], newCount: newAlerts.length };
   }
 
-  function getReporterInfo() {
-    // Pull from active company profile if available
-    let companies; try { companies = JSON.parse(localStorage.getItem('fgl_companies') || '[]'); } catch(_) { companies = []; }
-    const activeIdx = Number(localStorage.getItem('fgl_active_company') || '0');
-    const company = companies[activeIdx] || {};
-    return {
-      entityName: company.name || 'Reporting Entity',
-      entityId: company.licenseNo || '',
-      country: 'AE',
-      city: company.city || 'Dubai',
-      contactPerson: company.complianceOfficer || '',
-      phone: company.phone || '',
-      email: company.email || '',
-    };
+  function queueCTR(alert) {
+    const queue = getCTRQueue();
+    queue.unshift({
+      id: 'CTR-' + Date.now(),
+      alertId: alert.id,
+      customer: alert.customer,
+      amount: alert.amount,
+      currency: alert.currency,
+      date: alert.date,
+      status: 'QUEUED',
+      createdAt: new Date().toISOString(),
+    });
+    saveCTRQueue(queue);
+    // Update alert status
+    const alerts = getAlerts();
+    const idx = alerts.findIndex(a => a.id === alert.id);
+    if (idx >= 0) { alerts[idx].ctrStatus = 'QUEUED'; saveAlerts(alerts); }
+    if (typeof toast === 'function') toast('CTR queued for filing', 'success');
   }
 
-  function buildSTRXml(data) {
-    const reporter = getReporterInfo();
-    const reportId = generateReportId();
-    const now = new Date().toISOString();
-    const dateOnly = now.slice(0, 10);
+  function fileCTR(ctrId) {
+    const queue = getCTRQueue();
+    const idx = queue.findIndex(c => c.id === ctrId);
+    if (idx < 0) return;
+    queue[idx].status = 'FILED';
+    queue[idx].filedAt = new Date().toISOString();
+    saveCTRQueue(queue);
 
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<goAMLReport>
-  <reportHeader>
-    <reportId>${escapeXml(reportId)}</reportId>
-    <reportType>${escapeXml(data.reportType || 'STR')}</reportType>
-    <reportDate>${dateOnly}</reportDate>
-    <reportStatus>NEW</reportStatus>
-    <priority>${escapeXml(data.priority || 'HIGH')}</priority>
-    <currency>USD</currency>
-    <reportingCountry>AE</reportingCountry>
-  </reportHeader>
+    // Generate goAML XML if available
+    if (typeof GoAMLExport !== 'undefined') {
+      GoAMLExport.exportCTR({
+        subjectName: queue[idx].customer,
+        amount: queue[idx].amount,
+        currency: queue[idx].currency,
+        transactionDate: queue[idx].date,
+      });
+    }
 
-  <reportingEntity>
-    <entityName>${escapeXml(reporter.entityName)}</entityName>
-    <entityIdentification>${escapeXml(reporter.entityId)}</entityIdentification>
-    <entityType>DPMS</entityType>
-    <country>${escapeXml(reporter.country)}</country>
-    <city>${escapeXml(reporter.city)}</city>
-    <contactPerson>
-      <name>${escapeXml(reporter.contactPerson)}</name>
-      <phone>${escapeXml(reporter.phone)}</phone>
-      <email>${escapeXml(reporter.email)}</email>
-    </contactPerson>
-  </reportingEntity>
-
-  <suspiciousSubject>
-    <subjectType>${escapeXml(data.subjectType || 'INDIVIDUAL')}</subjectType>
-    <fullName>${escapeXml(data.subjectName)}</fullName>
-    <dateOfBirth>${escapeXml(data.subjectDob || '')}</dateOfBirth>
-    <nationality>${escapeXml(data.subjectNationality || '')}</nationality>
-    <idType>${escapeXml(data.subjectIdType || 'PASSPORT')}</idType>
-    <idNumber>${escapeXml(data.subjectIdNumber || '')}</idNumber>
-    <occupation>${escapeXml(data.subjectOccupation || '')}</occupation>
-    <address>
-      <street>${escapeXml(data.subjectAddress || '')}</street>
-      <city>${escapeXml(data.subjectCity || '')}</city>
-      <country>${escapeXml(data.subjectCountry || '')}</country>
-    </address>
-    <accountInfo>
-      <accountNumber>${escapeXml(data.accountNumber || '')}</accountNumber>
-      <bankName>${escapeXml(data.bankName || '')}</bankName>
-    </accountInfo>
-  </suspiciousSubject>
-
-  <transactionDetails>
-    <transactionDate>${escapeXml(data.transactionDate || dateOnly)}</transactionDate>
-    <transactionType>${escapeXml(data.transactionType || 'PURCHASE')}</transactionType>
-    <amount>${escapeXml(String(data.amount || '0'))}</amount>
-    <currency>${escapeXml(data.currency || 'USD')}</currency>
-    <amountLocal>${escapeXml(String(data.amountLocal || ''))}</amountLocal>
-    <currencyLocal>AED</currencyLocal>
-    <conductedBy>${escapeXml(data.conductedBy || data.subjectName || '')}</conductedBy>
-    <commodityType>${escapeXml(data.commodityType || 'PRECIOUS_METALS')}</commodityType>
-    <commodityDescription>${escapeXml(data.commodityDescription || '')}</commodityDescription>
-    <paymentMethod>${escapeXml(data.paymentMethod || 'CASH')}</paymentMethod>
-    <originCountry>${escapeXml(data.originCountry || '')}</originCountry>
-    <destinationCountry>${escapeXml(data.destinationCountry || 'AE')}</destinationCountry>
-  </transactionDetails>
-
-  <groundsForSuspicion>
-    <indicators>${escapeXml(data.indicators)}</indicators>
-    <narrativeDescription>${escapeXml(data.narrative || '')}</narrativeDescription>
-    <redFlagCategories>
-${(data.redFlags || []).map(f => `      <flag>${escapeXml(f)}</flag>`).join('\n')}
-    </redFlagCategories>
-    <actionsTaken>${escapeXml(data.actionsTaken || 'Filed STR with UAE FIU via goAML')}</actionsTaken>
-    <internalCaseRef>${escapeXml(data.caseRef || '')}</internalCaseRef>
-  </groundsForSuspicion>
-
-  <relatedReports>
-${(data.relatedReports || []).map(r => `    <reportRef>${escapeXml(r)}</reportRef>`).join('\n')}
-  </relatedReports>
-
-  <attachments>
-${(data.attachments || []).map(a => `    <attachment>
-      <fileName>${escapeXml(a.name)}</fileName>
-      <fileType>${escapeXml(a.type)}</fileType>
-      <description>${escapeXml(a.description || '')}</description>
-    </attachment>`).join('\n')}
-  </attachments>
-
-  <reportFooter>
-    <generatedBy>Compliance Analyser v2.5</generatedBy>
-    <generatedAt>${now}</generatedAt>
-    <disclaimer>This report was generated by an automated compliance tool. All information should be verified by the designated Compliance Officer before submission to the UAE FIU via goAML.</disclaimer>
-  </reportFooter>
-</goAMLReport>`;
+    if (typeof logAudit === 'function') logAudit('ctr', `CTR filed for ${queue[idx].customer} — AED ${queue[idx].amount}`);
+    if (typeof toast === 'function') toast('CTR filed and goAML XML generated', 'success');
   }
 
-  function buildCTRXml(data) {
-    const reporter = getReporterInfo();
-    const reportId = generateReportId();
-    const now = new Date().toISOString();
-    const dateOnly = now.slice(0, 10);
+  function renderThresholdPanel() {
+    const result = scanShipments();
+    const alerts = result.alerts;
+    const ctrQueue = getCTRQueue();
 
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<goAMLReport>
-  <reportHeader>
-    <reportId>${escapeXml(reportId)}</reportId>
-    <reportType>CTR</reportType>
-    <reportDate>${dateOnly}</reportDate>
-    <reportStatus>NEW</reportStatus>
-    <currency>${escapeXml(data.currency || 'AED')}</currency>
-    <reportingCountry>AE</reportingCountry>
-    <thresholdBasis>UAE FDL No.10/2025 Art.24 — AED 55,000 DPMS threshold</thresholdBasis>
-  </reportHeader>
+    const alertsHtml = alerts.slice(0, 20).map(a => `
+      <div style="padding:10px;border:1px solid ${a.severity === 'CRITICAL' ? 'var(--red)' : 'var(--amber)'};border-radius:8px;margin-bottom:8px;background:var(--surface2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div>
+            <span class="badge ${a.severity === 'CRITICAL' ? 'b-r' : 'b-a'}">${a.type.replace('_', ' ')}</span>
+            <span style="font-size:12px;font-weight:500;margin-left:8px">${a.customer}</span>
+          </div>
+          <span style="font-size:11px;color:var(--muted)">${a.date ? new Date(a.date).toLocaleDateString('en-GB') : ''}</span>
+        </div>
+        <p style="font-size:12px;margin:0 0 8px 0">${a.message}</p>
+        <div style="display:flex;gap:6px">
+          ${a.requiresCTR ? `<button class="btn btn-sm btn-gold" onclick="ThresholdMonitor.queueCTR(${JSON.stringify(a).replace(/"/g, '&quot;')})">Queue CTR Filing</button>` : ''}
+          ${a.requiresSTR ? `<button class="btn btn-sm btn-green" onclick="switchTab('incidents');document.getElementById('strSubject').value='${a.customer}';document.getElementById('strAmount').value='${Math.round(a.amount / USD_TO_AED)}'">Draft STR</button>` : ''}
+        </div>
+      </div>
+    `).join('') || '<p style="color:var(--muted);font-size:13px">No threshold alerts detected. All transactions within AED 55,000 DPMS limit.</p>';
 
-  <reportingEntity>
-    <entityName>${escapeXml(reporter.entityName)}</entityName>
-    <entityIdentification>${escapeXml(reporter.entityId)}</entityIdentification>
-    <entityType>DPMS</entityType>
-    <country>${escapeXml(reporter.country)}</country>
-    <city>${escapeXml(reporter.city)}</city>
-  </reportingEntity>
-
-  <transactingParty>
-    <partyType>${escapeXml(data.subjectType || 'INDIVIDUAL')}</partyType>
-    <fullName>${escapeXml(data.subjectName)}</fullName>
-    <nationality>${escapeXml(data.subjectNationality || '')}</nationality>
-    <idType>${escapeXml(data.subjectIdType || 'PASSPORT')}</idType>
-    <idNumber>${escapeXml(data.subjectIdNumber || '')}</idNumber>
-  </transactingParty>
-
-  <cashTransaction>
-    <transactionDate>${escapeXml(data.transactionDate || dateOnly)}</transactionDate>
-    <cashAmount>${escapeXml(String(data.amount || '0'))}</cashAmount>
-    <currency>${escapeXml(data.currency || 'AED')}</currency>
-    <transactionType>${escapeXml(data.transactionType || 'PURCHASE')}</transactionType>
-    <commodityType>${escapeXml(data.commodityType || 'GOLD')}</commodityType>
-    <commodityWeight>${escapeXml(data.commodityWeight || '')}</commodityWeight>
-    <commodityPurity>${escapeXml(data.commodityPurity || '')}</commodityPurity>
-  </cashTransaction>
-
-  <reportFooter>
-    <generatedBy>Compliance Analyser v2.5</generatedBy>
-    <generatedAt>${now}</generatedAt>
-  </reportFooter>
-</goAMLReport>`;
-  }
-
-  function saveReport(report) {
-    let list; try { list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(_) { list = []; }
-    list.unshift(report);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 200)));
-  }
-
-  function getReports() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(_) { return []; }
-  }
-
-  function downloadXml(xml, filename) {
-    const blob = new Blob([xml], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function exportSTR(data) {
-    const xml = buildSTRXml(data);
-    const reportId = xml.match(/<reportId>(.*?)<\/reportId>/)?.[1] || 'UNKNOWN';
-    const filename = `goAML_STR_${reportId}_${new Date().toISOString().slice(0,10)}.xml`;
-    downloadXml(xml, filename);
-    saveReport({ id: reportId, type: 'STR', subject: data.subjectName, amount: data.amount, date: new Date().toISOString(), filename });
-    return { xml, reportId, filename };
-  }
-
-  function exportCTR(data) {
-    const xml = buildCTRXml(data);
-    const reportId = xml.match(/<reportId>(.*?)<\/reportId>/)?.[1] || 'UNKNOWN';
-    const filename = `goAML_CTR_${reportId}_${new Date().toISOString().slice(0,10)}.xml`;
-    downloadXml(xml, filename);
-    saveReport({ id: reportId, type: 'CTR', subject: data.subjectName, amount: data.amount, date: new Date().toISOString(), filename });
-    return { xml, reportId, filename };
-  }
-
-  function renderGoAMLPanel() {
-    const reports = getReports();
-    const recentHtml = reports.slice(0, 10).map(r => `
+    const ctrHtml = ctrQueue.slice(0, 10).map(c => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
         <div>
-          <span class="badge ${r.type === 'STR' ? 'b-r' : 'b-a'}">${r.type}</span>
-          <span style="font-size:12px;margin-left:6px">${r.subject || 'Unknown'}</span>
-          <span style="font-size:11px;color:var(--muted);margin-left:8px">${r.amount ? 'USD ' + Number(r.amount).toLocaleString('en-GB') : ''}</span>
+          <span class="badge ${c.status === 'FILED' ? 'b-g' : 'b-a'}">${c.status}</span>
+          <span style="font-size:12px;margin-left:6px">${c.customer}</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:6px">AED ${Number(c.amount).toLocaleString('en-GB')}</span>
         </div>
-        <div style="font-size:11px;color:var(--muted)">${new Date(r.date).toLocaleDateString('en-GB')}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:11px;color:var(--muted)">${new Date(c.createdAt).toLocaleDateString('en-GB')}</span>
+          ${c.status === 'QUEUED' ? `<button class="btn btn-sm btn-green" onclick="ThresholdMonitor.fileCTR('${c.id}')">File CTR</button>` : ''}
+        </div>
       </div>
-    `).join('') || '<p style="color:var(--muted);font-size:13px">No goAML reports generated yet.</p>';
+    `).join('') || '<p style="color:var(--muted);font-size:13px">No CTR filings in queue.</p>';
 
     return `
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
-          <span class="lbl" style="margin:0">goAML XML Export</span>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">UAE FIU compliant STR/CTR XML generation</span>
-        </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Generate goAML-schema XML files for direct upload to the UAE FIU portal. Supports STR, SAR, CTR, and FFR report types.</p>
-
-        <div class="row row-2" style="margin-bottom:8px">
-          <div><span class="lbl">Report Type</span>
-            <select id="goamlReportType">
-              <option value="STR">STR — Suspicious Transaction Report</option>
-              <option value="SAR">SAR — Suspicious Activity Report</option>
-              <option value="FFR">FFR — Funds Freeze Report</option>
-              <option value="AIF">AIF — Additional Information Form</option>
-              <option value="AIFT">AIFT — Additional Information Follow-up</option>
-              <option value="DPMSR">DPMSR — DPMS Suspicious Report</option>
-              <option value="HRC">HRC — High Risk Customer Report</option>
-              <option value="HRCA">HRCA — High Risk Customer Activity</option>
-              <option value="PNMR">PNMR — Partial Name Match Report</option>
-            </select>
-          </div>
-          <div><span class="lbl">Priority</span>
-            <select id="goamlPriority"><option value="HIGH">High</option><option value="MEDIUM">Medium</option><option value="LOW">Low</option></select>
+          <span class="lbl" style="margin:0">DPMS Threshold Monitor</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">UAE FDL Art.24 | AED 55,000</span>
+            <button class="btn btn-sm btn-green" onclick="ThresholdMonitor.refresh()">Scan Now</button>
           </div>
         </div>
-
-        <div class="row row-3" style="margin-bottom:8px">
-          <div><span class="lbl">Subject Full Name</span><input type="text" id="goamlSubjectName" placeholder="Full legal name" /></div>
-          <div><span class="lbl">Subject Type</span><select id="goamlSubjectType"><option value="INDIVIDUAL">Individual</option><option value="LEGAL_ENTITY">Legal Entity</option></select></div>
-          <div><span class="lbl">Nationality</span><input type="text" id="goamlNationality" placeholder="e.g. AE, IN, PK" /></div>
+        <div class="token-note" style="margin-bottom:12px">
+          <strong>Regulatory basis:</strong> UAE Federal Decree-Law No.10/2025, Article 24 requires Dealers in Precious Metals and Stones (DPMS) to file a Cash Transaction Report (CTR) for any cash transaction ≥ AED 55,000 (~USD 14,972). Structuring detection monitors split transactions designed to avoid the threshold.
         </div>
-
-        <div class="row row-3" style="margin-bottom:8px">
-          <div><span class="lbl">ID Type</span><select id="goamlIdType"><option value="PASSPORT">Passport</option><option value="EMIRATES_ID">Emirates ID</option><option value="TRADE_LICENSE">Trade License</option><option value="OTHER">Other</option></select></div>
-          <div><span class="lbl">ID Number</span><input type="text" id="goamlIdNumber" placeholder="Document number" /></div>
-          <div><span class="lbl">Date of Birth</span><input type="date" id="goamlDob" /></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:500;color:var(--red)" id="tmAlertCount">${alerts.filter(a => a.severity === 'CRITICAL').length}</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Critical</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:500;color:var(--amber)" id="tmWarningCount">${alerts.filter(a => a.severity === 'HIGH').length}</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Warnings</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:500;color:var(--amber)">${ctrQueue.filter(c => c.status === 'QUEUED').length}</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">CTR Pending</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:500;color:var(--green)">${ctrQueue.filter(c => c.status === 'FILED').length}</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">CTR Filed</div>
+          </div>
         </div>
-
-        <div class="row row-3" style="margin-bottom:8px">
-          <div><span class="lbl">Transaction Amount</span><input type="number" id="goamlAmount" placeholder="Amount" /></div>
-          <div><span class="lbl">Currency</span><select id="goamlCurrency"><option value="USD">USD</option><option value="AED">AED</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select></div>
-          <div><span class="lbl">Transaction Date</span><input type="date" id="goamlTxDate" /></div>
-        </div>
-
-        <div class="row row-2" style="margin-bottom:8px">
-          <div><span class="lbl">Transaction Type</span><select id="goamlTxType"><option value="PURCHASE">Purchase</option><option value="SALE">Sale</option><option value="TRANSFER">Transfer</option><option value="EXCHANGE">Exchange</option><option value="REFINING">Refining</option></select></div>
-          <div><span class="lbl">Payment Method</span><select id="goamlPayment"><option value="CASH">Cash</option><option value="WIRE">Wire Transfer</option><option value="CHEQUE">Cheque</option><option value="CRYPTO">Cryptocurrency</option><option value="OTHER">Other</option></select></div>
-        </div>
-
-        <div class="row row-2" style="margin-bottom:8px">
-          <div><span class="lbl">Commodity Type</span><select id="goamlCommodity"><option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="PLATINUM">Platinum</option><option value="OTHER">Other</option></select></div>
-          <div><span class="lbl">Origin Country</span><input type="text" id="goamlOriginCountry" placeholder="e.g. CH, ZA, GH" /></div>
-        </div>
-
-        <div style="margin-bottom:8px">
-          <span class="lbl">Suspicious Indicators / Grounds</span>
-          <textarea id="goamlIndicators" placeholder="Describe suspicious indicators, red flags, and grounds for reporting..." style="min-height:60px"></textarea>
-        </div>
-
-        <div style="margin-bottom:8px">
-          <span class="lbl">Narrative Description</span>
-          <textarea id="goamlNarrative" placeholder="Full narrative of circumstances..." style="min-height:60px"></textarea>
-        </div>
-
-        <div style="margin-bottom:12px">
-          <span class="lbl">Internal Case Reference</span>
-          <input type="text" id="goamlCaseRef" placeholder="e.g. CASE-2026-001" />
-        </div>
-
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-gold" onclick="GoAMLExport.generateAndDownload()">Generate goAML XML</button>
-          <button class="btn btn-sm btn-blue" onclick="GoAMLExport.previewXml()">Preview XML</button>
-          <button class="btn btn-sm btn-blue" onclick="GoAMLExport.populateFromSTR()">Import from STR Draft</button>
-          <button class="btn btn-sm btn-red" onclick="GoAMLExport.cancelForm()">Cancel</button>
-        </div>
-
-        <div id="goamlPreview" style="display:none;margin-top:12px"></div>
+        ${alertsHtml}
       </div>
 
       <div class="card">
-        <span class="lbl">Recent goAML Exports</span>
-        <div id="goamlReportHistory">${recentHtml}</div>
+        <div class="top-bar" style="margin-bottom:10px">
+          <span class="lbl" style="margin:0">CTR Filing Queue</span>
+          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Cash Transaction Reports pending goAML submission</span>
+        </div>
+        ${ctrHtml}
       </div>
     `;
   }
 
-  function getFormData() {
-    const byId = id => document.getElementById(id);
-    return {
-      reportType: byId('goamlReportType')?.value || 'STR',
-      priority: byId('goamlPriority')?.value || 'HIGH',
-      subjectName: byId('goamlSubjectName')?.value?.trim() || '',
-      subjectType: byId('goamlSubjectType')?.value || 'INDIVIDUAL',
-      subjectNationality: byId('goamlNationality')?.value?.trim() || '',
-      subjectIdType: byId('goamlIdType')?.value || 'PASSPORT',
-      subjectIdNumber: byId('goamlIdNumber')?.value?.trim() || '',
-      subjectDob: byId('goamlDob')?.value || '',
-      amount: byId('goamlAmount')?.value || '',
-      currency: byId('goamlCurrency')?.value || 'USD',
-      transactionDate: byId('goamlTxDate')?.value || '',
-      transactionType: byId('goamlTxType')?.value || 'PURCHASE',
-      paymentMethod: byId('goamlPayment')?.value || 'CASH',
-      commodityType: byId('goamlCommodity')?.value || 'GOLD',
-      originCountry: byId('goamlOriginCountry')?.value?.trim() || '',
-      indicators: byId('goamlIndicators')?.value?.trim() || '',
-      narrative: byId('goamlNarrative')?.value?.trim() || '',
-      caseRef: byId('goamlCaseRef')?.value?.trim() || '',
-    };
-  }
-
-  function generateAndDownload() {
-    const data = getFormData();
-    if (!data.subjectName) { toast('Enter subject name', 'error'); return; }
-    if (!data.indicators && data.reportType !== 'CTR') { toast('Enter suspicious indicators', 'error'); return; }
-
-    let result;
-    if (data.reportType === 'CTR') {
-      result = exportCTR(data);
-    } else {
-      result = exportSTR(data);
-    }
-
-    toast(`goAML ${data.reportType} exported: ${result.filename}`, 'success');
-    if (typeof logAudit === 'function') logAudit('goaml', `Generated ${data.reportType} for ${data.subjectName} (${result.reportId})`);
-
-    // Refresh history
-    const histEl = document.getElementById('goamlReportHistory');
-    if (histEl) {
-      const reports = getReports();
-      histEl.innerHTML = reports.slice(0, 10).map(r => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
-          <div>
-            <span class="badge ${r.type === 'STR' ? 'b-r' : 'b-a'}">${r.type}</span>
-            <span style="font-size:12px;margin-left:6px">${r.subject || 'Unknown'}</span>
-          </div>
-          <div style="font-size:11px;color:var(--muted)">${new Date(r.date).toLocaleDateString('en-GB')}</div>
-        </div>
-      `).join('');
-    }
-  }
-
-  function previewXml() {
-    const data = getFormData();
-    if (!data.subjectName) { toast('Enter subject name first', 'error'); return; }
-    const xml = data.reportType === 'CTR' ? buildCTRXml(data) : buildSTRXml(data);
-    const el = document.getElementById('goamlPreview');
-    if (el) {
-      el.style.display = 'block';
-      el.innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:11px;font-family:'DM Mono',monospace;max-height:400px;overflow-y:auto">${escapeXml(xml)}</div>
-        <button class="btn btn-sm btn-green" style="margin-top:6px" onclick="navigator.clipboard.writeText(document.querySelector('#goamlPreview .summary-box').textContent);toast('XML copied','success')">Copy XML</button>`;
-    }
-  }
-
-  function populateFromSTR() {
-    const strSubject = document.getElementById('strSubject');
-    const strAmount = document.getElementById('strAmount');
-    const strIndicators = document.getElementById('strIndicators');
-    if (strSubject?.value) document.getElementById('goamlSubjectName').value = strSubject.value;
-    if (strAmount?.value) document.getElementById('goamlAmount').value = strAmount.value;
-    if (strIndicators?.value) document.getElementById('goamlIndicators').value = strIndicators.value;
-    toast('Imported from STR draft fields', 'success');
-  }
-
-  function cancelForm() {
-    const fields = ['goamlSubjectName','goamlSubjectId','goamlAmount','goamlTxDate','goamlOriginCountry','goamlIndicators','goamlNarrative','goamlCaseRef'];
-    fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    const selects = ['goamlReportType','goamlCurrency','goamlTxType','goamlPayment','goamlCommodity'];
-    selects.forEach(id => { const el = document.getElementById(id); if (el) el.selectedIndex = 0; });
-    const preview = document.getElementById('goamlPreview');
-    if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
-    toast('Form cleared', 'success');
+  function refresh() {
+    const el = document.getElementById('tab-threshold');
+    if (el) el.innerHTML = renderThresholdPanel();
   }
 
   return {
-    REPORT_TYPES,
-    renderGoAMLPanel,
-    generateAndDownload,
-    previewXml,
-    populateFromSTR,
-    cancelForm,
-    exportSTR,
-    exportCTR,
-    getReports,
+    AED_THRESHOLD,
+    scanShipments,
+    queueCTR,
+    fileCTR,
+    renderThresholdPanel,
+    refresh,
   };
 })();
