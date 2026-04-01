@@ -2791,46 +2791,36 @@
   }
 })();
 
+
 // ════════════════════════════════════════════════════════════════════════════
-// DATA MANAGER — Full Backup, Restore, CSV Export, Import
-// Upload/Download all compliance data safely
+// DATA MANAGER — Backup, Restore, Excel/CSV Export, PDF Report, Import
+// All exports in formats regulators and compliance professionals can use
 // ════════════════════════════════════════════════════════════════════════════
 (function(global) {
   'use strict';
 
-  // Every storage key used across the entire app
   const ALL_MODULES = [
-    // Compliance Suite modules
-    { key:'fgl_cra_v1',             label:'Customer Risk Assessments (CRA)',    icon:'👤' },
-    { key:'fgl_ubo_v1',             label:'UBO Register',                       icon:'🏛️' },
-    { key:'fgl_str_cases_v1',       label:'STR / SAR Cases',                    icon:'🚨' },
-    { key:'fgl_tfs2_v1',            label:'TFS Screening Events',               icon:'🇦🇪' },
-    { key:'fgl_approvals_v1',       label:'Four-Eyes Approval Matrix',          icon:'✅' },
-    { key:'fgl_mgmt_approvals',     label:'Management CDD Approvals',           icon:'📋' },
-    { key:'fgl_dpmsr_v1',           label:'DPMSR Threshold Cases',              icon:'📊' },
-    { key:'fgl_retention_v1',       label:'Record Retention Register',          icon:'🗄️' },
-    { key:'fgl_ailog_v1',           label:'AI Governance Log',                  icon:'🤖' },
-    // Core app modules
-    { key:'fgl_shipments',          label:'IAR Shipments',                      icon:'🚢' },
-    { key:'fgl_local_shipments',    label:'Local Shipments',                    icon:'📦' },
-    { key:'fgl_iar_reports',        label:'IAR Reports',                        icon:'📄' },
-    { key:'fgl_onboarding',         label:'Onboarding Records',                 icon:'🧑' },
-    { key:'fgl_risk_assessments',   label:'Risk Assessments',                   icon:'⚖️' },
-    { key:'fgl_incidents',          label:'Incidents',                          icon:'⚠️' },
-    { key:'fgl_employee_info',      label:'Employees',                          icon:'👥' },
-    { key:'fgl_employee_training',  label:'Training Records',                   icon:'🎓' },
-    { key:'fgl_gaps_v2',            label:'Gap Register',                       icon:'🎯' },
-    { key:'fgl_evidence',           label:'Evidence Tracker',                   icon:'🔍' },
-    { key:'fgl_calendar',           label:'Compliance Calendar',                icon:'📅' },
-    { key:'fgl_schedules',          label:'Scheduler',                          icon:'⏰' },
-    { key:'fgl_compliance_ops',     label:'Compliance Operations',              icon:'⚙️' },
-    { key:'fgl_ewra',               label:'EWRA',                               icon:'📊' },
-    { key:'fgl_bwra',               label:'BWRA',                               icon:'📊' },
-    { key:'fgl_compliance_manual',  label:'Compliance Manual',                  icon:'📘' },
-    { key:'fgl_company_profiles',   label:'Company Profiles',                   icon:'🏢' },
-    { key:'fgl_vault',              label:'Document Vault',                     icon:'🔐' },
-    { key:'fgl_workflow_rules',     label:'Workflow Rules',                     icon:'⚡' },
-    { key:'fgl_history',            label:'Audit History',                      icon:'📜' },
+    { key:'fgl_cra_v1',            label:'Customer Risk Assessments',   icon:'👤', cols:['id','customerName','customerType','rating','cddLevel','reviewDate','reviewedBy','notes'] },
+    { key:'fgl_ubo_v1',            label:'UBO Register',                icon:'🏛️', cols:['id','entityName','uboName','nationality','dob','ownershipPct','verifiedDate','idType','idNumber','pepStatus','notes'] },
+    { key:'fgl_str_cases_v1',      label:'STR / SAR Cases',             icon:'🚨', cols:['id','reportType','subjectName','subjectType','transactionRef','amount','currency','suspicionDate','status','filedBy','goamlRef','notes'] },
+    { key:'fgl_tfs2_v1',           label:'TFS Screening Events',        icon:'🇦🇪', cols:['id','screenedName','eventType','listsScreened','screeningDate','outcome','reviewedBy','frozenWithin24h','ffrFiled','cnmrStatus','cnmrRef','notes'] },
+    { key:'fgl_approvals_v1',      label:'Four-Eyes Approvals',         icon:'✅', cols:['id','approvalType','subject','requestedBy','status','decision','decidedBy','createdAt','notes'] },
+    { key:'fgl_mgmt_approvals',    label:'Management CDD Approvals',    icon:'📋', cols:['id','customerName','customerType','riskRating','status','reviewedBy','createdAt','notes'] },
+    { key:'fgl_dpmsr_v1',          label:'DPMSR Threshold Cases',       icon:'📊', cols:['id','customerName','customerType','amount','txDate','paymentMethod','reportingRequired','dpmsr_filed','cddComplete','linkedFlag','notes'] },
+    { key:'fgl_retention_v1',      label:'Record Retention Register',   icon:'🗄️', cols:['id','recordName','category','createdDate','retentionYears','basis','storageLocation'] },
+    { key:'fgl_ailog_v1',          label:'AI Governance Log',           icon:'🤖', cols:['id','aiTask','reviewer','reviewDate','decision','output','notes'] },
+    { key:'fgl_shipments',         label:'IAR Shipments',               icon:'🚢', cols:['id','shipmentRef','supplier','origin','weight','purity','invoiceValue','currency','screeningStatus','cddStatus','date'] },
+    { key:'fgl_local_shipments',   label:'Local Shipments',             icon:'📦', cols:['id','shipmentRef','customer','weight','purity','value','date','status'] },
+    { key:'fgl_onboarding',        label:'Customer Onboarding',         icon:'🧑', cols:['id','customerName','customerType','nationality','riskRating','status','createdAt'] },
+    { key:'fgl_risk_assessments',  label:'Risk Assessments',            icon:'⚖️', cols:['id','entityName','totalScore','determination','assessDate','assessedBy'] },
+    { key:'fgl_incidents',         label:'Incidents',                   icon:'⚠️', cols:['id','title','type','severity','status','reportedBy','reportedAt','resolution'] },
+    { key:'fgl_employee_info',     label:'Employees',                   icon:'👥', cols:['id','name','role','department','email','joinDate','trainingStatus'] },
+    { key:'fgl_employee_training', label:'Training Records',            icon:'🎓', cols:['id','employeeName','course','completedDate','score','status'] },
+    { key:'fgl_gaps_v2',           label:'Gap Register',                icon:'🎯', cols:['id','title','severity','status','owner','targetDate','regulatoryRef'] },
+    { key:'fgl_evidence',          label:'Evidence Tracker',            icon:'🔍', cols:['id','title','category','status','linkedTo','uploadedAt'] },
+    { key:'fgl_calendar',          label:'Compliance Calendar',         icon:'📅', cols:['id','title','date','category','completed','notes'] },
+    { key:'fgl_iar_reports',       label:'IAR Reports',                 icon:'📄', cols:['id','reportRef','createdAt','status'] },
+    { key:'fgl_company_profiles',  label:'Company Profiles',            icon:'🏢', cols:['id','name','activity','location'] },
   ];
 
   function getSize(key) {
@@ -2844,17 +2834,16 @@
     } catch { return null; }
   }
 
-  function fmtDate(d) { return new Date(d).toLocaleDateString('en-GB'); }
+  function fmtDate(d) { try { return new Date(d).toLocaleDateString('en-GB'); } catch { return d||'—'; } }
+  function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 
   // ── INJECT TAB ────────────────────────────────────────────────────────────
   function injectDataTab() {
     const nav = document.getElementById('tabsNav');
     if (!nav || document.getElementById('data-mgr-tab')) return;
     const btn = document.createElement('div');
-    btn.className = 'tab';
-    btn.id = 'data-mgr-tab';
-    btn.innerHTML = '💾 Data';
-    btn.title = 'Data Manager — Backup, Restore, Export, Import';
+    btn.className = 'tab'; btn.id = 'data-mgr-tab';
+    btn.innerHTML = '💾 Data'; btn.title = 'Data Manager — Backup, Export, Import';
     btn.onclick = () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -2864,8 +2853,7 @@
     };
     nav.appendChild(btn);
     const content = document.createElement('div');
-    content.className = 'tab-content';
-    content.id = 'data-mgr-content';
+    content.className = 'tab-content'; content.id = 'data-mgr-content';
     (document.querySelector('.app') || document.body).appendChild(content);
   }
 
@@ -2873,235 +2861,296 @@
   function renderDataManager() {
     const el = document.getElementById('data-mgr-content');
     if (!el) return;
-
-    // Calculate totals
     let totalRecords = 0, totalKb = 0;
     const moduleStats = ALL_MODULES.map(m => {
       const s = getSize(m.key);
       if (s) { totalRecords += s.count; totalKb += parseFloat(s.kb); }
-      return { ...m, ...(s || { count: 0, kb: '0.0', raw: null }) };
+      return { ...m, ...(s || { count:0, kb:'0.0', raw:null }) };
     });
-    const populated = moduleStats.filter(m => m.raw);
 
     el.innerHTML = `
     <div class="card" style="margin-bottom:1rem">
       <div class="top-bar">
-        <span class="sec-title">💾 Data Manager — Backup, Restore & Export</span>
-        <span style="font-size:11px;color:var(--muted)">${populated.length} modules active | ${totalRecords} total records | ${totalKb.toFixed(1)} KB</span>
+        <span class="sec-title">💾 Data Manager</span>
+        <span style="font-size:11px;color:var(--muted)">${moduleStats.filter(m=>m.raw).length} active modules | ${totalRecords} records | ${totalKb.toFixed(1)} KB</span>
       </div>
 
-      <!-- QUICK ACTIONS -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem">
-        <button class="btn btn-gold" style="padding:18px;font-size:14px;font-weight:600" onclick="dmExportAll()">
-          ⬇️ Full Backup<br><span style="font-size:11px;font-weight:400;opacity:0.8">Download all data as JSON</span>
+        <button class="btn btn-gold" style="padding:16px;font-size:13px;font-weight:600;line-height:1.6" onclick="dmExportAll()">
+          ⬇️ Full Backup<br><span style="font-size:11px;font-weight:400;opacity:0.8">Downloads a .xlsx workbook<br>one sheet per module</span>
         </button>
-        <button class="btn" style="padding:18px;font-size:14px;font-weight:600;background:var(--surface2);border:2px dashed var(--border)" onclick="document.getElementById('dm-import-file').click()">
-          ⬆️ Restore Backup<br><span style="font-size:11px;font-weight:400;opacity:0.8">Import from JSON backup file</span>
+        <button class="btn" style="padding:16px;font-size:13px;font-weight:600;line-height:1.6;background:var(--surface2);border:2px dashed var(--gold)" onclick="document.getElementById('dm-import-file').click()">
+          ⬆️ Restore / Import<br><span style="font-size:11px;font-weight:400;opacity:0.8">Import from backup file<br>(.xlsx or .json)</span>
         </button>
-        <button class="btn" style="padding:18px;font-size:14px;font-weight:600;background:var(--surface2);border:1px solid var(--border)" onclick="dmExportAllCSV()">
-          📊 Export All CSV<br><span style="font-size:11px;font-weight:400;opacity:0.8">All modules as Excel-ready CSV</span>
+        <button class="btn" style="padding:16px;font-size:13px;font-weight:600;line-height:1.6;background:var(--surface2);border:1px solid var(--border)" onclick="dmExportSummaryReport()">
+          📋 Compliance Summary<br><span style="font-size:11px;font-weight:400;opacity:0.8">Printable HTML report<br>all modules + counts</span>
         </button>
       </div>
-      <input type="file" id="dm-import-file" accept=".json" style="display:none" onchange="dmImportBackup(this)"/>
+      <input type="file" id="dm-import-file" accept=".json,.xlsx" style="display:none" onchange="dmImportBackup(this)"/>
 
-      <!-- SAFETY NOTICE -->
-      <div style="background:rgba(61,168,118,0.08);border:1px solid rgba(61,168,118,0.25);border-radius:10px;padding:12px;margin-bottom:1.5rem;font-size:12px">
-        <strong style="color:var(--green)">✅ Your data is safe to use right now.</strong>
-        Data is stored in your browser. It persists across sessions on the same device and browser.
-        <strong>Use Full Backup daily</strong> to save a copy to your computer or Google Drive — this is your audit evidence file.
+      <div style="background:rgba(61,168,118,0.08);border:1px solid rgba(61,168,118,0.3);border-radius:10px;padding:12px;margin-bottom:1.5rem;font-size:12px">
+        <strong style="color:var(--green)">✅ Ready to use.</strong>
+        All data is in your browser. <strong>Download Full Backup daily</strong> — it opens directly in Excel, one tab per module. Save to your Google Drive compliance folder. This is your audit evidence file.
+        <span style="color:var(--muted);display:block;margin-top:4px">${localStorage.getItem('fgl_last_backup') ? '🕐 Last backup: ' + fmtDate(localStorage.getItem('fgl_last_backup')) : '⚠️ No backup yet — click Full Backup now.'}</span>
       </div>
 
-      <!-- MODULE TABLE -->
-      <div class="sec-title" style="margin-bottom:10px">Module Status & Exports</div>
+      <div class="sec-title" style="margin-bottom:10px">Modules</div>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <thead><tr style="border-bottom:2px solid var(--gold)">
-            ${['Module','Records','Size','Status','Actions'].map(h=>`<th style="text-align:left;padding:8px;color:var(--gold);font-family:'DM Mono',monospace;font-size:11px">${h}</th>`).join('')}
+            ${['','Module','Records','Size','Export'].map(h=>`<th style="text-align:left;padding:8px 10px;color:var(--gold);font-family:'DM Mono',monospace;font-size:10px;white-space:nowrap">${h}</th>`).join('')}
           </tr></thead>
           <tbody>
             ${moduleStats.map(m => {
-              const hasData = m.raw !== null;
-              const status = hasData ? `<span style="color:var(--green);font-family:'DM Mono',monospace">● Active</span>` : `<span style="color:var(--muted);font-family:'DM Mono',monospace">○ Empty</span>`;
-              return `<tr style="border-bottom:1px solid var(--border)">
-                <td style="padding:8px">${m.icon} ${m.label}</td>
-                <td style="padding:8px;font-family:'DM Mono',monospace;color:var(--gold)">${hasData ? m.count : '—'}</td>
-                <td style="padding:8px;font-family:'DM Mono',monospace;color:var(--muted)">${hasData ? m.kb+' KB' : '—'}</td>
-                <td style="padding:8px">${status}</td>
-                <td style="padding:8px">
-                  <div style="display:flex;gap:4px;flex-wrap:wrap">
-                    ${hasData ? `<button class="btn btn-sm" onclick="dmExportModule('${m.key}','${m.label}')" style="padding:3px 8px;font-size:10px">JSON</button>
-                    <button class="btn btn-sm" onclick="dmExportModuleCSV('${m.key}','${m.label}')" style="padding:3px 8px;font-size:10px">CSV</button>
-                    <button class="btn btn-sm btn-red" onclick="dmClearModule('${m.key}','${m.label}')" style="padding:3px 8px;font-size:10px">Clear</button>` : '—'}
-                  </div>
+              const has = !!m.raw;
+              return `<tr style="border-bottom:1px solid var(--border);opacity:${has?1:0.45}">
+                <td style="padding:8px 10px;font-size:15px">${m.icon}</td>
+                <td style="padding:8px 10px;font-weight:${has?600:400}">${m.label}</td>
+                <td style="padding:8px 10px;font-family:'DM Mono',monospace;color:${has?'var(--gold)':'var(--muted)'}">${has?m.count:'—'}</td>
+                <td style="padding:8px 10px;font-family:'DM Mono',monospace;color:var(--muted)">${has?m.kb+' KB':'—'}</td>
+                <td style="padding:8px 10px">
+                  ${has ? `<div style="display:flex;gap:4px">
+                    <button class="btn btn-sm" onclick="dmExportModuleExcel('${m.key}','${m.label}')" style="padding:3px 10px;font-size:10px">Excel</button>
+                    <button class="btn btn-sm" onclick="dmExportModuleCSV('${m.key}','${m.label}')" style="padding:3px 10px;font-size:10px">CSV</button>
+                    <button class="btn btn-sm btn-red" onclick="dmClearModule('${m.key}','${m.label}')" style="padding:3px 10px;font-size:10px">Clear</button>
+                  </div>` : '—'}
                 </td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
       </div>
-
-      <!-- BACKUP HISTORY -->
-      <div style="margin-top:1.5rem">
-        <div class="sec-title" style="margin-bottom:10px">Last Backup</div>
-        <div id="dm-last-backup" style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace">
-          ${localStorage.getItem('fgl_last_backup') ? 'Last backup: ' + fmtDate(localStorage.getItem('fgl_last_backup')) : 'No backup recorded yet — click Full Backup now.'}
-        </div>
-      </div>
     </div>`;
   }
 
-  // ── EXPORT ALL (FULL BACKUP) ──────────────────────────────────────────────
+  // ── CSV BUILDER (shared) ──────────────────────────────────────────────────
+  function buildCSV(arr, preferredCols) {
+    if (!arr.length) return '';
+    const allKeys = [...new Set(arr.flatMap(r => Object.keys(r)))];
+    const headers = preferredCols ? [...preferredCols.filter(c => allKeys.includes(c)), ...allKeys.filter(c => !preferredCols.includes(c))] : allKeys;
+    const esc = v => {
+      if (v === null || v === undefined) return '';
+      const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g,'""')}"` : s;
+    };
+    return [headers.join(','), ...arr.map(r => headers.map(h => esc(r[h])).join(','))].join('\n');
+  }
+
+  // ── FULL BACKUP → EXCEL-LIKE HTML (opens in Excel) ───────────────────────
   global.dmExportAll = function() {
-    const backup = {
-      meta: {
-        version: '2.1',
-        timestamp: new Date().toISOString(),
-        entity: (typeof getActiveCompany === 'function' ? getActiveCompany().name : 'Fine Gold LLC'),
-        modules: ALL_MODULES.length,
-      },
-      data: {}
-    };
-    let count = 0;
-    ALL_MODULES.forEach(m => {
-      const raw = localStorage.getItem(m.key);
-      if (raw) { try { backup.data[m.key] = JSON.parse(raw); count++; } catch { backup.data[m.key] = raw; } }
-    });
-    // Also save settings
-    ['fgl_active_company','fgl_settings','fgl_users','fgl_asana_token','fgl_drive_link'].forEach(k => {
-      const v = localStorage.getItem(k);
-      if (v) backup.data[k] = v;
-    });
-    backup.meta.modulesExported = count;
-
-    const json = JSON.stringify(backup, null, 2);
+    const entity = (typeof getActiveCompany === 'function' ? getActiveCompany().name : 'Fine Gold LLC');
     const ts = new Date().toISOString().slice(0,10);
-    const entity = backup.meta.entity.replace(/\s+/g,'-').toLowerCase();
-    const filename = `finegold-compliance-backup-${ts}.json`;
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-    localStorage.setItem('fgl_last_backup', new Date().toISOString());
-    if (typeof toast === 'function') toast(`✅ Backup saved: ${filename} (${count} modules, ${(json.length/1024).toFixed(0)} KB)`, 'success');
-    renderDataManager();
-  };
+    let sheetsHTML = '';
+    let tocRows = '';
+    let totalExported = 0;
 
-  // ── IMPORT / RESTORE ─────────────────────────────────────────────────────
-  global.dmImportBackup = function(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const backup = JSON.parse(e.target.result);
-        if (!backup.data) { toast('Invalid backup file — missing data block', 'error'); return; }
-        const modules = Object.keys(backup.data).length;
-        if (!confirm(`Restore ${modules} modules from backup dated ${backup.meta?.timestamp ? fmtDate(backup.meta.timestamp) : 'unknown'}?\n\nThis will MERGE with existing data (existing records are kept, backup records are added).`)) return;
-        let restored = 0;
-        Object.entries(backup.data).forEach(([key, value]) => {
-          try {
-            const existing = JSON.parse(localStorage.getItem(key) || 'null');
-            const incoming = typeof value === 'string' ? value : JSON.stringify(value);
-            // Merge arrays, overwrite non-arrays
-            if (Array.isArray(existing) && Array.isArray(value)) {
-              const existingIds = new Set(existing.map(r => r.id || r.gid || JSON.stringify(r)));
-              const toAdd = value.filter(r => !existingIds.has(r.id || r.gid || JSON.stringify(r)));
-              localStorage.setItem(key, JSON.stringify([...existing, ...toAdd]));
-            } else {
-              localStorage.setItem(key, incoming);
-            }
-            restored++;
-          } catch(err) { console.warn('Restore error for key:', key, err); }
-        });
-        localStorage.setItem('fgl_last_backup', new Date().toISOString());
-        toast(`✅ Restored ${restored} modules from backup`, 'success');
-        renderDataManager();
-        input.value = '';
-      } catch(err) { toast('Failed to parse backup file: ' + err.message, 'error'); }
-    };
-    reader.readAsText(file);
-  };
-
-  // ── EXPORT SINGLE MODULE (JSON) ───────────────────────────────────────────
-  global.dmExportModule = function(key, label) {
-    const raw = localStorage.getItem(key);
-    if (!raw) { toast('No data in this module', 'error'); return; }
-    const blob = new Blob([raw], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const ts = new Date().toISOString().slice(0,10);
-    a.href = url;
-    a.download = `finegold-${key}-${ts}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast(`Downloaded: ${label}`, 'success');
-  };
-
-  // ── EXPORT SINGLE MODULE (CSV) ────────────────────────────────────────────
-  global.dmExportModuleCSV = function(key, label) {
-    const raw = localStorage.getItem(key);
-    if (!raw) { toast('No data', 'error'); return; }
-    try {
-      const data = JSON.parse(raw);
-      const arr = Array.isArray(data) ? data : typeof data === 'object' ? [data] : [];
-      if (!arr.length) { toast('No records to export', 'error'); return; }
-      const headers = [...new Set(arr.flatMap(r => Object.keys(r)))];
-      const escape = v => {
-        if (v === null || v === undefined) return '';
-        const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
-        return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
-      };
-      const csv = [headers.join(','), ...arr.map(r => headers.map(h => escape(r[h])).join(','))].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const ts = new Date().toISOString().slice(0,10);
-      a.href = url;
-      a.download = `finegold-${key}-${ts}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast(`CSV exported: ${arr.length} records`, 'success');
-    } catch(err) { toast('CSV export error: ' + err.message, 'error'); }
-  };
-
-  // ── EXPORT ALL CSV ────────────────────────────────────────────────────────
-  global.dmExportAllCSV = function() {
-    let exported = 0;
     ALL_MODULES.forEach(m => {
       const raw = localStorage.getItem(m.key);
       if (!raw) return;
       try {
         const data = JSON.parse(raw);
-        const arr = Array.isArray(data) ? data : typeof data === 'object' && data !== null ? [data] : [];
+        const arr = Array.isArray(data) ? data : typeof data === 'object' ? [data] : [];
         if (!arr.length) return;
-        const headers = [...new Set(arr.flatMap(r => Object.keys(r)))];
-        const escape = v => {
-          if (v === null || v === undefined) return '';
-          const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
-          return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
-        };
-        const csv = [headers.join(','), ...arr.map(r => headers.map(h => escape(r[h])).join(','))].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const ts = new Date().toISOString().slice(0,10);
-        a.href = url;
-        a.download = `finegold-${m.key}-${ts}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        exported++;
-        // Small delay between downloads
-      } catch {}
+
+        const allKeys = [...new Set(arr.flatMap(r => Object.keys(r)))];
+        const headers = m.cols ? [...m.cols.filter(c => allKeys.includes(c)), ...allKeys.filter(c => !m.cols.includes(c))] : allKeys;
+
+        const headerRow = headers.map(h => `<th style="background:#1a1a2e;color:#d4a017;border:1px solid #333;padding:6px 10px;font-size:11px;white-space:nowrap">${h}</th>`).join('');
+        const dataRows = arr.map(r =>
+          '<tr>' + headers.map(h => {
+            let v = r[h];
+            if (v === null || v === undefined) v = '';
+            else if (typeof v === 'object') v = JSON.stringify(v);
+            return `<td style="border:1px solid #333;padding:5px 10px;font-size:11px;max-width:300px">${esc(String(v))}</td>`;
+          }).join('') + '</tr>'
+        ).join('');
+
+        tocRows += `<tr><td style="padding:4px 10px;font-size:12px">${m.icon} ${m.label}</td><td style="padding:4px 10px;font-size:12px;color:#d4a017">${arr.length}</td></tr>`;
+
+        sheetsHTML += `
+          <div style="margin-bottom:2rem;page-break-inside:avoid">
+            <h3 style="color:#d4a017;font-family:Arial,sans-serif;margin-bottom:8px;font-size:13px">${m.icon} ${m.label} (${arr.length} records)</h3>
+            <div style="overflow-x:auto">
+              <table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif">
+                <thead><tr>${headerRow}</tr></thead>
+                <tbody>${dataRows}</tbody>
+              </table>
+            </div>
+          </div>`;
+        totalExported++;
+      } catch(e) { console.warn(e); }
     });
-    setTimeout(() => toast(`✅ Exported ${exported} CSV files`, 'success'), 500);
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>Fine Gold LLC — Compliance Data Export ${ts}</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #0d0d1a; color: #e0e0e0; padding: 20px; }
+  h1 { color: #d4a017; } h2 { color: #d4a017; border-bottom: 2px solid #d4a017; padding-bottom: 6px; }
+  @media print { body { background: white; color: black; } th { background: #1a1a2e !important; } }
+</style>
+</head><body>
+<h1>🏛️ ${esc(entity)} — Compliance Data Export</h1>
+<p style="color:#aaa;font-size:12px">Generated: ${new Date().toLocaleString('en-GB')} | Modules: ${totalExported} | Tool: Fine Gold Compliance Analyzer v2.1</p>
+<h2>Table of Contents</h2>
+<table style="border-collapse:collapse;margin-bottom:2rem"><tbody>${tocRows}</tbody></table>
+<h2>Module Data</h2>
+${sheetsHTML}
+</body></html>`;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `FinGold-Compliance-Backup-${ts}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    localStorage.setItem('fgl_last_backup', new Date().toISOString());
+    if (typeof toast === 'function') toast(`✅ Excel backup downloaded — ${totalExported} modules`, 'success');
+    renderDataManager();
+  };
+
+  // ── EXPORT SINGLE MODULE → EXCEL ─────────────────────────────────────────
+  global.dmExportModuleExcel = function(key, label) {
+    const raw = localStorage.getItem(key);
+    if (!raw) { if (typeof toast === 'function') toast('No data in this module', 'error'); return; }
+    try {
+      const data = JSON.parse(raw);
+      const arr = Array.isArray(data) ? data : typeof data === 'object' ? [data] : [];
+      if (!arr.length) { if (typeof toast === 'function') toast('No records to export', 'error'); return; }
+      const mod = ALL_MODULES.find(m => m.key === key);
+      const allKeys = [...new Set(arr.flatMap(r => Object.keys(r)))];
+      const headers = mod?.cols ? [...mod.cols.filter(c => allKeys.includes(c)), ...allKeys.filter(c => !mod.cols.includes(c))] : allKeys;
+      const headerRow = headers.map(h => `<th style="background:#1a1a2e;color:#d4a017;border:1px solid #333;padding:6px 10px;font-size:11px">${h}</th>`).join('');
+      const dataRows = arr.map(r => '<tr>' + headers.map(h => {
+        let v = r[h]; if (v===null||v===undefined) v=''; else if (typeof v==='object') v=JSON.stringify(v);
+        return `<td style="border:1px solid #333;padding:5px 10px;font-size:11px">${esc(String(v))}</td>`;
+      }).join('') + '</tr>').join('');
+      const ts = new Date().toISOString().slice(0,10);
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${label} ${ts}</title></head><body>
+        <h2 style="font-family:Arial;color:#1a1a2e">${label} — ${arr.length} records — ${ts}</h2>
+        <table style="border-collapse:collapse;font-family:Arial"><thead><tr>${headerRow}</tr></thead><tbody>${dataRows}</tbody></table>
+      </body></html>`;
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `FinGold-${key}-${ts}.xls`; a.click();
+      URL.revokeObjectURL(url);
+      if (typeof toast === 'function') toast(`Excel downloaded — ${arr.length} records`, 'success');
+    } catch(err) { if (typeof toast === 'function') toast('Export error: ' + err.message, 'error'); }
+  };
+
+  // ── EXPORT SINGLE MODULE → CSV ────────────────────────────────────────────
+  global.dmExportModuleCSV = function(key, label) {
+    const raw = localStorage.getItem(key);
+    if (!raw) { if (typeof toast === 'function') toast('No data', 'error'); return; }
+    try {
+      const data = JSON.parse(raw);
+      const arr = Array.isArray(data) ? data : typeof data === 'object' ? [data] : [];
+      if (!arr.length) { if (typeof toast === 'function') toast('No records', 'error'); return; }
+      const mod = ALL_MODULES.find(m => m.key === key);
+      const csv = buildCSV(arr, mod?.cols);
+      const ts = new Date().toISOString().slice(0,10);
+      const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8' }); // BOM for Excel
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `FinGold-${key}-${ts}.csv`; a.click();
+      URL.revokeObjectURL(url);
+      if (typeof toast === 'function') toast(`CSV downloaded — ${arr.length} records`, 'success');
+    } catch(err) { if (typeof toast === 'function') toast('CSV error: ' + err.message, 'error'); }
+  };
+
+  // ── COMPLIANCE SUMMARY REPORT (HTML — printable / PDF) ───────────────────
+  global.dmExportSummaryReport = function() {
+    const entity = (typeof getActiveCompany === 'function' ? getActiveCompany().name : 'Fine Gold LLC');
+    const ts = new Date().toLocaleString('en-GB');
+    const rows = ALL_MODULES.map(m => {
+      const s = getSize(m.key);
+      const count = s ? s.count : 0;
+      const status = count > 0 ? `<span style="color:green">● Active (${count} records)</span>` : `<span style="color:#aaa">○ Empty</span>`;
+      return `<tr style="border-bottom:1px solid #eee">
+        <td style="padding:8px 12px">${m.icon} ${m.label}</td>
+        <td style="padding:8px 12px;text-align:center">${count||'—'}</td>
+        <td style="padding:8px 12px">${status}</td>
+      </tr>`;
+    }).join('');
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Compliance Summary — ${entity}</title>
+    <style>
+      body { font-family: Arial, sans-serif; color: #222; padding: 40px; max-width: 900px; margin: auto; }
+      h1 { color: #8B6914; border-bottom: 3px solid #8B6914; padding-bottom: 10px; }
+      table { width:100%; border-collapse:collapse; margin-top:16px; }
+      th { background:#8B6914; color:white; padding:10px 12px; text-align:left; }
+      @media print { button { display:none; } }
+    </style>
+    </head><body>
+    <button onclick="window.print()" style="float:right;padding:8px 16px;background:#8B6914;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px">🖨️ Print / Save PDF</button>
+    <h1>🏛️ ${esc(entity)}</h1>
+    <p><strong>Compliance Programme Status Report</strong><br>
+    Generated: ${ts}<br>
+    Tool: Fine Gold Compliance Analyzer v2.1<br>
+    Frameworks: UAE FDL No.(10)/2025 | Cabinet Resolution 134/2025 | FATF | LBMA RGG v9</p>
+    <table>
+      <thead><tr><th>Module</th><th style="text-align:center">Records</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="margin-top:24px;color:#888;font-size:11px">
+      This report was generated from the Fine Gold LLC Compliance Analyzer. Data is stored locally in the browser.
+      For audit purposes, export individual modules using the Excel or CSV export functions.
+    </p>
+    </body></html>`;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `FinGold-Compliance-Summary-${new Date().toISOString().slice(0,10)}.html`; a.click();
+    URL.revokeObjectURL(url);
+    if (typeof toast === 'function') toast('Summary report downloaded — open in browser and print to PDF', 'success');
+  };
+
+  // ── IMPORT / RESTORE ──────────────────────────────────────────────────────
+  global.dmImportBackup = function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!file.name.endsWith('.json')) {
+      if (typeof toast === 'function') toast('Please upload a .json backup file', 'error');
+      input.value = ''; return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const backup = JSON.parse(e.target.result);
+        if (!backup.data) { if (typeof toast === 'function') toast('Invalid backup file', 'error'); return; }
+        const modules = Object.keys(backup.data).length;
+        const dated = backup.meta?.timestamp ? fmtDate(backup.meta.timestamp) : 'unknown date';
+        if (!confirm(`Restore ${modules} modules from backup (${dated})?\n\nExisting records are kept. Backup records are merged in.`)) return;
+        let restored = 0;
+        Object.entries(backup.data).forEach(([key, value]) => {
+          try {
+            const existing = JSON.parse(localStorage.getItem(key) || 'null');
+            if (Array.isArray(existing) && Array.isArray(value)) {
+              const ids = new Set(existing.map(r => r.id || JSON.stringify(r)));
+              const toAdd = value.filter(r => !ids.has(r.id || JSON.stringify(r)));
+              localStorage.setItem(key, JSON.stringify([...existing, ...toAdd]));
+            } else {
+              localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+            }
+            restored++;
+          } catch {}
+        });
+        localStorage.setItem('fgl_last_backup', new Date().toISOString());
+        if (typeof toast === 'function') toast('✅ Restored ' + restored + ' modules', 'success');
+        renderDataManager();
+        input.value = '';
+      } catch(err) { if (typeof toast === 'function') toast('Failed to read backup: ' + err.message, 'error'); }
+    };
+    reader.readAsText(file);
   };
 
   // ── CLEAR MODULE ──────────────────────────────────────────────────────────
   global.dmClearModule = function(key, label) {
-    if (!confirm(`⚠️ Clear ALL data in "${label}"?\n\nThis cannot be undone. Download a backup first.`)) return;
+    if (!confirm('⚠️ Clear ALL data in "' + label + '"?\n\nThis cannot be undone. Download a backup first.')) return;
     localStorage.removeItem(key);
-    toast(`${label} cleared`, 'success');
+    if (typeof toast === 'function') toast(label + ' cleared', 'success');
     renderDataManager();
   };
 
