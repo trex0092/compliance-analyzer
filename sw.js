@@ -1,9 +1,8 @@
 // Service Worker for Compliance Analyzer — offline caching
-const CACHE_NAME = 'compliance-v2.5';
+const CACHE_NAME = 'compliance-v2.6';
 const CORE_ASSETS = [
   '/',
   '/index.html',
-  '/auth-rbac.js',
   '/compliance-suite.js',
   '/database.js',
   '/report-generator.js',

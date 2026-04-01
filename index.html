@@ -3178,10 +3178,8 @@ function initialiseApp() {
   startReminderTicker();
   startAsanaAutoRefresh();
   setTimeout(() => runAlertScanner(), 3000);
-  if (ANTHROPIC_KEY || PROXY_URL) {
-    openMainPanel();
-    toast('Saved configuration loaded','info', 2500);
-  }
+  // Note: openMainPanel() is deferred to boot() after checkSession() succeeds
+  window._keysLoaded = !!(ANTHROPIC_KEY || PROXY_URL);
 }
 
 
@@ -4058,6 +4056,7 @@ function getEmailAlertFailureMeta(detail) {
 
 async function sendEmailAlert(subject, message, payload) {
   if (!alertSettings.emailEnabled) return;
+  if (typeof emailjs === 'undefined') { console.warn('[Email] EmailJS not loaded'); return { ok: false, detail: 'EmailJS library not loaded' }; }
   const recipients = normaliseAlertEmails(alertSettings.emails || []).slice(0, 1);
   const { ejsServiceId, ejsTemplateId, ejsPublicKey } = alertSettings;
   if (!ejsServiceId || !ejsTemplateId || !ejsPublicKey || !recipients.length) {
@@ -10497,28 +10496,37 @@ function exportDefChangeLogExcel() {
 
 // ======= INIT NEW FEATURES =======
 function initNewFeatures() {
-  loadScreeningHistory();
-  renderOnboardingList();
-  renderIncidents();
-  renderDeadlines();
-  renderPreloadedCalendar();
-  renderVaultDocs();
-  refreshDashboard();
-  renderDefinitions();
+  var features = [
+    ['Screening', loadScreeningHistory],
+    ['Onboarding', renderOnboardingList],
+    ['Incidents', renderIncidents],
+    ['Deadlines', renderDeadlines],
+    ['Calendar', renderPreloadedCalendar],
+    ['Vault', renderVaultDocs],
+    ['Dashboard', refreshDashboard],
+    ['Definitions', renderDefinitions]
+  ];
+  features.forEach(function(f) {
+    try { f[1](); } catch(e) { console.warn('[Init] ' + f[0] + ' failed:', e.message); }
+  });
 }
 
 // Boot: check session, then init
 (async function boot() {
   initialiseApp();
   initNewFeatures();
-  if (!checkSession()) {
-    // Show login, hide app
+  if (checkSession()) {
+    // Valid session — show main app
+    if (window._keysLoaded) {
+      openMainPanel();
+      toast('Saved configuration loaded','info', 2500);
+    }
+  } else {
+    // No session — show login, hide app
     document.getElementById('mainApp').style.display = 'none';
     document.getElementById('loginOverlay').style.display = 'flex';
-    // Check if first-time setup needed
     await initDefaultUsers();
   }
-  // Refresh reminders every 5 minutes
   setInterval(refreshReminders, 5 * 60 * 1000);
 })();
 </script>
@@ -11101,7 +11109,7 @@ function initNewFeatures() {
 
 <!-- ══ Enhanced Modules ══ -->
 <script src="database.js"></script>
-<script src="auth-rbac.js?v=202604011159"></script>
+<!-- auth-rbac.js disabled: conflicts with index.html auth system (different user schema on shared fgl_users key) -->
 <script src="report-generator.js"></script>
 <script src="regulatory-monitor.js?v=202604011159"></script>
 <script src="integrations-enhanced.js?v=202604011159"></script>
