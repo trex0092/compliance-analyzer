@@ -5518,7 +5518,7 @@ async function repairAnalysisPayload(rawText) {
   const repairSystem = 'You repair malformed model output into strict JSON. Return only valid JSON, no markdown, no prose.';
   const repairUser = `Convert this content to valid JSON matching schema:\n{"summary":"string","risk_rating":"LOW|MEDIUM|HIGH|CRITICAL","risk_rating_justification":"string","metrics":{"critical":0,"high":0,"medium":0,"compliant":0},"findings":[{"severity":"CRITICAL|HIGH|MEDIUM|COMPLIANT","title":"string","body":"string","regulatory_ref":"string","recommendation":"string","risk_impact":"string","asana_task_name":"string"}]}\n\nContent to repair:\n${rawText}`;
   const repaired = await callAnthropic({
-    model: 'claude-sonnet-4-5-20241022',
+    model: 'claude-sonnet-4-5',
     max_tokens: 1400,
     temperature: 0,
     system: repairSystem,
@@ -5563,7 +5563,7 @@ async function runAnalysis(queryOverride, areaOverride) {
   document.getElementById('statusText').textContent = `Running regulatory analysis for ${companyName || 'active entity'}...`;
   try {
     const data = await callAI({
-      model: 'claude-sonnet-4-5-20241022',
+      model: 'claude-sonnet-4-5',
       max_tokens: 3000,
       temperature: 0,
       system: buildSystemPrompt(area, asanaCtx, companyName),
@@ -7386,13 +7386,13 @@ JSON schema: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","risk_level":"LOW|MEDIUM|HI
   }
 
   try {
-    const data = await callAI({ model:'claude-sonnet-4-5-20241022', max_tokens:4000, temperature:0, system:'Sanctions screening expert. Return ONLY raw compact JSON. No markdown. No code fences. No explanation. Keep strings very short.', messages:[{role:'user',content:prompt}] });
+    const data = await callAI({ model:'claude-sonnet-4-5', max_tokens:4000, temperature:0, system:'Sanctions screening expert. Return ONLY raw compact JSON. No markdown. No code fences. No explanation. Keep strings very short.', messages:[{role:'user',content:prompt}] });
     const raw = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     let cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
     let result = repairJSON(cleaned);
     if (!result) {
       toast('Retrying screening...','info',2000);
-      const retry = await callAI({ model:'claude-sonnet-4-5-20241022', max_tokens:4000, temperature:0, system:'Return ONLY raw compact JSON. No markdown. No fences.', messages:[{role:'user',content:prompt}] });
+      const retry = await callAI({ model:'claude-sonnet-4-5', max_tokens:4000, temperature:0, system:'Return ONLY raw compact JSON. No markdown. No fences.', messages:[{role:'user',content:prompt}] });
       const retryRaw = (retry.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
       let retryCleaned = retryRaw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
       result = repairJSON(retryCleaned);
@@ -7459,7 +7459,7 @@ async function refreshSanctionsLists() {
   ];
 
   try {
-    const data = await callAI({ model:'claude-sonnet-4-5-20241022', max_tokens:2000, temperature:0,
+    const data = await callAI({ model:'claude-sonnet-4-5', max_tokens:2000, temperature:0,
       system:'You are a sanctions compliance data specialist. Return only valid JSON.',
       messages:[{role:'user',content:`Provide the current status of these sanctions lists as of today (${new Date().toISOString().slice(0,10)}). For each list, indicate if it has been recently updated and approximate entry count.
 Lists: ${lists.map(l=>l.name).join(', ')}
@@ -8581,7 +8581,7 @@ async function generateSTRDraft() {
   if (!subject||!indicators) { toast('Fill in subject and indicators','error'); return; }
 
   try {
-    const data = await callAI({ model:'claude-sonnet-4-5-20241022', max_tokens:2000, temperature:0,
+    const data = await callAI({ model:'claude-sonnet-4-5', max_tokens:2000, temperature:0,
       system:'You are a UAE AML compliance expert. Draft a Suspicious Transaction Report (STR) for goAML filing. Include all required fields: reporter info placeholders, subject details, transaction details, grounds for suspicion, and recommended actions. Format as a professional report.',
       messages:[{role:'user',content:`Draft STR for:\nSubject: ${subject}\nAmount: USD ${amount||'Unknown'}\nSuspicious Indicators: ${indicators}`}]
     });
@@ -8624,7 +8624,7 @@ Include: reporter info placeholders, subject details, grounds for suspicion base
 
   try {
     toast('Generating STR draft...', 'info');
-    const data = await callAI({ model:'claude-sonnet-4-5-20241022', max_tokens:2500, temperature:0,
+    const data = await callAI({ model:'claude-sonnet-4-5', max_tokens:2500, temperature:0,
       system:'You are a UAE AML/CFT compliance expert specializing in STR/SAR drafting for goAML. Generate professional, detailed Suspicious Transaction Reports aligned with UAE Central Bank and FIU requirements under Federal Decree-Law No. 20/2018.',
       messages:[{role:'user',content:prompt}]
     });
@@ -9863,7 +9863,7 @@ async function exportBoardReport() {
   const customers = safeLocalParse(ONBOARDING_STORAGE, []);
 
   try {
-    const data = await callAI({ model:'claude-sonnet-4-5-20241022', max_tokens:2000, temperature:0,
+    const data = await callAI({ model:'claude-sonnet-4-5', max_tokens:2000, temperature:0,
       system:'You are a MLRO writing a board compliance report. Be concise, professional, structured.',
       messages:[{role:'user',content:`Generate a Board/MLRO Compliance Report based on:\nOpen Gaps: ${gaps.filter(g=>g.status!=='closed').length}\nTotal Incidents: ${incidents.length} (Open: ${incidents.filter(i=>i.status==='open').length})\nScreenings (30d): ${screenings.length}\nCustomers Onboarded: ${customers.length}\nHigh Risk Customers: ${customers.filter(c=>c.risk?.level==='HIGH'||c.risk?.level==='CRITICAL').length}\n\nIncident Summary: ${incidents.slice(0,5).map(i=>`${i.severity}: ${i.title}`).join('; ')}`}]
     });
