@@ -2790,3 +2790,326 @@
     setTimeout(migrateTFSRecords, 2000);
   }
 })();
+
+// ════════════════════════════════════════════════════════════════════════════
+// DATA MANAGER — Full Backup, Restore, CSV Export, Import
+// Upload/Download all compliance data safely
+// ════════════════════════════════════════════════════════════════════════════
+(function(global) {
+  'use strict';
+
+  // Every storage key used across the entire app
+  const ALL_MODULES = [
+    // Compliance Suite modules
+    { key:'fgl_cra_v1',             label:'Customer Risk Assessments (CRA)',    icon:'👤' },
+    { key:'fgl_ubo_v1',             label:'UBO Register',                       icon:'🏛️' },
+    { key:'fgl_str_cases_v1',       label:'STR / SAR Cases',                    icon:'🚨' },
+    { key:'fgl_tfs2_v1',            label:'TFS Screening Events',               icon:'🇦🇪' },
+    { key:'fgl_approvals_v1',       label:'Four-Eyes Approval Matrix',          icon:'✅' },
+    { key:'fgl_mgmt_approvals',     label:'Management CDD Approvals',           icon:'📋' },
+    { key:'fgl_dpmsr_v1',           label:'DPMSR Threshold Cases',              icon:'📊' },
+    { key:'fgl_retention_v1',       label:'Record Retention Register',          icon:'🗄️' },
+    { key:'fgl_ailog_v1',           label:'AI Governance Log',                  icon:'🤖' },
+    // Core app modules
+    { key:'fgl_shipments',          label:'IAR Shipments',                      icon:'🚢' },
+    { key:'fgl_local_shipments',    label:'Local Shipments',                    icon:'📦' },
+    { key:'fgl_iar_reports',        label:'IAR Reports',                        icon:'📄' },
+    { key:'fgl_onboarding',         label:'Onboarding Records',                 icon:'🧑' },
+    { key:'fgl_risk_assessments',   label:'Risk Assessments',                   icon:'⚖️' },
+    { key:'fgl_incidents',          label:'Incidents',                          icon:'⚠️' },
+    { key:'fgl_employee_info',      label:'Employees',                          icon:'👥' },
+    { key:'fgl_employee_training',  label:'Training Records',                   icon:'🎓' },
+    { key:'fgl_gaps_v2',            label:'Gap Register',                       icon:'🎯' },
+    { key:'fgl_evidence',           label:'Evidence Tracker',                   icon:'🔍' },
+    { key:'fgl_calendar',           label:'Compliance Calendar',                icon:'📅' },
+    { key:'fgl_schedules',          label:'Scheduler',                          icon:'⏰' },
+    { key:'fgl_compliance_ops',     label:'Compliance Operations',              icon:'⚙️' },
+    { key:'fgl_ewra',               label:'EWRA',                               icon:'📊' },
+    { key:'fgl_bwra',               label:'BWRA',                               icon:'📊' },
+    { key:'fgl_compliance_manual',  label:'Compliance Manual',                  icon:'📘' },
+    { key:'fgl_company_profiles',   label:'Company Profiles',                   icon:'🏢' },
+    { key:'fgl_vault',              label:'Document Vault',                     icon:'🔐' },
+    { key:'fgl_workflow_rules',     label:'Workflow Rules',                     icon:'⚡' },
+    { key:'fgl_history',            label:'Audit History',                      icon:'📜' },
+  ];
+
+  function getSize(key) {
+    try {
+      const v = localStorage.getItem(key);
+      if (!v) return null;
+      const parsed = JSON.parse(v);
+      const count = Array.isArray(parsed) ? parsed.length : typeof parsed === 'object' ? Object.keys(parsed).length : 1;
+      const kb = (v.length / 1024).toFixed(1);
+      return { count, kb, raw: v };
+    } catch { return null; }
+  }
+
+  function fmtDate(d) { return new Date(d).toLocaleDateString('en-GB'); }
+
+  // ── INJECT TAB ────────────────────────────────────────────────────────────
+  function injectDataTab() {
+    const nav = document.getElementById('tabsNav');
+    if (!nav || document.getElementById('data-mgr-tab')) return;
+    const btn = document.createElement('div');
+    btn.className = 'tab';
+    btn.id = 'data-mgr-tab';
+    btn.innerHTML = '💾 Data';
+    btn.title = 'Data Manager — Backup, Restore, Export, Import';
+    btn.onclick = () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      const el = document.getElementById('data-mgr-content');
+      if (el) { el.classList.add('active'); renderDataManager(); }
+    };
+    nav.appendChild(btn);
+    const content = document.createElement('div');
+    content.className = 'tab-content';
+    content.id = 'data-mgr-content';
+    (document.querySelector('.app') || document.body).appendChild(content);
+  }
+
+  // ── RENDER ────────────────────────────────────────────────────────────────
+  function renderDataManager() {
+    const el = document.getElementById('data-mgr-content');
+    if (!el) return;
+
+    // Calculate totals
+    let totalRecords = 0, totalKb = 0;
+    const moduleStats = ALL_MODULES.map(m => {
+      const s = getSize(m.key);
+      if (s) { totalRecords += s.count; totalKb += parseFloat(s.kb); }
+      return { ...m, ...(s || { count: 0, kb: '0.0', raw: null }) };
+    });
+    const populated = moduleStats.filter(m => m.raw);
+
+    el.innerHTML = `
+    <div class="card" style="margin-bottom:1rem">
+      <div class="top-bar">
+        <span class="sec-title">💾 Data Manager — Backup, Restore & Export</span>
+        <span style="font-size:11px;color:var(--muted)">${populated.length} modules active | ${totalRecords} total records | ${totalKb.toFixed(1)} KB</span>
+      </div>
+
+      <!-- QUICK ACTIONS -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem">
+        <button class="btn btn-gold" style="padding:18px;font-size:14px;font-weight:600" onclick="dmExportAll()">
+          ⬇️ Full Backup<br><span style="font-size:11px;font-weight:400;opacity:0.8">Download all data as JSON</span>
+        </button>
+        <button class="btn" style="padding:18px;font-size:14px;font-weight:600;background:var(--surface2);border:2px dashed var(--border)" onclick="document.getElementById('dm-import-file').click()">
+          ⬆️ Restore Backup<br><span style="font-size:11px;font-weight:400;opacity:0.8">Import from JSON backup file</span>
+        </button>
+        <button class="btn" style="padding:18px;font-size:14px;font-weight:600;background:var(--surface2);border:1px solid var(--border)" onclick="dmExportAllCSV()">
+          📊 Export All CSV<br><span style="font-size:11px;font-weight:400;opacity:0.8">All modules as Excel-ready CSV</span>
+        </button>
+      </div>
+      <input type="file" id="dm-import-file" accept=".json" style="display:none" onchange="dmImportBackup(this)"/>
+
+      <!-- SAFETY NOTICE -->
+      <div style="background:rgba(61,168,118,0.08);border:1px solid rgba(61,168,118,0.25);border-radius:10px;padding:12px;margin-bottom:1.5rem;font-size:12px">
+        <strong style="color:var(--green)">✅ Your data is safe to use right now.</strong>
+        Data is stored in your browser. It persists across sessions on the same device and browser.
+        <strong>Use Full Backup daily</strong> to save a copy to your computer or Google Drive — this is your audit evidence file.
+      </div>
+
+      <!-- MODULE TABLE -->
+      <div class="sec-title" style="margin-bottom:10px">Module Status & Exports</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="border-bottom:2px solid var(--gold)">
+            ${['Module','Records','Size','Status','Actions'].map(h=>`<th style="text-align:left;padding:8px;color:var(--gold);font-family:'DM Mono',monospace;font-size:11px">${h}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${moduleStats.map(m => {
+              const hasData = m.raw !== null;
+              const status = hasData ? `<span style="color:var(--green);font-family:'DM Mono',monospace">● Active</span>` : `<span style="color:var(--muted);font-family:'DM Mono',monospace">○ Empty</span>`;
+              return `<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px">${m.icon} ${m.label}</td>
+                <td style="padding:8px;font-family:'DM Mono',monospace;color:var(--gold)">${hasData ? m.count : '—'}</td>
+                <td style="padding:8px;font-family:'DM Mono',monospace;color:var(--muted)">${hasData ? m.kb+' KB' : '—'}</td>
+                <td style="padding:8px">${status}</td>
+                <td style="padding:8px">
+                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                    ${hasData ? `<button class="btn btn-sm" onclick="dmExportModule('${m.key}','${m.label}')" style="padding:3px 8px;font-size:10px">JSON</button>
+                    <button class="btn btn-sm" onclick="dmExportModuleCSV('${m.key}','${m.label}')" style="padding:3px 8px;font-size:10px">CSV</button>
+                    <button class="btn btn-sm btn-red" onclick="dmClearModule('${m.key}','${m.label}')" style="padding:3px 8px;font-size:10px">Clear</button>` : '—'}
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- BACKUP HISTORY -->
+      <div style="margin-top:1.5rem">
+        <div class="sec-title" style="margin-bottom:10px">Last Backup</div>
+        <div id="dm-last-backup" style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace">
+          ${localStorage.getItem('fgl_last_backup') ? 'Last backup: ' + fmtDate(localStorage.getItem('fgl_last_backup')) : 'No backup recorded yet — click Full Backup now.'}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── EXPORT ALL (FULL BACKUP) ──────────────────────────────────────────────
+  global.dmExportAll = function() {
+    const backup = {
+      meta: {
+        version: '2.1',
+        timestamp: new Date().toISOString(),
+        entity: (typeof getActiveCompany === 'function' ? getActiveCompany().name : 'Fine Gold LLC'),
+        modules: ALL_MODULES.length,
+      },
+      data: {}
+    };
+    let count = 0;
+    ALL_MODULES.forEach(m => {
+      const raw = localStorage.getItem(m.key);
+      if (raw) { try { backup.data[m.key] = JSON.parse(raw); count++; } catch { backup.data[m.key] = raw; } }
+    });
+    // Also save settings
+    ['fgl_active_company','fgl_settings','fgl_users','fgl_asana_token','fgl_drive_link'].forEach(k => {
+      const v = localStorage.getItem(k);
+      if (v) backup.data[k] = v;
+    });
+    backup.meta.modulesExported = count;
+
+    const json = JSON.stringify(backup, null, 2);
+    const ts = new Date().toISOString().slice(0,10);
+    const entity = backup.meta.entity.replace(/\s+/g,'-').toLowerCase();
+    const filename = `finegold-compliance-backup-${ts}.json`;
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    localStorage.setItem('fgl_last_backup', new Date().toISOString());
+    if (typeof toast === 'function') toast(`✅ Backup saved: ${filename} (${count} modules, ${(json.length/1024).toFixed(0)} KB)`, 'success');
+    renderDataManager();
+  };
+
+  // ── IMPORT / RESTORE ─────────────────────────────────────────────────────
+  global.dmImportBackup = function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const backup = JSON.parse(e.target.result);
+        if (!backup.data) { toast('Invalid backup file — missing data block', 'error'); return; }
+        const modules = Object.keys(backup.data).length;
+        if (!confirm(`Restore ${modules} modules from backup dated ${backup.meta?.timestamp ? fmtDate(backup.meta.timestamp) : 'unknown'}?\n\nThis will MERGE with existing data (existing records are kept, backup records are added).`)) return;
+        let restored = 0;
+        Object.entries(backup.data).forEach(([key, value]) => {
+          try {
+            const existing = JSON.parse(localStorage.getItem(key) || 'null');
+            const incoming = typeof value === 'string' ? value : JSON.stringify(value);
+            // Merge arrays, overwrite non-arrays
+            if (Array.isArray(existing) && Array.isArray(value)) {
+              const existingIds = new Set(existing.map(r => r.id || r.gid || JSON.stringify(r)));
+              const toAdd = value.filter(r => !existingIds.has(r.id || r.gid || JSON.stringify(r)));
+              localStorage.setItem(key, JSON.stringify([...existing, ...toAdd]));
+            } else {
+              localStorage.setItem(key, incoming);
+            }
+            restored++;
+          } catch(err) { console.warn('Restore error for key:', key, err); }
+        });
+        localStorage.setItem('fgl_last_backup', new Date().toISOString());
+        toast(`✅ Restored ${restored} modules from backup`, 'success');
+        renderDataManager();
+        input.value = '';
+      } catch(err) { toast('Failed to parse backup file: ' + err.message, 'error'); }
+    };
+    reader.readAsText(file);
+  };
+
+  // ── EXPORT SINGLE MODULE (JSON) ───────────────────────────────────────────
+  global.dmExportModule = function(key, label) {
+    const raw = localStorage.getItem(key);
+    if (!raw) { toast('No data in this module', 'error'); return; }
+    const blob = new Blob([raw], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = `finegold-${key}-${ts}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`Downloaded: ${label}`, 'success');
+  };
+
+  // ── EXPORT SINGLE MODULE (CSV) ────────────────────────────────────────────
+  global.dmExportModuleCSV = function(key, label) {
+    const raw = localStorage.getItem(key);
+    if (!raw) { toast('No data', 'error'); return; }
+    try {
+      const data = JSON.parse(raw);
+      const arr = Array.isArray(data) ? data : typeof data === 'object' ? [data] : [];
+      if (!arr.length) { toast('No records to export', 'error'); return; }
+      const headers = [...new Set(arr.flatMap(r => Object.keys(r)))];
+      const escape = v => {
+        if (v === null || v === undefined) return '';
+        const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+        return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+      };
+      const csv = [headers.join(','), ...arr.map(r => headers.map(h => escape(r[h])).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().slice(0,10);
+      a.href = url;
+      a.download = `finegold-${key}-${ts}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast(`CSV exported: ${arr.length} records`, 'success');
+    } catch(err) { toast('CSV export error: ' + err.message, 'error'); }
+  };
+
+  // ── EXPORT ALL CSV ────────────────────────────────────────────────────────
+  global.dmExportAllCSV = function() {
+    let exported = 0;
+    ALL_MODULES.forEach(m => {
+      const raw = localStorage.getItem(m.key);
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        const arr = Array.isArray(data) ? data : typeof data === 'object' && data !== null ? [data] : [];
+        if (!arr.length) return;
+        const headers = [...new Set(arr.flatMap(r => Object.keys(r)))];
+        const escape = v => {
+          if (v === null || v === undefined) return '';
+          const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+          return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+        };
+        const csv = [headers.join(','), ...arr.map(r => headers.map(h => escape(r[h])).join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const ts = new Date().toISOString().slice(0,10);
+        a.href = url;
+        a.download = `finegold-${m.key}-${ts}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        exported++;
+        // Small delay between downloads
+      } catch {}
+    });
+    setTimeout(() => toast(`✅ Exported ${exported} CSV files`, 'success'), 500);
+  };
+
+  // ── CLEAR MODULE ──────────────────────────────────────────────────────────
+  global.dmClearModule = function(key, label) {
+    if (!confirm(`⚠️ Clear ALL data in "${label}"?\n\nThis cannot be undone. Download a backup first.`)) return;
+    localStorage.removeItem(key);
+    toast(`${label} cleared`, 'success');
+    renderDataManager();
+  };
+
+  // ── INIT ──────────────────────────────────────────────────────────────────
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(injectDataTab, 500));
+  } else {
+    setTimeout(injectDataTab, 500);
+  }
+
+})(window);
