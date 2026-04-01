@@ -400,16 +400,6 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       <div class="token-note">Deploy <code>proxy/worker.js</code> as a Cloudflare Worker, store your keys as Worker secrets, then paste the Worker URL here. See <code>proxy/README.md</code> for step-by-step instructions. When set, the Anthropic and Asana fields above can be left blank.</div>
     </div>
     <div class="card">
-      <span class="lbl">OpenAI API Key <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — alternative AI provider)</span></span>
-      <input type="password" id="openaiKey" placeholder="sk-..." />
-      <div class="token-note">Get from: platform.openai.com → API Keys. When set, you can switch between Claude and GPT-4 in Settings.</div>
-    </div>
-    <div class="card">
-      <span class="lbl">Google Gemini API Key <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — alternative AI provider)</span></span>
-      <input type="password" id="geminiKey" placeholder="AIza..." />
-      <div class="token-note">Get from: aistudio.google.com → Get API Key. Enables Gemini as a third AI provider option.</div>
-    </div>
-    <div class="card">
       <span class="lbl">Google Drive Client ID <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — save reports to Google Drive)</span></span>
       <input type="text" id="gdriveClientId" placeholder="123456789-abc.apps.googleusercontent.com" />
       <div class="token-note">Get from: console.cloud.google.com → APIs & Services → Credentials → OAuth 2.0 Client ID. Enable the Google Drive API first.</div>
@@ -418,27 +408,6 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       <span class="lbl">Google Drive Folder ID <span style="color:var(--muted);font-weight:400;font-size:11px">(optional)</span></span>
       <input type="text" id="gdriveFolderId" placeholder="1ABC...xyz" />
       <div class="token-note">Open your Google Drive folder → copy the ID from the URL (the string after /folders/).</div>
-    </div>
-    <div class="card">
-      <span class="lbl">Notion Integration Token <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — save reports to Notion)</span></span>
-      <input type="password" id="notionToken" placeholder="ntn_..." />
-      <div class="token-note">Get from: notion.so/my-integrations → Create integration → Copy Internal Integration Token. Then share your database with the integration.</div>
-    </div>
-    <div class="card">
-      <span class="lbl">Notion Database ID <span style="color:var(--muted);font-weight:400;font-size:11px">(optional)</span></span>
-      <input type="text" id="notionDbId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-      <div class="token-note">Open your Notion database → copy the ID from the URL (the 32-char string after the workspace name).</div>
-    </div>
-    <!-- Slack removed — not supported in browser-only deployment -->
-    <div class="card">
-      <span class="lbl">ClickUp API Token <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — create compliance tasks)</span></span>
-      <input type="password" id="clickupToken" placeholder="pk_..." />
-      <div class="token-note">Get from: ClickUp → Settings → Apps → API Token.</div>
-    </div>
-    <div class="card">
-      <span class="lbl">ClickUp List ID <span style="color:var(--muted);font-weight:400;font-size:11px">(optional)</span></span>
-      <input type="text" id="clickupListId" placeholder="900123456789" />
-      <div class="token-note">Open your ClickUp list → click ••• → Copy Link → the number in the URL is your list ID.</div>
     </div>
     <div class="card" style="padding:1rem 1.2rem">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text)">
@@ -655,8 +624,6 @@ Examples:
             <button class="btn btn-sm btn-green" onclick="exportPDF()">⬇ Export PDF</button>
             <button class="btn btn-sm btn-green" onclick="copyReport()">Copy Text Report</button>
             <button class="btn btn-sm btn-green" onclick="saveToScheduleHistory()">Save to History</button>
-            <button class="btn btn-sm btn-green" onclick="shareToNotion()" title="Save to Notion">📓 Notion</button>
-            <button class="btn btn-sm btn-green" onclick="shareToClickUp()" title="Create ClickUp tasks">✅ ClickUp</button>
             <button class="btn btn-sm btn-green" onclick="shareAnalysisToGDrive()" title="Save to Google Drive">📁 Drive</button>
             <button class="btn btn-sm btn-green" onclick="resetAnalysis()">New Analysis</button>
           </div>
@@ -2259,16 +2226,9 @@ Examples:
       <div class="card">
         <span class="lbl">API Keys & Integrations</span>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Anthropic API Key</span><input type="password" id="anthropicKey2" placeholder="sk-ant-..." /></div></div>
-        <div class="row" style="margin-bottom:12px"><div><span class="lbl">OpenAI API Key</span><input type="password" id="openaiKey2" placeholder="sk-..." /></div></div>
-        <div class="row" style="margin-bottom:12px"><div><span class="lbl">Gemini API Key</span><input type="password" id="geminiKey2" placeholder="AIza..." /></div></div>
-        <div class="row" style="margin-bottom:12px"><div><span class="lbl">AI Provider</span><select id="aiProvider2"><option value="claude">Claude (Anthropic)</option><option value="openai">GPT-4 (OpenAI)</option><option value="gemini">Gemini (Google)</option></select></div></div>
         <div class="row row-2" style="margin-bottom:12px"><div><span class="lbl">Google Drive Client ID</span><input type="text" id="gdriveClientId2" placeholder="123456789-abc.apps.googleusercontent.com" /></div><div><span class="lbl">Google Drive Folder ID</span><input type="text" id="gdriveFolderId2" placeholder="1ABC...xyz" /></div></div>
         <div class="row row-2" style="margin-bottom:12px"><div><button class="btn btn-sm" onclick="connectGoogleDrive()" style="margin-top:0">Connect Google Drive</button></div><div id="gdriveStatus" style="font-size:12px;color:var(--muted);padding-top:4px"></div></div>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Asana Personal Access Token</span><input type="password" id="asanaToken2" placeholder="1/xxxxxxxx..." /></div></div>
-        <div class="row" style="margin-bottom:12px"><div><span class="lbl">Notion Integration Token</span><input type="password" id="notionToken2" placeholder="ntn_..." /></div></div>
-        <div class="row row-2" style="margin-bottom:12px"><div><span class="lbl">Notion Database ID</span><input type="text" id="notionDbId2" placeholder="xxxxxxxx-xxxx-..." /></div><div><button class="btn btn-sm" onclick="testNotionConnection()" style="margin-top:22px">Test Notion</button></div></div>
-        <!-- Slack removed -->
-        <div class="row row-2" style="margin-bottom:12px"><div><span class="lbl">ClickUp API Token</span><input type="password" id="clickupToken2" placeholder="pk_..." /></div><div><span class="lbl">ClickUp List ID</span><input type="text" id="clickupListId2" placeholder="900123456789" /></div></div>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Email for Scheduled Reports</span><input type="email" id="schedEmail2" placeholder="your@email.com" /></div></div>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Proxy URL <span style="color:var(--muted);font-weight:400;font-size:11px">(optional)</span></span><input type="url" id="proxyUrl2" placeholder="https://fgl-proxy.youruser.workers.dev" /></div></div>
         <div class="row" style="margin-bottom:12px"><div><label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text)"><input type="checkbox" id="rememberKeys2" style="width:auto" />Remember my keys on this browser</label></div></div>
@@ -3018,15 +2978,8 @@ function persistKeys() {
     asanaToken: ASANA_TOKEN,
     scheduleEmail: SCHEDULE_EMAIL,
     proxyUrl: PROXY_URL,
-    openaiKey: OPENAI_KEY,
-    notionToken: NOTION_TOKEN,
-    notionDbId: NOTION_DB_ID,
-    clickupToken: CLICKUP_TOKEN,
-    clickupListId: CLICKUP_LIST_ID,
-    geminiKey: GEMINI_KEY,
     gdriveClientId: GDRIVE_CLIENT_ID,
     gdriveFolderId: GDRIVE_FOLDER_ID,
-    aiProvider: AI_PROVIDER,
     rememberKeys: REMEMBER_KEYS
   }));
 }
@@ -3074,12 +3027,6 @@ function hydrateKeys() {
     asanaToken: ASANA_TOKEN, asanaToken2: ASANA_TOKEN,
     scheduleEmail: SCHEDULE_EMAIL, schedEmail2: SCHEDULE_EMAIL,
     proxyUrl: PROXY_URL, proxyUrl2: PROXY_URL,
-    openaiKey: OPENAI_KEY, openaiKey2: OPENAI_KEY,
-    notionToken: NOTION_TOKEN, notionToken2: NOTION_TOKEN,
-    notionDbId: NOTION_DB_ID, notionDbId2: NOTION_DB_ID,
-    clickupToken: CLICKUP_TOKEN, clickupToken2: CLICKUP_TOKEN,
-    clickupListId: CLICKUP_LIST_ID, clickupListId2: CLICKUP_LIST_ID,
-    geminiKey: GEMINI_KEY, geminiKey2: GEMINI_KEY,
     gdriveClientId: GDRIVE_CLIENT_ID, gdriveClientId2: GDRIVE_CLIENT_ID,
     gdriveFolderId: GDRIVE_FOLDER_ID, gdriveFolderId2: GDRIVE_FOLDER_ID,
   };
@@ -3087,8 +3034,6 @@ function hydrateKeys() {
     const el = document.getElementById(id);
     if (el) el.value = val;
   }
-  const providerEl = document.getElementById('aiProvider2');
-  if (providerEl) providerEl.value = AI_PROVIDER;
   syncRememberCheckboxes();
 }
 
@@ -3109,18 +3054,14 @@ function saveSetup() {
   ASANA_TOKEN = document.getElementById('asanaToken').value.trim();
   SCHEDULE_EMAIL = document.getElementById('scheduleEmail').value.trim();
   PROXY_URL = normaliseProxyUrl(document.getElementById('proxyUrl')?.value || '');
-  OPENAI_KEY = document.getElementById('openaiKey')?.value.trim() || '';
   NOTION_TOKEN = document.getElementById('notionToken')?.value.trim() || '';
   NOTION_DB_ID = document.getElementById('notionDbId')?.value.trim() || '';
   CLICKUP_TOKEN = document.getElementById('clickupToken')?.value.trim() || '';
   CLICKUP_LIST_ID = document.getElementById('clickupListId')?.value.trim() || '';
-  GEMINI_KEY = document.getElementById('geminiKey')?.value.trim() || '';
   GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId')?.value.trim() || '';
   GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId')?.value.trim() || '';
   REMEMBER_KEYS = !!document.getElementById('rememberKeys')?.checked;
-  if (!ANTHROPIC_KEY && !OPENAI_KEY && !GEMINI_KEY && !PROXY_URL) { toast('An AI API key (Anthropic, OpenAI, or Gemini) or Proxy URL is required','error'); return; }
-  if (OPENAI_KEY && !ANTHROPIC_KEY && !PROXY_URL && !GEMINI_KEY) AI_PROVIDER = 'openai';
-  if (GEMINI_KEY && !ANTHROPIC_KEY && !OPENAI_KEY && !PROXY_URL) AI_PROVIDER = 'gemini';
+  if (!ANTHROPIC_KEY && !PROXY_URL) { toast('Anthropic API key or Proxy URL is required','error'); return; }
   persistKeys();
   openMainPanel();
   startAsanaAutoRefresh();
@@ -3129,18 +3070,11 @@ function saveSetup() {
 }
 function updateKeys() {
   if (document.getElementById('anthropicKey2').value.trim()) ANTHROPIC_KEY = document.getElementById('anthropicKey2').value.trim();
-  if (document.getElementById('openaiKey2')?.value.trim()) OPENAI_KEY = document.getElementById('openaiKey2').value.trim();
   if (document.getElementById('asanaToken2').value.trim()) ASANA_TOKEN = document.getElementById('asanaToken2').value.trim();
-  if (document.getElementById('notionToken2')?.value.trim()) NOTION_TOKEN = document.getElementById('notionToken2').value.trim();
-  if (document.getElementById('notionDbId2')?.value.trim()) NOTION_DB_ID = document.getElementById('notionDbId2').value.trim();
-  if (document.getElementById('clickupToken2')?.value.trim()) CLICKUP_TOKEN = document.getElementById('clickupToken2').value.trim();
-  if (document.getElementById('clickupListId2')?.value.trim()) CLICKUP_LIST_ID = document.getElementById('clickupListId2').value.trim();
-  if (document.getElementById('geminiKey2')?.value.trim()) GEMINI_KEY = document.getElementById('geminiKey2').value.trim();
   if (document.getElementById('gdriveClientId2')?.value.trim()) GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId2').value.trim();
   if (document.getElementById('gdriveFolderId2')?.value.trim()) GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId2').value.trim();
   if (document.getElementById('schedEmail2').value.trim()) SCHEDULE_EMAIL = document.getElementById('schedEmail2').value.trim();
   if (document.getElementById('proxyUrl2')?.value.trim()) PROXY_URL = normaliseProxyUrl(document.getElementById('proxyUrl2').value);
-  AI_PROVIDER = document.getElementById('aiProvider2')?.value || AI_PROVIDER;
   REMEMBER_KEYS = !!document.getElementById('rememberKeys2')?.checked;
   persistKeys();
 
