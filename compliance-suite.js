@@ -116,7 +116,7 @@
     // Render
     const renders = {
       cra: renderCRA, ubo: renderUBO, str: renderSTR,
-      tfs: renderTFS, redflags: renderRedFlags,
+      redflags: renderRedFlags,
       approvals2: renderApprovals, regmap: renderRegMap,
     };
     if (renders[name]) renders[name]();
@@ -811,212 +811,9 @@
   };
 
   // ════════════════════════════════════════════════════════════════════════════
-  // 4. TFS OPERATIONS
-  // Reg: UAE Cabinet Resolution 74/2020 | UNSCR | FDL No.(10) of 2025 Art.14-15
-  // ════════════════════════════════════════════════════════════════════════════
+  // TFS Operations migrated to unified TFS module (TFS UAE tab)
+  // Old SK.TFS records auto-migrated to SK2.TFS2 on first load
 
-  function renderTFS() {
-    const el = document.getElementById('suite-content-tfs');
-    if (!el) return;
-    const events = load(SK.TFS) || [];
-
-    el.innerHTML = `
-      <div class="card">
-        <div class="top-bar">
-          <span class="sec-title">🔒 TFS Operations — Targeted Financial Sanctions</span>
-          <span style="font-size:11px;color:var(--muted)">UAE Cabinet Resolution 74/2020 | UNSCR | FDL No.(10) of 2025 Art.14-15</span>
-          <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suiteOpenTFSForm()">+ New Screening Event</button>
-        </div>
-
-        <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:1rem">
-          <div class="sec-title" style="margin-bottom:10px">Active Screening Lists — UAE DPMS Obligation</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px">
-            ${[
-              ['UN Consolidated Sanctions List','UNSCR – Mandatory','✅'],
-              ['UAE Local Terrorist List (EOCN)','Executive Office – Mandatory','✅'],
-              ['OFAC SDN List','US – Best Practice','✅'],
-              ['EU Consolidated Sanctions','EU – Best Practice','✅'],
-              ['UK OFSI Consolidated','UK – Best Practice','✅'],
-              ['Interpol Red Notices','International – Best Practice','✅'],
-            ].map(([name,basis,status])=>`
-              <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px">
-                <div style="font-weight:500">${status} ${name}</div>
-                <div style="color:var(--muted);font-size:11px;margin-top:3px">${basis}</div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-
-        <div style="background:rgba(217,79,79,0.08);border:1px solid rgba(217,79,79,0.25);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px;font-family:'DM Mono',monospace">
-          🔴 FREEZE WITHOUT DELAY: If a true hit is confirmed, assets must be frozen immediately without prior notice. Notify: (1) UAE FIU via goAML FFR, (2) Executive Office (EOCN) for UAE list matches, (3) CBUAE or MoE as applicable. UAE FDL No.(10) of 2025 Art.15
-        </div>
-
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
-          <div class="metric m-c"><div class="metric-num">${events.filter(e=>e.disposition==='True Hit').length}</div><div class="metric-lbl">True Hits</div></div>
-          <div class="metric m-h"><div class="metric-num">${events.filter(e=>e.disposition==='Potential Match – Pending').length}</div><div class="metric-lbl">Pending Review</div></div>
-          <div class="metric m-ok"><div class="metric-num">${events.filter(e=>e.disposition==='False Positive').length}</div><div class="metric-lbl">False Positives</div></div>
-          <div class="metric m-m"><div class="metric-num">${events.length}</div><div class="metric-lbl">Total Events</div></div>
-        </div>
-
-        ${events.length===0 ? '<p style="color:var(--muted);font-size:13px;text-align:center;padding:2rem">No screening events recorded.</p>' : ''}
-        ${events.map((e,i)=>`
-          <div class="finding ${e.disposition==='True Hit'?'f-critical':e.disposition==='Potential Match – Pending'?'f-high':'f-ok'}" style="margin-bottom:8px">
-            <div class="f-head">
-              <div class="f-head-left">
-                <div>
-                  <div class="f-title">${e.screenedName} ${badge(e.disposition)}</div>
-                  <div class="f-body">List: ${e.listName} | Event: ${e.eventType} | Screened: ${fmtDate(e.screeningDate)}</div>
-                  <div class="f-ref">Ref: ${e.id} | Reviewed by: ${e.reviewedBy||'—'} | Frozen: ${e.frozenStatus||'N/A'}</div>
-                </div>
-              </div>
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-sm" onclick="suiteEditTFS(${i})">Edit</button>
-                <button class="btn btn-sm btn-blue" onclick="suiteSyncTFSToAsana(${i})">Asana</button>
-                <button class="btn btn-sm btn-red" onclick="suiteDeleteTFS(${i})">Delete</button>
-              </div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <!-- TFS Form Modal -->
-      <div class="modal-overlay" id="tfsModal">
-        <div class="modal" style="max-width:580px;width:95%">
-          <button class="modal-close" onclick="document.getElementById('tfsModal').classList.remove('open')">✕</button>
-          <div class="modal-title">TFS Screening Event</div>
-          <input type="hidden" id="tfs-edit-idx" value="-1">
-          <div class="row row-2">
-            <div><span class="lbl">Name Screened *</span><input id="tfs-name" placeholder="Individual or entity name"/></div>
-            <div><span class="lbl">Screening Event Type</span>
-              <select id="tfs-event"><option>New Customer Onboarding</option><option>Periodic Rescreening</option><option>List Update Trigger</option><option>Transaction Pre-Approval</option><option>Ad Hoc Review</option></select>
-            </div>
-          </div>
-          <div class="row row-2">
-            <div><span class="lbl">List(s) Screened Against *</span><input id="tfs-list" placeholder="e.g. UN + UAE EOCN + OFAC"/></div>
-            <div><span class="lbl">Screening Date *</span><input type="date" id="tfs-date" value="${today()}"/></div>
-          </div>
-          <div class="row row-2">
-            <div><span class="lbl">Disposition *</span>
-              <select id="tfs-disposition"><option value="">Select</option><option>No Match – Cleared</option><option>Potential Match – Pending</option><option>False Positive</option><option>True Hit</option></select>
-            </div>
-            <div><span class="lbl">Reviewed By</span><input id="tfs-reviewer" placeholder="Compliance Officer / MLRO"/></div>
-          </div>
-          <div id="tfs-freeze-section" style="display:none">
-            <div style="background:rgba(217,79,79,0.12);border:1px solid rgba(217,79,79,0.4);border-radius:10px;padding:12px;margin:10px 0">
-              <div style="color:var(--red);font-weight:600;font-size:13px;margin-bottom:8px">🔴 TRUE HIT — IMMEDIATE FREEZE REQUIRED</div>
-              <div class="row row-2">
-                <div><span class="lbl">Assets Frozen?</span>
-                  <select id="tfs-frozen"><option>Yes – Immediately</option><option>No – Pending</option></select>
-                </div>
-                <div><span class="lbl">Freeze Date</span><input type="date" id="tfs-freeze-date"/></div>
-              </div>
-              <div class="row row-2">
-                <div><span class="lbl">goAML FFR Filed?</span>
-                  <select id="tfs-ffr"><option value="">Select</option><option>Yes – Filed</option><option>Pending</option><option>Not Required</option></select>
-                </div>
-                <div><span class="lbl">EOCN Notified?</span>
-                  <select id="tfs-eocn"><option value="">Select</option><option>Yes – Notified</option><option>Pending</option><option>Not Applicable</option></select>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div><span class="lbl">Disposition Rationale / Notes</span>
-            <textarea id="tfs-notes" style="min-height:80px" placeholder="Explain disposition decision. For false positives: document differentiation basis. For true hits: document freeze actions taken."></textarea>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:1rem">
-            <button class="btn btn-gold" onclick="suiteSaveTFS()" style="flex:1">Save Event</button>
-            <button class="btn btn-sm" onclick="document.getElementById('tfsModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    const disp = document.getElementById('tfs-disposition');
-    if (disp) disp.addEventListener('change', function() {
-      const sec = document.getElementById('tfs-freeze-section');
-      if (sec) sec.style.display = this.value === 'True Hit' ? 'block' : 'none';
-    });
-  }
-
-  global.suiteOpenTFSForm = function() {
-    document.getElementById('tfs-edit-idx').value = '-1';
-    ['tfs-name','tfs-list','tfs-reviewer','tfs-notes'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
-    document.getElementById('tfs-date').value = today();
-    document.getElementById('tfs-disposition').value = '';
-    document.getElementById('tfs-event').value = 'New Customer Onboarding';
-    document.getElementById('tfs-freeze-section').style.display = 'none';
-    document.getElementById('tfsModal').classList.add('open');
-  };
-
-  global.suiteEditTFS = function(idx) {
-    const events = load(SK.TFS) || [];
-    const e = events[idx];
-    if (!e) return;
-    document.getElementById('tfs-edit-idx').value = idx;
-    document.getElementById('tfs-name').value = e.screenedName || '';
-    document.getElementById('tfs-event').value = e.eventType || '';
-    document.getElementById('tfs-list').value = e.listName || '';
-    document.getElementById('tfs-date').value = e.screeningDate || today();
-    document.getElementById('tfs-disposition').value = e.disposition || '';
-    document.getElementById('tfs-reviewer').value = e.reviewedBy || '';
-    document.getElementById('tfs-notes').value = e.notes || '';
-    if (e.disposition === 'True Hit') {
-      document.getElementById('tfs-freeze-section').style.display = 'block';
-      document.getElementById('tfs-frozen').value = e.frozenStatus || '';
-      document.getElementById('tfs-freeze-date').value = e.freezeDate || '';
-      document.getElementById('tfs-ffr').value = e.ffrFiled || '';
-      document.getElementById('tfs-eocn').value = e.eocnNotified || '';
-    }
-    document.getElementById('tfsModal').classList.add('open');
-  };
-
-  global.suiteSaveTFS = function() {
-    const name = document.getElementById('tfs-name').value.trim();
-    const disp = document.getElementById('tfs-disposition').value;
-    if (!name || !disp) { toast('Name and disposition are required', 'error'); return; }
-    const events = load(SK.TFS) || [];
-    const editIdx = parseInt(document.getElementById('tfs-edit-idx').value);
-    const record = {
-      id: editIdx >= 0 ? events[editIdx].id : uid('TFS'),
-      screenedName: name,
-      eventType: document.getElementById('tfs-event').value,
-      listName: document.getElementById('tfs-list').value,
-      screeningDate: document.getElementById('tfs-date').value,
-      disposition: disp,
-      reviewedBy: document.getElementById('tfs-reviewer').value,
-      notes: document.getElementById('tfs-notes').value,
-      frozenStatus: disp === 'True Hit' ? document.getElementById('tfs-frozen').value : null,
-      freezeDate: disp === 'True Hit' ? document.getElementById('tfs-freeze-date').value : null,
-      ffrFiled: disp === 'True Hit' ? document.getElementById('tfs-ffr').value : null,
-      eocnNotified: disp === 'True Hit' ? document.getElementById('tfs-eocn').value : null,
-      updatedAt: new Date().toISOString(),
-    };
-    if (editIdx >= 0) { events[editIdx] = record; } else { events.unshift(record); }
-    save(SK.TFS, events);
-    document.getElementById('tfsModal').classList.remove('open');
-    if (disp === 'True Hit') toast('⚠️ TRUE HIT saved — ensure freeze and reporting obligations are met immediately', 'error');
-    else toast(`TFS event saved — ${disp}`, 'success');
-    renderTFS();
-  };
-
-  global.suiteDeleteTFS = function(idx) {
-    if (!confirm('Delete this TFS screening event?')) return;
-    const events = load(SK.TFS) || [];
-    events.splice(idx, 1);
-    save(SK.TFS, events);
-    renderTFS();
-  };
-
-  global.suiteSyncTFSToAsana = async function(idx) {
-    const events = load(SK.TFS) || [];
-    const e = events[idx];
-    if (!e) return;
-    const notes = `TFS Event: ${e.id}\nScreened: ${e.screenedName}\nDisposition: ${e.disposition}\nLists: ${e.listName}\nDate: ${fmtDate(e.screeningDate)}\nReviewed by: ${e.reviewedBy}\n${e.disposition==='True Hit'?`\nFROZEN: ${e.frozenStatus}\nFFR Filed: ${e.ffrFiled}\nEOCN Notified: ${e.eocnNotified}`:''}`;
-    const gid = await pushToAsana(`[TFS] ${e.screenedName} — ${e.disposition}`, notes, 'tfs');
-    if (gid) toast('Synced to Asana', 'success'); else toast('Asana sync failed', 'error');
-  };
-
-  // ════════════════════════════════════════════════════════════════════════════
   // 5. RED FLAG LIBRARY
   // Reg: FATF DPMS Guidance 2020 | UAE FDL No.(10) of 2025 | Wolfsberg ACSS
   // ════════════════════════════════════════════════════════════════════════════
@@ -1311,8 +1108,8 @@
 
 
   // ════════════════════════════════════════════════════════════════════════════
-  // 6. APPROVAL MATRIX (FOUR-EYES)
-  // Reg: UAE FDL No.(10) of 2025 | CBUAE AML Standards | Best Practice
+  // 6. APPROVAL MATRIX — UNIFIED (Four-Eyes + Management Approvals)
+  // Reg: UAE FDL No.(10) of 2025 | Cabinet Resolution 134/2025 | CBUAE Standards
   // ════════════════════════════════════════════════════════════════════════════
 
   const APPROVAL_TYPES = [
@@ -1331,6 +1128,9 @@
     if (!el) return;
     const records = load(SK.APPROVALS) || [];
     const pending = records.filter(r => r.status === 'Pending' || r.status === 'Under Review');
+    // Also load management approvals from management-approvals.js
+    const mgmtApprovals = (() => { try { return JSON.parse(localStorage.getItem('fgl_mgmt_approvals')||'[]'); } catch{return [];} })();
+    const mgmtPending = mgmtApprovals.filter(a => a.status === 'Pending' || a.status === 'In Progress' || !a.status);
 
     el.innerHTML = `
       <div class="card">
@@ -1385,6 +1185,36 @@
             </div>
           `;
         }).join('')}
+      </div>
+
+      <!-- Management Approvals Summary (from management-approvals.js) -->
+      <div class="card" style="margin-top:1.2rem">
+        <div class="top-bar">
+          <span class="sec-title">📋 Management CDD Approvals — Customer & Counterparty</span>
+          <span style="font-size:11px;color:var(--muted)">Cabinet Resolution 134/2025 Art.12-14 | Customer risk-based approval records</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem">
+          <div class="metric m-ok"><div class="metric-num">${mgmtApprovals.length}</div><div class="metric-lbl">Total CDD Approvals</div></div>
+          <div class="metric m-h"><div class="metric-num">${mgmtPending.length}</div><div class="metric-lbl">Pending Review</div></div>
+          <div class="metric m-ok"><div class="metric-num">${mgmtApprovals.filter(a=>a.status==='Approved'||a.status==='Completed').length}</div><div class="metric-lbl">Approved</div></div>
+        </div>
+        ${mgmtApprovals.length === 0 ? '<p style="color:var(--muted);font-size:13px;text-align:center;padding:1rem">No management approvals recorded. Use the Management Approvals tab to add customer CDD approvals.</p>' : ''}
+        ${mgmtApprovals.slice(0,10).map((a,i) => {
+          const st = a.status || 'Pending';
+          const col = st==='Approved'||st==='Completed' ? 'var(--green)' : st==='Rejected' ? 'var(--red)' : 'var(--amber)';
+          const name = a.customerName||a.entityName||'—';
+          const type = a.customerType||a.entityType||'—';
+          const risk = a.riskRating||'—';
+          const date = a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-GB') : '—';
+          return '<div style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px">'
+            + '<div><div style="font-size:13px;font-weight:500">'+name+'</div>'
+            + '<div style="font-size:11px;color:var(--muted);font-family:DM Mono,monospace;margin-top:2px">'+type+' | Risk: '+risk+' | '+date+'</div></div>'
+            + '<div style="display:flex;align-items:center;gap:8px">'
+            + '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:DM Mono,monospace">'+st+'</span>'
+            + '<button class="btn btn-sm btn-blue" onclick="suiteSyncMgmtApprovalToAsana('+i+')">Asana</button>'
+            + '</div></div>';
+        }).join('')}
+        ${mgmtApprovals.length > 10 ? `<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">Showing 10 of ${mgmtApprovals.length} records. Open Management Approvals tab for full list.</div>` : ''}
       </div>
 
       <!-- Approval Form Modal -->
@@ -1463,6 +1293,32 @@
     records.splice(idx, 1);
     save(SK.APPROVALS, records);
     renderApprovals();
+  };
+
+  global.suiteSyncMgmtApprovalToAsana = async function(idx) {
+    const mgmtApprovals = (() => { try { return JSON.parse(localStorage.getItem('fgl_mgmt_approvals')||'[]'); } catch{return [];} })();
+    const a = mgmtApprovals[idx];
+    if (!a) return;
+    if (typeof toast === 'function') toast('Syncing to Asana...','info');
+    try {
+      if (typeof asanaFetch !== 'function') { toast('Asana not configured','error'); return; }
+      const projectId = (typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515';
+      const title = `[MGMT-APPROVAL] ${a.customerName||a.entityName||'Unknown'} — ${a.status||'Pending'}`;
+      const notes = [
+        `Customer: ${a.customerName||a.entityName||'—'}`,
+        `Type: ${a.customerType||a.entityType||'—'}`,
+        `Risk Rating: ${a.riskRating||'—'}`,
+        `Status: ${a.status||'Pending'}`,
+        `Reviewed By: ${a.reviewedBy||a.approvedBy||'—'}`,
+        `Date: ${a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-GB') : '—'}`,
+        `Notes: ${a.notes||a.comments||'—'}`,
+        `\nRegulatory Basis: Cabinet Resolution 134/2025 Art.12-14 | CDD/EDD Approval`,
+      ].join('\n');
+      const resp = await asanaFetch('/tasks', { method:'POST', body: JSON.stringify({ data: { name: title, notes, projects: [projectId] } }) });
+      const data = await resp.json();
+      if (data?.data?.gid) { toast('Synced to Asana','success'); }
+      else { toast('Asana sync failed','error'); }
+    } catch(e) { toast('Asana sync error: '+e.message,'error'); }
   };
 
   global.suiteSyncApprovalToAsana = async function(idx) {
@@ -2860,5 +2716,77 @@
     document.addEventListener('DOMContentLoaded', () => setTimeout(fixEntityPlaceholders, 1500));
   } else {
     setTimeout(fixEntityPlaceholders, 1500);
+  }
+})();
+
+// ════════════════════════════════════════════════════════════════════════════
+// TFS DATA MIGRATION — Migrate old SK.TFS records into SK2.TFS2 format
+// Runs once on load — preserves all historical screening data
+// ════════════════════════════════════════════════════════════════════════════
+(function() {
+  'use strict';
+
+  function migrateTFSRecords() {
+    try {
+      const OLD_KEY = 'fgl_tfs_events_v2';
+      const NEW_KEY = 'fgl_tfs2_v1';
+      const MIGRATED_KEY = 'fgl_tfs_migrated';
+
+      if (localStorage.getItem(MIGRATED_KEY)) return; // Already done
+
+      const oldRecords = JSON.parse(localStorage.getItem(OLD_KEY) || '[]');
+      if (!oldRecords.length) { localStorage.setItem(MIGRATED_KEY, '1'); return; }
+
+      const newRecords = JSON.parse(localStorage.getItem(NEW_KEY) || '[]');
+
+      // Convert old format to new TFS2 format
+      const converted = oldRecords.map(r => ({
+        id: r.id || ('TFS2-MIGRATED-' + Date.now() + Math.random()),
+        screenedName: r.screenedName || '—',
+        eventType: r.eventType || 'Ad Hoc Review',
+        listsScreened: r.listName || 'Migrated from TFS Ops',
+        screeningDate: r.screeningDate || new Date().toISOString().slice(0,10),
+        reviewedBy: r.reviewedBy || '—',
+        outcome: r.disposition === 'True Hit' ? 'Confirmed Match'
+                : r.disposition === 'False Positive' ? 'False Positive'
+                : r.disposition === 'Potential Match – Pending' ? 'Partial Match'
+                : 'Negative – No Match',
+        notes: r.notes || '',
+        frozenWithin24h: r.frozenStatus || null,
+        freezeDateTime: r.freezeDate || null,
+        ffrFiled: r.ffrFiled || null,
+        ffrRef: null,
+        cnmrStatus: r.disposition === 'True Hit' ? 'Pending' : null,
+        cnmrDeadline: null,
+        pnmrStatus: r.disposition === 'Potential Match – Pending' ? 'Pending' : null,
+        eocnNotified: r.eocnNotified || null,
+        supervisorNotified: null,
+        mlroNotified: null,
+        mgmtNotified: null,
+        migratedFrom: 'TFS Ops',
+        updatedAt: r.updatedAt || new Date().toISOString(),
+      }));
+
+      // Merge — avoid duplicates by ID
+      const existingIds = new Set(newRecords.map(r => r.id));
+      const toAdd = converted.filter(r => !existingIds.has(r.id));
+
+      if (toAdd.length > 0) {
+        const merged = [...toAdd, ...newRecords];
+        localStorage.setItem(NEW_KEY, JSON.stringify(merged));
+        console.log('[TFS Migration] Migrated ' + toAdd.length + ' TFS records to unified TFS module');
+        if (typeof toast === 'function') toast('TFS records migrated to unified TFS module', 'success');
+      }
+
+      localStorage.setItem(MIGRATED_KEY, '1');
+    } catch(e) {
+      console.warn('[TFS Migration] Error:', e);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(migrateTFSRecords, 2000));
+  } else {
+    setTimeout(migrateTFSRecords, 2000);
   }
 })();
