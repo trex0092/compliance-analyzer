@@ -4,22 +4,23 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+  pages: write
+
 jobs:
-  # ALWAYS runs - free, unlimited, no credits
   sync-github-pages:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout main
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Sync to gh-pages (GitHub Pages)
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Force push main → gh-pages
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git push origin main:gh-pages --force
-          echo "✅ GitHub Pages updated — https://trex0092.github.io/compliance-analyzer/"
-
-  # Netlify auto-deploys when Netlify detects the push
-  # netlify.toml ignores the build UNLESS commit message contains [release]
-  # Normal pushes = 0 Netlify credits used
-  # To release to Netlify: add [release] to your commit message
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:gh-pages --force
+          echo "✅ gh-pages synced — $(git rev-parse --short HEAD)"
