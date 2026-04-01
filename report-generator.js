@@ -795,6 +795,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
   function clearCirculars() { if(!confirm('Clear all circulars?')) return; _remove(CIRC_KEY); renderCircularsInPlace(); toast('Circulars cleared'); }
 
   function exportCircularsPDF() {
+    if(!window.jspdf){if(typeof toast==='function')toast('PDF library not loaded','error');return;}
     const list=getCirculars(); if(!list.length){toast('No circulars','error');return;}
     const doc=new jspdf.jsPDF(); const pw=doc.internal.pageSize.getWidth();
     doc.setFillColor(30,30,30);doc.rect(0,0,pw,28,'F');
@@ -859,6 +860,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
   function clearMeetings() { if(!confirm('Clear all meeting minutes?')) return; _remove(MEET_KEY); renderMeetingsInPlace(); toast('Meeting minutes cleared'); }
 
   function exportMeetingsPDF() {
+    if(!window.jspdf){if(typeof toast==='function')toast('PDF library not loaded','error');return;}
     const list=getMeetings(); if(!list.length){toast('No meeting minutes','error');return;}
     const doc=new jspdf.jsPDF(); const pw=doc.internal.pageSize.getWidth();
     doc.setFillColor(30,30,30);doc.rect(0,0,pw,28,'F');

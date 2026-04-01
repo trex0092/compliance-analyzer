@@ -52,7 +52,43 @@ const AuthRBAC = (function () {
     }
 
     // --------------- Helpers: Crypto ---------------
-    async function hashPassword(password) {
+    const PBKDF2_ITERATIONS = 100000;
+
+    function arrayToHex(arr) {
+        return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function hexToArray(hex) {
+        const bytes = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < hex.length; i += 2) {
+            bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+        }
+        return bytes;
+    }
+
+    async function hashPasswordPBKDF2(password, salt) {
+        const enc = new TextEncoder();
+        const baseKey = await crypto.subtle.importKey(
+            'raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']
+        );
+        const derived = await crypto.subtle.deriveBits(
+            { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+            baseKey, 256
+        );
+        return arrayToHex(new Uint8Array(derived));
+    }
+
+    async function hashPassword(password, existingSalt) {
+        const salt = existingSalt || crypto.getRandomValues(new Uint8Array(16));
+        const hash = await hashPasswordPBKDF2(password, salt);
+        return { hash, salt: arrayToHex(salt) };
+    }
+
+    function isLegacyHash(user) {
+        return !user.passwordSalt;
+    }
+
+    async function legacyHash(password) {
         const encoder = new TextEncoder();
         const data = encoder.encode(password + '_fgl_salt_2026');
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -82,11 +118,12 @@ const AuthRBAC = (function () {
     async function ensureDefaultAdmin() {
         let users = loadData(STORAGE_KEYS.users);
         if (!users || users.length === 0) {
-            const hash = await hashPassword('admin123');
+            const { hash, salt } = await hashPassword('admin123');
             users = [{
                 id: generateToken().slice(0, 16),
                 username: 'admin',
                 passwordHash: hash,
+                passwordSalt: salt,
                 role: ROLES.ADMIN,
                 createdAt: new Date().toISOString(),
                 mustChangePassword: true,
@@ -132,8 +169,24 @@ const AuthRBAC = (function () {
             throw new Error('Invalid username or password.');
         }
 
-        const hash = await hashPassword(password);
-        if (hash !== user.passwordHash) {
+        let passwordValid = false;
+        if (isLegacyHash(user)) {
+            const oldHash = await legacyHash(password);
+            if (oldHash === user.passwordHash) {
+                passwordValid = true;
+                const { hash, salt } = await hashPassword(password);
+                user.passwordHash = hash;
+                user.passwordSalt = salt;
+                saveData(STORAGE_KEYS.users, users);
+                writeLog({ event: 'hash_upgraded', username, userId: user.id });
+            }
+        } else {
+            const saltBytes = hexToArray(user.passwordSalt);
+            const { hash } = await hashPassword(password, saltBytes);
+            passwordValid = (hash === user.passwordHash);
+        }
+
+        if (!passwordValid) {
             writeLog({ event: 'login_failed', username, reason: 'Wrong password' });
             throw new Error('Invalid username or password.');
         }
@@ -145,9 +198,11 @@ const AuthRBAC = (function () {
             username: user.username,
             role: user.role,
             createdAt: Date.now(),
+            lastActivity: Date.now(),
             expiresAt: Date.now() + SESSION_DURATION_MS
         };
         saveSession(session);
+        enforceSessionLimit(user.id);
         sessionStorage.setItem('fgl_current_token', token);
 
         writeLog({ event: 'login_success', username, userId: user.id });
@@ -215,12 +270,15 @@ const AuthRBAC = (function () {
         if (!Object.values(ROLES).includes(userData.role)) {
             throw new Error('Invalid role.');
         }
+        const policyError = validatePasswordPolicy(userData.password);
+        if (policyError) throw new Error(policyError);
 
-        const hash = await hashPassword(userData.password);
+        const { hash, salt } = await hashPassword(userData.password);
         const newUser = {
             id: generateToken().slice(0, 16),
             username: userData.username,
             passwordHash: hash,
+            passwordSalt: salt,
             role: userData.role,
             createdAt: new Date().toISOString(),
             mustChangePassword: false,
@@ -256,7 +314,12 @@ const AuthRBAC = (function () {
         if (updates.role) users[idx].role = updates.role;
         if (updates.active !== undefined) users[idx].active = updates.active;
         if (updates.password) {
-            users[idx].passwordHash = await hashPassword(updates.password);
+            const policyError = validatePasswordPolicy(updates.password);
+            if (policyError) throw new Error(policyError);
+            const { hash, salt } = await hashPassword(updates.password);
+            users[idx].passwordHash = hash;
+            users[idx].passwordSalt = salt;
+            users[idx].passwordChangedAt = new Date().toISOString();
             users[idx].mustChangePassword = false;
         }
 
@@ -332,13 +395,27 @@ const AuthRBAC = (function () {
         const record = users.find(u => u.id === user.id);
         if (!record) throw new Error('User record not found.');
 
-        const currentHash = await hashPassword(currentPassword);
-        if (currentHash !== record.passwordHash) {
+        let currentValid = false;
+        if (isLegacyHash(record)) {
+            const oldHash = await legacyHash(currentPassword);
+            currentValid = (oldHash === record.passwordHash);
+        } else {
+            const saltBytes = hexToArray(record.passwordSalt);
+            const { hash } = await hashPassword(currentPassword, saltBytes);
+            currentValid = (hash === record.passwordHash);
+        }
+        if (!currentValid) {
             throw new Error('Current password is incorrect.');
         }
 
-        record.passwordHash = await hashPassword(newPassword);
+        const policyError = validatePasswordPolicy(newPassword);
+        if (policyError) throw new Error(policyError);
+
+        const { hash, salt } = await hashPassword(newPassword);
+        record.passwordHash = hash;
+        record.passwordSalt = salt;
         record.mustChangePassword = false;
+        record.passwordChangedAt = new Date().toISOString();
         saveData(STORAGE_KEYS.users, users);
 
         writeLog({ event: 'password_changed', username: user.username, userId: user.id });
@@ -438,9 +515,12 @@ const AuthRBAC = (function () {
                 <h2 style="color:var(--gold,#d4a843);margin:0 0 8px;font-size:1.3rem;text-align:center;">
                     Change Default Password
                 </h2>
-                <p style="color:var(--muted,#8888aa);text-align:center;margin:0 0 24px;font-size:0.85rem;">
+                <p style="color:var(--muted,#8888aa);text-align:center;margin:0 0 16px;font-size:0.85rem;">
                     You must change the default admin password before continuing.
                 </p>
+                <div style="background:var(--surface2,#12121f);border:1px solid var(--border,#2a2a3e);border-radius:6px;padding:10px 14px;margin-bottom:20px;font-size:0.78rem;color:var(--muted,#8888aa);line-height:1.5;">
+                    <strong style="color:var(--gold,#d4a843);">Password Policy:</strong> Min ${PASSWORD_POLICY.minLength} chars, uppercase, lowercase, digit, and special character required.
+                </div>
                 <div id="fgl-chpw-error" style="
                     display:none;background:#3a1a1a;border:1px solid #6a2a2a;
                     color:#f08080;padding:10px 14px;border-radius:6px;margin-bottom:16px;
@@ -476,8 +556,9 @@ const AuthRBAC = (function () {
             errBox.style.display = 'none';
             const np = newInput.value;
             const cp = confirmInput.value;
-            if (np.length < 6) {
-                errBox.textContent = 'Password must be at least 6 characters.';
+            const policyErr = validatePasswordPolicy(np);
+            if (policyErr) {
+                errBox.textContent = policyErr;
                 errBox.style.display = 'block';
                 return;
             }
@@ -605,7 +686,13 @@ const AuthRBAC = (function () {
                     </div>
 
                     <!-- Login History -->
-                    <h3 style="color:var(--gold,#d4a843);margin:0 0 12px;font-size:1.1rem;">Login History</h3>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <h3 style="color:var(--gold,#d4a843);margin:0;font-size:1.1rem;">Login History</h3>
+                        <div style="display:flex;gap:6px;">
+                            <button id="fgl-export-csv" style="padding:5px 12px;border:1px solid var(--border,#2a2a3e);border-radius:4px;background:transparent;color:var(--gold,#d4a843);cursor:pointer;font-size:0.75rem;">Export CSV</button>
+                            <button id="fgl-export-json" style="padding:5px 12px;border:1px solid var(--border,#2a2a3e);border-radius:4px;background:transparent;color:var(--gold,#d4a843);cursor:pointer;font-size:0.75rem;">Export JSON</button>
+                        </div>
+                    </div>
                     <div style="
                         background:var(--surface,#1a1a2e);border:1px solid var(--border,#2a2a3e);
                         border-radius:8px;overflow:hidden;
@@ -686,6 +773,14 @@ const AuthRBAC = (function () {
             `;
 
             // Bind events
+            document.getElementById('fgl-export-csv')?.addEventListener('click', () => {
+                if (exportAuditLogCSV()) { if (typeof toast === 'function') toast('Audit log exported (CSV)', 'success'); }
+                else { if (typeof toast === 'function') toast('No audit entries to export', 'info'); }
+            });
+            document.getElementById('fgl-export-json')?.addEventListener('click', () => {
+                if (exportAuditLogJSON()) { if (typeof toast === 'function') toast('Audit log exported (JSON)', 'success'); }
+                else { if (typeof toast === 'function') toast('No audit entries to export', 'info'); }
+            });
             document.getElementById('fgl-um-add-btn').addEventListener('click', () => openModal(null));
             target.querySelectorAll('.fgl-um-edit').forEach(btn => {
                 btn.addEventListener('click', () => openModal(btn.dataset.id));
@@ -798,6 +893,137 @@ const AuthRBAC = (function () {
         }
     }
 
+    // --------------- Password Policy ---------------
+    const PASSWORD_POLICY = {
+        minLength: 10,
+        requireUppercase: true,
+        requireLowercase: true,
+        requireDigit: true,
+        requireSpecial: true,
+        maxAgeDays: 90
+    };
+
+    function validatePasswordPolicy(password) {
+        if (!password || password.length < PASSWORD_POLICY.minLength) {
+            return `Password must be at least ${PASSWORD_POLICY.minLength} characters.`;
+        }
+        if (PASSWORD_POLICY.requireUppercase && !/[A-Z]/.test(password)) {
+            return 'Password must contain at least one uppercase letter.';
+        }
+        if (PASSWORD_POLICY.requireLowercase && !/[a-z]/.test(password)) {
+            return 'Password must contain at least one lowercase letter.';
+        }
+        if (PASSWORD_POLICY.requireDigit && !/[0-9]/.test(password)) {
+            return 'Password must contain at least one digit.';
+        }
+        if (PASSWORD_POLICY.requireSpecial && !/[^A-Za-z0-9]/.test(password)) {
+            return 'Password must contain at least one special character.';
+        }
+        return null;
+    }
+
+    function isPasswordExpired(user) {
+        if (!user) return false;
+        const users = loadData(STORAGE_KEYS.users) || [];
+        const record = users.find(u => u.id === user.id);
+        if (!record || !record.passwordChangedAt) return false;
+        const changedAt = new Date(record.passwordChangedAt).getTime();
+        const maxAge = PASSWORD_POLICY.maxAgeDays * 24 * 60 * 60 * 1000;
+        return Date.now() - changedAt > maxAge;
+    }
+
+    // --------------- Session Hardening ---------------
+    const MAX_CONCURRENT_SESSIONS = 3;
+    const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+    let idleTimer = null;
+
+    function enforceSessionLimit(userId) {
+        const sessions = getActiveSessions().filter(s => s.userId === userId);
+        if (sessions.length > MAX_CONCURRENT_SESSIONS) {
+            const toRemove = sessions
+                .sort((a, b) => a.createdAt - b.createdAt)
+                .slice(0, sessions.length - MAX_CONCURRENT_SESSIONS);
+            const allSessions = getActiveSessions().filter(
+                s => !toRemove.some(r => r.token === s.token)
+            );
+            saveData(STORAGE_KEYS.sessions, allSessions);
+        }
+    }
+
+    function touchSession() {
+        const token = sessionStorage.getItem('fgl_current_token');
+        if (!token) return;
+        const sessions = loadData(STORAGE_KEYS.sessions) || [];
+        const session = sessions.find(s => s.token === token);
+        if (session) {
+            session.lastActivity = Date.now();
+            saveData(STORAGE_KEYS.sessions, sessions);
+        }
+    }
+
+    function startIdleMonitor(onIdle) {
+        const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+        function resetTimer() {
+            touchSession();
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => {
+                const session = getCurrentSession();
+                if (session) {
+                    writeLog({ event: 'idle_timeout', username: session.username, userId: session.userId });
+                    logout();
+                    if (typeof onIdle === 'function') onIdle();
+                }
+            }, IDLE_TIMEOUT_MS);
+        }
+        events.forEach(evt => document.addEventListener(evt, resetTimer, { passive: true }));
+        resetTimer();
+    }
+
+    function stopIdleMonitor() {
+        clearTimeout(idleTimer);
+    }
+
+    // --------------- Audit Log Export ---------------
+    function getFullAuditLog() {
+        return loadData(STORAGE_KEYS.authLog) || [];
+    }
+
+    function exportAuditLogCSV() {
+        const logs = getFullAuditLog();
+        if (!logs.length) return null;
+        const headers = ['Timestamp', 'Event', 'Username', 'Details'];
+        const rows = logs.map(l => [
+            l.timestamp || '',
+            l.event || '',
+            l.username || '',
+            (l.reason || l.targetUser || l.feature || l.changes || '').replace(/"/g, '""')
+        ]);
+        const csv = [headers.join(',')]
+            .concat(rows.map(r => r.map(c => `"${c}"`).join(',')))
+            .join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        return true;
+    }
+
+    function exportAuditLogJSON() {
+        const logs = getFullAuditLog();
+        if (!logs.length) return null;
+        const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        return true;
+    }
+
     // --------------- Init on load ---------------
     ensureDefaultAdmin();
 
@@ -818,6 +1044,16 @@ const AuthRBAC = (function () {
         renderLoginScreen,
         renderUserManagement,
         ROLES,
-        PERMISSIONS
+        PERMISSIONS,
+        // Phase 2: New features
+        validatePasswordPolicy,
+        isPasswordExpired,
+        PASSWORD_POLICY,
+        enforceSessionLimit,
+        startIdleMonitor,
+        stopIdleMonitor,
+        exportAuditLogCSV,
+        exportAuditLogJSON,
+        getFullAuditLog
     };
 })();

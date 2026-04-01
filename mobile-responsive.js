@@ -64,16 +64,8 @@ var MobileResponsive = (function () {
    * Add touch-friendly enhancements for mobile devices.
    */
   function addTouchEnhancements() {
-    // Add viewport meta if missing
-    if (!document.querySelector('meta[name="viewport"]')) {
-      var meta = document.createElement('meta');
-      meta.name = 'viewport';
-      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-      document.head.appendChild(meta);
-    }
-
-    // Increase tap targets: ensure all buttons have minimum 44px touch target
-    if (isMobile()) {
+    // Inject mobile-specific styles (always, not just when mobile — user may rotate device)
+    if (!document.getElementById('mobile-touch-enhancements')) {
       var style = document.createElement('style');
       style.id = 'mobile-touch-enhancements';
       style.textContent =
@@ -81,6 +73,10 @@ var MobileResponsive = (function () {
         '  button, .btn, .tab { min-height: 44px; }' +
         '  .logo-text { font-size: 16px; }' +
         '  .subtitle { font-size: 10px; letter-spacing: 1px; }' +
+        '  /* Prevent double-tap zoom on interactive elements */' +
+        '  button, .btn, .tab, a, input, select, textarea { touch-action: manipulation; }' +
+        '  /* Smooth scrolling for momentum on iOS */' +
+        '  .tab-content, .tabs.menu-open { -webkit-overflow-scrolling: touch; }' +
         '}';
       document.head.appendChild(style);
     }

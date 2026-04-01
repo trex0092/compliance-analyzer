@@ -1,0 +1,17 @@
+{
+  "name": "Compliance Analyzer",
+  "short_name": "Compliance",
+  "description": "UAE AML/CFT/CPF Compliance Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E0F11",
+  "theme_color": "#0E0F11",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%230E0F11'/><text x='96' y='120' text-anchor='middle' font-size='100' fill='%23C9A84C'>⚖</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

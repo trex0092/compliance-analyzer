@@ -395,7 +395,7 @@ Format your response as a structured compliance update notification. Be concise 
       if (typeof logAudit === 'function') logAudit('list-update', `${listNames[listType]} update check completed`);
       toast('Update check completed', 'success');
     } catch (err) {
-      notifEl.innerHTML = `<p style="color:var(--red);font-size:12px;padding:8px 0">Update check failed: ${err.message}</p>`;
+      notifEl.innerHTML = `<p style="color:var(--red);font-size:12px;padding:8px 0">Update check failed: ${(err.message||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`;
     }
   }
 

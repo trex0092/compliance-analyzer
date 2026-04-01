@@ -5,11 +5,30 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Compliance">
+<meta name="theme-color" content="#0E0F11">
+<link rel="manifest" href="manifest.json">
 <title>Compliance Tasks - Compliance Analyzer v2.5</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+// Global error handler — prevent white screen on any JS error
+window.onerror = function(msg, src, line, col, err) {
+  console.error('[App Error]', msg, src + ':' + line);
+  var toast = window.toast;
+  if (typeof toast === 'function') toast('An error occurred — the app is still running.', 'error', 4000);
+  return true; // Prevent error from breaking the page
+};
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('[Unhandled Promise]', e.reason);
+  e.preventDefault();
+});
+</script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onerror="console.warn('jsPDF CDN failed — PDF export unavailable')"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" onerror="console.warn('EmailJS CDN failed — email features unavailable')"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" onerror="console.warn('Chart.js CDN failed — charts unavailable')"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -216,27 +235,53 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
   .tabs { grid-template-columns: repeat(4,1fr); gap: 4px; padding: 8px; }
   .tabs .tab { font-size: 10px; padding: 6px 4px; }
   .tab-content { padding: 12px; }
-  table { display: block; overflow-x: auto; white-space: nowrap; }
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .card, .grid-card { padding: 12px; }
   h1, h2 { font-size: 1.2em; }
   .modal { width: 95%; margin: 5% auto; }
-  input, select, textarea { font-size: 16px; } /* Prevent zoom on iOS */
-  .app { padding: 1rem 0.75rem; }
-  .hamburger-btn { display: block; margin-bottom: 0.8rem; }
+  input, select, textarea { font-size: 16px !important; } /* Prevent zoom on iOS */
+  .app { padding: 1rem 0.75rem; padding-top: env(safe-area-inset-top, 1rem); padding-bottom: env(safe-area-inset-bottom, 1rem); }
+  .hamburger-btn { display: block; margin-bottom: 0.8rem; position: sticky; top: 0; z-index: 90; }
   .tabs { display: none; }
   .tabs.menu-open {
     display: flex; flex-direction: column; position: fixed; inset: 0;
     background: var(--bg); z-index: 95; padding: 60px 1rem 1rem;
-    overflow-y: auto; gap: 4px;
+    padding-top: calc(60px + env(safe-area-inset-top, 0px));
+    overflow-y: auto; -webkit-overflow-scrolling: touch; gap: 4px;
   }
-  .tabs.menu-open .tab { width: 100%; text-align: left; padding: 12px 16px; font-size: 14px; }
+  .tabs.menu-open .tab { width: 100%; text-align: left; padding: 12px 16px; font-size: 14px; min-height: 48px; display: flex; align-items: center; }
   .tabs.menu-open .mobile-menu-close { display: block; }
+  /* Prevent horizontal overflow on mobile */
+  .tab-content { overflow-x: hidden; max-width: 100vw; }
+  .tab-content table { font-size: 12px; }
+  .tab-content table td, .tab-content table th { padding: 6px 8px; white-space: normal; word-break: break-word; }
+  /* Fix finding cards overflow */
+  .finding, .f-body, .f-ref, .rec { word-break: break-word; overflow-wrap: break-word; }
+  /* Fix header on mobile */
+  .header { padding-bottom: 1rem; margin-bottom: 1rem; }
+  .header .logo-text { font-size: 18px; }
+  .subtitle { font-size: 9px; letter-spacing: 1px; }
+  /* Fix setup panel on mobile */
+  #setupPanel { padding: 16px; }
+  #setupPanel .card { padding: 14px; }
 }
 
 @media (max-width: 480px) {
   .tabs .tab { font-size: 10px; padding: 4px 8px; }
-  .tab-content { padding: 8px; }
+  .tab-content { padding: 6px; }
   body { font-size: 13px; }
+  .app { padding: 0.5rem; }
+  .card { padding: 10px; border-radius: 10px; }
+  .btn { padding: 8px 12px; font-size: 12px; min-height: 44px; }
+  /* Stack grid layouts */
+  .grid-card { grid-template-columns: 1fr !important; }
+  [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+  [style*="display:flex"][style*="gap"] { flex-wrap: wrap; }
+}
+
+/* Fix iOS rubber-banding and notch */
+@supports (padding: env(safe-area-inset-top)) {
+  body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
 }
 /* Notification Bell */
 .notif-bell{position:relative;cursor:pointer;font-size:20px;padding:4px 8px;border-radius:8px;transition:all 0.2s}
@@ -2524,6 +2569,15 @@ Examples:
 </div>
 
 <script>
+// ======= CDN AVAILABILITY GUARDS =======
+function requireJsPDF() {
+  if (!window.jspdf) { toast('PDF library not loaded — check your internet connection and reload.', 'error', 5000); return null; }
+  return window.jspdf;
+}
+function requireChart() {
+  if (!window.Chart) { toast('Chart library not loaded — check your internet connection and reload.', 'error', 5000); return null; }
+  return window.Chart;
+}
 // ======= STATE =======
 var ANTHROPIC_KEY = '';
 var ASANA_TOKEN = '';
@@ -2855,15 +2909,20 @@ function loadScopedCompanyState() {
   schedules = safeLocalParse('fgl_schedules', []);
   history = safeLocalParse('fgl_history', []);
   // Re-render all tabs that display company-scoped data
-  try { loadScreeningHistory(); } catch(_){}
-  try { renderOnboardingList(); } catch(_){}
-  try { renderIncidents(); } catch(_){}
-  try { renderDeadlines(); } catch(_){}
-  try { renderVaultDocs(); } catch(_){}
-  try { refreshDashboard(); } catch(_){}
-  try { renderDefinitions(); } catch(_){}
-  try { if (typeof TFSRefresh !== 'undefined' && TFSRefresh.refresh) TFSRefresh.refresh(); } catch(_){}
-  try { if (typeof ReportGenerator !== 'undefined' && ReportGenerator.renderReportTab) ReportGenerator.renderReportTab(); } catch(_){}
+  const initModules = [
+    ['Screening', loadScreeningHistory],
+    ['Onboarding', renderOnboardingList],
+    ['Incidents', renderIncidents],
+    ['Deadlines', renderDeadlines],
+    ['Vault', renderVaultDocs],
+    ['Dashboard', refreshDashboard],
+    ['Definitions', renderDefinitions],
+    ['TFS', () => { if (typeof TFSRefresh !== 'undefined' && TFSRefresh.refresh) TFSRefresh.refresh(); }],
+    ['Reports', () => { if (typeof ReportGenerator !== 'undefined' && ReportGenerator.renderReportTab) ReportGenerator.renderReportTab(); }]
+  ];
+  initModules.forEach(([name, fn]) => {
+    try { fn(); } catch(e) { console.warn(`[Init] ${name} module failed:`, e.message); }
+  });
 }
 
 function persistAsanaSyncState() {
@@ -3064,6 +3123,7 @@ function saveSetup() {
   GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId')?.value.trim() || '';
   REMEMBER_KEYS = !!document.getElementById('rememberKeys')?.checked;
   if (!ANTHROPIC_KEY && !PROXY_URL) { toast('Anthropic API key or Proxy URL is required','error'); return; }
+  if (ANTHROPIC_KEY && !PROXY_URL) { toast('⚠ Direct browser API access — API key visible in network traffic. Use a Proxy URL for production security.','error',8000); }
   persistKeys();
   openMainPanel();
   startAsanaAutoRefresh();
@@ -3200,6 +3260,7 @@ function runAlertScanner() {
 
 // ======= TABS =======
 function switchTab(name) {
+  if (window.MobileResponsive) MobileResponsive.closeMenu();
   document.querySelectorAll('.tab').forEach(t => {
     const tabName = t.getAttribute('onclick')?.match(/switchTab\('(\w+)'\)/)?.[1];
     t.classList.toggle('active', tabName === name);
@@ -3342,6 +3403,7 @@ function clearTraining() {
 }
 
 function exportTrainingPDF() {
+  if (!requireJsPDF()) return;
   if (!employeeTraining.length) { toast('No training records to export','error'); return; }
   const doc = new jspdf.jsPDF();
   const pw = doc.internal.pageSize.getWidth();
@@ -4616,6 +4678,7 @@ function exportShipmentsExcel() {
 }
 
 function exportShipmentsPDF() {
+  if (!requireJsPDF()) return;
   if (!shipments.length) { toast('No shipment records to export','info'); return; }
   const html = shipmentTableHTML(shipments, 'IAR Shipment Register');
   const win = window.open('', '_blank');
@@ -5100,6 +5163,7 @@ function exportIARReportCSV() {
 }
 
 function exportIARReportPDF() {
+  if (!requireJsPDF()) return;
   if (!iarReports.length) { toast('No IAR reports to export','error'); return; }
   const doc = new jspdf.jsPDF();
   const pw = doc.internal.pageSize.getWidth();
@@ -5910,6 +5974,7 @@ async function loadAsanaTasks(silent) {
 
 // ======= PDF EXPORT =======
 async function exportPDF() {
+  if (!requireJsPDF()) return;
   if (!lastResult) { toast('Run an analysis first','error'); return; }
   toast('Generating PDF...','info',2000);
   try {
@@ -6173,6 +6238,7 @@ function exportEvidenceCSV() {
   toast('Evidence tracker exported as CSV','success');
 }
 function exportEvidencePDF() {
+  if (!requireJsPDF()) return;
   const entries = Object.values(evidenceData);
   if (!entries.length) { toast('No evidence data to export','error'); return; }
   const { jsPDF } = window.jspdf;
@@ -6255,7 +6321,7 @@ function renderDriveStatus() {
   if (link) {
     let fullLink = link;
     if (!fullLink.startsWith('http') && !fullLink.startsWith('//')) fullLink = 'https://drive.google.com/drive/folders/' + fullLink.replace(/^\/+/, '');
-    el.innerHTML = '<span style="color:var(--green)">Saved</span> — <a href="' + fullLink + '" target="_blank" style="color:var(--gold);text-decoration:underline">Open in Google Drive</a>';
+    el.innerHTML = '<span style="color:var(--green)">Saved</span> — <a href="' + escHtml(fullLink) + '" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:underline">Open in Google Drive</a>';
   } else {
     el.textContent = 'No link saved yet.';
   }
@@ -6821,9 +6887,9 @@ async function refreshGDriveFileList() {
     if (!files.length) { listEl.innerHTML = '<p style="color:var(--muted);font-size:13px">No files found in this folder.</p>'; return; }
     listEl.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
       '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px">Name</th><th style="text-align:left;padding:6px">Modified</th><th style="padding:6px">Link</th></tr>' +
-      files.map(f => `<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">${f.name}</td><td style="padding:6px;color:var(--muted)">${new Date(f.modifiedTime).toLocaleDateString('en-GB')}</td><td style="padding:6px;text-align:center">${f.webViewLink ? `<a href="${f.webViewLink}" target="_blank" style="color:var(--gold)">Open</a>` : '-'}</td></tr>`).join('') +
+      files.map(f => `<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">${escHtml(f.name)}</td><td style="padding:6px;color:var(--muted)">${new Date(f.modifiedTime).toLocaleDateString('en-GB')}</td><td style="padding:6px;text-align:center">${f.webViewLink ? `<a href="${escHtml(f.webViewLink)}" target="_blank" rel="noopener" style="color:var(--gold)">Open</a>` : '-'}</td></tr>`).join('') +
       '</table>';
-  } catch (e) { listEl.innerHTML = `<p style="color:var(--red);font-size:12px">Error: ${e.message}</p>`; }
+  } catch (e) { listEl.innerHTML = `<p style="color:var(--red);font-size:12px">Error: ${escHtml(e.message)}</p>`; }
 }
 
 async function uploadAnalysisHistoryToGDrive() {
@@ -7431,6 +7497,7 @@ function loadScreeningHistory() {
 }
 
 function exportScreeningPDF() {
+  if (!requireJsPDF()) return;
   const history = safeLocalParse(SCREENING_STORAGE, []);
   if (!history.length) { toast('No screening history to export','error'); return; }
   const doc = new jspdf.jsPDF();
@@ -7662,6 +7729,7 @@ function exportLocalShipmentsExcel() {
 }
 
 function exportLocalShipmentsPDF() {
+  if (!requireJsPDF()) return;
   const list = safeLocalParse(LOCAL_SHIPMENTS_STORAGE, []);
   if (!list.length) { toast('No local shipments to export','error'); return; }
   const html = shipmentTableHTML(list, 'Local Shipment Register');
@@ -7876,6 +7944,7 @@ function renderEmpAttachments() {
   el.innerHTML = empAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_emp_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_emp_attachments',${a.id},'empAttachments','renderEmpAttachments')">&times;</span></span>`).join('');
 }
 function exportEmployeePDF() {
+  if (!requireJsPDF()) return;
   const list = safeLocalParse(EMPLOYEE_INFO_STORAGE, []);
   if (!list.length) { toast('No employees','error'); return; }
   if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') { toast('jsPDF not loaded','error'); return; }
@@ -7934,8 +8003,8 @@ function renderCompanyAttachments() {
   el.innerHTML = list.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('${key}',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('${key}',${a.id},'','renderCompanyAttachments')">&times;</span></span>`).join('');
 }
 function exportCompanyPDF() {
+  if (!requireJsPDF()) return;
   const company = getActiveCompany();
-  if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') { toast('jsPDF not loaded','error'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   doc.setFontSize(16); doc.setTextColor(180,151,90); doc.text(company.name, 14, 18);
@@ -8262,6 +8331,7 @@ function clearRACIMatrix() {
 }
 
 function exportRACIPDF() {
+  if (!requireJsPDF()) return;
   const rows = collectRACIRows();
   if (!rows.length) { toast('No activities to export','error'); return; }
   const doc = new jspdf.jsPDF('landscape');
@@ -9013,6 +9083,7 @@ function _raScoreForKey(key) {
 }
 
 function exportRiskAssessmentPDF() {
+  if (!requireJsPDF()) return;
   const data = getRiskAssessmentData();
   if (!data.entityName) { toast('Enter entity name first','error'); return; }
   const { jsPDF } = window.jspdf;
@@ -9397,6 +9468,7 @@ function clearSTRForm() {
 }
 
 function exportIncidentsPDF() {
+  if (!requireJsPDF()) return;
   const list = safeLocalParse(INCIDENTS_STORAGE, []);
   if (!list.length) { toast('No incidents to export','error'); return; }
   const doc = new jspdf.jsPDF();
@@ -9568,6 +9640,7 @@ function clearWBReports() {
 }
 
 function exportWBReportsPDF() {
+  if (!requireJsPDF()) return;
   const list = safeLocalParse(WB_REPORTS_STORAGE, []);
   if (!list.length) { toast('No reports to export','error'); return; }
   const doc = new jspdf.jsPDF();
@@ -10081,6 +10154,7 @@ function filterDefinitions(q) {
 }
 
 function exportDefinitionsPDF() {
+  if (!requireJsPDF()) return;
   const doc = new jspdf.jsPDF('portrait');
   const pageW = doc.internal.pageSize.getWidth();
   const company = typeof getActiveCompany === 'function' ? getActiveCompany() : null;
@@ -10251,6 +10325,7 @@ function clearDefChangeLog() {
 }
 
 function exportDefChangeLogPDF() {
+  if (!requireJsPDF()) return;
   const log = getDefChangeLog();
   if (!log.length) { toast('No changes to export', 'error'); return; }
   const doc = new jspdf.jsPDF('portrait');
@@ -11079,22 +11154,6 @@ function initNewFeatures() {
       var el = document.getElementById('tab-tfs');
       if (el && typeof TFSRefresh !== 'undefined') el.innerHTML = TFSRefresh.renderTFSPanel();
     }
-    if (name === 'goaml') {
-      var el = document.getElementById('tab-goaml');
-      if (el && typeof GoAMLExport !== 'undefined') el.innerHTML = GoAMLExport.renderGoAMLPanel();
-    }
-    if (name === 'threshold') {
-      var el = document.getElementById('tab-threshold');
-      if (el && typeof ThresholdMonitor !== 'undefined') el.innerHTML = ThresholdMonitor.renderThresholdPanel();
-    }
-    if (name === 'supplychain') {
-      var el = document.getElementById('tab-supplychain');
-      if (el && typeof SupplyChain !== 'undefined') el.innerHTML = SupplyChain.renderSupplyChainTab();
-    }
-    if (name === 'tfs') {
-      var el = document.getElementById('tab-tfs');
-      if (el && typeof TFSRefresh !== 'undefined') el.innerHTML = TFSRefresh.renderTFSPanel();
-    }
     if (name === 'approvals') {
       var el = document.getElementById('tab-approvals');
       if (el && typeof ManagementApprovals !== 'undefined') el.innerHTML = ManagementApprovals.renderApprovalsTab();
@@ -11121,6 +11180,17 @@ function initNewFeatures() {
     ComplianceDB.migrateFromLocalStorage().catch(function(){});
   }
 })();
+
+// Register Service Worker for offline support and caching
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      console.log('[SW] Registered:', reg.scope);
+    }).catch(function(err) {
+      console.warn('[SW] Registration failed:', err.message);
+    });
+  });
+}
 </script>
 </body>
 </html>
