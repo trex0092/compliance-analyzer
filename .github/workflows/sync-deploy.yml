@@ -1,0 +1,26 @@
+name: Sync gh-pages + Netlify on every push to main
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  sync-gh-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to gh-pages branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git push origin main:gh-pages --force
+          echo "gh-pages synced from main"
+
+      - name: Trigger Netlify deploy (when credits available)
+        run: |
+          echo "Netlify auto-deploys from main branch when credits are available."
+          echo "Current gh-pages URL: https://trex0092.github.io/compliance-analyzer/"
