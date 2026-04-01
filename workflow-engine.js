@@ -344,6 +344,170 @@
         { type: 'create_asana_task', template: 'policy_review', priority: 'high' },
         { type: 'browser_notify', title: 'Compliance Manual Review Due', message: 'Annual review of Compliance Manual and 42-policy document set. Must reflect FDL No.10/2025, Cabinet Resolution 134/2025, and NRA findings.' }
       ]
+    },
+    // ── DPMS-Specific & FATF Rec 22 Workflows ──
+    {
+      id: 'wf_cash_cumulative_55k', name: 'Cumulative Cash ≥ AED 55K → CDD + DPMSR', enabled: true,
+      trigger: 'cumulative_cash_threshold', condition: { amount: 55000, period: 30 },
+      actions: [
+        { type: 'create_asana_task', template: 'ctr_filing', priority: 'high' },
+        { type: 'create_asana_task', template: 'cdd_review', priority: 'high' },
+        { type: 'email_alert', subject: 'Cumulative Cash Threshold: {customerName}', message: 'Multiple transactions within 30 days cumulatively exceed AED 55,000. CDD capture and goAML DPMSR filing required. Ref: FDL 10/2025 Art.16, FATF Rec 22.' }
+      ]
+    },
+    {
+      id: 'wf_wire_incomplete_info', name: 'Wire Transfer Missing Info (Rec 16)', enabled: true,
+      trigger: 'wire_incomplete', condition: { threshold: 3500 },
+      actions: [
+        { type: 'create_asana_task', template: 'wire_transfer_review', priority: 'high' },
+        { type: 'browser_notify', title: 'Incomplete Wire Transfer', message: 'Wire transfer ≥ AED 3,500 missing originator/beneficiary info. Request missing information or reject. Ref: FATF Rec 16, FDL Art.21.' }
+      ]
+    },
+    {
+      id: 'wf_third_party_payment', name: 'Third-Party Payer Detected → EDD', enabled: true,
+      trigger: 'third_party_payment', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
+        { type: 'browser_notify', title: 'Third-Party Payment Alert', message: 'Payment from party other than identified customer for {entityName}. EDD required. Ref: Cabinet Resolution 134/2025 Art.6(3), FATF Rec 10/22.' }
+      ]
+    },
+    {
+      id: 'wf_gold_origin_mismatch', name: 'Gold Origin Discrepancy → Investigation', enabled: true,
+      trigger: 'origin_discrepancy', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'responsible_sourcing', priority: 'high' },
+        { type: 'create_asana_task', template: 'gold_import_clearance', priority: 'high' },
+        { type: 'email_alert', subject: 'CRITICAL: Gold Origin Mismatch — {shipmentRef}', message: 'Declared country of origin does not match shipping route or supplier profile. Halt clearance pending investigation. Ref: OECD DDG Step 1-2, LBMA RGG v9.' }
+      ]
+    },
+    {
+      id: 'wf_lbma_supply_chain_incident', name: 'LBMA Supply Chain Incident', enabled: true,
+      trigger: 'supply_chain_incident', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'supply_chain_audit', priority: 'high' },
+        { type: 'email_alert', subject: 'LBMA Incident: {supplierName}', message: 'Supply chain incident — possible conflict gold or refusal to provide origin info. Escalate per LBMA RGG v9 Step 3 & 5, OECD DDG Annex II.' }
+      ]
+    },
+    {
+      id: 'wf_asm_source_detected', name: 'Artisanal Mining Source → Enhanced DD', enabled: true,
+      trigger: 'asm_source', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'responsible_sourcing', priority: 'high' },
+        { type: 'create_asana_task', template: 'refinery_dd', priority: 'high' },
+        { type: 'browser_notify', title: 'ASM Source Detected', message: 'Supplier/shipment from artisanal/small-scale mining. Enhanced DD per LBMA RGG v9 ASM Supplement, OECD DDG Annex I.' }
+      ]
+    },
+    {
+      id: 'wf_recycled_gold_verification', name: 'Recycled Gold → Origin Verification', enabled: true,
+      trigger: 'recycled_gold_declared', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'hallmarking_verification', priority: 'medium' },
+        { type: 'browser_notify', title: 'Recycled Gold Declaration', message: 'Customer declared recycled/scrap gold. Verify legitimate origin per LBMA RGG v9 Step 1.' }
+      ]
+    },
+    {
+      id: 'wf_structuring_detected', name: 'Structuring Pattern → STR Review', enabled: true,
+      trigger: 'structuring_detected', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'str_filing', priority: 'high' },
+        { type: 'create_asana_task', template: 'transaction_monitoring', priority: 'high' },
+        { type: 'email_alert', subject: 'Structuring Alert: {customerName}', message: 'Repeated transactions just below AED 55,000 threshold or rapid buy-sell cycles detected. Possible structuring. STR review required. Ref: FDL Art.15-16, UAE NRA 2024.' }
+      ]
+    },
+    {
+      id: 'wf_local_terrorist_list', name: 'UAE Local Terrorist List Match', enabled: true,
+      trigger: 'local_terrorist_match', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'sanctions_update', priority: 'high' },
+        { type: 'email_alert', subject: 'URGENT: UAE Local Terrorist List Match — {entityName}', message: 'Match against UAE Local Terrorist List. Freeze assets without delay. Report to EOCN within 24 hours. Ref: Cabinet Resolution 74/2020 Art.4-5.' },
+        { type: 'browser_notify', title: 'LOCAL TERRORIST LIST MATCH', message: 'Freeze assets NOW: {entityName}' }
+      ]
+    },
+    {
+      id: 'wf_pf_strategic_goods', name: 'PF Strategic Goods Nexus → Escalate', enabled: true,
+      trigger: 'strategic_goods_nexus', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'dual_use_screening', priority: 'high' },
+        { type: 'create_asana_task', template: 'pf_assessment', priority: 'high' },
+        { type: 'email_alert', subject: 'PF/Strategic Goods Alert: {entityName}', message: 'Transaction involves materials linked to strategic/dual-use goods. Screen against UAE Strategic Goods Control Lists. Ref: Cabinet Resolution 156/2025, UNSC Res 1718/2231.' }
+      ]
+    },
+    {
+      id: 'wf_co_change', name: 'Compliance Officer Change → Notification', enabled: true,
+      trigger: 'co_change', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'compliance_committee', priority: 'high' },
+        { type: 'email_alert', subject: 'Compliance Officer Change — Handover Required', message: 'CO/MLRO change detected. Complete handover checklist and notify MoE within regulatory timeframe. Ref: FDL Art.20, Cabinet Resolution 134/2025 Art.18.' }
+      ]
+    },
+    {
+      id: 'wf_cross_border_transport', name: 'Cross-Border Precious Metals Transport', enabled: true,
+      trigger: 'cross_border_transport', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'cross_border_review', priority: 'high' },
+        { type: 'create_asana_task', template: 'gold_import_clearance', priority: 'high' },
+        { type: 'browser_notify', title: 'Cross-Border Transport', message: 'Physical shipment crossing UAE border. Verify customs declaration, CDD, and transport documentation. Ref: FATF Rec 32, FDL Art.17.' }
+      ]
+    },
+    {
+      id: 'wf_valuation_anomaly', name: 'Precious Stones Valuation Anomaly', enabled: true,
+      trigger: 'valuation_anomaly', condition: { deviation: 25 },
+      actions: [
+        { type: 'create_asana_task', template: 'transaction_monitoring', priority: 'high' },
+        { type: 'email_alert', subject: 'Valuation Anomaly: {entityName}', message: 'Declared value deviates >25% from market benchmarks. Possible TBML indicator. Ref: UAE NRA 2024, FATF Rec 20.' }
+      ]
+    },
+    {
+      id: 'wf_fiu_info_request', name: 'FIU Information Request → Respond', enabled: true,
+      trigger: 'fiu_request', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'moe_inspection', priority: 'high' },
+        { type: 'email_alert', subject: 'URGENT: UAE FIU Information Request', message: 'Information request received from FIU. Respond within deadline. Do not tip off subject. Ref: FDL Art.14 & 42, Cabinet Resolution 134/2025 Art.17.' },
+        { type: 'browser_notify', title: 'FIU Request — Immediate Action', message: 'FIU information request received. Respond urgently.' }
+      ]
+    },
+    {
+      id: 'wf_unlicensed_broker', name: 'Unlicensed Broker Detected → Refuse', enabled: true,
+      trigger: 'unlicensed_broker', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'incident_response', priority: 'high' },
+        { type: 'browser_notify', title: 'Unlicensed Broker Alert', message: 'Transaction involves intermediary without valid UAE DPMS license. Refuse relationship. Ref: FDL Art.53, MoE DPMS Guidance, FATF Rec 22.' }
+      ]
+    },
+    {
+      id: 'wf_supply_chain_grievance', name: 'Supply Chain Grievance Filed', enabled: true,
+      trigger: 'grievance_filed', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'responsible_sourcing', priority: 'high' },
+        { type: 'create_asana_task', template: 'incident_response', priority: 'medium' },
+        { type: 'browser_notify', title: 'Grievance Filed', message: 'Supply chain grievance received re: human rights/conflict/ML-TF concerns. Investigate per OECD DDG Step 1, LBMA RGG v9 Step 2.' }
+      ]
+    },
+    {
+      id: 'wf_foreign_sanctions_match', name: 'Foreign Sanctions Match (Non-UNSC)', enabled: true,
+      trigger: 'foreign_sanctions_match', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'sanctions_evasion', priority: 'high' },
+        { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
+        { type: 'browser_notify', title: 'Foreign Sanctions Match', message: '{entityName} appears on non-UNSC sanctions list (EU/OFAC/UK). Enhanced monitoring required. Ref: Cabinet Resolution 156/2025 Art.7, FATF Rec 7.' }
+      ]
+    },
+    {
+      id: 'wf_independent_audit_due', name: 'Independent AML Audit Due', enabled: true,
+      trigger: 'scheduled_independent_audit', condition: { frequency: 'annual' },
+      actions: [
+        { type: 'create_asana_task', template: 'internal_audit', priority: 'high' },
+        { type: 'create_asana_task', template: 'audit_preparation', priority: 'high' },
+        { type: 'browser_notify', title: 'Independent AML/CFT Audit Due', message: 'Annual independent AML/CFT audit cycle due. Engage qualified auditor. Ref: Cabinet Resolution 134/2025 Art.19, FATF Rec 18.' }
+      ]
+    },
+    {
+      id: 'wf_dpms_license_renewal', name: 'DPMS License Renewal (90/60/30 day)', enabled: true,
+      trigger: 'license_expiry_warning', condition: { daysUntilExpiry: 90 },
+      actions: [
+        { type: 'create_asana_task', template: 'dpms_reporting', priority: 'medium' },
+        { type: 'browser_notify', title: 'DPMS License Renewal Due', message: 'DPMS trade license/MoE registration expires in {daysUntilExpiry} days. Begin renewal process. Ref: FDL Art.53, MoE requirements.' }
+      ]
     }
   ];
 

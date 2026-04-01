@@ -390,11 +390,6 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       <div class="token-note">Get from: Asana → Profile photo → My Profile Settings → Apps → Manage Developer Apps → New access token</div>
     </div>
     <div class="card">
-      <span class="lbl">Email for Scheduled Analysis Reports (optional)</span>
-      <input type="email" id="scheduleEmail" placeholder="your@email.com" />
-      <div class="token-note">Used only to display a mailto link when a scheduled analysis is ready. No email is sent automatically.</div>
-    </div>
-    <div class="card">
       <span class="lbl">Proxy URL <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — eliminates browser-side API keys)</span></span>
       <input type="url" id="proxyUrl" placeholder="https://fgl-proxy.youruser.workers.dev" />
       <div class="token-note">Deploy <code>proxy/worker.js</code> as a Cloudflare Worker, store your keys as Worker secrets, then paste the Worker URL here. See <code>proxy/README.md</code> for step-by-step instructions. When set, the Anthropic and Asana fields above can be left blank.</div>
