@@ -20,4 +20,10 @@ export interface SuspicionReport {
   generatedAt: string;
   approvedBy?: string;
   approvedAt?: string;
+  submissionRef?: string;
+  submittedAt?: string;
+  submissionMethod?: "goaml-portal" | "manual" | "api";
+  followUpStatus?: "pending" | "acknowledged" | "info-requested" | "closed";
+  followUpNotes?: string;
+  postFilingMonitoringEndDate?: string;
 }
