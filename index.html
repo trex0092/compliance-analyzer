@@ -463,6 +463,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       <div class="token-note">Turn this off if you are on a shared computer.</div>
     </div>
     <button class="btn btn-gold" onclick="saveSetup()">Save and Open Analyzer</button>
+    <button class="btn" onclick="openMainPanel();toast('You can add API keys later in Settings','info',4000)" style="margin-top:8px;width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--muted)">Skip — Open Without API Keys</button>
   </div>
 
   <!-- MAIN PANEL -->
@@ -3128,8 +3129,8 @@ function saveSetup() {
   GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId')?.value.trim() || '';
   GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId')?.value.trim() || '';
   REMEMBER_KEYS = !!document.getElementById('rememberKeys')?.checked;
-  if (!ANTHROPIC_KEY && !PROXY_URL) { toast('Anthropic API key or Proxy URL is required','error'); return; }
-  if (ANTHROPIC_KEY && !PROXY_URL) { toast('⚠ Direct browser API access — API key visible in network traffic. Use a Proxy URL for production security.','error',8000); }
+  if (!ANTHROPIC_KEY && !PROXY_URL) { toast('No API key set — AI analysis disabled. Add a key in Settings anytime.','info',5000); }
+  else if (ANTHROPIC_KEY && !PROXY_URL) { toast('⚠ Direct browser API access — use a Proxy URL for production security.','error',8000); }
   persistKeys();
   openMainPanel();
   startAsanaAutoRefresh();
