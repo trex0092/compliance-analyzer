@@ -1,5 +1,5 @@
 // Service Worker for Compliance Analyzer — offline caching
-const CACHE_NAME = 'compliance-v2.6';
+const CACHE_NAME = 'compliance-v3.0';
 const CORE_ASSETS = [
   '/',
   '/index.html',

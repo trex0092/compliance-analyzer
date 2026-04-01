@@ -11123,21 +11123,20 @@ function initNewFeatures() {
 </script>
 
 <!-- ══ Enhanced Modules ══ -->
-<script src="database.js"></script>
-<!-- auth-rbac.js disabled: conflicts with index.html auth system (different user schema on shared fgl_users key) -->
-<script src="report-generator.js"></script>
-<script src="regulatory-monitor.js?v=202604011159"></script>
-<script src="integrations-enhanced.js?v=202604011159"></script>
-<script src="webhook-receiver.js"></script>
-<script src="mobile-responsive.js"></script>
-<script src="goaml-export.js"></script>
-<script src="threshold-monitor.js"></script>
-<script src="supply-chain.js"></script>
-<script src="tfs-refresh.js"></script>
-<script src="analytics-dashboard.js"></script>
-<script src="workflow-engine.js?v=202604011159"></script>
-<script src="management-approvals.js?v=202604011159"></script>
-<script src="compliance-suite.js?v=202604011159"></script>
+<script src="database.js?v=20260401b"></script>
+<script src="report-generator.js?v=20260401b"></script>
+<script src="regulatory-monitor.js?v=20260401b"></script>
+<script src="integrations-enhanced.js?v=20260401b"></script>
+<script src="webhook-receiver.js?v=20260401b"></script>
+<script src="mobile-responsive.js?v=20260401b"></script>
+<script src="goaml-export.js?v=20260401b"></script>
+<script src="threshold-monitor.js?v=20260401b"></script>
+<script src="supply-chain.js?v=20260401b"></script>
+<script src="tfs-refresh.js?v=20260401b"></script>
+<script src="analytics-dashboard.js?v=20260401b"></script>
+<script src="workflow-engine.js?v=20260401b"></script>
+<script src="management-approvals.js?v=20260401b"></script>
+<script src="compliance-suite.js?v=20260401b"></script>
 
 <script>
 // Wire all enhanced tabs into switchTab
@@ -11204,10 +11203,13 @@ function initNewFeatures() {
   }
 })();
 
-// Register Service Worker for offline support and caching
+// Register Service Worker — force update to clear stale caches
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      regs.forEach(function(r) { r.update(); });
+    });
+    navigator.serviceWorker.register('/sw.js?v=20260401b').then(function(reg) {
       console.log('[SW] Registered:', reg.scope);
     }).catch(function(err) {
       console.warn('[SW] Registration failed:', err.message);
