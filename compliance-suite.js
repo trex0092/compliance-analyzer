@@ -1022,144 +1022,265 @@
   // Reg: FATF DPMS Guidance 2020 | UAE FDL No.(10) of 2025 | Wolfsberg ACSS
   // ════════════════════════════════════════════════════════════════════════════
 
+  // ── RISK SCORING MODEL ──────────────────────────────────────────────────────
+  // L × I = Score | Low:1-5 | Medium:6-10 | High:11-15 | Critical:16-25
+  // Multipliers: High-risk jurisdiction ×1.5 | PEP ×1.5 | Sanctions ×2 | Cash ×1.5 | Repeat ×1.5
+  // Ref: UAE FDL No.(10)/2025 | Cabinet Resolution 134/2025 | FATF Rec.1 | FATF DPMS 2020
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const RF_LEVEL = {
+    Critical: { col:'#D94F4F', bg:'rgba(217,79,79,0.12)', border:'rgba(217,79,79,0.3)', action:'Immediate escalation — consider reject, suspend, freeze, or STR/SAR' },
+    High:     { col:'#E8A030', bg:'rgba(232,160,48,0.12)', border:'rgba(232,160,48,0.3)', action:'EDD required — compliance review, hold until clarified' },
+    Medium:   { col:'#4A8FC1', bg:'rgba(74,143,193,0.12)', border:'rgba(74,143,193,0.3)', action:'Analyst review — refresh KYC if repeated' },
+    Low:      { col:'#3DA876', bg:'rgba(61,168,118,0.12)', border:'rgba(61,168,118,0.3)', action:'Log only — include in trend analysis' },
+  };
+
+  function rfLevel(score) {
+    if (score >= 16) return 'Critical';
+    if (score >= 11) return 'High';
+    if (score >= 6)  return 'Medium';
+    return 'Low';
+  }
+
+  const RF_MULTIPLIERS = {
+    'high_risk_jurisdiction': { label:'High-risk jurisdiction', factor:1.5 },
+    'pep':                    { label:'PEP involvement',        factor:1.5 },
+    'sanctions':              { label:'Sanctions proximity',    factor:2.0 },
+    'cash':                   { label:'Cash/untraceable funds', factor:1.5 },
+    'repeat':                 { label:'Repeat occurrence',      factor:1.5 },
+  };
+
   const RED_FLAGS_DB = {
     'Customer Due Diligence': [
-      { flag: 'Customer refuses or is unable to provide required identification documents', ref: 'UAE FDL No.(10)/2025 Art.12 | FATF Rec.10' },
-      { flag: 'Customer provides inconsistent or suspicious identification information', ref: 'UAE FDL No.(10)/2025 Art.12' },
-      { flag: 'Customer refuses to explain UBO, source of funds, source of wealth, or business activity', ref: 'UAE FDL No.(10)/2025 Art.12-14 | FATF Rec.10' },
-      { flag: 'Customer uses nominee, proxy, or third party without clear explanation', ref: 'FATF DPMS 2020 §4.3' },
-      { flag: 'Customer declines to provide source of funds information', ref: 'UAE FDL No.(10)/2025 Art.14' },
-      { flag: 'Customer behaviour changes or relationship is terminated after CDD is requested', ref: 'FATF DPMS 2020 §4.2' },
-      { flag: 'Customer shows concern or resistance toward compliance requirements', ref: 'FATF DPMS 2020 §4.2 | Cabinet Resolution 134/2025 Art.12' },
-      { flag: 'Customer avoids face-to-face meetings without valid reason', ref: 'FATF DPMS 2020 §4.2' },
-      { flag: 'Customer known to law enforcement or subject to adverse media', ref: 'FATF Rec.12' },
-      { flag: 'Customer appears in adverse media or NGO reports linked to financial crime', ref: 'FATF Rec.12 | UAE FDL No.(10)/2025 Art.12' },
-      { flag: 'Customer is under criminal investigation', ref: 'UAE FDL No.(10)/2025 Art.12 | FATF Rec.10' },
-      { flag: 'Customer uses personal email address instead of corporate email for business dealings', ref: 'FATF DPMS 2020 §4.2' },
-      { flag: 'Customer address cannot be verified or does not match official records', ref: 'UAE FDL No.(10)/2025 Art.12 | Cabinet Resolution 134/2025 Art.8' },
-      { flag: 'Registered address differs from actual operating address without explanation', ref: 'UAE FDL No.(10)/2025 Art.12' },
-      { flag: 'Customer cannot be found in official, regulatory, or public records', ref: 'UAE FDL No.(10)/2025 Art.12 | FATF Rec.10' },
-      { flag: 'Directors or shareholders show no real or verifiable activity in the company', ref: 'UAE Cabinet Decision No.(10)/2019 | FATF Rec.24' },
-      { flag: 'Directors lack competence or relevant knowledge of the stated business activity', ref: 'FATF DPMS 2020 §4.2 | UAE Cabinet Decision No.(10)/2019' },
-      { flag: 'Beneficial ownership structure is complex or opaque without business justification', ref: 'UAE Cabinet Decision No.(10)/2019' },
-      { flag: 'PEP status concealed or only revealed after initial screening', ref: 'FATF Rec.12 | UAE FDL No.(10)/2025 Art.16' },
-      { flag: 'Customer or company appears on UAE Local Terrorist List or UNSC Consolidated Sanctions List', ref: 'Cabinet Decision No.(74)/2020 | EOCN TFS Guidance' },
+      { flag:'Customer refuses or is unable to provide required identification documents', ref:'UAE FDL No.(10)/2025 Art.12 | FATF Rec.10', l:4, i:4, mx:['cash'] },
+      { flag:'Customer refuses to explain UBO, source of funds, source of wealth, or business activity', ref:'UAE FDL No.(10)/2025 Art.12-14 | FATF Rec.10', l:4, i:4, mx:[] },
+      { flag:'Customer provides inconsistent or suspicious identification information', ref:'UAE FDL No.(10)/2025 Art.12', l:4, i:3, mx:[] },
+      { flag:'Customer is evasive or refuses to provide or update KYC documents', ref:'UAE FDL No.(10)/2025 Art.12 | FATF Rec.10', l:4, i:4, mx:[] },
+      { flag:'Customer shows concern or resistance toward compliance requirements', ref:'FATF DPMS 2020 §4.2 | Cabinet Resolution 134/2025 Art.12', l:3, i:3, mx:[] },
+      { flag:'Customer avoids face-to-face meetings without valid reason', ref:'FATF DPMS 2020 §4.2', l:3, i:3, mx:[] },
+      { flag:'Customer uses nominee, proxy, or third party without clear explanation', ref:'FATF DPMS 2020 §4.3', l:4, i:4, mx:[] },
+      { flag:'Customer declines to provide source of funds information', ref:'UAE FDL No.(10)/2025 Art.14', l:5, i:5, mx:['cash'] },
+      { flag:'Customer behaviour changes or relationship is terminated after CDD is requested', ref:'FATF DPMS 2020 §4.2', l:3, i:4, mx:[] },
+      { flag:'Customer known to law enforcement or subject to adverse media', ref:'FATF Rec.12', l:3, i:4, mx:[] },
+      { flag:'Customer appears in adverse media or NGO reports linked to financial crime', ref:'FATF Rec.12 | UAE FDL No.(10)/2025 Art.12', l:3, i:4, mx:[] },
+      { flag:'Customer is under criminal investigation', ref:'UAE FDL No.(10)/2025 Art.12 | FATF Rec.10', l:4, i:5, mx:['sanctions'] },
+      { flag:'Customer uses personal email address instead of corporate email for business dealings', ref:'FATF DPMS 2020 §4.2', l:2, i:2, mx:[] },
+      { flag:'Customer address cannot be verified or does not match official records', ref:'UAE FDL No.(10)/2025 Art.12 | Cabinet Resolution 134/2025 Art.8', l:4, i:3, mx:[] },
+      { flag:'Registered address differs from actual operating address without explanation', ref:'UAE FDL No.(10)/2025 Art.12', l:3, i:3, mx:[] },
+      { flag:'Customer cannot be found in official, regulatory, or public records', ref:'UAE FDL No.(10)/2025 Art.12 | FATF Rec.10', l:4, i:4, mx:[] },
+      { flag:'Directors or shareholders show no real or verifiable activity in the company', ref:'UAE Cabinet Decision No.(10)/2019 | FATF Rec.24', l:3, i:4, mx:[] },
+      { flag:'Directors lack competence or relevant knowledge of the stated business activity', ref:'FATF DPMS 2020 §4.2 | UAE Cabinet Decision No.(10)/2019', l:3, i:3, mx:[] },
+      { flag:'Beneficial ownership structure is complex or opaque without business justification', ref:'UAE Cabinet Decision No.(10)/2019', l:4, i:4, mx:['high_risk_jurisdiction'] },
+      { flag:'PEP status concealed or only revealed after initial screening', ref:'FATF Rec.12 | UAE FDL No.(10)/2025 Art.16', l:4, i:5, mx:['pep'] },
+      { flag:'Customer or company appears on UAE Local Terrorist List or UNSC Consolidated Sanctions List', ref:'Cabinet Decision No.(74)/2020 | EOCN TFS Guidance', l:5, i:5, mx:['sanctions'] },
     ],
     'Ownership & Corporate Structure': [
-      { flag: 'Multiple unrelated companies share the same registered address', ref: 'UAE Cabinet Decision No.(10)/2019 | FATF Rec.24' },
-      { flag: 'Use of shell companies or entities with no clear or verifiable business activity', ref: 'FATF Rec.24 | UAE Cabinet Decision No.(10)/2019' },
-      { flag: 'Use of newly formed entities without clear business justification', ref: 'FATF DPMS 2020 §4.3' },
-      { flag: 'Same bank account used across multiple different types of business', ref: 'FATF DPMS 2020 §4.2' },
-      { flag: 'Frequent changes in bank accounts, signatories, or account details', ref: 'FATF DPMS 2020 §4.3 | Cabinet Resolution 134/2025 Art.13' },
-      { flag: 'Use of intermediaries with no clear role or verifiable value in the transaction', ref: 'Wolfsberg ACSS 2019 | FATF DPMS 2020' },
-      { flag: 'Ownership structure is unnecessarily layered or involves multiple jurisdictions without commercial rationale', ref: 'UAE Cabinet Decision No.(10)/2019 | FATF Rec.24' },
+      { flag:'Multiple unrelated companies share the same registered address', ref:'UAE Cabinet Decision No.(10)/2019 | FATF Rec.24', l:3, i:3, mx:[] },
+      { flag:'Use of shell companies or entities with no clear or verifiable business activity', ref:'FATF Rec.24 | UAE Cabinet Decision No.(10)/2019', l:5, i:5, mx:['high_risk_jurisdiction'] },
+      { flag:'Use of newly formed entities without clear business justification', ref:'FATF DPMS 2020 §4.3', l:3, i:4, mx:[] },
+      { flag:'Same bank account used across multiple different types of business', ref:'FATF DPMS 2020 §4.2', l:3, i:3, mx:[] },
+      { flag:'Frequent changes in bank accounts, signatories, or account details', ref:'FATF DPMS 2020 §4.3 | Cabinet Resolution 134/2025 Art.13', l:4, i:3, mx:['repeat'] },
+      { flag:'Use of intermediaries with no clear role or verifiable value in the transaction', ref:'Wolfsberg ACSS 2019 | FATF DPMS 2020', l:4, i:4, mx:[] },
+      { flag:'Ownership structure is unnecessarily layered or involves multiple jurisdictions without commercial rationale', ref:'UAE Cabinet Decision No.(10)/2019 | FATF Rec.24', l:4, i:4, mx:['high_risk_jurisdiction'] },
     ],
     'Transaction Patterns': [
-      { flag: 'Structuring: multiple transactions just below AED 55,000 reporting threshold', ref: 'UAE FDL No.(10)/2025 | MoE Circular 08/AML/2021 | FATF DPMS 2020' },
-      { flag: 'Prominent or sudden increase in precious metals supply or purchase without justification', ref: 'FATF DPMS 2020 §4.2 | Cabinet Resolution 134/2025 Art.13' },
-      { flag: 'Large cash payment for gold with no clear business rationale', ref: 'UAE FDL No.(10)/2025 | FATF DPMS 2020 §4.2' },
-      { flag: 'Buying or selling precious metals at significantly below market value in cash', ref: 'FATF DPMS 2020 §4.3 | Wolfsberg ACSS 2019' },
-      { flag: 'Purchases inconsistent with customer profile or declared business activity', ref: 'FATF DPMS 2020 §4.2' },
-      { flag: 'Immediate resale of purchased gold at a loss', ref: 'FATF DPMS 2020 §4.3' },
-      { flag: 'Unusual urgency to complete transaction or pressure to bypass compliance procedures', ref: 'FATF DPMS 2020 §4.2' },
-      { flag: 'Customer shows no interest in payment terms, pricing, or transaction details', ref: 'FATF DPMS 2020 §4.2' },
-      { flag: 'Customer is unaware of the structure of their own transaction', ref: 'FATF DPMS 2020 §4.3' },
-      { flag: 'Cancellation of transaction when additional information or documentation is requested', ref: 'FATF DPMS 2020 §4.2 | Cabinet Resolution 134/2025 Art.12' },
-      { flag: 'Preference for multiple small cash transactions rather than single traceable payments', ref: 'FATF DPMS 2020 | MoE Circular 08/AML/2021' },
-      { flag: 'Multiple transactions in a short period to purchase gold bullion from same or related parties', ref: 'FATF DPMS 2020 §4.3 | Cabinet Resolution 134/2025 Art.13' },
-      { flag: 'Multiple linked transactions involving the same parties or related individuals', ref: 'Cabinet Resolution 134/2025 Art.13 | MoE Circular 08/AML/2021' },
-      { flag: 'Payment by multiple unrelated third parties without explanation', ref: 'Wolfsberg ACSS 2019' },
-      { flag: 'Unexplained third-party payments or payments from unrelated entities', ref: 'Wolfsberg ACSS 2019 | FATF DPMS 2020 §4.3' },
-      { flag: 'Use of third-party companies without clear justification or business relationship', ref: 'Wolfsberg ACSS 2019 | FATF DPMS 2020' },
-      { flag: 'Use of complex or unnecessary payment methods: virtual assets, prepaid cards, e-wallets', ref: 'FATF Rec.15 | VARA UAE | Cabinet Resolution 134/2025' },
-      { flag: 'Use of fiduciary accounts or nominee arrangements without explanation', ref: 'FATF DPMS 2020 §4.3 | UAE Cabinet Decision No.(10)/2019' },
-      { flag: 'Payments in unusual currencies or from locations unrelated to declared business', ref: 'FATF DPMS 2020 | Wolfsberg ACSS 2019' },
-      { flag: 'Requests to alter, conceal, or misrepresent transaction details or documentation', ref: 'UAE FDL No.(10)/2025 Art.18 | FATF Rec.20' },
-      { flag: 'Manipulation of metal pricing or weight/assay figures across documentation', ref: 'FATF TBML Guidance 2020 | LBMA RGG v9 Step 2' },
-      { flag: 'Funds inconsistent with customer profile, declared income, or business activity', ref: 'UAE FDL No.(10)/2025 Art.14 | Cabinet Resolution 134/2025 Art.13' },
-      { flag: 'Cash from unknown, unverifiable, or undocumented origin', ref: 'UAE FDL No.(10)/2025 Art.14 | FATF Rec.10' },
-      { flag: 'Transaction volume significantly above customer historical pattern', ref: 'FATF Rec.20' },
-      { flag: 'Round number transactions repeated at regular intervals', ref: 'FATF DPMS 2020' },
+      { flag:'Structuring: multiple transactions just below AED 55,000 reporting threshold', ref:'UAE FDL No.(10)/2025 | MoE Circular 08/AML/2021 | FATF DPMS 2020', l:4, i:4, mx:['cash','repeat'] },
+      { flag:'Prominent or sudden increase in precious metals supply or purchase without justification', ref:'FATF DPMS 2020 §4.2 | Cabinet Resolution 134/2025 Art.13', l:3, i:4, mx:[] },
+      { flag:'Large cash payment for gold with no clear business rationale', ref:'UAE FDL No.(10)/2025 | FATF DPMS 2020 §4.2', l:4, i:4, mx:['cash'] },
+      { flag:'Buying or selling precious metals at significantly below market value in cash', ref:'FATF DPMS 2020 §4.3 | Wolfsberg ACSS 2019', l:4, i:5, mx:['cash'] },
+      { flag:'Manipulation of metal pricing or weight/assay figures across documentation', ref:'FATF TBML Guidance 2020 | LBMA RGG v9 Step 2', l:4, i:4, mx:[] },
+      { flag:'Purchases inconsistent with customer profile or declared business activity', ref:'FATF DPMS 2020 §4.2', l:4, i:4, mx:[] },
+      { flag:'Immediate resale of purchased gold at a loss', ref:'FATF DPMS 2020 §4.3', l:4, i:4, mx:[] },
+      { flag:'Unusual urgency to complete transaction or pressure to bypass compliance procedures', ref:'FATF DPMS 2020 §4.2', l:3, i:4, mx:[] },
+      { flag:'Customer shows no interest in payment terms, pricing, or transaction details', ref:'FATF DPMS 2020 §4.2', l:3, i:3, mx:[] },
+      { flag:'Customer is unaware of the structure of their own transaction', ref:'FATF DPMS 2020 §4.3', l:3, i:4, mx:[] },
+      { flag:'Cancellation of transaction when additional information or documentation is requested', ref:'FATF DPMS 2020 §4.2 | Cabinet Resolution 134/2025 Art.12', l:3, i:3, mx:[] },
+      { flag:'Preference for multiple small cash transactions rather than single traceable payments', ref:'FATF DPMS 2020 | MoE Circular 08/AML/2021', l:4, i:4, mx:['cash','repeat'] },
+      { flag:'Multiple transactions in a short period to purchase gold bullion from same or related parties', ref:'FATF DPMS 2020 §4.3 | Cabinet Resolution 134/2025 Art.13', l:4, i:4, mx:['repeat'] },
+      { flag:'Multiple linked transactions involving the same parties or related individuals', ref:'Cabinet Resolution 134/2025 Art.13 | MoE Circular 08/AML/2021', l:4, i:3, mx:['repeat'] },
+      { flag:'Payment by multiple unrelated third parties without explanation', ref:'Wolfsberg ACSS 2019', l:4, i:4, mx:[] },
+      { flag:'Unexplained third-party payments or payments from unrelated entities', ref:'Wolfsberg ACSS 2019 | FATF DPMS 2020 §4.3', l:5, i:4, mx:[] },
+      { flag:'Use of third-party companies without clear justification or business relationship', ref:'Wolfsberg ACSS 2019 | FATF DPMS 2020', l:4, i:4, mx:[] },
+      { flag:'Use of complex or unnecessary payment methods: virtual assets, prepaid cards, e-wallets', ref:'FATF Rec.15 | VARA UAE | Cabinet Resolution 134/2025', l:4, i:4, mx:[] },
+      { flag:'Use of fiduciary accounts or nominee arrangements without explanation', ref:'FATF DPMS 2020 §4.3 | UAE Cabinet Decision No.(10)/2019', l:4, i:4, mx:[] },
+      { flag:'Payments in unusual currencies or from locations unrelated to declared business', ref:'FATF DPMS 2020 | Wolfsberg ACSS 2019', l:3, i:4, mx:[] },
+      { flag:'Requests to alter, conceal, or misrepresent transaction details or documentation', ref:'UAE FDL No.(10)/2025 Art.18 | FATF Rec.20', l:5, i:5, mx:['repeat'] },
+      { flag:'Funds inconsistent with customer profile, declared income, or business activity', ref:'UAE FDL No.(10)/2025 Art.14 | Cabinet Resolution 134/2025 Art.13', l:4, i:4, mx:[] },
+      { flag:'Cash from unknown, unverifiable, or undocumented origin', ref:'UAE FDL No.(10)/2025 Art.14 | FATF Rec.10', l:5, i:5, mx:['cash'] },
+      { flag:'Transaction volume significantly above customer historical pattern', ref:'FATF Rec.20', l:4, i:4, mx:[] },
+      { flag:'Round number transactions repeated at regular intervals', ref:'FATF DPMS 2020', l:3, i:3, mx:['repeat'] },
     ],
     'Geography & Jurisdiction': [
-      { flag: 'Customer or counterparty located in FATF Grey or Black List jurisdiction', ref: 'FATF Rec.19 | UAE FDL No.(10)/2025' },
-      { flag: 'Transaction involves CAHRA (Conflict-Affected or High-Risk Area)', ref: 'LBMA RGG v9 Step 2 | OECD Due Diligence §4' },
-      { flag: 'Gold origin from high-risk mining region without documentation', ref: 'LBMA RGG v9 Step 3 | OECD §4' },
-      { flag: 'Shipment route inconsistent with declared origin or destination', ref: 'Wolfsberg ACSS 2019 | FATF TBML Guidance' },
-      { flag: 'Complex or illogical delivery instructions involving unrelated foreign jurisdictions', ref: 'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019' },
-      { flag: 'End-user or ultimate consignee located in a high-risk or sanctioned jurisdiction', ref: 'FATF Rec.19 | Cabinet Decision No.(74)/2020' },
-      { flag: 'Involvement of jurisdiction subject to UAE or international sanctions', ref: 'UAE Cabinet Resolution 74/2020 | UNSCR' },
-      { flag: 'Involvement of high-risk or tax haven jurisdictions without commercial rationale', ref: 'FATF Rec.19 | OECD Tax Haven Guidance' },
-      { flag: 'Customer recently relocated from high-risk jurisdiction without explanation', ref: 'FATF DPMS 2020 §4.3' },
+      { flag:'Customer or counterparty located in FATF Grey or Black List jurisdiction', ref:'FATF Rec.19 | UAE FDL No.(10)/2025', l:4, i:4, mx:['high_risk_jurisdiction'] },
+      { flag:'Transaction involves CAHRA (Conflict-Affected or High-Risk Area)', ref:'LBMA RGG v9 Step 2 | OECD Due Diligence §4', l:5, i:5, mx:['high_risk_jurisdiction'] },
+      { flag:'Gold origin from high-risk mining region without documentation', ref:'LBMA RGG v9 Step 3 | OECD §4', l:4, i:4, mx:['high_risk_jurisdiction'] },
+      { flag:'Shipment route inconsistent with declared origin or destination', ref:'Wolfsberg ACSS 2019 | FATF TBML Guidance', l:4, i:4, mx:[] },
+      { flag:'Complex or illogical delivery instructions involving unrelated foreign jurisdictions', ref:'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019', l:4, i:4, mx:['high_risk_jurisdiction'] },
+      { flag:'End-user or ultimate consignee located in a high-risk or sanctioned jurisdiction', ref:'FATF Rec.19 | Cabinet Decision No.(74)/2020', l:4, i:5, mx:['high_risk_jurisdiction','sanctions'] },
+      { flag:'Involvement of jurisdiction subject to UAE or international sanctions', ref:'UAE Cabinet Resolution 74/2020 | UNSCR', l:5, i:5, mx:['sanctions'] },
+      { flag:'Involvement of high-risk or tax haven jurisdictions without commercial rationale', ref:'FATF Rec.19 | OECD Tax Haven Guidance', l:4, i:4, mx:['high_risk_jurisdiction'] },
+      { flag:'Customer recently relocated from high-risk jurisdiction without explanation', ref:'FATF DPMS 2020 §4.3', l:3, i:4, mx:['high_risk_jurisdiction'] },
     ],
     'Supply Chain (LBMA)': [
-      { flag: 'Supplier unable to provide chain of custody documentation', ref: 'LBMA RGG v9 Step 2' },
-      { flag: 'Gold assay or hallmarking inconsistency', ref: 'LBMA RGG v9 Step 1' },
-      { flag: 'Refinery not on LBMA Good Delivery List or equivalent recognised standard', ref: 'LBMA RGG v9 Step 3' },
-      { flag: 'Supplier previously flagged for CAHRA or conflict mineral links', ref: 'LBMA RGG v9 Step 2 | OECD §5' },
-      { flag: 'Documentary inconsistency between origin, weight, and assay certificates', ref: 'LBMA RGG v9 Step 2' },
-      { flag: 'Supplier relationship lacks contractual AML/CFT representations or warranties', ref: 'LBMA RGG v9 Step 3' },
-      { flag: 'Precious metals originating from countries with no or limited known mining activity', ref: 'LBMA RGG v9 Step 2 | OECD Due Diligence §4' },
-      { flag: 'False or forged certificates of origin, assay certificates, or weight notes', ref: 'LBMA RGG v9 Step 2 | FATF TBML Guidance 2020' },
-      { flag: 'Cash payments in supply chain inconsistent with declared production volumes', ref: 'LBMA RGG v9 Step 2 | OECD Due Diligence §4' },
-      { flag: 'Miners unable to provide valid identification or formal registration documents', ref: 'LBMA RGG v9 Step 2 | OECD Due Diligence §4' },
-      { flag: 'Use of intermediaries in sourcing chain without clear justification or documentation', ref: 'LBMA RGG v9 Step 3 | OECD Due Diligence §5' },
-      { flag: 'Mismatch between declared production volumes and actual sales volumes', ref: 'LBMA RGG v9 Step 2 | OECD Due Diligence §4' },
-      { flag: 'Mining operations controlled or influenced by armed groups or unofficial authorities', ref: 'LBMA RGG v9 Step 2 | OECD Due Diligence §3' },
+      { flag:'Supplier unable to provide chain of custody documentation', ref:'LBMA RGG v9 Step 2', l:4, i:4, mx:[] },
+      { flag:'Gold assay or hallmarking inconsistency', ref:'LBMA RGG v9 Step 1', l:4, i:4, mx:[] },
+      { flag:'Refinery not on LBMA Good Delivery List or equivalent recognised standard', ref:'LBMA RGG v9 Step 3', l:4, i:4, mx:[] },
+      { flag:'Precious metals originating from countries with no or limited known mining activity', ref:'LBMA RGG v9 Step 2 | OECD Due Diligence §4', l:4, i:4, mx:['high_risk_jurisdiction'] },
+      { flag:'Supplier previously flagged for CAHRA or conflict mineral links', ref:'LBMA RGG v9 Step 2 | OECD §5', l:4, i:5, mx:['high_risk_jurisdiction'] },
+      { flag:'Documentary inconsistency between origin, weight, and assay certificates', ref:'LBMA RGG v9 Step 2', l:4, i:4, mx:[] },
+      { flag:'Supplier relationship lacks contractual AML/CFT representations or warranties', ref:'LBMA RGG v9 Step 3', l:3, i:4, mx:[] },
+      { flag:'False or forged certificates of origin, assay certificates, or weight notes', ref:'LBMA RGG v9 Step 2 | FATF TBML Guidance 2020', l:5, i:5, mx:[] },
+      { flag:'Cash payments in supply chain inconsistent with declared production volumes', ref:'LBMA RGG v9 Step 2 | OECD Due Diligence §4', l:4, i:4, mx:['cash'] },
+      { flag:'Miners unable to provide valid identification or formal registration documents', ref:'LBMA RGG v9 Step 2 | OECD Due Diligence §4', l:4, i:4, mx:[] },
+      { flag:'Use of intermediaries in sourcing chain without clear justification or documentation', ref:'LBMA RGG v9 Step 3 | OECD Due Diligence §5', l:4, i:4, mx:[] },
+      { flag:'Mismatch between declared production volumes and actual sales volumes', ref:'LBMA RGG v9 Step 2 | OECD Due Diligence §4', l:4, i:4, mx:[] },
+      { flag:'Mining operations controlled or influenced by armed groups or unofficial authorities', ref:'LBMA RGG v9 Step 2 | OECD Due Diligence §3', l:5, i:5, mx:['high_risk_jurisdiction'] },
     ],
     'Terrorism & Proliferation Financing': [
-      { flag: 'Customer linked to known terrorist individual, group, or state sponsor of terrorism', ref: 'UAE Cabinet Resolution 74/2020 | FATF Rec.5-8' },
-      { flag: 'Transaction with UNSC designated person or entity', ref: 'UNSCR | UAE FDL No.(10)/2025 Art.14' },
-      { flag: 'Gold used as payment, barter, or store of value in context with TF typology', ref: 'FATF TF Guidance 2019' },
-      { flag: 'Customer references dual-use goods, restricted technology, or arms procurement', ref: 'FATF Rec.7 | UNSCR 1540' },
-      { flag: 'Transaction linked to jurisdiction under proliferation financing sanctions', ref: 'UAE Cabinet Resolution 74/2020 | FATF Rec.7' },
-      { flag: 'Unusual interest in anti-detection methods or counter-surveillance', ref: 'FATF TF Guidance 2019' },
-      { flag: 'Customer or associated party subject to sanctions alert or new PEP designation', ref: 'Cabinet Decision No.(74)/2020 | EOCN TFS Guidance | Cabinet Resolution 134/2025 Art.13' },
+      { flag:'Customer linked to known terrorist individual, group, or state sponsor of terrorism', ref:'UAE Cabinet Resolution 74/2020 | FATF Rec.5-8', l:5, i:5, mx:['sanctions'] },
+      { flag:'Transaction with UNSC designated person or entity', ref:'UNSCR | UAE FDL No.(10)/2025 Art.14', l:5, i:5, mx:['sanctions'] },
+      { flag:'Gold used as payment, barter, or store of value in context with TF typology', ref:'FATF TF Guidance 2019', l:4, i:5, mx:['high_risk_jurisdiction'] },
+      { flag:'Customer references dual-use goods, restricted technology, or arms procurement', ref:'FATF Rec.7 | UNSCR 1540', l:4, i:5, mx:['sanctions'] },
+      { flag:'Transaction linked to jurisdiction under proliferation financing sanctions', ref:'UAE Cabinet Resolution 74/2020 | FATF Rec.7', l:4, i:5, mx:['sanctions','high_risk_jurisdiction'] },
+      { flag:'Unusual interest in anti-detection methods or counter-surveillance', ref:'FATF TF Guidance 2019', l:4, i:4, mx:[] },
+      { flag:'Customer or associated party subject to sanctions alert or new PEP designation', ref:'Cabinet Decision No.(74)/2020 | EOCN TFS Guidance | Cabinet Resolution 134/2025 Art.13', l:4, i:5, mx:['sanctions','pep'] },
     ],
     'Trade-Based Money Laundering': [
-      { flag: 'Invoice price significantly above or below prevailing market gold price', ref: 'Wolfsberg ACSS 2019 | FATF TBML Guidance 2020' },
-      { flag: 'Over- or under-shipment: quantity received differs from documentation', ref: 'FATF TBML Guidance 2020' },
-      { flag: 'Multiple invoicing of same shipment or duplicate billing', ref: 'FATF TBML Guidance 2020' },
-      { flag: 'Under-invoicing: declared value substantially below true market value', ref: 'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019' },
-      { flag: 'Unusual structuring of invoices across multiple transactions or counterparties', ref: 'FATF TBML Guidance 2020' },
-      { flag: 'Complex back-to-back trade finance arrangements with no clear commercial rationale', ref: 'Wolfsberg ACSS 2019' },
-      { flag: 'Goods description in shipping documents inconsistent with gold or precious metals trading', ref: 'FATF TBML Guidance 2020' },
-      { flag: 'Transactions routed through offshore accounts or entities without clear business purpose', ref: 'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019' },
-      { flag: 'Complex or indirect payment routes without economic or commercial justification', ref: 'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019' },
-      { flag: 'Unclear or inconsistent end-user information across shipping and payment documents', ref: 'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019' },
+      { flag:'Invoice price significantly above or below prevailing market gold price', ref:'Wolfsberg ACSS 2019 | FATF TBML Guidance 2020', l:4, i:4, mx:[] },
+      { flag:'Under-invoicing: declared value substantially below true market value', ref:'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019', l:4, i:4, mx:[] },
+      { flag:'Unusual structuring of invoices across multiple transactions or counterparties', ref:'FATF TBML Guidance 2020', l:4, i:3, mx:['repeat'] },
+      { flag:'Over- or under-shipment: quantity received differs from documentation', ref:'FATF TBML Guidance 2020', l:4, i:4, mx:[] },
+      { flag:'Multiple invoicing of same shipment or duplicate billing', ref:'FATF TBML Guidance 2020', l:4, i:4, mx:['repeat'] },
+      { flag:'Complex back-to-back trade finance arrangements with no clear commercial rationale', ref:'Wolfsberg ACSS 2019', l:4, i:4, mx:[] },
+      { flag:'Goods description in shipping documents inconsistent with gold or precious metals trading', ref:'FATF TBML Guidance 2020', l:4, i:4, mx:[] },
+      { flag:'Transactions routed through offshore accounts or entities without clear business purpose', ref:'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019', l:5, i:4, mx:['high_risk_jurisdiction'] },
+      { flag:'Complex or indirect payment routes without economic or commercial justification', ref:'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019', l:4, i:4, mx:[] },
+      { flag:'Unclear or inconsistent end-user information across shipping and payment documents', ref:'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019', l:4, i:5, mx:['high_risk_jurisdiction'] },
     ],
     'Ongoing Monitoring Triggers': [
-      { flag: 'Adverse media developments newly affecting an existing customer', ref: 'Cabinet Resolution 134/2025 Art.13 | FATF Rec.10' },
-      { flag: 'Changes in customer ownership, control structure, or legal status', ref: 'UAE Cabinet Decision No.(10)/2019 | Cabinet Resolution 134/2025 Art.13' },
-      { flag: 'Sanctions alert or new PEP designation affecting existing customer', ref: 'Cabinet Decision No.(74)/2020 | EOCN TFS Guidance' },
-      { flag: 'Doubts arising about previously obtained identification data or its continued accuracy', ref: 'Cabinet Resolution 134/2025 Art.13 | UAE FDL No.(10)/2025 Art.12' },
-      { flag: 'Inconsistencies identified between financial documents and actual customer behaviour', ref: 'Cabinet Resolution 134/2025 Art.13 | FATF Rec.10' },
-      { flag: 'Third-party funding without clear or documented relationship to the transaction', ref: 'FATF DPMS 2020 §4.3 | Wolfsberg ACSS 2019' },
-      { flag: 'Unusual or unexpected transaction pattern deviating from established customer profile', ref: 'Cabinet Resolution 134/2025 Art.13 | FATF Rec.20' },
-      { flag: 'Customer subject to regulatory action, fine, or investigation by any authority', ref: 'UAE FDL No.(10)/2025 Art.12 | FATF Rec.10' },
+      { flag:'Adverse media developments newly affecting an existing customer', ref:'Cabinet Resolution 134/2025 Art.13 | FATF Rec.10', l:3, i:4, mx:[] },
+      { flag:'Changes in customer ownership, control structure, or legal status', ref:'UAE Cabinet Decision No.(10)/2019 | Cabinet Resolution 134/2025 Art.13', l:3, i:3, mx:[] },
+      { flag:'Sanctions alert or new PEP designation affecting existing customer', ref:'Cabinet Decision No.(74)/2020 | EOCN TFS Guidance', l:4, i:5, mx:['sanctions','pep'] },
+      { flag:'Doubts arising about previously obtained identification data or its continued accuracy', ref:'Cabinet Resolution 134/2025 Art.13 | UAE FDL No.(10)/2025 Art.12', l:4, i:4, mx:[] },
+      { flag:'Inconsistencies identified between financial documents and actual customer behaviour', ref:'Cabinet Resolution 134/2025 Art.13 | FATF Rec.10', l:4, i:4, mx:[] },
+      { flag:'Third-party funding without clear or documented relationship to the transaction', ref:'FATF DPMS 2020 §4.3 | Wolfsberg ACSS 2019', l:4, i:4, mx:[] },
+      { flag:'Unusual or unexpected transaction pattern deviating from established customer profile', ref:'Cabinet Resolution 134/2025 Art.13 | FATF Rec.20', l:3, i:4, mx:[] },
+      { flag:'Customer subject to regulatory action, fine, or investigation by any authority', ref:'UAE FDL No.(10)/2025 Art.12 | FATF Rec.10', l:4, i:5, mx:[] },
     ],
   };
 
   function renderRedFlags() {
     const el = document.getElementById('suite-content-redflags');
     if (!el) return;
+
+    // Count flags by level
+    let counts = { Critical:0, High:0, Medium:0, Low:0, total:0 };
+    Object.values(RED_FLAGS_DB).forEach(flags => flags.forEach(f => {
+      const lvl = rfLevel(f.l * f.i);
+      counts[lvl]++;
+      counts.total++;
+    }));
+
     el.innerHTML = `
-      <div class="card">
+      <div class="card" style="margin-bottom:1rem">
         <div class="top-bar">
-          <span class="sec-title">🚩 Red Flag Library — DPMS Gold Trading</span>
-          <span style="font-size:11px;color:var(--muted)">FATF DPMS 2020 | UAE FDL No.(10) of 2025 | LBMA RGG v9 | Wolfsberg ACSS</span>
+          <span class="sec-title">🚩 Red Flag Library — DPMS Gold Trading (${counts.total} Flags)</span>
+          <span style="font-size:11px;color:var(--muted)">L × I Scoring | FATF DPMS 2020 | UAE FDL No.(10)/2025 | LBMA RGG v9 | Wolfsberg ACSS</span>
         </div>
-        <input type="text" id="rf-search" placeholder="Search red flags..." oninput="suiteFilterRedFlags(this.value)" style="margin-bottom:1rem"/>
+
+        <!-- Risk Score Summary -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
+          <div class="metric m-c" style="cursor:pointer" onclick="suiteFilterRFLevel('Critical')">
+            <div class="metric-num">${counts.Critical}</div>
+            <div class="metric-lbl">Critical (16–25)</div>
+          </div>
+          <div class="metric m-h" style="cursor:pointer" onclick="suiteFilterRFLevel('High')">
+            <div class="metric-num">${counts.High}</div>
+            <div class="metric-lbl">High (11–15)</div>
+          </div>
+          <div class="metric m-m" style="cursor:pointer" onclick="suiteFilterRFLevel('Medium')">
+            <div class="metric-num">${counts.Medium}</div>
+            <div class="metric-lbl">Medium (6–10)</div>
+          </div>
+          <div class="metric m-ok" style="cursor:pointer" onclick="suiteFilterRFLevel('Low')">
+            <div class="metric-num">${counts.Low}</div>
+            <div class="metric-lbl">Low (1–5)</div>
+          </div>
+        </div>
+
+        <!-- Scoring Model Reference -->
+        <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <strong style="color:var(--gold)">Risk Score = Likelihood (1–5) × Impact (1–5)</strong><br>
+              <span style="color:var(--muted)">Critical ≥16 | High 11–15 | Medium 6–10 | Low 1–5</span>
+            </div>
+            <div>
+              <strong style="color:var(--gold)">Multipliers</strong><br>
+              <span style="color:var(--muted)">Sanctions ×2 | High-risk jurisdiction ×1.5 | PEP ×1.5 | Cash ×1.5 | Repeat ×1.5</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- System Action Rules -->
+        <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
+          <strong style="color:var(--gold)">Composite Risk Rule:</strong> TOTAL_SCORE = Σ (each flag score × multiplier)<br>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px">
+            <div style="background:rgba(217,79,79,0.1);border-radius:6px;padding:8px;border-left:3px solid var(--red)">
+              <div style="font-weight:600;color:var(--red)">≥1 CRITICAL flag</div>
+              <div style="color:var(--muted);margin-top:2px">Immediate escalation + STR consideration</div>
+            </div>
+            <div style="background:rgba(232,160,48,0.1);border-radius:6px;padding:8px;border-left:3px solid var(--amber)">
+              <div style="font-weight:600;color:var(--amber)">≥2 HIGH flags</div>
+              <div style="color:var(--muted);margin-top:2px">STR consideration + EDD required</div>
+            </div>
+            <div style="background:rgba(74,143,193,0.1);border-radius:6px;padding:8px;border-left:3px solid var(--blue)">
+              <div style="font-weight:600;color:#4A8FC1">≥3 MEDIUM flags</div>
+              <div style="color:var(--muted);margin-top:2px">EDD trigger + enhanced monitoring</div>
+            </div>
+            <div style="background:rgba(61,168,118,0.1);border-radius:6px;padding:8px;border-left:3px solid var(--green)">
+              <div style="font-weight:600;color:var(--green)">LOW only</div>
+              <div style="color:var(--muted);margin-top:2px">Log + trend analysis only</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div style="display:flex;gap:8px;margin-bottom:1rem">
+          <input type="text" id="rf-search" placeholder="Search red flags..." oninput="suiteFilterRedFlags(this.value)" style="flex:1"/>
+          <select id="rf-level-filter" onchange="suiteFilterRFLevel(this.value)" style="width:150px">
+            <option value="">All Levels</option>
+            <option value="Critical">🔴 Critical</option>
+            <option value="High">🟠 High</option>
+            <option value="Medium">🟡 Medium</option>
+            <option value="Low">🟢 Low</option>
+          </select>
+        </div>
+
         <div id="rf-results">
           ${Object.entries(RED_FLAGS_DB).map(([cat, flags]) => `
-            <div class="card" style="margin-bottom:1rem;padding:1rem">
-              <div class="sec-title" style="margin-bottom:10px">${cat}</div>
-              ${flags.map(f => `
-                <div class="rf-item" data-text="${f.flag.toLowerCase()}" style="padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px;background:var(--surface2)">
-                  <div style="font-size:13px;font-weight:500;margin-bottom:4px">🚩 ${f.flag}</div>
-                  <div style="font-size:11px;color:var(--gold);font-family:'DM Mono',monospace">${f.ref}</div>
-                </div>
-              `).join('')}
+            <div class="card rf-category" style="margin-bottom:1rem;padding:1rem">
+              <div class="sec-title" style="margin-bottom:10px">${cat} (${flags.length})</div>
+              ${flags.map(f => {
+                const score = f.l * f.i;
+                const lvl = rfLevel(score);
+                const rl = RF_LEVEL[lvl];
+                const mxLabels = (f.mx||[]).map(m => RF_MULTIPLIERS[m]?.label).filter(Boolean);
+                return `
+                <div class="rf-item" data-text="${f.flag.toLowerCase()}" data-level="${lvl}"
+                  style="padding:10px 12px;border-radius:8px;border:1px solid ${rl.border};margin-bottom:6px;background:${rl.bg}">
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                    <div style="font-size:13px;font-weight:500;flex:1">🚩 ${f.flag}</div>
+                    <div style="flex-shrink:0;text-align:right">
+                      <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:5px;padding:2px 8px;font-size:10px;font-family:'DM Mono',monospace;white-space:nowrap">${lvl} — ${score}</div>
+                      <div style="font-size:10px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace">L:${f.l} × I:${f.i} = ${score}</div>
+                    </div>
+                  </div>
+                  <div style="font-size:11px;color:var(--gold);font-family:'DM Mono',monospace;margin-top:4px">${f.ref}</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px">${rl.action}</div>
+                  ${mxLabels.length ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${mxLabels.map(m=>`<span style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.3);border-radius:4px;padding:1px 6px;font-size:10px;font-family:'DM Mono',monospace">×${RF_MULTIPLIERS[(f.mx||[]).find(k=>RF_MULTIPLIERS[k]?.label===m)]?.factor} ${m}</span>`).join('')}</div>` : ''}
+                </div>`;
+              }).join('')}
             </div>
           `).join('')}
         </div>
@@ -1169,10 +1290,26 @@
 
   global.suiteFilterRedFlags = function(query) {
     const q = query.toLowerCase();
+    const lvl = document.getElementById('rf-level-filter')?.value || '';
     document.querySelectorAll('.rf-item').forEach(item => {
-      item.style.display = !q || item.dataset.text.includes(q) ? '' : 'none';
+      const textMatch = !q || item.dataset.text.includes(q);
+      const lvlMatch = !lvl || item.dataset.level === lvl;
+      item.style.display = textMatch && lvlMatch ? '' : 'none';
+    });
+    // Hide empty categories
+    document.querySelectorAll('.rf-category').forEach(cat => {
+      const visible = [...cat.querySelectorAll('.rf-item')].some(i => i.style.display !== 'none');
+      cat.style.display = visible ? '' : 'none';
     });
   };
+
+  global.suiteFilterRFLevel = function(level) {
+    const sel = document.getElementById('rf-level-filter');
+    if (sel) sel.value = level;
+    global.suiteFilterRedFlags(document.getElementById('rf-search')?.value || '');
+  };
+
+
 
   // ════════════════════════════════════════════════════════════════════════════
   // 6. APPROVAL MATRIX (FOUR-EYES)
