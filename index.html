@@ -15,14 +15,17 @@
 <title>Compliance Tasks - Compliance Analyzer v2.5</title>
 <script>
 // Global error handler — prevent white screen on any JS error
+window._appErrors = [];
 window.onerror = function(msg, src, line, col, err) {
-  console.error('[App Error]', msg, src + ':' + line);
-  var toast = window.toast;
-  if (typeof toast === 'function') toast('An error occurred — the app is still running.', 'error', 4000);
+  var detail = msg + ' at ' + (src||'').split('/').pop() + ':' + line;
+  console.error('[App Error]', detail);
+  window._appErrors.push(detail);
   return true; // Prevent error from breaking the page
 };
 window.addEventListener('unhandledrejection', function(e) {
-  console.error('[Unhandled Promise]', e.reason);
+  var detail = e.reason ? (e.reason.message || String(e.reason)) : 'Unknown promise rejection';
+  console.error('[Unhandled Promise]', detail);
+  window._appErrors.push('Promise: ' + detail);
   e.preventDefault();
 });
 </script>
@@ -10513,21 +10516,29 @@ function initNewFeatures() {
 
 // Boot: check session, then init
 (async function boot() {
-  initialiseApp();
-  initNewFeatures();
-  if (checkSession()) {
-    // Valid session — show main app
-    if (window._keysLoaded) {
-      openMainPanel();
-      toast('Saved configuration loaded','info', 2500);
+  try {
+    initialiseApp();
+  } catch(e) { console.error('[Boot] initialiseApp failed:', e); }
+  try {
+    initNewFeatures();
+  } catch(e) { console.error('[Boot] initNewFeatures failed:', e); }
+  try {
+    if (checkSession()) {
+      if (window._keysLoaded) {
+        openMainPanel();
+        toast('Saved configuration loaded','info', 2500);
+      }
+    } else {
+      document.getElementById('mainApp').style.display = 'none';
+      document.getElementById('loginOverlay').style.display = 'flex';
+      await initDefaultUsers();
     }
-  } else {
-    // No session — show login, hide app
-    document.getElementById('mainApp').style.display = 'none';
-    document.getElementById('loginOverlay').style.display = 'flex';
-    await initDefaultUsers();
-  }
+  } catch(e) { console.error('[Boot] session check failed:', e); }
   setInterval(refreshReminders, 5 * 60 * 1000);
+  // Show collected errors (if any) after boot
+  if (window._appErrors && window._appErrors.length && typeof toast === 'function') {
+    toast('Debug: ' + window._appErrors[0], 'error', 8000);
+  }
 })();
 </script>
 <script>
