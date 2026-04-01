@@ -1,26 +1,25 @@
-name: Sync gh-pages + Netlify on every push to main
+name: Deploy
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  sync-gh-pages:
+  # ALWAYS runs - free, unlimited, no credits
+  sync-github-pages:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Push to gh-pages branch
+      - name: Sync to gh-pages (GitHub Pages)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git push origin main:gh-pages --force
-          echo "gh-pages synced from main"
+          echo "✅ GitHub Pages updated — https://trex0092.github.io/compliance-analyzer/"
 
-      - name: Trigger Netlify deploy (when credits available)
-        run: |
-          echo "Netlify auto-deploys from main branch when credits are available."
-          echo "Current gh-pages URL: https://trex0092.github.io/compliance-analyzer/"
+  # Netlify auto-deploys when Netlify detects the push
+  # netlify.toml ignores the build UNLESS commit message contains [release]
+  # Normal pushes = 0 Netlify credits used
+  # To release to Netlify: add [release] to your commit message
