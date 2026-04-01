@@ -390,11 +390,6 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       <div class="token-note">Get from: Asana → Profile photo → My Profile Settings → Apps → Manage Developer Apps → New access token</div>
     </div>
     <div class="card">
-      <span class="lbl">Email for Scheduled Analysis Reports (optional)</span>
-      <input type="email" id="scheduleEmail" placeholder="your@email.com" />
-      <div class="token-note">Used only to display a mailto link when a scheduled analysis is ready. No email is sent automatically.</div>
-    </div>
-    <div class="card">
       <span class="lbl">Proxy URL <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — eliminates browser-side API keys)</span></span>
       <input type="url" id="proxyUrl" placeholder="https://fgl-proxy.youruser.workers.dev" />
       <div class="token-note">Deploy <code>proxy/worker.js</code> as a Cloudflare Worker, store your keys as Worker secrets, then paste the Worker URL here. See <code>proxy/README.md</code> for step-by-step instructions. When set, the Anthropic and Asana fields above can be left blank.</div>
@@ -2535,10 +2530,10 @@ var ASANA_TOKEN = '';
 var PROXY_URL = '';
 var SCHEDULE_EMAIL = '';
 var OPENAI_KEY = '';
-var NOTION_TOKEN = '';
-var NOTION_DB_ID = '';
-var CLICKUP_TOKEN = '';
-var CLICKUP_LIST_ID = '';
+var NOTION_TOKEN = ''; // removed — use Asana
+var NOTION_DB_ID = ''; // removed — use Asana
+var CLICKUP_TOKEN = ''; // removed — use Asana
+var CLICKUP_LIST_ID = ''; // removed — use Asana
 var GEMINI_KEY = '';
 var GDRIVE_CLIENT_ID = '';
 var GDRIVE_FOLDER_ID = '';
@@ -2548,7 +2543,22 @@ var lastResult = null;
 var lastQuery = '';
 var lastArea = '';
 var REMEMBER_KEYS = false;
-const ASANA_PROJECT = '1213759768596515';
+const ASANA_PROJECT_MAP = {
+  'company-1': { compliance: '1213825539896477', workflow: '1213825580399850' },
+  'company-2': { compliance: '1213825365472836', workflow: '1213825542010518' },
+  'company-3': { compliance: '1213838252710765', workflow: '1213825541970651' },
+  'company-4': { compliance: '1213825578259027', workflow: '1213825580398407' },
+  'company-5': { compliance: '1213819084043355', workflow: '1213759768596515' },
+  'company-6': { compliance: '1213899448309031', workflow: '1213899469870046' }
+};
+function getAsanaProject() {
+  const entry = ASANA_PROJECT_MAP[activeCompanyId] || ASANA_PROJECT_MAP['company-5'];
+  return entry.workflow;
+}
+function getAsanaComplianceProject() {
+  const entry = ASANA_PROJECT_MAP[activeCompanyId] || ASANA_PROJECT_MAP['company-5'];
+  return entry.compliance;
+}
 const ASANA_WORKSPACE = '1213645083721316';
 const KEYS_STORAGE = 'fgl_keys';
 const SHIPMENTS_STORAGE = 'fgl_shipments';
@@ -2969,7 +2979,7 @@ function clearAppData() {
 // ======= SETUP =======
 function persistKeys() {
   if (!REMEMBER_KEYS) {
-    localStorage.setItem(KEYS_STORAGE, JSON.stringify({ proxyUrl: PROXY_URL, asanaToken: ASANA_TOKEN, aiProvider: AI_PROVIDER, notionDbId: NOTION_DB_ID, clickupListId: CLICKUP_LIST_ID, gdriveFolderId: GDRIVE_FOLDER_ID, gdriveClientId: GDRIVE_CLIENT_ID, rememberKeys: false }));
+    localStorage.setItem(KEYS_STORAGE, JSON.stringify({ proxyUrl: PROXY_URL, asanaToken: ASANA_TOKEN, aiProvider: AI_PROVIDER, gdriveFolderId: GDRIVE_FOLDER_ID, gdriveClientId: GDRIVE_CLIENT_ID, rememberKeys: false }));
     return;
   }
 
@@ -3013,10 +3023,6 @@ function hydrateKeys() {
   SCHEDULE_EMAIL = (saved.scheduleEmail || '').trim();
   PROXY_URL = normaliseProxyUrl(saved.proxyUrl || '');
   OPENAI_KEY = (saved.openaiKey || '').trim();
-  NOTION_TOKEN = (saved.notionToken || '').trim();
-  NOTION_DB_ID = (saved.notionDbId || '').trim();
-  CLICKUP_TOKEN = (saved.clickupToken || '').trim();
-  CLICKUP_LIST_ID = (saved.clickupListId || '').trim();
   GEMINI_KEY = (saved.geminiKey || '').trim();
   GDRIVE_CLIENT_ID = (saved.gdriveClientId || '').trim();
   GDRIVE_FOLDER_ID = (saved.gdriveFolderId || '').trim();
@@ -3054,10 +3060,6 @@ function saveSetup() {
   ASANA_TOKEN = document.getElementById('asanaToken').value.trim();
   SCHEDULE_EMAIL = document.getElementById('scheduleEmail').value.trim();
   PROXY_URL = normaliseProxyUrl(document.getElementById('proxyUrl')?.value || '');
-  NOTION_TOKEN = document.getElementById('notionToken')?.value.trim() || '';
-  NOTION_DB_ID = document.getElementById('notionDbId')?.value.trim() || '';
-  CLICKUP_TOKEN = document.getElementById('clickupToken')?.value.trim() || '';
-  CLICKUP_LIST_ID = document.getElementById('clickupListId')?.value.trim() || '';
   GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId')?.value.trim() || '';
   GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId')?.value.trim() || '';
   REMEMBER_KEYS = !!document.getElementById('rememberKeys')?.checked;
@@ -3081,8 +3083,7 @@ function updateKeys() {
   // Sync setup panel fields
   const syncMap = {
     anthropicKey: ANTHROPIC_KEY, asanaToken: ASANA_TOKEN, scheduleEmail: SCHEDULE_EMAIL,
-    proxyUrl: PROXY_URL, openaiKey: OPENAI_KEY, notionToken: NOTION_TOKEN,
-    notionDbId: NOTION_DB_ID, clickupToken: CLICKUP_TOKEN, clickupListId: CLICKUP_LIST_ID,
+    proxyUrl: PROXY_URL, openaiKey: OPENAI_KEY,
     geminiKey: GEMINI_KEY, gdriveClientId: GDRIVE_CLIENT_ID, gdriveFolderId: GDRIVE_FOLDER_ID
   };
   for (const [id, val] of Object.entries(syncMap)) {
@@ -5520,7 +5521,7 @@ async function runAnalysis(queryOverride, areaOverride) {
   if ((ASANA_TOKEN || PROXY_URL) && (!queryOverride) && document.getElementById('includeAsana').value==='yes') {
     document.getElementById('statusText').textContent = 'Reading Asana task status...';
     try {
-      const r = await asanaFetch(`/projects/${ASANA_PROJECT}/tasks?opt_fields=name,completed,due_on&limit=100`);
+      const r = await asanaFetch(`/projects/${getAsanaProject()}/tasks?opt_fields=name,completed,due_on&limit=100`);
       const d = await r.json();
       const today = new Date(); today.setHours(0,0,0,0);
       const overdue = (d.data||[]).filter(t=>!t.completed&&t.due_on&&new Date(t.due_on)<today).map(t=>t.name).slice(0,12);
@@ -5793,7 +5794,7 @@ async function autoSyncToAsana(taskName, taskNotes, dueInDays) {
   if (!ASANA_TOKEN && !PROXY_URL) return null;
   try {
     const due = new Date(); due.setDate(due.getDate() + (dueInDays || 14));
-    const body = { data: { name: taskName, notes: taskNotes, projects: [ASANA_PROJECT], workspace: ASANA_WORKSPACE, due_on: due.toISOString().split('T')[0] } };
+    const body = { data: { name: taskName, notes: taskNotes, projects: [getAsanaProject()], workspace: ASANA_WORKSPACE, due_on: due.toISOString().split('T')[0] } };
     setAsanaModuleSync('writeback', { status: 'Syncing', lastError: '' });
     const r = await asanaFetch('/tasks', { method: 'POST', body: JSON.stringify(body) });
     const d = await r.json();
@@ -5829,7 +5830,7 @@ async function submitCreateTask() {
   if (!name) { toast('Task name is required','error'); return; }
   if (!ASANA_TOKEN && !PROXY_URL) { toast('Asana token required','error'); return; }
 
-  const body = { data: { name, notes, projects: [ASANA_PROJECT], workspace: ASANA_WORKSPACE } };
+  const body = { data: { name, notes, projects: [getAsanaProject()], workspace: ASANA_WORKSPACE } };
   if (due) body.data.due_on = due;
   if (priorityGid) body.data.custom_fields = { '1213759653333851': priorityGid };
 
@@ -5873,7 +5874,7 @@ async function loadAsanaTasks(silent) {
   document.getElementById('asanaContent').innerHTML = '<p style="color:var(--muted);font-size:13px">Loading from Asana...</p>';
   setAsanaModuleSync('tasks', { status: 'Refreshing', lastError: '' });
   try {
-    const r = await asanaFetch(`/projects/${ASANA_PROJECT}/tasks?opt_fields=name,completed,due_on,assignee.name,memberships.section.name&limit=100`);
+    const r = await asanaFetch(`/projects/${getAsanaProject()}/tasks?opt_fields=name,completed,due_on,assignee.name,memberships.section.name&limit=100`);
     const d = await r.json();
     if (d.errors) throw new Error(d.errors[0]?.message);
     const tasks = d.data || [];
@@ -6094,7 +6095,7 @@ async function loadEvidenceFromAsana() {
   toast('Loading tasks from Asana...','info',2000);
   setAsanaModuleSync('evidence', { status: 'Refreshing', lastError: '' });
   try {
-    const r = await asanaFetch(`/projects/${ASANA_PROJECT}/tasks?opt_fields=name,gid,completed&limit=100`);
+    const r = await asanaFetch(`/projects/${getAsanaProject()}/tasks?opt_fields=name,gid,completed&limit=100`);
     const d = await r.json();
     if (d.errors) throw new Error(d.errors[0]?.message);
     const tasks = (d.data||[]).filter(t=>!t.completed).slice(0,30);
@@ -6835,70 +6836,10 @@ async function uploadAnalysisHistoryToGDrive() {
   await uploadToGDrive(fileName, content, 'text/plain');
 }
 
-// ======= NOTION INTEGRATION =======
-async function notionFetch(path, method = 'POST', body = null) {
-  if (!PROXY_URL) {
-    throw new Error('Notion requires a Proxy URL — direct browser calls are blocked by CORS. Set a Proxy URL in Settings.');
-  }
-  const url = `${PROXY_URL}/notion${path}`;
-  const headers = { 'Content-Type': 'application/json' };
-  const opts = { method, headers };
-  if (body) opts.body = JSON.stringify(body);
-  return fetch(url, opts);
-}
-
-async function saveToNotion(analysisResult, query, area) {
-  if (!NOTION_TOKEN && !PROXY_URL) { toast('Notion token not configured', 'error'); return; }
-  if (!NOTION_DB_ID) { toast('Notion Database ID not set', 'error'); return; }
-
-  const findings = analysisResult.findings || [];
-  const critical = findings.filter(f => f.severity === 'CRITICAL').length;
-  const high = findings.filter(f => f.severity === 'HIGH').length;
-
-  const body = {
-    parent: { database_id: NOTION_DB_ID },
-    properties: {
-      'Title': { title: [{ text: { content: `Compliance Analysis: ${area}` } }] },
-      'Query': { rich_text: [{ text: { content: query.slice(0, 2000) } }] },
-      'Date': { date: { start: new Date().toISOString() } },
-      'Critical': { number: critical },
-      'High': { number: high },
-      'Status': { select: { name: critical > 0 ? 'Critical' : high > 0 ? 'Needs Attention' : 'Compliant' } },
-    },
-    children: [
-      { object: 'block', type: 'heading_2', heading_2: { rich_text: [{ text: { content: 'Summary' } }] } },
-      { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ text: { content: (analysisResult.summary || '').slice(0, 2000) } }] } },
-      { object: 'block', type: 'heading_2', heading_2: { rich_text: [{ text: { content: 'Findings' } }] } },
-      ...findings.slice(0, 20).map(f => ({
-        object: 'block', type: 'callout', callout: {
-          icon: { emoji: f.severity === 'CRITICAL' ? '🔴' : f.severity === 'HIGH' ? '🟠' : f.severity === 'MEDIUM' ? '🔵' : '🟢' },
-          rich_text: [{ text: { content: `[${f.severity}] ${f.title}\n${f.body || ''}\n→ ${f.recommendation || ''}`.slice(0, 2000) } }]
-        }
-      }))
-    ]
-  };
-
-  try {
-    const r = await notionFetch('/pages', 'POST', body);
-    if (!r.ok) { const e = await r.text(); throw new Error(e); }
-    toast('Report saved to Notion', 'success');
-  } catch (e) {
-    toast(`Notion error: ${e.message}`, 'error');
-  }
-}
-
-async function testNotionConnection() {
-  if (!NOTION_TOKEN && !PROXY_URL) { toast('Set Notion token first', 'error'); return; }
-  if (!NOTION_DB_ID) { toast('Set Notion Database ID first', 'error'); return; }
-  try {
-    const r = await notionFetch(`/databases/${NOTION_DB_ID}`, 'GET');
-    if (!r.ok) throw new Error(`${r.status}`);
-    const d = await r.json();
-    toast(`Connected to Notion: ${d.title?.[0]?.plain_text || 'Database found'}`, 'success');
-  } catch (e) {
-    toast(`Notion connection failed: ${e.message}`, 'error');
-  }
-}
+// ======= NOTION INTEGRATION (removed — use Asana) =======
+function saveToNotion() { toast('Notion integration removed — use Asana', 'info'); }
+function testNotionConnection() { toast('Notion integration removed — use Asana', 'info'); }
+function shareToNotion() { toast('Notion integration removed — use Asana', 'info'); }
 
 // Slack removed — not supported in browser-only deployment
 async function sendSlackMessage() {}
@@ -6906,64 +6847,10 @@ async function sendAnalysisToSlack() {}
 async function sendSlackAlert() {}
 function shareToSlack() {}
 
-// ======= CLICKUP INTEGRATION =======
-async function clickupFetch(path, method = 'GET', body = null) {
-  const url = PROXY_URL ? `${PROXY_URL}/clickup${path}` : `https://api.clickup.com/api/v2${path}`;
-  const headers = { 'Content-Type': 'application/json' };
-  if (!PROXY_URL) headers['Authorization'] = CLICKUP_TOKEN;
-  const opts = { method, headers };
-  if (body) opts.body = JSON.stringify(body);
-  return fetch(url, opts);
-}
-
-async function createClickUpTask(name, description, priority = 3, dueDate = null) {
-  if (!CLICKUP_TOKEN && !PROXY_URL) { toast('ClickUp token not configured', 'error'); return; }
-  if (!CLICKUP_LIST_ID) { toast('ClickUp List ID not set', 'error'); return; }
-
-  const body = {
-    name,
-    description,
-    priority,
-    status: 'to do',
-  };
-  if (dueDate) body.due_date = new Date(dueDate).getTime();
-
-  try {
-    const r = await clickupFetch(`/list/${CLICKUP_LIST_ID}/task`, 'POST', body);
-    if (!r.ok) { const e = await r.text(); throw new Error(e); }
-    const data = await r.json();
-    toast(`ClickUp task created: ${data.name || name}`, 'success');
-    return data;
-  } catch (e) {
-    toast(`ClickUp error: ${e.message}`, 'error');
-  }
-}
-
-// Share buttons from results
-function shareToNotion() {
-  if (!lastResult) { toast('No analysis to save', 'error'); return; }
-  saveToNotion(lastResult, lastQuery, lastArea);
-}
-function shareToClickUp() {
-  if (!lastResult) { toast('No analysis to create tasks from', 'error'); return; }
-  createClickUpTasksFromFindings(lastResult.findings);
-}
-
-async function createClickUpTasksFromFindings(findings) {
-  if (!CLICKUP_TOKEN && !PROXY_URL) { toast('ClickUp not configured', 'error'); return; }
-  if (!CLICKUP_LIST_ID) { toast('ClickUp List ID not set', 'error'); return; }
-
-  let created = 0;
-  for (const f of (findings || []).filter(f => f.severity !== 'COMPLIANT')) {
-    const priority = f.severity === 'CRITICAL' ? 1 : f.severity === 'HIGH' ? 2 : 3;
-    const desc = `**Severity:** ${f.severity}\n**Finding:** ${f.body || ''}\n**Regulatory Ref:** ${f.regulatory_ref || ''}\n**Recommendation:** ${f.recommendation || ''}`;
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + (f.severity === 'CRITICAL' ? 3 : f.severity === 'HIGH' ? 7 : 14));
-    await createClickUpTask(`[${f.severity}] ${f.title}`, desc, priority, dueDate.toISOString());
-    created++;
-  }
-  toast(`${created} ClickUp tasks created from findings`, 'success');
-}
+// ======= CLICKUP INTEGRATION (removed — use Asana) =======
+function createClickUpTask() { toast('ClickUp integration removed — use Asana', 'info'); }
+function shareToClickUp() { toast('ClickUp integration removed — use Asana', 'info'); }
+function createClickUpTasksFromFindings() { toast('ClickUp integration removed — use Asana', 'info'); }
 
 // ======= AUTHENTICATION & USER MANAGEMENT =======
 const USERS_STORAGE = 'fgl_users';

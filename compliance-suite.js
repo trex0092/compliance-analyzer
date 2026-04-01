@@ -1366,14 +1366,36 @@
   };
 
   const REGULATORY_FRAMEWORK = [
-    { framework: 'UAE FDL No.(10) of 2025', area: 'Primary AML/CFT', articles: 'Art.1-30', applicability: 'All UAE entities', lastUpdated: '2025', status: 'Active' },
-    { framework: 'UAE Cabinet Resolution No.(10) of 2019', area: 'Beneficial Ownership', articles: 'Full', applicability: 'All UAE entities', lastUpdated: '2019', status: 'Active' },
-    { framework: 'UAE Cabinet Resolution No.(74) of 2020', area: 'TFS/Sanctions', articles: 'Full', applicability: 'All UAE entities', lastUpdated: '2020', status: 'Active' },
-    { framework: 'FATF Recommendations (2023)', area: 'International Standards', articles: 'Rec. 1-40', applicability: 'FATF Members', lastUpdated: '2023', status: 'Active' },
-    { framework: 'FATF DPMS Guidance 2020', area: 'Precious Metals', articles: 'Full', applicability: 'DPMS entities', lastUpdated: '2020', status: 'Active' },
-    { framework: 'LBMA RGG v9', area: 'Gold Supply Chain', articles: 'Steps 1-5', applicability: 'Gold dealers/refiners', lastUpdated: '2023', status: 'Active' },
-    { framework: 'OECD Due Diligence (Minerals)', area: 'Supply Chain', articles: 'Full', applicability: 'CAHRA exposure', lastUpdated: '2016', status: 'Active' },
+    // ── Federal Legislation ──
+    { framework: 'Federal Decree-Law No.(10) of 2025', area: 'Primary AML/CFT/PF', articles: 'Art.1-40', applicability: 'All UAE entities', lastUpdated: '2025', status: 'Active' },
+    { framework: 'Federal Decree-Law No.(31) of 2021 (UAE Penal Code)', area: 'Predicate Offences', articles: 'Bribery, Corruption, Fraud', applicability: 'All UAE entities', lastUpdated: '2021', status: 'Active' },
+    // ── Executive Regulations ──
+    { framework: 'Cabinet Resolution No.(134) of 2025', area: 'CDD, Risk Assessment, Internal Controls', articles: 'Art.1-30', applicability: 'All UAE entities', lastUpdated: '2025', status: 'Active' },
+    { framework: 'Cabinet Resolution No.(156) of 2025', area: 'Admin Violations, PF, Strategic Goods', articles: 'Full', applicability: 'All UAE entities', lastUpdated: '2025', status: 'Active' },
+    { framework: 'Cabinet Resolution No.(74) of 2020', area: 'TFS/UNSC/Local Terrorist List', articles: 'Full — asset freezing', applicability: 'All UAE entities', lastUpdated: '2020', status: 'Active' },
+    { framework: 'Cabinet Resolution No.(71) of 2024', area: 'Administrative Penalties (MoE/MoJ)', articles: 'AED 10K–100M range', applicability: 'DPMS under MoE', lastUpdated: '2024', status: 'Active' },
+    // ── Beneficial Ownership ──
+    { framework: 'Cabinet Decision No.(109) of 2023', area: 'Beneficial Owner Procedures', articles: 'UBO identification & verification', applicability: 'All UAE companies', lastUpdated: '2023', status: 'Active' },
+    { framework: 'Cabinet Resolution No.(132) of 2023', area: 'UBO Violation Penalties', articles: 'Administrative penalties', applicability: 'All UAE companies', lastUpdated: '2023', status: 'Active' },
+    // ── Supervisory & Sectoral Guidance ──
+    { framework: 'MoE Practical Guide for DNFBPs', area: 'DPMS Compliance Guide', articles: 'Full', applicability: 'DPMS under MoE', lastUpdated: '2024', status: 'Active' },
+    { framework: 'MoE Supplemental Guidance for DPMS (May 2019)', area: 'DPMS-Specific AML/CFT', articles: 'Full', applicability: 'DPMS entities', lastUpdated: '2019', status: 'Active' },
+    { framework: 'MoE Circular No.(1) of 2024', area: 'NRA 2024 Integration', articles: 'Full', applicability: 'All DNFBPs', lastUpdated: '2024', status: 'Active' },
+    { framework: 'MoE Circular No. 08/AML/2021', area: 'DPMSR Reporting Requirements', articles: 'goAML DPMSR filing', applicability: 'DPMS entities', lastUpdated: '2021', status: 'Active' },
+    { framework: 'UAE FIU goAML Instructions', area: 'STR/SAR/DPMSR Filing', articles: 'Portal & reporting', applicability: 'All reporting entities', lastUpdated: '2024', status: 'Active' },
+    { framework: 'UAE National Risk Assessment (NRA) 2024', area: 'National ML/TF/PF Risk', articles: 'DPMS: medium-to-high', applicability: 'All sectors', lastUpdated: '2024', status: 'Active' },
+    { framework: 'Executive Office AML/CFT Guidance', area: 'AML/CFT Coordination', articles: 'Full', applicability: 'All UAE entities', lastUpdated: '2024', status: 'Active' },
+    // ── International Standards ──
+    { framework: 'FATF Recommendations', area: 'International AML/CFT', articles: 'Rec. 1-40', applicability: 'FATF members/assessed', lastUpdated: '2023', status: 'Active' },
+    { framework: 'FATF DPMS Guidance 2020', area: 'Precious Metals Sector', articles: 'Full', applicability: 'DPMS entities', lastUpdated: '2020', status: 'Active' },
+    { framework: 'LBMA Responsible Gold Guidance v9', area: 'Gold Supply Chain DD', articles: 'Steps 1-5', applicability: 'Gold dealers/refiners', lastUpdated: '2023', status: 'Active' },
+    { framework: 'OECD DDG for Responsible Supply Chains (CAHRAs)', area: 'Conflict Minerals DD', articles: 'Full + Annexes', applicability: 'CAHRA-exposed entities', lastUpdated: '2016', status: 'Active' },
+    { framework: 'OECD DDG Gold Supplement', area: 'Gold-Specific DD', articles: 'Full', applicability: 'Gold supply chain', lastUpdated: '2016', status: 'Active' },
+    { framework: 'World Gold Council Conflict-Free Gold Standard', area: 'Conflict-Free Sourcing', articles: 'Full', applicability: 'Gold producers/traders', lastUpdated: '2023', status: 'Active' },
+    { framework: 'UNSC Sanctions Framework', area: 'International Sanctions', articles: 'UNSC Resolutions', applicability: 'All member states', lastUpdated: '2025', status: 'Active' },
     { framework: 'Wolfsberg ACSS 2019', area: 'Trade Finance/AML', articles: 'Full', applicability: 'Trade finance', lastUpdated: '2019', status: 'Active' },
+    // ── Whistleblower Protection ──
+    { framework: 'Federal Decree-Law No.(32) of 2021', area: 'Whistleblower Protection', articles: 'Full', applicability: 'All UAE entities', lastUpdated: '2021', status: 'Active' },
   ];
 
   function renderRegMap() {
