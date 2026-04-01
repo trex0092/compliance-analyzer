@@ -1,5 +1,6 @@
 [build]
   publish = "."
+  command = "echo 'Deploy v20260401-1905'"
 
 [[headers]]
   for = "/*"
