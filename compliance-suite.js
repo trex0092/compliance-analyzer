@@ -2429,3 +2429,181 @@
   }
 
 })(window);
+
+// ════════════════════════════════════════════════════════════════════════════
+// ASANA SYNC — NEW MODULES (TFS UAE, DPMSR, AI Governance)
+// ════════════════════════════════════════════════════════════════════════════
+
+(function(global) {
+  'use strict';
+
+  function load(key) { try { return JSON.parse(localStorage.getItem(key)||'null'); } catch{return null;} }
+  function save(key,val) { try { localStorage.setItem(key,JSON.stringify(val)); } catch(e){} }
+  function fmtDate(d) { if(!d) return '—'; return new Date(d).toLocaleDateString('en-GB'); }
+  function toast(msg,type) { if(global.toast) global.toast(msg,type); }
+
+  const SK2 = {
+    TFS2:  'fgl_tfs2_v1',
+    DPMSR: 'fgl_dpmsr_v1',
+    AILOG: 'fgl_ailog_v1',
+  };
+
+  async function asanaPush(title, notes) {
+    try {
+      if (typeof asanaFetch !== 'function') return null;
+      const projectId = (typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515';
+      const resp = await asanaFetch('/tasks', {
+        method: 'POST',
+        body: JSON.stringify({ data: { name: title, notes, projects: [projectId] } })
+      });
+      const data = await resp.json();
+      return data?.data?.gid || null;
+    } catch(e) { console.warn('Asana push error:', e); return null; }
+  }
+
+  // TFS UAE → Asana
+  global.suite2SyncTFS2ToAsana = async function(idx) {
+    const events = load(SK2.TFS2)||[];
+    const e = events[idx];
+    if (!e) return;
+    toast('Syncing to Asana...','info');
+    const notes = [
+      `TFS Event: ${e.id}`,
+      `Screened: ${e.screenedName}`,
+      `Outcome: ${e.outcome}`,
+      `Lists Screened: ${e.listsScreened}`,
+      `Event Type: ${e.eventType}`,
+      `Date: ${fmtDate(e.screeningDate)}`,
+      `Reviewed by: ${e.reviewedBy}`,
+      e.outcome==='Confirmed Match' ? [
+        `Frozen Within 24h: ${e.frozenWithin24h||'Pending'}`,
+        `FFR Filed: ${e.ffrFiled||'Pending'} | Ref: ${e.ffrRef||'—'}`,
+        `CNMR Status: ${e.cnmrStatus||'Pending'} | Deadline: ${fmtDate(e.cnmrDeadline)} | Ref: ${e.cnmrRef||'—'}`,
+        `Supervisor Notified: ${e.supervisorNotified||'Pending'}`,
+        `MLRO Notified: ${e.mlroNotified||'Pending'}`,
+        `Senior Management Notified: ${e.mgmtNotified||'Pending'}`,
+      ].join('\n') : '',
+      e.outcome==='Partial Match' ? [
+        `Transaction Suspended: ${e.txSuspended||'Pending'}`,
+        `PNMR Status: ${e.pnmrStatus||'Pending'} | Deadline: ${fmtDate(e.pnmrDeadline)} | Ref: ${e.pnmrRef||'—'}`,
+      ].join('\n') : '',
+      e.outcome==='False Positive' ? `Differentiation Basis: ${e.fpBasis||'—'} | Evidence: ${e.fpEvidence||'—'}` : '',
+      `\nNotes: ${e.notes||'—'}`,
+      `\nRegulatory Basis: Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance`,
+    ].filter(Boolean).join('\n');
+
+    const title = `[TFS-UAE] ${e.screenedName} — ${e.outcome}`;
+    const gid = await asanaPush(title, notes);
+    if (gid) { events[idx].asanaGid = gid; save(SK2.TFS2, events); toast('Synced to Asana','success'); }
+    else toast('Asana sync failed — check token in Settings','error');
+  };
+
+  // DPMSR → Asana
+  global.suite2SyncDPMSRToAsana = async function(idx) {
+    const cases = load(SK2.DPMSR)||[];
+    const c = cases[idx];
+    if (!c) return;
+    toast('Syncing to Asana...','info');
+    const notes = [
+      `DPMSR Case: ${c.id}`,
+      `Customer: ${c.customerName}`,
+      `Type: ${c.customerType}`,
+      `Amount: AED ${Number(c.amount||0).toLocaleString()}`,
+      `Payment Method: ${c.paymentMethod}`,
+      `Transaction Date: ${fmtDate(c.txDate)}`,
+      `ID Reference: ${c.idRef||'—'}`,
+      `Reporting Required: ${c.reportingRequired||'—'}`,
+      `DPMSR Filed: ${c.dpmsr_filed||'No'}`,
+      `CDD Complete: ${c.cddComplete}`,
+      `Linked Transaction: ${c.linkedFlag||'No'}`,
+      c.linkedFlag==='Yes – Linked' ? `Linked Ref: ${c.linkedRef||'—'} | Cumulative: AED ${Number(c.cumulative||0).toLocaleString()}` : '',
+      `Structuring Indicator: ${c.structuringIndicator||'No'}`,
+      `Notes: ${c.notes||'—'}`,
+      `\nRegulatory Basis: MoE Circular 08/AML/2021 | AED 55,000 Threshold | Cabinet Resolution 134/2025 Art.13`,
+    ].filter(Boolean).join('\n');
+
+    const title = `[DPMSR] ${c.customerName} — AED ${Number(c.amount||0).toLocaleString()} — ${c.reportingRequired||'Pending'}`;
+    const gid = await asanaPush(title, notes);
+    if (gid) { cases[idx].asanaGid = gid; save(SK2.DPMSR, cases); toast('Synced to Asana','success'); }
+    else toast('Asana sync failed — check token in Settings','error');
+  };
+
+  // AI Log → Asana
+  global.suite2SyncAILogToAsana = async function(idx) {
+    const logs = load(SK2.AILOG)||[];
+    const l = logs[idx];
+    if (!l) return;
+    toast('Syncing to Asana...','info');
+    const notes = [
+      `AI Review Log: ${l.id}`,
+      `Task Type: ${l.aiTask}`,
+      `Decision: ${l.decision}`,
+      `Reviewed By: ${l.reviewer}`,
+      `Review Date: ${fmtDate(l.reviewDate)}`,
+      `AI Output Summary: ${l.output||'—'}`,
+      `Reviewer Notes: ${l.notes||'—'}`,
+      `\nRegulatory Basis: Cabinet Resolution 134/2025 Art.24 | PDPL — Human review of automated processing`,
+    ].join('\n');
+
+    const title = `[AI-GOV] ${l.aiTask} — ${l.decision}`;
+    const gid = await asanaPush(title, notes);
+    if (gid) toast('Synced to Asana','success');
+    else toast('Asana sync failed','error');
+  };
+
+  // ── PATCH RENDER FUNCTIONS to add Asana buttons ───────────────────────────
+  // We override the render functions after the DOM loads to inject Asana buttons
+
+  function patchTFS2Render() {
+    // Add Asana button to each TFS2 event card after render
+    document.querySelectorAll('[id^="suite2-content-tfs2"] .finding').forEach((card, i) => {
+      const btnContainer = card.querySelector('.f-head > div:last-child');
+      if (btnContainer && !btnContainer.querySelector('.asana-sync-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-blue asana-sync-btn';
+        btn.textContent = 'Asana';
+        btn.onclick = () => suite2SyncTFS2ToAsana(i);
+        btnContainer.insertBefore(btn, btnContainer.querySelector('.btn-red'));
+      }
+    });
+  }
+
+  function patchDPMSRRender() {
+    document.querySelectorAll('[id^="suite2-content-dpmsr"] .finding').forEach((card, i) => {
+      const btnContainer = card.querySelector('.f-head > div:last-child');
+      if (btnContainer && !btnContainer.querySelector('.asana-sync-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-blue asana-sync-btn';
+        btn.textContent = 'Asana';
+        btn.onclick = () => suite2SyncDPMSRToAsana(i);
+        btnContainer.insertBefore(btn, btnContainer.querySelector('.btn-red'));
+      }
+    });
+  }
+
+  function patchAILogRender() {
+    document.querySelectorAll('[id^="suite2-content-ailog"] .finding').forEach((card, i) => {
+      const btnContainer = card.querySelector('.f-head > div:last-child');
+      if (btnContainer && !btnContainer.querySelector('.asana-sync-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-blue asana-sync-btn';
+        btn.textContent = 'Asana';
+        btn.onclick = () => suite2SyncAILogToAsana(i);
+        btnContainer.insertBefore(btn, btnContainer.querySelector('.btn-red'));
+      }
+    });
+  }
+
+  // Patch after each render call
+  const origRenderTFS2 = global.renderTFS2;
+  if (origRenderTFS2) {
+    global.renderTFS2 = function() {
+      origRenderTFS2();
+      setTimeout(patchTFS2Render, 100);
+    };
+  }
+
+  // Expose patch functions globally so switchToSuite2Tab can call them
+  global.suite2PatchAsana = { tfs2: patchTFS2Render, dpmsr: patchDPMSRRender, ailog: patchAILogRender };
+
+})(window);
