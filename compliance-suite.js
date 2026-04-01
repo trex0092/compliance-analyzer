@@ -1351,7 +1351,7 @@
     'Mainland DNFBP (MoE)': {
       supervisor: 'Ministry of Economy',
       primaryLaw: 'UAE FDL No.(10) of 2025',
-      obligations: ['DNFBP registration with MoE','Annual risk assessment submission','CDD per Art.12-16','TFS per Cabinet Resolution 74/2020','STR via goAML within 30 days','LBMA RGG v9 for gold sourcing','Record retention 5 years minimum'],
+      obligations: ['DNFBP registration with MoE','Annual risk assessment submission','CDD per Art.12-16','TFS per Cabinet Resolution 74/2020','STR via goAML within 30 days','LBMA RGG v9 for gold sourcing','Record retention 10 years minimum per UAE FDL No.(10)/2025'],
     },
     'DIFC (DFSA)': {
       supervisor: 'Dubai Financial Services Authority',
@@ -1531,6 +1531,7 @@
 })(window);
 
 // ════════════════════════════════════════════════════════════════════════════
+// COMPLIANCE SUITE v2.2 — 2026-04-01 11:58 — 10yr retention
 // COMPLIANCE SUITE EXTENSION v2.1 — UAE AML/CFT COMPLIANCE FIXES
 // Adds: Full TFS UAE workflow, DPMSR threshold, CDD hard stops,
 //       UBO freshness, AI governance, record retention, linked transactions
