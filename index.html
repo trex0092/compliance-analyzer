@@ -753,7 +753,7 @@ Examples:
         <div class="row" style="margin-bottom:12px">
           <div><span class="lbl">False Positive Resolution (if applicable)</span><input type="text" id="shFalsePositiveResolution" placeholder="Document false-positive outcome" /></div>
         </div>
-        <div class="token-note" style="margin-bottom:12px">Screening coverage: UN Sanctions, UK, EU, Adverse Media, UAE Sanctions. Compliance basis: UAE FDL No.10/2025 | Article 35(5); UN Security Council Resolutions enforcement</div>
+        <div class="token-note" style="margin-bottom:12px">Screening coverage: UAE Local Terrorist List (EOCN) + UNSC Consolidated List = MANDATORY | OFAC, EU, UK, Interpol = Enhanced Controls. Compliance basis: Cabinet Decision No.(74) of 2020 | EOCN Executive Office Guidance on TFS | FATF Rec.6</div>
         <div class="row row-3">
           <div><span class="lbl">Last CDD Review Date</span><input type="text" placeholder="dd/mm/yyyy" id="shCddReviewDate" /></div>
           <div style="display:flex;align-items:flex-end"><button class="btn btn-sm btn-green" onclick="setCDDToday()">Use Today</button></div>
@@ -780,7 +780,7 @@ Examples:
           <span class="lbl" style="margin:0">Transaction Monitoring</span>
           <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Red flag indicators and SAR/STR suggestions</span>
         </div>
-        <div class="token-note" style="margin-bottom:10px">Compliance basis: UAE FDL No.10/2025 | Article 26 requires continuous transaction monitoring with documented red flag triggers</div>
+        <div class="token-note" style="margin-bottom:10px">Compliance basis: Cabinet Resolution No.(134) of 2025 | Art.13 | Ongoing monitoring and periodic CDD review obligations for DNFBPs</div>
         <div id="shipmentMonitoringSummary"><p style="color:var(--muted);font-size:13px">No transaction monitoring alerts yet.</p></div>
       </div>
     </div>
@@ -1358,9 +1358,9 @@ Examples:
           <div class="finding f-critical" style="opacity:1;animation:none">
             <div class="f-head"><div class="f-head-left"><span class="badge b-c">GAP-001</span><div class="f-title">Conflicting CDD Review Frequencies in Compliance Manual v005</div></div></div>
             <div class="f-body">FG/KYC and FG/AML sections contain contradictory review schedules. Must be resolved in v006.</div>
-            <div class="f-ref">UAE FDL No.(10) of 2025 | Article 16 | CDD review obligations for DNFBPs</div>
+            <div class="f-ref">Cabinet Resolution No.(134) of 2025 | Art.12-13 | CDD and ongoing monitoring obligations for DNFBPs</div>
             <div class="rec">Issue Compliance Manual v006 with single harmonised schedule: High-risk 6 months, Medium 12 months, Low 18 months. Target: 30 April 2026.</div>
-            <div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Resolve CDD Review Frequency Conflict (GAP-001)','GAP-001: FG/KYC and FG/AML sections contain contradictory review schedules. Issue v006 with harmonised schedule. Ref: UAE FDL No.10/2025 Article 16.')">+ Create Asana Task</button></div>
+            <div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Resolve CDD Review Frequency Conflict (GAP-001)','GAP-001: FG/KYC and FG/AML sections contain contradictory review schedules. Issue v006 with harmonised schedule. Ref: Cabinet Resolution No.(134) of 2025 Art.12-13 | CDD and ongoing monitoring obligations.')">+ Create Asana Task</button></div>
           </div>
           <div class="finding f-critical" style="opacity:1;animation:none">
             <div class="f-head"><div class="f-head-left"><span class="badge b-c">GAP-002</span><div class="f-title">No LBMA Independent Third-Party Audit</div></div></div>
@@ -1372,9 +1372,9 @@ Examples:
           <div class="finding f-critical" style="opacity:1;animation:none">
             <div class="f-head"><div class="f-head-left"><span class="badge b-c">GAP-003/004</span><div class="f-title">Missing CRA Form and UBO Register</div></div></div>
             <div class="f-body">Customer Risk Assessment form and UBO Register are both absent.</div>
-            <div class="f-ref">UAE FDL No.(10) of 2025 | Articles 16, 17 | Cabinet Decision No.(109) of 2023</div>
+            <div class="f-ref">Cabinet Resolution No.(134) of 2025 | Art.10 | Cabinet Decision No.(109) of 2023 | Beneficial ownership identification and verification</div>
             <div class="rec">Approve CRA form by 04 May 2026. Populate UBO Register by 31 May 2026.</div>
-            <div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Create Customer Risk Assessment Form (GAP-003)','GAP-003: CRA form absent. Draft and approve template. Ref: UAE FDL No.10/2025 Art.16.')">+ Create CRA Task</button><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Populate UBO Register (GAP-004)','GAP-004: UBO Register absent. Populate for all active customers. Ref: Cabinet Decision 109/2023.')">+ Create UBO Task</button></div>
+            <div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Create Customer Risk Assessment Form (GAP-003)','GAP-003: CRA form absent. Draft and approve template. Ref: Cabinet Resolution No.(134) of 2025 Art.12 | CDD obligations for DNFBPs.')">+ Create CRA Task</button><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Populate UBO Register (GAP-004)','GAP-004: UBO Register absent. Populate for all active customers. Ref: Cabinet Decision 109/2023.')">+ Create UBO Task</button></div>
           </div>
           <div class="finding f-critical" style="opacity:1;animation:none">
             <div class="f-head"><div class="f-head-left"><span class="badge b-c">GAP-005</span><div class="f-title">Duplicate Document Coding Across 10 Policy Documents</div></div></div>
@@ -1692,7 +1692,7 @@ Examples:
       <div class="card" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3)">
         <span class="sec-title" style="color:#10B981">Compliance Basis</span>
         <div class="token-note" style="color:rgba(16,185,129,0.85);line-height:1.7">
-          <strong style="color:#10B981">UAE Federal Decree-Law No.10/2025</strong> — Article 16: Obligation to screen customers against sanctions lists; Article 18: PEP identification and enhanced due diligence; Article 26: Continuous monitoring and suspicious transaction reporting; Article 35(5): TFS compliance and UN Security Council Resolutions enforcement.<br><br>
+          <strong style="color:#10B981">Cabinet Decision No.(74) of 2020</strong> — Mandatory TFS screening against UAE Local Terrorist List (EOCN) and UNSC Consolidated List. Cabinet Resolution No.(134) of 2025 Art.14 — EDD and source of funds verification for high-risk customers. Art.12 — Customer identification and verification. Cabinet Resolution No.(134) of 2025 Art.13 — Ongoing monitoring obligations.<br><br>
           <strong style="color:#10B981">FATF Recommendations</strong> — Rec 6: Targeted Financial Sanctions (TFS); Rec 10: Customer Due Diligence; Rec 12: PEP requirements; Rec 22: DPMS obligations.<br><br>
           <strong style="color:#10B981">Cabinet Resolution No.74/2020</strong> — Implementation of UN/UAE targeted financial sanctions, asset freezing, and reporting obligations.<br><br>
           <strong style="color:#10B981">Screening Lists</strong> — UN Consolidated Sanctions, OFAC SDN, EU Consolidated, UK OFSI, UAE Local Terrorism List, Interpol Red Notices, Refinitiv World-Check.<br><br>
@@ -2071,7 +2071,7 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">STR / SAR Generator</span>
         </div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">AI-assisted Suspicious Transaction Report drafting for UAE FIU (goAML) filing per FDL No.10/2025 Article 15.</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">AI-assisted Suspicious Transaction Report drafting for UAE FIU (goAML) filing per Cabinet Resolution No.(134) of 2025 Article 18 — Immediate notification to FIU upon suspicion arising.</p>
         <div class="row row-2" style="margin-bottom:12px">
           <div><span class="lbl">Subject Name</span><input type="text" id="strSubject" placeholder="Full name of subject" /></div>
           <div><span class="lbl">Subject Type</span><select id="strSubjectType"><option value="individual">Individual</option><option value="corporate">Corporate</option></select></div>
@@ -2096,10 +2096,10 @@ Examples:
       <div class="card" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3)">
         <span class="sec-title" style="color:#10B981">Compliance & Legal Basis</span>
         <div class="token-note" style="color:rgba(16,185,129,0.85);line-height:1.7">
-          <strong style="color:#10B981">UAE Federal Decree-Law No.10/2025</strong> — Article 15: Obligation to report suspicious transactions to FIU via goAML; Article 16: Record keeping of all transactions; Article 22: Protection of whistleblowers and reporters; Article 26: Penalties for non-reporting; Article 35: TFS obligations.<br><br>
+          <strong style="color:#10B981">Cabinet Resolution No.(134) of 2025</strong> — Article 18: Immediate notification to UAE FIU upon suspicion arising; Article 25: Record retention for minimum 5 years. UAE FDL No.(10) of 2025 — Article 26: Criminal penalties for ML. Art.18 of Cabinet Resolution 134/2025 requires immediate reporting — there is no statutory 24-hour window for STR filing; notification must occur as soon as suspicion arises.<br><br>
           <strong style="color:#10B981">CBUAE AML/CFT Guidance</strong> — Section 9: STR/SAR filing procedures; Section 10: Internal incident management; Section 11: Whistleblower protection mechanisms.<br><br>
           <strong style="color:#10B981">FATF Recommendations</strong> — Rec 20: Reporting of suspicious transactions; Rec 21: Tipping off and confidentiality; Rec 29: Financial intelligence units.<br><br>
-          <strong style="color:#10B981">goAML Filing</strong> — STR must be filed within 24 hours of suspicion for critical/high severity. Include: subject details, transaction details, grounds for suspicion, supporting documentation references.
+          <strong style="color:#10B981">goAML Filing</strong> — STR must be filed IMMEDIATELY upon suspicion arising per Cabinet Resolution No.(134) of 2025 Art.18. There is no 24-hour grace period. Include: subject details, transaction chronology, grounds for suspicion, red flags identified, supporting documentation references. Tipping-off prohibition: Art.19 — do not disclose to subject.
         </div>
       </div>
     </div>
@@ -7513,7 +7513,7 @@ function initSanctionsRefreshStatus() {
 function getComplianceDescription(result) {
   if (result === 'MATCH') return {
     label: 'POSITIVE MATCH',
-    desc: 'The screened entity has been positively identified on one or more sanctions lists, PEP databases, or adverse media sources. Under UAE Federal Decree-Law No.10/2025 (Art.22) and FATF Recommendation 6, the business relationship must NOT proceed. Immediately freeze any assets, file a Suspicious Transaction Report (STR) via goAML, and escalate to the MLRO and senior management. Report to the UAE Financial Intelligence Unit (FIU) within 24 hours.',
+    desc: 'The screened entity has been positively identified on one or more sanctions lists, PEP databases, or adverse media sources. Under Cabinet Decision No.(74) of 2020 and EOCN Executive Office Guidance on TFS, and FATF Recommendation 6, the business relationship must NOT proceed. Immediately freeze assets without delay (within 24 hours of confirmation). File a Funds Freeze Report (FFR) via goAML and submit a Confirmed Name Match Report (CNMR) to EOCN within 5 business days. Escalate to MLRO and senior management immediately.',
     color: '#D94F4F', bg: 'rgba(217,79,79,0.08)', border: '#D94F4F'
   };
   if (result === 'POTENTIAL_MATCH') return {
@@ -8134,7 +8134,7 @@ const RACI_DEFAULT_ACTIVITIES = [
   { section: 'Transaction Monitoring and Reporting' },
   { activity:'Monitor transactions for red flag indicators', cm:'A', md:'I', fin:'R', ops:'R', desc:'Continuously review business and financial transactions to identify unusual or suspicious activities. Apply risk-based monitoring rules to detect red flags related to money laundering, terrorism financing, or sanctions breaches. Keep proper records of all alerts, investigations, and outcomes. Transaction monitoring is conducted on a continuous and ongoing basis throughout the business relationship, not limited to periodic or scheduled reviews.' },
   { activity:'File Suspicious Transaction Reports (STR/SAR) on goAML', cm:'R', md:'I', fin:'C', ops:'C', desc:'Prepare and submit STRs or SARs to the UAE Financial Intelligence Unit (GoAML portal) immediately. PF-related suspicions must also be reported immediately under UAE regulatory requirements. Maintain strict confidentiality of all reports and check that no client is tipped off at any stage. Keep evidence of the review process, internal decision-making, and submission for inspection purposes.' },
-  { activity:'Maintain the STR and SAR internal register', cm:'R', md:'I', fin:'C', ops:'I', desc:'Maintain a full internal register of all STR/SAR decisions, filings, and close-outs. Record the rationale for each decision (file vs. close) with supporting documentation and an audit trail. Document: FG/STRA/REG/001 (STR/SAR Internal Case Register). Update within 24 hours of any filing, close-out, or FIU response. Keep for at least ten years.' },
+  { activity:'Maintain the STR and SAR internal register', cm:'R', md:'I', fin:'C', ops:'I', desc:'Maintain a full internal register of all STR/SAR decisions, filings, and close-outs. Record the rationale for each decision (file vs. close) with supporting documentation and an audit trail. Document: FG/STRA/REG/001 (STR/SAR Internal Case Register). Update promptly upon any filing, close-out, or FIU response. Keep for at least 5 years per Cabinet Resolution 134/2025 Art.25 (10 years recommended for STR files).' },
   { activity:'DPMSR Submission to Ministry of Economy', cm:'R', md:'A', fin:'C', ops:'C', desc:'Complete periodic reports and annual declarations through the MOE\'s DPMSR platform. Confirm that all declarations and statistical data are accurate, complete, and submitted on time.' },
   { activity:'Regulatory Correspondence and Inspection Response', cm:'R', md:'A', fin:'C', ops:'C', desc:'Maintain communication with the Ministry of Economy and respond promptly to official queries, inspection notices, and information requests. Keep all correspondence and evidence of timely responses for inspection and audit purposes.' },
   { section: 'Sanctions and Targeted Financial Sanctions' },
@@ -8899,7 +8899,7 @@ function generateEvalReport(data) {
       low: 'AML/CFT controls verified as adequate. Document control assessment in CDD file per Cabinet Resolution 134/2025 Art.8.'
     },
     sanctionsPersons: {
-      high: 'IMMEDIATE ACTION: Freeze relationship per Cabinet Resolution 74/2020 on TFS. Report to UAE FIU via goAML within 24 hours per FDL 10/2025 Art.22. No transactions permitted. Notify Compliance Officer and Board immediately.',
+      high: 'IMMEDIATE ACTION: Freeze relationship per Cabinet Resolution 74/2020 on TFS. File FFR via goAML and CNMR to EOCN within 5 business days per Cabinet Decision No.(74) of 2020 and EOCN TFS Guidance. No transactions permitted. Notify Compliance Officer and Board immediately.',
       medium: 'Conduct enhanced screening against all sanctions lists (UN, OFAC, EU, UAE Local). Obtain clearance documentation. Apply ongoing enhanced monitoring.',
       low: 'Standard sanctions screening completed with no matches. Document results per record-keeping requirements (5-year retention).'
     },

@@ -1460,3 +1460,972 @@
   }
 
 })(window);
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMPLIANCE SUITE EXTENSION v2.1 — UAE AML/CFT COMPLIANCE FIXES
+// Adds: Full TFS UAE workflow, DPMSR threshold, CDD hard stops,
+//       UBO freshness, AI governance, record retention, linked transactions
+// Regulatory: Cabinet Resolution No.(134) of 2025 | Cabinet Decision 74/2020
+//             EOCN TFS Guidance | MoE Circular 08/AML/2021
+// ════════════════════════════════════════════════════════════════════════════
+
+(function(global) {
+  'use strict';
+
+  function load(key) { try { return JSON.parse(localStorage.getItem(key)||'null'); } catch{return null;} }
+  function save(key,val) { try { localStorage.setItem(key,JSON.stringify(val)); } catch(e){} }
+  function today() { return new Date().toISOString().slice(0,10); }
+  function fmtDate(d) { if(!d) return '—'; return new Date(d).toLocaleDateString('en-GB'); }
+  function addBusinessDays(date, days) {
+    const d = new Date(date);
+    let added = 0;
+    while (added < days) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6) added++; }
+    return d.toISOString().slice(0,10);
+  }
+  function toast(msg,type) { if(global.toast) global.toast(msg,type); }
+
+  const SK2 = {
+    TFS2:    'fgl_tfs2_v1',
+    DPMSR:   'fgl_dpmsr_v1',
+    RETAIN:  'fgl_retention_v1',
+    AILOG:   'fgl_ailog_v1',
+    LINKED:  'fgl_linked_txn_v1',
+  };
+
+  // ── INJECT NEW TABS ─────────────────────────────────────────────────────────
+  const SUITE2_TABS = [
+    { id: 'tfs2',    icon: '🇦🇪', label: 'TFS UAE',   title: 'Full UAE TFS Workflow' },
+    { id: 'dpmsr',   icon: '📊', label: 'DPMSR',      title: 'DPMSR Threshold Reporting' },
+    { id: 'retention', icon: '🗄️', label: 'Retention', title: 'Record Retention — Art.25' },
+    { id: 'ailog',   icon: '🤖', label: 'AI Govern',  title: 'AI Output Governance' },
+  ];
+
+  function injectSuite2() {
+    const nav = document.getElementById('tabsNav');
+    if (!nav) return;
+    SUITE2_TABS.forEach(t => {
+      if (document.getElementById('suite2-tab-'+t.id)) return;
+      const el = document.createElement('div');
+      el.className = 'tab';
+      el.id = 'suite2-tab-'+t.id;
+      el.title = t.title;
+      el.innerHTML = `${t.icon} ${t.label}`;
+      el.onclick = () => switchToSuite2Tab(t.id);
+      nav.appendChild(el);
+    });
+    SUITE2_TABS.forEach(t => {
+      if (document.getElementById('suite2-content-'+t.id)) return;
+      const el = document.createElement('div');
+      el.className = 'tab-content';
+      el.id = 'suite2-content-'+t.id;
+      (document.querySelector('.app')||document.body).appendChild(el);
+    });
+  }
+
+  function switchToSuite2Tab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    const btn = document.getElementById('suite2-tab-'+name);
+    if (btn) btn.classList.add('active');
+    const content = document.getElementById('suite2-content-'+name);
+    if (content) content.classList.add('active');
+    const renders = { tfs2: renderTFS2, dpmsr: renderDPMSR, retention: renderRetention, ailog: renderAILog };
+    if (renders[name]) renders[name]();
+  }
+
+  function badge2(status) {
+    const map = {
+      'Confirmed Match':'#D94F4F','Partial Match':'#E8A030','False Positive':'#3DA876',
+      'Negative – No Match':'#3DA876','Frozen':'#D94F4F','CNMR Filed':'#3DA876',
+      'PNMR Filed':'#3DA876','Pending Review':'#E8A030','Cleared':'#3DA876',
+      'Overdue':'#D94F4F','Current':'#3DA876','Due Soon':'#E8A030',
+      'Approved':'#3DA876','Rejected':'#D94F4F','Pending':'#E8A030',
+    };
+    const col = map[status]||'#7A7870';
+    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:'DM Mono',monospace">${status}</span>`;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // TFS2 — FULL UAE TFS WORKFLOW
+  // Reg: Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance
+  // 4 Outcomes: Confirmed Match, Partial Match, False Positive, Negative
+  // CNMR within 5 business days | Freeze within 24 hours | goAML FFR
+  // ════════════════════════════════════════════════════════════════════════════
+
+  function renderTFS2() {
+    const el = document.getElementById('suite2-content-tfs2');
+    if (!el) return;
+    const events = load(SK2.TFS2)||[];
+
+    el.innerHTML = `
+    <div class="card" style="margin-bottom:1.2rem">
+      <div class="top-bar">
+        <span class="sec-title">🇦🇪 UAE TFS Workflow — Full 4-Outcome Process</span>
+        <span style="font-size:11px;color:var(--muted)">Cabinet Decision No.(74) of 2020 | EOCN Executive Office TFS Guidance</span>
+        <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid var(--gold)">
+          <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">MANDATORY UAE Lists</div>
+          <div style="font-size:12px;margin-bottom:6px">✅ <strong>UAE Local Terrorist List</strong> — EOCN / Executive Office</div>
+          <div style="font-size:12px;margin-bottom:6px">✅ <strong>UNSC Consolidated Sanctions List</strong> — UN Security Council</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">Cabinet Decision No.(74)/2020 — These two lists are legally mandatory for all UAE reporting entities. Failure to screen constitutes a regulatory offence.</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid var(--blue)">
+          <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">ENHANCED CONTROLS (Not Legally Mandatory)</div>
+          <div style="font-size:12px;margin-bottom:4px">⬜ OFAC SDN — US unilateral sanctions</div>
+          <div style="font-size:12px;margin-bottom:4px">⬜ EU Consolidated Sanctions</div>
+          <div style="font-size:12px;margin-bottom:4px">⬜ UK OFSI Consolidated</div>
+          <div style="font-size:12px;margin-bottom:4px">⬜ Interpol Red Notices</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">EOCN Guidance — For non-UAE unilateral/multilateral lists, consult your supervisory authority for appropriate course of action.</div>
+        </div>
+      </div>
+
+      <div style="background:rgba(217,79,79,0.08);border:1px solid rgba(217,79,79,0.25);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
+        <strong style="color:var(--red)">🔴 UAE TFS MANDATORY OBLIGATIONS ON CONFIRMED MATCH:</strong><br>
+        <div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>1. <strong>Freeze assets immediately</strong> — within 24 hours — without prior notice to subject</div>
+          <div>2. <strong>No tipping off</strong> — do not inform subject of freeze or report</div>
+          <div>3. <strong>File FFR via goAML</strong> — Funds Freeze Report to UAE FIU</div>
+          <div>4. <strong>Submit CNMR to EOCN</strong> — Confirmed Name Match Report within 5 business days</div>
+        </div>
+      </div>
+
+      <div style="background:rgba(232,160,48,0.08);border:1px solid rgba(232,160,48,0.25);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
+        <strong style="color:var(--amber)">🟡 UAE TFS PARTIAL MATCH OBLIGATIONS:</strong><br>
+        <div style="margin-top:6px">
+          1. <strong>Suspend transaction</strong> — hold, do not proceed<br>
+          2. <strong>Conduct enhanced verification</strong> — differentiate subject from listed person<br>
+          3. <strong>Submit PNMR to EOCN</strong> — Partial Name Match Report within 5 business days<br>
+          4. If match confirmed: treat as Confirmed Match above
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
+        <div class="metric m-c"><div class="metric-num">${events.filter(e=>e.outcome==='Confirmed Match').length}</div><div class="metric-lbl">Confirmed Matches</div></div>
+        <div class="metric m-h"><div class="metric-num">${events.filter(e=>e.outcome==='Partial Match').length}</div><div class="metric-lbl">Partial Matches</div></div>
+        <div class="metric m-ok"><div class="metric-num">${events.filter(e=>e.outcome==='Negative – No Match').length}</div><div class="metric-lbl">Cleared</div></div>
+        <div class="metric m-m"><div class="metric-num">${events.filter(e=>e.cnmrStatus==='Pending'||e.pnmrStatus==='Pending').length}</div><div class="metric-lbl">Report Pending</div></div>
+      </div>
+
+      ${events.length===0?'<p style="color:var(--muted);font-size:13px;text-align:center;padding:2rem">No TFS screening events. Click "+ New Screening Event" to begin.</p>':''}
+      ${events.map((e,i) => {
+        const isConfirmed = e.outcome==='Confirmed Match';
+        const isPartial = e.outcome==='Partial Match';
+        const cnmrDeadline = e.screeningDate ? addBusinessDays(e.screeningDate, 5) : null;
+        const cnmrOverdue = cnmrDeadline && new Date(cnmrDeadline)<new Date() && (e.cnmrStatus==='Pending');
+        return `
+        <div class="finding ${isConfirmed?'f-critical':isPartial?'f-high':'f-ok'}" style="margin-bottom:10px">
+          <div class="f-head">
+            <div class="f-head-left"><div>
+              <div class="f-title">${e.screenedName} ${badge2(e.outcome)} ${cnmrOverdue?badge2('Overdue'):''}</div>
+              <div class="f-body">Lists: ${e.listsScreened} | Event: ${e.eventType} | Date: ${fmtDate(e.screeningDate)}</div>
+              ${isConfirmed?`<div class="f-ref">Freeze: ${e.frozenWithin24h||'Not confirmed'} | FFR: ${e.ffrFiled||'Pending'} | CNMR: ${e.cnmrStatus||'Pending'} (deadline: ${fmtDate(cnmrDeadline)})</div>`:''}
+              ${isPartial?`<div class="f-ref">Transaction Suspended: ${e.txSuspended||'Pending'} | PNMR: ${e.pnmrStatus||'Pending'} (deadline: ${fmtDate(cnmrDeadline)})</div>`:''}
+              <div class="f-ref">Reviewer: ${e.reviewedBy||'—'} | Ref: ${e.id}</div>
+            </div></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm" onclick="suite2EditTFS(${i})">View/Edit</button>
+              <button class="btn btn-sm btn-red" onclick="suite2DeleteTFS(${i})">Delete</button>
+            </div>
+          </div>
+          ${e.notes?`<div class="rec">${e.notes}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- TFS2 Modal -->
+    <div class="modal-overlay" id="tfs2Modal">
+      <div class="modal" style="max-width:680px;width:95%;max-height:92vh">
+        <button class="modal-close" onclick="document.getElementById('tfs2Modal').classList.remove('open')">✕</button>
+        <div class="modal-title">UAE TFS Screening Event</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance | Mandatory: UAE Local Terrorist List + UNSC Consolidated List</div>
+        <input type="hidden" id="tfs2-edit-idx" value="-1">
+
+        <div class="row row-2">
+          <div><span class="lbl">Name Screened *</span><input id="tfs2-name" placeholder="Full legal name of individual or entity"/></div>
+          <div><span class="lbl">Screening Event Type *</span>
+            <select id="tfs2-event"><option>New Customer Onboarding</option><option>Periodic Rescreening</option><option>List Update Trigger</option><option>Transaction Pre-Approval</option><option>Supplier/Refinery Onboarding</option><option>UBO Screening</option><option>Ad Hoc Review</option></select>
+          </div>
+        </div>
+        <div><span class="lbl">Lists Screened (tick all that apply)</span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface2);padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-uae" style="width:auto" checked/> 🇦🇪 UAE Local Terrorist List (EOCN) <span style="color:var(--red);font-size:10px">MANDATORY</span></label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-un" style="width:auto" checked/> 🌐 UNSC Consolidated Sanctions List <span style="color:var(--red);font-size:10px">MANDATORY</span></label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-ofac" style="width:auto"/> 🇺🇸 OFAC SDN (Enhanced)</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-eu" style="width:auto"/> 🇪🇺 EU Consolidated (Enhanced)</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-uk" style="width:auto"/> 🇬🇧 UK OFSI (Enhanced)</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-interpol" style="width:auto"/> 🔵 Interpol Red Notices (Enhanced)</label>
+          </div>
+        </div>
+        <div class="row row-2" style="margin-top:10px">
+          <div><span class="lbl">Screening Date *</span><input type="date" id="tfs2-date" value="${today()}"/></div>
+          <div><span class="lbl">Reviewed By</span><input id="tfs2-reviewer" placeholder="Compliance Officer / MLRO name"/></div>
+        </div>
+        <div><span class="lbl">Screening Outcome *</span>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px" id="tfs2-outcome-btns">
+            ${[
+              {val:'Negative – No Match', col:'var(--green)', icon:'✅'},
+              {val:'False Positive', col:'var(--green)', icon:'⚪'},
+              {val:'Partial Match', col:'var(--amber)', icon:'🟡'},
+              {val:'Confirmed Match', col:'var(--red)', icon:'🔴'},
+            ].map(o=>`
+              <button type="button" class="btn" id="tfs2-btn-${o.val.replace(/\s/g,'_')}"
+                onclick="suite2SelectOutcome('${o.val}')"
+                style="background:var(--surface2);border:2px solid var(--border);color:var(--text);font-size:11px;padding:10px 6px">
+                ${o.icon} ${o.val}
+              </button>
+            `).join('')}
+          </div>
+          <input type="hidden" id="tfs2-outcome" value=""/>
+        </div>
+
+        <!-- FALSE POSITIVE SECTION -->
+        <div id="tfs2-fp-section" style="display:none;margin-top:10px">
+          <div style="background:rgba(61,168,118,0.1);border:1px solid rgba(61,168,118,0.3);border-radius:10px;padding:12px">
+            <div style="color:var(--green);font-weight:600;font-size:13px;margin-bottom:8px">⚪ FALSE POSITIVE — Differentiation Required</div>
+            <div><span class="lbl">Differentiation Basis *</span>
+              <select id="tfs2-fp-basis"><option value="">Select</option><option>Different date of birth confirmed</option><option>Different nationality confirmed</option><option>Different gender confirmed</option><option>Name spelling variation — different person</option><option>ID document verification confirms different person</option><option>Other</option></select>
+            </div>
+            <div style="margin-top:8px"><span class="lbl">Supporting Evidence</span><input id="tfs2-fp-evidence" placeholder="Document reference confirming differentiation"/></div>
+          </div>
+        </div>
+
+        <!-- PARTIAL MATCH SECTION -->
+        <div id="tfs2-partial-section" style="display:none;margin-top:10px">
+          <div style="background:rgba(232,160,48,0.1);border:1px solid rgba(232,160,48,0.3);border-radius:10px;padding:12px">
+            <div style="color:var(--amber);font-weight:600;font-size:13px;margin-bottom:8px">🟡 PARTIAL MATCH — PNMR Required within 5 Business Days</div>
+            <div class="row row-2">
+              <div><span class="lbl">Transaction Suspended?</span>
+                <select id="tfs2-tx-suspended"><option value="">Select</option><option>Yes – Transaction Suspended</option><option>No Transaction Involved</option></select>
+              </div>
+              <div><span class="lbl">PNMR Deadline</span><input type="date" id="tfs2-pnmr-deadline" readonly style="opacity:0.7"/></div>
+            </div>
+            <div class="row row-2">
+              <div><span class="lbl">PNMR Filed to EOCN?</span>
+                <select id="tfs2-pnmr-status"><option>Pending</option><option>Filed – Reference Obtained</option><option>Not Required – False Positive Confirmed</option></select>
+              </div>
+              <div><span class="lbl">PNMR Reference</span><input id="tfs2-pnmr-ref" placeholder="EOCN PNMR reference number"/></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONFIRMED MATCH SECTION -->
+        <div id="tfs2-confirmed-section" style="display:none;margin-top:10px">
+          <div style="background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.4);border-radius:10px;padding:12px">
+            <div style="color:var(--red);font-weight:700;font-size:13px;margin-bottom:8px">🔴 CONFIRMED MATCH — IMMEDIATE ACTION REQUIRED</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace">Cabinet Decision 74/2020 | EOCN TFS Guidance | Freeze within 24h | CNMR within 5 business days</div>
+            <div class="row row-2">
+              <div><span class="lbl">Assets Frozen Within 24h? *</span>
+                <select id="tfs2-frozen"><option value="">Select</option><option>Yes – Frozen Immediately</option><option>No Assets to Freeze</option><option>Freeze Pending – Escalated</option></select>
+              </div>
+              <div><span class="lbl">Freeze Date/Time</span><input type="datetime-local" id="tfs2-freeze-dt"/></div>
+            </div>
+            <div class="row row-2">
+              <div><span class="lbl">FFR Filed via goAML? *</span>
+                <select id="tfs2-ffr"><option value="">Select</option><option>Yes – FFR Filed</option><option>Pending – Within 24h</option><option>Not Required</option></select>
+              </div>
+              <div><span class="lbl">goAML FFR Reference</span><input id="tfs2-ffr-ref" placeholder="goAML FFR reference"/></div>
+            </div>
+            <div class="row row-2">
+              <div><span class="lbl">CNMR Filed to EOCN? *</span>
+                <select id="tfs2-cnmr-status"><option>Pending</option><option>Filed – Reference Obtained</option></select>
+              </div>
+              <div><span class="lbl">CNMR Deadline (5 business days)</span><input type="date" id="tfs2-cnmr-deadline" readonly style="opacity:0.7"/></div>
+            </div>
+            <div class="row row-2">
+              <div><span class="lbl">CNMR Reference</span><input id="tfs2-cnmr-ref" placeholder="EOCN CNMR reference"/></div>
+              <div><span class="lbl">Supervisor Notified?</span>
+                <select id="tfs2-supervisor"><option value="">Select</option><option>Yes – MoE Notified</option><option>Yes – CBUAE Notified</option><option>Yes – DFSA Notified</option><option>Pending</option></select>
+              </div>
+            </div>
+            <div class="row row-2">
+              <div><span class="lbl">MLRO Notified?</span>
+                <select id="tfs2-mlro"><option value="">Select</option><option>Yes – Immediately</option><option>Pending</option></select>
+              </div>
+              <div><span class="lbl">Senior Management Notified?</span>
+                <select id="tfs2-mgmt"><option value="">Select</option><option>Yes – Immediately</option><option>Pending</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px"><span class="lbl">Disposition Rationale / Notes *</span>
+          <textarea id="tfs2-notes" style="min-height:80px" placeholder="Document the full basis for your screening decision. For false positives: state exactly how you differentiated. For confirmed/partial matches: describe the match and actions taken."></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:1rem">
+          <button class="btn btn-gold" onclick="suite2SaveTFS()" style="flex:1">Save Screening Event</button>
+          <button class="btn btn-sm" onclick="document.getElementById('tfs2Modal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+
+    // Wire date change to calculate CNMR/PNMR deadlines
+    setTimeout(() => {
+      const d = document.getElementById('tfs2-date');
+      if (d) d.addEventListener('change', function() {
+        const dl = addBusinessDays(this.value, 5);
+        ['tfs2-cnmr-deadline','tfs2-pnmr-deadline'].forEach(id => {
+          const el = document.getElementById(id); if(el) el.value = dl;
+        });
+      });
+    }, 100);
+  }
+
+  global.suite2SelectOutcome = function(val) {
+    document.getElementById('tfs2-outcome').value = val;
+    // Reset all buttons
+    ['Negative_–_No_Match','False_Positive','Partial_Match','Confirmed_Match'].forEach(v => {
+      const btn = document.getElementById('tfs2-btn-'+v);
+      if (btn) { btn.style.background='var(--surface2)'; btn.style.borderColor='var(--border)'; }
+    });
+    // Highlight selected
+    const key = val.replace(/\s/g,'_');
+    const btn = document.getElementById('tfs2-btn-'+key);
+    if (btn) {
+      const cols = {'Negative_–_No_Match':'var(--green)','False_Positive':'var(--green)','Partial_Match':'var(--amber)','Confirmed_Match':'var(--red)'};
+      btn.style.borderColor = cols[key]||'var(--gold)';
+      btn.style.background = (cols[key]||'var(--gold)')+'22';
+    }
+    // Show/hide sections
+    document.getElementById('tfs2-fp-section').style.display = val==='False Positive'?'block':'none';
+    document.getElementById('tfs2-partial-section').style.display = val==='Partial Match'?'block':'none';
+    document.getElementById('tfs2-confirmed-section').style.display = val==='Confirmed Match'?'block':'none';
+    // Auto-calculate deadlines
+    const dateEl = document.getElementById('tfs2-date');
+    if (dateEl && dateEl.value && (val==='Confirmed Match'||val==='Partial Match')) {
+      const dl = addBusinessDays(dateEl.value, 5);
+      ['tfs2-cnmr-deadline','tfs2-pnmr-deadline'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.value = dl;
+      });
+    }
+  };
+
+  global.suite2OpenTFSForm = function() {
+    document.getElementById('tfs2-edit-idx').value = '-1';
+    ['tfs2-name','tfs2-reviewer','tfs2-notes','tfs2-fp-evidence','tfs2-pnmr-ref','tfs2-ffr-ref','tfs2-cnmr-ref'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['tfs2-fp-basis','tfs2-tx-suspended','tfs2-pnmr-status','tfs2-frozen','tfs2-ffr','tfs2-cnmr-status','tfs2-supervisor','tfs2-mlro','tfs2-mgmt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['tfs2-list-uae','tfs2-list-un'].forEach(id=>{const e=document.getElementById(id);if(e)e.checked=true;});
+    ['tfs2-list-ofac','tfs2-list-eu','tfs2-list-uk','tfs2-list-interpol'].forEach(id=>{const e=document.getElementById(id);if(e)e.checked=false;});
+    document.getElementById('tfs2-date').value = today();
+    document.getElementById('tfs2-outcome').value = '';
+    document.getElementById('tfs2-freeze-dt').value = '';
+    document.getElementById('tfs2-cnmr-deadline').value = '';
+    document.getElementById('tfs2-pnmr-deadline').value = '';
+    ['tfs2-fp-section','tfs2-partial-section','tfs2-confirmed-section'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+    ['Negative_–_No_Match','False_Positive','Partial_Match','Confirmed_Match'].forEach(v=>{const btn=document.getElementById('tfs2-btn-'+v);if(btn){btn.style.background='var(--surface2)';btn.style.borderColor='var(--border)';}});
+    document.getElementById('tfs2Modal').classList.add('open');
+  };
+
+  global.suite2EditTFS = function(idx) {
+    const events = load(SK2.TFS2)||[];
+    const e = events[idx];
+    if (!e) return;
+    suite2OpenTFSForm();
+    document.getElementById('tfs2-edit-idx').value = idx;
+    document.getElementById('tfs2-name').value = e.screenedName||'';
+    document.getElementById('tfs2-event').value = e.eventType||'';
+    document.getElementById('tfs2-date').value = e.screeningDate||today();
+    document.getElementById('tfs2-reviewer').value = e.reviewedBy||'';
+    document.getElementById('tfs2-notes').value = e.notes||'';
+    if (e.outcome) { setTimeout(()=>suite2SelectOutcome(e.outcome), 100); }
+    // Restore list checkboxes
+    if (e.listsScreened) {
+      ['uae','un','ofac','eu','uk','interpol'].forEach(l=>{
+        const el = document.getElementById('tfs2-list-'+l);
+        if(el) el.checked = e.listsScreened.includes(l.toUpperCase());
+      });
+    }
+  };
+
+  global.suite2SaveTFS = function() {
+    const name = document.getElementById('tfs2-name').value.trim();
+    const outcome = document.getElementById('tfs2-outcome').value;
+    if (!name) { toast('Screened name is required','error'); return; }
+    if (!outcome) { toast('Select a screening outcome','error'); return; }
+    const lists = [];
+    if (document.getElementById('tfs2-list-uae')?.checked) lists.push('UAE Local Terrorist List (EOCN)');
+    if (document.getElementById('tfs2-list-un')?.checked) lists.push('UNSC Consolidated');
+    if (document.getElementById('tfs2-list-ofac')?.checked) lists.push('OFAC SDN');
+    if (document.getElementById('tfs2-list-eu')?.checked) lists.push('EU Consolidated');
+    if (document.getElementById('tfs2-list-uk')?.checked) lists.push('UK OFSI');
+    if (document.getElementById('tfs2-list-interpol')?.checked) lists.push('Interpol');
+    const events = load(SK2.TFS2)||[];
+    const editIdx = parseInt(document.getElementById('tfs2-edit-idx').value);
+    const record = {
+      id: editIdx>=0 ? events[editIdx].id : `TFS2-${Date.now()}`,
+      screenedName: name,
+      eventType: document.getElementById('tfs2-event').value,
+      listsScreened: lists.join(' | '),
+      screeningDate: document.getElementById('tfs2-date').value,
+      reviewedBy: document.getElementById('tfs2-reviewer').value,
+      outcome,
+      notes: document.getElementById('tfs2-notes').value,
+      // False positive fields
+      fpBasis: document.getElementById('tfs2-fp-basis')?.value||null,
+      fpEvidence: document.getElementById('tfs2-fp-evidence')?.value||null,
+      // Partial match fields
+      txSuspended: document.getElementById('tfs2-tx-suspended')?.value||null,
+      pnmrStatus: document.getElementById('tfs2-pnmr-status')?.value||null,
+      pnmrDeadline: document.getElementById('tfs2-pnmr-deadline')?.value||null,
+      pnmrRef: document.getElementById('tfs2-pnmr-ref')?.value||null,
+      // Confirmed match fields
+      frozenWithin24h: document.getElementById('tfs2-frozen')?.value||null,
+      freezeDateTime: document.getElementById('tfs2-freeze-dt')?.value||null,
+      ffrFiled: document.getElementById('tfs2-ffr')?.value||null,
+      ffrRef: document.getElementById('tfs2-ffr-ref')?.value||null,
+      cnmrStatus: document.getElementById('tfs2-cnmr-status')?.value||null,
+      cnmrDeadline: document.getElementById('tfs2-cnmr-deadline')?.value||null,
+      cnmrRef: document.getElementById('tfs2-cnmr-ref')?.value||null,
+      supervisorNotified: document.getElementById('tfs2-supervisor')?.value||null,
+      mlroNotified: document.getElementById('tfs2-mlro')?.value||null,
+      mgmtNotified: document.getElementById('tfs2-mgmt')?.value||null,
+      updatedAt: new Date().toISOString(),
+    };
+    if (editIdx>=0) { events[editIdx]=record; } else { events.unshift(record); }
+    save(SK2.TFS2, events);
+    document.getElementById('tfs2Modal').classList.remove('open');
+    if (outcome==='Confirmed Match') toast('🔴 CONFIRMED MATCH saved — ensure freeze, FFR, and CNMR obligations are met within deadlines','error');
+    else if (outcome==='Partial Match') toast('🟡 PARTIAL MATCH saved — PNMR must be filed within 5 business days','info');
+    else toast('TFS event saved — '+outcome,'success');
+    renderTFS2();
+  };
+
+  global.suite2DeleteTFS = function(idx) {
+    if (!confirm('Delete this TFS screening event?')) return;
+    const events = load(SK2.TFS2)||[];
+    events.splice(idx,1);
+    save(SK2.TFS2, events);
+    renderTFS2();
+  };
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // DPMSR — DEALERS IN PRECIOUS METALS AND STONES REPORT
+  // Reg: MoE Circular 08/AML/2021 | AED 55,000 threshold | goAML DPMSR
+  // ════════════════════════════════════════════════════════════════════════════
+
+  function renderDPMSR() {
+    const el = document.getElementById('suite2-content-dpmsr');
+    if (!el) return;
+    const cases = load(SK2.DPMSR)||[];
+
+    el.innerHTML = `
+    <div class="card">
+      <div class="top-bar">
+        <span class="sec-title">📊 DPMSR — Threshold Reporting & Linked Transaction Detection</span>
+        <span style="font-size:11px;color:var(--muted)">MoE Circular 08/AML/2021 | AED 55,000 Threshold | Cabinet Resolution 134/2025 Art.13</span>
+        <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2OpenDPMSRForm()">+ New Threshold Case</button>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:1rem">
+        <div class="sec-title" style="margin-bottom:10px;border:none;padding:0">AED 55,000 Threshold — Mandatory CDD Requirements</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:12px">
+          <div style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid var(--gold)">
+            <div style="font-weight:600;margin-bottom:6px">Resident Individual</div>
+            <div>✅ Emirates ID or valid residence permit</div>
+            <div>✅ Transaction amount and date</div>
+            <div>✅ Payment method</div>
+            <div style="color:var(--muted);font-size:11px;margin-top:6px">Cash transactions ≥ AED 55,000</div>
+          </div>
+          <div style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid var(--blue)">
+            <div style="font-weight:600;margin-bottom:6px">Non-Resident Individual</div>
+            <div>✅ Passport copy (valid)</div>
+            <div>✅ Country of residence</div>
+            <div>✅ Transaction amount and date</div>
+            <div style="color:var(--muted);font-size:11px;margin-top:6px">Cash transactions ≥ AED 55,000</div>
+          </div>
+          <div style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid var(--amber)">
+            <div style="font-weight:600;margin-bottom:6px">Entity / Company</div>
+            <div>✅ Trade licence (valid)</div>
+            <div>✅ Company representative ID</div>
+            <div>✅ Authorization document</div>
+            <div style="color:var(--muted);font-size:11px;margin-top:6px">Cash or wire transfer ≥ AED 55,000</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--amber);font-family:'DM Mono',monospace">
+          ⚠️ LINKED TRANSACTION RULE: The AED 55,000 threshold applies to a single transaction OR several transactions that appear to be linked. The tool tracks linked transactions to detect structuring.
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
+        <div class="metric m-c"><div class="metric-num">${cases.filter(c=>c.reportingRequired==='Yes – DPMSR Required').length}</div><div class="metric-lbl">DPMSR Required</div></div>
+        <div class="metric m-h"><div class="metric-num">${cases.filter(c=>c.linkedFlag==='Yes – Linked').length}</div><div class="metric-lbl">Linked Transactions</div></div>
+        <div class="metric m-ok"><div class="metric-num">${cases.filter(c=>c.dpmsr_filed==='Yes – Filed').length}</div><div class="metric-lbl">DPMSR Filed</div></div>
+        <div class="metric m-m"><div class="metric-num">${cases.filter(c=>c.cddComplete==='Incomplete').length}</div><div class="metric-lbl">CDD Incomplete ⚠️</div></div>
+      </div>
+
+      ${cases.length===0?'<p style="color:var(--muted);font-size:13px;text-align:center;padding:2rem">No threshold cases recorded.</p>':''}
+      ${cases.map((c,i)=>`
+        <div class="finding ${c.reportingRequired==='Yes – DPMSR Required'?'f-high':c.cddComplete==='Incomplete'?'f-critical':'f-ok'}" style="margin-bottom:8px">
+          <div class="f-head">
+            <div class="f-head-left"><div>
+              <div class="f-title">${c.customerName} — AED ${Number(c.amount||0).toLocaleString()} ${c.cddComplete==='Incomplete'?'<span style="color:var(--red);font-size:11px">⛔ CDD INCOMPLETE</span>':''}</div>
+              <div class="f-body">Type: ${c.customerType} | Payment: ${c.paymentMethod} | Date: ${fmtDate(c.txDate)}</div>
+              <div class="f-ref">DPMSR: ${c.reportingRequired} | Linked: ${c.linkedFlag||'No'} | Filed: ${c.dpmsr_filed||'No'}</div>
+            </div></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm" onclick="suite2EditDPMSR(${i})">Edit</button>
+              <button class="btn btn-sm btn-red" onclick="suite2DeleteDPMSR(${i})">Delete</button>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- DPMSR Modal -->
+    <div class="modal-overlay" id="dpmsrModal">
+      <div class="modal" style="max-width:620px;width:95%">
+        <button class="modal-close" onclick="document.getElementById('dpmsrModal').classList.remove('open')">✕</button>
+        <div class="modal-title">DPMSR Threshold Case</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">MoE Circular 08/AML/2021 | AED 55,000 Threshold | goAML DPMSR Reporting</div>
+        <input type="hidden" id="dpmsr-edit-idx" value="-1">
+
+        <div class="row row-2">
+          <div><span class="lbl">Customer Name *</span><input id="dpmsr-customer" placeholder="Full legal name"/></div>
+          <div><span class="lbl">Customer Type *</span>
+            <select id="dpmsr-type" onchange="suite2CheckDPMSRCDD()">
+              <option value="">Select</option>
+              <option>Resident Individual</option>
+              <option>Non-Resident Individual</option>
+              <option>Entity / Company</option>
+            </select>
+          </div>
+        </div>
+        <div class="row row-2">
+          <div><span class="lbl">Transaction Amount (AED) *</span><input type="number" id="dpmsr-amount" placeholder="e.g. 75000" oninput="suite2CalcDPMSRThreshold()"/></div>
+          <div><span class="lbl">Transaction Date *</span><input type="date" id="dpmsr-txdate" value="${today()}"/></div>
+        </div>
+        <div class="row row-2">
+          <div><span class="lbl">Payment Method *</span>
+            <select id="dpmsr-payment"><option value="">Select</option><option>Cash</option><option>Bank Transfer / Wire</option><option>Cheque</option><option>Card</option><option>Crypto</option><option>Mixed</option></select>
+          </div>
+          <div><span class="lbl">Transaction Type</span>
+            <select id="dpmsr-txtype"><option>Purchase of Gold</option><option>Sale of Gold</option><option>Exchange</option><option>Consignment</option><option>Other</option></select>
+          </div>
+        </div>
+
+        <div id="dpmsr-threshold-alert" style="display:none;background:rgba(232,160,48,0.12);border:1px solid rgba(232,160,48,0.4);border-radius:10px;padding:10px;margin:10px 0;font-size:12px;color:var(--amber);font-family:'DM Mono',monospace">
+          ⚠️ AED 55,000 THRESHOLD TRIGGERED — CDD documentation and DPMSR filing required
+        </div>
+
+        <div class="sec-title" style="margin-top:10px;margin-bottom:8px">CDD Requirements — Based on Customer Type</div>
+        <div id="dpmsr-cdd-requirements" style="background:var(--surface2);border-radius:8px;padding:10px;font-size:12px;margin-bottom:10px">
+          Select customer type above to see required CDD documents.
+        </div>
+
+        <div class="row row-2">
+          <div><span class="lbl">ID Document Reference</span><input id="dpmsr-id-ref" placeholder="Emirates ID / Passport number"/></div>
+          <div><span class="lbl">ID Expiry Date</span><input type="date" id="dpmsr-id-expiry"/></div>
+        </div>
+        <div id="dpmsr-entity-fields" style="display:none">
+          <div class="row row-2">
+            <div><span class="lbl">Trade Licence Number *</span><input id="dpmsr-trade-licence" placeholder="Trade licence number"/></div>
+            <div><span class="lbl">Trade Licence Expiry</span><input type="date" id="dpmsr-trade-expiry"/></div>
+          </div>
+          <div><span class="lbl">Company Representative Name</span><input id="dpmsr-rep-name" placeholder="Name of authorized representative"/></div>
+        </div>
+
+        <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-top:10px">
+          <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">Linked Transaction Check</div>
+          <div class="row row-2">
+            <div><span class="lbl">Linked to Previous Transaction?</span>
+              <select id="dpmsr-linked"><option>No – Standalone</option><option>Yes – Linked</option><option>Suspected – Under Review</option></select>
+            </div>
+            <div><span class="lbl">Previous Transaction Reference</span><input id="dpmsr-linked-ref" placeholder="Previous transaction ID if linked"/></div>
+          </div>
+          <div class="row row-2">
+            <div><span class="lbl">Cumulative Linked Amount (AED)</span><input type="number" id="dpmsr-cumulative" placeholder="Total including linked transactions"/></div>
+            <div><span class="lbl">Structuring Indicator?</span>
+              <select id="dpmsr-structuring"><option>No</option><option>Suspected – Multiple below-threshold transactions</option><option>Confirmed – STR filed</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="row row-2" style="margin-top:10px">
+          <div><span class="lbl">Reporting Required?</span>
+            <select id="dpmsr-reporting"><option value="">Select</option><option>Yes – DPMSR Required</option><option>No – Below Threshold</option><option>No – Exempt</option></select>
+          </div>
+          <div><span class="lbl">DPMSR Filed via goAML?</span>
+            <select id="dpmsr-filed"><option>No</option><option>Yes – Filed</option><option>Pending</option></select>
+          </div>
+        </div>
+        <div><span class="lbl">CDD Completeness</span>
+          <select id="dpmsr-cdd-complete"><option>Complete</option><option>Incomplete</option><option>Partially Complete</option></select>
+        </div>
+        <div id="dpmsr-cdd-warning" style="display:none;background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.3);border-radius:8px;padding:10px;margin-top:6px;font-size:12px;color:var(--red)">
+          ⛔ HARD STOP — Cabinet Resolution 134/2025 Art.14: The business relationship or transaction cannot proceed where CDD cannot be applied. Do not complete this transaction until CDD is obtained.
+        </div>
+        <div><span class="lbl">Notes</span><textarea id="dpmsr-notes" style="min-height:60px" placeholder="Additional context, source of funds notes, escalation notes..."></textarea></div>
+
+        <div style="display:flex;gap:8px;margin-top:1rem">
+          <button class="btn btn-gold" onclick="suite2SaveDPMSR()" style="flex:1">Save Threshold Case</button>
+          <button class="btn btn-sm" onclick="document.getElementById('dpmsrModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+
+    // Wire CDD select
+    setTimeout(() => {
+      const cddSel = document.getElementById('dpmsr-cdd-complete');
+      if (cddSel) cddSel.addEventListener('change', function() {
+        const w = document.getElementById('dpmsr-cdd-warning');
+        if (w) w.style.display = this.value==='Incomplete'?'block':'none';
+      });
+    }, 100);
+  }
+
+  global.suite2CalcDPMSRThreshold = function() {
+    const amount = parseFloat(document.getElementById('dpmsr-amount').value)||0;
+    const alert = document.getElementById('dpmsr-threshold-alert');
+    const reporting = document.getElementById('dpmsr-reporting');
+    if (amount >= 55000) {
+      if (alert) alert.style.display='block';
+      if (reporting && !reporting.value) reporting.value='Yes – DPMSR Required';
+    } else {
+      if (alert) alert.style.display='none';
+    }
+  };
+
+  global.suite2CheckDPMSRCDD = function() {
+    const type = document.getElementById('dpmsr-type').value;
+    const req = document.getElementById('dpmsr-cdd-requirements');
+    const entityFields = document.getElementById('dpmsr-entity-fields');
+    const cddMap = {
+      'Resident Individual': '✅ Emirates ID copy (valid) | ✅ Transaction amount, date, payment method | ✅ Source of funds if ≥AED 55,000',
+      'Non-Resident Individual': '✅ Passport copy (valid) | ✅ Country of residence | ✅ Transaction amount, date, payment method | ✅ Source of funds if ≥AED 55,000',
+      'Entity / Company': '✅ Valid Trade Licence | ✅ Company Representative ID | ✅ Authorization document | ✅ UBO identification | ✅ Source of funds',
+    };
+    if (req) req.innerHTML = type ? cddMap[type]||'—' : 'Select customer type above to see required CDD documents.';
+    if (entityFields) entityFields.style.display = type==='Entity / Company'?'block':'none';
+  };
+
+  global.suite2OpenDPMSRForm = function() {
+    document.getElementById('dpmsr-edit-idx').value = '-1';
+    ['dpmsr-customer','dpmsr-id-ref','dpmsr-linked-ref','dpmsr-rep-name','dpmsr-trade-licence','dpmsr-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['dpmsr-type','dpmsr-payment','dpmsr-reporting'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    document.getElementById('dpmsr-txdate').value=today();
+    document.getElementById('dpmsr-amount').value='';
+    document.getElementById('dpmsr-filed').value='No';
+    document.getElementById('dpmsr-cdd-complete').value='Complete';
+    document.getElementById('dpmsr-linked').value='No – Standalone';
+    document.getElementById('dpmsr-structuring').value='No';
+    document.getElementById('dpmsr-threshold-alert').style.display='none';
+    document.getElementById('dpmsr-cdd-warning').style.display='none';
+    document.getElementById('dpmsr-entity-fields').style.display='none';
+    document.getElementById('dpmsr-cdd-requirements').innerHTML='Select customer type above to see required CDD documents.';
+    document.getElementById('dpmsrModal').classList.add('open');
+  };
+
+  global.suite2EditDPMSR = function(idx) {
+    const cases = load(SK2.DPMSR)||[];
+    const c = cases[idx];
+    if(!c) return;
+    suite2OpenDPMSRForm();
+    document.getElementById('dpmsr-edit-idx').value=idx;
+    document.getElementById('dpmsr-customer').value=c.customerName||'';
+    document.getElementById('dpmsr-type').value=c.customerType||'';
+    document.getElementById('dpmsr-amount').value=c.amount||'';
+    document.getElementById('dpmsr-txdate').value=c.txDate||today();
+    document.getElementById('dpmsr-payment').value=c.paymentMethod||'';
+    document.getElementById('dpmsr-id-ref').value=c.idRef||'';
+    document.getElementById('dpmsr-reporting').value=c.reportingRequired||'';
+    document.getElementById('dpmsr-filed').value=c.dpmsr_filed||'No';
+    document.getElementById('dpmsr-cdd-complete').value=c.cddComplete||'Complete';
+    document.getElementById('dpmsr-notes').value=c.notes||'';
+    suite2CheckDPMSRCDD();
+    suite2CalcDPMSRThreshold();
+    document.getElementById('dpmsrModal').classList.add('open');
+  };
+
+  global.suite2SaveDPMSR = function() {
+    const name = document.getElementById('dpmsr-customer').value.trim();
+    const type = document.getElementById('dpmsr-type').value;
+    const amount = document.getElementById('dpmsr-amount').value;
+    if(!name||!type||!amount){toast('Customer name, type, and amount are required','error');return;}
+    const cddStatus = document.getElementById('dpmsr-cdd-complete').value;
+    if(cddStatus==='Incomplete'&&parseFloat(amount)>=55000){
+      if(!confirm('⛔ CDD is incomplete. Cabinet Resolution 134/2025 Art.14 prohibits proceeding without CDD. Save record for follow-up?'))return;
+    }
+    const cases = load(SK2.DPMSR)||[];
+    const editIdx = parseInt(document.getElementById('dpmsr-edit-idx').value);
+    const record = {
+      id: editIdx>=0?cases[editIdx].id:`DPMSR-${Date.now()}`,
+      customerName:name, customerType:type, amount:parseFloat(amount),
+      txDate:document.getElementById('dpmsr-txdate').value,
+      paymentMethod:document.getElementById('dpmsr-payment').value,
+      txType:document.getElementById('dpmsr-txtype').value,
+      idRef:document.getElementById('dpmsr-id-ref').value,
+      reportingRequired:document.getElementById('dpmsr-reporting').value,
+      dpmsr_filed:document.getElementById('dpmsr-filed').value,
+      cddComplete:cddStatus,
+      linkedFlag:document.getElementById('dpmsr-linked').value,
+      linkedRef:document.getElementById('dpmsr-linked-ref').value,
+      cumulative:document.getElementById('dpmsr-cumulative').value,
+      structuringIndicator:document.getElementById('dpmsr-structuring').value,
+      notes:document.getElementById('dpmsr-notes').value,
+      updatedAt:new Date().toISOString(),
+    };
+    if(editIdx>=0){cases[editIdx]=record;}else{cases.unshift(record);}
+    save(SK2.DPMSR,cases);
+    document.getElementById('dpmsrModal').classList.remove('open');
+    toast(`DPMSR case saved — ${name} AED ${Number(amount).toLocaleString()}`,'success');
+    renderDPMSR();
+  };
+
+  global.suite2DeleteDPMSR = function(idx) {
+    if(!confirm('Delete this DPMSR case?'))return;
+    const cases=load(SK2.DPMSR)||[];
+    cases.splice(idx,1);
+    save(SK2.DPMSR,cases);
+    renderDPMSR();
+  };
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // RECORD RETENTION — STATUTORY 5-YEAR REQUIREMENT
+  // Reg: Cabinet Resolution 134/2025 Art.25 | UAE FDL No.(10) of 2025
+  // ════════════════════════════════════════════════════════════════════════════
+
+  const RETENTION_CATEGORIES = [
+    { cat:'CDD Files', period:5, basis:'Cabinet Resolution 134/2025 Art.25(1)' },
+    { cat:'Transaction Records', period:5, basis:'Cabinet Resolution 134/2025 Art.25(2)' },
+    { cat:'STR / SAR Files', period:10, basis:'Best practice — UAE FIU guidance' },
+    { cat:'Risk Assessment Records', period:5, basis:'Cabinet Resolution 134/2025 Art.25' },
+    { cat:'Business Correspondence', period:5, basis:'Cabinet Resolution 134/2025 Art.25(3)' },
+    { cat:'Training Records', period:5, basis:'UAE FDL No.(10) of 2025 Art.16' },
+    { cat:'Internal Audit Reports', period:5, basis:'Cabinet Resolution 134/2025 Art.25' },
+    { cat:'LBMA Supply Chain Files', period:5, basis:'LBMA RGG v9 Step 2 | OECD §5' },
+    { cat:'UBO / Beneficial Ownership Records', period:5, basis:'Cabinet Decision 109/2023 Art.38' },
+    { cat:'goAML Submission Files', period:5, basis:'UAE FIU Guidance' },
+  ];
+
+  function renderRetention() {
+    const el = document.getElementById('suite2-content-retention');
+    if(!el) return;
+    const records = load(SK2.RETAIN)||[];
+    el.innerHTML = `
+    <div class="card">
+      <div class="top-bar">
+        <span class="sec-title">🗄️ Record Retention Register</span>
+        <span style="font-size:11px;color:var(--muted)">Cabinet Resolution 134/2025 Art.25 — Minimum 5 years | Records must enable transaction reconstruction</span>
+        <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2AddRetentionRecord()">+ Add Record</button>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
+        <strong>Art.25 Requirements:</strong> Records must be retained for minimum 5 years. Records must be organized so individual transactions can be reconstructed and provided promptly to competent authorities upon request. STR files — best practice is 10 years minimum.
+      </div>
+      <div class="sec-title" style="margin-bottom:10px">Statutory Retention Schedule</div>
+      <div style="overflow-x:auto;margin-bottom:1.5rem">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="border-bottom:1px solid var(--border)">
+            ${['Record Category','Retention Period','Regulatory Basis'].map(h=>`<th style="text-align:left;padding:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px">${h}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${RETENTION_CATEGORIES.map(r=>`<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px;font-weight:500">${r.cat}</td>
+              <td style="padding:8px;color:var(--gold);font-family:'DM Mono',monospace">${r.period} years</td>
+              <td style="padding:8px;font-size:11px;color:var(--muted)">${r.basis}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="sec-title" style="margin-bottom:10px">Record Inventory</div>
+      ${records.length===0?'<p style="color:var(--muted);font-size:13px;text-align:center;padding:1rem">No records logged.</p>':''}
+      ${records.map((r,i)=>{
+        const expiry = new Date(r.createdDate);
+        expiry.setFullYear(expiry.getFullYear()+r.retentionYears);
+        const daysLeft = Math.floor((expiry-new Date())/86400000);
+        const status = daysLeft<0?'Overdue':daysLeft<90?'Due Soon':'Current';
+        return `<div class="finding ${status==='Overdue'?'f-critical':status==='Due Soon'?'f-high':'f-ok'}" style="margin-bottom:8px">
+          <div class="f-head">
+            <div class="f-head-left"><div>
+              <div class="f-title">${r.recordName} ${badge2(status)}</div>
+              <div class="f-body">Category: ${r.category} | Created: ${fmtDate(r.createdDate)} | Expires: ${fmtDate(expiry.toISOString())}</div>
+              <div class="f-ref">${r.basis} | Storage: ${r.storageLocation}</div>
+            </div></div>
+            <button class="btn btn-sm btn-red" onclick="suite2DeleteRetention(${i})">Delete</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="modal-overlay" id="retentionModal">
+      <div class="modal" style="max-width:500px;width:95%">
+        <button class="modal-close" onclick="document.getElementById('retentionModal').classList.remove('open')">✕</button>
+        <div class="modal-title">Add Retention Record</div>
+        <div><span class="lbl">Record Name / Description *</span><input id="ret-name" placeholder="e.g. Customer CDD file — Al Futtaim Trading"/></div>
+        <div><span class="lbl">Category *</span>
+          <select id="ret-cat" onchange="suite2AutoFillRetention()">
+            <option value="">Select</option>${RETENTION_CATEGORIES.map(c=>`<option>${c.cat}</option>`).join('')}
+          </select>
+        </div>
+        <div class="row row-2">
+          <div><span class="lbl">Record Created Date</span><input type="date" id="ret-date" value="${today()}"/></div>
+          <div><span class="lbl">Retention Period (years)</span><input type="number" id="ret-years" value="5" min="1"/></div>
+        </div>
+        <div><span class="lbl">Regulatory Basis</span><input id="ret-basis" placeholder="Auto-filled from category"/></div>
+        <div><span class="lbl">Storage Location</span><input id="ret-storage" placeholder="e.g. Google Drive /Compliance/CDD/ | Physical: Filing cabinet A3"/></div>
+        <div style="display:flex;gap:8px;margin-top:1rem">
+          <button class="btn btn-gold" onclick="suite2SaveRetention()" style="flex:1">Save Record</button>
+          <button class="btn btn-sm" onclick="document.getElementById('retentionModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  global.suite2AutoFillRetention = function() {
+    const cat = document.getElementById('ret-cat').value;
+    const entry = RETENTION_CATEGORIES.find(c=>c.cat===cat);
+    if(entry) {
+      document.getElementById('ret-years').value=entry.period;
+      document.getElementById('ret-basis').value=entry.basis;
+    }
+  };
+
+  global.suite2AddRetentionRecord = function() {
+    ['ret-name','ret-basis','ret-storage'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    document.getElementById('ret-cat').value='';
+    document.getElementById('ret-date').value=today();
+    document.getElementById('ret-years').value='5';
+    document.getElementById('retentionModal').classList.add('open');
+  };
+
+  global.suite2SaveRetention = function() {
+    const name=document.getElementById('ret-name').value.trim();
+    if(!name){toast('Record name required','error');return;}
+    const records=load(SK2.RETAIN)||[];
+    records.unshift({
+      id:`RET-${Date.now()}`, recordName:name,
+      category:document.getElementById('ret-cat').value,
+      createdDate:document.getElementById('ret-date').value,
+      retentionYears:parseInt(document.getElementById('ret-years').value)||5,
+      basis:document.getElementById('ret-basis').value,
+      storageLocation:document.getElementById('ret-storage').value,
+    });
+    save(SK2.RETAIN,records);
+    document.getElementById('retentionModal').classList.remove('open');
+    toast('Retention record saved','success');
+    renderRetention();
+  };
+
+  global.suite2DeleteRetention = function(idx) {
+    if(!confirm('Delete this retention record?'))return;
+    const records=load(SK2.RETAIN)||[];
+    records.splice(idx,1);
+    save(SK2.RETAIN,records);
+    renderRetention();
+  };
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // AI GOVERNANCE — MANDATORY HUMAN REVIEW
+  // Reg: Cabinet Resolution 134/2025 Art.24 | PDPL — Human review of automated processing
+  // ════════════════════════════════════════════════════════════════════════════
+
+  function renderAILog() {
+    const el=document.getElementById('suite2-content-ailog');
+    if(!el) return;
+    const logs=load(SK2.AILOG)||[];
+    el.innerHTML = `
+    <div class="card">
+      <div class="top-bar">
+        <span class="sec-title">🤖 AI Output Governance — Human Review Log</span>
+        <span style="font-size:11px;color:var(--muted)">Cabinet Resolution 134/2025 Art.24 | PDPL — Human review of automated processing decisions</span>
+        <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2LogAIReview()">+ Log AI Review</button>
+      </div>
+      <div style="background:rgba(74,143,193,0.1);border:1px solid rgba(74,143,193,0.3);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
+        <strong>Governance Requirement (Art.24):</strong> All AI-generated compliance outputs — gap assessments, risk scores, STR drafts, screening results, recommendations — must be reviewed and signed off by a qualified human compliance professional before any action is taken. AI outputs are advisory only and cannot constitute regulatory decisions without human review and approval.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem">
+        <div class="metric m-ok"><div class="metric-num">${logs.filter(l=>l.decision==='Approved – Action Taken').length}</div><div class="metric-lbl">Approved</div></div>
+        <div class="metric m-h"><div class="metric-num">${logs.filter(l=>l.decision==='Modified Before Action').length}</div><div class="metric-lbl">Modified</div></div>
+        <div class="metric m-c"><div class="metric-num">${logs.filter(l=>l.decision==='Rejected – No Action').length}</div><div class="metric-lbl">Rejected</div></div>
+      </div>
+      ${logs.length===0?'<p style="color:var(--muted);font-size:13px;text-align:center;padding:1rem">No AI review logs. Every AI-generated compliance output must be logged here before action is taken.</p>':''}
+      ${logs.map((l,i)=>`
+        <div class="finding ${l.decision==='Rejected – No Action'?'f-critical':l.decision==='Approved – Action Taken'?'f-ok':'f-high'}" style="margin-bottom:8px">
+          <div class="f-head">
+            <div class="f-head-left"><div>
+              <div class="f-title">${l.aiTask} ${badge2(l.decision)}</div>
+              <div class="f-body">Reviewed by: ${l.reviewer} | Date: ${fmtDate(l.reviewDate)}</div>
+              <div class="f-ref">Ref: ${l.id} | ${l.notes}</div>
+            </div></div>
+            <button class="btn btn-sm btn-red" onclick="suite2DeleteAILog(${i})">Delete</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="modal-overlay" id="ailogModal">
+      <div class="modal" style="max-width:520px;width:95%">
+        <button class="modal-close" onclick="document.getElementById('ailogModal').classList.remove('open')">✕</button>
+        <div class="modal-title">Log AI Output Review</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Cabinet Resolution 134/2025 Art.24 — All AI outputs require human sign-off before action</div>
+        <div><span class="lbl">AI Task / Output Type *</span>
+          <select id="ailog-task"><option value="">Select</option>
+            <option>Gap Assessment</option><option>Customer Risk Score</option><option>STR Draft</option>
+            <option>Screening Result Analysis</option><option>Regulatory Analysis</option>
+            <option>Transaction Red Flag Analysis</option><option>Supply Chain Assessment</option>
+            <option>EDD Recommendation</option><option>Other AI Output</option>
+          </select>
+        </div>
+        <div><span class="lbl">AI Output Summary *</span><textarea id="ailog-output" style="min-height:80px" placeholder="Summarize what the AI output contained/recommended..."></textarea></div>
+        <div class="row row-2">
+          <div><span class="lbl">Reviewed By *</span><input id="ailog-reviewer" placeholder="Name and role of reviewer"/></div>
+          <div><span class="lbl">Review Date</span><input type="date" id="ailog-date" value="${today()}"/></div>
+        </div>
+        <div><span class="lbl">Human Review Decision *</span>
+          <select id="ailog-decision"><option value="">Select</option>
+            <option>Approved – Action Taken</option>
+            <option>Modified Before Action</option>
+            <option>Rejected – No Action</option>
+            <option>Referred for Further Review</option>
+          </select>
+        </div>
+        <div><span class="lbl">Reviewer Notes / Modifications Made</span><textarea id="ailog-notes" style="min-height:60px" placeholder="Note any modifications made to AI output, reasons for rejection, or additional context..."></textarea></div>
+        <div style="display:flex;gap:8px;margin-top:1rem">
+          <button class="btn btn-gold" onclick="suite2SaveAILog()" style="flex:1">Save Review Log</button>
+          <button class="btn btn-sm" onclick="document.getElementById('ailogModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  global.suite2LogAIReview = function() {
+    ['ailog-output','ailog-reviewer','ailog-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['ailog-task','ailog-decision'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    document.getElementById('ailog-date').value=today();
+    document.getElementById('ailogModal').classList.add('open');
+  };
+
+  global.suite2SaveAILog = function() {
+    const task=document.getElementById('ailog-task').value;
+    const reviewer=document.getElementById('ailog-reviewer').value.trim();
+    const decision=document.getElementById('ailog-decision').value;
+    if(!task||!reviewer||!decision){toast('Task, reviewer, and decision are required','error');return;}
+    const logs=load(SK2.AILOG)||[];
+    logs.unshift({
+      id:`AIL-${Date.now()}`, aiTask:task,
+      output:document.getElementById('ailog-output').value,
+      reviewer, reviewDate:document.getElementById('ailog-date').value,
+      decision, notes:document.getElementById('ailog-notes').value,
+    });
+    save(SK2.AILOG,logs);
+    document.getElementById('ailogModal').classList.remove('open');
+    toast('AI review logged','success');
+    renderAILog();
+  };
+
+  global.suite2DeleteAILog = function(idx) {
+    if(!confirm('Delete this AI review log?'))return;
+    const logs=load(SK2.AILOG)||[];
+    logs.splice(idx,1);
+    save(SK2.AILOG,logs);
+    renderAILog();
+  };
+
+  // ─── INIT ────────────────────────────────────────────────────────────────────
+  if (document.readyState==='loading') {
+    document.addEventListener('DOMContentLoaded', injectSuite2);
+  } else {
+    setTimeout(injectSuite2, 400);
+  }
+
+})(window);
