@@ -63,8 +63,8 @@
   // ─── ASANA INTEGRATION ───────────────────────────────────────────────────────
   async function pushToAsana(title, notes, section) {
     try {
-      if (typeof proxiedAsanaFetch !== 'function') return null;
-      const ASANA_PROJECT = '1213759768596515';
+      if (typeof asanaFetch !== 'function') return null;
+      // Project ID loaded from global scope
       const sectionMap = {
         'cra':  '1213759653383900',
         'ubo':  '1213759653383901',
@@ -80,7 +80,7 @@
           ...(sectionMap[section] ? { memberships: [{ project: ASANA_PROJECT, section: sectionMap[section] }] } : {}),
         }
       };
-      const resp = await proxiedAsanaFetch('/tasks', { method: 'POST', body: JSON.stringify(body) });
+      const resp = await asanaFetch('/tasks', { method: 'POST', body: JSON.stringify(body) });
       const data = await resp.json();
       return data?.data?.gid || null;
     } catch(e) { return null; }
