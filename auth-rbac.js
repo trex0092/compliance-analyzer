@@ -116,21 +116,23 @@ const AuthRBAC = (function () {
 
     // --------------- Init: Default Admin ---------------
     async function ensureDefaultAdmin() {
+        // If users already exist (created by index.html setup wizard or prior sessions), skip
         let users = loadData(STORAGE_KEYS.users);
-        if (!users || users.length === 0) {
-            const { hash, salt } = await hashPassword('admin123');
-            users = [{
-                id: generateToken().slice(0, 16),
-                username: 'admin',
-                passwordHash: hash,
-                passwordSalt: salt,
-                role: ROLES.ADMIN,
-                createdAt: new Date().toISOString(),
-                mustChangePassword: true,
-                active: true
-            }];
-            saveData(STORAGE_KEYS.users, users);
-        }
+        if (users && users.length > 0) return;
+        // No users at all — this path only triggers if AuthRBAC.login() is called
+        // before the setup wizard runs. Create a compatible default admin.
+        const legacy = await legacyHash('admin123');
+        users = [{
+            id: String(Date.now()),
+            username: 'admin',
+            displayName: 'Admin',
+            passwordHash: legacy,
+            role: 'admin',
+            createdAt: new Date().toISOString(),
+            mustChangePassword: true,
+            active: true
+        }];
+        saveData(STORAGE_KEYS.users, users);
     }
 
     // --------------- Sessions ---------------
@@ -1025,7 +1027,9 @@ const AuthRBAC = (function () {
     }
 
     // --------------- Init on load ---------------
-    ensureDefaultAdmin();
+    // Note: Do NOT auto-create admin user here — the index.html setup wizard
+    // handles first-time user creation with its own schema. Only call
+    // ensureDefaultAdmin() if AuthRBAC is used as the primary auth system.
 
     // --------------- Public API ---------------
     return {
