@@ -2686,25 +2686,67 @@
 // ════════════════════════════════════════════════════════════════════════════
 (function() {
   async function fixAsanaEntityTasks() {
-    // Fix existing Asana tasks that have {entity} in their names
     try {
-      if (typeof asanaFetch !== 'function') return;
+      if (typeof asanaFetch !== 'function') { if(typeof toast==='function') toast('Asana not connected — configure token in Settings','error'); return; }
       const projectId = (typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515';
       const activeComp = (typeof getActiveCompany === 'function') ? getActiveCompany() : {};
-      const companyName = activeComp.name || 'Fine Gold LLC';
-      if (typeof toast === 'function') toast('Fixing {entity} placeholders in Asana tasks...', 'info');
-      const r = await asanaFetch('/projects/' + projectId + '/tasks?opt_fields=name,gid&limit=100');
+      const companyName = (activeComp.name || 'Fine Gold LLC').trim();
+
+      if (typeof toast === 'function') toast('Scanning Asana for {entity} tasks...', 'info');
+
+      // Fetch ALL tasks including completed
+      const r = await asanaFetch('/projects/' + projectId + '/tasks?opt_fields=name,gid,completed&limit=100');
       const d = await r.json();
-      const tasks = (d.data || []).filter(t => t.name && t.name.includes('{entity}'));
-      if (!tasks.length) { if (typeof toast === 'function') toast('No {entity} tasks found in Asana', 'success'); return; }
-      let fixed = 0;
-      for (const task of tasks) {
-        const newName = task.name.replace(/\{entity\}/g, companyName);
-        await asanaFetch('/tasks/' + task.gid, { method: 'PUT', body: JSON.stringify({ data: { name: newName } }) });
-        fixed++;
+      if (d.errors) throw new Error(d.errors[0]?.message || 'Asana error');
+
+      const entityTasks = (d.data || []).filter(t => t.name && t.name.includes('{entity}'));
+      if (!entityTasks.length) {
+        if (typeof toast === 'function') toast('No {entity} tasks found — Asana is clean!', 'success');
+        return;
       }
-      if (typeof toast === 'function') toast('Fixed ' + fixed + ' Asana tasks — {entity} replaced with ' + companyName, 'success');
-    } catch(e) { console.warn('[EntityFix] Asana fix error:', e); }
+
+      // Identify duplicates: same template name appearing more than once
+      const nameGroups = {};
+      entityTasks.forEach(t => {
+        const baseName = t.name.replace(/\{entity\}/g, '').trim();
+        if (!nameGroups[baseName]) nameGroups[baseName] = [];
+        nameGroups[baseName].push(t);
+      });
+
+      let deleted = 0;
+      let renamed = 0;
+
+      for (const [baseName, tasks] of Object.entries(nameGroups)) {
+        // Keep the first one (rename it), delete all duplicates
+        const toRename = tasks[0];
+        const toDel = tasks.slice(1);
+
+        // Rename the first one
+        const newName = toRename.name.replace(/\{entity\}/g, companyName);
+        await asanaFetch('/tasks/' + toRename.gid, {
+          method: 'PUT',
+          body: JSON.stringify({ data: { name: newName } })
+        });
+        renamed++;
+
+        // Delete duplicates
+        for (const dt of toDel) {
+          await asanaFetch('/tasks/' + dt.gid, { method: 'DELETE' });
+          deleted++;
+        }
+      }
+
+      const msg = 'Fixed Asana: ' + renamed + ' renamed, ' + deleted + ' duplicates deleted';
+      if (typeof toast === 'function') toast(msg, 'success');
+      console.log('[EntityFix]', msg);
+
+      // Reload tasks view if visible
+      if (typeof loadAsanaTasks === 'function') setTimeout(loadAsanaTasks, 1000);
+
+    } catch(e) {
+      console.warn('[EntityFix] Error:', e);
+      if (typeof toast === 'function') toast('Fix failed: ' + e.message, 'error');
+    }
   }
   window.fixAsanaEntityTasks = fixAsanaEntityTasks;
 

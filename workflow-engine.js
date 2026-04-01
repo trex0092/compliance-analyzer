@@ -126,7 +126,7 @@
       ]
     },
     {
-      id: 'wf_daily_digest', name: 'Daily Compliance Digest → Asana', enabled: true,
+      id: 'wf_daily_digest', name: 'Daily Compliance Digest → Asana', enabled: false,
       trigger: 'scheduled_digest', condition: { frequency: 'daily' },
       actions: [
         { type: 'create_asana_task', template: 'co_report', priority: 'low' }
