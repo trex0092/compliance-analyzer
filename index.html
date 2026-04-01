@@ -374,6 +374,9 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
     <input type="password" id="loginPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')attemptLogin()" />
     <button class="btn btn-gold" onclick="attemptLogin()" style="width:100%;margin-top:8px">Sign In</button>
     <div style="margin-top:16px;font-size:10px;color:var(--muted)">Contact your administrator for access credentials</div>
+    <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+      <button onclick="if(confirm('This will clear all login data and let you create a new account. App data (shipments, evidence, etc.) will be kept. Continue?')){localStorage.removeItem('fgl_users');localStorage.removeItem('fgl_session');localStorage.removeItem('fgl_sessions');localStorage.removeItem('fgl_auth_log');location.reload();}" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;text-decoration:underline">First time? Can't log in? Reset accounts &amp; start fresh</button>
+    </div>
   </div>
   <!-- First-Time Setup Wizard -->
   <div class="login-box" id="setupWizard" style="display:none;max-width:460px">
@@ -7034,10 +7037,21 @@ function checkSession() {
   const saved = localStorage.getItem(SESSION_STORAGE);
   if (saved) {
     try {
-      currentUser = JSON.parse(saved);
+      const session = JSON.parse(saved);
+      // Validate: user must exist in fgl_users and be active
+      const users = getUsers() || [];
+      const user = users.find(u => u.id === session.id && u.active);
+      if (!user) {
+        // Stale session — user doesn't exist anymore
+        localStorage.removeItem(SESSION_STORAGE);
+        return false;
+      }
+      currentUser = session;
       showMainApp();
       return true;
-    } catch(_) {}
+    } catch(_) {
+      localStorage.removeItem(SESSION_STORAGE);
+    }
   }
   return false;
 }
@@ -10528,6 +10542,15 @@ function initNewFeatures() {
 
 // Boot: check session, then init
 (async function boot() {
+  // Clean up ghost users created by old auth-rbac.js module
+  try {
+    var ghostUsers = getUsers() || [];
+    if (ghostUsers.length === 1 && ghostUsers[0].username === 'admin' && ghostUsers[0].mustChangePassword) {
+      localStorage.removeItem(USERS_STORAGE);
+      localStorage.removeItem(SESSION_STORAGE);
+    }
+  } catch(_) {}
+
   try {
     initialiseApp();
   } catch(e) { console.error('[Boot] initialiseApp failed:', e); }
