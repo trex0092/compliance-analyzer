@@ -3161,27 +3161,35 @@ function updateKeys() {
 }
 
 function initialiseApp() {
-  ensureAsanaSyncStateShape();
-  hydrateKeys();
-  handleGDriveCallback();
-  renderCompanySelectors();
-  renderTrainingSubjectOptions();
-  const r1 = document.getElementById('rememberKeys');
-  const r2 = document.getElementById('rememberKeys2');
-  if (r1) r1.addEventListener('change', (e) => setRememberKeys(!!e.target.checked));
-  if (r2) r2.addEventListener('change', (e) => setRememberKeys(!!e.target.checked));
-  if ((!alertSettings.emails || !alertSettings.emails.length) && SCHEDULE_EMAIL) {
-    alertSettings.emails = normaliseAlertEmails([SCHEDULE_EMAIL]);
-  }
-  syncAlertSettingsUI();
-  renderEmployeeTraining();
-  renderShipments();
-  renderAsanaSyncOverview();
-  updateCompanyBar();
-  startReminderTicker();
-  startAsanaAutoRefresh();
-  setTimeout(() => runAlertScanner(), 3000);
-  // Note: openMainPanel() is deferred to boot() after checkSession() succeeds
+  var steps = [
+    ['SyncState', ensureAsanaSyncStateShape],
+    ['HydrateKeys', hydrateKeys],
+    ['GDrive', handleGDriveCallback],
+    ['Companies', renderCompanySelectors],
+    ['Training', renderTrainingSubjectOptions],
+    ['RememberKeys', function() {
+      var r1 = document.getElementById('rememberKeys');
+      var r2 = document.getElementById('rememberKeys2');
+      if (r1) r1.addEventListener('change', function(e) { setRememberKeys(!!e.target.checked); });
+      if (r2) r2.addEventListener('change', function(e) { setRememberKeys(!!e.target.checked); });
+    }],
+    ['AlertEmails', function() {
+      if ((!alertSettings.emails || !alertSettings.emails.length) && SCHEDULE_EMAIL) {
+        alertSettings.emails = normaliseAlertEmails([SCHEDULE_EMAIL]);
+      }
+    }],
+    ['AlertUI', syncAlertSettingsUI],
+    ['EmpTraining', renderEmployeeTraining],
+    ['Shipments', renderShipments],
+    ['AsanaOverview', renderAsanaSyncOverview],
+    ['CompanyBar', updateCompanyBar],
+    ['ReminderTicker', startReminderTicker],
+    ['AsanaRefresh', startAsanaAutoRefresh]
+  ];
+  steps.forEach(function(s) {
+    try { s[1](); } catch(e) { console.warn('[Init] ' + s[0] + ':', e.message); }
+  });
+  setTimeout(function() { try { runAlertScanner(); } catch(e) { console.warn('[Init] AlertScanner:', e.message); } }, 3000);
   window._keysLoaded = !!(ANTHROPIC_KEY || PROXY_URL);
 }
 
@@ -10535,10 +10543,6 @@ function initNewFeatures() {
     }
   } catch(e) { console.error('[Boot] session check failed:', e); }
   setInterval(refreshReminders, 5 * 60 * 1000);
-  // Show collected errors (if any) after boot
-  if (window._appErrors && window._appErrors.length && typeof toast === 'function') {
-    toast('Debug: ' + window._appErrors[0], 'error', 8000);
-  }
 })();
 </script>
 <script>
