@@ -2535,10 +2535,10 @@ var ASANA_TOKEN = '';
 var PROXY_URL = '';
 var SCHEDULE_EMAIL = '';
 var OPENAI_KEY = '';
-var NOTION_TOKEN = '';
-var NOTION_DB_ID = '';
-var CLICKUP_TOKEN = '';
-var CLICKUP_LIST_ID = '';
+var NOTION_TOKEN = ''; // removed — use Asana
+var NOTION_DB_ID = ''; // removed — use Asana
+var CLICKUP_TOKEN = ''; // removed — use Asana
+var CLICKUP_LIST_ID = ''; // removed — use Asana
 var GEMINI_KEY = '';
 var GDRIVE_CLIENT_ID = '';
 var GDRIVE_FOLDER_ID = '';
@@ -2984,7 +2984,7 @@ function clearAppData() {
 // ======= SETUP =======
 function persistKeys() {
   if (!REMEMBER_KEYS) {
-    localStorage.setItem(KEYS_STORAGE, JSON.stringify({ proxyUrl: PROXY_URL, asanaToken: ASANA_TOKEN, aiProvider: AI_PROVIDER, notionDbId: NOTION_DB_ID, clickupListId: CLICKUP_LIST_ID, gdriveFolderId: GDRIVE_FOLDER_ID, gdriveClientId: GDRIVE_CLIENT_ID, rememberKeys: false }));
+    localStorage.setItem(KEYS_STORAGE, JSON.stringify({ proxyUrl: PROXY_URL, asanaToken: ASANA_TOKEN, aiProvider: AI_PROVIDER, gdriveFolderId: GDRIVE_FOLDER_ID, gdriveClientId: GDRIVE_CLIENT_ID, rememberKeys: false }));
     return;
   }
 
@@ -3028,10 +3028,6 @@ function hydrateKeys() {
   SCHEDULE_EMAIL = (saved.scheduleEmail || '').trim();
   PROXY_URL = normaliseProxyUrl(saved.proxyUrl || '');
   OPENAI_KEY = (saved.openaiKey || '').trim();
-  NOTION_TOKEN = (saved.notionToken || '').trim();
-  NOTION_DB_ID = (saved.notionDbId || '').trim();
-  CLICKUP_TOKEN = (saved.clickupToken || '').trim();
-  CLICKUP_LIST_ID = (saved.clickupListId || '').trim();
   GEMINI_KEY = (saved.geminiKey || '').trim();
   GDRIVE_CLIENT_ID = (saved.gdriveClientId || '').trim();
   GDRIVE_FOLDER_ID = (saved.gdriveFolderId || '').trim();
@@ -3069,10 +3065,6 @@ function saveSetup() {
   ASANA_TOKEN = document.getElementById('asanaToken').value.trim();
   SCHEDULE_EMAIL = document.getElementById('scheduleEmail').value.trim();
   PROXY_URL = normaliseProxyUrl(document.getElementById('proxyUrl')?.value || '');
-  NOTION_TOKEN = document.getElementById('notionToken')?.value.trim() || '';
-  NOTION_DB_ID = document.getElementById('notionDbId')?.value.trim() || '';
-  CLICKUP_TOKEN = document.getElementById('clickupToken')?.value.trim() || '';
-  CLICKUP_LIST_ID = document.getElementById('clickupListId')?.value.trim() || '';
   GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId')?.value.trim() || '';
   GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId')?.value.trim() || '';
   REMEMBER_KEYS = !!document.getElementById('rememberKeys')?.checked;
@@ -3096,8 +3088,7 @@ function updateKeys() {
   // Sync setup panel fields
   const syncMap = {
     anthropicKey: ANTHROPIC_KEY, asanaToken: ASANA_TOKEN, scheduleEmail: SCHEDULE_EMAIL,
-    proxyUrl: PROXY_URL, openaiKey: OPENAI_KEY, notionToken: NOTION_TOKEN,
-    notionDbId: NOTION_DB_ID, clickupToken: CLICKUP_TOKEN, clickupListId: CLICKUP_LIST_ID,
+    proxyUrl: PROXY_URL, openaiKey: OPENAI_KEY,
     geminiKey: GEMINI_KEY, gdriveClientId: GDRIVE_CLIENT_ID, gdriveFolderId: GDRIVE_FOLDER_ID
   };
   for (const [id, val] of Object.entries(syncMap)) {
@@ -6850,70 +6841,10 @@ async function uploadAnalysisHistoryToGDrive() {
   await uploadToGDrive(fileName, content, 'text/plain');
 }
 
-// ======= NOTION INTEGRATION =======
-async function notionFetch(path, method = 'POST', body = null) {
-  if (!PROXY_URL) {
-    throw new Error('Notion requires a Proxy URL — direct browser calls are blocked by CORS. Set a Proxy URL in Settings.');
-  }
-  const url = `${PROXY_URL}/notion${path}`;
-  const headers = { 'Content-Type': 'application/json' };
-  const opts = { method, headers };
-  if (body) opts.body = JSON.stringify(body);
-  return fetch(url, opts);
-}
-
-async function saveToNotion(analysisResult, query, area) {
-  if (!NOTION_TOKEN && !PROXY_URL) { toast('Notion token not configured', 'error'); return; }
-  if (!NOTION_DB_ID) { toast('Notion Database ID not set', 'error'); return; }
-
-  const findings = analysisResult.findings || [];
-  const critical = findings.filter(f => f.severity === 'CRITICAL').length;
-  const high = findings.filter(f => f.severity === 'HIGH').length;
-
-  const body = {
-    parent: { database_id: NOTION_DB_ID },
-    properties: {
-      'Title': { title: [{ text: { content: `Compliance Analysis: ${area}` } }] },
-      'Query': { rich_text: [{ text: { content: query.slice(0, 2000) } }] },
-      'Date': { date: { start: new Date().toISOString() } },
-      'Critical': { number: critical },
-      'High': { number: high },
-      'Status': { select: { name: critical > 0 ? 'Critical' : high > 0 ? 'Needs Attention' : 'Compliant' } },
-    },
-    children: [
-      { object: 'block', type: 'heading_2', heading_2: { rich_text: [{ text: { content: 'Summary' } }] } },
-      { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ text: { content: (analysisResult.summary || '').slice(0, 2000) } }] } },
-      { object: 'block', type: 'heading_2', heading_2: { rich_text: [{ text: { content: 'Findings' } }] } },
-      ...findings.slice(0, 20).map(f => ({
-        object: 'block', type: 'callout', callout: {
-          icon: { emoji: f.severity === 'CRITICAL' ? '🔴' : f.severity === 'HIGH' ? '🟠' : f.severity === 'MEDIUM' ? '🔵' : '🟢' },
-          rich_text: [{ text: { content: `[${f.severity}] ${f.title}\n${f.body || ''}\n→ ${f.recommendation || ''}`.slice(0, 2000) } }]
-        }
-      }))
-    ]
-  };
-
-  try {
-    const r = await notionFetch('/pages', 'POST', body);
-    if (!r.ok) { const e = await r.text(); throw new Error(e); }
-    toast('Report saved to Notion', 'success');
-  } catch (e) {
-    toast(`Notion error: ${e.message}`, 'error');
-  }
-}
-
-async function testNotionConnection() {
-  if (!NOTION_TOKEN && !PROXY_URL) { toast('Set Notion token first', 'error'); return; }
-  if (!NOTION_DB_ID) { toast('Set Notion Database ID first', 'error'); return; }
-  try {
-    const r = await notionFetch(`/databases/${NOTION_DB_ID}`, 'GET');
-    if (!r.ok) throw new Error(`${r.status}`);
-    const d = await r.json();
-    toast(`Connected to Notion: ${d.title?.[0]?.plain_text || 'Database found'}`, 'success');
-  } catch (e) {
-    toast(`Notion connection failed: ${e.message}`, 'error');
-  }
-}
+// ======= NOTION INTEGRATION (removed — use Asana) =======
+function saveToNotion() { toast('Notion integration removed — use Asana', 'info'); }
+function testNotionConnection() { toast('Notion integration removed — use Asana', 'info'); }
+function shareToNotion() { toast('Notion integration removed — use Asana', 'info'); }
 
 // Slack removed — not supported in browser-only deployment
 async function sendSlackMessage() {}
@@ -6921,64 +6852,10 @@ async function sendAnalysisToSlack() {}
 async function sendSlackAlert() {}
 function shareToSlack() {}
 
-// ======= CLICKUP INTEGRATION =======
-async function clickupFetch(path, method = 'GET', body = null) {
-  const url = PROXY_URL ? `${PROXY_URL}/clickup${path}` : `https://api.clickup.com/api/v2${path}`;
-  const headers = { 'Content-Type': 'application/json' };
-  if (!PROXY_URL) headers['Authorization'] = CLICKUP_TOKEN;
-  const opts = { method, headers };
-  if (body) opts.body = JSON.stringify(body);
-  return fetch(url, opts);
-}
-
-async function createClickUpTask(name, description, priority = 3, dueDate = null) {
-  if (!CLICKUP_TOKEN && !PROXY_URL) { toast('ClickUp token not configured', 'error'); return; }
-  if (!CLICKUP_LIST_ID) { toast('ClickUp List ID not set', 'error'); return; }
-
-  const body = {
-    name,
-    description,
-    priority,
-    status: 'to do',
-  };
-  if (dueDate) body.due_date = new Date(dueDate).getTime();
-
-  try {
-    const r = await clickupFetch(`/list/${CLICKUP_LIST_ID}/task`, 'POST', body);
-    if (!r.ok) { const e = await r.text(); throw new Error(e); }
-    const data = await r.json();
-    toast(`ClickUp task created: ${data.name || name}`, 'success');
-    return data;
-  } catch (e) {
-    toast(`ClickUp error: ${e.message}`, 'error');
-  }
-}
-
-// Share buttons from results
-function shareToNotion() {
-  if (!lastResult) { toast('No analysis to save', 'error'); return; }
-  saveToNotion(lastResult, lastQuery, lastArea);
-}
-function shareToClickUp() {
-  if (!lastResult) { toast('No analysis to create tasks from', 'error'); return; }
-  createClickUpTasksFromFindings(lastResult.findings);
-}
-
-async function createClickUpTasksFromFindings(findings) {
-  if (!CLICKUP_TOKEN && !PROXY_URL) { toast('ClickUp not configured', 'error'); return; }
-  if (!CLICKUP_LIST_ID) { toast('ClickUp List ID not set', 'error'); return; }
-
-  let created = 0;
-  for (const f of (findings || []).filter(f => f.severity !== 'COMPLIANT')) {
-    const priority = f.severity === 'CRITICAL' ? 1 : f.severity === 'HIGH' ? 2 : 3;
-    const desc = `**Severity:** ${f.severity}\n**Finding:** ${f.body || ''}\n**Regulatory Ref:** ${f.regulatory_ref || ''}\n**Recommendation:** ${f.recommendation || ''}`;
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + (f.severity === 'CRITICAL' ? 3 : f.severity === 'HIGH' ? 7 : 14));
-    await createClickUpTask(`[${f.severity}] ${f.title}`, desc, priority, dueDate.toISOString());
-    created++;
-  }
-  toast(`${created} ClickUp tasks created from findings`, 'success');
-}
+// ======= CLICKUP INTEGRATION (removed — use Asana) =======
+function createClickUpTask() { toast('ClickUp integration removed — use Asana', 'info'); }
+function shareToClickUp() { toast('ClickUp integration removed — use Asana', 'info'); }
+function createClickUpTasksFromFindings() { toast('ClickUp integration removed — use Asana', 'info'); }
 
 // ======= AUTHENTICATION & USER MANAGEMENT =======
 const USERS_STORAGE = 'fgl_users';

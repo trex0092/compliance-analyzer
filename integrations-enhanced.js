@@ -209,6 +209,39 @@
 
       // ── Compliance Technology ──
       system_validation: { name: 'Compliance System Validation: {entity}', notes: 'Validate compliance technology systems effectiveness.\n\n1. Test sanctions screening system accuracy\n2. Verify transaction monitoring alert thresholds\n3. Review false positive/negative rates\n4. Validate data quality and completeness\n5. Test system integration points\n6. Review audit trail and logging\n7. Assess system access controls\n8. Document validation results and gaps\n9. Plan remediation for identified issues\n\nRef: FATF digital transformation guidance, UAE technology standards', tags: ['compliance', 'technology'] },
+
+      // ── Cabinet Resolution 156/2025: Strategic Goods & Dual-Use ──
+      dual_use_screening: { name: 'Dual-Use Goods Screening: {entity}', notes: 'Screen for strategic goods and dual-use items per Cabinet Resolution 156/2025.\n\n1. Review transaction/shipment for dual-use item indicators\n2. Cross-reference UAE Strategic Goods Control Lists\n3. Assess end-user and end-use declarations\n4. Screen against proliferation-related sanctions\n5. Document screening results and rationale\n6. Escalate confirmed dual-use items to MLRO\n7. File report to competent authority if required\n8. Retain all screening records\n\nRef: Cabinet Resolution 156/2025, FDL No.10/2025, UNSC PF Resolutions', tags: ['compliance', 'pf'] },
+
+      // ── Cabinet Resolution 71/2024: Administrative Penalties ──
+      penalty_assessment: { name: 'Administrative Penalty Assessment: {entity}', notes: 'Assess administrative penalty exposure per Cabinet Resolution 71/2024.\n\n1. Identify nature and severity of violation\n2. Determine applicable penalty range (AED 10K–100M)\n3. Assess mitigating factors (self-reporting, remediation)\n4. Review prior violation history\n5. Prepare penalty risk report for senior management\n6. Document corrective actions taken\n7. Engage legal counsel if penalty exceeds AED 500K\n8. Monitor regulatory outcome and update risk register\n\nRef: Cabinet Resolution 71/2024, FDL No.10/2025', tags: ['compliance', 'regulatory'] },
+
+      // ── Cabinet Resolution 132/2023: UBO Penalty Framework ──
+      ubo_penalty_review: { name: 'UBO Penalty Review: {entity}', notes: 'Review UBO compliance against penalty framework per Cabinet Resolution 132/2023.\n\n1. Verify UBO records accuracy and currency\n2. Check compliance with Cabinet Decision 109/2023 requirements\n3. Assess penalty exposure for any non-compliance\n4. Review UBO notification obligations to authorities\n5. Verify nominee shareholder disclosures\n6. Document rectification actions and timeline\n7. Obtain legal review if material deficiencies found\n\nRef: Cabinet Resolution 132/2023, Cabinet Decision 109/2023', tags: ['compliance', 'ubo'] },
+
+      // ── MoE Circular No.1/2024: NRA Integration ──
+      nra_integration: { name: 'NRA Integration Review: {entity}', notes: 'Integrate UAE National Risk Assessment 2024 findings per MoE Circular No.1/2024.\n\n1. Review NRA 2024 key findings for DPMS sector\n2. Identify medium-to-high risk classification implications\n3. Update EWRA methodology to incorporate NRA findings\n4. Adjust customer risk scoring for NRA risk factors\n5. Review product/channel risk based on NRA\n6. Update training materials with NRA findings\n7. Document integration and present to senior management\n\nRef: MoE Circular No.1/2024, UAE NRA 2024', tags: ['compliance', 'risk'] },
+
+      // ── MoE Supplemental DPMS Guidance (May 2019) ──
+      dpms_guidance_review: { name: 'DPMS Guidance Compliance Check: {entity}', notes: 'Review compliance with MoE Supplemental Guidance for DPMS (May 2019).\n\n1. Verify CDD procedures match DPMS-specific requirements\n2. Review precious metals transaction monitoring rules\n3. Check DPMS threshold monitoring (AED 55,000)\n4. Assess record-keeping per DPMS standards\n5. Review training program for DPMS-specific content\n6. Verify goAML DPMSR reporting compliance\n7. Document findings and update procedures\n\nRef: MoE Supplemental Guidance for DPMS (May 2019)', tags: ['compliance', 'dpms'] },
+
+      // ── OECD Gold Supplement ──
+      oecd_gold_review: { name: 'OECD Gold Supplement Review: {entity}', notes: 'Due diligence per OECD Gold Supplement and DDG for minerals from CAHRAs.\n\n1. Map gold supply chain from mine/refinery to market\n2. Identify and assess CAHRA-origin gold risks\n3. Verify refinery LBMA Good Delivery status\n4. Review conflict minerals reporting compliance\n5. Assess on-the-ground assessment reports\n6. Check recycled vs mined gold documentation\n7. Review OECD Annex II red flag indicators\n8. Document supply chain DD findings\n\nRef: OECD DDG Gold Supplement, LBMA RGG v9, WGC Conflict-Free Gold Standard', tags: ['compliance', 'sourcing'] },
+
+      // ── World Gold Council Conflict-Free ──
+      wgc_assessment: { name: 'WGC Conflict-Free Assessment: {entity}', notes: 'Assess compliance with World Gold Council Conflict-Free Gold Standard.\n\n1. Review conflict-free gold standard requirements\n2. Assess supply chain conformance declaration\n3. Verify no direct/indirect support to armed conflict\n4. Check human rights abuse indicators\n5. Review anti-bribery compliance in supply chain\n6. Verify money laundering prevention in gold supply\n7. Document assessment and obtain sign-off\n\nRef: WGC Conflict-Free Gold Standard, OECD DDG, LBMA RGG v9', tags: ['compliance', 'sourcing'] },
+
+      // ── FATF Rec 22: DPMS Specific ──
+      fatf_r22_compliance: { name: 'FATF Rec 22 Compliance: {entity}', notes: 'Verify compliance with FATF Recommendation 22 for DPMS.\n\n1. Confirm CDD for cash transactions >= AED 55,000\n2. Verify CDD for all occasional transactions at threshold\n3. Review suspicious transaction reporting processes\n4. Check record-keeping for DPMS transactions\n5. Verify internal controls and compliance program\n6. Assess training program DPMS-specific content\n7. Review DPMS-specific risk factors in EWRA\n8. Document compliance status\n\nRef: FATF Rec 22, UAE FDL No.10/2025, Cabinet Resolution 134/2025', tags: ['compliance', 'fatf'] },
+
+      // ── Federal Decree-Law No.31/2021: Predicate Offences ──
+      predicate_offence_screen: { name: 'Predicate Offence Screening: {entity}', notes: 'Screen for predicate offences per Federal Decree-Law No.31/2021 (UAE Penal Code).\n\n1. Screen for bribery and corruption indicators\n2. Assess fraud risk factors in transaction patterns\n3. Review for embezzlement/misappropriation signs\n4. Check for tax evasion indicators\n5. Screen for human trafficking/smuggling links\n6. Assess counterfeiting/forgery risk\n7. Document screening results and escalate findings\n8. File STR if predicate offence suspected\n\nRef: Federal Decree-Law No.31/2021, FDL No.10/2025 Art.2', tags: ['compliance', 'aml'] },
+
+      // ── UAE Penal Code: Financial Crime ──
+      financial_crime_review: { name: 'Financial Crime Risk Review: {entity}', notes: 'Assess financial crime risk indicators per UAE Penal Code and AML framework.\n\n1. Review transaction patterns for structuring/layering\n2. Assess use of front companies or nominees\n3. Check for round-tripping or circular payments\n4. Review cash-intensive business indicators\n5. Assess commingling of funds risk\n6. Screen for trade-based money laundering indicators\n7. Review virtual asset/crypto exposure\n8. Document risk assessment and actions\n\nRef: FDL No.10/2025, Federal Decree-Law No.31/2021, FATF Typologies', tags: ['compliance', 'aml'] },
+
+      // ── Compliance Manual Annual Review ──
+      annual_manual_review: { name: 'Annual Compliance Manual Review: {entity}', notes: 'Conduct annual review of Compliance Manual per UAE regulatory requirements.\n\n1. Verify alignment with FDL No.10/2025 (current law)\n2. Incorporate Cabinet Resolution 134/2025 requirements\n3. Update Cabinet Resolution 156/2025 (PF/Strategic Goods) references\n4. Reflect Cabinet Resolution 74/2020 (TFS) obligations\n5. Integrate UAE NRA 2024 findings per MoE Circular No.1/2024\n6. Update LBMA RGG v9 and OECD DDG references\n7. Review FATF Recommendations alignment\n8. Update MoE guidance references (Practical Guide, DPMS Supplement)\n9. Obtain senior management/Board approval\n10. Communicate updates to all staff\n\nRef: FDL No.10/2025 Art.20, Cabinet Resolution 134/2025', tags: ['compliance', 'policy'] },
     },
 
     createFromTemplate(templateKey, variables, projectId) {
@@ -294,71 +327,8 @@
     },
   };
 
-  // ══════════════════════════════════════════════════════════════════
-  // NOTION ENHANCED
-  // ══════════════════════════════════════════════════════════════════
-  const notion = {
-    async syncFindings(databaseId, findings) {
-      const results = [];
-      for (const finding of findings) {
-        try {
-          const res = await proxyFetch('/notion/pages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              parent: { database_id: databaseId },
-              properties: {
-                Title: { title: [{ text: { content: finding.title || 'Finding' } }] },
-                Severity: { select: { name: finding.severity || 'Medium' } },
-                Status: { select: { name: 'Open' } },
-                Reference: { rich_text: [{ text: { content: finding.regulatory_ref || '' } }] },
-                Date: { date: { start: new Date().toISOString().split('T')[0] } },
-              },
-              children: [
-                { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ text: { content: finding.body || '' } }] } },
-                { object: 'block', type: 'heading_3', heading_3: { rich_text: [{ text: { content: 'Recommendation' } }] } },
-                { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ text: { content: finding.recommendation || '' } }] } },
-              ],
-            }),
-          });
-          results.push({ success: true, pageId: res.id });
-          logEvent('notion', 'sync_finding', true, finding.title);
-        } catch (e) {
-          results.push({ success: false, error: e.message });
-          logEvent('notion', 'sync_finding', false, e.message);
-        }
-      }
-      return results;
-    },
-
-    async queryDatabase(databaseId, filter) {
-      return proxyFetch(`/notion/databases/${databaseId}/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filter: filter || {} }),
-      });
-    },
-
-    async healthCheck() {
-      if (!window.NOTION_TOKEN && !getProxy()) {
-        updateStatus('notion', false, null, 0);
-        return false;
-      }
-      try {
-        await proxyFetch('/notion/users/me');
-        updateStatus('notion', true);
-        return true;
-      } catch (e) {
-        // Notion doesn't support direct browser CORS — mark connected if token is set and proxy exists
-        if (window.NOTION_TOKEN && getProxy()) {
-          updateStatus('notion', true);
-          return true;
-        }
-        updateStatus('notion', false, null, 1);
-        return false;
-      }
-    },
-  };
+  // Notion removed — integration deprecated
+  const notion = {};
 
   // Slack removed — not supported in browser-only deployment
   const slack = {
@@ -446,67 +416,8 @@
     },
   };
 
-  // ══════════════════════════════════════════════════════════════════
-  // CLICKUP ENHANCED
-  // ══════════════════════════════════════════════════════════════════
-  const clickup = {
-    COMPLIANCE_STATUSES: ['to do', 'in progress', 'under review', 'approved', 'completed', 'rejected'],
-
-    async createTaskWithPriority(listId, taskData) {
-      const priorities = { Critical: 1, High: 2, Medium: 3, Low: 4 };
-      return proxyFetch(`/clickup/list/${listId}/task`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...taskData,
-          priority: priorities[taskData.severity] || 3,
-        }),
-      });
-    },
-
-    async batchCreateTasks(listId, tasks) {
-      const results = [];
-      for (const task of tasks) {
-        try {
-          const res = await this.createTaskWithPriority(listId, task);
-          results.push({ success: true, task: res });
-          logEvent('clickup', 'create_task', true, task.name);
-        } catch (e) {
-          results.push({ success: false, error: e.message });
-          logEvent('clickup', 'create_task', false, e.message);
-        }
-      }
-      return results;
-    },
-
-    async addTimeEntry(taskId, duration, description) {
-      return proxyFetch(`/clickup/task/${taskId}/time`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration, description, start: Date.now() }),
-      });
-    },
-
-    async healthCheck() {
-      if (!window.CLICKUP_TOKEN && !getProxy()) {
-        updateStatus('clickup', false, null, 0);
-        return false;
-      }
-      try {
-        await proxyFetch('/clickup/user');
-        updateStatus('clickup', true);
-        return true;
-      } catch (e) {
-        // If token is configured, consider it connected even if API check fails (could be rate limit)
-        if (window.CLICKUP_TOKEN || getProxy()) {
-          updateStatus('clickup', true);
-          return true;
-        }
-        updateStatus('clickup', false, null, 1);
-        return false;
-      }
-    },
-  };
+  // ClickUp removed — integration deprecated
+  const clickup = {};
 
   // ══════════════════════════════════════════════════════════════════
   // HEALTH MONITOR
@@ -515,9 +426,7 @@
     const results = {};
     const checks = [
       { name: 'asana', fn: () => asana.healthCheck() },
-      { name: 'notion', fn: () => notion.healthCheck() },
       { name: 'gdrive', fn: () => gdrive.healthCheck() },
-      { name: 'clickup', fn: () => clickup.healthCheck() },
     ];
 
     for (const check of checks) {
@@ -548,9 +457,7 @@
     const services = [
       { key: 'anthropic', name: 'Claude (Anthropic)', icon: '🤖', required: true },
       { key: 'asana', name: 'Asana', icon: '📋', required: true },
-      { key: 'notion', name: 'Notion', icon: '📝', required: false },
       { key: 'gdrive', name: 'Google Drive', icon: '📁', required: false },
-      { key: 'clickup', name: 'ClickUp', icon: '✅', required: false },
     ];
 
     let html = `
