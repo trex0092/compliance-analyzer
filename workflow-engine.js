@@ -139,6 +139,70 @@
         { type: 'create_asana_task', template: 'policy_review', priority: 'medium' },
         { type: 'email_alert', subject: 'Regulatory Change: {title}', message: 'New regulatory change detected: {title}. Impact assessment and policy review required.' }
       ]
+    },
+    {
+      id: 'wf_pep_detected', name: 'PEP Detected → EDD + Senior Management', enabled: true,
+      trigger: 'pep_detected', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'pep_identification', priority: 'high' },
+        { type: 'browser_notify', title: 'PEP Detected', message: 'PEP identified: {customerName}. EDD and Senior Management approval required per Cabinet Resolution 134/2025 Art.14.' }
+      ]
+    },
+    {
+      id: 'wf_ubo_change', name: 'UBO Change → Re-verification Required', enabled: true,
+      trigger: 'ubo_change', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'kyb_review', priority: 'high' },
+        { type: 'browser_notify', title: 'UBO Change Detected', message: 'Ownership structure changed for {entityName}. Re-verification required within 15 working days per Cabinet Decision 109/2023.' }
+      ]
+    },
+    {
+      id: 'wf_high_risk_onboard', name: 'High-Risk Customer → EDD + CRA Required', enabled: true,
+      trigger: 'high_risk_customer', condition: { riskLevel: 'high' },
+      actions: [
+        { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
+        { type: 'create_asana_task', template: 'cdd_review', priority: 'high' }
+      ]
+    },
+    {
+      id: 'wf_str_post_filing', name: 'STR Filed → Post-Filing Monitoring', enabled: true,
+      trigger: 'str_filed', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'transaction_monitoring', priority: 'high' },
+        { type: 'browser_notify', title: 'STR Filed — Enhanced Monitoring Required', message: 'STR filed for {subjectName}. Enhanced monitoring must continue. Do not tip off subject.' }
+      ]
+    },
+    {
+      id: 'wf_sanctions_list_update', name: 'Sanctions List Update → Re-Screen All', enabled: true,
+      trigger: 'sanctions_update', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'tfs_list_update', priority: 'high' },
+        { type: 'browser_notify', title: 'Sanctions List Updated', message: 'New designations received. Screen entire customer and supplier database. File CNMR within 5 business days for any confirmed matches.' }
+      ]
+    },
+    {
+      id: 'wf_dpmsr_threshold', name: 'AED 55,000 Threshold → DPMSR Filing', enabled: true,
+      trigger: 'threshold_breach', condition: { amount: 55000 },
+      actions: [
+        { type: 'create_asana_task', template: 'threshold_review', priority: 'high' },
+        { type: 'browser_notify', title: 'DPMSR Threshold Triggered', message: 'Transaction of AED {amount} meets DPMSR reporting threshold. CDD capture and goAML DPMSR filing required per MoE Circular 08/AML/2021.' }
+      ]
+    },
+    {
+      id: 'wf_lbma_supplier_risk', name: 'CAHRA Supplier → Supply Chain Alert', enabled: true,
+      trigger: 'cahra_detected', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'responsible_sourcing', priority: 'high' },
+        { type: 'browser_notify', title: 'CAHRA Supplier Detected', message: 'Supplier {supplierName} linked to conflict-affected or high-risk area. LBMA RGG v9 Step 2 enhanced due diligence required.' }
+      ]
+    },
+    {
+      id: 'wf_annual_cra_refresh', name: 'Annual CRA Refresh Due', enabled: true,
+      trigger: 'scheduled_cra_review', condition: { frequency: 'annual' },
+      actions: [
+        { type: 'create_asana_task', template: 'kyc_refresh', priority: 'medium' },
+        { type: 'browser_notify', title: 'Annual CRA Review Due', message: 'Customer risk assessment refresh due for {customerName}. Update CDD, re-screen, and reassess risk rating.' }
+      ]
     }
   ];
 

@@ -613,7 +613,7 @@ Examples:
             <div class="chip" onclick="setQ('Evaluate our Ultimate Beneficial Owner (UBO) identification and verification procedures against Cabinet Decision No. 109/2023 on Beneficial Ownership and the requirements of Federal Decree-Law No. (10) of 2025. Assess whether our 25% ownership threshold calculations, multi-layered ownership tracing, and UBO register maintenance meet regulatory expectations. Identify gaps in documentation and ongoing monitoring.')">UBO Verification</div>
             <div class="chip" onclick="setQ('Review our proliferation financing (PF) risk assessment, controls, and countermeasures. Assess alignment with UNSCR obligations, FATF Recommendation 7, and UAE Cabinet Resolution No. (74) of 2020. Evaluate our screening procedures against the Consolidated UN Security Council Sanctions List, dual-use goods awareness, and staff training on PF indicators specific to the precious metals trade.')">Proliferation Financing</div>
             <div class="chip" onclick="setQ('Assess our compliance training programme comprehensively: coverage across all staff levels, training frequency and scheduling, content relevance to DPMS-specific risks, effectiveness measurement and testing, record-keeping of attendance and competency assessments. Evaluate alignment with Federal Decree-Law No. (10) of 2025 training requirements and LBMA Responsible Gold Guidance training expectations.')">Training Programme</div>
-            <div class="chip" onclick="setQ('Review our record-keeping and data retention policies against the minimum 5-year retention requirement under UAE AML/CFT regulations, LBMA Responsible Gold Guidance documentation standards, and data protection requirements. Assess whether our document management system covers all required records: CDD files, transaction records, STR filings, risk assessments, training logs, and internal audit reports.')">Record Keeping</div>
+            <div class="chip" onclick="setQ('Review our record-keeping and data retention policies against the minimum 10-year retention requirement under UAE Federal Decree-Law No. (10) of 2025, LBMA Responsible Gold Guidance documentation standards, and data protection requirements. Assess whether our document management system covers all required records: CDD files, transaction records, STR filings, risk assessments, training logs, and internal audit reports.')">Record Keeping</div>
             <div class="chip" onclick="setQ('Analyze our internal compliance audit procedures, compliance committee structure, and governance framework. Evaluate whether roles and responsibilities are clearly defined with proper segregation of duties, audit frequency meets regulatory expectations, findings are tracked to remediation, and the compliance officer has appropriate authority and independence as required by Federal Decree-Law No. (10) of 2025.')">Internal Audit</div>
             <div class="chip" onclick="setQ('Review our cash-free business policy and virtual asset payment prohibition controls. Assess the adequacy of monitoring mechanisms for detecting attempted cash transactions, enforcement procedures for non-compliance, staff awareness training, and alignment with UAE Central Bank guidance and FATF requirements on financial transparency in the precious metals sector.')">Cash-Free Policy</div>
             <div class="chip" onclick="setQ('Evaluate our grievance mechanism and whistleblower protection framework against UAE Federal Decree-Law No. (32) of 2021 and international best practices. Assess whether our reporting channels ensure confidentiality, non-retaliation protections are clearly documented and communicated, investigation procedures are independent and timely, and all reports are properly documented and tracked to resolution.')">Whistleblower Policy</div>
@@ -627,6 +627,14 @@ Examples:
             <div class="chip" onclick="setQ('Assess our anti-corruption and bribery prevention framework against UAE Federal Decree-Law No. (20) of 2018 on Anti-Money Laundering and the UAE Penal Code. Review our policies, gift and hospitality registers, third-party due diligence for agents and intermediaries, staff declarations of interest, and training programme. Identify gaps in our controls for preventing facilitation payments and conflicts of interest.')">Anti-Corruption Framework</div>
             <div class="chip" onclick="setQ('Evaluate our DPMS Report (Dealers in Precious Metals and Stones Report) preparation and submission procedures for the UAE FIU. Assess data accuracy, transaction categorization, reporting timelines, internal review and approval workflows, and alignment with the latest goAML reporting templates and field requirements. Identify common errors or omissions that could trigger regulatory follow-up.')">DPMS Reporting</div>
             <div class="chip" onclick="setQ('Review our Artificial Intelligence and technology governance framework within compliance operations. Assess how AI tools are used for screening, monitoring, and risk assessment, whether algorithmic decisions are auditable, bias testing procedures, human oversight mechanisms, and alignment with UAE AI governance principles and the Responsible AI framework applicable to regulated financial activities.')">AI Governance in Compliance</div>
+            <div class="chip" onclick="setQ('Conduct a comprehensive review of our trade finance and gold import/export documentation controls. Assess compliance with UAE Customs requirements, Ministry of Economy DPMS licensing, Dubai Multi Commodities Centre (DMCC) rules, and CBUAE cross-border transfer controls. Evaluate invoice authenticity checks, shipping document verification, and procedures for detecting trade-based money laundering through the precious metals sector.')">Trade Finance Controls</div>
+            <div class="chip" onclick="setQ('Review our virtual asset and cryptocurrency exposure controls in the precious metals trading context. Assess our policies on accepting crypto payments, customer screening for virtual asset service providers (VASPs), FATF Travel Rule compliance where applicable, and alignment with UAE VARA regulations and Central Bank guidance on virtual assets in the DPMS sector.')">Virtual Assets (VASP)</div>
+            <div class="chip" onclick="setQ('Assess our cross-border transaction monitoring and wire transfer controls. Evaluate compliance with CBUAE wire transfer regulations, SWIFT message screening, correspondent banking relationship risk, and procedures for monitoring transactions involving high-risk jurisdictions. Assess our controls for detecting layering through international gold shipments and payments.')">Cross-Border Transactions</div>
+            <div class="chip" onclick="setQ('Evaluate our customer exit and relationship termination procedures. Assess how we handle situations where CDD cannot be completed, where STR has been filed, where a sanctions match is confirmed, or where the customer poses unacceptable risk. Review our documentation requirements, asset liquidation procedures, regulatory notification obligations, and tipping-off prevention during exit.')">Customer Exit Procedures</div>
+            <div class="chip" onclick="setQ('Review our new product approval and technology assessment procedures under Cabinet Resolution 134/2025 Article 24. Assess our pre-launch ML/TF/PF risk assessment methodology for new products, services, delivery channels, and technologies. Evaluate governance, sign-off requirements, post-launch monitoring, and alignment with FATF guidance on new technology risks.')">New Product Risk Assessment</div>
+            <div class="chip" onclick="setQ('Assess our Compliance Officer annual reporting obligations and Board compliance oversight structure. Review the content and quality of the CO annual report, Board-level AML/CFT training, compliance committee terms of reference, escalation protocols to senior management, and whether governance arrangements meet the fit-and-proper and independence requirements of Federal Decree-Law No. (10) of 2025.')">Board & Governance Reporting</div>
+            <div class="chip" onclick="setQ('Review our Ministry of Economy DPMS registration status, annual renewal procedures, and regulatory correspondence management. Assess our readiness for an unannounced Ministry of Economy inspection, including file organization, staff readiness, policy accessibility, evidence files, and ability to produce records promptly. Identify any outstanding regulatory obligations or notifications.')">MoE Registration & Inspection</div>
+            <div class="chip" onclick="setQ('Analyze our Know Your Supplier (KYS) programme for gold refineries and bullion suppliers. Assess refinery due diligence against LBMA Good Delivery criteria, conflict-free sourcing declarations, KYS questionnaire adequacy, site visit requirements, contractual AML/CFT representations, and ongoing monitoring of supplier compliance status. Identify gaps in documentation or supplier risk escalation.')">Refinery Due Diligence</div>
           </div>
         </div>
         <button class="btn btn-gold" id="analyseBtn" onclick="runAnalysis()">Run Compliance Analysis</button>
@@ -673,6 +681,7 @@ Examples:
           <span class="lbl" style="margin:0">Live Asana Task Status</span>
           <div style="display:flex;gap:8px">
             <button class="btn btn-sm btn-blue" onclick="loadAsanaTasks()">Refresh</button>
+            <button class="btn btn-sm" style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.4)" onclick="fixAsanaEntityTasks && fixAsanaEntityTasks()" title="Fix tasks with {entity} placeholder">Fix {entity}</button>
             <button class="btn btn-sm btn-green" onclick="processAsanaRetryQueue(false)">Retry Failed Writes</button>
           </div>
         </div>
@@ -1540,6 +1549,7 @@ Examples:
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace" id="extLinksMeta">0 links</span>
             <button class="btn btn-sm btn-green" onclick="toggleAddExtLink()">+ Add Link</button>
+            <button class="btn btn-sm btn-blue" onclick="resetExtLinksToDefault()" style="background:rgba(74,143,193,0.15);color:#4A8FC1;border:1px solid rgba(74,143,193,0.4)">↺ Refresh</button>
             <input type="text" id="extLinkSearch" placeholder="Search links..." oninput="renderExternalLinks()" style="font-size:10px;padding:3px 8px;width:160px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace" />
           </div>
         </div>
@@ -2162,7 +2172,25 @@ Examples:
             <div><span class="lbl">Due Date</span><input type="text" placeholder="dd/mm/yyyy" id="calDate" /></div>
           </div>
           <div class="row row-2" style="margin-bottom:12px">
-            <div><span class="lbl">Category</span><select id="calCategory"><option value="regulatory">Regulatory Filing</option><option value="license">License Renewal</option><option value="audit">Audit</option><option value="training">Training</option><option value="review">Policy Review</option><option value="fatf">FATF</option><option value="other">Other</option></select></div>
+            <div><span class="lbl">Category</span><select id="calCategory">
+                    <option value="regulatory">Regulatory Filing</option>
+                    <option value="cdd">CDD / EDD / KYC Review</option>
+                    <option value="tfs">TFS / Sanctions Screening</option>
+                    <option value="str">STR / SAR Filing</option>
+                    <option value="dpmsr">DPMSR Threshold Report</option>
+                    <option value="ubo">UBO Review</option>
+                    <option value="license">License Renewal</option>
+                    <option value="audit">Internal Audit</option>
+                    <option value="lbma">LBMA / Supply Chain</option>
+                    <option value="training">AML/CFT Training</option>
+                    <option value="review">Policy Review</option>
+                    <option value="governance">Board / Governance</option>
+                    <option value="fatf">FATF List Review</option>
+                    <option value="risk">Risk Assessment</option>
+                    <option value="moe">MoE Registration / Inspection</option>
+                    <option value="goaml">goAML Reporting</option>
+                    <option value="other">Other</option>
+                  </select></div>
             <div><span class="lbl">Remind Days Before</span><input type="number" id="calRemind" value="7" /></div>
           </div>
           <div class="row" style="margin-bottom:12px"><div><span class="lbl">Notes</span><input type="text" id="calNotes" placeholder="Additional details" /></div></div>
@@ -3525,6 +3553,13 @@ const DEFAULT_EXT_LINKS = [
 ];
 
 function getExtLinksKey() { return typeof scopeKey === 'function' ? scopeKey('fgl_ext_learning_links') : 'fgl_ext_learning_links'; }
+function resetExtLinksToDefault() {
+  if (!confirm('Reset learning links to default list? Your custom links will be removed.')) return;
+  safeLocalSave(getExtLinksKey(), DEFAULT_EXT_LINKS.slice());
+  renderExternalLinks();
+  toast('Learning links refreshed to defaults','success');
+}
+
 function getExtLinks() {
   let links = safeLocalParse(getExtLinksKey(), null);
   if (links === null) { links = DEFAULT_EXT_LINKS.slice(); safeLocalSave(getExtLinksKey(), links); }
@@ -6142,9 +6177,10 @@ function renderEvidence(tasks) {
   // Merge critical tasks with asana tasks
   const allItems = [...CRITICAL_TASKS.map(t=>({id:t.id, name:t.name, folder:t.folder}))];
   Object.entries(evidenceData).forEach(([id,v]) => { if (!allItems.find(x=>x.id===id)) allItems.push({id, name:v.name, folder:''}); });
-  const linked = allItems.filter(t=>(evidenceData[t.id]?.link||'').trim().length>5).length;
+  const na = allItems.filter(t=>(evidenceData[t.id]?.link||'')==='N/A').length;
+  const linked = allItems.filter(t=>(evidenceData[t.id]?.link||'').trim().length>5 && evidenceData[t.id]?.link!=='N/A').length;
   const missing = allItems.filter(t=>!(evidenceData[t.id]?.link||'').trim()).length;
-  const partial = allItems.length - linked - missing;
+  const partial = allItems.length - linked - missing - na;
   document.getElementById('evCountLinked').textContent = linked;
   document.getElementById('evCountPartial').textContent = partial;
   document.getElementById('evCountMissing').textContent = missing;
@@ -6157,12 +6193,13 @@ function renderEvidence(tasks) {
         <div><div class="evidence-name">${escHtml(t.name)}</div>${t.folder?`<div class="evidence-meta">Drive folder: ${escHtml(t.folder)}</div>`:''}</div>
         <div class="evidence-status">
           <div class="ev-dot ${hasLink?'ev-linked':'ev-missing'}"></div>
-          <span class="ev-label" style="color:${hasLink?'var(--green)':'var(--red)'};">${hasLink?'LINKED':'MISSING'}</span>
+          <span class="ev-label" style="color:${saved==='N/A'?'#4A8FC1':hasLink?'var(--green)':'var(--red)'};">${saved==='N/A'?'N/A':hasLink?'LINKED':'MISSING'}</span>
         </div>
       </div>
       <div class="ev-link-input">
         <input type="text" placeholder="Paste Google Drive folder URL..." value="${escHtml(saved)}" id="ev_${t.id}" />
         <button class="btn btn-sm btn-green" onclick="saveEvidenceLink('${t.id}')">Save</button>
+        <button class="btn btn-sm" style="background:rgba(74,143,193,0.15);color:#4A8FC1;border:1px solid rgba(74,143,193,0.4)" onclick="markEvidenceNA('${t.id}')">N/A</button>
         ${hasLink?`<button class="btn btn-sm" data-url="${escHtml(saved)}" onclick="openSafeUrl(this.dataset.url)">Open</button>`:''}
       </div>
     </div>`;
@@ -6176,6 +6213,14 @@ function saveEvidenceLink(id) {
   safeLocalSave('fgl_evidence', evidenceData);
   renderEvidence();
   toast(val ? 'Evidence link saved' : 'Link cleared','success');
+}
+
+function markEvidenceNA(id) {
+  if (!evidenceData[id]) evidenceData[id] = { name: '', link: '' };
+  evidenceData[id].link = 'N/A';
+  safeLocalSave('fgl_evidence', evidenceData);
+  renderEvidence();
+  toast('Marked as Not Applicable','info');
 }
 
 function exportEvidenceCSV() {

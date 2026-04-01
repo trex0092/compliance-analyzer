@@ -179,6 +179,19 @@
     const el = document.getElementById('suite-content-cra');
     if (!el) return;
     const records = load(SK.CRA) || [];
+    // Sync CRA records to Risk Assessment storage for unified view
+    if (records.length > 0) {
+      try {
+        const raKey = 'fgl_risk_assessments';
+        const existing = JSON.parse(localStorage.getItem(raKey) || '[]');
+        records.forEach(r => {
+          if (!existing.find(e => e.id === r.id)) {
+            existing.push({ id: r.id, entityName: r.customerName, totalScore: r.rawScore || 0, determination: r.cddLevel || r.rating, assessDate: r.createdAt?.slice(0,10) || new Date().toISOString().slice(0,10), assessedBy: r.reviewedBy || '—', source: 'CRA' });
+          }
+        });
+        localStorage.setItem(raKey, JSON.stringify(existing));
+      } catch {}
+    }
 
     el.innerHTML = `
       <div class="card" style="margin-bottom:1.2rem">
@@ -2244,16 +2257,18 @@
   // ════════════════════════════════════════════════════════════════════════════
 
   const RETENTION_CATEGORIES = [
-    { cat:'CDD Files', period:5, basis:'Cabinet Resolution 134/2025 Art.25(1)' },
-    { cat:'Transaction Records', period:5, basis:'Cabinet Resolution 134/2025 Art.25(2)' },
-    { cat:'STR / SAR Files', period:10, basis:'Best practice — UAE FIU guidance' },
-    { cat:'Risk Assessment Records', period:5, basis:'Cabinet Resolution 134/2025 Art.25' },
-    { cat:'Business Correspondence', period:5, basis:'Cabinet Resolution 134/2025 Art.25(3)' },
-    { cat:'Training Records', period:5, basis:'UAE FDL No.(10) of 2025 Art.16' },
-    { cat:'Internal Audit Reports', period:5, basis:'Cabinet Resolution 134/2025 Art.25' },
-    { cat:'LBMA Supply Chain Files', period:5, basis:'LBMA RGG v9 Step 2 | OECD §5' },
-    { cat:'UBO / Beneficial Ownership Records', period:5, basis:'Cabinet Decision 109/2023 Art.38' },
-    { cat:'goAML Submission Files', period:5, basis:'UAE FIU Guidance' },
+    { cat:'CDD Files',                    period:10, basis:'UAE FDL No.(10) of 2025 | Minimum 10 years' },
+    { cat:'Transaction Records',          period:10, basis:'UAE FDL No.(10) of 2025 | Minimum 10 years' },
+    { cat:'STR / SAR Files',              period:10, basis:'UAE FDL No.(10) of 2025 | UAE FIU Guidance' },
+    { cat:'Risk Assessment Records',      period:10, basis:'UAE FDL No.(10) of 2025 | Cabinet Resolution 134/2025 Art.25' },
+    { cat:'Business Correspondence',      period:10, basis:'UAE FDL No.(10) of 2025 | Cabinet Resolution 134/2025 Art.25(3)' },
+    { cat:'Training Records',             period:10, basis:'UAE FDL No.(10) of 2025' },
+    { cat:'Internal Audit Reports',       period:10, basis:'UAE FDL No.(10) of 2025 | Cabinet Resolution 134/2025 Art.25' },
+    { cat:'LBMA Supply Chain Files',      period:10, basis:'UAE FDL No.(10) of 2025 | LBMA RGG v9 Step 2 | OECD §5' },
+    { cat:'UBO / Beneficial Ownership Records', period:10, basis:'UAE FDL No.(10) of 2025 | Cabinet Decision 109/2023 Art.38' },
+    { cat:'goAML Submission Files',       period:10, basis:'UAE FDL No.(10) of 2025 | UAE FIU Guidance' },
+    { cat:'Compliance Programme Documents', period:10, basis:'UAE FDL No.(10) of 2025' },
+    { cat:'DPMSR / Threshold Reports',    period:10, basis:'UAE FDL No.(10) of 2025 | MoE Circular 08/AML/2021' },
   ];
 
   function renderRetention() {
@@ -2264,11 +2279,11 @@
     <div class="card">
       <div class="top-bar">
         <span class="sec-title">🗄️ Record Retention Register</span>
-        <span style="font-size:11px;color:var(--muted)">Cabinet Resolution 134/2025 Art.25 — Minimum 5 years | Records must enable transaction reconstruction</span>
+        <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 — Minimum 10 years | Records must enable transaction reconstruction</span>
         <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2AddRetentionRecord()">+ Add Record</button>
       </div>
       <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
-        <strong>Art.25 Requirements:</strong> Records must be retained for minimum 5 years. Records must be organized so individual transactions can be reconstructed and provided promptly to competent authorities upon request. STR files — best practice is 10 years minimum.
+        <strong>UAE FDL No.(10) of 2025 — 10 Year Minimum:</strong> All records must be retained for a minimum of 10 years. Records must be organized so individual transactions can be reconstructed and provided promptly to competent authorities upon request. This applies to all CDD, transaction, STR, risk assessment, training, audit, and correspondence records.
       </div>
       <div class="sec-title" style="margin-bottom:10px">Statutory Retention Schedule</div>
       <div style="overflow-x:auto;margin-bottom:1.5rem">
@@ -2341,7 +2356,7 @@
     ['ret-name','ret-basis','ret-storage'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     document.getElementById('ret-cat').value='';
     document.getElementById('ret-date').value=today();
-    document.getElementById('ret-years').value='5';
+    document.getElementById('ret-years').value='10';
     document.getElementById('retentionModal').classList.add('open');
   };
 
@@ -2353,7 +2368,7 @@
       id:`RET-${Date.now()}`, recordName:name,
       category:document.getElementById('ret-cat').value,
       createdDate:document.getElementById('ret-date').value,
-      retentionYears:parseInt(document.getElementById('ret-years').value)||5,
+      retentionYears:parseInt(document.getElementById('ret-years').value)||10,
       basis:document.getElementById('ret-basis').value,
       storageLocation:document.getElementById('ret-storage').value,
     });
@@ -2669,6 +2684,29 @@
 // Runs once on load, replaces literal {entity} with active company name
 // ════════════════════════════════════════════════════════════════════════════
 (function() {
+  async function fixAsanaEntityTasks() {
+    // Fix existing Asana tasks that have {entity} in their names
+    try {
+      if (typeof asanaFetch !== 'function') return;
+      const projectId = (typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515';
+      const activeComp = (typeof getActiveCompany === 'function') ? getActiveCompany() : {};
+      const companyName = activeComp.name || 'Fine Gold LLC';
+      if (typeof toast === 'function') toast('Fixing {entity} placeholders in Asana tasks...', 'info');
+      const r = await asanaFetch('/projects/' + projectId + '/tasks?opt_fields=name,gid&limit=100');
+      const d = await r.json();
+      const tasks = (d.data || []).filter(t => t.name && t.name.includes('{entity}'));
+      if (!tasks.length) { if (typeof toast === 'function') toast('No {entity} tasks found in Asana', 'success'); return; }
+      let fixed = 0;
+      for (const task of tasks) {
+        const newName = task.name.replace(/\{entity\}/g, companyName);
+        await asanaFetch('/tasks/' + task.gid, { method: 'PUT', body: JSON.stringify({ data: { name: newName } }) });
+        fixed++;
+      }
+      if (typeof toast === 'function') toast('Fixed ' + fixed + ' Asana tasks — {entity} replaced with ' + companyName, 'success');
+    } catch(e) { console.warn('[EntityFix] Asana fix error:', e); }
+  }
+  window.fixAsanaEntityTasks = fixAsanaEntityTasks;
+
   function fixEntityPlaceholders() {
     try {
       const activeComp = (typeof getActiveCompany === 'function') ? getActiveCompany() : {};
