@@ -520,6 +520,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       <div class="tab" onclick="switchTab('regchanges')">📋 Reg Changes</div>
       <div class="tab" onclick="switchTab('analytics')">📈 Analytics</div>
       <div class="tab" onclick="switchTab('workflows')">⚡ Workflows</div>
+      <div class="tab" onclick="switchTab('uploads')">📤 Data Upload</div>
     </div>
 
     <!-- ALERT BANNER -->
@@ -2581,6 +2582,72 @@ Examples:
       </div>
     </div>
 
+    <!-- DATA UPLOAD TAB -->
+    <div id="tab-uploads" class="tab-content">
+      <div class="card">
+        <div class="top-bar" style="margin-bottom:10px">
+          <span class="sec-title" style="margin:0;border:none;padding:0">📤 Data Upload — Compliance Document Storage</span>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Upload compliance documents, evidence files, shipment records, and other data. Files are stored securely on the server and persist across sessions and devices.</p>
+
+        <!-- Upload Form -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px">
+          <span class="lbl" style="color:var(--gold);font-size:12px;margin-bottom:10px;display:block">UPLOAD NEW FILE</span>
+          <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <span class="lbl">Category</span>
+              <select id="uploadCategory" style="width:100%">
+                <option value="general">General</option>
+                <option value="evidence">Evidence</option>
+                <option value="shipments">Shipment Records</option>
+                <option value="kyc">KYC Documents</option>
+                <option value="reports">Reports</option>
+                <option value="policies">Policies & Procedures</option>
+                <option value="training">Training Materials</option>
+                <option value="audit">Audit Records</option>
+                <option value="screening">Screening Results</option>
+                <option value="incidents">Incident Reports</option>
+              </select>
+            </div>
+            <div style="flex:2;min-width:250px">
+              <span class="lbl">File (max 50 MB)</span>
+              <input type="file" id="uploadFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip,.json,.xml" style="width:100%" />
+            </div>
+            <button class="btn btn-sm btn-green" id="uploadBtn" onclick="uploadFileToServer()" style="height:36px">📤 Upload</button>
+          </div>
+          <div id="uploadProgress" style="display:none;margin-top:10px">
+            <div style="background:var(--surface);border-radius:4px;height:6px;overflow:hidden">
+              <div id="uploadProgressBar" style="background:var(--gold);height:100%;width:0%;transition:width 0.3s"></div>
+            </div>
+            <span id="uploadStatusText" style="font-size:10px;color:var(--muted);margin-top:4px;display:block">Uploading...</span>
+          </div>
+        </div>
+
+        <!-- Filter & File List -->
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+          <span class="lbl" style="margin:0;color:var(--gold)">UPLOADED FILES</span>
+          <select id="filterCategory" onchange="loadUploadedFiles()" style="font-size:11px;min-width:140px">
+            <option value="">All Categories</option>
+            <option value="general">General</option>
+            <option value="evidence">Evidence</option>
+            <option value="shipments">Shipment Records</option>
+            <option value="kyc">KYC Documents</option>
+            <option value="reports">Reports</option>
+            <option value="policies">Policies & Procedures</option>
+            <option value="training">Training Materials</option>
+            <option value="audit">Audit Records</option>
+            <option value="screening">Screening Results</option>
+            <option value="incidents">Incident Reports</option>
+          </select>
+          <button class="btn btn-sm btn-blue" onclick="loadUploadedFiles()">🔄 Refresh</button>
+          <span id="uploadFileCount" style="font-size:10px;color:var(--muted);margin-left:auto"></span>
+        </div>
+        <div id="uploadedFilesList" style="min-height:80px">
+          <p style="text-align:center;color:var(--muted);font-size:12px;padding:20px">Click "Refresh" or upload a file to see your documents here.</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -3309,6 +3376,7 @@ function switchTab(name) {
   if (name==='employees') renderEmployeeDirectory();
   if (name==='localshipments') renderLocalShipments();
   if (name==='settings') { if (typeof renderUserManagement === 'function') renderUserManagement(); applyRoleRestrictions(); }
+  if (name==='uploads') loadUploadedFiles();
   if (name==='incidents') { if (typeof updateIncidentMetrics === 'function') updateIncidentMetrics(); }
   if (name==='riskassessment') renderRiskAssessment();
 }
@@ -10533,6 +10601,130 @@ function exportDefChangeLogExcel() {
   const headers = ['Date','Action','Section','Term','Definition','Source','Reason'];
   const rows = log.map(e => [new Date(e.date).toLocaleDateString('en-GB'), e.action, e.section, e.term, e.definition, e.source, e.reason]);
   downloadExcel(buildExcelXML('Regulatory Change Log', headers, rows), 'Regulatory_Change_Log_' + new Date().toISOString().slice(0,10) + '.xls');
+}
+
+// ======= DATA UPLOAD FUNCTIONS =======
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  var units = ['B', 'KB', 'MB', 'GB'];
+  var i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+}
+
+function getCategoryLabel(val) {
+  var labels = {general:'General',evidence:'Evidence',shipments:'Shipment Records',kyc:'KYC Documents',reports:'Reports',policies:'Policies & Procedures',training:'Training Materials',audit:'Audit Records',screening:'Screening Results',incidents:'Incident Reports'};
+  return labels[val] || val;
+}
+
+async function uploadFileToServer() {
+  var fileInput = document.getElementById('uploadFileInput');
+  var categorySelect = document.getElementById('uploadCategory');
+  var file = fileInput.files && fileInput.files[0];
+  if (!file) { toast('Please select a file to upload', 'error'); return; }
+  if (file.size > 50 * 1024 * 1024) { toast('File too large. Maximum size is 50 MB.', 'error'); return; }
+
+  var btn = document.getElementById('uploadBtn');
+  var progress = document.getElementById('uploadProgress');
+  var progressBar = document.getElementById('uploadProgressBar');
+  var statusText = document.getElementById('uploadStatusText');
+
+  btn.disabled = true;
+  btn.textContent = 'Uploading...';
+  progress.style.display = 'block';
+  progressBar.style.width = '10%';
+  statusText.textContent = 'Uploading ' + file.name + '...';
+
+  var formData = new FormData();
+  formData.append('file', file);
+  formData.append('category', categorySelect.value);
+
+  try {
+    progressBar.style.width = '50%';
+    var response = await fetch('/api/upload', { method: 'POST', body: formData });
+    progressBar.style.width = '80%';
+
+    if (!response.ok) {
+      var err = await response.json().catch(function() { return { error: 'Upload failed' }; });
+      throw new Error(err.error || 'Upload failed with status ' + response.status);
+    }
+
+    var result = await response.json();
+    progressBar.style.width = '100%';
+    statusText.textContent = 'Upload complete!';
+    toast('File uploaded: ' + result.name, 'success');
+    fileInput.value = '';
+    logAudit('Data Upload', 'Uploaded file: ' + result.name + ' (category: ' + result.category + ')');
+
+    setTimeout(function() {
+      progress.style.display = 'none';
+      progressBar.style.width = '0%';
+    }, 2000);
+
+    loadUploadedFiles();
+  } catch (e) {
+    progressBar.style.width = '0%';
+    progress.style.display = 'none';
+    toast('Upload failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📤 Upload';
+  }
+}
+
+async function loadUploadedFiles() {
+  var listEl = document.getElementById('uploadedFilesList');
+  var countEl = document.getElementById('uploadFileCount');
+  var category = document.getElementById('filterCategory').value;
+  listEl.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:12px;padding:20px">Loading files...</p>';
+
+  try {
+    var url = '/api/files' + (category ? '?category=' + encodeURIComponent(category) : '');
+    var response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to load files');
+    var data = await response.json();
+    var files = data.files || [];
+
+    countEl.textContent = files.length + ' file' + (files.length !== 1 ? 's' : '');
+
+    if (!files.length) {
+      listEl.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:12px;padding:20px">No files uploaded yet. Use the form above to upload your first document.</p>';
+      return;
+    }
+
+    var html = '<table style="width:100%;font-size:11px"><thead><tr><th style="text-align:left;padding:6px 8px">File Name</th><th style="text-align:left;padding:6px 8px">Category</th><th style="text-align:right;padding:6px 8px">Size</th><th style="text-align:left;padding:6px 8px">Uploaded</th><th style="text-align:center;padding:6px 8px">Actions</th></tr></thead><tbody>';
+
+    files.forEach(function(f) {
+      var date = f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+      html += '<tr style="border-bottom:1px solid var(--border)">';
+      html += '<td style="padding:6px 8px;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(f.name) + '">' + escHtml(f.name) + '</td>';
+      html += '<td style="padding:6px 8px"><span style="background:var(--surface2);border-radius:4px;padding:2px 6px;font-size:10px">' + escHtml(getCategoryLabel(f.category)) + '</span></td>';
+      html += '<td style="padding:6px 8px;text-align:right;color:var(--muted)">' + formatFileSize(f.size) + '</td>';
+      html += '<td style="padding:6px 8px;color:var(--muted)">' + date + '</td>';
+      html += '<td style="padding:6px 8px;text-align:center;white-space:nowrap">';
+      html += '<a href="/api/file?key=' + encodeURIComponent(f.key) + '" download style="color:var(--gold);text-decoration:none;margin-right:8px;cursor:pointer" title="Download">⬇️</a>';
+      html += '<span style="color:var(--red);cursor:pointer" onclick="deleteUploadedFile(\'' + escHtml(f.key.replace(/'/g, "\\'")) + '\',\'' + escHtml(f.name.replace(/'/g, "\\'")) + '\')" title="Delete">🗑️</span>';
+      html += '</td></tr>';
+    });
+
+    html += '</tbody></table>';
+    listEl.innerHTML = html;
+  } catch (e) {
+    listEl.innerHTML = '<p style="text-align:center;color:var(--red);font-size:12px;padding:20px">Failed to load files: ' + escHtml(e.message) + '</p>';
+    countEl.textContent = '';
+  }
+}
+
+async function deleteUploadedFile(key, name) {
+  if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
+  try {
+    var response = await fetch('/api/file?key=' + encodeURIComponent(key), { method: 'DELETE' });
+    if (!response.ok) throw new Error('Delete failed');
+    toast('Deleted: ' + name, 'success');
+    logAudit('Data Delete', 'Deleted file: ' + name);
+    loadUploadedFiles();
+  } catch (e) {
+    toast('Delete failed: ' + e.message, 'error');
+  }
 }
 
 // ======= INIT NEW FEATURES =======

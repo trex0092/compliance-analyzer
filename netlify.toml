@@ -2,6 +2,9 @@
   publish = "."
   command = "echo deploy-v20260401-fixall"
 
+[functions]
+  directory = "netlify/functions"
+
 [[headers]]
   for = "/*"
   [headers.values]
