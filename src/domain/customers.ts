@@ -22,7 +22,8 @@ export interface CustomerProfile {
   groupId?: string;
   groupName?: string;
   entityType?: "headquarters" | "branch" | "subsidiary" | "standalone";
-  asanaProjectId?: string;
+  asanaComplianceProjectGid?: string;
+  asanaWorkflowProjectGid?: string;
   countryOfRegistration?: string;
   tradeLicenseNo?: string;
   sector?: string;
@@ -46,7 +47,8 @@ export const COMPANY_REGISTRY: Omit<CustomerProfile, "beneficialOwners" | "revie
     legalName: "MADISON JEWELLERY TRADING L.L.C",
     type: "customer",
     entityType: "standalone",
-    asanaProjectId: "MADISON-LLC-COMPLIANCE-2026",
+    asanaComplianceProjectGid: "1213825539896477",
+    asanaWorkflowProjectGid: "1213825580399850",
     activity: "Jewellery Trading",
     location: "Dubai, UAE",
     countryOfRegistration: "UAE",
@@ -62,7 +64,8 @@ export const COMPANY_REGISTRY: Omit<CustomerProfile, "beneficialOwners" | "revie
     legalName: "NAPLES JEWELLERY TRADING L.L.C",
     type: "customer",
     entityType: "standalone",
-    asanaProjectId: "NAPLES-LLC-COMPLIANCE-2026",
+    asanaComplianceProjectGid: "1213825365472836",
+    asanaWorkflowProjectGid: "1213825542010518",
     activity: "Jewellery Trading",
     location: "Dubai, UAE",
     countryOfRegistration: "UAE",
@@ -78,7 +81,8 @@ export const COMPANY_REGISTRY: Omit<CustomerProfile, "beneficialOwners" | "revie
     legalName: "GRAMALTIN KIYMETLI MADENLER RAFINERI SANAYI VE TICARET ANONIM SIRKETI",
     type: "supplier",
     entityType: "standalone",
-    asanaProjectId: "GRAMALTIN-AS-COMPLIANCE-2026",
+    asanaComplianceProjectGid: "1213838252710765",
+    asanaWorkflowProjectGid: "1213825541970651",
     activity: "Precious Metal Refining & Trading",
     location: "Sharjah, UAE",
     countryOfRegistration: "UAE",
@@ -94,7 +98,8 @@ export const COMPANY_REGISTRY: Omit<CustomerProfile, "beneficialOwners" | "revie
     legalName: "ZOE Precious Metals and Jewelery (FZE)",
     type: "customer",
     entityType: "standalone",
-    asanaProjectId: "ZOE-FZE-COMPLIANCE-2026",
+    asanaComplianceProjectGid: "1213825578259027",
+    asanaWorkflowProjectGid: "1213825580398407",
     activity: "Precious Metals and Jewelery",
     location: "Sharjah, UAE",
     countryOfRegistration: "UAE",
@@ -112,7 +117,8 @@ export const COMPANY_REGISTRY: Omit<CustomerProfile, "beneficialOwners" | "revie
     groupId: "fg-group",
     groupName: "Fine Gold Group",
     entityType: "headquarters",
-    asanaProjectId: "FG-LLC-COMPLIANCE-2026",
+    asanaComplianceProjectGid: "1213819084043355",
+    asanaWorkflowProjectGid: "1213759768596515",
     activity: "Non-Manufactured Precious Metal Trading",
     location: "Dubai, UAE",
     countryOfRegistration: "UAE",
@@ -130,7 +136,8 @@ export const COMPANY_REGISTRY: Omit<CustomerProfile, "beneficialOwners" | "revie
     groupId: "fg-group",
     groupName: "Fine Gold Group",
     entityType: "branch",
-    asanaProjectId: "FG-BRANCH-COMPLIANCE-2026",
+    asanaComplianceProjectGid: "1213899448309031",
+    asanaWorkflowProjectGid: "1213899469870046",
     activity: "Non-Manufactured Precious Metal Trading",
     location: "Sharjah, UAE",
     countryOfRegistration: "UAE",

@@ -2548,7 +2548,22 @@ var lastResult = null;
 var lastQuery = '';
 var lastArea = '';
 var REMEMBER_KEYS = false;
-const ASANA_PROJECT = '1213759768596515';
+const ASANA_PROJECT_MAP = {
+  'company-1': { compliance: '1213825539896477', workflow: '1213825580399850' },
+  'company-2': { compliance: '1213825365472836', workflow: '1213825542010518' },
+  'company-3': { compliance: '1213838252710765', workflow: '1213825541970651' },
+  'company-4': { compliance: '1213825578259027', workflow: '1213825580398407' },
+  'company-5': { compliance: '1213819084043355', workflow: '1213759768596515' },
+  'company-6': { compliance: '1213899448309031', workflow: '1213899469870046' }
+};
+function getAsanaProject() {
+  const entry = ASANA_PROJECT_MAP[activeCompanyId] || ASANA_PROJECT_MAP['company-5'];
+  return entry.workflow;
+}
+function getAsanaComplianceProject() {
+  const entry = ASANA_PROJECT_MAP[activeCompanyId] || ASANA_PROJECT_MAP['company-5'];
+  return entry.compliance;
+}
 const ASANA_WORKSPACE = '1213645083721316';
 const KEYS_STORAGE = 'fgl_keys';
 const SHIPMENTS_STORAGE = 'fgl_shipments';
@@ -5520,7 +5535,7 @@ async function runAnalysis(queryOverride, areaOverride) {
   if ((ASANA_TOKEN || PROXY_URL) && (!queryOverride) && document.getElementById('includeAsana').value==='yes') {
     document.getElementById('statusText').textContent = 'Reading Asana task status...';
     try {
-      const r = await asanaFetch(`/projects/${ASANA_PROJECT}/tasks?opt_fields=name,completed,due_on&limit=100`);
+      const r = await asanaFetch(`/projects/${getAsanaProject()}/tasks?opt_fields=name,completed,due_on&limit=100`);
       const d = await r.json();
       const today = new Date(); today.setHours(0,0,0,0);
       const overdue = (d.data||[]).filter(t=>!t.completed&&t.due_on&&new Date(t.due_on)<today).map(t=>t.name).slice(0,12);
@@ -5793,7 +5808,7 @@ async function autoSyncToAsana(taskName, taskNotes, dueInDays) {
   if (!ASANA_TOKEN && !PROXY_URL) return null;
   try {
     const due = new Date(); due.setDate(due.getDate() + (dueInDays || 14));
-    const body = { data: { name: taskName, notes: taskNotes, projects: [ASANA_PROJECT], workspace: ASANA_WORKSPACE, due_on: due.toISOString().split('T')[0] } };
+    const body = { data: { name: taskName, notes: taskNotes, projects: [getAsanaProject()], workspace: ASANA_WORKSPACE, due_on: due.toISOString().split('T')[0] } };
     setAsanaModuleSync('writeback', { status: 'Syncing', lastError: '' });
     const r = await asanaFetch('/tasks', { method: 'POST', body: JSON.stringify(body) });
     const d = await r.json();
@@ -5829,7 +5844,7 @@ async function submitCreateTask() {
   if (!name) { toast('Task name is required','error'); return; }
   if (!ASANA_TOKEN && !PROXY_URL) { toast('Asana token required','error'); return; }
 
-  const body = { data: { name, notes, projects: [ASANA_PROJECT], workspace: ASANA_WORKSPACE } };
+  const body = { data: { name, notes, projects: [getAsanaProject()], workspace: ASANA_WORKSPACE } };
   if (due) body.data.due_on = due;
   if (priorityGid) body.data.custom_fields = { '1213759653333851': priorityGid };
 
@@ -5873,7 +5888,7 @@ async function loadAsanaTasks(silent) {
   document.getElementById('asanaContent').innerHTML = '<p style="color:var(--muted);font-size:13px">Loading from Asana...</p>';
   setAsanaModuleSync('tasks', { status: 'Refreshing', lastError: '' });
   try {
-    const r = await asanaFetch(`/projects/${ASANA_PROJECT}/tasks?opt_fields=name,completed,due_on,assignee.name,memberships.section.name&limit=100`);
+    const r = await asanaFetch(`/projects/${getAsanaProject()}/tasks?opt_fields=name,completed,due_on,assignee.name,memberships.section.name&limit=100`);
     const d = await r.json();
     if (d.errors) throw new Error(d.errors[0]?.message);
     const tasks = d.data || [];
@@ -6094,7 +6109,7 @@ async function loadEvidenceFromAsana() {
   toast('Loading tasks from Asana...','info',2000);
   setAsanaModuleSync('evidence', { status: 'Refreshing', lastError: '' });
   try {
-    const r = await asanaFetch(`/projects/${ASANA_PROJECT}/tasks?opt_fields=name,gid,completed&limit=100`);
+    const r = await asanaFetch(`/projects/${getAsanaProject()}/tasks?opt_fields=name,gid,completed&limit=100`);
     const d = await r.json();
     if (d.errors) throw new Error(d.errors[0]?.message);
     const tasks = (d.data||[]).filter(t=>!t.completed).slice(0,30);
