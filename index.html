@@ -7002,6 +7002,10 @@ async function attemptLogin() {
 function showMainApp() {
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('mainApp').style.display = 'block';
+  // If keys were already saved, skip setup and go straight to main panel
+  if (ANTHROPIC_KEY || PROXY_URL) {
+    openMainPanel();
+  }
   // Update user info display
   const nameEl = document.getElementById('currentUserName');
   const roleEl = document.getElementById('currentUserRole');
