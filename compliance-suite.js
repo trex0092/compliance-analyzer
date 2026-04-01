@@ -2607,3 +2607,58 @@
   global.suite2PatchAsana = { tfs2: patchTFS2Render, dpmsr: patchDPMSRRender, ailog: patchAILogRender };
 
 })(window);
+
+// ════════════════════════════════════════════════════════════════════════════
+// MIGRATION PATCH — Fix {entity} placeholder in saved calendar/Asana tasks
+// Runs once on load, replaces literal {entity} with active company name
+// ════════════════════════════════════════════════════════════════════════════
+(function() {
+  function fixEntityPlaceholders() {
+    try {
+      const activeComp = (typeof getActiveCompany === 'function') ? getActiveCompany() : {};
+      const companyName = activeComp.name || 'Fine Gold LLC';
+      if (!companyName) return;
+
+      // Fix CALENDAR_STORAGE deadlines
+      const calKey = (typeof CALENDAR_STORAGE !== 'undefined') ? CALENDAR_STORAGE : 'fgl_calendar_v2';
+      const calEntries = JSON.parse(localStorage.getItem(calKey) || '[]');
+      let calFixed = 0;
+      calEntries.forEach(entry => {
+        if (entry.title && entry.title.includes('{entity}')) {
+          entry.title = entry.title.replace(/\{entity\}/g, companyName);
+          calFixed++;
+        }
+        if (entry.notes && entry.notes.includes('{entity}')) {
+          entry.notes = entry.notes.replace(/\{entity\}/g, companyName);
+        }
+      });
+      if (calFixed > 0) {
+        localStorage.setItem(calKey, JSON.stringify(calEntries));
+        console.log(`[Migration] Fixed ${calFixed} calendar entries with {entity} placeholder`);
+      }
+
+      // Also check all known storage keys for {entity}
+      const keysToCheck = [
+        'fgl_calendar_v2', 'fgl_calendar', 'fgl_gaps_v2', 'fgl_evidence',
+        'fgl_asana_sync', 'fgl_workflow_log'
+      ];
+      keysToCheck.forEach(key => {
+        const raw = localStorage.getItem(key);
+        if (raw && raw.includes('{entity}')) {
+          localStorage.setItem(key, raw.replace(/\{entity\}/g, companyName));
+          console.log(`[Migration] Fixed {entity} in ${key}`);
+        }
+      });
+
+    } catch(e) {
+      console.warn('[Migration] Entity fix error:', e);
+    }
+  }
+
+  // Run after app initializes so getActiveCompany() is available
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(fixEntityPlaceholders, 1500));
+  } else {
+    setTimeout(fixEntityPlaceholders, 1500);
+  }
+})();

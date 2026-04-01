@@ -240,8 +240,11 @@
     const projectId = localStorage.getItem('asanaProjectId') || (typeof ASANA_PROJECT !== 'undefined' ? ASANA_PROJECT : '1213759768596515');
     const templates = (typeof IntegrationsEnhanced !== 'undefined' && IntegrationsEnhanced.asana?.TASK_TEMPLATES) ? IntegrationsEnhanced.asana.TASK_TEMPLATES : {};
     const tmpl = templates[action.template] || {};
-    const taskName = interpolate(tmpl.name || action.template, data);
-    const taskNotes = interpolate(tmpl.notes || '', data);
+    // Inject active company name so {entity} placeholder is always resolved
+    const activeComp = (typeof getActiveCompany === 'function') ? getActiveCompany() : {};
+    const enrichedData = Object.assign({ entity: activeComp.name || 'Fine Gold LLC', company: activeComp.name || 'Fine Gold LLC' }, data);
+    const taskName = interpolate(tmpl.name || action.template, enrichedData);
+    const taskNotes = interpolate(tmpl.notes || '', enrichedData);
 
     const taskBody = JSON.stringify({
       data: {

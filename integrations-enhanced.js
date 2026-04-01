@@ -627,13 +627,14 @@
     const tmpl = asana.TASK_TEMPLATES[templateKey];
     if (!tmpl) return;
     const activeComp = typeof getActiveCompany === 'function' ? getActiveCompany() : {};
-    const defaultName = activeComp.name || '';
-    const entity = prompt('Enter company or entity name for "' + tmpl.name + '":', defaultName);
+    const defaultName = activeComp.name || 'Fine Gold LLC';
+    // Auto-use active company name — prompt only if no active company set
+    const entity = defaultName || prompt('Enter company or entity name for "' + tmpl.name + '":', defaultName);
     if (!entity) return;
-    const projectId = window.ASANA_PROJECT || prompt('Enter Asana Project ID:');
+    const projectId = window.ASANA_PROJECT || (typeof ASANA_PROJECT !== 'undefined' ? ASANA_PROJECT : null) || prompt('Enter Asana Project ID:');
     if (!projectId) return;
-    asana.createFromTemplate(templateKey, { entity, framework: entity, topic: entity }, projectId)
-      .then(() => { if (typeof toast === 'function') toast('Task created from template', 'success'); })
+    asana.createFromTemplate(templateKey, { entity, company: entity, framework: entity, topic: entity }, projectId)
+      .then(() => { if (typeof toast === 'function') toast('Task created: ' + tmpl.name.replace('{entity}', entity), 'success'); })
       .catch(e => { if (typeof toast === 'function') toast('Failed: ' + e.message, 'error'); });
   }
 
