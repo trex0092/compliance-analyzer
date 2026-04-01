@@ -64,26 +64,18 @@
   async function pushToAsana(title, notes, section) {
     try {
       if (typeof asanaFetch !== 'function') return null;
-      // Project ID loaded from global scope
-      const sectionMap = {
-        'cra':  '1213759653383900',
-        'ubo':  '1213759653383901',
-        'str':  '1213759653383902',
-        'tfs':  '1213759653383903',
-        'approvals': '1213759653383904',
-      };
+      const projectId = (typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515';
       const body = {
         data: {
           name: title,
           notes: notes,
-          projects: [ASANA_PROJECT],
-          ...(sectionMap[section] ? { memberships: [{ project: ASANA_PROJECT, section: sectionMap[section] }] } : {}),
+          projects: [projectId],
         }
       };
       const resp = await asanaFetch('/tasks', { method: 'POST', body: JSON.stringify(body) });
       const data = await resp.json();
       return data?.data?.gid || null;
-    } catch(e) { return null; }
+    } catch(e) { console.warn('Asana push error:', e); return null; }
   }
 
   // ─── INJECT TABS ─────────────────────────────────────────────────────────────
