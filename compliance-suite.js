@@ -83,9 +83,8 @@
     { id: 'cra',       icon: '👤', label: 'CRA',       title: 'Customer Risk Assessment' },
     { id: 'ubo',       icon: '🏛️', label: 'UBO',       title: 'UBO Register' },
     { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management' },
-    { id: 'tfs',       icon: '🔒', label: 'TFS Ops',   title: 'TFS Operations' },
     { id: 'redflags',  icon: '🚩', label: 'Red Flags', title: 'Red Flag Library' },
-    { id: 'approvals2','icon':'✅', label: 'Approvals', title: 'Approval Matrix' },
+    { id: 'approvals2','icon':'✅', label: '4-Eyes', title: 'Four-Eyes Approval Matrix' },
     { id: 'regmap',    icon: '📋', label: 'Reg Map',   title: 'Regulatory Mapping' },
   ];
 
@@ -1695,7 +1694,7 @@
 
   // ── INJECT NEW TABS ─────────────────────────────────────────────────────────
   const SUITE2_TABS = [
-    { id: 'tfs2',    icon: '🇦🇪', label: 'TFS UAE',   title: 'Full UAE TFS Workflow' },
+    { id: 'tfs2',    icon: '🇦🇪', label: 'TFS',       title: 'Full UAE TFS Workflow — CNMR/PNMR' },
     { id: 'dpmsr',   icon: '📊', label: 'DPMSR',      title: 'DPMSR Threshold Reporting' },
     { id: 'retention', icon: '🗄️', label: 'Retention', title: 'Record Retention — Art.25' },
     { id: 'ailog',   icon: '🤖', label: 'AI Govern',  title: 'AI Output Governance' },
