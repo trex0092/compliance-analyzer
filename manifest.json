@@ -7,11 +7,25 @@
   "background_color": "#0E0F11",
   "theme_color": "#0E0F11",
   "orientation": "any",
+  "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%230E0F11'/><text x='96' y='120' text-anchor='middle' font-size='100' fill='%23C9A84C'>⚖</text></svg>",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='64' fill='%230E0F11'/%3E%3Ctext x='256' y='340' text-anchor='middle' font-size='280' fill='%23C9A84C'%3E%E2%9A%96%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%230E0F11'/%3E%3Ctext x='96' y='128' text-anchor='middle' font-size='100' fill='%23C9A84C'%3E%E2%9A%96%3C/text%3E%3C/svg%3E",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%230E0F11'/%3E%3Ctext x='256' y='340' text-anchor='middle' font-size='280' fill='%23C9A84C'%3E%E2%9A%96%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

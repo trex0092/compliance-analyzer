@@ -12,7 +12,8 @@
 <meta name="apple-mobile-web-app-title" content="Compliance">
 <meta name="theme-color" content="#0E0F11">
 <link rel="manifest" href="manifest.json">
-<title>Compliance Tasks - Compliance Analyzer v2.5</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='32' fill='%230E0F11'/%3E%3Ctext x='90' y='120' text-anchor='middle' font-size='96' fill='%23C9A84C'%3E%E2%9A%96%3C/text%3E%3C/svg%3E">
+<title>Compliance Analyzer v2.6</title>
 <script>
 // KILL all service workers and caches — must run FIRST
 if ('serviceWorker' in navigator) {
@@ -75,8 +76,8 @@ window.addEventListener('unhandledrejection', function(e) {
   --bg:#1a1a2e;--surface:#16213e;--surface2:#1e2a4a;
   --border:rgba(255,255,255,0.1);--text:#e0e0e0;--muted:#a0a0b0;
 }
-/* Smooth theme transition */
-body,body *{transition:background-color 0.3s ease,color 0.3s ease,border-color 0.3s ease,box-shadow 0.3s ease;}
+/* Smooth theme transition — scoped to theme toggle only */
+body.theme-transitioning,body.theme-transitioning *{transition:background-color 0.3s ease,color 0.3s ease,border-color 0.3s ease,box-shadow 0.3s ease;}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
 .app{max-width:980px;margin:0 auto;padding:2rem 1.5rem}
 .header{text-align:center;margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)}
@@ -155,7 +156,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .company-bar .cb-switch{display:flex;align-items:center;gap:6px}
 .company-bar .cb-switch select{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:inherit;padding:4px 8px;border-radius:6px;font-size:10px;font-family:'DM Mono',monospace;cursor:pointer}
 @keyframes cbPulse{0%,100%{opacity:1}50%{opacity:0.4}}
-.tabs{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:1.2rem}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:1.2rem}
 .tab{padding:8px 6px;border-radius:8px;font-size:11px;cursor:pointer;background:var(--surface);border:1px solid var(--border);color:var(--muted);transition:all 0.2s;white-space:nowrap;text-align:center;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis}
 .tab.active{background:var(--gold-dim);border-color:rgba(201,168,76,0.4);color:var(--gold)}
 .tab-content{display:none} .tab-content.active{display:block}
@@ -242,15 +243,19 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .hamburger-btn:hover{background:var(--surface2)}
 .mobile-menu-close{display:none;position:absolute;top:12px;right:16px;background:none;border:1px solid var(--border);color:var(--muted);font-size:20px;cursor:pointer;border-radius:8px;padding:4px 10px;z-index:96}
 .mobile-menu-close:hover{color:var(--text)}
+.tab{flex:0 0 auto}
+/* Drag-and-drop upload zone */
+.upload-dropzone{border:2px dashed var(--border);border-radius:12px;padding:24px 16px;text-align:center;transition:all 0.2s;cursor:pointer}
+.upload-dropzone.drag-over{border-color:var(--gold);background:var(--gold-dim)}
+.upload-dropzone p{color:var(--muted);font-size:13px;margin:0}
+.upload-dropzone .drop-icon{font-size:32px;margin-bottom:8px}
 /* Mobile Responsive */
 @media (max-width: 768px) {
-  .tabs { grid-template-columns: repeat(4,1fr); gap: 4px; padding: 8px; }
-  .tabs .tab { font-size: 10px; padding: 6px 4px; }
   .tab-content { padding: 12px; }
   table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .card, .grid-card { padding: 12px; }
   h1, h2 { font-size: 1.2em; }
-  .modal { width: 95%; margin: 5% auto; }
+  .modal { width: 95%; margin: 5% auto; max-height: 90vh; }
   input, select, textarea { font-size: 16px !important; } /* Prevent zoom on iOS */
   .app { padding: 1rem 0.75rem; padding-top: env(safe-area-inset-top, 1rem); padding-bottom: env(safe-area-inset-bottom, 1rem); }
   .hamburger-btn { display: block; margin-bottom: 0.8rem; position: sticky; top: 0; z-index: 90; }
@@ -271,24 +276,49 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
   .finding, .f-body, .f-ref, .rec { word-break: break-word; overflow-wrap: break-word; }
   /* Fix header on mobile */
   .header { padding-bottom: 1rem; margin-bottom: 1rem; }
-  .header .logo-text { font-size: 18px; }
+  .header .logo-text { font-size: 16px; }
   .subtitle { font-size: 9px; letter-spacing: 1px; }
+  /* Stack metrics on mobile */
+  .metrics { grid-template-columns: repeat(2, 1fr); }
+  .gap-summary { grid-template-columns: repeat(2, 1fr); }
+  /* Fix row grids */
+  .row-2, .row-3 { grid-template-columns: 1fr; }
+  /* Fix header layout on mobile */
+  .header > div { flex-wrap: wrap; justify-content: center; gap: 8px; }
+  #currentUserInfo { order: 3; width: 100%; justify-content: center; margin-top: 4px; }
   /* Fix setup panel on mobile */
   #setupPanel { padding: 16px; }
   #setupPanel .card { padding: 14px; }
+  /* Fix quick scenarios chips */
+  .examples { gap: 4px; }
+  .chip { font-size: 11px; padding: 6px 10px; }
+  /* Fix top-bar buttons */
+  .top-bar { flex-direction: column; align-items: stretch; }
+  .top-bar > div { display: flex; flex-wrap: wrap; gap: 6px; }
+  /* Fix price grid */
+  .price-grid { grid-template-columns: 1fr; }
+  /* Fix notification panel */
+  .notif-panel { width: min(380px, calc(100vw - 32px)); right: -60px; }
+  /* Upload dropzone mobile */
+  .upload-dropzone { padding: 16px 12px; }
+  .upload-dropzone .drop-icon { font-size: 24px; }
 }
 
 @media (max-width: 480px) {
-  .tabs .tab { font-size: 10px; padding: 4px 8px; }
   .tab-content { padding: 6px; }
   body { font-size: 13px; }
   .app { padding: 0.5rem; }
   .card { padding: 10px; border-radius: 10px; }
   .btn { padding: 8px 12px; font-size: 12px; min-height: 44px; }
-  /* Stack grid layouts */
+  /* Stack all grids */
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .gap-summary { grid-template-columns: 1fr 1fr; }
   .grid-card { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
   [style*="display:flex"][style*="gap"] { flex-wrap: wrap; }
+  /* Login box mobile fix */
+  .login-box { padding: 24px 16px; margin: 0 12px; }
+  /* Company header select */
+  #headerCompanySelect { max-width: 120px; }
 }
 
 /* Fix iOS rubber-banding and notch */
@@ -2590,11 +2620,18 @@ Examples:
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Upload compliance documents, evidence files, shipment records, and other data. Files are stored securely on the server and persist across sessions and devices.</p>
 
-        <!-- Upload Form -->
+        <!-- Upload Form with Drag & Drop -->
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px">
           <span class="lbl" style="color:var(--gold);font-size:12px;margin-bottom:10px;display:block">UPLOAD NEW FILE</span>
-          <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-            <div style="flex:1;min-width:200px">
+          <div class="upload-dropzone" id="uploadDropzone" onclick="document.getElementById('uploadFileInput').click()">
+            <div class="drop-icon">📁</div>
+            <p><strong style="color:var(--gold)">Tap to select</strong> or drag & drop files here</p>
+            <p style="font-size:11px;margin-top:6px">PDF, DOC, XLS, CSV, JPG, PNG, ZIP, JSON, XML — max 50 MB</p>
+            <div id="selectedFileName" style="display:none;margin-top:10px;padding:8px 12px;background:var(--surface);border-radius:8px;font-size:12px;color:var(--gold)"></div>
+          </div>
+          <input type="file" id="uploadFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip,.json,.xml" style="display:none" onchange="showSelectedFile(this)" />
+          <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
+            <div style="flex:1;min-width:160px">
               <span class="lbl">Category</span>
               <select id="uploadCategory" style="width:100%">
                 <option value="general">General</option>
@@ -2609,11 +2646,7 @@ Examples:
                 <option value="incidents">Incident Reports</option>
               </select>
             </div>
-            <div style="flex:2;min-width:250px">
-              <span class="lbl">File (max 50 MB)</span>
-              <input type="file" id="uploadFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip,.json,.xml" style="width:100%" />
-            </div>
-            <button class="btn btn-sm btn-green" id="uploadBtn" onclick="uploadFileToServer()" style="height:36px">📤 Upload</button>
+            <button class="btn btn-gold" id="uploadBtn" onclick="uploadFileToServer()" style="min-height:42px;flex:0 0 auto">📤 Upload File</button>
           </div>
           <div id="uploadProgress" style="display:none;margin-top:10px">
             <div style="background:var(--surface);border-radius:4px;height:6px;overflow:hidden">
@@ -10726,6 +10759,39 @@ async function deleteUploadedFile(key, name) {
     toast('Delete failed: ' + e.message, 'error');
   }
 }
+
+// ======= DRAG & DROP UPLOAD =======
+function showSelectedFile(input) {
+  var el = document.getElementById('selectedFileName');
+  if (input.files && input.files[0]) {
+    el.style.display = 'block';
+    el.textContent = input.files[0].name + ' (' + formatFileSize(input.files[0].size) + ')';
+  } else {
+    el.style.display = 'none';
+  }
+}
+(function initDropzone() {
+  function setup() {
+    var dz = document.getElementById('uploadDropzone');
+    if (!dz) return;
+    ['dragenter','dragover'].forEach(function(evt) {
+      dz.addEventListener(evt, function(e) { e.preventDefault(); e.stopPropagation(); dz.classList.add('drag-over'); });
+    });
+    ['dragleave','drop'].forEach(function(evt) {
+      dz.addEventListener(evt, function(e) { e.preventDefault(); e.stopPropagation(); dz.classList.remove('drag-over'); });
+    });
+    dz.addEventListener('drop', function(e) {
+      var files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length > 0) {
+        var input = document.getElementById('uploadFileInput');
+        input.files = files;
+        showSelectedFile(input);
+      }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+})();
 
 // ======= INIT NEW FEATURES =======
 function initNewFeatures() {
