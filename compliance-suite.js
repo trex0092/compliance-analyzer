@@ -80,7 +80,7 @@
 
   // ─── INJECT TABS ─────────────────────────────────────────────────────────────
   const NEW_TABS = [
-    { id: 'cra',       icon: '👤', label: 'CRA',       title: 'Customer Risk Assessment' },
+    // CRA merged into Risk Assessment tab
     { id: 'ubo',       icon: '🏛️', label: 'UBO',       title: 'UBO Register' },
     { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management' },
     { id: 'redflags',  icon: '🚩', label: 'Red Flags', title: 'Red Flag Library' },
@@ -176,7 +176,7 @@
   }
 
   function renderCRA() {
-    const el = document.getElementById('suite-content-cra');
+    const el = document.getElementById('cra-embedded-content') || document.getElementById('suite-content-cra');
     if (!el) return;
     const records = load(SK.CRA) || [];
     // Sync CRA records to Risk Assessment storage for unified view
@@ -309,6 +309,7 @@
     `;
   }
 
+  global.renderCRA = renderCRA;
   global.suiteOpenCRAForm = function() {
     document.getElementById('cra-edit-idx').value = '-1';
     ['cra-name','cra-ref','cra-notes'].forEach(id => { const e = document.getElementById(id); if(e) e.value=''; });
@@ -1646,7 +1647,7 @@
 
   // ── INJECT NEW TABS ─────────────────────────────────────────────────────────
   const SUITE2_TABS = [
-    { id: 'tfs2',    icon: '🇦🇪', label: 'TFS',       title: 'Full UAE TFS Workflow — CNMR/PNMR' },
+    // TFS merged into Screening & TFS tab
     { id: 'dpmsr',   icon: '📊', label: 'DPMSR',      title: 'DPMSR Threshold Reporting' },
     { id: 'retention', icon: '🗄️', label: 'Retention', title: 'Record Retention — Art.25' },
     { id: 'ailog',   icon: '🤖', label: 'AI Govern',  title: 'AI Output Governance' },
@@ -1705,7 +1706,7 @@
   // ════════════════════════════════════════════════════════════════════════════
 
   function renderTFS2() {
-    const el = document.getElementById('suite2-content-tfs2');
+    const el = document.getElementById('tfs-embedded-content') || document.getElementById('suite2-content-tfs2');
     if (!el) return;
     const events = load(SK2.TFS2)||[];
 
@@ -1955,6 +1956,7 @@
     }
   };
 
+  global.renderTFS2 = renderTFS2;
   global.suite2OpenTFSForm = function() {
     document.getElementById('tfs2-edit-idx').value = '-1';
     ['tfs2-name','tfs2-reviewer','tfs2-notes','tfs2-fp-evidence','tfs2-pnmr-ref','tfs2-ffr-ref','tfs2-cnmr-ref'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
