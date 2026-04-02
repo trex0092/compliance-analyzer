@@ -1,6 +1,6 @@
 [build]
   publish = "."
-  command = "echo deploy-v20260401-fixall"
+  command = "echo deploy-v3.0-enhancements"
 
 [functions]
   directory = "netlify/functions"
