@@ -532,9 +532,9 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       <div class="tab" onclick="switchTab('training')">🎓 Training</div>
       <div class="tab" onclick="switchTab('learning')">📚 Learning</div>
       <div class="tab" onclick="switchTab('employees')">👤 Employees</div>
-      <div class="tab" onclick="switchTab('screening')">🔍 Screening</div>
+      <div class="tab" onclick="switchTab('screening')">🔍 Screening & TFS</div>
       <div class="tab" onclick="switchTab('onboarding')">👤 Onboarding</div>
-      <div class="tab" onclick="switchTab('riskassessment')">⚖️ Risk Assessment</div>
+      <div class="tab" onclick="switchTab('riskassessment')">⚖️ Risk & CRA</div>
       <div class="tab" onclick="switchTab('incidents')">⚠️ Incidents</div>
       <div class="tab" onclick="switchTab('dashboard')">📊 Dashboard</div>
       <div class="tab" onclick="switchTab('calendar')">📅 Calendar</div>
@@ -1936,6 +1936,8 @@ Examples:
         <span class="sec-title">Completed Risk Assessments</span>
         <div id="raHistoryList"><p style="font-size:13px;color:var(--muted)">No assessments recorded yet.</p></div>
       </div>
+      <!-- CRA (Customer Risk Assessment) embedded from compliance-suite -->
+      <div id="cra-embedded-content"></div>
     </div>
 
     <!-- INCIDENTS TAB (Incident Register + Whistleblower + STR) -->
@@ -3459,7 +3461,8 @@ function switchTab(name) {
   if (name==='asana') loadAsanaTasks();
   if (name==='shipments') { renderShipments(); refreshMetalsPrices(false); }
   if (name==='iarreport') { renderIARReports(); if (!iarUboCount) { addIARUboRow(); addIARUboRow(); } if (!iarManagerCount) { addIARManagerRow(); } }
-  if (name==='screening') { if (typeof initSanctionsRefreshStatus === 'function') initSanctionsRefreshStatus(); }
+  if (name==='screening') { if (typeof initSanctionsRefreshStatus === 'function') initSanctionsRefreshStatus(); if (typeof renderTFS2 === 'function') { var tfsEl=document.getElementById('tfs-embedded-content'); if(tfsEl&&!tfsEl.innerHTML.trim()) renderTFS2(); } }
+  if (name==='riskassessment') { if (typeof renderCRA === 'function') { var craEl=document.getElementById('cra-embedded-content'); if(craEl&&!craEl.innerHTML.trim()) renderCRA(); } }
   if (name==='evidence') renderEvidence();
   if (name==='schedule') { renderSchedules(); renderHistory(); }
   if (name==='ops' && typeof renderComplianceOps === 'function') renderComplianceOps();
