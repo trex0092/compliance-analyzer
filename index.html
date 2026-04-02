@@ -350,7 +350,37 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .role-admin{background:rgba(239,68,68,0.12);color:#EF4444}
 .role-co{background:rgba(56,132,244,0.12);color:#3884F4}
 .role-viewer{background:rgba(16,185,129,0.12);color:#10B981}
+/* Dark mode toggle */
+.theme-toggle{background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;padding:6px 10px;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background 0.2s,border-color 0.2s}
+.theme-toggle:hover{border-color:var(--gold);background:var(--gold-dim)}
 </style>
+<script>
+// Apply saved theme immediately to prevent flash
+(function(){
+  var saved = localStorage.getItem('theme');
+  if (saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+})();
+function toggleDarkMode(){
+  var html = document.documentElement;
+  var isDark = html.getAttribute('data-theme') === 'dark';
+  document.body.classList.add('theme-transitioning');
+  if (isDark) {
+    html.removeAttribute('data-theme');
+    localStorage.setItem('theme','light');
+  } else {
+    html.setAttribute('data-theme','dark');
+    localStorage.setItem('theme','dark');
+  }
+  var btn = document.getElementById('themeToggleBtn');
+  if (btn) btn.textContent = isDark ? '🌙' : '☀️';
+  setTimeout(function(){ document.body.classList.remove('theme-transitioning'); }, 350);
+}
+// Update button icon on load
+document.addEventListener('DOMContentLoaded', function(){
+  var btn = document.getElementById('themeToggleBtn');
+  if (btn && document.documentElement.getAttribute('data-theme') === 'dark') btn.textContent = '☀️';
+});
+</script>
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -448,6 +478,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       </div>
       <span style="color:var(--border);font-size:18px;font-weight:300">|</span>
       <select id="headerCompanySelect" onchange="switchActiveCompany(this.value);updateCompanyBar()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--gold);font-size:11px;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;outline:none;padding:4px 8px"></select>
+      <button class="theme-toggle" id="themeToggleBtn" onclick="toggleDarkMode()" title="Toggle dark mode">🌙</button>
       <div style="position:relative" id="notifBellWrap">
         <div class="notif-bell" onclick="toggleNotifPanel()">🔔<span class="notif-badge" id="notifBadge" style="display:none">0</span></div>
         <div class="notif-panel" id="notifPanel">
