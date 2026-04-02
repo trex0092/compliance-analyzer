@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#0E0F11">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='32' fill='%230E0F11'/%3E%3Ctext x='90' y='120' text-anchor='middle' font-size='96' fill='%23C9A84C'%3E%E2%9A%96%3C/text%3E%3C/svg%3E">
-<title>Compliance Analyzer v2.6</title>
+<title>Compliance Analyzer v3.0</title>
 <script>
 // KILL all service workers and caches — must run FIRST
 if ('serviceWorker' in navigator) {
@@ -517,7 +517,8 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 
     <div class="tabs" id="tabsNav">
       <button class="mobile-menu-close" id="mobileMenuClose" onclick="MobileResponsive.toggleMenu()">&times;</button>
-      <div class="tab active" onclick="switchTab('analyse');if(window.MobileResponsive)MobileResponsive.closeMenu()">🔍 Analyze</div>
+      <div class="tab active" onclick="switchTab('mywork');if(window.MobileResponsive)MobileResponsive.closeMenu()">📌 My Work</div>
+      <div class="tab" onclick="switchTab('analyse');if(window.MobileResponsive)MobileResponsive.closeMenu()">🔍 Analyze</div>
       <div class="tab" onclick="switchTab('shipments')">🚚 IAR Shipments</div>
       <div class="tab" onclick="switchTab('localshipments')">📦 Local Shipments</div>
       <div class="tab" onclick="switchTab('iarreport')">📝 IAR Report</div>
@@ -563,8 +564,44 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       </div>
     </div>
 
+    <!-- MY WORK TAB -->
+    <div id="tab-mywork" class="tab-content active">
+      <div class="card">
+        <div class="top-bar" style="margin-bottom:10px">
+          <span class="sec-title" style="margin:0;border:none;padding:0">📌 My Work — Compliance Officer Dashboard</span>
+          <button class="btn btn-sm btn-blue" onclick="refreshMyWork()">Refresh</button>
+        </div>
+      </div>
+      <div class="metrics" id="myWorkMetrics" style="grid-template-columns:repeat(6,1fr)"></div>
+      <!-- Document Expiry Forecast -->
+      <div class="card">
+        <span class="sec-title">Document Expiry Forecast</span>
+        <div id="myWorkExpiryForecast"></div>
+      </div>
+      <!-- Anomaly Detection Alerts -->
+      <div class="card" id="myWorkAnomaliesCard" style="display:none">
+        <span class="sec-title" style="color:var(--red)">Cross-Shipment Anomaly Alerts</span>
+        <div id="myWorkAnomalies"></div>
+      </div>
+      <!-- Pending Actions -->
+      <div class="card">
+        <span class="sec-title">Pending Actions</span>
+        <div id="myWorkPendingActions"><p style="font-size:13px;color:var(--muted)">Loading...</p></div>
+      </div>
+      <!-- Screening Staleness -->
+      <div class="card">
+        <span class="sec-title">Screening Re-check Required</span>
+        <div id="myWorkStaleScreenings"><p style="font-size:13px;color:var(--muted)">Loading...</p></div>
+      </div>
+      <!-- Recent Activity -->
+      <div class="card">
+        <span class="sec-title">Recent Activity (Last 24h)</span>
+        <div id="myWorkRecentActivity" style="max-height:300px;overflow-y:auto"><p style="font-size:13px;color:var(--muted)">Loading...</p></div>
+      </div>
+    </div>
+
     <!-- ANALYSE TAB -->
-    <div id="tab-analyse" class="tab-content active">
+    <div id="tab-analyse" class="tab-content">
       <div class="card">
         <span class="lbl">Describe what you want to analyze</span>
         <textarea id="queryInput" placeholder="Describe the compliance area, process, or scenario you want to analyze. Be specific about regulations, entities, risk factors, or operational gaps you need assessed.
@@ -2357,9 +2394,35 @@ Examples:
         <p style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">Assignee: Luisa Fernanda</p>
         <p style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">Trade License: 643756</p>
       </div>
+      <!-- Configurable Alert Windows -->
+      <div class="card">
+        <span class="lbl">Alert & Risk Configuration</span>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Customize alert windows and risk scoring thresholds per your compliance policy.</p>
+        <div class="row row-2" style="margin-bottom:12px">
+          <div><span class="lbl">Document Expiry Alert (days before)</span><input type="number" id="cfgDocExpiryDays" value="10" min="1" max="90" /></div>
+          <div><span class="lbl">Gap Remediation Window (days)</span><input type="number" id="cfgGapRemediationDays" value="15" min="1" max="90" /></div>
+        </div>
+        <div class="row row-2" style="margin-bottom:12px">
+          <div><span class="lbl">Screening Staleness Threshold (days)</span><input type="number" id="cfgScreeningStaleDays" value="90" min="7" max="365" /></div>
+          <div><span class="lbl">Auto Re-screening Interval (days, 0=off)</span><input type="number" id="cfgAutoRescreenDays" value="0" min="0" max="365" /></div>
+        </div>
+        <span class="lbl" style="margin-top:8px">Risk Score Thresholds</span>
+        <div class="row row-3" style="margin-bottom:12px">
+          <div><span class="lbl">Critical ≥</span><input type="number" id="cfgRiskCritical" value="12" min="1" /></div>
+          <div><span class="lbl">High ≥</span><input type="number" id="cfgRiskHigh" value="8" min="1" /></div>
+          <div><span class="lbl">Medium ≥</span><input type="number" id="cfgRiskMedium" value="4" min="1" /></div>
+        </div>
+        <span class="lbl" style="margin-top:8px">High-Risk Country List</span>
+        <textarea id="cfgHighRiskCountries" style="min-height:60px;font-size:12px" placeholder="Comma-separated: iran, north korea, syria..."></textarea>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn btn-gold" onclick="saveComplianceConfig()">Save Configuration</button>
+          <button class="btn btn-sm" onclick="resetComplianceConfig()">Reset to Defaults</button>
+        </div>
+      </div>
       <div class="card">
         <span class="lbl">Local Storage</span>
         <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Evidence tracker links and schedule history are saved in your browser.</p>
+        <div id="storageQuotaInfo" style="font-size:11px;color:var(--muted);margin-bottom:8px"></div>
         <button class="btn btn-sm btn-red" onclick="clearAppData()">Clear All Local Data</button>
       </div>
       <!-- User Management (Admin only) -->
@@ -2629,7 +2692,7 @@ Examples:
             <p style="font-size:11px;margin-top:6px">PDF, DOC, XLS, CSV, JPG, PNG, ZIP, JSON, XML — max 50 MB</p>
             <div id="selectedFileName" style="display:none;margin-top:10px;padding:8px 12px;background:var(--surface);border-radius:8px;font-size:12px;color:var(--gold)"></div>
           </div>
-          <input type="file" id="uploadFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip,.json,.xml" style="display:none" onchange="showSelectedFile(this)" />
+          <input type="file" id="uploadFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip,.json,.xml" multiple style="display:none" onchange="showSelectedFile(this)" />
           <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
             <div style="flex:1;min-width:160px">
               <span class="lbl">Category</span>
@@ -2646,7 +2709,7 @@ Examples:
                 <option value="incidents">Incident Reports</option>
               </select>
             </div>
-            <button class="btn btn-gold" id="uploadBtn" onclick="uploadFileToServer()" style="min-height:42px;flex:0 0 auto">📤 Upload File</button>
+            <button class="btn btn-gold" id="uploadBtn" onclick="var f=document.getElementById('uploadFileInput');if(f.files&&f.files.length>1){uploadMultipleFiles()}else{uploadFileToServer()}" style="min-height:42px;flex:0 0 auto">📤 Upload File(s)</button>
           </div>
           <div id="uploadProgress" style="display:none;margin-top:10px">
             <div style="background:var(--surface);border-radius:4px;height:6px;overflow:hidden">
@@ -3314,7 +3377,8 @@ function runAlertScanner() {
   const gaps = safeLocalParse('fgl_gaps_v2', []);
   let expiredDocs = [], expiringDocs = [], overdueGaps = [], expiringGaps = [];
 
-  // Document expiry scan (10-day window)
+  // Document expiry scan (configurable window)
+  var _alertCfg = typeof complianceConfig !== 'undefined' ? complianceConfig : { docExpiryDays: 10, gapRemediationDays: 15 };
   employees.forEach(e => {
     ['eidExpiry','passportExpiry'].forEach(field => {
       if (!e[field]) return;
@@ -3322,14 +3386,14 @@ function runAlertScanner() {
       const diff = Math.ceil((exp - now) / 86400000);
       const docType = field === 'eidExpiry' ? 'Emirates ID' : 'Passport';
       if (diff < 0) expiredDocs.push({ name: e.name, doc: docType, expiry: e[field], days: Math.abs(diff) });
-      else if (diff <= 10) expiringDocs.push({ name: e.name, doc: docType, expiry: e[field], days: diff });
+      else if (diff <= _alertCfg.docExpiryDays) expiringDocs.push({ name: e.name, doc: docType, expiry: e[field], days: diff });
     });
   });
 
-  // Gap 15-day closure scan
+  // Gap closure scan (configurable window)
   gaps.filter(g => g.status !== 'closed' && g.status !== 'resolved').forEach(g => {
     const created = new Date(g.createdAt); created.setHours(0,0,0,0);
-    const deadline = new Date(created.getTime() + 15 * 86400000);
+    const deadline = new Date(created.getTime() + _alertCfg.gapRemediationDays * 86400000);
     const daysLeft = Math.ceil((deadline - now) / 86400000);
     if (daysLeft < 0) overdueGaps.push({ title: g.title, severity: g.severity, created: g.createdAt, overdue: Math.abs(daysLeft) });
     else if (daysLeft <= 5) expiringGaps.push({ title: g.title, severity: g.severity, created: g.createdAt, daysLeft });
@@ -3349,8 +3413,8 @@ function runAlertScanner() {
 
   // Toast notifications
   if (expiredDocs.length) toast(`⚠️ ${expiredDocs.length} document${expiredDocs.length>1?'s':''} EXPIRED — immediate renewal required`, 'error', 6000);
-  if (expiringDocs.length) toast(`⚠️ ${expiringDocs.length} document${expiringDocs.length>1?'s':''} expiring within 10 days`, 'error', 5000);
-  if (overdueGaps.length) toast(`⚠️ ${overdueGaps.length} gap${overdueGaps.length>1?'s':''} exceeded 15-day remediation window`, 'error', 5000);
+  if (expiringDocs.length) toast(`⚠️ ${expiringDocs.length} document${expiringDocs.length>1?'s':''} expiring within ${_alertCfg.docExpiryDays} days`, 'error', 5000);
+  if (overdueGaps.length) toast(`⚠️ ${overdueGaps.length} gap${overdueGaps.length>1?'s':''} exceeded ${_alertCfg.gapRemediationDays}-day remediation window`, 'error', 5000);
 
   // Browser push notification
   if (hasAlerts && 'Notification' in window) {
@@ -3408,10 +3472,11 @@ function switchTab(name) {
   if (name==='raci') { renderRACIMatrix(); loadRACIHistory(); }
   if (name==='employees') renderEmployeeDirectory();
   if (name==='localshipments') renderLocalShipments();
-  if (name==='settings') { if (typeof renderUserManagement === 'function') renderUserManagement(); applyRoleRestrictions(); }
+  if (name==='settings') { if (typeof renderUserManagement === 'function') renderUserManagement(); applyRoleRestrictions(); if (typeof loadComplianceConfigUI === 'function') loadComplianceConfigUI(); if (typeof checkStorageQuota === 'function') checkStorageQuota(); }
   if (name==='uploads') loadUploadedFiles();
   if (name==='incidents') { if (typeof updateIncidentMetrics === 'function') updateIncidentMetrics(); }
   if (name==='riskassessment') renderRiskAssessment();
+  if (name==='mywork') refreshMyWork();
 }
 
 function persistEmployeeTraining() {
@@ -4527,9 +4592,10 @@ function evaluateShipmentRisk(sh) {
   if (amount >= 500000) { score += 3; reasons.push('Amount exceeds 500,000'); }
   else if (amount >= 100000) { score += 2; reasons.push('Amount exceeds 100,000'); }
 
-  if (score >= 12) return { level: 'CRITICAL', score, reasons };
-  if (score >= 8) return { level: 'HIGH', score, reasons };
-  if (score >= 4) return { level: 'MEDIUM', score, reasons };
+  var cfg = typeof complianceConfig !== 'undefined' ? complianceConfig : { riskCritical: 12, riskHigh: 8, riskMedium: 4 };
+  if (score >= cfg.riskCritical) return { level: 'CRITICAL', score, reasons };
+  if (score >= cfg.riskHigh) return { level: 'HIGH', score, reasons };
+  if (score >= cfg.riskMedium) return { level: 'MEDIUM', score, reasons };
   return { level: 'LOW', score, reasons };
 }
 
@@ -5038,7 +5104,7 @@ function renderShipments() {
       <div>
         <div class="asana-name">Amount: ${amount} · SOC: ${soc}</div>
         <div class="asana-meta">Customer ID: ${customerId} · Direction: ${direction} · Currency: ${currency} · Material: ${material} · Last CDD: ${cdd} · Risk Rating: ${rating} · Invoice: ${invoice} · Supplier/Customer: ${supplier} · Origin: ${origin} · Destination: ${destination} · Internal Folder No: ${folderNo} · Consignee: ${consignee} · Custom (BOE): ${customBoe} · Advance Payment: ${escHtml(s.advancePayment||'—')} · Clearance: ${escHtml(s.shipmentClearance||'—')} · TFS: ${tfs} · ${ts}</div>
-        ${reasons ? `<div class="token-note" style="margin-top:6px">Risk factors: ${reasons}</div>` : ''}
+        ${(s.riskReasons && s.riskReasons.length) ? `<div class="token-note" style="margin-top:6px"><details><summary style="cursor:pointer;color:var(--amber)">Risk Breakdown: Score ${s.riskScore} = ${s.riskReasons.length} factor(s)</summary><ul style="margin:6px 0 0 16px;font-size:11px;color:var(--muted)">${s.riskReasons.map(function(r){return '<li>'+escHtml(r)+'</li>';}).join('')}</ul></details></div>` : ''}
         ${s.syncMessage ? `<div class="token-note" style="margin-top:4px;color:var(--amber)">Sync note: ${escHtml(s.syncMessage)}</div>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -7628,11 +7694,14 @@ function loadScreeningHistory() {
   const history = safeLocalParse(SCREENING_STORAGE, []);
   const el = document.getElementById('screeningHistoryList');
   if (!history.length) { el.innerHTML='<p style="font-size:13px;color:var(--muted)">No screenings yet.</p>'; return; }
+  var _scrCfg = typeof complianceConfig !== 'undefined' ? complianceConfig : { screeningStaleDays: 90 };
   el.innerHTML = history.slice(0,50).map(h=>{
     const r = h.result||{};
     const comp = getComplianceDescription(r.result);
     const cls = r.result==='CLEAR'?'b-ok':r.result==='MATCH'?'b-c':'b-h';
-    return `<div class="asana-item"><div><div class="asana-name">${h.name}</div><div class="asana-meta">${h.type} | ${h.country||'—'} | ${new Date(h.date).toLocaleDateString('en-GB')}</div></div><span class="badge ${cls}">${comp.label}</span></div>`;
+    const ageDays = Math.floor((Date.now() - new Date(h.date).getTime()) / 86400000);
+    const ageLabel = ageDays <= 30 ? '🟢 ' + ageDays + 'd ago' : ageDays <= _scrCfg.screeningStaleDays ? '🟡 ' + ageDays + 'd ago' : '🔴 ' + ageDays + 'd ago — STALE';
+    return `<div class="asana-item"><div><div class="asana-name">${h.name}</div><div class="asana-meta">${h.type} | ${h.country||'—'} | ${new Date(h.date).toLocaleDateString('en-GB')} | <span style="font-size:10px">${ageLabel}</span></div></div><span class="badge ${cls}">${comp.label}</span></div>`;
   }).join('');
 }
 
@@ -8666,8 +8735,10 @@ async function generateSTRDraft() {
       messages:[{role:'user',content:`Draft STR for:\nSubject: ${subject}\nAmount: USD ${amount||'Unknown'}\nSuspicious Indicators: ${indicators}`}]
     });
     const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    var strMissing = typeof validateSTRDraft === 'function' ? validateSTRDraft(text) : [];
+    var strWarning = strMissing.length ? '<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--red-dim);border:1px solid rgba(217,79,79,0.3);font-size:11px;color:var(--red)"><strong>Missing mandatory fields:</strong> ' + strMissing.join(', ') + '<br>Review and add these before goAML submission.</div>' : '<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--green-dim);border:1px solid rgba(61,168,118,0.3);font-size:11px;color:var(--green)">All mandatory STR fields detected.</div>';
     document.getElementById('strDraftResult').style.display='block';
-    document.getElementById('strDraftResult').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${text}</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="copySTR()">Copy STR</button></div>`;
+    document.getElementById('strDraftResult').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${text}</div>${strWarning}<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="copySTR()">Copy STR</button></div>`;
     logAudit('str', `STR drafted for ${subject}`);
   } catch(e) { toast(`STR error: ${e.message}`,'error'); }
 }
@@ -10763,7 +10834,12 @@ async function deleteUploadedFile(key, name) {
 // ======= DRAG & DROP UPLOAD =======
 function showSelectedFile(input) {
   var el = document.getElementById('selectedFileName');
-  if (input.files && input.files[0]) {
+  if (input.files && input.files.length > 1) {
+    el.style.display = 'block';
+    var totalSize = 0;
+    for (var i = 0; i < input.files.length; i++) totalSize += input.files[i].size;
+    el.textContent = input.files.length + ' files selected (' + formatFileSize(totalSize) + ' total)';
+  } else if (input.files && input.files[0]) {
     el.style.display = 'block';
     el.textContent = input.files[0].name + ' (' + formatFileSize(input.files[0].size) + ')';
   } else {
@@ -10793,6 +10869,428 @@ function showSelectedFile(input) {
   else setup();
 })();
 
+// ======= COMPLIANCE CONFIG (Configurable thresholds) =======
+var COMPLIANCE_CONFIG_STORAGE = 'fgl_compliance_config';
+function getDefaultComplianceConfig() {
+  return {
+    docExpiryDays: 10,
+    gapRemediationDays: 15,
+    screeningStaleDays: 90,
+    autoRescreenDays: 0,
+    riskCritical: 12,
+    riskHigh: 8,
+    riskMedium: 4,
+    highRiskCountries: 'iran,north korea,dprk,syria,yemen,myanmar,afghanistan,libya,iraq,sudan,somalia,south sudan,congo,mali,central african republic'
+  };
+}
+var complianceConfig = safeLocalParse(COMPLIANCE_CONFIG_STORAGE, getDefaultComplianceConfig());
+if (!complianceConfig.docExpiryDays) complianceConfig = getDefaultComplianceConfig();
+
+function saveComplianceConfig() {
+  complianceConfig = {
+    docExpiryDays: Number(document.getElementById('cfgDocExpiryDays').value) || 10,
+    gapRemediationDays: Number(document.getElementById('cfgGapRemediationDays').value) || 15,
+    screeningStaleDays: Number(document.getElementById('cfgScreeningStaleDays').value) || 90,
+    autoRescreenDays: Number(document.getElementById('cfgAutoRescreenDays').value) || 0,
+    riskCritical: Number(document.getElementById('cfgRiskCritical').value) || 12,
+    riskHigh: Number(document.getElementById('cfgRiskHigh').value) || 8,
+    riskMedium: Number(document.getElementById('cfgRiskMedium').value) || 4,
+    highRiskCountries: (document.getElementById('cfgHighRiskCountries').value || '').toLowerCase().trim()
+  };
+  safeLocalSave(COMPLIANCE_CONFIG_STORAGE, complianceConfig);
+  toast('Compliance configuration saved', 'success');
+  runAlertScanner();
+}
+function resetComplianceConfig() {
+  complianceConfig = getDefaultComplianceConfig();
+  safeLocalSave(COMPLIANCE_CONFIG_STORAGE, complianceConfig);
+  loadComplianceConfigUI();
+  toast('Configuration reset to defaults', 'info');
+}
+function loadComplianceConfigUI() {
+  var c = complianceConfig;
+  var set = function(id, v) { var el = document.getElementById(id); if (el) el.value = v; };
+  set('cfgDocExpiryDays', c.docExpiryDays);
+  set('cfgGapRemediationDays', c.gapRemediationDays);
+  set('cfgScreeningStaleDays', c.screeningStaleDays);
+  set('cfgAutoRescreenDays', c.autoRescreenDays);
+  set('cfgRiskCritical', c.riskCritical);
+  set('cfgRiskHigh', c.riskHigh);
+  set('cfgRiskMedium', c.riskMedium);
+  set('cfgHighRiskCountries', c.highRiskCountries);
+}
+
+// ======= BULK FILE UPLOAD =======
+async function uploadMultipleFiles() {
+  var input = document.getElementById('uploadFileInput');
+  var files = input.files;
+  if (!files || !files.length) { toast('Select files to upload', 'error'); return; }
+  var category = document.getElementById('uploadCategory').value;
+  var btn = document.getElementById('uploadBtn');
+  var progress = document.getElementById('uploadProgress');
+  var progressBar = document.getElementById('uploadProgressBar');
+  var statusText = document.getElementById('uploadStatusText');
+  btn.disabled = true; btn.textContent = 'Uploading...';
+  progress.style.display = 'block';
+  var total = files.length, completed = 0, failed = 0;
+  for (var i = 0; i < total; i++) {
+    var file = files[i];
+    if (file.size > 50 * 1024 * 1024) { failed++; toast(file.name + ' too large, skipped', 'error'); continue; }
+    statusText.textContent = 'Uploading ' + (i+1) + '/' + total + ': ' + file.name;
+    progressBar.style.width = Math.round(((i+0.5)/total)*100) + '%';
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('category', category);
+    try {
+      var response = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Failed');
+      completed++;
+    } catch(e) { failed++; }
+    progressBar.style.width = Math.round(((i+1)/total)*100) + '%';
+  }
+  statusText.textContent = completed + ' uploaded' + (failed ? ', ' + failed + ' failed' : '');
+  toast(completed + ' file(s) uploaded' + (failed ? ', ' + failed + ' failed' : ''), failed ? 'error' : 'success');
+  logAudit('Bulk Upload', completed + ' files uploaded, ' + failed + ' failed');
+  input.value = '';
+  var selName = document.getElementById('selectedFileName');
+  if (selName) selName.style.display = 'none';
+  setTimeout(function() { progress.style.display = 'none'; progressBar.style.width = '0%'; }, 2000);
+  btn.disabled = false; btn.textContent = '📤 Upload File';
+  loadUploadedFiles();
+}
+
+// ======= EXPORT CONFIRMATION =======
+var _origExportPDF = typeof exportPDF === 'function' ? exportPDF : null;
+var _origExportShipmentsCSV = typeof exportShipmentsCSV === 'function' ? exportShipmentsCSV : null;
+var _origExportScreeningPDF = typeof exportScreeningPDF === 'function' ? exportScreeningPDF : null;
+var _origExportBoardReport = typeof exportBoardReport === 'function' ? exportBoardReport : null;
+function wrapExportConfirm(origFn, name) {
+  return function() {
+    if (!confirm('Export ' + name + '? This may contain sensitive compliance data.')) return;
+    origFn.apply(this, arguments);
+  };
+}
+if (_origExportScreeningPDF) exportScreeningPDF = wrapExportConfirm(_origExportScreeningPDF, 'Screening History PDF');
+if (_origExportBoardReport) exportBoardReport = wrapExportConfirm(_origExportBoardReport, 'Board Report');
+
+// ======= LOCALSTORAGE QUOTA WARNING =======
+var _origSafeLocalSave = safeLocalSave;
+safeLocalSave = function(key, value) {
+  try {
+    _origSafeLocalSave(key, value);
+  } catch(e) {
+    if (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014) {
+      toast('Storage full! Data may not be saved. Export your data and clear old records.', 'error', 8000);
+      console.error('[Storage] Quota exceeded for key:', key);
+    } else {
+      throw e;
+    }
+  }
+};
+function checkStorageQuota() {
+  var el = document.getElementById('storageQuotaInfo');
+  if (!el) return;
+  try {
+    var total = 0;
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      total += (localStorage.getItem(k) || '').length;
+    }
+    var mb = (total / (1024*1024)).toFixed(2);
+    var pct = Math.min(100, (total / (5*1024*1024)) * 100).toFixed(0);
+    el.innerHTML = 'Storage used: <strong>' + mb + ' MB</strong> (~' + pct + '% of ~5 MB limit)';
+    if (pct > 80) el.style.color = 'var(--red)';
+    else if (pct > 60) el.style.color = 'var(--amber)';
+    else el.style.color = 'var(--muted)';
+  } catch(e) { el.textContent = 'Unable to check storage quota'; }
+}
+
+// ======= OFFLINE INDEXEDDB CACHE =======
+var ComplianceCache = (function() {
+  var DB_NAME = 'ComplianceAnalyzerCache';
+  var DB_VERSION = 1;
+  var STORE = 'offlineData';
+  function openDB() {
+    return new Promise(function(resolve, reject) {
+      var req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function(e) { e.target.result.createObjectStore(STORE); };
+      req.onsuccess = function(e) { resolve(e.target.result); };
+      req.onerror = function(e) { reject(e.target.error); };
+    });
+  }
+  return {
+    save: async function(key, data) {
+      var db = await openDB();
+      return new Promise(function(resolve, reject) {
+        var tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put({ data: data, ts: Date.now() }, key);
+        tx.oncomplete = resolve;
+        tx.onerror = function() { reject(tx.error); };
+      });
+    },
+    load: async function(key) {
+      var db = await openDB();
+      return new Promise(function(resolve, reject) {
+        var tx = db.transaction(STORE, 'readonly');
+        var req = tx.objectStore(STORE).get(key);
+        req.onsuccess = function() { resolve(req.result ? req.result.data : null); };
+        req.onerror = function() { reject(req.error); };
+      });
+    },
+    syncAll: async function() {
+      try {
+        var keys = ['fgl_shipments','fgl_gaps_v2','fgl_screening','fgl_employees','fgl_onboarding','fgl_incidents','fgl_audit_log'];
+        for (var i = 0; i < keys.length; i++) {
+          var raw = localStorage.getItem(keys[i]);
+          if (raw) await ComplianceCache.save(keys[i], JSON.parse(raw));
+        }
+        console.log('[OfflineCache] Synced to IndexedDB');
+      } catch(e) { console.warn('[OfflineCache] Sync failed:', e); }
+    }
+  };
+})();
+// Auto-sync to IndexedDB every 2 minutes
+setInterval(function() { ComplianceCache.syncAll(); }, 120000);
+
+// ======= CROSS-SHIPMENT ANOMALY DETECTION =======
+function detectShipmentAnomalies() {
+  var anomalies = [];
+  var now = new Date();
+  var byCustomer = {};
+  var byDay = {};
+  (window.shipments || []).forEach(function(s) {
+    var cust = s.supplierCustomer || s.customerId || 'Unknown';
+    if (!byCustomer[cust]) byCustomer[cust] = [];
+    byCustomer[cust].push(s);
+    var day = (s.createdAt || '').slice(0, 10);
+    var key = cust + '|' + day;
+    if (!byDay[key]) byDay[key] = [];
+    byDay[key].push(s);
+  });
+  // Anomaly 1: Same customer, same day, different methods
+  Object.keys(byDay).forEach(function(key) {
+    var group = byDay[key];
+    if (group.length < 2) return;
+    var currencies = new Set(group.map(function(s) { return s.currency; }).filter(Boolean));
+    var directions = new Set(group.map(function(s) { return s.direction; }).filter(Boolean));
+    if (currencies.size > 1 || directions.size > 1) {
+      anomalies.push({ type: 'CONFLICTING_METHODS', severity: 'HIGH', customer: key.split('|')[0], date: key.split('|')[1], count: group.length, detail: 'Same customer, same day: ' + currencies.size + ' currencies, ' + directions.size + ' directions' });
+    }
+  });
+  // Anomaly 2: Volume spike (>3x average in last 7 days)
+  Object.keys(byCustomer).forEach(function(cust) {
+    var items = byCustomer[cust];
+    if (items.length < 4) return;
+    var weekAgo = new Date(now.getTime() - 7 * 86400000);
+    var recent = items.filter(function(s) { return new Date(s.createdAt) > weekAgo; });
+    var older = items.filter(function(s) { return new Date(s.createdAt) <= weekAgo; });
+    if (older.length < 2) return;
+    var olderWeeks = Math.max(1, Math.ceil(older.length / 4));
+    var avgPerWeek = older.length / olderWeeks;
+    if (recent.length > avgPerWeek * 3 && recent.length >= 3) {
+      anomalies.push({ type: 'VOLUME_SPIKE', severity: 'CRITICAL', customer: cust, count: recent.length, detail: cust + ': ' + recent.length + ' shipments this week vs avg ' + avgPerWeek.toFixed(1) + '/week' });
+    }
+  });
+  // Anomaly 3: Structuring — multiple just-below-threshold amounts
+  Object.keys(byCustomer).forEach(function(cust) {
+    var items = byCustomer[cust];
+    var weekAgo = new Date(now.getTime() - 7 * 86400000);
+    var recent = items.filter(function(s) { return new Date(s.createdAt) > weekAgo && Number(s.amount) > 0; });
+    var justBelow = recent.filter(function(s) { var a = Number(s.amount); return a >= 40000 && a < 55000; });
+    if (justBelow.length >= 3) {
+      anomalies.push({ type: 'STRUCTURING', severity: 'CRITICAL', customer: cust, count: justBelow.length, detail: cust + ': ' + justBelow.length + ' transactions just below AED 55,000 threshold in 7 days' });
+    }
+  });
+  return anomalies;
+}
+
+// ======= BI-DIRECTIONAL ASANA SYNC =======
+async function pullAsanaTaskStatuses() {
+  if (!ASANA_TOKEN && !PROXY_URL) return;
+  try {
+    var projectId = ASANA_PROJECT_MAP[activeCompanyId]?.compliance;
+    if (!projectId) return;
+    var r = await asanaFetch('/projects/' + projectId + '/tasks?opt_fields=gid,name,completed,completed_at,modified_at&completed_since=now');
+    var data = await r.json();
+    if (!data.data) return;
+    var completedTasks = data.data.filter(function(t) { return t.completed; });
+    if (completedTasks.length) {
+      toast(completedTasks.length + ' Asana task(s) completed — synced', 'success', 3000);
+      logAudit('Asana Bi-Sync', completedTasks.length + ' completed tasks pulled from Asana');
+    }
+    return completedTasks;
+  } catch(e) { console.warn('[Asana Bi-Sync]', e.message); return []; }
+}
+
+// ======= SCHEDULED AUTO RE-SCREENING =======
+var AUTO_RESCREEN_STORAGE = 'fgl_auto_rescreen_last';
+function checkAutoRescreen() {
+  if (!complianceConfig.autoRescreenDays || complianceConfig.autoRescreenDays <= 0) return;
+  var lastRun = safeLocalParse(AUTO_RESCREEN_STORAGE, null);
+  var now = Date.now();
+  var interval = complianceConfig.autoRescreenDays * 86400000;
+  if (lastRun && (now - lastRun) < interval) return;
+  var history = safeLocalParse(SCREENING_STORAGE, []);
+  var stale = history.filter(function(h) {
+    var age = (now - new Date(h.date).getTime()) / 86400000;
+    return age > complianceConfig.screeningStaleDays;
+  });
+  if (stale.length > 0) {
+    toast(stale.length + ' screening(s) overdue for re-check — review in Screening tab', 'error', 6000);
+    logAudit('Auto Re-screen', stale.length + ' stale screenings detected');
+  }
+  safeLocalSave(AUTO_RESCREEN_STORAGE, now);
+}
+setInterval(function() { try { checkAutoRescreen(); } catch(e){} }, 3600000);
+
+// ======= STR TEMPLATE VALIDATION =======
+var STR_MANDATORY_FIELDS = [
+  'Filing Institution',
+  'Reporting Officer',
+  'Subject Name',
+  'Subject Identification',
+  'Transaction Date',
+  'Transaction Amount',
+  'Transaction Currency',
+  'Transaction Method',
+  'Grounds for Suspicion',
+  'goAML Reference'
+];
+function validateSTRDraft(text) {
+  var missing = [];
+  var lower = text.toLowerCase();
+  STR_MANDATORY_FIELDS.forEach(function(field) {
+    var patterns = [field.toLowerCase(), field.toLowerCase().replace(/ /g, '_'), field.toLowerCase().replace(/ /g, '-')];
+    var found = patterns.some(function(p) { return lower.indexOf(p) !== -1; });
+    if (!found) missing.push(field);
+  });
+  return missing;
+}
+
+// ======= MY WORK DASHBOARD =======
+function refreshMyWork() {
+  var employees = safeLocalParse(EMPLOYEE_INFO_STORAGE, []);
+  var gaps = safeLocalParse('fgl_gaps_v2', []);
+  var incidents = safeLocalParse('fgl_incidents', []);
+  var history = safeLocalParse(SCREENING_STORAGE, []);
+  var onboarding = safeLocalParse('fgl_onboarding', []);
+  var audit = safeLocalParse(AUDIT_TRAIL_STORAGE, []);
+  var shps = window.shipments || [];
+  var now = new Date(); now.setHours(0,0,0,0);
+  var cfg = complianceConfig;
+
+  // Metrics
+  var expiredDocs = 0, expiringDocs = 0, openGaps = 0, openIncidents = 0, criticalShipments = 0, staleScreenings = 0;
+  employees.forEach(function(e) {
+    ['eidExpiry','passportExpiry'].forEach(function(field) {
+      if (!e[field]) return;
+      var exp = new Date(e[field]); exp.setHours(0,0,0,0);
+      var diff = Math.ceil((exp - now) / 86400000);
+      if (diff < 0) expiredDocs++;
+      else if (diff <= cfg.docExpiryDays) expiringDocs++;
+    });
+  });
+  gaps.filter(function(g) { return g.status !== 'closed' && g.status !== 'resolved'; }).forEach(function() { openGaps++; });
+  incidents.filter(function(inc) { return inc.status !== 'closed'; }).forEach(function() { openIncidents++; });
+  shps.filter(function(s) { return s.riskLevel === 'CRITICAL'; }).forEach(function() { criticalShipments++; });
+  history.forEach(function(h) {
+    var age = (Date.now() - new Date(h.date).getTime()) / 86400000;
+    if (age > cfg.screeningStaleDays) staleScreenings++;
+  });
+
+  var metricsEl = document.getElementById('myWorkMetrics');
+  if (metricsEl) metricsEl.innerHTML =
+    '<div class="metric m-c"><div class="metric-num">' + expiredDocs + '</div><div class="metric-lbl">Expired Docs</div></div>' +
+    '<div class="metric m-h"><div class="metric-num">' + expiringDocs + '</div><div class="metric-lbl">Expiring (' + cfg.docExpiryDays + 'd)</div></div>' +
+    '<div class="metric m-c"><div class="metric-num">' + openGaps + '</div><div class="metric-lbl">Open Gaps</div></div>' +
+    '<div class="metric m-h"><div class="metric-num">' + openIncidents + '</div><div class="metric-lbl">Open Incidents</div></div>' +
+    '<div class="metric m-c"><div class="metric-num">' + criticalShipments + '</div><div class="metric-lbl">Critical Shipments</div></div>' +
+    '<div class="metric" style="border-color:rgba(232,160,48,0.3)"><div class="metric-num" style="color:var(--amber)">' + staleScreenings + '</div><div class="metric-lbl">Stale Screenings</div></div>';
+
+  // Document Expiry Forecast (30/60/90 day buckets)
+  var forecast = { d7: 0, d30: 0, d60: 0, d90: 0 };
+  employees.forEach(function(e) {
+    ['eidExpiry','passportExpiry'].forEach(function(field) {
+      if (!e[field]) return;
+      var exp = new Date(e[field]); exp.setHours(0,0,0,0);
+      var diff = Math.ceil((exp - now) / 86400000);
+      if (diff > 0 && diff <= 7) forecast.d7++;
+      if (diff > 0 && diff <= 30) forecast.d30++;
+      if (diff > 0 && diff <= 60) forecast.d60++;
+      if (diff > 0 && diff <= 90) forecast.d90++;
+    });
+  });
+  var forecastEl = document.getElementById('myWorkExpiryForecast');
+  if (forecastEl) forecastEl.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' +
+    '<div style="background:var(--red-dim);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--red)">' + forecast.d7 + '</div><div style="font-size:10px;color:var(--muted)">Next 7 days</div></div>' +
+    '<div style="background:var(--amber-dim);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--amber)">' + forecast.d30 + '</div><div style="font-size:10px;color:var(--muted)">Next 30 days</div></div>' +
+    '<div style="background:var(--blue-dim);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--blue)">' + forecast.d60 + '</div><div style="font-size:10px;color:var(--muted)">Next 60 days</div></div>' +
+    '<div style="background:var(--green-dim);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--green)">' + forecast.d90 + '</div><div style="font-size:10px;color:var(--muted)">Next 90 days</div></div>' +
+    '</div>';
+
+  // Cross-Shipment Anomalies
+  var anomalies = detectShipmentAnomalies();
+  var anomalyCard = document.getElementById('myWorkAnomaliesCard');
+  var anomalyEl = document.getElementById('myWorkAnomalies');
+  if (anomalyCard && anomalyEl) {
+    if (anomalies.length) {
+      anomalyCard.style.display = 'block';
+      anomalyEl.innerHTML = anomalies.map(function(a) {
+        var cls = a.severity === 'CRITICAL' ? 'f-critical' : 'f-high';
+        var badge = a.severity === 'CRITICAL' ? 'b-c' : 'b-h';
+        return '<div class="finding ' + cls + '" style="opacity:1"><div class="f-head"><div class="f-head-left"><span class="badge ' + badge + '">' + a.type.replace(/_/g,' ') + '</span><span class="f-title">' + escHtml(a.detail) + '</span></div></div></div>';
+      }).join('');
+    } else {
+      anomalyCard.style.display = 'none';
+    }
+  }
+
+  // Pending Actions
+  var pendingEl = document.getElementById('myWorkPendingActions');
+  if (pendingEl) {
+    var actions = [];
+    if (expiredDocs > 0) actions.push('<div class="asana-item"><div><div class="asana-name" style="color:var(--red)">' + expiredDocs + ' expired document(s) — immediate renewal required</div></div><button class="btn btn-sm btn-red" onclick="switchTab(\'employees\')">Go to Employees</button></div>');
+    if (openGaps > 0) actions.push('<div class="asana-item"><div><div class="asana-name">' + openGaps + ' open compliance gap(s) — remediation needed</div></div><button class="btn btn-sm" onclick="switchTab(\'gaps\')">Go to Gaps</button></div>');
+    if (openIncidents > 0) actions.push('<div class="asana-item"><div><div class="asana-name">' + openIncidents + ' open incident(s) — investigation pending</div></div><button class="btn btn-sm" onclick="switchTab(\'incidents\')">Go to Incidents</button></div>');
+    if (criticalShipments > 0) actions.push('<div class="asana-item"><div><div class="asana-name" style="color:var(--red)">' + criticalShipments + ' CRITICAL risk shipment(s)</div></div><button class="btn btn-sm btn-red" onclick="switchTab(\'shipments\')">Go to Shipments</button></div>');
+    var pendingOnboard = onboarding.filter(function(o) { return !o.completedAt; });
+    if (pendingOnboard.length) actions.push('<div class="asana-item"><div><div class="asana-name">' + pendingOnboard.length + ' onboarding(s) pending completion</div></div><button class="btn btn-sm" onclick="switchTab(\'onboarding\')">Go to Onboarding</button></div>');
+    pendingEl.innerHTML = actions.length ? actions.join('') : '<p style="font-size:13px;color:var(--green)">No pending actions — all clear.</p>';
+  }
+
+  // Stale Screenings
+  var staleEl = document.getElementById('myWorkStaleScreenings');
+  if (staleEl) {
+    var staleItems = history.filter(function(h) { return (Date.now() - new Date(h.date).getTime()) / 86400000 > cfg.screeningStaleDays; });
+    if (staleItems.length) {
+      staleEl.innerHTML = staleItems.slice(0, 20).map(function(h) {
+        var age = Math.floor((Date.now() - new Date(h.date).getTime()) / 86400000);
+        return '<div class="asana-item"><div><div class="asana-name">' + escHtml(h.name) + '</div><div class="asana-meta">' + h.type + ' | Last screened: ' + new Date(h.date).toLocaleDateString('en-GB') + ' (' + age + ' days ago)</div></div><span class="badge b-h">STALE</span></div>';
+      }).join('');
+    } else {
+      staleEl.innerHTML = '<p style="font-size:13px;color:var(--green)">All screenings within ' + cfg.screeningStaleDays + '-day window.</p>';
+    }
+  }
+
+  // Recent Activity (last 24h)
+  var actEl = document.getElementById('myWorkRecentActivity');
+  if (actEl) {
+    var cutoff = Date.now() - 86400000;
+    var recentAudit = audit.filter(function(a) { return new Date(a.ts || a.timestamp || 0).getTime() > cutoff; }).slice(0, 30);
+    if (recentAudit.length) {
+      actEl.innerHTML = recentAudit.map(function(a) {
+        return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--gold);font-family:\'DM Mono\',monospace;font-size:10px">' + new Date(a.ts || a.timestamp).toLocaleTimeString('en-GB') + '</span> ' + escHtml(a.action || a.type || '') + ' — ' + escHtml(a.detail || a.message || '') + '</div>';
+      }).join('');
+    } else {
+      actEl.innerHTML = '<p style="font-size:13px;color:var(--muted)">No activity in the last 24 hours.</p>';
+    }
+  }
+
+  // Trigger anomaly check for Asana bi-sync
+  pullAsanaTaskStatuses().catch(function(){});
+}
+
 // ======= INIT NEW FEATURES =======
 function initNewFeatures() {
   var features = [
@@ -10803,7 +11301,12 @@ function initNewFeatures() {
     ['Calendar', renderPreloadedCalendar],
     ['Vault', renderVaultDocs],
     ['Dashboard', refreshDashboard],
-    ['Definitions', renderDefinitions]
+    ['Definitions', renderDefinitions],
+    ['MyWork', refreshMyWork],
+    ['ComplianceConfig', loadComplianceConfigUI],
+    ['StorageQuota', checkStorageQuota],
+    ['OfflineCache', function() { ComplianceCache.syncAll(); }],
+    ['AutoRescreen', checkAutoRescreen]
   ];
   features.forEach(function(f) {
     try { f[1](); } catch(e) { console.warn('[Init] ' + f[0] + ' failed:', e.message); }
