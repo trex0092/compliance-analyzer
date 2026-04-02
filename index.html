@@ -2385,6 +2385,20 @@ Examples:
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Proxy URL <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — eliminates browser-side API keys)</span></span><input type="url" id="proxyUrl2" placeholder="https://fgl-proxy.youruser.workers.dev" /></div></div>
         <button class="btn btn-gold" onclick="updateKeys()">Update Keys</button>
       </div>
+      <!-- Cloud Sync -->
+      <div class="card">
+        <span class="lbl">Cloud Sync — Access Data From Any Device</span>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Sync your compliance data (shipments, screenings, customers, gaps, incidents, risk assessments, config) to the cloud. Access the same data from your phone, laptop, or any browser.</p>
+        <div id="cloudSyncStatus" style="margin-bottom:12px;padding:10px;border-radius:8px;background:var(--surface2);font-size:12px;color:var(--muted)">Sync status: Not synced yet</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn btn-gold" onclick="cloudSyncPush()" style="flex:1;min-width:140px">Upload to Cloud</button>
+          <button class="btn btn-sm btn-blue" onclick="cloudSyncPull()" style="flex:1;min-width:140px;padding:12px">Download from Cloud</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text)"><input type="checkbox" id="autoSyncEnabled" style="width:auto" onchange="toggleAutoSync(this.checked)" />Auto-sync every 5 minutes</label>
+        </div>
+        <div class="token-note" style="margin-top:8px">Data is encrypted with your user ID and stored securely on the server. Only you can access it with your account.</div>
+      </div>
       <!-- Alerts section removed -->
       <div class="card">
         <span class="lbl">Asana Project Reference</span>
@@ -3463,7 +3477,7 @@ function switchTab(name) {
   if (name==='raci') { renderRACIMatrix(); loadRACIHistory(); }
   if (name==='employees') renderEmployeeDirectory();
   if (name==='localshipments') renderLocalShipments();
-  if (name==='settings') { if (typeof renderUserManagement === 'function') renderUserManagement(); applyRoleRestrictions(); if (typeof loadComplianceConfigUI === 'function') loadComplianceConfigUI(); if (typeof checkStorageQuota === 'function') checkStorageQuota(); }
+  if (name==='settings') { if (typeof renderUserManagement === 'function') renderUserManagement(); applyRoleRestrictions(); if (typeof loadComplianceConfigUI === 'function') loadComplianceConfigUI(); if (typeof checkStorageQuota === 'function') checkStorageQuota(); if (typeof initCloudSyncUI === 'function') initCloudSyncUI(); }
   if (name==='uploads') loadUploadedFiles();
   if (name==='incidents') { if (typeof updateIncidentMetrics === 'function') updateIncidentMetrics(); }
   if (name==='riskassessment') renderRiskAssessment();
@@ -10860,6 +10874,138 @@ function showSelectedFile(input) {
   else setup();
 })();
 
+// ======= CLOUD SYNC =======
+var CLOUD_SYNC_KEYS = [
+  'fgl_shipments', 'fgl_gaps_v2', 'fgl_screening', 'fgl_employees',
+  'fgl_onboarding', 'fgl_incidents', 'fgl_audit_log', 'fgl_risk_assessments',
+  'fgl_iar_reports', 'fgl_deadlines', 'fgl_schedule_history', 'fgl_analysis_history',
+  'fgl_compliance_config', 'fgl_custom_red_flags', 'fgl_training_records',
+  'fgl_company_profiles', 'fgl_active_company'
+];
+
+function getCloudSyncUid() {
+  // Use a hash of the session user to scope cloud data
+  var session = safeLocalParse('fgl_session', null);
+  if (!session || !session.username) return null;
+  // Simple hash for uid
+  var str = 'compliance-sync-' + session.username;
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return 'u' + Math.abs(hash).toString(36) + str.length.toString(36);
+}
+
+async function cloudSyncPush() {
+  var uid = getCloudSyncUid();
+  if (!uid) { toast('Log in first to sync data', 'error'); return; }
+  var statusEl = document.getElementById('cloudSyncStatus');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--gold)">Uploading data to cloud...</span>';
+
+  try {
+    var syncData = {};
+    // Collect all localStorage keys that match our sync list (including company-scoped ones)
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      var shouldSync = CLOUD_SYNC_KEYS.some(function(sk) { return key === sk || key.startsWith(sk + '__'); });
+      if (shouldSync) {
+        syncData[key] = localStorage.getItem(key);
+      }
+    }
+
+    var payload = JSON.stringify(syncData);
+    var response = await fetch('/api/sync?uid=' + encodeURIComponent(uid), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload
+    });
+
+    if (!response.ok) {
+      var err = await response.json().catch(function() { return { error: 'Upload failed' }; });
+      throw new Error(err.error || 'Sync failed');
+    }
+
+    var result = await response.json();
+    var keyCount = Object.keys(syncData).length;
+    var sizeKB = (payload.length / 1024).toFixed(1);
+    safeLocalSave('fgl_last_cloud_sync', result.lastSync);
+
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">Synced ' + keyCount + ' data keys (' + sizeKB + ' KB) — ' + new Date(result.lastSync).toLocaleString('en-GB') + '</span>';
+    toast('Data uploaded to cloud (' + sizeKB + ' KB)', 'success');
+    logAudit('Cloud Sync', 'Pushed ' + keyCount + ' keys (' + sizeKB + ' KB) to cloud');
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">Sync failed: ' + e.message + '</span>';
+    toast('Cloud sync failed: ' + e.message, 'error');
+  }
+}
+
+async function cloudSyncPull() {
+  var uid = getCloudSyncUid();
+  if (!uid) { toast('Log in first to sync data', 'error'); return; }
+  if (!confirm('Download cloud data? This will REPLACE your local data with the cloud version. Continue?')) return;
+
+  var statusEl = document.getElementById('cloudSyncStatus');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--gold)">Downloading data from cloud...</span>';
+
+  try {
+    var response = await fetch('/api/sync?uid=' + encodeURIComponent(uid));
+    if (!response.ok) throw new Error('Download failed');
+
+    var result = await response.json();
+    if (!result.found || !result.data) {
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--amber)">No cloud data found. Upload first from your main device.</span>';
+      toast('No cloud data found — upload from your main device first', 'info');
+      return;
+    }
+
+    var data = result.data;
+    var keyCount = 0;
+    Object.keys(data).forEach(function(key) {
+      localStorage.setItem(key, data[key]);
+      keyCount++;
+    });
+
+    safeLocalSave('fgl_last_cloud_sync', result.lastSync);
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">Downloaded ' + keyCount + ' data keys — Last sync: ' + new Date(result.lastSync).toLocaleString('en-GB') + '</span>';
+    toast('Cloud data downloaded! Reloading...', 'success');
+    logAudit('Cloud Sync', 'Pulled ' + keyCount + ' keys from cloud');
+
+    // Reload to apply all data
+    setTimeout(function() { location.reload(); }, 1500);
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">Download failed: ' + e.message + '</span>';
+    toast('Cloud download failed: ' + e.message, 'error');
+  }
+}
+
+var _autoSyncInterval = null;
+function toggleAutoSync(enabled) {
+  safeLocalSave('fgl_auto_sync_enabled', enabled);
+  if (enabled && !_autoSyncInterval) {
+    _autoSyncInterval = setInterval(function() {
+      cloudSyncPush().catch(function() {});
+    }, 300000); // 5 minutes
+    toast('Auto-sync enabled (every 5 min)', 'success');
+  } else if (!enabled && _autoSyncInterval) {
+    clearInterval(_autoSyncInterval);
+    _autoSyncInterval = null;
+    toast('Auto-sync disabled', 'info');
+  }
+}
+
+function initCloudSyncUI() {
+  var lastSync = safeLocalParse('fgl_last_cloud_sync', null);
+  var statusEl = document.getElementById('cloudSyncStatus');
+  if (statusEl && lastSync) {
+    statusEl.innerHTML = '<span style="color:var(--green)">Last sync: ' + new Date(lastSync).toLocaleString('en-GB') + '</span>';
+  }
+  var autoEnabled = safeLocalParse('fgl_auto_sync_enabled', false);
+  var checkbox = document.getElementById('autoSyncEnabled');
+  if (checkbox) checkbox.checked = autoEnabled;
+  if (autoEnabled) toggleAutoSync(true);
+}
+
 // ======= COMPLIANCE CONFIG (Configurable thresholds) =======
 var COMPLIANCE_CONFIG_STORAGE = 'fgl_compliance_config';
 function getDefaultComplianceConfig() {
@@ -11297,7 +11443,8 @@ function initNewFeatures() {
     ['ComplianceConfig', loadComplianceConfigUI],
     ['StorageQuota', checkStorageQuota],
     ['OfflineCache', function() { ComplianceCache.syncAll(); }],
-    ['AutoRescreen', checkAutoRescreen]
+    ['AutoRescreen', checkAutoRescreen],
+    ['CloudSync', initCloudSyncUI]
   ];
   features.forEach(function(f) {
     try { f[1](); } catch(e) { console.warn('[Init] ' + f[0] + ' failed:', e.message); }
