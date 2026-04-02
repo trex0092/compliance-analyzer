@@ -515,7 +515,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       <div class="tab" onclick="switchTab('localshipments')">📦 Local Shipments</div>
       <div class="tab" onclick="switchTab('iarreport')">📝 IAR Report</div>
       <div class="tab" onclick="switchTab('asana')">📋 Asana Tasks</div>
-      <div class="tab" onclick="switchTab('evidence')">📎 Evidence Tracker</div>
+      <!-- Evidence Tracker removed -->
       <div class="tab" onclick="switchTab('schedule')">⏰ Scheduler</div>
       <div class="tab" onclick="switchTab('complianceprog')">📋 Compliance Programme</div>
       <div class="tab" onclick="switchTab('gaps')">🔴 Gap Register</div>
@@ -534,7 +534,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       <div class="tab" onclick="switchTab('reports')">📑 Reports</div>
       <div class="tab" onclick="switchTab('monitor')">🛡️ Reg Monitor</div>
       <div class="tab" onclick="switchTab('integrations')">🔗 Integrations</div>
-      <div class="tab" onclick="switchTab('goaml')">📄 goAML Export</div>
+      <!-- goAML Export removed -->
       <div class="tab" onclick="switchTab('threshold')">💰 Thresholds</div>
       <div class="tab" onclick="switchTab('supplychain')">⛏️ Supply</div>
       <div class="tab" onclick="switchTab('raci')">📋 RACI Matrix</div>
@@ -671,6 +671,41 @@ Examples:
               </optgroup>
               <optgroup label="Regulatory and Administrative">
                 <option value="regulatory-breach">Regulatory Breach and Administrative Penalties Governance</option>
+                <option value="moe-inspection">Ministry of Economy Inspection Readiness</option>
+                <option value="administrative-penalties">Administrative Penalties Framework (Cabinet Resolution 71/2024)</option>
+              </optgroup>
+              <optgroup label="Advanced Due Diligence">
+                <option value="correspondent-banking">Correspondent Banking Due Diligence</option>
+                <option value="wire-transfer">Wire Transfer Compliance (FATF Rec.16)</option>
+                <option value="customer-exit">Customer Exit and De-risking Procedures</option>
+                <option value="four-eyes">Four-Eyes Principle and Dual-Control Reviews</option>
+                <option value="new-product-risk">New Product/Service Risk Assessment</option>
+              </optgroup>
+              <optgroup label="Precious Metals & Stones Specific">
+                <option value="lbma-rgg">LBMA Responsible Gold Guidance v9 (All 5 Steps)</option>
+                <option value="kimberley-process">Kimberley Process Certification Scheme</option>
+                <option value="refinery-dd">Refinery and Smelter Due Diligence</option>
+                <option value="hallmarking">Hallmarking and Assay Verification</option>
+                <option value="gold-import">Gold Import/Export Clearance Controls</option>
+                <option value="trade-based-ml">Trade-Based Money Laundering (TBML) Detection</option>
+              </optgroup>
+              <optgroup label="Technology and Innovation">
+                <option value="vasp-compliance">Virtual Asset Service Provider (VASP) Compliance</option>
+                <option value="regtech">RegTech and Compliance Technology Assessment</option>
+                <option value="cyber-security">Cybersecurity for Compliance Operations</option>
+              </optgroup>
+              <optgroup label="UAE-Specific Regulations (2024-2025)">
+                <option value="fdl-10-2025">Federal Decree-Law No.(10) of 2025 — Full Compliance Review</option>
+                <option value="cabinet-134-2025">Cabinet Resolution No.(134) of 2025 — Implementation Assessment</option>
+                <option value="cabinet-156-2025">Cabinet Resolution 156/2025 — Strategic Goods Controls</option>
+                <option value="nra-2024">UAE National Risk Assessment 2024 — Integration Review</option>
+                <option value="ubo-109-2023">Cabinet Decision 109/2023 — Beneficial Ownership Compliance</option>
+              </optgroup>
+              <optgroup label="International Standards">
+                <option value="fatf-mer">FATF Mutual Evaluation Readiness</option>
+                <option value="oecd-ddg">OECD Due Diligence Guidance for Responsible Supply Chains</option>
+                <option value="wolfsberg">Wolfsberg Anti-Money Laundering Principles</option>
+                <option value="basel-committee">Basel Committee AML/CFT Guidance</option>
               </optgroup>
               <optgroup label="Full Assessment">
                 <option value="gap">Full Gap Assessment</option>
@@ -767,7 +802,7 @@ Examples:
           <span class="lbl" style="margin:0">Live Asana Task Status</span>
           <div style="display:flex;gap:8px">
             <button class="btn btn-sm btn-blue" onclick="loadAsanaTasks()">Refresh</button>
-            <button class="btn btn-sm" style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.4)" onclick="fixAsanaEntityTasks && fixAsanaEntityTasks()" title="Fix tasks with {entity} placeholder">Fix {entity}</button>
+            <button class="btn btn-sm" style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.4)" onclick="fixAsanaEntityTasks && fixAsanaEntityTasks()" title="Fix tasks with {entity} placeholder">Fix Placeholders</button>
             <button class="btn btn-sm btn-green" onclick="processAsanaRetryQueue(false)">Retry Failed Writes</button>
           </div>
         </div>
@@ -1785,6 +1820,8 @@ Examples:
         </div>
         <div id="screeningHistoryList"><p style="font-size:13px;color:var(--muted)">No screenings recorded yet.</p></div>
       </div>
+      <!-- TFS Sanctions (merged into Screening & TFS) -->
+      <div id="tfs-embedded-content"></div>
       <div class="card" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3)">
         <span class="sec-title" style="color:#10B981">Compliance Basis</span>
         <div class="token-note" style="color:rgba(16,185,129,0.85);line-height:1.7">
@@ -1795,8 +1832,6 @@ Examples:
           <strong style="color:#10B981">Adverse Media</strong> — Criminal/Fraud, Money Laundering, Terrorist Financing/PF, Regulatory Actions, Negative Reputation, Political/PEP, Human Rights/Environmental violations.
         </div>
       </div>
-      <!-- TFS Sanctions (merged into Screening & TFS) -->
-      <div id="tfs-embedded-content"></div>
     </div>
 
     <!-- ONBOARDING TAB (KYC/CDD Wizard + Risk Scoring) -->
@@ -2350,34 +2385,7 @@ Examples:
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Proxy URL <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — eliminates browser-side API keys)</span></span><input type="url" id="proxyUrl2" placeholder="https://fgl-proxy.youruser.workers.dev" /></div></div>
         <button class="btn btn-gold" onclick="updateKeys()">Update Keys</button>
       </div>
-      <div class="card">
-        <span class="lbl">Alerts and Notifications</span>
-        <div class="row row-2" style="margin-bottom:12px">
-          <div><label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text)"><input type="checkbox" id="browserAlertsEnabled" checked style="width:auto" />Enable browser notifications</label></div>
-          <div><button class="btn btn-sm" onclick="requestNotificationPermission()">Request Notification Permission</button></div>
-        </div>
-        <div class="row row-2" style="margin-bottom:12px">
-          <div><label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text)"><input type="checkbox" id="emailAlertsEnabled" style="width:auto" />Enable email alerts</label></div>
-          <div><span class="token-note" style="margin:0">Emails sent via <a href="https://www.emailjs.com" target="_blank" rel="noopener noreferrer" style="color:var(--gold)">EmailJS</a> &mdash; free, no server needed. <a href="https://dashboard.emailjs.com/sign-up" target="_blank" rel="noopener noreferrer" style="color:var(--gold-light)">Sign up here</a>, then paste your IDs below. If hosted on github.io, add your site origin to EmailJS allowed origins.</span></div>
-        </div>
-        <div class="row row-2" style="margin-bottom:12px">
-          <div><label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text)"><input type="checkbox" id="hourlyReminderEnabled" style="width:auto" />30-minute task reminders</label></div>
-          <div><span class="token-note" style="margin:0">Sends a to-do email every 30 minutes for due or upcoming scheduled analyses (while this page is open).</span></div>
-        </div>
-        <div class="row row-2" style="margin-bottom:12px">
-          <div><span class="lbl">Recipient Email Address</span><input type="email" id="alertEmail1" placeholder="alerts@yourcompany.com" /></div>
-          <div><span class="lbl">EmailJS Service ID</span><input type="text" id="ejsServiceId" placeholder="service_xxxxxxx" /></div>
-        </div>
-        <div class="row row-2" style="margin-bottom:12px">
-          <div><span class="lbl">EmailJS Template ID</span><input type="text" id="ejsTemplateId" placeholder="template_xxxxxxx" /></div>
-          <div><span class="lbl">EmailJS Public Key</span><input type="text" id="ejsPublicKey" placeholder="xxxxxxxxxxxxxxxxxxxx" /></div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-gold" onclick="updateAlertSettings()">Save Alert Settings</button>
-          <button class="btn btn-sm" onclick="sendTestEmailAlert()">Send Test Email</button>
-        </div>
-        <div id="emailDeliveryStatus" class="token-note" style="margin-top:10px">No email test sent yet.</div>
-      </div>
+      <!-- Alerts section removed -->
       <div class="card">
         <span class="lbl">Asana Project Reference</span>
         <p style="font-size:13px;color:var(--text);margin-bottom:6px;font-weight:500">Compliance Tasks - Compliance Program Optimized Workflow</p>
@@ -2417,15 +2425,7 @@ Examples:
         <div id="storageQuotaInfo" style="font-size:11px;color:var(--muted);margin-bottom:8px"></div>
         <button class="btn btn-sm btn-red" onclick="clearAppData()">Clear All Local Data</button>
       </div>
-      <!-- User Management (Admin only) -->
-      <div class="card" id="userMgmtSection" style="display:none">
-        <div class="top-bar" style="margin-bottom:10px">
-          <span class="sec-title" style="margin:0;border:none;padding:0">User Management</span>
-          <button class="btn btn-sm btn-green" onclick="addNewUser()">+ Add User</button>
-        </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Manage user access. Only visible to Admins. Roles: <strong>Admin</strong> (full access), <strong>Compliance Officer</strong> (all except user mgmt), <strong>Viewer</strong> (read-only).</p>
-        <div id="userMgmtList"></div>
-      </div>
+      <!-- User Management removed (single-user) -->
     </div>
 
     <!-- REPORTS TAB -->
