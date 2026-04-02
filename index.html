@@ -3296,7 +3296,7 @@ function openMainPanel() {
 function saveSetup() {
   ANTHROPIC_KEY = document.getElementById('anthropicKey').value.trim();
   ASANA_TOKEN = document.getElementById('asanaToken').value.trim();
-  SCHEDULE_EMAIL = document.getElementById('scheduleEmail').value.trim();
+  SCHEDULE_EMAIL = document.getElementById('scheduleEmail')?.value?.trim() || '';
   PROXY_URL = normaliseProxyUrl(document.getElementById('proxyUrl')?.value || '');
   GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId')?.value.trim() || '';
   GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId')?.value.trim() || '';
