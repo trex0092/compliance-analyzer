@@ -1037,19 +1037,46 @@
       { flag:'Large volume of low-value gem transactions used for value transfer', ref:'FATF DPMS 2020 §4.3', l:4, i:4, mx:['repeat'] },
       { flag:'Customer imports rough diamonds and exports polished without verifiable processing facility', ref:'Kimberley Process | FATF DPMS 2020', l:4, i:5, mx:[] },
     ],
+    'Free Zone & Cross-Border': [
+      { flag:'Customer operates across multiple UAE free zones without clear business rationale', ref:'FATF DPMS 2020 §4.3 | UAE FDL No.(10)/2025', l:3, i:3, mx:[] },
+      { flag:'Goods re-exported from free zone without proper customs documentation', ref:'UAE Customs Law | DMCC Rules', l:4, i:4, mx:[] },
+      { flag:'Customer uses free zone entity solely for transit/re-export to sanctioned jurisdiction', ref:'Cabinet Resolution 74/2020 | FATF Rec.19', l:5, i:5, mx:['sanctions','high_risk_jurisdiction'] },
+      { flag:'Discrepancy between declared free zone activity and actual trading patterns', ref:'FATF DPMS 2020 | UAE Free Zone Authority Regulations', l:4, i:4, mx:[] },
+      { flag:'Gold imported under free zone exemption then diverted to mainland without duties', ref:'UAE Customs Law | Free Zone Regulations', l:4, i:4, mx:[] },
+      { flag:'Customer uses multiple free zone licenses to fragment transactions below reporting threshold', ref:'UAE FDL No.(10)/2025 | MoE Circular 08/AML/2021', l:4, i:4, mx:['repeat'] },
+      { flag:'Cross-border shipment documentation inconsistent between exporting and importing country', ref:'FATF TBML Guidance 2020 | Wolfsberg ACSS 2019', l:4, i:4, mx:['high_risk_jurisdiction'] },
+      { flag:'Customer requests delivery to bonded warehouse in third country without explanation', ref:'FATF TBML Guidance 2020', l:3, i:4, mx:['high_risk_jurisdiction'] },
+    ],
+    'Regulatory & Compliance Failures': [
+      { flag:'Customer has been de-banked by multiple financial institutions', ref:'FATF Rec.10 | UAE FDL No.(10)/2025', l:4, i:5, mx:[] },
+      { flag:'Customer subject to regulatory enforcement action in any jurisdiction', ref:'UAE FDL No.(10)/2025 Art.12 | FATF Rec.10', l:4, i:5, mx:[] },
+      { flag:'Customer previously filed STR/SAR and continues same transaction patterns', ref:'UAE FDL No.(10)/2025 Art.26 | FATF Rec.20', l:5, i:5, mx:['repeat'] },
+      { flag:'Customer entity has been struck off register but continues to trade', ref:'UAE Commercial Companies Law | FATF Rec.24', l:5, i:5, mx:[] },
+      { flag:'Customer fails to provide updated KYC documents within agreed timeframe', ref:'UAE FDL No.(10)/2025 Art.12 | Cabinet Resolution 134/2025 Art.13', l:3, i:4, mx:[] },
+      { flag:'Compliance controls bypassed or overridden by senior management instruction', ref:'UAE FDL No.(10)/2025 Art.21 | FATF Rec.18', l:5, i:5, mx:[] },
+      { flag:'Customer uses legal professional privilege to obstruct compliance inquiries', ref:'FATF Rec.10 | UAE FDL No.(10)/2025', l:4, i:4, mx:[] },
+      { flag:'Customer has outstanding regulatory fines or administrative penalties unpaid', ref:'Cabinet Resolution 71/2024 | UAE FDL No.(10)/2025', l:3, i:4, mx:[] },
+    ],
   };
 
   function renderRedFlags() {
     const el = document.getElementById('suite-content-redflags');
     if (!el) return;
 
-    // Count flags by level
+    const customFlags = getCustomFlags();
+
+    // Count flags by level (including custom)
     let counts = { Critical:0, High:0, Medium:0, Low:0, total:0 };
     Object.values(RED_FLAGS_DB).forEach(flags => flags.forEach(f => {
       const lvl = rfLevel(f.l * f.i);
       counts[lvl]++;
       counts.total++;
     }));
+    customFlags.forEach(f => {
+      const lvl = rfLevel(f.l * f.i);
+      counts[lvl]++;
+      counts.total++;
+    });
 
     el.innerHTML = `
       <div class="card" style="margin-bottom:1rem">
@@ -1115,9 +1142,9 @@
           </div>
         </div>
 
-        <!-- Search and Filter -->
-        <div style="display:flex;gap:8px;margin-bottom:1rem">
-          <input type="text" id="rf-search" placeholder="Search red flags..." oninput="suiteFilterRedFlags(this.value)" style="flex:1"/>
+        <!-- Search, Filter and Add -->
+        <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+          <input type="text" id="rf-search" placeholder="Search red flags..." oninput="suiteFilterRedFlags(this.value)" style="flex:1;min-width:200px"/>
           <select id="rf-level-filter" onchange="suiteFilterRFLevel(this.value)" style="width:150px">
             <option value="">All Levels</option>
             <option value="Critical">🔴 Critical</option>
@@ -1125,6 +1152,7 @@
             <option value="Medium">🟡 Medium</option>
             <option value="Low">🟢 Low</option>
           </select>
+          <button class="btn btn-sm btn-green" onclick="suiteAddRedFlag()" style="white-space:nowrap">+ Add Red Flag</button>
         </div>
 
         <div id="rf-results">
@@ -1153,6 +1181,30 @@
               }).join('')}
             </div>
           `).join('')}
+          ${customFlags.length ? `
+            <div class="card rf-category" style="margin-bottom:1rem;padding:1rem">
+              <div class="sec-title" style="margin-bottom:10px">Custom Red Flags (${customFlags.length})</div>
+              ${customFlags.map(f => {
+                const score = f.l * f.i;
+                const lvl = rfLevel(score);
+                const rl = RF_LEVEL[lvl];
+                return `
+                <div class="rf-item" data-text="${f.flag.toLowerCase()}" data-level="${lvl}"
+                  style="padding:10px 12px;border-radius:8px;border:1px solid ${rl.border};margin-bottom:6px;background:${rl.bg}">
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                    <div style="font-size:13px;font-weight:500;flex:1">🚩 ${f.flag}</div>
+                    <div style="flex-shrink:0;display:flex;align-items:center;gap:6px">
+                      <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:5px;padding:2px 8px;font-size:10px;font-family:'DM Mono',monospace;white-space:nowrap">${lvl} — ${score}</div>
+                      <button class="btn btn-sm" onclick="suiteEditRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Edit</button>
+                      <button class="btn btn-sm btn-red" onclick="suiteDeleteRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Del</button>
+                    </div>
+                  </div>
+                  <div style="font-size:11px;color:var(--gold);font-family:'DM Mono',monospace;margin-top:4px">${f.ref}</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px">L:${f.l} × I:${f.i} = ${score} · ${rl.action}</div>
+                </div>`;
+              }).join('')}
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -1179,7 +1231,47 @@
     global.suiteFilterRedFlags(document.getElementById('rf-search')?.value || '');
   };
 
+  // ── Custom Red Flags (user-added, stored in localStorage) ──
+  const CUSTOM_RF_STORAGE = 'fgl_custom_red_flags';
+  function getCustomFlags() { try { return JSON.parse(localStorage.getItem(CUSTOM_RF_STORAGE)||'[]'); } catch(e) { return []; } }
+  function saveCustomFlags(flags) { localStorage.setItem(CUSTOM_RF_STORAGE, JSON.stringify(flags)); }
 
+  global.suiteAddRedFlag = function() {
+    const flag = prompt('Enter the red flag description:');
+    if (!flag || !flag.trim()) return;
+    const ref = prompt('Regulatory reference (e.g. FATF Rec.10):') || 'Custom';
+    const l = parseInt(prompt('Likelihood (1-5):')) || 3;
+    const i = parseInt(prompt('Impact (1-5):')) || 3;
+    const custom = getCustomFlags();
+    custom.push({ flag: flag.trim(), ref, l: Math.min(5,Math.max(1,l)), i: Math.min(5,Math.max(1,i)), mx: [], custom: true, id: Date.now() });
+    saveCustomFlags(custom);
+    renderRedFlags();
+    toast('Red flag added', 'success');
+  };
+
+  global.suiteEditRedFlag = function(id) {
+    const custom = getCustomFlags();
+    const idx = custom.findIndex(f => f.id === id);
+    if (idx < 0) return;
+    const f = custom[idx];
+    const flag = prompt('Edit red flag description:', f.flag);
+    if (!flag || !flag.trim()) return;
+    const ref = prompt('Regulatory reference:', f.ref) || f.ref;
+    const l = parseInt(prompt('Likelihood (1-5):', f.l)) || f.l;
+    const i = parseInt(prompt('Impact (1-5):', f.i)) || f.i;
+    custom[idx] = { ...f, flag: flag.trim(), ref, l: Math.min(5,Math.max(1,l)), i: Math.min(5,Math.max(1,i)) };
+    saveCustomFlags(custom);
+    renderRedFlags();
+    toast('Red flag updated', 'success');
+  };
+
+  global.suiteDeleteRedFlag = function(id) {
+    if (!confirm('Delete this custom red flag?')) return;
+    const custom = getCustomFlags().filter(f => f.id !== id);
+    saveCustomFlags(custom);
+    renderRedFlags();
+    toast('Red flag deleted', 'success');
+  };
 
   // ════════════════════════════════════════════════════════════════════════════
   // 6. APPROVAL MATRIX — UNIFIED (Four-Eyes + Management Approvals)

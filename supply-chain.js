@@ -262,14 +262,6 @@ const SupplyChain = (function() {
     return `
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
-          <span class="lbl" style="margin:0">LBMA RGG v9 — Five-Step Framework</span>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Responsible Gold Guidance compliance tracker</span>
-        </div>
-        ${rggHtml}
-      </div>
-
-      <div class="card">
-        <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Supply Chain Due Diligence</span>
           <button class="btn btn-sm btn-green" onclick="SupplyChain.addEntry()">Add Supplier/Shipment</button>
         </div>
@@ -298,6 +290,14 @@ const SupplyChain = (function() {
         <div style="margin-bottom:8px"><span class="lbl">Notes</span><textarea id="scNotes" placeholder="Additional due diligence notes..." style="min-height:40px"></textarea></div>
 
         <div style="margin-top:12px">${entriesHtml}</div>
+      </div>
+
+      <div class="card">
+        <div class="top-bar" style="margin-bottom:10px">
+          <span class="lbl" style="margin:0">LBMA RGG v9 — Five-Step Framework</span>
+          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Responsible Gold Guidance compliance tracker</span>
+        </div>
+        ${rggHtml}
       </div>
 
       <div class="card">
