@@ -82,10 +82,9 @@
   const NEW_TABS = [
     // CRA merged into Risk Assessment tab
     { id: 'ubo',       icon: '🏛️', label: 'UBO',       title: 'UBO Register' },
-    { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management' },
     { id: 'redflags',  icon: '🚩', label: 'Red Flags', title: 'Red Flag Library' },
     { id: 'approvals2','icon':'✅', label: '4-Eyes', title: 'Four-Eyes Approval Matrix' },
-    { id: 'regmap',    icon: '📋', label: 'Reg Map',   title: 'Regulatory Mapping' },
+    { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management' },
   ];
 
   function injectTabs() {
