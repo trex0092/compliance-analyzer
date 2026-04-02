@@ -494,15 +494,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
       <input type="text" id="gdriveFolderId" placeholder="1ABC...xyz" />
       <div class="token-note">Open your Google Drive folder → copy the ID from the URL (the string after /folders/).</div>
     </div>
-    <div class="card" style="padding:1rem 1.2rem">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text)">
-        <input type="checkbox" id="rememberKeys" style="width:auto" />
-        Remember my keys on this browser
-      </label>
-      <div class="token-note">Turn this off if you are on a shared computer.</div>
-    </div>
-    <button class="btn btn-gold" onclick="saveSetup()">Save and Open Analyzer</button>
-    <button class="btn" onclick="openMainPanel();toast('You can add API keys later in Settings','info',4000)" style="margin-top:8px;width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--muted)">Skip — Open Without API Keys</button>
+    <button class="btn btn-gold" onclick="openMainPanel();toast('You can configure API keys in Settings','info',4000)" style="width:100%">Open Analyzer</button>
   </div>
 
   <!-- MAIN PANEL -->
@@ -2355,9 +2347,7 @@ Examples:
         <div class="row row-2" style="margin-bottom:12px"><div><span class="lbl">Google Drive Client ID</span><input type="text" id="gdriveClientId2" placeholder="123456789-abc.apps.googleusercontent.com" /></div><div><span class="lbl">Google Drive Folder ID</span><input type="text" id="gdriveFolderId2" placeholder="1ABC...xyz" /></div></div>
         <div class="row row-2" style="margin-bottom:12px"><div><button class="btn btn-sm" onclick="connectGoogleDrive()" style="margin-top:0">Connect Google Drive</button></div><div id="gdriveStatus" style="font-size:12px;color:var(--muted);padding-top:4px"></div></div>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Asana Personal Access Token</span><input type="password" id="asanaToken2" placeholder="1/xxxxxxxx..." /></div></div>
-        <div class="row" style="margin-bottom:12px"><div><span class="lbl">Email for Scheduled Reports</span><input type="email" id="schedEmail2" placeholder="your@email.com" /></div></div>
-        <div class="row" style="margin-bottom:12px"><div><span class="lbl">Proxy URL <span style="color:var(--muted);font-weight:400;font-size:11px">(optional)</span></span><input type="url" id="proxyUrl2" placeholder="https://fgl-proxy.youruser.workers.dev" /></div></div>
-        <div class="row" style="margin-bottom:12px"><div><label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text)"><input type="checkbox" id="rememberKeys2" style="width:auto" />Remember my keys on this browser</label></div></div>
+        <div class="row" style="margin-bottom:12px"><div><span class="lbl">Proxy URL <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — eliminates browser-side API keys)</span></span><input type="url" id="proxyUrl2" placeholder="https://fgl-proxy.youruser.workers.dev" /></div></div>
         <button class="btn btn-gold" onclick="updateKeys()">Update Keys</button>
       </div>
       <div class="card">
@@ -3316,9 +3306,7 @@ function updateKeys() {
   if (document.getElementById('asanaToken2').value.trim()) ASANA_TOKEN = document.getElementById('asanaToken2').value.trim();
   if (document.getElementById('gdriveClientId2')?.value.trim()) GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId2').value.trim();
   if (document.getElementById('gdriveFolderId2')?.value.trim()) GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId2').value.trim();
-  if (document.getElementById('schedEmail2').value.trim()) SCHEDULE_EMAIL = document.getElementById('schedEmail2').value.trim();
   if (document.getElementById('proxyUrl2')?.value.trim()) PROXY_URL = normaliseProxyUrl(document.getElementById('proxyUrl2').value);
-  REMEMBER_KEYS = !!document.getElementById('rememberKeys2')?.checked;
   persistKeys();
 
   // Sync setup panel fields
