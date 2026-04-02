@@ -1002,10 +1002,7 @@
         <span class="sec-title">Notification Channels</span>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
           ${renderChannelStatus('Asana', !!(window.PROXY_URL || window.ASANA_TOKEN), 'Auto-create tasks from rules')}
-          ${renderChannelStatus('Email (EmailJS)', !!(parse('fgl_alerts', {}).emailEnabled), 'Escalation and digest emails')}
-          ${renderChannelStatus('Browser', typeof Notification !== 'undefined' && Notification.permission === 'granted', 'Desktop notifications')}
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:10px">Configure notification channels in the Settings tab.</p>
       </div>
 
       <!-- Compliance Checklists -->
