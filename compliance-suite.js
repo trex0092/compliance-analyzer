@@ -1602,6 +1602,8 @@
   function init() {
     injectTabs();
     injectContentContainers();
+    // Auto-render CRA into embedded container (merged into Risk & CRA tab)
+    setTimeout(function() { if (document.getElementById('cra-embedded-content')) renderCRA(); }, 500);
     console.log('[ComplianceSuite] v2.0.0 initialized — UAE AML/CFT modules loaded');
   }
 
@@ -2578,10 +2580,15 @@
   };
 
   // ─── INIT ────────────────────────────────────────────────────────────────────
+  function initSuite2() {
+    injectSuite2();
+    // Auto-render TFS into embedded container (merged into Screening & TFS tab)
+    setTimeout(function() { if (document.getElementById('tfs-embedded-content')) renderTFS2(); }, 600);
+  }
   if (document.readyState==='loading') {
-    document.addEventListener('DOMContentLoaded', injectSuite2);
+    document.addEventListener('DOMContentLoaded', initSuite2);
   } else {
-    setTimeout(injectSuite2, 400);
+    setTimeout(initSuite2, 400);
   }
 
 })(window);
