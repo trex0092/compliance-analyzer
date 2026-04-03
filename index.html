@@ -7581,21 +7581,20 @@ async function runScreening() {
   const sb = document.getElementById('screeningStatus'); sb.style.display = 'flex';
   document.getElementById('screeningStatusText').textContent = 'Running screening checks...';
 
-  const prompt = `Screen this entity. Return ONLY a single-line compact JSON object, no markdown.
+  const prompt = `MAXIMUM DEPTH SCREENING — LEAVE NO STONE UNTURNED. Return ONLY a single-line compact JSON object, no markdown.
 
 Entity: ${name} | Type: ${type} | Country: ${country || 'N/A'} | ID: ${idNum || 'N/A'}
-Sanctions lists: ${sanctionsLists.length ? sanctionsLists.join(', ') : 'None'}
-Adverse media: ${adverseMediaCategories.length ? adverseMediaCategories.join(', ') : 'None'}
 
-ABSOLUTE ACCURACY RULES:
-- NEVER fabricate sanctions designations. Only report CONFIRMED designations you are 100% certain about.
-- Being in adverse media or under investigation is NOT the same as being on a sanctions list. Keep STRICTLY SEPARATE.
-- For adverse media: be EXHAUSTIVE. Search for criminal investigations, regulatory actions, lawsuits, investigative journalism (ICIJ, OCCRP, Turkish Minute, Reuters, Bloomberg, Reporter Brasil, Mongabay, Global Witness), environmental crimes, fraud, corruption.
-- POTENTIAL_MATCH = adverse media found but no confirmed sanctions. MATCH = confirmed on a sanctions list.
-- It is BETTER to say no sanctions and flag adverse media than to falsely claim someone is sanctioned.
-Keep ALL strings under 50 chars. Max 2 items per array. No nested objects.
+You MUST check ALL of the following regardless of selections:
+1. ALL SANCTIONS: OFAC SDN/SSI/CAPTA, UN Consolidated, EU Consolidated, UK OFSI, UAE EOCN, UAE Central Bank, Swiss SECO, Australian DFAT, Canadian SEMA, country-specific programs.
+2. PEP: heads of state, ministers, military, judiciary, SOE executives, family, associates.
+3. EXHAUSTIVE ADVERSE MEDIA: Search your ENTIRE knowledge — criminal investigations, money laundering, fraud, corruption, environmental crimes (illegal mining/gold/deforestation), human rights, regulatory fines, lawsuits, terrorism financing, narcotics, sanctions evasion. Sources: ICIJ, OCCRP, Reporter Brasil, Mongabay, Amazon Watch, Global Witness, Turkish Minute, Middle East Eye, Al Jazeera, Bellingcat, BBC, Reuters, Bloomberg, FT, local media. NGOs: Transparency International, BHRRC, Amnesty, HRW. Gold/metals: LBMA, DMCC.
+4. UAE-SPECIFIC: EOCN, UAE Central Bank circulars, MENAFATF, DMCC disciplinary.
 
-JSON schema: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","risk_level":"LOW|MEDIUM|HIGH|CRITICAL","sanctions_hits":[{"list":"name","match_type":"exact|partial","details":"short"}],"adverse_media_hits":[{"category":"cat","source":"src","date":"date","details":"short"}],"risk_factors":["short"],"recommended_actions":["short"],"summary":"one line"}`;
+ACCURACY: NEVER fabricate sanctions. Adverse media is SEPARATE from sanctions. POTENTIAL_MATCH = adverse media but no confirmed sanctions. MATCH = confirmed on sanctions list.
+Keep strings under 50 chars. Max 2 items per array. No nested objects.
+
+JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","risk_level":"LOW|MEDIUM|HIGH|CRITICAL","sanctions_hits":[{"list":"name","match_type":"exact|partial","details":"short"}],"adverse_media_hits":[{"category":"cat","source":"src","date":"date","details":"short"}],"risk_factors":["short"],"recommended_actions":["short"],"summary":"one line"}`;
 
   if (!ANTHROPIC_KEY && !OPENAI_KEY && !GEMINI_KEY && !PROXY_URL) {
     sb.style.display='none';
