@@ -14,6 +14,7 @@ import type { PeriodicReviewSchedule } from "../domain/periodicReview";
 import { COMPANY_REGISTRY } from "../domain/customers";
 import { createAsanaTask, updateAsanaTask, isAsanaConfigured, type AsanaTaskPayload } from "./asanaClient";
 import { enqueueRetry } from "./asanaQueue";
+import { addTaskLink } from "./asanaTaskLinks";
 
 const DEFAULT_PROJECT = "1213759768596515";
 
@@ -185,7 +186,9 @@ export async function syncCaseToAsana(
   const payload = buildCaseTaskPayload(caseObj, projectId);
 
   const result = await createAsanaTask(payload);
-  if (!result.ok) {
+  if (result.ok && result.gid) {
+    addTaskLink(caseObj.id, "case", result.gid, projectId, customer?.id);
+  } else if (!result.ok) {
     enqueueRetry(payload, "case-sync", result.error ?? "Unknown", caseObj.id);
   }
   return result;
@@ -206,7 +209,9 @@ export async function syncAlertToAsana(
   const payload = buildAlertTaskPayload(alertItem, entityName, projectId);
 
   const result = await createAsanaTask(payload);
-  if (!result.ok) {
+  if (result.ok && result.gid) {
+    addTaskLink(alertItem.id, "alert", result.gid, projectId, registryEntry?.id);
+  } else if (!result.ok) {
     enqueueRetry(payload, "alert-sync", result.error ?? "Unknown");
   }
   return result;
@@ -225,7 +230,9 @@ export async function syncApprovalToAsana(
   const payload = buildApprovalTaskPayload(approval, caseObj, projectId);
 
   const result = await createAsanaTask(payload);
-  if (!result.ok) {
+  if (result.ok && result.gid) {
+    addTaskLink(approval.id, "approval", result.gid, projectId, customer?.id);
+  } else if (!result.ok) {
     enqueueRetry(payload, "approval-sync", result.error ?? "Unknown", approval.id);
   }
   return result;
@@ -243,7 +250,9 @@ export async function syncReviewToAsana(
   const payload = buildReviewTaskPayload(review, projectId);
 
   const result = await createAsanaTask(payload);
-  if (!result.ok) {
+  if (result.ok && result.gid) {
+    addTaskLink(review.id, "review", result.gid, projectId, registryEntry?.id);
+  } else if (!result.ok) {
     enqueueRetry(payload, "review-sync", result.error ?? "Unknown", review.id);
   }
   return result;

@@ -334,6 +334,192 @@
     }
   }
 
+  // ── Asana Read-Back Sync ──────────────────────────────────────────────────
+  // When Asana events arrive, update local compliance data (cases, alerts, etc.)
+  // Completed tasks are NOT removed — only marked as completed for audit trail.
+
+  var TASK_LINKS_KEY = 'asana_task_links';
+
+  function readTaskLinks() {
+    try { return JSON.parse(localStorage.getItem(TASK_LINKS_KEY) || '[]'); } catch(e) { return []; }
+  }
+
+  function writeTaskLinks(links) {
+    try { localStorage.setItem(TASK_LINKS_KEY, JSON.stringify(links)); } catch(e) {}
+  }
+
+  function findLinkByGid(gid) {
+    return readTaskLinks().find(function(l) { return l.asanaGid === gid; });
+  }
+
+  function markLinkAsCompleted(gid) {
+    var links = readTaskLinks();
+    for (var i = 0; i < links.length; i++) {
+      if (links[i].asanaGid === gid) {
+        links[i].completedInAsana = true;
+        links[i].completedAt = new Date().toISOString();
+        break;
+      }
+    }
+    writeTaskLinks(links);
+  }
+
+  /**
+   * Process Asana events and update local compliance state.
+   * task_completed → mark linked case/alert/approval as completed (not deleted)
+   * comment_added → append to case audit log
+   */
+  function processAsanaReadback(events) {
+    var updates = [];
+
+    for (var i = 0; i < events.length; i++) {
+      var evt = events[i];
+      if (evt.source !== 'asana') continue;
+
+      var gid = evt.data && evt.data.gid;
+      if (!gid) continue;
+
+      var link = findLinkByGid(gid);
+      if (!link) continue;
+
+      if (evt.type === 'task_completed') {
+        markLinkAsCompleted(gid);
+        var update = applyCompletionToLocalState(link, evt);
+        if (update) updates.push(update);
+      }
+
+      if (evt.type === 'comment_added') {
+        var commentUpdate = applyCommentToLocalState(link, evt);
+        if (commentUpdate) updates.push(commentUpdate);
+      }
+    }
+
+    // Show summary toast if any local updates were made
+    if (updates.length > 0) {
+      if (typeof toast === 'function') {
+        toast(updates.length + ' item(s) synced from Asana', 'success');
+      }
+      console.log('[ReadbackSync] Applied ' + updates.length + ' updates from Asana:', updates);
+    }
+
+    return updates;
+  }
+
+  /**
+   * When a task is completed in Asana, update the linked local entity.
+   * Items are marked completed — never deleted.
+   */
+  function applyCompletionToLocalState(link, evt) {
+    var localType = link.localType;
+    var localId = link.localId;
+    var taskName = (evt.data && evt.data.name) || link.asanaGid;
+    var auditNote = 'Completed in Asana: "' + taskName + '"' + (evt.data && evt.data.user ? ' by ' + evt.data.user : '');
+
+    if (localType === 'case') {
+      return applyCaseCompletion(localId, auditNote);
+    }
+    if (localType === 'alert') {
+      return applyAlertCompletion(localId, auditNote);
+    }
+    if (localType === 'approval') {
+      return applyApprovalCompletion(localId, auditNote);
+    }
+    return { type: localType, id: localId, action: 'marked-completed', detail: auditNote };
+  }
+
+  function applyCaseCompletion(caseId, auditNote) {
+    try {
+      var cases = JSON.parse(localStorage.getItem('cases') || '[]');
+      for (var i = 0; i < cases.length; i++) {
+        if (cases[i].id === caseId) {
+          // Don't auto-close — move to under-review so compliance officer decides
+          if (cases[i].status === 'open') {
+            cases[i].status = 'under-review';
+          }
+          cases[i].updatedAt = new Date().toISOString();
+          // Append to audit log
+          if (!cases[i].auditLog) cases[i].auditLog = [];
+          cases[i].auditLog.push({
+            id: 'audit_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6),
+            at: new Date().toISOString(),
+            by: 'asana-sync',
+            action: 'status-changed',
+            note: auditNote
+          });
+          localStorage.setItem('cases', JSON.stringify(cases));
+          return { type: 'case', id: caseId, action: 'marked-completed', newStatus: cases[i].status, detail: auditNote };
+        }
+      }
+    } catch(e) { console.warn('[ReadbackSync] Case update failed:', e); }
+    return null;
+  }
+
+  function applyAlertCompletion(alertId, auditNote) {
+    try {
+      var alerts = JSON.parse(localStorage.getItem('alerts') || '[]');
+      for (var i = 0; i < alerts.length; i++) {
+        if (alerts[i].id === alertId) {
+          // Mark dismissed but keep in the list
+          alerts[i].dismissedAt = new Date().toISOString();
+          localStorage.setItem('alerts', JSON.stringify(alerts));
+          return { type: 'alert', id: alertId, action: 'marked-completed', detail: auditNote };
+        }
+      }
+    } catch(e) { console.warn('[ReadbackSync] Alert update failed:', e); }
+    return null;
+  }
+
+  function applyApprovalCompletion(approvalId, auditNote) {
+    try {
+      var approvals = JSON.parse(localStorage.getItem('approvals') || '[]');
+      for (var i = 0; i < approvals.length; i++) {
+        if (approvals[i].id === approvalId && approvals[i].status === 'pending') {
+          // Task completed in Asana = approved (compliance officer marked it done)
+          approvals[i].status = 'approved';
+          approvals[i].decidedAt = new Date().toISOString();
+          approvals[i].decidedBy = 'asana-sync';
+          approvals[i].note = auditNote;
+          localStorage.setItem('approvals', JSON.stringify(approvals));
+          return { type: 'approval', id: approvalId, action: 'marked-completed', newStatus: 'approved', detail: auditNote };
+        }
+      }
+    } catch(e) { console.warn('[ReadbackSync] Approval update failed:', e); }
+    return null;
+  }
+
+  /**
+   * When a comment is added in Asana, append it to the linked case's audit log.
+   */
+  function applyCommentToLocalState(link, evt) {
+    if (link.localType !== 'case') return null;
+
+    try {
+      var cases = JSON.parse(localStorage.getItem('cases') || '[]');
+      for (var i = 0; i < cases.length; i++) {
+        if (cases[i].id === link.localId) {
+          var commentText = (evt.data && evt.data.text) || 'Comment added in Asana';
+          if (!cases[i].auditLog) cases[i].auditLog = [];
+          cases[i].auditLog.push({
+            id: 'audit_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6),
+            at: evt.timestamp || new Date().toISOString(),
+            by: (evt.data && evt.data.user) || 'asana-user',
+            action: 'updated',
+            note: '[Asana Comment] ' + commentText
+          });
+          cases[i].updatedAt = new Date().toISOString();
+          localStorage.setItem('cases', JSON.stringify(cases));
+          return { type: 'case', id: link.localId, action: 'comment-added', detail: commentText };
+        }
+      }
+    } catch(e) { console.warn('[ReadbackSync] Comment sync failed:', e); }
+    return null;
+  }
+
+  // ── Register readback processor as event callback ────────────────────────
+  onEventCallbacks.push(function(newEvents) {
+    processAsanaReadback(newEvents);
+  });
+
   // ── Expose global ─────────────────────────────────────────────────────────
   window.WebhookReceiver = {
     start: start,
@@ -347,6 +533,9 @@
     renderNotificationBell: renderNotificationBell,
     renderEventFeed: renderEventFeed,
     toggleFeed: toggleFeed,
+    // Read-back sync API
+    processAsanaReadback: processAsanaReadback,
+    getTaskLinks: readTaskLinks,
   };
 
   function refreshFeedIfOpen() {
