@@ -198,7 +198,7 @@
         <div class="top-bar">
           <span class="sec-title">👤 Customer Risk Assessment — CDD/EDD</span>
           <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 | Art. 12-16 | FATF Rec. 10</span>
-          <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suiteOpenCRAForm()">+ New Assessment</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenCRAForm()">+ New Assessment</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
           <div class="metric m-c"><div class="metric-num">${records.filter(r=>r.rating==='Very High').length}</div><div class="metric-lbl">Very High Risk</div></div>
@@ -449,7 +449,7 @@
         <div class="top-bar">
           <span class="sec-title">🏛️ UBO Register — Beneficial Ownership</span>
           <span style="font-size:11px;color:var(--muted)">UAE Cabinet Decision No.(10) of 2019 | FDL No.(10) of 2025 Art.18</span>
-          <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suiteOpenUBOForm()">+ Add UBO</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenUBOForm()">+ Add UBO</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
           <div class="metric m-ok"><div class="metric-num">${records.length}</div><div class="metric-lbl">Total UBOs</div></div>
@@ -662,7 +662,7 @@
         <div class="top-bar">
           <span class="sec-title">🚨 STR Case Management</span>
           <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 Art.20 | goAML | FATF Rec.20 | File within 30 days of suspicion</span>
-          <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suiteOpenSTRForm()">+ New STR Case</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenSTRForm()">+ New STR Case</button>
         </div>
         <div style="background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.3);border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:var(--red);font-family:'DM Mono',monospace">
           ⚠️ CONFIDENTIALITY NOTICE: STR information is strictly confidential. Tipping off a subject is a criminal offence under UAE FDL No.(10) of 2025 Art.21. Do not disclose to any person that a report has been or will be filed.
@@ -1325,7 +1325,7 @@
         <div class="top-bar">
           <span class="sec-title">✅ Approval Matrix — Four-Eyes Control</span>
           <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 | Senior Management Approval Requirements</span>
-          <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suiteOpenApprovalForm()">+ New Approval Request</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenApprovalForm()">+ New Approval Request</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
           <div class="metric m-c"><div class="metric-num">${pending.length}</div><div class="metric-lbl">Pending</div></div>
@@ -1631,7 +1631,7 @@
       <div class="card">
         <div class="top-bar">
           <span class="sec-title">Regulatory Change Log</span>
-          <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suiteAddRegChange()">+ Log Change</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteAddRegChange()">+ Log Change</button>
         </div>
         ${changelog.length===0 ? '<p style="color:var(--muted);font-size:13px;text-align:center;padding:1rem">No regulatory changes logged.</p>' : ''}
         ${changelog.map((c,i)=>`
@@ -1834,7 +1834,7 @@
         <span style="font-size:11px;color:var(--muted)">Cabinet Decision No.(74) of 2020 | EOCN Executive Office TFS Guidance</span>
         <div style="display:flex;gap:6px">
           <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function')refreshSanctionsLists();renderTFS2();toast('Refreshed','success')">Refresh</button>
-          <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
         </div>
       </div>
 
@@ -2322,7 +2322,7 @@
       <div class="top-bar">
         <span class="sec-title">📊 DPMSR — Threshold Reporting & Linked Transaction Detection</span>
         <span style="font-size:11px;color:var(--muted)">MoE Circular 08/AML/2021 | AED 55,000 Threshold | Cabinet Resolution 134/2025 Art.13</span>
-        <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2OpenDPMSRForm()">+ New Threshold Case</button>
+        <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenDPMSRForm()">+ New Threshold Case</button>
       </div>
 
       <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:1rem">
@@ -2638,7 +2638,7 @@
       <div class="top-bar">
         <span class="sec-title">🗄️ Record Retention Register</span>
         <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 — Minimum 10 years | Records must enable transaction reconstruction</span>
-        <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2AddRetentionRecord()">+ Add Record</button>
+        <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2AddRetentionRecord()">+ Add Record</button>
       </div>
       <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
         <strong>UAE FDL No.(10) of 2025 — 10 Year Minimum:</strong> All records must be retained for a minimum of 10 years. Records must be organized so individual transactions can be reconstructed and provided promptly to competent authorities upon request. This applies to all CDD, transaction, STR, risk assessment, training, audit, and correspondence records.
@@ -2758,7 +2758,7 @@
       <div class="top-bar">
         <span class="sec-title">🤖 AI Output Governance — Human Review Log</span>
         <span style="font-size:11px;color:var(--muted)">Cabinet Resolution 134/2025 Art.24 | PDPL — Human review of automated processing decisions</span>
-        <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2LogAIReview()">+ Log AI Review</button>
+        <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2LogAIReview()">+ Log AI Review</button>
       </div>
       <div style="background:rgba(74,143,193,0.1);border:1px solid rgba(74,143,193,0.3);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
         <strong>Governance Requirement (Art.24):</strong> All AI-generated compliance outputs — gap assessments, risk scores, STR drafts, screening results, recommendations — must be reviewed and signed off by a qualified human compliance professional before any action is taken. AI outputs are advisory only and cannot constitute regulatory decisions without human review and approval.
@@ -3319,16 +3319,10 @@
         <span style="font-size:11px;color:var(--muted)">${moduleStats.filter(m=>m.raw).length} active modules | ${totalRecords} records | ${totalKb.toFixed(1)} KB</span>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem">
-        <button class="btn btn-gold" style="padding:16px;font-size:13px;font-weight:600;line-height:1.6" onclick="dmExportAll()">
-          ⬇️ Full Backup<br><span style="font-size:11px;font-weight:400;opacity:0.8">Downloads a .xlsx workbook<br>one sheet per module</span>
-        </button>
-        <button class="btn" style="padding:16px;font-size:13px;font-weight:600;line-height:1.6;background:var(--surface2);border:2px dashed var(--gold)" onclick="document.getElementById('dm-import-file').click()">
-          ⬆️ Restore / Import<br><span style="font-size:11px;font-weight:400;opacity:0.8">Import from backup file<br>(.xlsx or .json)</span>
-        </button>
-        <button class="btn" style="padding:16px;font-size:13px;font-weight:600;line-height:1.6;background:var(--surface2);border:1px solid var(--border)" onclick="dmExportSummaryReport()">
-          📋 Compliance Summary<br><span style="font-size:11px;font-weight:400;opacity:0.8">Printable HTML report<br>all modules + counts</span>
-        </button>
+      <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+        <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" onclick="dmExportAll()">Backup</button>
+        <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" onclick="document.getElementById('dm-import-file').click()">Restore</button>
+        <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" onclick="dmExportSummaryReport()">Summary</button>
       </div>
       <input type="file" id="dm-import-file" accept=".json,.xlsx" style="display:none" onchange="dmImportBackup(this)"/>
 
