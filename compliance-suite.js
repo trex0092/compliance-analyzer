@@ -1808,7 +1808,7 @@
     el.innerHTML = `
     <div class="card" style="margin-bottom:1.2rem">
       <div class="top-bar">
-        <span class="sec-title">🇦🇪 UAE TFS Workflow — Full 4-Outcome Process</span>
+        <span class="sec-title">TFS Workflow — Full 4-Outcome Process</span>
         <span style="font-size:11px;color:var(--muted)">Cabinet Decision No.(74) of 2020 | EOCN Executive Office TFS Guidance</span>
         <div style="display:flex;gap:6px">
           <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function')refreshSanctionsLists();renderTFS2();toast('Refreshed','success')">Refresh</button>
@@ -1830,19 +1830,6 @@
           <div style="font-size:12px;margin-bottom:4px">⬜ UK OFSI Consolidated</div>
           <div style="font-size:12px;margin-bottom:4px">⬜ Interpol Red Notices</div>
           <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">EOCN Guidance — For non-UAE unilateral/multilateral lists, consult your supervisory authority for appropriate course of action.</div>
-        </div>
-      </div>
-
-      <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid #9b59b6;margin-bottom:1rem">
-        <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">Adverse Media Categories</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px">
-          <div style="font-size:12px;margin-bottom:4px">✅ Criminal / Fraud Allegations</div>
-          <div style="font-size:12px;margin-bottom:4px">✅ Money Laundering</div>
-          <div style="font-size:12px;margin-bottom:4px">✅ Terrorist Financing, or Proliferation Financing Links</div>
-          <div style="font-size:12px;margin-bottom:4px">✅ Regulatory Actions, Fines, or Investigations</div>
-          <div style="font-size:12px;margin-bottom:4px">✅ Negative Reputation or Commercial Disputes</div>
-          <div style="font-size:12px;margin-bottom:4px">✅ Political Controversy or PEP Connections</div>
-          <div style="font-size:12px;margin-bottom:4px">✅ Human Rights, Environmental, or Ethical Violations</div>
         </div>
       </div>
 
@@ -1871,10 +1858,6 @@
         </div>`;
       }).join('')}
 
-      <div style="display:flex;gap:10px;margin-top:1rem">
-        <button class="btn btn-green" style="flex:1;padding:12px;background:var(--green);color:#fff;border:none" onclick="if(typeof runScreening==='function')runScreening();else toast('Enter details via + New Screening Event','info')">Run Screening</button>
-        <button class="btn btn-gold" style="flex:1;padding:12px" onclick="suite2OpenTFSForm()">Save Screening</button>
-      </div>
     </div>
 
     <!-- TFS2 Modal -->
@@ -1905,6 +1888,8 @@
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-eu" style="width:auto"/> 🇪🇺 EU Consolidated (Enhanced)</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-uk" style="width:auto"/> 🇬🇧 UK OFSI (Enhanced)</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-interpol" style="width:auto"/> 🔵 Interpol Red Notices (Enhanced)</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-adverse" style="width:auto"/> 📰 Adverse Media Screening</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-pep" style="width:auto"/> 🏛️ Political Controversy / PEP</label>
           </div>
         </div>
         <div class="row row-2" style="margin-top:10px">
@@ -2005,7 +1990,7 @@
 
         <div style="display:flex;gap:8px;margin-top:1rem">
           <button class="btn btn-gold" onclick="suite2SaveTFS()" style="flex:1">Save Screening Event</button>
-          <button class="btn btn-sm btn-blue" onclick="suite2SaveTFS();if(typeof runScreening==='function')runScreening()" style="flex:1;padding:12px">Run Screening</button>
+          <button class="btn btn-sm btn-blue" onclick="suite2RunScreening()" style="flex:1;padding:12px">Run Screening</button>
           <button class="btn btn-sm" onclick="document.getElementById('tfs2Modal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
         </div>
       </div>
@@ -2058,7 +2043,7 @@
     ['tfs2-name','tfs2-reviewer','tfs2-notes','tfs2-fp-evidence','tfs2-pnmr-ref','tfs2-ffr-ref','tfs2-cnmr-ref'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     ['tfs2-fp-basis','tfs2-tx-suspended','tfs2-pnmr-status','tfs2-frozen','tfs2-ffr','tfs2-cnmr-status','tfs2-supervisor','tfs2-mlro','tfs2-mgmt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     ['tfs2-list-uae','tfs2-list-un'].forEach(id=>{const e=document.getElementById(id);if(e)e.checked=true;});
-    ['tfs2-list-ofac','tfs2-list-eu','tfs2-list-uk','tfs2-list-interpol'].forEach(id=>{const e=document.getElementById(id);if(e)e.checked=false;});
+    ['tfs2-list-ofac','tfs2-list-eu','tfs2-list-uk','tfs2-list-interpol','tfs2-list-adverse','tfs2-list-pep'].forEach(id=>{const e=document.getElementById(id);if(e)e.checked=false;});
     document.getElementById('tfs2-date').value = today();
     document.getElementById('tfs2-outcome').value = '';
     document.getElementById('tfs2-freeze-dt').value = '';
@@ -2092,6 +2077,55 @@
     }
   };
 
+  global.suite2RunScreening = async function() {
+    var name = document.getElementById('tfs2-name')?.value?.trim();
+    var entityType = document.getElementById('tfs2-entity-type')?.value || 'Individual';
+    var country = document.getElementById('tfs2-country')?.value?.trim() || '';
+    if (!name) { toast('Enter the name to screen', 'error'); return; }
+    toast('Screening "' + name + '" against sanctions lists...', 'info', 3000);
+    try {
+      var result = null;
+      if (typeof TFSRefresh !== 'undefined' && typeof TFSRefresh.screenEntity === 'function') {
+        result = await TFSRefresh.screenEntity(name, entityType.toLowerCase(), country);
+      } else if (typeof callAI === 'function') {
+        var data = await callAI({
+          model: 'claude-sonnet-4-5', max_tokens: 800, temperature: 0,
+          system: 'You are a sanctions and PEP screening specialist. Screen the given name against all major sanctions lists (OFAC SDN, UN Consolidated, EU Consolidated, UK OFSI, UAE Local Terrorism List, Interpol) and adverse media/PEP databases. Return only valid JSON.',
+          messages: [{ role: 'user', content: 'Screen entity "' + name + '" (type: ' + entityType + ', country: ' + country + '). Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"...","matchType":"exact|partial","confidence":0.0-1.0,"details":"..."}],"recommendation":"..."}' }]
+        });
+        var raw = (data.content || []).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
+        var cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
+        var m = cleaned.match(/\{[\s\S]*\}/);
+        if (m) cleaned = m[0];
+        try { result = JSON.parse(cleaned); } catch(_) { result = { result: 'POTENTIAL_MATCH' }; }
+      }
+      if (result) {
+        var r = result.result || result;
+        if (r === 'CLEAR' || r === 'NO_MATCH') {
+          suite2SelectOutcome('Negative – No Match');
+          toast('Screening complete: No match found', 'success');
+        } else if (r === 'MATCH') {
+          suite2SelectOutcome('Confirmed Match');
+          toast('Screening complete: CONFIRMED MATCH — action required!', 'error', 6000);
+        } else if (r === 'POTENTIAL_MATCH') {
+          suite2SelectOutcome('Partial Match');
+          toast('Screening complete: Potential match — review required', 'error', 5000);
+        } else {
+          suite2SelectOutcome('False Positive');
+          toast('Screening complete: review result', 'info');
+        }
+        var notesEl = document.getElementById('tfs2-notes');
+        if (notesEl && result.recommendation) {
+          notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + '[AI Screening] ' + result.recommendation;
+        }
+      } else {
+        toast('No AI provider available — select outcome manually', 'info');
+      }
+    } catch(e) {
+      toast('Screening error: ' + e.message, 'error');
+    }
+  };
+
   global.suite2SaveTFS = function() {
     const name = document.getElementById('tfs2-name').value.trim();
     const outcome = document.getElementById('tfs2-outcome').value;
@@ -2104,6 +2138,8 @@
     if (document.getElementById('tfs2-list-eu')?.checked) lists.push('EU Consolidated');
     if (document.getElementById('tfs2-list-uk')?.checked) lists.push('UK OFSI');
     if (document.getElementById('tfs2-list-interpol')?.checked) lists.push('Interpol');
+    if (document.getElementById('tfs2-list-adverse')?.checked) lists.push('Adverse Media');
+    if (document.getElementById('tfs2-list-pep')?.checked) lists.push('Political Controversy / PEP');
     const events = load(SK2.TFS2)||[];
     const editIdx = parseInt(document.getElementById('tfs2-edit-idx').value);
     const record = {

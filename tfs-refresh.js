@@ -253,18 +253,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"list na
         ${listsHtml}
       </div>
 
-      <div class="card">
-        <div class="top-bar" style="margin-bottom:10px">
-          <span class="lbl" style="margin:0">Quick TFS Screen</span>
-        </div>
-        <div class="row" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:8px">
-          <div><span class="lbl">Entity / Name</span><input type="text" id="tfsEntityName" placeholder="Name to screen" /></div>
-          <div><span class="lbl">Type</span><select id="tfsEntityType"><option value="individual">Individual</option><option value="entity">Entity</option></select></div>
-          <div><span class="lbl">Registered Country / Citizenship</span><input type="text" id="tfsCountryCitizenship" placeholder="e.g. Venezuela" /></div>
-          <div style="padding-top:20px"><button class="btn btn-gold" onclick="TFSRefresh.runScreen()">Screen Against All Lists</button></div>
-        </div>
-        <div id="tfsScreenResult"></div>
-      </div>
+      <div id="tfsScreenResult" style="display:none"></div>
 
       <div class="card">
         <div class="top-bar" style="margin-bottom:8px">
