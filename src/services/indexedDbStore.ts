@@ -7,13 +7,42 @@ import type { SuspicionReport } from "../domain/reports";
 import type { ApprovalRequest } from "../domain/approvals";
 import type { Alert } from "../domain/alerts";
 
+const STORAGE_WARN_BYTES = 4 * 1024 * 1024; // 4 MB — warn before hitting 5-10 MB limit
+
+function estimateStorageUsage(): number {
+  let total = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key) {
+      total += key.length + (localStorage.getItem(key)?.length ?? 0);
+    }
+  }
+  return total * 2; // UTF-16 = 2 bytes per char
+}
+
 function read<T>(key: string): T[] {
-  const raw = localStorage.getItem(key);
-  return raw ? (JSON.parse(raw) as T[]) : [];
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T[]) : [];
+  } catch {
+    console.error(`Failed to read "${key}" from localStorage`);
+    return [];
+  }
 }
 
 function write<T>(key: string, value: T[]): void {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    const json = JSON.stringify(value);
+    if (estimateStorageUsage() + json.length * 2 > STORAGE_WARN_BYTES) {
+      console.warn(
+        `localStorage approaching capacity. Current usage: ~${Math.round(estimateStorageUsage() / 1024)}KB`
+      );
+    }
+    localStorage.setItem(key, json);
+  } catch (err) {
+    console.error(`Failed to write "${key}" to localStorage:`, err);
+    throw new Error(`Storage write failed for "${key}". Storage may be full.`);
+  }
 }
 
 function upsertById<T extends { id: string }>(items: T[], item: T): T[] {

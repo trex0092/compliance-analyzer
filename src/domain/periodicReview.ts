@@ -1,4 +1,4 @@
-import { nowIso, addMonths } from "../utils/dates";
+import { nowIso, addMonths, isValidDate } from "../utils/dates";
 import { createId } from "../utils/id";
 
 export type ReviewFrequency = 3 | 6 | 12;
@@ -33,13 +33,18 @@ export function createReviewSchedule(
   lastReviewDate?: string
 ): PeriodicReviewSchedule {
   const freq = getFrequencyForRisk(riskRating);
-  const lastDate = lastReviewDate ?? nowIso();
+  const lastDate = lastReviewDate && isValidDate(lastReviewDate) ? lastReviewDate : nowIso();
   const nextDate = addMonths(lastDate, freq);
   const now = new Date();
   const next = new Date(nextDate);
   let status: PeriodicReviewSchedule["status"] = "scheduled";
-  if (next < now) status = "overdue";
-  else if (next.getTime() - now.getTime() < 30 * 86400000) status = "due";
+  if (isNaN(next.getTime())) {
+    status = "scheduled";
+  } else if (next < now) {
+    status = "overdue";
+  } else if (next.getTime() - now.getTime() < 30 * 86400000) {
+    status = "due";
+  }
 
   return {
     id: createId("review"),
@@ -60,6 +65,7 @@ export function checkReviewStatus(
   if (schedule.status === "completed") return schedule;
   const now = new Date();
   const next = new Date(schedule.nextReviewDate);
+  if (isNaN(next.getTime())) return { ...schedule, status: "scheduled" };
   if (next < now) return { ...schedule, status: "overdue" };
   if (next.getTime() - now.getTime() < 30 * 86400000)
     return { ...schedule, status: "due" };

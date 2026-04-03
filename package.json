@@ -1,8 +1,8 @@
 {
-  "name": "repo",
-  "version": "1.0.0",
-  "description": "",
-  "main": "analytics-dashboard.js",
+  "name": "compliance-analyzer",
+  "version": "1.1.0",
+  "description": "UAE AML/CFT/CPF Compliance Platform for Precious Metals Dealers",
+  "main": "index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/trex0092/compliance-analyzer.git"
   },
-  "keywords": [],
+  "keywords": ["compliance", "aml", "cft", "uae", "dpms", "fatf"],
   "author": "",
   "license": "ISC",
   "bugs": {

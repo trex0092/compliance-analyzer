@@ -17,6 +17,40 @@ function buildSuspicionNarrative(caseObj: ComplianceCase): string {
   ].join(" ");
 }
 
+function buildTransactionSummaries(
+  caseObj: ComplianceCase
+): SuspicionReport["transactions"] {
+  const transactions: SuspicionReport["transactions"] = [];
+
+  // Generate transaction entries from case findings and flags
+  for (const finding of caseObj.findings) {
+    transactions.push({
+      date: caseObj.createdAt,
+      summary: finding,
+    });
+  }
+
+  // If the case has linked shipments, reference them
+  if (caseObj.linkedShipmentIds && caseObj.linkedShipmentIds.length > 0) {
+    for (const shipmentId of caseObj.linkedShipmentIds) {
+      transactions.push({
+        date: caseObj.createdAt,
+        summary: `Linked shipment: ${shipmentId}`,
+      });
+    }
+  }
+
+  // Ensure at least one transaction entry exists
+  if (transactions.length === 0) {
+    transactions.push({
+      date: caseObj.createdAt,
+      summary: `Suspicious activity identified — ${caseObj.caseType} case with risk level ${caseObj.riskLevel}.`,
+    });
+  }
+
+  return transactions;
+}
+
 export default function STRDraftPage() {
   const [cases, setCases] = useState<ComplianceCase[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
@@ -47,7 +81,7 @@ export default function STRDraftPage() {
           role: "subject",
         },
       ],
-      transactions: [],
+      transactions: buildTransactionSummaries(selected),
       generatedAt: nowIso(),
     };
 
