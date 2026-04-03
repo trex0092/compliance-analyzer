@@ -58,7 +58,7 @@ export const KEY_LEGISLATION: Legislation[] = [
       "Art.22-23: Targeted Financial Sanctions and asset freeze",
       "Art.26: Suspicious transaction/activity reporting to FIU",
       "Art.27: Tipping-off prohibition",
-      "Art.28: Record keeping (minimum 5 years)",
+      "Art.28: Record keeping (minimum 10 years after end of business relationship)",
     ],
     applicableTo: "All DNFBPs including DPMS",
   },
@@ -101,7 +101,7 @@ export const KEY_LEGISLATION: Legislation[] = [
     keyArticles: [
       "DPMS cash transaction threshold: AED 55,000",
       "CDD requirements for DPMS sector",
-      "Record retention requirements (5 years minimum)",
+      "Record retention requirements (10 years per FDL No.10/2025 Art.28)",
       "STR filing obligations via goAML",
       "Internal compliance program requirements",
       "Training and awareness obligations",
@@ -220,8 +220,8 @@ export const MOE_AUDIT_CHECKLIST: AuditChecklistItem[] = [
   { id: "AC-17", category: "Reporting", requirement: "EOCN reporting within 24 hours for TFS/PF matches", regulatoryRef: "Cabinet Res 156/2025 Art.11, EOCN Protocol", evidenceRequired: "EOCN communication logs", criticalForAudit: true },
 
   // Record Keeping
-  { id: "AC-18", category: "Record Keeping", requirement: "All CDD records retained for minimum 5 years after relationship end", regulatoryRef: "FDL No.10/2025 Art.28, Cabinet Res 134/2025", evidenceRequired: "Record retention policy, data storage evidence", criticalForAudit: true },
-  { id: "AC-19", category: "Record Keeping", requirement: "Transaction records retained for minimum 5 years", regulatoryRef: "FDL No.10/2025 Art.28", evidenceRequired: "Transaction archives, audit trail", criticalForAudit: true },
+  { id: "AC-18", category: "Record Keeping", requirement: "All CDD records retained for minimum 10 years after end of business relationship", regulatoryRef: "FDL No.10/2025 Art.28, Cabinet Res 134/2025", evidenceRequired: "Record retention policy, data storage evidence", criticalForAudit: true },
+  { id: "AC-19", category: "Record Keeping", requirement: "Transaction records retained for minimum 10 years", regulatoryRef: "FDL No.10/2025 Art.28", evidenceRequired: "Transaction archives, audit trail", criticalForAudit: true },
 
   // Training
   { id: "AC-20", category: "Training", requirement: "AML/CFT training for all relevant staff — annual minimum", regulatoryRef: "FDL No.10/2025 Art.20, MoE Guidance", evidenceRequired: "Training records, attendance logs, certificates", criticalForAudit: true },

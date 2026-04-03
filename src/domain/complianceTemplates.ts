@@ -42,7 +42,7 @@ export const TEMPLATE_CDD_INDIVIDUAL: ComplianceTemplate = {
   category: "CDD/KYC",
   regulatoryBasis: "FDL No.10/2025 Art.12-13, Cabinet Res 134/2025 Art.4-6, MoE Circular 08/AML/2021",
   approvalRequired: ["compliance-officer"],
-  retentionYears: 5,
+  retentionYears: 10,
   fields: [
     { name: "fullName", label: "Full Legal Name", type: "text", required: true, placeholder: "As per Emirates ID / Passport" },
     { name: "dateOfBirth", label: "Date of Birth", type: "date", required: true },
@@ -75,7 +75,7 @@ export const TEMPLATE_CDD_ENTITY: ComplianceTemplate = {
   category: "CDD/KYC",
   regulatoryBasis: "FDL No.10/2025 Art.12-14, Cabinet Res 134/2025 Art.4-7, FATF Rec 10/24",
   approvalRequired: ["compliance-officer"],
-  retentionYears: 5,
+  retentionYears: 10,
   fields: [
     { name: "legalName", label: "Full Legal Name of Entity", type: "text", required: true },
     { name: "tradeLicenseNo", label: "Trade License Number", type: "text", required: true },
@@ -116,7 +116,7 @@ export const TEMPLATE_EDD: ComplianceTemplate = {
   category: "EDD",
   regulatoryBasis: "FDL No.10/2025 Art.14-15/18, Cabinet Res 134/2025 Art.8, FATF Rec 10/12/19",
   approvalRequired: ["compliance-officer", "mlro", "senior-management"],
-  retentionYears: 5,
+  retentionYears: 10,
   fields: [
     { name: "customerName", label: "Customer Name", type: "text", required: true },
     { name: "customerId", label: "Customer ID", type: "text", required: true },
@@ -147,7 +147,7 @@ export const TEMPLATE_STR: ComplianceTemplate = {
   category: "Reporting",
   regulatoryBasis: "FDL No.10/2025 Art.26, FIU goAML Guidelines, FATF Rec 20",
   approvalRequired: ["mlro"],
-  retentionYears: 5,
+  retentionYears: 10,
   fields: [
     { name: "reportingEntityName", label: "Reporting Entity Name", type: "text", required: true },
     { name: "reportingEntityLicense", label: "Reporting Entity License No.", type: "text", required: true },
@@ -183,7 +183,7 @@ export const TEMPLATE_SAR: ComplianceTemplate = {
   category: "Reporting",
   regulatoryBasis: "FDL No.10/2025 Art.26, FIU goAML Guidelines",
   approvalRequired: ["mlro"],
-  retentionYears: 5,
+  retentionYears: 10,
   fields: [
     { name: "reportingEntityName", label: "Reporting Entity Name", type: "text", required: true },
     { name: "mlroName", label: "MLRO Name", type: "text", required: true },
@@ -209,7 +209,7 @@ export const TEMPLATE_CTR: ComplianceTemplate = {
   category: "Reporting",
   regulatoryBasis: "FDL No.10/2025 Art.16, MoE Circular 08/AML/2021, FATF Rec 22",
   approvalRequired: ["compliance-officer"],
-  retentionYears: 5,
+  retentionYears: 10,
   fields: [
     { name: "reportingEntityName", label: "Reporting Entity Name", type: "text", required: true },
     { name: "reportingEntityLicense", label: "Trade License No.", type: "text", required: true },
@@ -269,7 +269,7 @@ export const TEMPLATE_PERIODIC_REVIEW: ComplianceTemplate = {
   category: "CDD/KYC",
   regulatoryBasis: "FDL No.10/2025 Art.12, Cabinet Res 134/2025 Art.16, MoE Guidance",
   approvalRequired: ["compliance-officer"],
-  retentionYears: 5,
+  retentionYears: 10,
   fields: [
     { name: "customerName", label: "Customer Name", type: "text", required: true },
     { name: "customerId", label: "Customer ID", type: "text", required: true },
@@ -302,7 +302,7 @@ export const TEMPLATE_EWRA: ComplianceTemplate = {
   category: "Risk Assessment",
   regulatoryBasis: "FDL No.10/2025 Art.4, FATF Rec 1, MoE DPMS Supervisory Expectations",
   approvalRequired: ["mlro", "senior-management"],
-  retentionYears: 5,
+  retentionYears: 10,
   fields: [
     { name: "assessmentPeriod", label: "Assessment Period", type: "text", required: true, placeholder: "e.g., Jan 2025 – Dec 2025" },
     { name: "customerRiskSummary", label: "Customer Risk Summary", type: "textarea", required: true, helpText: "Breakdown of customer base by risk rating (low/medium/high)" },
@@ -331,7 +331,7 @@ export const TEMPLATE_TRAINING: ComplianceTemplate = {
   category: "Training",
   regulatoryBasis: "FDL No.10/2025 Art.20, MoE DPMS Supervisory Expectations",
   approvalRequired: ["compliance-officer"],
-  retentionYears: 5,
+  retentionYears: 10,
   fields: [
     { name: "trainingTitle", label: "Training Title", type: "text", required: true },
     { name: "trainingType", label: "Training Type", type: "select", required: true, options: ["Annual AML/CFT Awareness", "New Joiner Induction", "Role-Specific (MLRO)", "Role-Specific (Analyst)", "Sanctions & TFS", "PF Awareness", "DPMS Sector-Specific", "goAML Filing", "Red Flag Recognition"] },
@@ -355,7 +355,7 @@ export const TEMPLATE_KYS: ComplianceTemplate = {
   category: "Supply Chain",
   regulatoryBasis: "LBMA RGG v9, OECD Due Diligence Guidance, MoE DPMS Guidance, UAE NRA 2024",
   approvalRequired: ["compliance-officer", "mlro"],
-  retentionYears: 5,
+  retentionYears: 10,
   fields: [
     { name: "supplierName", label: "Supplier Legal Name", type: "text", required: true },
     { name: "supplierCountry", label: "Country of Registration", type: "text", required: true },
