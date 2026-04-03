@@ -1808,53 +1808,8 @@
     el.innerHTML = `
     <div class="card" style="margin-bottom:1.2rem">
       <div class="top-bar">
-        <span class="sec-title">🇦🇪 UAE TFS Workflow — Full 4-Outcome Process</span>
-        <span style="font-size:11px;color:var(--muted)">Cabinet Decision No.(74) of 2020 | EOCN Executive Office TFS Guidance</span>
+        <span class="sec-title">🇦🇪 TFS Screening Events</span>
         <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">
-        <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid var(--gold)">
-          <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">MANDATORY UAE Lists</div>
-          <div style="font-size:12px;margin-bottom:6px">✅ <strong>UAE Local Terrorist List</strong> — EOCN / Executive Office</div>
-          <div style="font-size:12px;margin-bottom:6px">✅ <strong>UNSC Consolidated Sanctions List</strong> — UN Security Council</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">Cabinet Decision No.(74)/2020 — These two lists are legally mandatory for all UAE reporting entities. Failure to screen constitutes a regulatory offence.</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid var(--blue)">
-          <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">ENHANCED CONTROLS (Not Legally Mandatory)</div>
-          <div style="font-size:12px;margin-bottom:4px">⬜ OFAC SDN — US unilateral sanctions</div>
-          <div style="font-size:12px;margin-bottom:4px">⬜ EU Consolidated Sanctions</div>
-          <div style="font-size:12px;margin-bottom:4px">⬜ UK OFSI Consolidated</div>
-          <div style="font-size:12px;margin-bottom:4px">⬜ Interpol Red Notices</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">EOCN Guidance — For non-UAE unilateral/multilateral lists, consult your supervisory authority for appropriate course of action.</div>
-        </div>
-      </div>
-
-      <div style="background:rgba(217,79,79,0.08);border:1px solid rgba(217,79,79,0.25);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
-        <strong style="color:var(--red)">🔴 UAE TFS MANDATORY OBLIGATIONS ON CONFIRMED MATCH:</strong><br>
-        <div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div>1. <strong>Freeze assets immediately</strong> — within 24 hours — without prior notice to subject</div>
-          <div>2. <strong>No tipping off</strong> — do not inform subject of freeze or report</div>
-          <div>3. <strong>File FFR via goAML</strong> — Funds Freeze Report to UAE FIU</div>
-          <div>4. <strong>Submit CNMR to EOCN</strong> — Confirmed Name Match Report within 5 business days</div>
-        </div>
-      </div>
-
-      <div style="background:rgba(232,160,48,0.08);border:1px solid rgba(232,160,48,0.25);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
-        <strong style="color:var(--amber)">🟡 UAE TFS PARTIAL MATCH OBLIGATIONS:</strong><br>
-        <div style="margin-top:6px">
-          1. <strong>Suspend transaction</strong> — hold, do not proceed<br>
-          2. <strong>Conduct enhanced verification</strong> — differentiate subject from listed person<br>
-          3. <strong>Submit PNMR to EOCN</strong> — Partial Name Match Report within 5 business days<br>
-          4. If match confirmed: treat as Confirmed Match above
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
-        <div class="metric m-c"><div class="metric-num">${events.filter(e=>e.outcome==='Confirmed Match').length}</div><div class="metric-lbl">Confirmed Matches</div></div>
-        <div class="metric m-h"><div class="metric-num">${events.filter(e=>e.outcome==='Partial Match').length}</div><div class="metric-lbl">Partial Matches</div></div>
-        <div class="metric m-ok"><div class="metric-num">${events.filter(e=>e.outcome==='Negative – No Match').length}</div><div class="metric-lbl">Cleared</div></div>
-        <div class="metric m-m"><div class="metric-num">${events.filter(e=>e.cnmrStatus==='Pending'||e.pnmrStatus==='Pending').length}</div><div class="metric-lbl">Report Pending</div></div>
       </div>
 
       ${events.length===0?'<p style="color:var(--muted);font-size:13px;text-align:center;padding:2rem">No TFS screening events. Click "+ New Screening Event" to begin.</p>':''}
