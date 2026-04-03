@@ -479,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <span style="color:var(--border);font-size:18px;font-weight:300">|</span>
       <select id="headerCompanySelect" onchange="switchActiveCompany(this.value);updateCompanyBar()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--gold);font-size:11px;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;outline:none;padding:4px 8px"></select>
       <button class="theme-toggle" id="themeToggleBtn" onclick="toggleDarkMode()" title="Toggle dark mode">🌙</button>
-      <div style="position:relative" id="notifBellWrap">
+      <div style="position:relative;display:none" id="notifBellWrap">
         <div class="notif-bell" onclick="toggleNotifPanel()">🔔<span class="notif-badge" id="notifBadge" style="display:none">0</span></div>
         <div class="notif-panel" id="notifPanel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -510,11 +510,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <input type="password" id="asanaToken" placeholder="1/xxxxxxxx..." />
       <div class="token-note">Get from: Asana → Profile photo → My Profile Settings → Apps → Manage Developer Apps → New access token</div>
     </div>
-    <div class="card">
-      <span class="lbl">Google Drive Folder Link <span style="color:var(--muted);font-weight:400;font-size:11px">(optional — compliance document repository)</span></span>
-      <input type="url" id="gdriveFolderId" placeholder="https://drive.google.com/drive/folders/1ABC...xyz" />
-      <div class="token-note">Open your Google Drive compliance folder → copy the full URL or folder ID from the address bar.</div>
-    </div>
+    <input type="hidden" id="gdriveFolderId" value="" />
     <input type="hidden" id="proxyUrl" value="" />
     <input type="hidden" id="gdriveClientId" value="" />
     <button class="btn btn-gold" onclick="openMainPanel();toast('You can configure API keys in Settings','info',4000)" style="width:100%">Open Analyzer</button>
@@ -2403,26 +2399,14 @@ Examples:
         <span class="lbl">API Keys & Integrations</span>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Anthropic API Key</span><input type="password" id="anthropicKey2" placeholder="sk-ant-..." /></div></div>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Asana Personal Access Token</span><input type="password" id="asanaToken2" placeholder="1/xxxxxxxx..." /></div></div>
-        <div class="row" style="margin-bottom:12px"><div><span class="lbl">Google Drive Folder Link</span><input type="url" id="gdriveFolderId2" placeholder="https://drive.google.com/drive/folders/..." /></div></div>
-        <div class="row row-2" style="margin-bottom:12px"><div><button class="btn btn-sm" onclick="connectGoogleDrive()" style="margin-top:0">Connect Google Drive</button></div><div id="gdriveStatus" style="font-size:12px;color:var(--muted);padding-top:4px"></div></div>
+        <input type="hidden" id="gdriveFolderId2" value="" />
+        <div id="gdriveStatus" style="display:none"></div>
         <input type="hidden" id="gdriveClientId2" value="" />
         <input type="hidden" id="proxyUrl2" value="" />
         <button class="btn btn-gold" onclick="updateKeys()">Update Keys</button>
       </div>
-      <!-- Cloud Sync -->
-      <div class="card">
-        <span class="lbl">Cloud Sync — Access Data From Any Device</span>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Sync your compliance data (shipments, screenings, customers, gaps, incidents, risk assessments, config) to the cloud. Access the same data from your phone, laptop, or any browser.</p>
-        <div id="cloudSyncStatus" style="margin-bottom:12px;padding:10px;border-radius:8px;background:var(--surface2);font-size:12px;color:var(--muted)">Sync status: Not synced yet</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-          <button class="btn btn-gold" onclick="cloudSyncPush()" style="flex:1;min-width:140px">Upload to Cloud</button>
-          <button class="btn btn-sm btn-blue" onclick="cloudSyncPull()" style="flex:1;min-width:140px;padding:12px">Download from Cloud</button>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text)"><input type="checkbox" id="autoSyncEnabled" style="width:auto" onchange="toggleAutoSync(this.checked)" />Auto-sync every 5 minutes</label>
-        </div>
-        <div class="token-note" style="margin-top:8px">Data is encrypted with your user ID and stored securely on the server. Only you can access it with your account.</div>
-      </div>
+      <div id="cloudSyncStatus" style="display:none"></div>
+      <input type="hidden" id="autoSyncEnabled" value="" />
       <!-- Alerts section removed -->
       <div class="card">
         <span class="lbl">Asana Project Reference</span>
