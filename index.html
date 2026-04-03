@@ -1800,14 +1800,10 @@ Examples:
           <span class="sec-title" style="margin:0;border:none;padding:0">Sanctions & Adverse Media Screening</span>
           <div style="display:flex;gap:8px"><button class="btn btn-sm btn-green" onclick="loadScreeningHistory()">History</button></div>
         </div>
-        <div class="row row-2" style="margin-bottom:12px">
-          <div><span class="lbl">Entity Name</span><input type="text" id="screenName" placeholder="Full name of person or company" /></div>
-          <div><span class="lbl">Entity Type</span><select id="screenType"><option value="person">Person</option><option value="company">Company</option></select></div>
-        </div>
-        <div class="row row-2" style="margin-bottom:12px">
-          <div><span class="lbl">Country</span><input type="text" id="screenCountry" placeholder="e.g. UAE, Iran, Russia" /></div>
-          <div><span class="lbl">ID / Passport Number (optional)</span><input type="text" id="screenId" placeholder="Document number" /></div>
-        </div>
+        <input type="hidden" id="screenName" value="" />
+        <input type="hidden" id="screenType" value="person" />
+        <input type="hidden" id="screenCountry" value="" />
+        <input type="hidden" id="screenId" value="" />
         <div style="margin-bottom:12px">
           <div class="top-bar" style="margin-bottom:8px">
             <span class="lbl" style="margin:0">Sanctions Lists</span>
@@ -1824,7 +1820,8 @@ Examples:
           </div>
           <div id="sanctionsLastRefresh" style="margin-top:6px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace"></div>
         </div>
-        <div style="margin-bottom:12px">
+        <button class="btn btn-gold" onclick="runScreening()">Run Screening</button>
+        <div style="margin-top:12px;margin-bottom:12px">
           <span class="lbl">Adverse Media Categories</span>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-top:6px">
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px"><input type="checkbox" id="screenAMCriminal" checked style="width:auto" />Criminal / Fraud Allegations</label>
@@ -1836,7 +1833,6 @@ Examples:
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px"><input type="checkbox" id="screenAMHR" checked style="width:auto" />Human Rights, Environmental, or Ethical Violations</label>
           </div>
         </div>
-        <button class="btn btn-gold" onclick="runScreening()">Run Screening</button>
         <div id="screeningStatus" class="status" style="margin-top:12px"><div class="spinner"></div><span id="screeningStatusText">Screening...</span></div>
       </div>
       <div id="screeningResults" style="display:none">
@@ -1846,6 +1842,7 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Screening History</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-blue" onclick="refreshSanctionsLists()">Refresh</button>
             <button class="btn btn-sm btn-green" onclick="exportScreeningPDF()">Export PDF</button>
             <button class="btn btn-sm btn-green" onclick="exportScreeningDOCX()">Export Word</button>
             <button class="btn btn-sm btn-red" onclick="clearScreeningHistory()">Clear All</button>
