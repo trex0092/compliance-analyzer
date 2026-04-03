@@ -313,7 +313,8 @@
     },
 
     async healthCheck() {
-      const projectId = localStorage.getItem('asanaProjectId') || '1213759768596515';
+      const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
+      const projectId = resolver ? resolver.resolveProject('workflow') : (localStorage.getItem('asanaProjectId') || '1213759768596515');
       const hasToken = !!window.ASANA_TOKEN;
       const hasProxy = !!getProxy();
       // If token or proxy available, try live check

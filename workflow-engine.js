@@ -606,12 +606,13 @@
     const proxy = window.PROXY_URL;
     const asanaToken = window.ASANA_TOKEN;
     if (!proxy && !asanaToken) { return { skipped: true, reason: 'Asana not configured — set Proxy URL or Asana token in Settings' }; }
-    const projectId = localStorage.getItem('asanaProjectId') || (typeof ASANA_PROJECT !== 'undefined' ? ASANA_PROJECT : '1213759768596515');
+    const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
+    const projectId = resolver ? resolver.resolveProject('workflow') : (localStorage.getItem('asanaProjectId') || '1213759768596515');
     const templates = (typeof IntegrationsEnhanced !== 'undefined' && IntegrationsEnhanced.asana?.TASK_TEMPLATES) ? IntegrationsEnhanced.asana.TASK_TEMPLATES : {};
     const tmpl = templates[action.template] || {};
     // Inject active company name so {entity} placeholder is always resolved
-    const activeComp = (typeof getActiveCompany === 'function') ? getActiveCompany() : {};
-    const enrichedData = Object.assign({ entity: activeComp.name || 'Fine Gold LLC', company: activeComp.name || 'Fine Gold LLC' }, data);
+    const entityName = resolver ? resolver.resolveEntityName() : ((typeof getActiveCompany === 'function') ? (getActiveCompany().name || 'Fine Gold LLC') : 'Fine Gold LLC');
+    const enrichedData = Object.assign({ entity: entityName, company: entityName }, data);
     const taskName = interpolate(tmpl.name || action.template, enrichedData);
     const taskNotes = interpolate(tmpl.notes || '', enrichedData);
 
