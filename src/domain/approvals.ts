@@ -6,11 +6,18 @@ export interface ApprovalRequest {
     | "high-risk-onboarding"
     | "edd-continuation"
     | "str-approval"
-    | "policy-exception";
+    | "sar-approval"
+    | "ctr-approval"
+    | "policy-exception"
+    | "asset-freeze"
+    | "customer-exit"
+    | "pf-escalation";
   status: "pending" | "approved" | "rejected";
   requestedBy: string;
   requestedAt: string;
   decidedBy?: string;
   decidedAt?: string;
   note?: string;
+  regulatoryBasis?: string;
+  urgency?: "standard" | "urgent" | "immediate";
 }

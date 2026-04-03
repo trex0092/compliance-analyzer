@@ -2,10 +2,15 @@ export type CaseType =
   | "onboarding"
   | "transaction-monitoring"
   | "screening-hit"
+  | "sanctions-hit"
   | "periodic-review"
   | "sourcing-review"
   | "incident"
-  | "regulatory-breach";
+  | "regulatory-breach"
+  | "pf-screening"
+  | "adverse-media"
+  | "third-party-payment"
+  | "customer-exit";
 
 export type CaseStatus =
   | "open"
@@ -25,6 +30,8 @@ export type Recommendation =
   | "reject"
   | "suspend"
   | "str-review"
+  | "sar-review"
+  | "ctr-filing"
   | "freeze";
 
 export type AuditAction =
@@ -35,7 +42,22 @@ export type AuditAction =
   | "status-changed"
   | "decision-recorded"
   | "evidence-linked"
-  | "goaml-exported";
+  | "goaml-exported"
+  | "approval-requested"
+  | "approval-approved"
+  | "approval-rejected"
+  | "str-filed"
+  | "sar-filed"
+  | "ctr-filed"
+  | "escalated-to-mlro"
+  | "escalated-to-fiu"
+  | "escalated-to-eocn"
+  | "asset-frozen"
+  | "asset-unfrozen"
+  | "pf-alert-generated"
+  | "customer-exit-initiated"
+  | "screening-completed"
+  | "comment-added";
 
 export interface AuditEvent {
   id: string;
@@ -45,6 +67,7 @@ export interface AuditEvent {
   note?: string;
   before?: unknown;
   after?: unknown;
+  regulatoryRef?: string;
 }
 
 export interface CaseDecision {
@@ -55,10 +78,12 @@ export interface CaseDecision {
     | "suspend"
     | "freeze"
     | "file-str"
-    | "file-sar";
+    | "file-sar"
+    | "file-ctr";
   reason: string;
   decidedBy: string;
   decidedAt: string;
+  regulatoryBasis?: string;
 }
 
 export interface ComplianceCase {
@@ -77,7 +102,10 @@ export interface ComplianceCase {
     | "screening"
     | "onboarding"
     | "incidents"
-    | "manual";
+    | "manual"
+    | "pf-monitoring"
+    | "fiu-followup"
+    | "eocn-directive";
   riskScore: number;
   riskLevel: RiskLevel;
   redFlags: string[];
@@ -91,4 +119,10 @@ export interface ComplianceCase {
   linkedEvidenceIds?: string[];
   linkedReportIds?: string[];
   auditLog: AuditEvent[];
+  /** FIU reference number after STR/SAR filing */
+  fiuReferenceNo?: string;
+  /** EOCN directive reference for PF/sanctions cases */
+  eocnDirectiveRef?: string;
+  /** Date when post-filing monitoring ends */
+  postFilingMonitoringEndDate?: string;
 }

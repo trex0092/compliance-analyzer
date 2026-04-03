@@ -189,6 +189,60 @@ async function seedData() {
         },
       ],
     },
+    {
+      id: createId("case"),
+      entityId: "MADISON JEWELLERY TRADING L.L.C",
+      caseType: "transaction-monitoring",
+      status: "open",
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+      createdBy: "system",
+      sourceModule: "analyze",
+      riskScore: 14,
+      riskLevel: "high",
+      linkedCustomerId: "company-1",
+      redFlags: ["RF062", "RF043", "RF063"],
+      findings: ["Adverse media linking entity to gold smuggling allegations", "Unexplained wealth relative to declared business size", "Sudden increase in transaction frequency"],
+      narrative:
+        "Adverse media screening flagged potential involvement in illicit gold trade. Source of wealth inconsistent with declared jewellery trading volumes. SAR recommended.",
+      recommendation: "sar-review",
+      auditLog: [
+        {
+          id: createId("audit"),
+          at: nowIso(),
+          by: "system",
+          action: "created",
+          note: "Seeded demo case — Madison SAR workflow",
+        },
+      ],
+    },
+    {
+      id: createId("case"),
+      entityId: "NAPLES JEWELLERY TRADING L.L.C",
+      caseType: "transaction-monitoring",
+      status: "open",
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+      createdBy: "system",
+      sourceModule: "analyze",
+      riskScore: 8,
+      riskLevel: "medium",
+      linkedCustomerId: "company-2",
+      redFlags: ["RF005"],
+      findings: ["Cash payment of AED 62,000 for gold bullion", "CTR filing required per FDL Art.16"],
+      narrative:
+        "Single cash transaction of AED 62,000 exceeds DPMS threshold of AED 55,000. CTR must be filed within 15 business days per MoE Circular 08/AML/2021.",
+      recommendation: "ctr-filing",
+      auditLog: [
+        {
+          id: createId("audit"),
+          at: nowIso(),
+          by: "system",
+          action: "created",
+          note: "Seeded demo case — Naples CTR workflow",
+        },
+      ],
+    },
   ];
 
   for (const c of demoCases) {

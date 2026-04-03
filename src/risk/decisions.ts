@@ -17,11 +17,13 @@ export interface DecisionOutput {
   mandatoryActions: string[];
   recommendedOutcome:
     | "continue"
-    | "continue-with-edd"
+    | "edd"
     | "reject"
     | "suspend"
     | "freeze"
-    | "file-str-review";
+    | "str-review"
+    | "sar-review"
+    | "ctr-filing";
 }
 
 export function decideCase(input: DecisionInput): DecisionOutput {
@@ -41,7 +43,7 @@ export function decideCase(input: DecisionInput): DecisionOutput {
       totalScore,
       riskLevel: "critical",
       mandatoryActions: ["escalate-to-compliance", "str-review"],
-      recommendedOutcome: "file-str-review",
+      recommendedOutcome: "str-review",
     };
   }
 
@@ -50,7 +52,7 @@ export function decideCase(input: DecisionInput): DecisionOutput {
       totalScore,
       riskLevel: totalScore >= 16 ? "critical" : "high",
       mandatoryActions: ["edd", "management-approval"],
-      recommendedOutcome: "continue-with-edd",
+      recommendedOutcome: "edd",
     };
   }
 
