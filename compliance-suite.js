@@ -1874,11 +1874,12 @@
             <select id="tfs2-entity-type"><option value="Individual">Individual</option><option value="Company">Company</option></select>
           </div>
         </div>
-        <div class="row row-2">
+        <div class="row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
           <div><span class="lbl">Screening Event Type *</span>
             <select id="tfs2-event"><option>New Customer Onboarding</option><option>Periodic Rescreening</option><option>List Update Trigger</option><option>Transaction Pre-Approval</option><option>Supplier/Refinery Onboarding</option><option>UBO Screening</option><option>Ad Hoc Review</option></select>
           </div>
           <div><span class="lbl">Country</span><input id="tfs2-country" placeholder="e.g. UAE, Iran, Russia"/></div>
+          <div><span class="lbl">ID / Register No.</span><input id="tfs2-idnumber" placeholder="Passport, EID, Trade License"/></div>
         </div>
         <div><span class="lbl">Lists Screened (tick all that apply)</span>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface2);padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px">
@@ -2063,6 +2064,7 @@
     document.getElementById('tfs2-name').value = e.screenedName||'';
     if (document.getElementById('tfs2-entity-type')) document.getElementById('tfs2-entity-type').value = e.entityType||'Individual';
     if (document.getElementById('tfs2-country')) document.getElementById('tfs2-country').value = e.country||'';
+    if (document.getElementById('tfs2-idnumber')) document.getElementById('tfs2-idnumber').value = e.idNumber||'';
     document.getElementById('tfs2-event').value = e.eventType||'';
     document.getElementById('tfs2-date').value = e.screeningDate||today();
     document.getElementById('tfs2-reviewer').value = e.reviewedBy||'';
@@ -2081,23 +2083,40 @@
     var name = document.getElementById('tfs2-name')?.value?.trim();
     var entityType = document.getElementById('tfs2-entity-type')?.value || 'Individual';
     var country = document.getElementById('tfs2-country')?.value?.trim() || '';
+    var idNumber = document.getElementById('tfs2-idnumber')?.value?.trim() || '';
     if (!name) { toast('Enter the name to screen', 'error'); return; }
-    toast('Screening "' + name + '" against sanctions lists...', 'info', 3000);
+
+    // Collect selected lists
+    var selectedLists = [];
+    if (document.getElementById('tfs2-list-uae')?.checked) selectedLists.push('UAE Local Terrorist List (EOCN)');
+    if (document.getElementById('tfs2-list-un')?.checked) selectedLists.push('UNSC Consolidated Sanctions List');
+    if (document.getElementById('tfs2-list-ofac')?.checked) selectedLists.push('OFAC SDN');
+    if (document.getElementById('tfs2-list-eu')?.checked) selectedLists.push('EU Consolidated Sanctions');
+    if (document.getElementById('tfs2-list-uk')?.checked) selectedLists.push('UK OFSI');
+    if (document.getElementById('tfs2-list-interpol')?.checked) selectedLists.push('Interpol Red Notices');
+    if (document.getElementById('tfs2-list-adverse')?.checked) selectedLists.push('Adverse Media');
+    if (document.getElementById('tfs2-list-pep')?.checked) selectedLists.push('Political Controversy / PEP');
+
+    toast('Screening "' + name + '" against ' + selectedLists.length + ' list(s)...', 'info', 5000);
     try {
       var result = null;
-      if (typeof TFSRefresh !== 'undefined' && typeof TFSRefresh.screenEntity === 'function') {
+      var screenFn = typeof TFSRefresh !== 'undefined' && typeof TFSRefresh.screenEntity === 'function';
+      if (screenFn) {
         result = await TFSRefresh.screenEntity(name, entityType.toLowerCase(), country);
       } else if (typeof callAI === 'function') {
+        var idInfo = idNumber ? ' ID/Register: ' + idNumber + '.' : '';
+        var countryInfo = country ? ' Country/Nationality: ' + country + '.' : '';
+        var listsInfo = selectedLists.length ? ' Lists to screen: ' + selectedLists.join(', ') + '.' : '';
         var data = await callAI({
-          model: 'claude-sonnet-4-5', max_tokens: 800, temperature: 0,
-          system: 'You are a sanctions and PEP screening specialist. Screen the given name against all major sanctions lists (OFAC SDN, UN Consolidated, EU Consolidated, UK OFSI, UAE Local Terrorism List, Interpol) and adverse media/PEP databases. Return only valid JSON.',
-          messages: [{ role: 'user', content: 'Screen entity "' + name + '" (type: ' + entityType + ', country: ' + country + '). Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"...","matchType":"exact|partial","confidence":0.0-1.0,"details":"..."}],"recommendation":"..."}' }]
+          model: 'claude-sonnet-4-5', max_tokens: 1500, temperature: 0,
+          system: 'You are an expert sanctions, PEP, and adverse media screening specialist with comprehensive knowledge of all major sanctions lists (OFAC SDN, UN Consolidated, EU Consolidated, UK OFSI, UAE Local Terrorism List, Interpol Red Notices), politically exposed persons databases worldwide, and adverse media sources. You MUST return accurate, real-world results. If a person IS on a sanctions list, IS a known PEP (heads of state, senior government officials, military leaders of sanctioned regimes), or HAS adverse media coverage, you MUST identify them correctly. Accuracy is critical for regulatory compliance — false negatives are dangerous and constitute a regulatory offence under UAE FDL No.10/2025. Return only valid JSON.',
+          messages: [{ role: 'user', content: 'Screen entity "' + name + '" (type: ' + entityType + ').' + countryInfo + idInfo + listsInfo + '\n\nIMPORTANT: Use your real knowledge of sanctions lists, PEP databases, and adverse media. If this person or entity is sanctioned, designated, a known PEP, or has adverse media — return MATCH or POTENTIAL_MATCH with specific details.\n\nReturn JSON:\n{\n  "result": "CLEAR|MATCH|POTENTIAL_MATCH",\n  "matches": [{"list": "specific list name", "matchType": "exact|partial|alias", "confidence": 0.0-1.0, "details": "specific designation details"}],\n  "recommendation": "Provide a DETAILED compliance recommendation (150-300 words) that includes: (1) The screening determination and reasoning, (2) Specific regulatory references (UAE FDL No.10/2025, FATF Rec 6/10, Cabinet Decision 74/2020), (3) Required compliance actions — for CLEAR: confirm screening is negative, note any risk factors about the country/name, advise on record retention and periodic rescreening per Art.16; for MATCH: state REJECT - DO NOT PROCEED, identify exact sanctions lists, detail required actions (asset freeze within 24h, FFR via goAML, CNMR to EOCN within 5 business days, STR filing, escalation to MLRO/senior management), note that any business relationship is strictly prohibited; for POTENTIAL_MATCH: state ENHANCED DUE DILIGENCE REQUIRED, detail the potential match concerns, list required verification steps (full legal name, DOB, nationality, ID documents, address verification), advise suspending the transaction until resolved, note PNMR to EOCN within 5 business days if partial match confirmed. Always reference the specific country risk profile if applicable."\n}' }]
         });
         var raw = (data.content || []).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
         var cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
         var m = cleaned.match(/\{[\s\S]*\}/);
         if (m) cleaned = m[0];
-        try { result = JSON.parse(cleaned); } catch(_) { result = { result: 'POTENTIAL_MATCH' }; }
+        try { result = JSON.parse(cleaned); } catch(_) { result = { result: 'POTENTIAL_MATCH', recommendation: 'AI response could not be parsed. Manual review required. Treat as potential match until confirmed or dismissed per FATF Rec 6 and UAE FDL No.10/2025 Art.22.' }; }
       }
       if (result) {
         var r = result.result || result;
@@ -2106,17 +2125,17 @@
           toast('Screening complete: No match found', 'success');
         } else if (r === 'MATCH') {
           suite2SelectOutcome('Confirmed Match');
-          toast('Screening complete: CONFIRMED MATCH — action required!', 'error', 6000);
+          toast('⚠ CONFIRMED MATCH — Immediate action required!', 'error', 8000);
         } else if (r === 'POTENTIAL_MATCH') {
           suite2SelectOutcome('Partial Match');
-          toast('Screening complete: Potential match — review required', 'error', 5000);
+          toast('⚠ Potential match — Enhanced Due Diligence required', 'error', 6000);
         } else {
           suite2SelectOutcome('False Positive');
           toast('Screening complete: review result', 'info');
         }
         var notesEl = document.getElementById('tfs2-notes');
         if (notesEl && result.recommendation) {
-          notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + '[AI Screening] ' + result.recommendation;
+          notesEl.value = '[AI Screening] ' + result.recommendation;
         }
       } else {
         toast('No AI provider available — select outcome manually', 'info');
@@ -2147,6 +2166,7 @@
       screenedName: name,
       entityType: document.getElementById('tfs2-entity-type')?.value || 'Individual',
       country: document.getElementById('tfs2-country')?.value?.trim() || '',
+      idNumber: document.getElementById('tfs2-idnumber')?.value?.trim() || '',
       eventType: document.getElementById('tfs2-event').value,
       listsScreened: lists.join(' | '),
       screeningDate: document.getElementById('tfs2-date').value,
