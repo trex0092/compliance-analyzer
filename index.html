@@ -1287,7 +1287,8 @@ Examples:
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Entity-Wide Risk Assessment (EWRA)</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-sm btn-blue" onclick="openDriveLink()">🗂️ Google Drive</button>
+              <button class="btn btn-sm btn-blue" onclick="document.getElementById('ewraFileInput').click()">📎 Attach File</button>
+              <input type="file" id="ewraFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCProgFile(this,'ewra')" />
               <button class="btn btn-sm btn-green" onclick="saveEWRA()">Save</button>
               <button class="btn btn-sm btn-green" onclick="exportEWRAPDF()">Export PDF</button>
               <button class="btn btn-sm btn-red" onclick="clearEWRA()">Clear</button>
@@ -1352,6 +1353,7 @@ Examples:
             <span class="lbl">Next Review Date</span>
             <input type="text" id="ewraNextReview" placeholder="dd/mm/yyyy" />
           </div>
+          <div id="cprogAttachments_ewra" style="margin-top:8px"></div>
           <div id="ewraSavedList" style="margin-top:14px"></div>
         </div>
       </div>
@@ -1362,7 +1364,8 @@ Examples:
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Business-Wide Risk Assessment (BWRA)</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-sm btn-blue" onclick="openDriveLink()">🗂️ Google Drive</button>
+              <button class="btn btn-sm btn-blue" onclick="document.getElementById('bwraFileInput').click()">📎 Attach File</button>
+              <input type="file" id="bwraFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCProgFile(this,'bwra')" />
               <button class="btn btn-sm btn-green" onclick="saveBWRA()">Save</button>
               <button class="btn btn-sm btn-green" onclick="exportBWRAPDF()">Export PDF</button>
               <button class="btn btn-sm btn-red" onclick="clearBWRA()">Clear</button>
@@ -1447,6 +1450,7 @@ Examples:
             <span class="lbl">Summary & Recommendations</span>
             <textarea id="bwraSummary" rows="3" placeholder="Key findings, risk concentrations, and recommended actions..."></textarea>
           </div>
+          <div id="cprogAttachments_bwra" style="margin-top:8px"></div>
           <div id="bwraSavedList" style="margin-top:14px"></div>
         </div>
       </div>
@@ -1457,7 +1461,8 @@ Examples:
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Compliance Manual</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-sm btn-blue" onclick="openDriveLink()">🗂️ Google Drive</button>
+              <button class="btn btn-sm btn-blue" onclick="document.getElementById('manualFileInput').click()">📎 Attach File</button>
+              <input type="file" id="manualFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCProgFile(this,'manual')" />
               <button class="btn btn-sm btn-green" onclick="saveComplianceManual()">Save</button>
               <button class="btn btn-sm btn-green" onclick="exportManualPDF()">Export PDF</button>
               <button class="btn btn-sm btn-red" onclick="clearComplianceManual()">Clear</button>
@@ -1488,6 +1493,7 @@ Examples:
             <div><span class="lbl">Last Reviewed By</span><input type="text" id="cmReviewedBy" placeholder="Name / Role" /></div>
             <div><span class="lbl">Next Review Date</span><input type="text" id="cmNextReview" placeholder="dd/mm/yyyy" /></div>
           </div>
+          <div id="cprogAttachments_manual" style="margin-top:8px"></div>
           <div id="cmSavedStatus" style="margin-top:14px"></div>
         </div>
       </div>
@@ -1502,7 +1508,15 @@ Examples:
         <div class="gap-stat"><div class="gap-num" style="color:var(--green)">Dec 2026</div><div class="gap-lbl">Target</div></div>
       </div>
       <div class="card">
-        <span class="lbl">Critical Gaps - March 2026 Assessment</span>
+        <div class="top-bar" style="margin-bottom:10px">
+          <span class="lbl" style="margin:0">Critical Gaps - March 2026 Assessment</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-blue" onclick="toast('Gap register refreshed','success')">Refresh</button>
+            <button class="btn btn-sm btn-green" onclick="exportGapRegisterPDF()">Export PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportGapRegisterDOCX()">Export Word</button>
+            <button class="btn btn-sm btn-red" onclick="if(confirm('Clear all gap data?')){localStorage.removeItem('fgl_gaps_v2');toast('Gap data cleared','success')}">Delete</button>
+          </div>
+        </div>
         <div class="findings">
           <div class="finding f-critical" style="opacity:1;animation:none">
             <div class="f-head"><div class="f-head-left"><span class="badge b-c">GAP-001</span><div class="f-title">Conflicting CDD Review Frequencies in Compliance Manual v005</div></div></div>
@@ -3467,7 +3481,7 @@ function switchTab(name) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   const tabEl = document.getElementById('tab-'+name);
   if (tabEl) tabEl.classList.add('active');
-  if (name==='complianceprog') { loadDriveLink(); initEWRA(); initBWRA(); loadComplianceManual(); }
+  if (name==='complianceprog') { loadDriveLink(); initEWRA(); initBWRA(); loadComplianceManual(); renderCProgAttachments('ewra'); renderCProgAttachments('bwra'); renderCProgAttachments('manual'); }
   if (name==='drive') renderDrive();
   if (name==='asana') loadAsanaTasks();
   if (name==='shipments') { renderShipments(); refreshMetalsPrices(false); }
@@ -6721,6 +6735,93 @@ function clearEWRA() {
 }
 
 function exportEWRAPDF() { toast('EWRA export — use browser Print (Ctrl+P) for PDF', 'info'); }
+
+// ── Compliance Programme Attach File ──
+function attachCProgFile(input, section) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  if (file.size > 5 * 1024 * 1024) { toast('Max 5MB','error'); input.value=''; return; }
+  var key = 'fgl_cprog_attachments_' + section;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var list = safeLocalParse(key, []);
+    list.push({ id: Date.now(), name: file.name, size: file.size, data: e.target.result, addedAt: new Date().toISOString() });
+    safeLocalSave(key, list);
+    renderCProgAttachments(section);
+    toast('File attached: ' + file.name, 'success');
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+function renderCProgAttachments(section) {
+  var el = document.getElementById('cprogAttachments_' + section);
+  if (!el) return;
+  var key = 'fgl_cprog_attachments_' + section;
+  var list = safeLocalParse(key, []);
+  if (!list.length) { el.innerHTML = ''; return; }
+  el.innerHTML = list.map(function(a) {
+    var sizeKB = a.size ? (a.size / 1024).toFixed(1) + ' KB' : '';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px"><span style="color:var(--green)">📎 ' + escHtml(a.name) + ' (' + sizeKB + ')</span>'
+      + '<a href="' + a.data + '" download="' + escHtml(a.name) + '" class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px">Download</a>'
+      + '<button class="btn btn-sm btn-red" style="padding:1px 6px;font-size:9px" onclick="removeCProgAttachment(\'' + section + '\',' + a.id + ')">Remove</button></div>';
+  }).join('');
+}
+function removeCProgAttachment(section, id) {
+  var key = 'fgl_cprog_attachments_' + section;
+  var list = safeLocalParse(key, []).filter(function(a) { return a.id !== id; });
+  safeLocalSave(key, list);
+  renderCProgAttachments(section);
+  toast('Attachment removed');
+}
+
+// ── Gap Register Export ──
+function exportGapRegisterPDF() {
+  if (!window.jspdf) { toast('PDF library not loaded','error'); return; }
+  var gaps = document.getElementById('tab-gaps');
+  if (!gaps) return;
+  var doc = new window.jspdf.jsPDF({ unit:'mm', format:'a4' });
+  doc.setFontSize(16); doc.text('Gap Register — Compliance Analyzer', 14, 20);
+  doc.setFontSize(10); doc.text('Generated: ' + new Date().toLocaleString('en-GB'), 14, 28);
+  var y = 36;
+  var items = gaps.querySelectorAll('.finding');
+  items.forEach(function(f) {
+    var title = f.querySelector('.f-title')?.textContent || '';
+    var body = f.querySelector('.f-body')?.textContent || '';
+    var ref = f.querySelector('.f-ref')?.textContent || '';
+    var rec = f.querySelector('.rec')?.textContent || '';
+    if (y > 260) { doc.addPage(); y = 20; }
+    doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.text(title.substring(0,90), 14, y); y += 6;
+    doc.setFontSize(9); doc.setFont(undefined,'normal');
+    if (body) { var lines = doc.splitTextToSize(body, 180); doc.text(lines, 14, y); y += lines.length * 4 + 2; }
+    if (ref) { doc.setTextColor(150,100,50); var rl = doc.splitTextToSize('Ref: '+ref, 180); doc.text(rl, 14, y); y += rl.length * 4 + 2; doc.setTextColor(0,0,0); }
+    if (rec) { var rcl = doc.splitTextToSize('Action: '+rec, 180); doc.text(rcl, 14, y); y += rcl.length * 4 + 4; }
+    y += 4;
+  });
+  doc.save('Gap_Register_' + new Date().toISOString().split('T')[0] + '.pdf');
+  toast('PDF exported','success');
+}
+function exportGapRegisterDOCX() {
+  var gaps = document.getElementById('tab-gaps');
+  if (!gaps) return;
+  var html = '<html><head><meta charset="utf-8"><style>body{font-family:Calibri,sans-serif;font-size:11pt}h1{font-size:16pt;color:#1a1a6e}h3{font-size:12pt;margin-top:14pt}.ref{color:#96641e;font-size:9pt;font-style:italic}.rec{background:#f5f0e0;padding:6pt;border-left:3pt solid #c8a020;margin:6pt 0}</style></head><body>';
+  html += '<h1>Gap Register — Compliance Analyzer</h1><p>Generated: ' + new Date().toLocaleString('en-GB') + '</p>';
+  gaps.querySelectorAll('.finding').forEach(function(f) {
+    var badge = f.querySelector('.badge')?.textContent || '';
+    var title = f.querySelector('.f-title')?.textContent || '';
+    var body = f.querySelector('.f-body')?.textContent || '';
+    var ref = f.querySelector('.f-ref')?.textContent || '';
+    var rec = f.querySelector('.rec')?.textContent || '';
+    html += '<h3>' + badge + ' ' + title + '</h3>';
+    if (body) html += '<p>' + body + '</p>';
+    if (ref) html += '<p class="ref">' + ref + '</p>';
+    if (rec) html += '<div class="rec">' + rec + '</div>';
+  });
+  html += '</body></html>';
+  var blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'Gap_Register_' + new Date().toISOString().split('T')[0] + '.doc'; a.click();
+  toast('Word exported','success');
+}
 
 // ── BWRA ──
 const BWRA_KEY = 'fgl_bwra';
