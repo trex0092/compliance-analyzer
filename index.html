@@ -7587,7 +7587,12 @@ Entity: ${name} | Type: ${type} | Country: ${country || 'N/A'} | ID: ${idNum || 
 Sanctions lists: ${sanctionsLists.length ? sanctionsLists.join(', ') : 'None'}
 Adverse media: ${adverseMediaCategories.length ? adverseMediaCategories.join(', ') : 'None'}
 
-Rules: If sanctioned (OFAC/UN/EU/UK/UAE) return MATCH. Flag PEPs. Be accurate.
+ABSOLUTE ACCURACY RULES:
+- NEVER fabricate sanctions designations. Only report CONFIRMED designations you are 100% certain about.
+- Being in adverse media or under investigation is NOT the same as being on a sanctions list. Keep STRICTLY SEPARATE.
+- For adverse media: be EXHAUSTIVE. Search for criminal investigations, regulatory actions, lawsuits, investigative journalism (ICIJ, OCCRP, Turkish Minute, Reuters, Bloomberg, Reporter Brasil, Mongabay, Global Witness), environmental crimes, fraud, corruption.
+- POTENTIAL_MATCH = adverse media found but no confirmed sanctions. MATCH = confirmed on a sanctions list.
+- It is BETTER to say no sanctions and flag adverse media than to falsely claim someone is sanctioned.
 Keep ALL strings under 50 chars. Max 2 items per array. No nested objects.
 
 JSON schema: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","risk_level":"LOW|MEDIUM|HIGH|CRITICAL","sanctions_hits":[{"list":"name","match_type":"exact|partial","details":"short"}],"adverse_media_hits":[{"category":"cat","source":"src","date":"date","details":"short"}],"risk_factors":["short"],"recommended_actions":["short"],"summary":"one line"}`;
