@@ -391,6 +391,28 @@
     document.getElementById('craModal').classList.remove('open');
     toast(`CRA saved — ${name}: ${rating}`, 'success');
     renderCRA();
+
+    // Auto-sync to Asana
+    var craIdx = editIdx >= 0 ? editIdx : 0;
+    try {
+      if (typeof autoSyncToAsana === 'function') {
+        var craTitle = '[CRA] ' + name + ' — ' + rating + ' Risk';
+        var craNotes = 'Customer Risk Assessment: ' + record.id
+          + '\nCustomer: ' + name
+          + '\nType: ' + form.customerType + ' | Nationality: ' + form.nationality
+          + '\nRisk Score: ' + score + ' | Rating: ' + rating
+          + '\nCDD Level: ' + cddLevel
+          + '\nPEP: ' + form.pepStatus + ' | Sanctions Hit: ' + form.sanctionsHit
+          + '\nAdverse Media: ' + form.adverseMedia
+          + '\nNext Review: ' + (record.nextReview || 'TBD')
+          + (record.notes ? '\nNotes: ' + record.notes : '')
+          + '\n\nRef: UAE FDL No.10/2025 Art.12-16, FATF Rec 10';
+        var craDays = rating === 'Very High' || rating === 'High' ? 3 : 14;
+        autoSyncToAsana(craTitle, craNotes, craDays).then(function(gid) {
+          if (gid) { var recs = load(SK.CRA)||[]; if(recs[craIdx]) { recs[craIdx].asanaGid = gid; save(SK.CRA, recs); } toast('CRA synced to Asana','success',2000); }
+        }).catch(function(){});
+      }
+    } catch(_) {}
   };
 
   global.suiteDeleteCRA = function(idx) {
@@ -2231,6 +2253,35 @@
     else if (outcome==='Partial Match') toast('🟡 PARTIAL MATCH saved — PNMR must be filed within 5 business days','info');
     else toast('TFS event saved — '+outcome,'success');
     renderTFS2();
+
+    // Auto-sync to Asana
+    var savedIdx = editIdx>=0 ? editIdx : 0;
+    try {
+      if (typeof asanaPush === 'function' || typeof autoSyncToAsana === 'function') {
+        var syncTitle = '[TFS] ' + name + ' — ' + outcome;
+        var syncNotes = 'TFS Screening Event: ' + record.id
+          + '\nEntity: ' + name + ' (' + (record.entityType||'') + ')'
+          + (record.country ? '\nCountry: ' + record.country : '')
+          + (record.idNumber ? '\nID: ' + record.idNumber : '')
+          + '\nEvent Type: ' + record.eventType
+          + '\nLists: ' + record.listsScreened
+          + '\nDate: ' + record.screeningDate
+          + '\nOutcome: ' + outcome
+          + '\nReviewed By: ' + (record.reviewedBy||'—')
+          + (record.notes ? '\n\nNotes:\n' + record.notes : '')
+          + '\n\nRegulatory Basis: UAE FDL No.10/2025, FATF Rec 6, Cabinet Decision No.74/2020';
+        var daysUrgency = outcome==='Confirmed Match' ? 1 : outcome==='Partial Match' ? 5 : 30;
+        if (typeof autoSyncToAsana === 'function') {
+          autoSyncToAsana(syncTitle, syncNotes, daysUrgency).then(function(gid) {
+            if (gid) { var ev = load(SK2.TFS2)||[]; if(ev[savedIdx]) { ev[savedIdx].asanaGid = gid; save(SK2.TFS2, ev); } toast('Screening synced to Asana','success',2000); }
+          }).catch(function(){});
+        } else if (typeof asanaPush === 'function') {
+          asanaPush(syncTitle, syncNotes).then(function(gid) {
+            if (gid) { var ev = load(SK2.TFS2)||[]; if(ev[savedIdx]) { ev[savedIdx].asanaGid = gid; save(SK2.TFS2, ev); } toast('Screening synced to Asana','success',2000); }
+          }).catch(function(){});
+        }
+      }
+    } catch(_) {}
   };
 
   global.suite2DeleteTFS = function(idx) {
@@ -2512,6 +2563,27 @@
     document.getElementById('dpmsrModal').classList.remove('open');
     toast(`DPMSR case saved — ${name} AED ${Number(amount).toLocaleString()}`,'success');
     renderDPMSR();
+
+    // Auto-sync to Asana
+    var dpIdx = editIdx>=0 ? editIdx : 0;
+    try {
+      if (typeof autoSyncToAsana === 'function') {
+        var dpTitle = '[DPMSR] ' + name + ' — AED ' + Number(amount).toLocaleString();
+        var dpNotes = 'DPMSR Case: ' + record.id
+          + '\nCustomer: ' + name + ' (' + type + ')'
+          + '\nAmount: AED ' + Number(amount).toLocaleString()
+          + '\nDate: ' + record.txDate + ' | Payment: ' + record.paymentMethod
+          + '\nTransaction Type: ' + record.txType
+          + '\nCDD: ' + cddStatus + ' | Reporting: ' + record.reportingRequired
+          + '\nFiled: ' + record.dpmsr_filed
+          + (record.linkedFlag === 'Yes' ? '\nLinked Transaction: ' + record.linkedRef : '')
+          + (record.notes ? '\nNotes: ' + record.notes : '')
+          + '\n\nRef: Cabinet Resolution 134/2025 Art.14, FATF Rec 22';
+        autoSyncToAsana(dpTitle, dpNotes, 3).then(function(gid) {
+          if (gid) { var cs = load(SK2.DPMSR)||[]; if(cs[dpIdx]) { cs[dpIdx].asanaGid = gid; save(SK2.DPMSR, cs); } toast('DPMSR synced to Asana','success',2000); }
+        }).catch(function(){});
+      }
+    } catch(_) {}
   };
 
   global.suite2DeleteDPMSR = function(idx) {
