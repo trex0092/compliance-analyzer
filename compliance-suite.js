@@ -2086,76 +2086,92 @@
     var idNumber = document.getElementById('tfs2-idnumber')?.value?.trim() || '';
     if (!name) { toast('Enter the name to screen', 'error'); return; }
 
-    // Collect selected lists
     var selectedLists = [];
-    if (document.getElementById('tfs2-list-uae')?.checked) selectedLists.push('UAE Local Terrorist List (EOCN)');
-    if (document.getElementById('tfs2-list-un')?.checked) selectedLists.push('UNSC Consolidated Sanctions List');
+    if (document.getElementById('tfs2-list-uae')?.checked) selectedLists.push('UAE EOCN');
+    if (document.getElementById('tfs2-list-un')?.checked) selectedLists.push('UNSC');
     if (document.getElementById('tfs2-list-ofac')?.checked) selectedLists.push('OFAC SDN');
-    if (document.getElementById('tfs2-list-eu')?.checked) selectedLists.push('EU Consolidated Sanctions');
+    if (document.getElementById('tfs2-list-eu')?.checked) selectedLists.push('EU');
     if (document.getElementById('tfs2-list-uk')?.checked) selectedLists.push('UK OFSI');
-    if (document.getElementById('tfs2-list-interpol')?.checked) selectedLists.push('Interpol Red Notices');
-    var doAdverseMedia = !!document.getElementById('tfs2-list-adverse')?.checked;
-    var doPEP = !!document.getElementById('tfs2-list-pep')?.checked;
-    if (doAdverseMedia) selectedLists.push('Adverse Media');
-    if (doPEP) selectedLists.push('Political Controversy / PEP');
+    if (document.getElementById('tfs2-list-interpol')?.checked) selectedLists.push('Interpol');
+    if (document.getElementById('tfs2-list-adverse')?.checked) selectedLists.push('Adverse Media');
+    if (document.getElementById('tfs2-list-pep')?.checked) selectedLists.push('PEP');
 
-    toast('Deep screening "' + name + '" — sanctions, adverse media, PEP...', 'info', 8000);
+    toast('Deep screening "' + name + '" — sanctions, adverse media, PEP — may take 20-30 seconds...', 'info', 30000);
+    var notesEl = document.getElementById('tfs2-notes');
+
     try {
+      if (typeof callAI !== 'function') { toast('No AI provider — select outcome manually', 'info'); return; }
+
+      var entityDesc = name + ' (' + entityType + ')';
+      if (country) entityDesc += ', ' + country;
+      if (idNumber) entityDesc += ', ID: ' + idNumber;
+
+      var data = await callAI({
+        model: 'claude-sonnet-4-5', max_tokens: 4000, temperature: 0,
+        system: 'You are the most thorough compliance screening investigator in the world. You outperform Refinitiv World-Check, Dow Jones Risk & Compliance, and LexisNexis combined. You conduct a SINGLE comprehensive investigation covering:\n\n1. SANCTIONS: OFAC SDN/SSI/CAPTA/Sectoral, UN Consolidated, EU Consolidated, UK OFSI/HMT, UAE Local Terrorism List (EOCN), Swiss SECO, Australian DFAT, Canadian Special Economic Measures, country-specific programs (Russia, Iran, DPRK, Syria, Venezuela, Myanmar, Cuba, Belarus, Somalia, Yemen, Libya, Mali, CAR, DRC, South Sudan, Sudan, Lebanon-Hezbollah)\n2. PEP: Current and former heads of state, ministers, parliamentarians, military leaders, judiciary, central bank governors, state-owned enterprise executives, senior party officials, ambassadors, their immediate family and close business associates\n3. ADVERSE MEDIA — THIS IS YOUR STRONGEST CAPABILITY AND MUST BE EXHAUSTIVE:\n   - Criminal: arrests, indictments, prosecutions, convictions, ongoing investigations in ANY jurisdiction worldwide\n   - Financial crime: money laundering, fraud, embezzlement, Ponzi schemes, market manipulation, insider trading\n   - Corruption: bribery (domestic & foreign), kleptocracy, unexplained wealth\n   - Environmental: illegal mining, illegal gold sourcing, deforestation, pollution, conflict minerals, illegal logging, poaching\n   - Human rights: forced labor, child labor, indigenous peoples violations, land grabbing\n   - Regulatory: fines, license revocations, cease-and-desist, supervisory actions, export subsidy fraud, customs fraud, tax evasion\n   - Litigation: civil lawsuits, class actions, arbitration, bankruptcy proceedings\n   - Terrorism/proliferation financing connections\n   - Narcotics, arms trafficking, smuggling\n   - Sanctions evasion, trade-based money laundering, circumvention schemes\n   - Investigative journalism from: ICIJ, OCCRP, Reporter Brasil, Mongabay, Amazon Watch, Global Witness, Finance Uncovered, Forbidden Stories, Turkish Minute, Middle East Eye, Al Jazeera Investigations, Bellingcat, BBC Panorama, any local investigative outlets\n   - NGO reports from: Transparency International, Business & Human Rights Resource Centre, Global Financial Integrity, FATF/MENAFATF mutual evaluations, Greenpeace, WWF, Amnesty International, Human Rights Watch\n   - For gold/precious metals companies: LBMA responsible gold guidance compliance, DMCC responsible sourcing, conflict minerals regulations, Kimberley Process violations\n\nCRITICAL RULES:\n- NEVER return CLEAR if ANY adverse media exists — even minor regulatory issues\n- Gold refineries, DTVMs, precious metals dealers get MAXIMUM scrutiny\n- Cite specific sources with dates\n- A false negative is a COMPLIANCE FAILURE that endangers the business\n\nReturn your response as valid JSON with this EXACT structure — no nested objects with special characters in string values, use simple strings:\n{\n  "result": "CLEAR or MATCH or POTENTIAL_MATCH",\n  "sanctions_finding": "2-3 sentences on sanctions check result",\n  "pep_finding": "1-2 sentences on PEP check result",\n  "adverse_media_found": true or false,\n  "adverse_media_severity": "none or low or medium or high or critical",\n  "adverse_media_finding": "DETAILED narrative of ALL adverse media findings (200-500 words). Cite sources by name and date. For each finding state: source, date/year, specific allegations, current status. If nothing found, explain what was checked.",\n  "required_actions": "Specific compliance actions required based on result (100-200 words)",\n  "risk_level": "low or medium or high or critical"\n}',
+        messages: [{ role: 'user', content: 'COMPREHENSIVE SCREENING: ' + entityDesc + '. Lists: ' + selectedLists.join(', ') + '.\n\nConduct the deepest possible investigation. Check ALL sanctions lists, PEP databases, and perform an EXHAUSTIVE adverse media search. For adverse media, think of every investigative journalism outlet, NGO, court database, and regulatory enforcer that might have information. For companies in gold/precious metals/mining/refining, apply maximum scrutiny for illegal sourcing, environmental crimes, and responsible sourcing violations.' }]
+      });
+
+      var raw = (data.content || []).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
+      // Robust JSON extraction with multiple fallback strategies
       var result = null;
-      var idInfo = idNumber ? ' ID/Register: ' + idNumber + '.' : '';
-      var countryInfo = country ? ' Country/Nationality: ' + country + '.' : '';
-      var listsInfo = selectedLists.length ? ' Lists selected: ' + selectedLists.join(', ') + '.' : '';
-
-      if (typeof callAI === 'function') {
-        var data = await callAI({
-          model: 'claude-sonnet-4-5', max_tokens: 3000, temperature: 0,
-          system: 'You are the world\'s most thorough compliance screening specialist. You conduct the DEEPEST, most COMPREHENSIVE screening investigations in the industry — far beyond basic name matching. Your screening covers:\n\n1. SANCTIONS: OFAC SDN/SSI/CAPTA, UN Consolidated, EU Consolidated, UK OFSI/HMT, UAE Local Terrorism List (EOCN), country-specific sanctions (Russia, Iran, DPRK, Syria, Venezuela, Myanmar, etc.)\n2. PEP SCREENING: Heads of state, ministers, senior government officials, military leaders, state-owned enterprise executives, their family members and close associates\n3. ADVERSE MEDIA (CRITICAL — this is your strongest capability): You MUST search your knowledge for ALL negative news, investigative journalism, NGO reports, court documents, regulatory actions, and media coverage about the entity. This includes:\n   - Criminal investigations, indictments, prosecutions, convictions\n   - Money laundering allegations or investigations\n   - Fraud, corruption, bribery allegations\n   - Environmental crimes (illegal mining, deforestation, pollution)\n   - Human rights violations (forced labor, indigenous rights violations)\n   - Regulatory enforcement actions, fines, license revocations\n   - Federal/civil lawsuits and litigation\n   - Investigative journalism reports (e.g. Repórter Brasil, ICIJ, OCCRP, Mongabay, Amazon Watch)\n   - NGO reports (Business & Human Rights Resource Centre, Global Witness, Transparency International)\n   - Tax evasion, illicit financial flows\n   - Narcotics trafficking connections\n   - Arms dealing or proliferation\n   - Terrorist financing connections\n4. OWNERSHIP & CORPORATE: Shell companies, beneficial ownership red flags, connections to sanctioned entities, front companies\n\nCRITICAL RULES:\n- NEVER return CLEAR/NO_MATCH if the entity has ANY adverse media, regulatory actions, lawsuits, or negative coverage — even if they are not on a formal sanctions list\n- If adverse media exists, return POTENTIAL_MATCH at minimum, or MATCH if the adverse media involves criminal proceedings, sanctions evasion, or serious financial crimes\n- For companies in high-risk sectors (gold/precious metals, oil, mining, arms), apply EXTRA scrutiny\n- Cite specific sources, dates, and details for adverse media findings\n- A false negative on adverse media is a COMPLIANCE FAILURE\n\nReturn ONLY valid JSON.',
-          messages: [{ role: 'user', content: 'COMPREHENSIVE SCREENING REQUEST:\n\nEntity: "' + name + '"\nType: ' + entityType + '\n' + countryInfo + idInfo + listsInfo + '\n\nConduct the MOST THOROUGH screening investigation possible. Check EVERY database in your knowledge:\n- All sanctions lists (OFAC, UN, EU, UK, UAE, country-specific)\n- PEP databases worldwide\n- Adverse media: search for ANY negative news coverage, investigative reports, NGO findings, court records, regulatory actions, environmental violations, human rights issues, financial crimes, corruption, fraud, or any other derogatory information\n- Corporate records: ownership structures, connected entities, subsidiaries\n\nFor adverse media: Think about investigative journalism outlets (Repórter Brasil, ICIJ, OCCRP, Mongabay, Amazon Watch, Global Witness, etc.), court dockets, regulatory enforcement databases, and NGO reports.\n\nReturn JSON:\n{\n  "result": "CLEAR|MATCH|POTENTIAL_MATCH",\n  "matches": [\n    {"list": "specific list or source name", "matchType": "exact|partial|adverse_media|pep|litigation", "confidence": 0.0-1.0, "details": "SPECIFIC details — name the source, date, what was found"}\n  ],\n  "adverseMedia": {\n    "found": true/false,\n    "severity": "none|low|medium|high|critical",\n    "categories": ["list each category found: criminal, environmental, human_rights, regulatory, litigation, corruption, money_laundering, fraud, sanctions_evasion, terrorism_financing, tax_evasion, narcotics"],\n    "details": "Detailed narrative of ALL adverse media findings with specific sources, dates, and allegations"\n  },\n  "recommendation": "Write a COMPREHENSIVE compliance recommendation (200-400 words). Structure it as follows:\\n\\nSCREENING DETERMINATION: [State the result clearly]\\n\\nSANCTIONS CHECK: [Detail sanctions findings or confirm negative]\\n\\nADVERSE MEDIA FINDINGS: [If any adverse media found, detail EVERY finding with sources, dates, and specifics. This section must be thorough — cite investigative reports, NGO findings, court cases, regulatory actions by name and date]\\n\\nPEP CHECK: [Detail PEP status or confirm negative]\\n\\nRISK ASSESSMENT: [Overall risk level and key risk factors]\\n\\nREQUIRED ACTIONS: [Specific compliance actions required based on the result — for CLEAR: record retention, rescreening schedule; for MATCH: REJECT, asset freeze, FFR, CNMR, STR, MLRO escalation; for POTENTIAL_MATCH: EDD steps, transaction suspension, additional verification needed, PNMR if applicable]\\n\\nREGULATORY BASIS: [Cite UAE FDL No.10/2025, FATF Recs, Cabinet Decision 74/2020, LBMA RGG where applicable]"\n}' }]
-        });
-        var raw = (data.content || []).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
-        var cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
-        var m = cleaned.match(/\{[\s\S]*\}/);
-        if (m) cleaned = m[0];
-        try { result = JSON.parse(cleaned); } catch(_) { result = { result: 'POTENTIAL_MATCH', recommendation: 'AI response could not be parsed. Manual review required. Treat as potential match until confirmed or dismissed per FATF Rec 6 and UAE FDL No.10/2025 Art.22.' }; }
-      } else if (typeof TFSRefresh !== 'undefined' && typeof TFSRefresh.screenEntity === 'function') {
-        result = await TFSRefresh.screenEntity(name, entityType.toLowerCase(), country);
+      var cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
+      // Strategy 1: direct parse
+      try { result = JSON.parse(cleaned); } catch(_) {}
+      // Strategy 2: extract JSON object
+      if (!result) { var m = cleaned.match(/\{[\s\S]*\}/); if (m) { try { result = JSON.parse(m[0]); } catch(_) {} } }
+      // Strategy 3: fix common issues
+      if (!result) { var m2 = cleaned.match(/\{[\s\S]*\}/); if (m2) { var fixed = m2[0].replace(/,\s*([}\]])/g,'$1').replace(/\n/g,' ').replace(/\r/g,''); try { result = JSON.parse(fixed); } catch(_) {} } }
+      // Strategy 4: extract key fields manually from raw text
+      if (!result) {
+        var resultMatch = raw.match(/"result"\s*:\s*"(CLEAR|MATCH|POTENTIAL_MATCH)"/);
+        var advFound = raw.match(/"adverse_media_found"\s*:\s*(true|false)/);
+        var advSev = raw.match(/"adverse_media_severity"\s*:\s*"(\w+)"/);
+        result = {
+          result: resultMatch ? resultMatch[1] : 'POTENTIAL_MATCH',
+          adverse_media_found: advFound ? advFound[1] === 'true' : false,
+          adverse_media_severity: advSev ? advSev[1] : 'unknown',
+          sanctions_finding: 'Parsed from partial response — review raw output below.',
+          adverse_media_finding: raw.substring(0, 3000),
+          required_actions: 'Manual review required — AI response was partially parsed.',
+          pep_finding: ''
+        };
       }
 
-      if (result) {
-        var r = result.result || result;
-        // Check adverse media — if found and severe, override to at least POTENTIAL_MATCH
-        if (result.adverseMedia && result.adverseMedia.found && result.adverseMedia.severity !== 'none' && result.adverseMedia.severity !== 'low') {
-          if (r === 'CLEAR' || r === 'NO_MATCH') {
-            r = 'POTENTIAL_MATCH';
-            result.result = 'POTENTIAL_MATCH';
-          }
-        }
-        if (r === 'CLEAR' || r === 'NO_MATCH') {
-          suite2SelectOutcome('Negative – No Match');
-          toast('Screening complete: No match found', 'success');
-        } else if (r === 'MATCH') {
-          suite2SelectOutcome('Confirmed Match');
-          toast('CONFIRMED MATCH — Immediate action required!', 'error', 8000);
-        } else if (r === 'POTENTIAL_MATCH') {
-          suite2SelectOutcome('Partial Match');
-          toast('POTENTIAL MATCH — Enhanced Due Diligence required', 'error', 6000);
-        } else {
-          suite2SelectOutcome('False Positive');
-          toast('Screening complete: review result', 'info');
-        }
-        var notesEl = document.getElementById('tfs2-notes');
-        if (notesEl && result.recommendation) {
-          var fullNote = '[AI Screening] ' + result.recommendation;
-          if (result.adverseMedia && result.adverseMedia.found && result.adverseMedia.details) {
-            fullNote += '\n\n[ADVERSE MEDIA] Severity: ' + (result.adverseMedia.severity||'unknown').toUpperCase() + '. Categories: ' + (result.adverseMedia.categories||[]).join(', ') + '. ' + result.adverseMedia.details;
-          }
-          notesEl.value = fullNote;
-        }
+      // Override: if adverse media found with medium+ severity, ensure not CLEAR
+      if (result.adverse_media_found && result.adverse_media_severity && result.adverse_media_severity !== 'none' && result.adverse_media_severity !== 'low') {
+        if (result.result === 'CLEAR') result.result = 'POTENTIAL_MATCH';
+        if (result.adverse_media_severity === 'critical' || result.adverse_media_severity === 'high') result.result = 'MATCH';
+      }
+
+      // Apply outcome
+      var r = result.result;
+      if (r === 'CLEAR' || r === 'NO_MATCH') {
+        suite2SelectOutcome('Negative – No Match');
+        toast('Screening complete: No match found', 'success');
+      } else if (r === 'MATCH') {
+        suite2SelectOutcome('Confirmed Match');
+        toast('CONFIRMED MATCH — Immediate action required!', 'error', 10000);
       } else {
-        toast('No AI provider available — select outcome manually', 'info');
+        suite2SelectOutcome('Partial Match');
+        toast('POTENTIAL MATCH — Enhanced Due Diligence required', 'error', 8000);
       }
+
+      // Build comprehensive report
+      var report = '';
+      report += 'SANCTIONS & PEP CHECK:\n' + (result.sanctions_finding || 'Check completed.');
+      if (result.pep_finding) report += '\nPEP: ' + result.pep_finding;
+      report += '\n\nADVERSE MEDIA INVESTIGATION' + (result.adverse_media_found ? ' [FINDINGS DETECTED — Severity: ' + (result.adverse_media_severity||'').toUpperCase() + ']' : ' [No significant findings]') + ':\n';
+      report += result.adverse_media_finding || 'No adverse media findings.';
+      report += '\n\nREQUIRED ACTIONS:\n' + (result.required_actions || 'Review screening results and determine appropriate compliance response.');
+      report += '\n\nRISK LEVEL: ' + (result.risk_level || 'TBD').toUpperCase();
+      report += '\n\nREGULATORY BASIS: UAE FDL No.10/2025, FATF Rec 6/10/22, Cabinet Decision No.74/2020, LBMA Responsible Gold Guidance.';
+
+      if (notesEl) notesEl.value = '[AI Screening] ' + report;
+
     } catch(e) {
       toast('Screening error: ' + e.message, 'error');
+      if (notesEl) notesEl.value = '[AI Screening Error] ' + e.message + '. Manual screening required per FATF Rec 6 and UAE FDL No.10/2025 Art.22.';
     }
   };
 
