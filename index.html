@@ -3202,7 +3202,8 @@ function renderAsanaSyncOverview() {
         <div class="price-cell"><div class="price-head"><span class="price-sym">EVIDENCE</span><span class="sync-status ${evidenceModule.status === 'Healthy' ? 'sync-ok' : evidenceModule.status === 'Error' ? 'sync-failed' : 'sync-pending'}">${escHtml(evidenceModule.status)}</span></div><div class="price-sub">Last success: ${escHtml(formatSyncTs(evidenceModule.lastSuccess))}</div></div>
         <div class="price-cell"><div class="price-head"><span class="price-sym">WRITE-BACK</span><span class="sync-status ${writebackModule.status === 'Healthy' ? 'sync-ok' : writebackModule.status === 'Conflict' || writebackModule.status === 'Error' ? 'sync-failed' : 'sync-pending'}">${escHtml(writebackModule.status)}</span></div><div class="price-sub">Retries: ${retryCount} | Conflicts: ${conflictCount}</div></div>
       </div>
-      <div class="token-note">Auto-refresh every 3 minutes while the page is open. Failed writes are queued and retried automatically.</div>`;
+      <div class="token-note">Auto-refresh every 3 minutes while the page is open. Failed writes are queued and retried automatically.</div>
+      ${tasks.lastError ? '<div style="color:var(--amber);font-size:12px;margin-top:6px">Asana: ' + escHtml(tasks.status === 'Error' ? 'Could not connect — check your Asana token in Settings' : tasks.lastError) + '</div>' : ''}`;
   }
   if (evidenceMeta) evidenceMeta.textContent = `Evidence sync: ${evidenceModule.status} | Last ${formatSyncTs(evidenceModule.lastSuccess)}`;
 }
@@ -6151,11 +6152,11 @@ async function submitCreateTask() {
 // ======= ASANA READ =======
 async function loadAsanaTasks(silent) {
   if (!ASANA_TOKEN && !PROXY_URL) {
-    document.getElementById('asanaContent').innerHTML = '<p style="color:var(--amber);font-size:13px;font-family:DM Mono,monospace">No Asana token or proxy. Add it in Settings.</p>';
-    setAsanaModuleSync('tasks', { status: 'Idle', lastError: 'No Asana token or proxy configured' });
+    document.getElementById('asanaContent').innerHTML = '<p style="color:var(--amber);font-size:13px;font-family:DM Mono,monospace">No Asana token configured. Add it in Settings to see live tasks.</p>';
+    setAsanaModuleSync('tasks', { status: 'Idle', lastError: 'No Asana token configured' });
     return;
   }
-  document.getElementById('asanaContent').innerHTML = '<p style="color:var(--muted);font-size:13px">Loading from Asana...</p>';
+  if (!silent) document.getElementById('asanaContent').innerHTML = '<p style="color:var(--muted);font-size:13px">Loading from Asana...</p>';
   setAsanaModuleSync('tasks', { status: 'Refreshing', lastError: '' });
   try {
     const r = await asanaFetch(`/projects/${getAsanaProject()}/tasks?opt_fields=name,completed,due_on,assignee.name,memberships.section.name&limit=100`);
@@ -6186,9 +6187,11 @@ async function loadAsanaTasks(silent) {
     document.getElementById('asanaContent').innerHTML = html;
     setAsanaModuleSync('tasks', { status: 'Healthy', lastSuccess: new Date().toISOString(), lastError: '', lastCount: tasks.length });
   } catch(e) {
-    document.getElementById('asanaContent').innerHTML = `<p style="color:var(--red);font-size:13px">Error: ${escHtml(e.message)}</p>`;
+    if (!silent) {
+      document.getElementById('asanaContent').innerHTML = `<p style="color:var(--amber);font-size:13px">Could not connect to Asana. Check your token in Settings or try again.</p>`;
+      toast('Asana connection issue — check Settings', 'error', 4000);
+    }
     setAsanaModuleSync('tasks', { status: 'Error', lastError: e.message, lastCount: 0 });
-    if (!silent) toast('Asana read failed: ' + e.message, 'error', 5000);
   }
 }
 
