@@ -64,7 +64,8 @@
   async function pushToAsana(title, notes, section) {
     try {
       if (typeof asanaFetch !== 'function') return null;
-      const projectId = (typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515';
+      const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
+      const projectId = resolver ? resolver.resolveProject('compliance') : ((typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515');
       const body = {
         data: {
           name: title,
@@ -1467,7 +1468,8 @@
     if (typeof toast === 'function') toast('Syncing to Asana...','info');
     try {
       if (typeof asanaFetch !== 'function') { toast('Asana not configured','error'); return; }
-      const projectId = (typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515';
+      const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
+      const projectId = resolver ? resolver.resolveProject('workflow') : ((typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515');
       const title = `[MGMT-APPROVAL] ${a.customerName||a.entityName||'Unknown'} — ${a.status||'Pending'}`;
       const notes = [
         `Customer: ${a.customerName||a.entityName||'—'}`,
@@ -2705,7 +2707,8 @@
   async function asanaPush(title, notes) {
     try {
       if (typeof asanaFetch !== 'function') return null;
-      const projectId = (typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515';
+      const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
+      const projectId = resolver ? resolver.resolveProject('compliance') : ((typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515');
       const resp = await asanaFetch('/tasks', {
         method: 'POST',
         body: JSON.stringify({ data: { name: title, notes, projects: [projectId] } })
@@ -2870,9 +2873,9 @@
   async function fixAsanaEntityTasks() {
     try {
       if (typeof asanaFetch !== 'function') { if(typeof toast==='function') toast('Asana not connected — configure token in Settings','error'); return; }
-      const projectId = (typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515';
-      const activeComp = (typeof getActiveCompany === 'function') ? getActiveCompany() : {};
-      const companyName = (activeComp.name || 'Fine Gold LLC').trim();
+      const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
+      const projectId = resolver ? resolver.resolveProject('workflow') : ((typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515');
+      const companyName = (resolver ? resolver.resolveEntityName() : ((typeof getActiveCompany === 'function') ? (getActiveCompany().name || 'Fine Gold LLC') : 'Fine Gold LLC')).trim();
 
       if (typeof toast === 'function') toast('Scanning Asana for {entity} tasks...', 'info');
 

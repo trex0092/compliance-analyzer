@@ -394,7 +394,8 @@
     ].join('\n');
 
     try {
-      const asanaProjectId = localStorage.getItem('asanaProjectId') || '1213759768596515';
+      const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
+      const asanaProjectId = resolver ? resolver.resolveProject('compliance') : (localStorage.getItem('asanaProjectId') || '1213759768596515');
       const taskBody = JSON.stringify({
         data: {
           name: `📊 Analytics Report — ${new Date().toISOString().slice(0, 10)}`,
