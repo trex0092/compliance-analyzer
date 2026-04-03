@@ -3178,7 +3178,7 @@ function renderAsanaSyncOverview() {
         <div class="price-cell"><div class="price-head"><span class="price-sym">WRITE-BACK</span><span class="sync-status ${writebackModule.status === 'Healthy' ? 'sync-ok' : writebackModule.status === 'Conflict' || writebackModule.status === 'Error' ? 'sync-failed' : 'sync-pending'}">${escHtml(writebackModule.status)}</span></div><div class="price-sub">Retries: ${retryCount} | Conflicts: ${conflictCount}</div></div>
       </div>
       <div class="token-note">Auto-refresh every 3 minutes while the page is open. Failed writes are queued and retried automatically.</div>
-      ${tasks.lastError ? '<div style="color:var(--amber);font-size:12px;margin-top:6px">Asana: ' + escHtml(tasks.status === 'Error' ? 'Could not connect — check your Asana token in Settings' : tasks.lastError) + '</div>' : ''}`;
+      ${tasks.lastError && tasks.status === 'Error' ? '<div style="color:var(--amber);font-size:12px;margin-top:6px">Asana: ' + escHtml('Could not connect — check your Asana token in Settings') + '</div>' : ''}`;
   }
   if (evidenceMeta) evidenceMeta.textContent = `Evidence sync: ${evidenceModule.status} | Last ${formatSyncTs(evidenceModule.lastSuccess)}`;
 }
@@ -5681,7 +5681,7 @@ function normalizeAnalysisResult(obj) {
 }
 
 async function callAnthropic(body) {
-  const fetchWithTimeout = async (url, options, timeoutMs = 8000) => {
+  const fetchWithTimeout = async (url, options, timeoutMs = 15000) => {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), timeoutMs);
     try {
@@ -5897,7 +5897,7 @@ async function asanaFetch(apiPath, opts = {}) {
     throw new Error('Asana not configured — set Asana Token or Proxy URL in Settings');
   }
 
-  const fetchWithTimeout = async (url, options, timeoutMs = 8000) => {
+  const fetchWithTimeout = async (url, options, timeoutMs = 15000) => {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), timeoutMs);
     try {
@@ -6163,10 +6163,18 @@ async function loadAsanaTasks(silent) {
     setAsanaModuleSync('tasks', { status: 'Healthy', lastSuccess: new Date().toISOString(), lastError: '', lastCount: tasks.length });
   } catch(e) {
     var prevSync = asanaSyncState && asanaSyncState.modules && asanaSyncState.modules.tasks;
-    var hadRecentSuccess = prevSync && prevSync.lastSuccess && (Date.now() - new Date(prevSync.lastSuccess).getTime() < 600000);
-    if (silent && hadRecentSuccess) {
-      setAsanaModuleSync('tasks', { status: 'Healthy', lastError: 'Retrying: ' + e.message });
+    var hadPreviousSuccess = prevSync && prevSync.lastSuccess;
+    if (silent && hadPreviousSuccess) {
+      // Silent refresh failed but we had a previous success — keep Healthy, don't alarm user
+      setAsanaModuleSync('tasks', { status: 'Healthy', lastError: 'Retry pending: ' + e.message });
+    } else if (!silent && hadPreviousSuccess) {
+      // Explicit refresh failed but had previous success — show warning, don't wipe data
+      toast('Asana refresh failed — retrying. Previous data still shown.', 'info', 3000);
+      setAsanaModuleSync('tasks', { status: 'Healthy', lastError: 'Last refresh failed: ' + e.message });
+      // Auto-retry once after 3 seconds
+      setTimeout(function() { loadAsanaTasks(true).catch(function(){}); }, 3000);
     } else {
+      // Never connected successfully
       if (!silent) {
         document.getElementById('asanaContent').innerHTML = `<p style="color:var(--amber);font-size:13px">Could not connect to Asana. Check your token in Settings or try again.</p>`;
         toast('Asana connection issue — check Settings', 'error', 4000);
