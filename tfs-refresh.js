@@ -261,9 +261,9 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         <div class="top-bar" style="margin-bottom:8px">
           <span class="lbl" style="margin:0">Recent TFS Screening Results</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-green" onclick="TFSRefresh.exportPDF()" style="padding:3px 10px;font-size:10px">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="TFSRefresh.exportDOCX()" style="padding:3px 10px;font-size:10px">Export Word</button>
-            <button class="btn btn-sm btn-red" onclick="TFSRefresh.clearResults()" style="padding:3px 10px;font-size:10px">Clear All</button>
+            <button class="btn btn-sm btn-green" onclick="TFSRefresh.exportPDF()" style="padding:3px 10px;font-size:10px">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="TFSRefresh.exportDOCX()" style="padding:3px 10px;font-size:10px">Word</button>
+            <button class="btn btn-sm btn-red" onclick="TFSRefresh.clearResults()" style="padding:3px 10px;font-size:10px">Clear</button>
           </div>
         </div>
         <div id="tfsMatchHistory">${recentMatches}</div>

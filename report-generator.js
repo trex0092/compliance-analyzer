@@ -624,10 +624,10 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
   <div class="top-bar" style="margin-bottom:10px">
     <span class="sec-title" style="margin:0;border:none;padding:0">Circulars</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-blue" onclick="document.getElementById('circFileInput').click()" style="padding:3px 10px;font-size:10px">📎 Attach File</button>
+      <button class="btn btn-sm btn-blue" onclick="document.getElementById('circFileInput').click()" style="padding:3px 10px;font-size:10px">File</button>
       <input type="file" id="circFileInput" style="display:none" onchange="ReportGenerator.attachCircularFile(this)" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip">
-      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportCircularsPDF()" style="padding:3px 10px;font-size:10px">Export PDF</button>
-      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportCircularsDOCX()" style="padding:3px 10px;font-size:10px">Export Word</button>
+      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportCircularsPDF()" style="padding:3px 10px;font-size:10px">PDF</button>
+      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportCircularsDOCX()" style="padding:3px 10px;font-size:10px">Word</button>
       <button class="btn btn-sm btn-red" onclick="ReportGenerator.clearCirculars()" style="padding:3px 10px;font-size:10px">Clear</button>
     </div>
   </div>
@@ -645,10 +645,10 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
   <div class="top-bar" style="margin-bottom:10px">
     <span class="sec-title" style="margin:0;border:none;padding:0">Meeting Minutes Report</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-blue" onclick="document.getElementById('meetFileInput').click()" style="padding:3px 10px;font-size:10px">📎 Attach File</button>
+      <button class="btn btn-sm btn-blue" onclick="document.getElementById('meetFileInput').click()" style="padding:3px 10px;font-size:10px">File</button>
       <input type="file" id="meetFileInput" style="display:none" onchange="ReportGenerator.attachMeetingFile(this)" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip">
-      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportMeetingsPDF()" style="padding:3px 10px;font-size:10px">Export PDF</button>
-      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportMeetingsDOCX()" style="padding:3px 10px;font-size:10px">Export Word</button>
+      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportMeetingsPDF()" style="padding:3px 10px;font-size:10px">PDF</button>
+      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportMeetingsDOCX()" style="padding:3px 10px;font-size:10px">Word</button>
       <button class="btn btn-sm btn-red" onclick="ReportGenerator.clearMeetings()" style="padding:3px 10px;font-size:10px">Clear</button>
     </div>
   </div>
@@ -799,7 +799,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     if (!list.length) return '<p style="color:var(--muted);font-size:13px">No circulars recorded.</p>';
     return list.map(c => {
       const attachHtml = c.attachment ? `<span style="color:var(--green);font-size:10px;margin-left:6px" title="${c.attachment.name}">📎 ${c.attachment.name} (${formatFileSize(c.attachment.size)})</span> <button class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.downloadAttachment('circular',${c.id})">Download</button> <button class="btn btn-sm" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.removeAttachment('circular',${c.id})">Remove</button>` : '';
-      return `<div class="asana-item"><div><div class="asana-name">${c.ref} — ${c.subject}${attachHtml}</div><div class="asana-meta">${c.month||'—'} | ${c.date||'—'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;border-color:var(--gold);color:var(--gold)" onclick="ReportGenerator.editCircular(${c.id})">Modify</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteCircular(${c.id})">Delete</button></div></div>`;
+      return `<div class="asana-item"><div><div class="asana-name">${c.ref} — ${c.subject}${attachHtml}</div><div class="asana-meta">${c.month||'—'} | ${c.date||'—'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;border-color:var(--gold);color:var(--gold)" onclick="ReportGenerator.editCircular(${c.id})">Edit</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteCircular(${c.id})">Delete</button></div></div>`;
     }).join('');
   }
   function renderCircularsInPlace() { const el=document.getElementById('circularsList'); if(el) el.innerHTML=renderCircularsList(); }
@@ -877,7 +877,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     if (!list.length) return '<p style="color:var(--muted);font-size:13px">No meeting minutes recorded.</p>';
     return list.map(m => {
       const attachHtml = m.attachment ? `<span style="color:var(--green);font-size:10px;margin-left:6px" title="${m.attachment.name}">📎 ${m.attachment.name} (${formatFileSize(m.attachment.size)})</span> <button class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.downloadAttachment('meeting',${m.id})">Download</button> <button class="btn btn-sm" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.removeAttachment('meeting',${m.id})">Remove</button>` : '';
-      return `<div class="asana-item"><div><div class="asana-name">${m.ref}${attachHtml}</div><div class="asana-meta">${m.month||'—'} | ${m.date||'—'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;border-color:var(--gold);color:var(--gold)" onclick="ReportGenerator.editMeeting(${m.id})">Modify</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteMeeting(${m.id})">Delete</button></div></div>`;
+      return `<div class="asana-item"><div><div class="asana-name">${m.ref}${attachHtml}</div><div class="asana-meta">${m.month||'—'} | ${m.date||'—'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;border-color:var(--gold);color:var(--gold)" onclick="ReportGenerator.editMeeting(${m.id})">Edit</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteMeeting(${m.id})">Delete</button></div></div>`;
     }).join('');
   }
   function renderMeetingsInPlace() { const el=document.getElementById('meetingsList'); if(el) el.innerHTML=renderMeetingsList(); }

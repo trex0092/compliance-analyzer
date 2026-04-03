@@ -791,7 +791,7 @@ Examples:
         <div class="top-bar">
           <div class="sec-title" style="margin:0;border:none;padding:0">Analysis Results</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-green" onclick="exportPDF()">⬇ Export PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportPDF()">⬇ PDF</button>
             <button class="btn btn-sm btn-green" onclick="copyReport()">Copy Text Report</button>
             <button class="btn btn-sm btn-green" onclick="saveToScheduleHistory()">Save to History</button>
             <button class="btn btn-sm btn-green" onclick="shareAnalysisToGDrive()" title="Save to Google Drive">📁 Drive</button>
@@ -839,9 +839,9 @@ Examples:
           <span class="lbl" style="margin:0">Add Shipment Record</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
             <button class="btn btn-sm btn-blue" onclick="refreshShipmentData()">Refresh</button>
-            <button class="btn btn-sm btn-green" onclick="exportShipmentsDOCX()">Export Word</button>
-            <button class="btn btn-sm btn-green" onclick="exportShipmentsPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all shipments?'))clearShipments()">Clear All</button>
+            <button class="btn btn-sm btn-green" onclick="exportShipmentsDOCX()">Word</button>
+            <button class="btn btn-sm btn-green" onclick="exportShipmentsPDF()">PDF</button>
+            <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all shipments?'))clearShipments()">Clear</button>
           </div>
         </div>
         <div class="row row-3">
@@ -941,9 +941,9 @@ Examples:
           <span class="lbl" style="margin:0">Local Shipments</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
             <button class="btn btn-sm btn-blue" onclick="renderLocalShipments()">Refresh</button>
-            <button class="btn btn-sm btn-green" onclick="exportLocalShipmentsDOCX()">Export Word</button>
-            <button class="btn btn-sm btn-green" onclick="exportLocalShipmentsPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all local shipments?'))clearLocalShipments()">Clear All</button>
+            <button class="btn btn-sm btn-green" onclick="exportLocalShipmentsDOCX()">Word</button>
+            <button class="btn btn-sm btn-green" onclick="exportLocalShipmentsPDF()">PDF</button>
+            <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all local shipments?'))clearLocalShipments()">Clear</button>
           </div>
         </div>
         <div class="row row-3">
@@ -995,10 +995,10 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">IAR Compliance Report</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
-            <button class="btn btn-sm btn-blue" onclick="document.getElementById('iarFileInput').click()">📎 Attach File</button>
-            <button class="btn btn-sm btn-green" onclick="exportIARReportPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportIARReportDOCX()">Export Word</button>
-            <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all IAR reports?'))clearIARReports()">Clear All</button>
+            <button class="btn btn-sm btn-blue" onclick="document.getElementById('iarFileInput').click()">File</button>
+            <button class="btn btn-sm btn-green" onclick="exportIARReportPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportIARReportDOCX()">Word</button>
+            <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all IAR reports?'))clearIARReports()">Clear</button>
             <input type="file" id="iarFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachIARFile(this)" />
           </div>
         </div>
@@ -1104,8 +1104,8 @@ Examples:
           <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace" id="evidenceSyncMeta">Evidence sync: Idle</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
             <button class="btn btn-sm btn-blue" onclick="loadEvidenceFromAsana()">Sync from Asana</button>
-            <button class="btn btn-sm btn-green" onclick="exportEvidencePDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportEvidenceDOCX()">Export Word</button>
+            <button class="btn btn-sm btn-green" onclick="exportEvidencePDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportEvidenceDOCX()">Word</button>
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Track which Asana compliance tasks have Google Drive evidence documents linked. Paste the Drive folder URL against each task.</p>
@@ -1285,18 +1285,17 @@ Examples:
       <div id="cprog-ewra" class="cprog-section">
         <div class="card">
           <div class="top-bar" style="margin-bottom:10px">
-            <span class="sec-title" style="margin:0;border:none;padding:0">Entity-Wide Risk Assessment (EWRA)</span>
+            <span class="sec-title" style="margin:0;border:none;padding:0">EWRA - Entity-Wide Risk Assessment</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-sm btn-blue" onclick="document.getElementById('ewraFileInput').click()">📎 Attach File</button>
+              <button class="btn btn-sm btn-blue" onclick="document.getElementById('ewraFileInput').click()">File</button>
               <input type="file" id="ewraFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCProgFile(this,'ewra')" />
               <button class="btn btn-sm btn-green" onclick="saveEWRA()">Save</button>
-              <button class="btn btn-sm btn-green" onclick="exportEWRAPDF()">Export PDF</button>
               <button class="btn btn-sm btn-red" onclick="clearEWRA()">Clear</button>
             </div>
           </div>
-          <p style="font-size:11px;color:var(--muted);margin-bottom:14px">Enterprise-wide ML/TF/PF risk assessment per FDL No.10/2025 Art.4 & Cabinet Resolution 134/2025 Art.3. Identifies, assesses, and documents inherent and residual risks across the entire business.</p>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:14px">Internal EWRA as per FDL No.10/2025 Art.4. Document your entity-wide risk assessment, policies, procedures, and controls for regulatory inspection readiness.</p>
 
-          <span class="sec-title">1. Entity Information</span>
+          <span class="sec-title">Introduction & Scope</span>
           <div class="row row-2" style="margin-bottom:10px">
             <div><span class="lbl">Entity Legal Name</span><input type="text" id="ewraEntityName" placeholder="Full registered name" /></div>
             <div><span class="lbl">Trade License No.</span><input type="text" id="ewraLicenseNo" placeholder="License number" /></div>
@@ -1310,7 +1309,7 @@ Examples:
             <div><span class="lbl">Approved By</span><input type="text" id="ewraApprovedBy" placeholder="Senior Management" /></div>
           </div>
 
-          <span class="sec-title">2. Inherent Risk Assessment</span>
+          <span class="sec-title">Inherent Risk Assessment</span>
           <div id="ewraInherentRisks">
             <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
               <thead><tr style="background:var(--surface2)">
@@ -1362,18 +1361,17 @@ Examples:
       <div id="cprog-bwra" class="cprog-section" style="display:none">
         <div class="card">
           <div class="top-bar" style="margin-bottom:10px">
-            <span class="sec-title" style="margin:0;border:none;padding:0">Business-Wide Risk Assessment (BWRA)</span>
+            <span class="sec-title" style="margin:0;border:none;padding:0">BWRA - Business-Wide Risk Assessment</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-sm btn-blue" onclick="document.getElementById('bwraFileInput').click()">📎 Attach File</button>
+              <button class="btn btn-sm btn-blue" onclick="document.getElementById('bwraFileInput').click()">File</button>
               <input type="file" id="bwraFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCProgFile(this,'bwra')" />
               <button class="btn btn-sm btn-green" onclick="saveBWRA()">Save</button>
-              <button class="btn btn-sm btn-green" onclick="exportBWRAPDF()">Export PDF</button>
               <button class="btn btn-sm btn-red" onclick="clearBWRA()">Clear</button>
             </div>
           </div>
-          <p style="font-size:11px;color:var(--muted);margin-bottom:14px">Business-wide ML/TF/PF risk assessment per Cabinet Resolution 134/2025 Art.3(2). Maps risks across products, services, delivery channels, customers, and geographic exposure.</p>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:14px">Internal BWRA as per FDL No.10/2025 Art.21. Document your policies, procedures, and controls for regulatory inspection readiness.</p>
 
-          <span class="sec-title">1. Business Profile</span>
+          <span class="sec-title">Introduction & Scope</span>
           <div class="row row-2" style="margin-bottom:10px">
             <div><span class="lbl">Business Name</span><input type="text" id="bwraBusinessName" placeholder="Business / brand name" /></div>
             <div><span class="lbl">Assessment Date</span><input type="text" id="bwraDate" placeholder="dd/mm/yyyy" /></div>
@@ -1461,10 +1459,10 @@ Examples:
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Compliance Manual</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-sm btn-blue" onclick="document.getElementById('manualFileInput').click()">📎 Attach File</button>
+              <button class="btn btn-sm btn-blue" onclick="document.getElementById('manualFileInput').click()">File</button>
               <input type="file" id="manualFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCProgFile(this,'manual')" />
               <button class="btn btn-sm btn-green" onclick="saveComplianceManual()">Save</button>
-              <button class="btn btn-sm btn-green" onclick="exportManualPDF()">Export PDF</button>
+              <button class="btn btn-sm btn-green" onclick="exportManualPDF()">PDF</button>
               <button class="btn btn-sm btn-red" onclick="clearComplianceManual()">Clear</button>
             </div>
           </div>
@@ -1512,8 +1510,8 @@ Examples:
           <span class="lbl" style="margin:0">Critical Gaps - March 2026 Assessment</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-sm btn-blue" onclick="toast('Gap register refreshed','success')">Refresh</button>
-            <button class="btn btn-sm btn-green" onclick="exportGapRegisterPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportGapRegisterDOCX()">Export Word</button>
+            <button class="btn btn-sm btn-green" onclick="exportGapRegisterPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportGapRegisterDOCX()">Word</button>
             <button class="btn btn-sm btn-red" onclick="if(confirm('Clear all gap data?')){localStorage.removeItem('fgl_gaps_v2');toast('Gap data cleared','success')}">Delete</button>
           </div>
         </div>
@@ -1622,9 +1620,9 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Company Workspace Manager</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
-            <button class="btn btn-sm btn-blue" onclick="document.getElementById('companyFileInput').click()">📎 Attach File</button>
-            <button class="btn btn-sm btn-green" onclick="exportCompanyPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportCompanyDOCX()">Export Word</button>
+            <button class="btn btn-sm btn-blue" onclick="document.getElementById('companyFileInput').click()">File</button>
+            <button class="btn btn-sm btn-green" onclick="exportCompanyPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportCompanyDOCX()">Word</button>
             <button class="btn btn-sm btn-gold" onclick="saveCompanyProfileEdits()">Save Company Profile</button>
             <input type="file" id="companyFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCompanyFile(this)" />
           </div>
@@ -1645,10 +1643,10 @@ Examples:
           <span class="lbl" style="margin:0">Employee Training</span>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace" id="trainingCountMeta">0 employees</span>
-            <button class="btn btn-sm btn-blue" onclick="document.getElementById('trainingFileInput').click()">📎 Attach File</button>
-            <button class="btn btn-sm btn-green" onclick="exportTrainingPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportTrainingDOCX()">Export Word</button>
-            <button class="btn btn-sm btn-red" onclick="clearTraining()">Clear All</button>
+            <button class="btn btn-sm btn-blue" onclick="document.getElementById('trainingFileInput').click()">File</button>
+            <button class="btn btn-sm btn-green" onclick="exportTrainingPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportTrainingDOCX()">Word</button>
+            <button class="btn btn-sm btn-red" onclick="clearTraining()">Clear</button>
             <input type="file" id="trainingFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachTrainingFile(this)" />
           </div>
         </div>
@@ -1780,10 +1778,10 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Employee Directory</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-blue" onclick="document.getElementById('empFileInput').click()">📎 Attach File</button>
-            <button class="btn btn-sm btn-green" onclick="exportEmployeePDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportEmployeeDOCX()">Export Word</button>
-            <button class="btn btn-sm btn-red" onclick="clearEmployees()">Clear All</button>
+            <button class="btn btn-sm btn-blue" onclick="document.getElementById('empFileInput').click()">File</button>
+            <button class="btn btn-sm btn-green" onclick="exportEmployeePDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportEmployeeDOCX()">Word</button>
+            <button class="btn btn-sm btn-red" onclick="clearEmployees()">Clear</button>
             <input type="file" id="empFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachEmployeeFile(this)" />
           </div>
         </div>
@@ -1825,9 +1823,9 @@ Examples:
           <span class="sec-title" style="margin:0;border:none;padding:0">Screening History</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-sm btn-blue" onclick="refreshSanctionsLists()">Refresh</button>
-            <button class="btn btn-sm btn-green" onclick="exportScreeningPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportScreeningDOCX()">Export Word</button>
-            <button class="btn btn-sm btn-red" onclick="clearScreeningHistory()">Clear All</button>
+            <button class="btn btn-sm btn-green" onclick="exportScreeningPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportScreeningDOCX()">Word</button>
+            <button class="btn btn-sm btn-red" onclick="clearScreeningHistory()">Clear</button>
           </div>
         </div>
         <div id="screeningHistoryList"><p style="font-size:13px;color:var(--muted)">No screenings recorded yet.</p></div>
@@ -1899,8 +1897,8 @@ Examples:
           <span class="sec-title" style="margin:0;border:none;padding:0">Entity Risk Assessment — DPMS AML/CFT</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-sm btn-blue" onclick="renderRiskAssessment()">Refresh</button>
-            <button class="btn btn-sm btn-green" onclick="exportRiskAssessmentPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportRiskAssessmentDOCX()">Export Word</button>
+            <button class="btn btn-sm btn-green" onclick="exportRiskAssessmentPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportRiskAssessmentDOCX()">Word</button>
             <button class="btn btn-sm btn-red" onclick="clearRiskAssessment()">Clear Form</button>
           </div>
         </div>
@@ -2073,9 +2071,9 @@ Examples:
 
         <div id="incidentsList"></div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-green" onclick="exportIncidentsPDF()">Export PDF</button>
-          <button class="btn btn-sm btn-green" onclick="exportIncidentsDOCX()">Export Word</button>
-          <button class="btn btn-sm btn-red" onclick="clearIncidents()">Clear All</button>
+          <button class="btn btn-sm btn-green" onclick="exportIncidentsPDF()">PDF</button>
+          <button class="btn btn-sm btn-green" onclick="exportIncidentsDOCX()">Word</button>
+          <button class="btn btn-sm btn-red" onclick="clearIncidents()">Clear</button>
         </div>
       </div>
 
@@ -2202,9 +2200,9 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Whistleblower Reports Log</span>
           <div style="display:flex;gap:6px">
-            <button class="btn btn-sm btn-green" onclick="exportWBReportsPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportWBReportsDOCX()">Export Word</button>
-            <button class="btn btn-sm btn-red" onclick="clearWBReports()">Clear All</button>
+            <button class="btn btn-sm btn-green" onclick="exportWBReportsPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportWBReportsDOCX()">Word</button>
+            <button class="btn btn-sm btn-red" onclick="clearWBReports()">Clear</button>
           </div>
         </div>
         <div id="wbReportsList"><p style="font-size:13px;color:var(--muted)">No whistleblower reports recorded.</p></div>
@@ -2399,14 +2397,6 @@ Examples:
       <div id="cloudSyncStatus" style="display:none"></div>
       <input type="hidden" id="autoSyncEnabled" value="" />
       <!-- Alerts section removed -->
-      <div class="card">
-        <span class="lbl">Asana Project Reference</span>
-        <p style="font-size:13px;color:var(--text);margin-bottom:6px;font-weight:500">Compliance Tasks - Compliance Program Optimized Workflow</p>
-        <p style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace">Project ID: 1213759768596515</p>
-        <p style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">Workspace: 1213645083721316</p>
-        <p style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">Assignee: Luisa Fernanda</p>
-        <p style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">Trade License: 643756</p>
-      </div>
       <!-- Configurable Alert Windows -->
       <div class="card">
         <span class="lbl">Alert & Risk Configuration</span>
@@ -2436,7 +2426,7 @@ Examples:
         <span class="lbl">Local Storage</span>
         <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Evidence tracker links and schedule history are saved in your browser.</p>
         <div id="storageQuotaInfo" style="font-size:11px;color:var(--muted);margin-bottom:8px"></div>
-        <button class="btn btn-sm btn-red" onclick="clearAppData()">Clear All Local Data</button>
+        <button class="btn btn-sm btn-red" onclick="clearAppData()">Clear Local Data</button>
       </div>
       <!-- User Management removed (single-user) -->
     </div>
@@ -2477,9 +2467,9 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">RACI Matrix — Compliance Roles and Responsibilities</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-blue" onclick="document.getElementById('raciFileInput').click()">📎 Attach File</button>
-            <button class="btn btn-sm btn-green" onclick="exportRACIPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportRACIDOCX()">Export Word</button>
+            <button class="btn btn-sm btn-blue" onclick="document.getElementById('raciFileInput').click()">File</button>
+            <button class="btn btn-sm btn-green" onclick="exportRACIPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportRACIDOCX()">Word</button>
           </div>
           <input type="file" id="raciFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachRACIFile(this)" />
         </div>
@@ -2575,7 +2565,7 @@ Examples:
         <span class="sec-title">Saved RACI Records</span>
         <div style="display:flex;gap:6px;margin-bottom:10px">
           <button class="btn btn-sm btn-gold" onclick="saveRACIMatrix()">Save Matrix</button>
-          <button class="btn btn-sm btn-red" onclick="clearRACIMatrix()">Clear All</button>
+          <button class="btn btn-sm btn-red" onclick="clearRACIMatrix()">Clear</button>
         </div>
         <div id="raciHistoryList"><p style="font-size:13px;color:var(--muted)">No RACI records saved yet.</p></div>
       </div>
@@ -2588,8 +2578,8 @@ Examples:
           <span class="sec-title" style="margin:0;border:none;padding:0">📖 Definitions — AML/CFT Compliance Glossary</span>
           <div style="display:flex;gap:6px">
             <button class="btn btn-sm btn-blue" onclick="toggleDefUpdateForm()">+ Regulatory Update</button>
-            <button class="btn btn-sm btn-green" onclick="exportDefinitionsPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportDefinitionsDOCX()">Export Word</button>
+            <button class="btn btn-sm btn-green" onclick="exportDefinitionsPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportDefinitionsDOCX()">Word</button>
           </div>
         </div>
         <input type="text" id="defSearchInput" placeholder="Search definitions..." style="margin-bottom:16px;width:100%" oninput="filterDefinitions(this.value)" />
@@ -2623,8 +2613,8 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Regulatory Change Log</span>
           <div style="display:flex;gap:6px">
-            <button class="btn btn-sm btn-green" onclick="exportDefChangeLogPDF()">Export PDF</button>
-            <button class="btn btn-sm btn-green" onclick="exportDefChangeLogDOCX()">Export Word</button>
+            <button class="btn btn-sm btn-green" onclick="exportDefChangeLogPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportDefChangeLogDOCX()">Word</button>
             <button class="btn btn-sm btn-red" onclick="clearDefChangeLog()">Clear Log</button>
           </div>
         </div>

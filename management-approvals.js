@@ -38,8 +38,8 @@
     <span class="sec-title" style="margin:0;border:none;padding:0">Management Approvals — Customer & Counterparty Due Diligence</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-sm btn-blue" onclick="ManagementApprovals.newApproval()">+ New Assessment</button>
-      <button class="btn btn-sm btn-green" onclick="ManagementApprovals.exportCurrentPDF()">Export PDF</button>
-      <button class="btn btn-sm btn-green" onclick="ManagementApprovals.exportCurrentDOCX()">Export Word</button>
+      <button class="btn btn-sm btn-green" onclick="ManagementApprovals.exportCurrentPDF()">PDF</button>
+      <button class="btn btn-sm btn-green" onclick="ManagementApprovals.exportCurrentDOCX()">Word</button>
       <button class="btn btn-sm btn-red" onclick="ManagementApprovals.clearAllApprovals()">Clear</button>
     </div>
   </div>
