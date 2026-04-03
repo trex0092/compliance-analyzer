@@ -478,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function(){
       </div>
       <span style="color:var(--border);font-size:18px;font-weight:300">|</span>
       <select id="headerCompanySelect" onchange="switchActiveCompany(this.value);updateCompanyBar()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--gold);font-size:11px;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;outline:none;padding:4px 8px"></select>
-      <button class="theme-toggle" id="themeToggleBtn" onclick="toggleDarkMode()" title="Toggle dark mode">🌙</button>
+      <button class="theme-toggle" id="themeToggleBtn" onclick="toggleDarkMode()" title="Toggle dark mode" style="display:none">🌙</button>
       <div style="position:relative;display:none" id="notifBellWrap">
         <div class="notif-bell" onclick="toggleNotifPanel()">🔔<span class="notif-badge" id="notifBadge" style="display:none">0</span></div>
         <div class="notif-panel" id="notifPanel">
@@ -6171,11 +6171,17 @@ async function loadAsanaTasks(silent) {
     document.getElementById('asanaContent').innerHTML = html;
     setAsanaModuleSync('tasks', { status: 'Healthy', lastSuccess: new Date().toISOString(), lastError: '', lastCount: tasks.length });
   } catch(e) {
-    if (!silent) {
-      document.getElementById('asanaContent').innerHTML = `<p style="color:var(--amber);font-size:13px">Could not connect to Asana. Check your token in Settings or try again.</p>`;
-      toast('Asana connection issue — check Settings', 'error', 4000);
+    var prevSync = asanaSyncState && asanaSyncState.modules && asanaSyncState.modules.tasks;
+    var hadRecentSuccess = prevSync && prevSync.lastSuccess && (Date.now() - new Date(prevSync.lastSuccess).getTime() < 600000);
+    if (silent && hadRecentSuccess) {
+      setAsanaModuleSync('tasks', { status: 'Healthy', lastError: 'Retrying: ' + e.message });
+    } else {
+      if (!silent) {
+        document.getElementById('asanaContent').innerHTML = `<p style="color:var(--amber);font-size:13px">Could not connect to Asana. Check your token in Settings or try again.</p>`;
+        toast('Asana connection issue — check Settings', 'error', 4000);
+      }
+      setAsanaModuleSync('tasks', { status: 'Error', lastError: e.message, lastCount: 0 });
     }
-    setAsanaModuleSync('tasks', { status: 'Error', lastError: e.message, lastCount: 0 });
   }
 }
 
