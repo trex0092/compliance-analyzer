@@ -1301,35 +1301,117 @@
   // ════════════════════════════════════════════════════════════════════════════
 
   const APPROVAL_TYPES = [
-    { type: 'PEP Onboarding', sla: 48, desc: 'Senior Management approval for PEP onboarding. UAE FDL No.(10)/2025 Art.16' },
-    { type: 'High-Risk Customer Onboarding', sla: 24, desc: 'EDD sign-off before relationship commences. UAE FDL No.(10)/2025 Art.14' },
-    { type: 'Sanctions True Hit', sla: 2, desc: 'Immediate freeze and MLRO/Senior Management notification. Cabinet Resolution 74/2020' },
-    { type: 'STR/SAR Filing', sla: 24, desc: 'MLRO approval before goAML submission. UAE FDL No.(10)/2025 Art.20' },
-    { type: 'EDD Sign-Off', sla: 48, desc: 'Enhanced Due Diligence requires compliance sign-off. FATF Rec 10' },
+    // ── FDL No.(10)/2025: Risk Assessment (Art.4) ──
+    { type: 'EWRA/BWRA Annual Review', sla: 168, desc: 'Annual enterprise/business-wide risk assessment. FDL Art.4, Cabinet Res 134/2025 Art.3' },
+    { type: 'New Product/Service ML/TF Risk Assessment', sla: 72, desc: 'Risk assessment before new product/service/technology launch. FDL Art.4(3)' },
+    { type: 'Material Risk Change Review', sla: 48, desc: 'Quarterly review triggered by material change in risk profile. FDL Art.4, FATF Rec 1' },
+    // ── FDL Art.12-13: Customer Identification & Verification ──
+    { type: 'High-Risk Customer Onboarding', sla: 24, desc: 'EDD sign-off before relationship commences. FDL Art.12-14, FATF Rec 10' },
+    { type: 'CDD Failure - Relationship Decision', sla: 24, desc: 'Business relationship cannot proceed where CDD incomplete. FDL Art.12(5), Cabinet Res 134/2025 Art.14' },
+    { type: 'Inconsistent ID Information', sla: 24, desc: 'Customer provides inconsistent identification - escalation required. FDL Art.12' },
+    { type: 'Customer Refuses KYC Documents', sla: 4, desc: 'Customer refuses identification documents - mandatory escalation. FDL Art.12, FATF Rec 10' },
+    // ── FDL Art.14: Enhanced Due Diligence ──
+    { type: 'EDD Sign-Off', sla: 48, desc: 'Enhanced Due Diligence requires compliance officer sign-off. FDL Art.14, FATF Rec 10' },
+    { type: 'Source of Funds Verification', sla: 48, desc: 'SOF/SOW verification for high-risk customers. FDL Art.14, Cabinet Res 134/2025 Art.13' },
+    { type: 'Customer Risk Upgrade', sla: 48, desc: 'Risk upgrade to High/Very High requires MLRO review. FDL Art.14, FATF RBA' },
+    // ── FDL Art.16: PEP Requirements ──
+    { type: 'PEP Onboarding', sla: 48, desc: 'Senior Management approval for PEP onboarding. FDL Art.16, FATF Rec 12' },
+    { type: 'PEP Family/Associate Onboarding', sla: 48, desc: 'PEP family member or close associate requires same approval. FDL Art.16(2)' },
+    { type: 'PEP Ongoing Monitoring Review', sla: 72, desc: 'Enhanced ongoing monitoring review for PEP relationships. FDL Art.16(3)' },
+    // ── FDL Art.17: Wire Transfer Requirements ──
+    { type: 'Wire Transfer Missing Info', sla: 4, desc: 'Incomplete originator/beneficiary info on wire transfer. FDL Art.17, FATF Rec 16' },
+    { type: 'Cross-Border Wire Over Threshold', sla: 4, desc: 'Cross-border wire transfer requires full originator info. FDL Art.17, FATF Rec 16' },
+    // ── FDL Art.18: Simplified Due Diligence ──
+    { type: 'SDD Application', sla: 48, desc: 'Simplified Due Diligence requires documented justification. FDL Art.18, FATF Rec 10' },
+    { type: 'SDD Eligibility Re-Assessment', sla: 48, desc: 'Annual re-assessment of SDD eligibility - any risk elevation triggers CDD upgrade. FDL Art.18' },
+    // ── FDL Art.20-21: STR/SAR & Tipping Off ──
+    { type: 'STR/SAR Filing', sla: 24, desc: 'MLRO approval before goAML submission to UAE FIU. FDL Art.20, FATF Rec 20' },
+    { type: 'STR Post-Filing Monitoring', sla: 48, desc: 'Enhanced monitoring after STR filed - do not tip off. FDL Art.20-21' },
+    { type: 'Tipping Off Risk', sla: 2, desc: 'Immediate MLRO lockdown - tipping off is criminal offence. FDL Art.21, FATF Rec 21' },
+    { type: 'Whistleblower Report', sla: 24, desc: 'Anonymous report requires immediate investigation. FDL Art.21' },
+    // ── FDL Art.21: Internal Controls & Compliance Officer ──
+    { type: 'Compliance Manual Update', sla: 72, desc: 'Manual update requires MLRO and Board sign-off. FDL Art.21' },
+    { type: 'Policy/Procedure Change', sla: 48, desc: 'AML/CFT policy changes require senior management approval. FDL Art.21' },
+    { type: 'Training Programme Approval', sla: 72, desc: 'AML/CFT training plan requires MLRO approval. FDL Art.21, FATF Rec 18' },
+    { type: 'Employee Compliance Bypass', sla: 4, desc: 'Employee bypassed compliance controls - immediate investigation. FDL Art.21, FATF Rec 18' },
+    { type: 'Employee Failure to Report', sla: 4, desc: 'Employee failed to report suspicious activity to MLRO. FDL Art.26, FATF Rec 20' },
+    { type: 'Compliance Officer Appointment', sla: 72, desc: 'MLRO/Deputy MLRO appointment/change requires Board approval. FDL Art.21' },
+    { type: 'Independent Audit Report', sla: 168, desc: 'External AML audit findings require management response. FDL Art.21' },
+    { type: 'Regulatory Inspection Prep', sla: 72, desc: 'MoE/Central Bank inspection preparation and response. FDL Art.21' },
+    // ── FDL Art.22/35: TFS & Sanctions ──
+    { type: 'Sanctions True Hit', sla: 2, desc: 'Immediate asset freeze and EOCN notification. FDL Art.22/35, Cabinet Res 74/2020' },
+    { type: 'Sanctions Partial Match', sla: 24, desc: 'Suspend transaction, enhanced verification, PNMR to EOCN. FDL Art.22, EOCN Guidance' },
+    { type: 'CNMR Filing to EOCN', sla: 120, desc: 'Confirmed Name Match Report to EOCN within 5 business days. Cabinet Res 74/2020' },
+    { type: 'PNMR Filing to EOCN', sla: 120, desc: 'Partial Name Match Report to EOCN within 5 business days. EOCN TFS Guidance' },
+    { type: 'FFR Filing via goAML', sla: 24, desc: 'Funds Freeze Report to UAE FIU via goAML. Cabinet Res 74/2020' },
+    { type: 'Sanctions List Update Re-Screen', sla: 24, desc: 'New EOCN/UNSC designations require full customer re-screening. Cabinet Res 74/2020' },
+    { type: 'Asset Freeze Implementation', sla: 2, desc: 'Freeze assets within 24 hours without prior notice. FDL Art.35, Cabinet Res 74/2020' },
+    // ── FDL Art.25: Record Retention ──
+    { type: 'Record Retention Extension', sla: 48, desc: 'Extension beyond 10-year retention period. FDL Art.25, Cabinet Res 134/2025 Art.25' },
+    { type: 'Record Destruction Approval', sla: 72, desc: 'Records past retention period require approval before destruction. FDL Art.25' },
+    // ── FDL Art.26: Reporting Obligations ──
+    { type: 'FIU Information Request Response', sla: 24, desc: 'UAE FIU information request requires immediate response. FDL Art.26' },
+    { type: 'MoE Circular Implementation', sla: 72, desc: 'New MoE circular requires policy update and implementation. MoE Directive' },
+    // ── Cabinet Resolution 134/2025: DPMS Specific ──
+    { type: 'DPMSR Filing', sla: 24, desc: 'Precious metals transaction at/above AED 55,000 threshold. Cabinet Res 134/2025 Art.14' },
+    { type: 'Cash Transaction Above Threshold', sla: 4, desc: 'Cash transaction at/above AED 55,000 - CDD and DPMSR. Cabinet Res 134/2025 Art.14' },
+    { type: 'Cumulative Cash Threshold Breach', sla: 4, desc: 'Multiple linked cash transactions totalling AED 55,000+. Cabinet Res 134/2025 Art.13' },
+    { type: 'Structuring Pattern Detected', sla: 4, desc: 'Potential transaction structuring to avoid threshold. Cabinet Res 134/2025 Art.13' },
     { type: 'Transaction Exception', sla: 4, desc: 'Unusual transaction above threshold requires approval. Cabinet Res 134/2025 Art.14' },
-    { type: 'Customer Risk Upgrade', sla: 48, desc: 'Risk upgrade to High/Very High requires MLRO review. FATF RBA Guidance' },
-    { type: 'Relationship Exit', sla: 72, desc: 'Customer exit requires documentation and approval. UAE FDL Art.16' },
-    { type: 'New Product/Service Launch', sla: 72, desc: 'ML/TF risk assessment before launch. UAE FDL No.(10)/2025 Art.4' },
-    { type: 'Policy/Procedure Change', sla: 48, desc: 'Compliance Manual update requires MLRO and Board approval. Art.21' },
-    { type: 'DPMSR Filing', sla: 24, desc: 'Precious metals transaction above AED 55,000. Cabinet Res 134/2025 Art.14' },
-    { type: 'UBO Change', sla: 48, desc: 'Beneficial ownership change requires re-verification. FATF Rec 24/25' },
-    { type: 'Third-Party Payment', sla: 4, desc: 'Third-party payments require source verification. FATF Rec 16' },
-    { type: 'Cash Transaction Above Threshold', sla: 4, desc: 'Cash transaction above AED 55,000 reporting. Cabinet Res 134/2025' },
-    { type: 'Compliance Manual Update', sla: 72, desc: 'Annual/ad-hoc manual update requires Board sign-off. UAE FDL Art.21' },
-    { type: 'EWRA/BWRA Annual Review', sla: 168, desc: 'Annual risk assessment review. UAE FDL No.(10)/2025 Art.4' },
-    { type: 'Independent Audit Report', sla: 168, desc: 'External AML audit findings require management response. Art.21' },
-    { type: 'Supplier/Refinery Onboarding', sla: 48, desc: 'Supply chain due diligence for gold sourcing. LBMA RGG v9' },
-    { type: 'CAHRA Shipment Approval', sla: 24, desc: 'Conflict-affected area shipment requires senior approval. LBMA RGG' },
-    { type: 'Wire Transfer Missing Info', sla: 4, desc: 'Incomplete beneficiary info on wire. FATF Rec 16, UAE FDL Art.17' },
-    { type: 'Whistleblower Report', sla: 24, desc: 'Anonymous report requires investigation. UAE FDL Art.21' },
-    { type: 'Tipping Off Risk', sla: 2, desc: 'Risk of tipping off requires immediate MLRO lockdown. UAE FDL Art.20' },
-    { type: 'Regulatory Inspection Prep', sla: 72, desc: 'MoE/Central Bank inspection preparation. UAE FDL Art.21' },
-    { type: 'Sanctions List Update Re-Screen', sla: 24, desc: 'New designations require full customer re-screening. Cabinet Res 74/2020' },
-    { type: 'Training Programme Approval', sla: 72, desc: 'AML/CFT training plan requires MLRO approval. UAE FDL Art.21' },
-    { type: 'Record Retention Extension', sla: 48, desc: 'Extension beyond standard 5-year retention. UAE FDL Art.16' },
+    { type: 'Third-Party Payment', sla: 4, desc: 'Third-party payments require source verification. Cabinet Res 134/2025 Art.13, FATF Rec 16' },
+    { type: 'Cross-Border Precious Metals', sla: 4, desc: 'Cross-border precious metals requires enhanced scrutiny. FATF Rec 22, Cabinet Res 134/2025' },
+    // ── Cabinet Decision 74/2020: TFS Implementation ──
+    { type: 'EOCN Local Terrorist List Match', sla: 2, desc: 'Match against UAE Local Terrorist List (EOCN). Cabinet Decision 74/2020' },
+    { type: 'UNSC Consolidated List Match', sla: 2, desc: 'Match against UN Security Council Consolidated List. UNSCR, Cabinet Decision 74/2020' },
+    // ── UBO/Beneficial Ownership ──
+    { type: 'UBO Change', sla: 48, desc: 'Beneficial ownership change requires re-verification. FDL Art.18, FATF Rec 24/25' },
+    { type: 'UBO Non-Compliance Escalation', sla: 24, desc: 'UBO information incomplete or non-compliant. Cabinet Decision 10/2019' },
+    { type: 'Complex Ownership Structure Review', sla: 72, desc: 'Multi-layered or opaque ownership structure requires enhanced review. FATF Rec 24' },
+    // ── LBMA / Responsible Sourcing ──
+    { type: 'Supplier/Refinery Onboarding', sla: 48, desc: 'Supply chain due diligence for gold sourcing. LBMA RGG v9, OECD DDG' },
+    { type: 'CAHRA Shipment Approval', sla: 24, desc: 'Conflict-affected/high-risk area shipment senior approval. LBMA RGG v9 Step 3' },
+    { type: 'Recycled Gold Origin Verification', sla: 48, desc: 'Recycled gold declaration requires origin verification. LBMA RGG v9 Step 1' },
+    { type: 'Artisanal Mining Source Detected', sla: 48, desc: 'ASM source requires enhanced DD and senior management approval. LBMA RGG v9 Step 2' },
+    { type: 'Gold Origin Discrepancy', sla: 24, desc: 'Mismatch between declared and actual gold origin - investigation. LBMA RGG v9 Step 1' },
+    { type: 'LBMA Audit Preparation', sla: 168, desc: 'Annual LBMA responsible gold audit preparation. LBMA RGG v9 Step 5' },
+    { type: 'DMCC Responsible Sourcing Review', sla: 72, desc: 'DMCC member responsible sourcing compliance review. DMCC Rules' },
+    // ── FATF Specific ──
+    { type: 'FATF Mutual Evaluation Response', sla: 168, desc: 'MENAFATF mutual evaluation findings require action plan. FATF Methodology' },
+    { type: 'FATF Grey List Country Transaction', sla: 24, desc: 'Transaction involving FATF grey-listed jurisdiction. FATF, FDL Art.14' },
+    { type: 'Proliferation Financing Risk', sla: 24, desc: 'PF risk detected - assessment and senior management notification. FATF Rec 7, FDL Art.22' },
+    // ── Relationship Management ──
+    { type: 'Relationship Exit', sla: 72, desc: 'Customer exit requires documentation, STR review, and approval. FDL Art.16/20' },
+    { type: 'Ongoing Monitoring Escalation', sla: 24, desc: 'Ongoing monitoring triggers requiring compliance review. FDL Art.13, Cabinet Res 134/2025 Art.13' },
+    { type: 'Adverse Media Alert', sla: 24, desc: 'New adverse media on existing customer requires review. FDL Art.12, FATF Rec 10' },
+    { type: 'Customer Risk Downgrade', sla: 48, desc: 'Risk rating downgrade requires documented justification. FDL Art.14, FATF RBA' },
+    // ── Cabinet Resolution 156/2025 (MoE DNFBP Supervision) ──
+    { type: 'MoE Supervisory Visit Response', sla: 72, desc: 'Response to MoE on-site/off-site supervisory findings. Cabinet Res 156/2025' },
+    { type: 'MoE Compliance Gap Remediation', sla: 168, desc: 'Remediation plan for MoE-identified compliance gaps. Cabinet Res 156/2025' },
+    { type: 'DNFBP Annual Return Filing', sla: 168, desc: 'Annual compliance return to MoE as supervising authority. Cabinet Res 156/2025' },
+    { type: 'MoE Circular Implementation', sla: 72, desc: 'New MoE circular/directive requires policy update. Cabinet Res 156/2025, MoE Directives' },
+    { type: 'DNFBP Re-Registration', sla: 168, desc: 'DNFBP re-registration with MoE including updated compliance info. Cabinet Res 156/2025' },
+    { type: 'MoE Corrective Action Plan', sla: 72, desc: 'Corrective action plan submission after MoE supervisory action. Cabinet Res 156/2025' },
+    { type: 'Supervisory Penalty Appeal', sla: 72, desc: 'Appeal of administrative penalty imposed by MoE. Cabinet Res 156/2025, FDL Art.40' },
+    { type: 'Compliance Programme Assessment', sla: 168, desc: 'Self-assessment of AML/CFT programme effectiveness for MoE. Cabinet Res 156/2025' },
+    { type: 'MoE Data/Information Request', sla: 48, desc: 'MoE request for compliance data, records, or documentation. Cabinet Res 156/2025' },
+    { type: 'Suspicious Activity Internal Escalation', sla: 4, desc: 'Internal escalation of suspicious activity before STR decision. Cabinet Res 156/2025, FDL Art.20' },
+    // ── UAE FIU (goAML) ──
+    { type: 'FIU Dissemination Response', sla: 24, desc: 'Response to UAE FIU dissemination or intelligence request. FDL Art.26, FIU Directive' },
+    { type: 'goAML System Issue Escalation', sla: 24, desc: 'goAML technical issue preventing STR/DPMSR filing. UAE FIU Technical Support' },
+    { type: 'Delayed STR Filing Justification', sla: 24, desc: 'STR filed beyond 30-day window requires documented justification. FDL Art.20' },
+    // ── EOCN (Executive Office) ──
+    { type: 'EOCN Designation Notification', sla: 2, desc: 'New EOCN designation received - immediate customer database re-screen. EOCN Directive' },
+    { type: 'EOCN De-Listing Response', sla: 48, desc: 'EOCN de-listing notification - review frozen assets/rejected relationships. EOCN Directive' },
+    { type: 'EOCN Compliance Return', sla: 168, desc: 'Periodic compliance return to EOCN on TFS implementation. EOCN TFS Guidance' },
+    // ── AI Governance ──
     { type: 'AI Output Human Review', sla: 24, desc: 'AI-generated compliance outputs require human sign-off. Cabinet Res 134/2025 Art.24' },
-    { type: 'Cross-Border Transaction', sla: 4, desc: 'Cross-border precious metals requires enhanced scrutiny. FATF Rec 22' },
-    { type: 'SDD Application', sla: 48, desc: 'Simplified Due Diligence application requires justification. UAE FDL Art.18' },
+    // ── Administrative ──
+    { type: 'Penalty/Fine Response', sla: 72, desc: 'Regulatory penalty requires management response and remediation plan. FDL Art.40' },
+    { type: 'MoE Registration Renewal', sla: 168, desc: 'DNFBP registration renewal with Ministry of Economy. FDL Art.21, Cabinet Res 156/2025' },
+    { type: 'Annual Compliance Report to MoE', sla: 168, desc: 'Annual compliance report submission to supervisor. FDL Art.21, Cabinet Res 156/2025' },
+    { type: 'Board AML/CFT Report', sla: 72, desc: 'Quarterly/annual AML/CFT report to Board of Directors. FDL Art.21, FATF Rec 18' },
+    { type: 'Compliance Committee Meeting', sla: 168, desc: 'Quarterly compliance committee meeting and minutes. FDL Art.21, Cabinet Res 156/2025' },
+    { type: 'NRA/Sectoral Risk Assessment Update', sla: 168, desc: 'Update EWRA/BWRA following new NRA or sectoral risk assessment. FDL Art.4, FATF Rec 1' },
   ];
 
   function renderApprovals() {
