@@ -1795,52 +1795,26 @@ Examples:
     <!-- SETTINGS TAB -->
     <!-- SCREENING TAB (Sanctions + Adverse Media) -->
     <div id="tab-screening" class="tab-content">
-      <div class="card">
-        <div class="top-bar" style="margin-bottom:10px">
-          <span class="sec-title" style="margin:0;border:none;padding:0">🇦🇪 UAE TFS Workflow — Full 4-Outcome Process</span>
-          <span style="font-size:11px;color:var(--muted)">Cabinet Decision No.(74) of 2020 | EOCN Executive Office TFS Guidance</span>
-        </div>
-        <input type="hidden" id="screenName" value="" />
-        <input type="hidden" id="screenType" value="person" />
-        <input type="hidden" id="screenCountry" value="" />
-        <input type="hidden" id="screenId" value="" />
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">
-          <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid var(--gold)">
-            <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">MANDATORY UAE Lists</div>
-            <div style="font-size:12px;margin-bottom:6px"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="screenSL_UAE" checked style="width:auto" /><strong>UAE Local Terrorist List</strong> — EOCN / Executive Office</label></div>
-            <div style="font-size:12px;margin-bottom:6px"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="screenSL_UN" checked style="width:auto" /><strong>UNSC Consolidated Sanctions List</strong> — UN Security Council</label></div>
-            <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">Cabinet Decision No.(74)/2020 — These two lists are legally mandatory for all UAE reporting entities. Failure to screen constitutes a regulatory offence.</div>
-          </div>
-          <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid var(--blue)">
-            <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">ENHANCED CONTROLS (Not Legally Mandatory)</div>
-            <div style="font-size:12px;margin-bottom:4px"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="screenSL_OFAC" checked style="width:auto" />OFAC SDN — US unilateral sanctions</label></div>
-            <div style="font-size:12px;margin-bottom:4px"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="screenSL_EU" checked style="width:auto" />EU Consolidated Sanctions</label></div>
-            <div style="font-size:12px;margin-bottom:4px"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="screenSL_UK" checked style="width:auto" />UK OFSI Consolidated</label></div>
-            <div style="font-size:12px;margin-bottom:4px"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="screenSL_INTERPOL" checked style="width:auto" />Interpol Red Notices</label></div>
-            <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">EOCN Guidance — For non-UAE unilateral/multilateral lists, consult your supervisory authority for appropriate course of action.</div>
-          </div>
-        </div>
-
-        <div id="sanctionsListStatus" style="display:none;margin-bottom:8px;padding:6px 10px;border-radius:6px;font-size:11px;font-family:'DM Mono',monospace"></div>
-        <div id="sanctionsLastRefresh" style="margin-bottom:12px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace"></div>
-
-        <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid var(--purple,#9b59b6);margin-bottom:1rem">
-          <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">Adverse Media Categories</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px">
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px"><input type="checkbox" id="screenAMCriminal" checked style="width:auto" />Criminal / Fraud Allegations</label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px"><input type="checkbox" id="screenAMML" checked style="width:auto" />Money Laundering</label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px"><input type="checkbox" id="screenAMTF" checked style="width:auto" />Terrorist Financing, or Proliferation Financing Links</label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px"><input type="checkbox" id="screenAMReg" checked style="width:auto" />Regulatory Actions, Fines, or Investigations</label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px"><input type="checkbox" id="screenAMRep" checked style="width:auto" />Negative Reputation or Commercial Disputes</label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px"><input type="checkbox" id="screenAMPEP" checked style="width:auto" />Political Controversy or PEP Connections</label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px"><input type="checkbox" id="screenAMHR" checked style="width:auto" />Human Rights, Environmental, or Ethical Violations</label>
-          </div>
-        </div>
-
-        <button class="btn btn-gold" onclick="runScreening()">Run Screening</button>
-        <div id="screeningStatus" class="status" style="margin-top:12px"><div class="spinner"></div><span id="screeningStatusText">Screening...</span></div>
-      </div>
+      <input type="hidden" id="screenName" value="" />
+      <input type="hidden" id="screenType" value="person" />
+      <input type="hidden" id="screenCountry" value="" />
+      <input type="hidden" id="screenId" value="" />
+      <input type="hidden" id="screenSL_UAE" checked />
+      <input type="hidden" id="screenSL_UN" checked />
+      <input type="hidden" id="screenSL_OFAC" checked />
+      <input type="hidden" id="screenSL_EU" checked />
+      <input type="hidden" id="screenSL_UK" checked />
+      <input type="hidden" id="screenSL_INTERPOL" checked />
+      <input type="hidden" id="screenAMCriminal" checked />
+      <input type="hidden" id="screenAMML" checked />
+      <input type="hidden" id="screenAMTF" checked />
+      <input type="hidden" id="screenAMReg" checked />
+      <input type="hidden" id="screenAMRep" checked />
+      <input type="hidden" id="screenAMPEP" checked />
+      <input type="hidden" id="screenAMHR" checked />
+      <div id="sanctionsListStatus" style="display:none"></div>
+      <div id="sanctionsLastRefresh" style="display:none"></div>
+      <div id="screeningStatus" class="status" style="display:none"><div class="spinner"></div><span id="screeningStatusText">Screening...</span></div>
       <div id="screeningResults" style="display:none">
         <div class="card" id="screeningResultsContent"></div>
       </div>

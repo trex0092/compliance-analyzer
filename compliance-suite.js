@@ -1810,7 +1810,10 @@
       <div class="top-bar">
         <span class="sec-title">🇦🇪 UAE TFS Workflow — Full 4-Outcome Process</span>
         <span style="font-size:11px;color:var(--muted)">Cabinet Decision No.(74) of 2020 | EOCN Executive Office TFS Guidance</span>
-        <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function')refreshSanctionsLists();renderTFS2();toast('Refreshed','success')">Refresh</button>
+          <button class="btn btn-gold" style="width:auto;padding:8px 16px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
+        </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">
@@ -1894,6 +1897,8 @@
           ${e.notes?`<div class="rec">${e.notes}</div>`:''}
         </div>`;
       }).join('')}
+
+      <button class="btn btn-gold" style="margin-top:1rem" onclick="if(typeof runScreening==='function')runScreening();else toast('Run screening from the form','info')">Run Screening</button>
     </div>
 
     <!-- TFS2 Modal -->
@@ -1906,9 +1911,15 @@
 
         <div class="row row-2">
           <div><span class="lbl">Name Screened *</span><input id="tfs2-name" placeholder="Full legal name of individual or entity"/></div>
+          <div><span class="lbl">Entity Type *</span>
+            <select id="tfs2-entity-type"><option value="Individual">Individual</option><option value="Company">Company</option></select>
+          </div>
+        </div>
+        <div class="row row-2">
           <div><span class="lbl">Screening Event Type *</span>
             <select id="tfs2-event"><option>New Customer Onboarding</option><option>Periodic Rescreening</option><option>List Update Trigger</option><option>Transaction Pre-Approval</option><option>Supplier/Refinery Onboarding</option><option>UBO Screening</option><option>Ad Hoc Review</option></select>
           </div>
+          <div></div>
         </div>
         <div><span class="lbl">Lists Screened (tick all that apply)</span>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface2);padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px">
@@ -2088,6 +2099,7 @@
     suite2OpenTFSForm();
     document.getElementById('tfs2-edit-idx').value = idx;
     document.getElementById('tfs2-name').value = e.screenedName||'';
+    if (document.getElementById('tfs2-entity-type')) document.getElementById('tfs2-entity-type').value = e.entityType||'Individual';
     document.getElementById('tfs2-event').value = e.eventType||'';
     document.getElementById('tfs2-date').value = e.screeningDate||today();
     document.getElementById('tfs2-reviewer').value = e.reviewedBy||'';
@@ -2119,6 +2131,7 @@
     const record = {
       id: editIdx>=0 ? events[editIdx].id : `TFS2-${Date.now()}`,
       screenedName: name,
+      entityType: document.getElementById('tfs2-entity-type')?.value || 'Individual',
       eventType: document.getElementById('tfs2-event').value,
       listsScreened: lists.join(' | '),
       screeningDate: document.getElementById('tfs2-date').value,
