@@ -138,16 +138,18 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
       try {
         const data = await callAI({
           model: 'claude-sonnet-4-5',
-          max_tokens: 800,
+          max_tokens: 2000,
           temperature: 0,
-          system: 'You are an expert sanctions, PEP, and adverse media screening specialist. ABSOLUTE ACCURACY RULE: NEVER fabricate or hallucinate sanctions designations. If you are not 100% CERTAIN from your training data that an entity is on a specific sanctions list, say they are NOT on that list. Being in adverse media or under investigation is NOT the same as being on a sanctions list — keep these STRICTLY SEPARATE. It is BETTER to say no sanctions match and flag adverse media than to falsely claim someone is sanctioned. For adverse media: be EXHAUSTIVE — search for criminal investigations, regulatory actions, lawsuits, investigative journalism (ICIJ, OCCRP, Turkish Minute, Reuters, Bloomberg, etc.), environmental crimes, fraud, corruption, money laundering. Return only valid JSON.',
+          system: 'You are the most thorough compliance screening investigator in the world. ABSOLUTE ACCURACY: NEVER fabricate sanctions designations — only report confirmed ones. Adverse media is SEPARATE from sanctions. For EVERY entity you MUST do a DEEP search of: (1) ALL sanctions lists: OFAC SDN/SSI/CAPTA, UN, EU, UK OFSI, UAE EOCN, UAE Central Bank, Swiss SECO, Australian DFAT, Canadian SEMA, (2) PEP databases, (3) EXHAUSTIVE adverse media: criminal investigations, money laundering, fraud, corruption, environmental crimes, illegal mining/gold, human rights violations, regulatory fines, lawsuits, terrorism financing, narcotics, sanctions evasion. Search: ICIJ, OCCRP, Reporter Brasil, Mongabay, Amazon Watch, Global Witness, Turkish Minute, Middle East Eye, Al Jazeera, Bellingcat, BBC, Reuters, Bloomberg, FT, local media. NGOs: Transparency International, BHRRC, Amnesty, HRW. Gold/metals: LBMA, DMCC. UAE-specific: EOCN, UAE Central Bank circulars, MENAFATF, DMCC disciplinary. Return only valid JSON.',
           messages: [{
             role: 'user',
-            content: `Screen entity "${name}" (type: ${type || 'individual'}) against consolidated sanctions lists: ${currentLists || 'UN, OFAC, EU, UK, UAE'}.${countryInfo}
+            content: `MAXIMUM DEPTH SCREENING — LEAVE NO STONE UNTURNED:
 
-RULES: (1) Only report CONFIRMED sanctions designations you are certain about. (2) Search thoroughly for adverse media, investigations, lawsuits, regulatory actions. (3) Adverse media findings make the result POTENTIAL_MATCH, not MATCH (unless confirmed on a sanctions list).
+Entity: "${name}" (type: ${type || 'individual'}).${countryInfo}
 
-Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"list name","matchType":"exact|partial|adverse_media","confidence":0.0-1.0,"details":"..."}],"recommendation":"Detailed compliance recommendation. Clearly separate: SANCTIONS CHECK (only confirmed designations), ADVERSE MEDIA (all findings with sources/dates), REQUIRED ACTIONS."}`
+Check ALL: sanctions (OFAC, UN, EU, UK, UAE EOCN, UAE Central Bank), PEP, and do an EXHAUSTIVE adverse media deep search. Search every investigative journalism outlet, NGO, court database, and regulatory enforcer. For gold/precious metals/mining entities apply maximum scrutiny.
+
+Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source","matchType":"sanctions|adverse_media|pep","confidence":0.0-1.0,"details":"specific findings with sources and dates"}],"recommendation":"COMPREHENSIVE report: SANCTIONS (confirmed only), ADVERSE MEDIA (every finding with source/date), PEP, REQUIRED ACTIONS, RISK LEVEL."}`
           }]
         });
 
