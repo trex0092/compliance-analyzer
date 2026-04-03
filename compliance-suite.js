@@ -1881,7 +1881,7 @@
     <div class="modal-overlay" id="tfs2Modal">
       <div class="modal" style="max-width:680px;width:95%;max-height:92vh">
         <button class="modal-close" onclick="document.getElementById('tfs2Modal').classList.remove('open')">✕</button>
-        <div class="modal-title">UAE TFS Screening Event</div>
+        <div class="modal-title">TFS Screening Event</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance | Mandatory: UAE Local Terrorist List + UNSC Consolidated List</div>
         <input type="hidden" id="tfs2-edit-idx" value="-1">
 
@@ -2005,6 +2005,7 @@
 
         <div style="display:flex;gap:8px;margin-top:1rem">
           <button class="btn btn-gold" onclick="suite2SaveTFS()" style="flex:1">Save Screening Event</button>
+          <button class="btn btn-sm btn-blue" onclick="suite2SaveTFS();if(typeof runScreening==='function')runScreening()" style="flex:1;padding:12px">Run Screening</button>
           <button class="btn btn-sm" onclick="document.getElementById('tfs2Modal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
         </div>
       </div>
