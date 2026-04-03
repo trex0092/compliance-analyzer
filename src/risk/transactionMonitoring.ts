@@ -165,11 +165,9 @@ export const TM_RULES: TMRule[] = [
       return deviation > 0.25;
     },
   },
-];
-
   // ─── Precious Metals Specific Rules (MoE/LBMA) ──────────────────────────
   {
-    id: "weight-discrepancy" as TMRuleId,
+    id: "weight-discrepancy",
     name: "Weight / Purity Discrepancy",
     description: "Declared weight or purity deviates from assay results by >5%",
     severity: "high",
@@ -187,7 +185,7 @@ export const TM_RULES: TMRule[] = [
     },
   },
   {
-    id: "missing-certification" as TMRuleId,
+    id: "missing-certification",
     name: "Missing Hallmark / Assay / Origin Certificate",
     description: "Precious metals lacking required hallmark, assay, or certificate of origin",
     severity: "high",
@@ -197,7 +195,7 @@ export const TM_RULES: TMRule[] = [
       (!tx.hasHallmark || !tx.hasAssayCertificate || !tx.hasCertificateOfOrigin),
   },
   {
-    id: "dormancy-reactivation" as TMRuleId,
+    id: "dormancy-reactivation",
     name: "Transaction After Prolonged Dormancy",
     description: "Significant transaction following >90 days of inactivity",
     severity: "medium",
@@ -206,7 +204,7 @@ export const TM_RULES: TMRule[] = [
       (tx.daysSinceLastTransaction ?? 0) > 90 && tx.amount > 20000,
   },
   {
-    id: "threshold-avoidance" as TMRuleId,
+    id: "threshold-avoidance",
     name: "Customer Inquiring About Reporting Thresholds",
     description: "Customer asks about reporting limits or requests to stay below threshold",
     severity: "critical",

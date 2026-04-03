@@ -56,6 +56,11 @@ export function requiresApproval(caseObj: ComplianceCase): ApprovalGate[] {
     gates.push("asset-freeze");
   }
 
+  // CTR filing → Compliance Officer approval per FDL Art.16, MoE Circular
+  if (caseObj.recommendation === "ctr-filing") {
+    gates.push("ctr-approval");
+  }
+
   // PF-related cases → escalation to MLRO and EOCN per Cabinet Res 156/2025
   if (
     caseObj.caseType === "pf-screening" ||

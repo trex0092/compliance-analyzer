@@ -126,25 +126,54 @@ export function generateAlerts(
     }
   }
 
-  // STR not filed: cases with str-review recommendation but no report linked
+  // STR/SAR/CTR not filed: cases with filing recommendations but no report linked
   for (const c of cases) {
     if (
-      c.recommendation === "str-review" &&
       (!c.linkedReportIds || c.linkedReportIds.length === 0) &&
       c.status !== "closed"
     ) {
-      addAlert(
-        {
-          id: createId("alert"),
-          type: "task-overdue",
-          subjectId: c.id,
-          subjectType: "case",
-          message: `Case ${c.id} requires STR review but no report filed. Deadline: 10 business days per FDL Art.26.`,
-          severity: "critical",
-          createdAt: nowIso(),
-        },
-        `task-overdue:${c.id}`
-      );
+      if (c.recommendation === "str-review") {
+        addAlert(
+          {
+            id: createId("alert"),
+            type: "task-overdue",
+            subjectId: c.id,
+            subjectType: "case",
+            message: `Case ${c.id} requires STR filing but no report filed. Deadline: 10 business days per FDL Art.26.`,
+            severity: "critical",
+            createdAt: nowIso(),
+          },
+          `task-overdue-str:${c.id}`
+        );
+      }
+      if (c.recommendation === "sar-review") {
+        addAlert(
+          {
+            id: createId("alert"),
+            type: "task-overdue",
+            subjectId: c.id,
+            subjectType: "case",
+            message: `Case ${c.id} requires SAR filing but no report filed. Deadline: 10 business days per FDL Art.26.`,
+            severity: "critical",
+            createdAt: nowIso(),
+          },
+          `task-overdue-sar:${c.id}`
+        );
+      }
+      if (c.recommendation === "ctr-filing") {
+        addAlert(
+          {
+            id: createId("alert"),
+            type: "task-overdue",
+            subjectId: c.id,
+            subjectType: "case",
+            message: `Case ${c.id} requires CTR filing (cash >= AED 55,000). Deadline: 15 business days per FDL Art.16.`,
+            severity: "high",
+            createdAt: nowIso(),
+          },
+          `task-overdue-ctr:${c.id}`
+        );
+      }
     }
   }
 
