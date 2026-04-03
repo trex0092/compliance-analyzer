@@ -481,7 +481,6 @@
     const services = [
       { key: 'anthropic', name: 'Claude (Anthropic)', icon: '🤖', required: true },
       { key: 'asana', name: 'Asana', icon: '📋', required: true },
-      { key: 'gdrive', name: 'Google Drive', icon: '📁', required: false },
     ];
 
     let html = `
