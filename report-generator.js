@@ -774,6 +774,20 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     toast('Circular added','success');
   }
 
+  function editCircular(id) {
+    const list = getCirculars();
+    const c = list.find(x => x.id === id);
+    if (!c) return;
+    const el = (i) => document.getElementById(i);
+    if (el('circRef')) el('circRef').value = c.ref || '';
+    if (el('circSubject')) el('circSubject').value = c.subject || '';
+    if (el('circMonth')) el('circMonth').value = c.month || '';
+    if (el('circDate')) el('circDate').value = c.date || '';
+    saveCirculars(list.filter(x => x.id !== id));
+    renderCircularsInPlace();
+    toast('Editing circular — modify fields and click Add Circular to save', 'info', 4000);
+  }
+
   function deleteCircular(id) {
     if (!confirm('Are you sure you want to delete this circular?')) return;
     const list = getCirculars().filter(c => c.id !== id);
@@ -787,7 +801,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     if (!list.length) return '<p style="color:var(--muted);font-size:13px">No circulars recorded.</p>';
     return list.map(c => {
       const attachHtml = c.attachment ? `<span style="color:var(--green);font-size:10px;margin-left:6px" title="${c.attachment.name}">📎 ${c.attachment.name} (${formatFileSize(c.attachment.size)})</span> <button class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.downloadAttachment('circular',${c.id})">Download</button> <button class="btn btn-sm" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.removeAttachment('circular',${c.id})">Remove</button>` : '';
-      return `<div class="asana-item"><div><div class="asana-name">${c.ref} — ${c.subject}${attachHtml}</div><div class="asana-meta">${c.month||'—'} | ${c.date||'—'}</div></div><div><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteCircular(${c.id})">Delete</button></div></div>`;
+      return `<div class="asana-item"><div><div class="asana-name">${c.ref} — ${c.subject}${attachHtml}</div><div class="asana-meta">${c.month||'—'} | ${c.date||'—'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;border-color:var(--gold);color:var(--gold)" onclick="ReportGenerator.editCircular(${c.id})">Modify</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteCircular(${c.id})">Delete</button></div></div>`;
     }).join('');
   }
   function renderCircularsInPlace() { const el=document.getElementById('circularsList'); if(el) el.innerHTML=renderCircularsList(); }
@@ -839,6 +853,19 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     toast('Meeting minutes added','success');
   }
 
+  function editMeeting(id) {
+    const list = getMeetings();
+    const m = list.find(x => x.id === id);
+    if (!m) return;
+    const el = (i) => document.getElementById(i);
+    if (el('meetRef')) el('meetRef').value = m.ref || '';
+    if (el('meetMonth')) el('meetMonth').value = m.month || '';
+    if (el('meetDate')) el('meetDate').value = m.date || '';
+    saveMeetings(list.filter(x => x.id !== id));
+    renderMeetingsInPlace();
+    toast('Editing meeting minutes — modify fields and click Add Meeting Minutes to save', 'info', 4000);
+  }
+
   function deleteMeeting(id) {
     if (!confirm('Are you sure you want to delete this meeting minutes record?')) return;
     const list = getMeetings().filter(m => m.id !== id);
@@ -852,7 +879,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     if (!list.length) return '<p style="color:var(--muted);font-size:13px">No meeting minutes recorded.</p>';
     return list.map(m => {
       const attachHtml = m.attachment ? `<span style="color:var(--green);font-size:10px;margin-left:6px" title="${m.attachment.name}">📎 ${m.attachment.name} (${formatFileSize(m.attachment.size)})</span> <button class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.downloadAttachment('meeting',${m.id})">Download</button> <button class="btn btn-sm" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.removeAttachment('meeting',${m.id})">Remove</button>` : '';
-      return `<div class="asana-item"><div><div class="asana-name">${m.ref}${attachHtml}</div><div class="asana-meta">${m.month||'—'} | ${m.date||'—'}</div></div><div><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteMeeting(${m.id})">Delete</button></div></div>`;
+      return `<div class="asana-item"><div><div class="asana-name">${m.ref}${attachHtml}</div><div class="asana-meta">${m.month||'—'} | ${m.date||'—'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;border-color:var(--gold);color:var(--gold)" onclick="ReportGenerator.editMeeting(${m.id})">Modify</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteMeeting(${m.id})">Delete</button></div></div>`;
     }).join('');
   }
   function renderMeetingsInPlace() { const el=document.getElementById('meetingsList'); if(el) el.innerHTML=renderMeetingsList(); }
@@ -986,8 +1013,8 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     getSchedules,
     renderReportTab,
     TEMPLATES,
-    addCircular, deleteCircular, clearCirculars, exportCircularsPDF, exportCircularsDOCX, exportCircularsCSV, saveCircularsToDrive, attachCircularFile,
-    addMeeting, deleteMeeting, clearMeetings, exportMeetingsPDF, exportMeetingsDOCX, exportMeetingsCSV, saveMeetingsToDrive, attachMeetingFile,
+    addCircular, editCircular, deleteCircular, clearCirculars, exportCircularsPDF, exportCircularsDOCX, exportCircularsCSV, saveCircularsToDrive, attachCircularFile,
+    addMeeting, editMeeting, deleteMeeting, clearMeetings, exportMeetingsPDF, exportMeetingsDOCX, exportMeetingsCSV, saveMeetingsToDrive, attachMeetingFile,
     downloadAttachment, removeAttachment,
     _renderCircularsList: renderCircularsList,
     _renderMeetingsList: renderMeetingsList,
