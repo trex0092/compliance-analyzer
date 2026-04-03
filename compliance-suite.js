@@ -1890,11 +1890,12 @@
         <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance | Mandatory: UAE Local Terrorist List + UNSC Consolidated List</div>
         <input type="hidden" id="tfs2-edit-idx" value="-1">
 
-        <div class="row row-2">
+        <div class="row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
           <div><span class="lbl">Name Screened *</span><input id="tfs2-name" placeholder="Full legal name of individual or entity"/></div>
           <div><span class="lbl">Entity Type *</span>
             <select id="tfs2-entity-type"><option value="Individual">Individual</option><option value="Company">Company</option></select>
           </div>
+          <div><span class="lbl">Date of Birth / Registration</span><input type="date" id="tfs2-dob"/></div>
         </div>
         <div class="row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
           <div><span class="lbl">Screening Event Type *</span>
@@ -2085,6 +2086,7 @@
     document.getElementById('tfs2-edit-idx').value = idx;
     document.getElementById('tfs2-name').value = e.screenedName||'';
     if (document.getElementById('tfs2-entity-type')) document.getElementById('tfs2-entity-type').value = e.entityType||'Individual';
+    if (document.getElementById('tfs2-dob')) document.getElementById('tfs2-dob').value = e.dob||'';
     if (document.getElementById('tfs2-country')) document.getElementById('tfs2-country').value = e.country||'';
     if (document.getElementById('tfs2-idnumber')) document.getElementById('tfs2-idnumber').value = e.idNumber||'';
     document.getElementById('tfs2-event').value = e.eventType||'';
@@ -2124,7 +2126,9 @@
     try {
       if (typeof callAI !== 'function') { toast('No AI provider — select outcome manually', 'info'); return; }
 
+      var dob = document.getElementById('tfs2-dob')?.value || '';
       var entityDesc = name + ' (' + entityType + ')';
+      if (dob) entityDesc += ', DOB/Registration: ' + dob;
       if (country) entityDesc += ', ' + country;
       if (idNumber) entityDesc += ', ID: ' + idNumber;
 
@@ -2160,10 +2164,20 @@
         };
       }
 
-      // Override: if adverse media found with medium+ severity, ensure not CLEAR
+      // Override: adverse media alone = POTENTIAL_MATCH (never MATCH without confirmed sanctions)
+      // Only the AI's sanctions_finding determines if it's a true MATCH
+      var hasSanctionsMatch = result.sanctions_finding && /confirmed.*designation|designated.*on|appears.*on.*SDN|appears.*on.*sanctions|sanctioned|MATCH.*OFAC|MATCH.*EOCN|MATCH.*UN.*Consolidated/i.test(result.sanctions_finding);
       if (result.adverse_media_found && result.adverse_media_severity && result.adverse_media_severity !== 'none' && result.adverse_media_severity !== 'low') {
-        if (result.result === 'CLEAR') result.result = 'POTENTIAL_MATCH';
-        if (result.adverse_media_severity === 'critical' || result.adverse_media_severity === 'high') result.result = 'MATCH';
+        if (!hasSanctionsMatch) {
+          // Adverse media without sanctions = POTENTIAL_MATCH (Partial Match), never Confirmed Match
+          result.result = 'POTENTIAL_MATCH';
+        }
+      }
+      // If AI returned MATCH but sanctions_finding says no designation found, downgrade to POTENTIAL_MATCH
+      if (result.result === 'MATCH' && !hasSanctionsMatch) {
+        if (result.sanctions_finding && /no.*confirmed|not.*found|not.*appear|not.*designated|no.*designation|does not appear/i.test(result.sanctions_finding)) {
+          result.result = 'POTENTIAL_MATCH';
+        }
       }
 
       // Apply outcome
@@ -2217,6 +2231,7 @@
       id: editIdx>=0 ? events[editIdx].id : `TFS2-${Date.now()}`,
       screenedName: name,
       entityType: document.getElementById('tfs2-entity-type')?.value || 'Individual',
+      dob: document.getElementById('tfs2-dob')?.value || '',
       country: document.getElementById('tfs2-country')?.value?.trim() || '',
       idNumber: document.getElementById('tfs2-idnumber')?.value?.trim() || '',
       eventType: document.getElementById('tfs2-event').value,
