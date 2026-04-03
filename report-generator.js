@@ -624,7 +624,6 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
   <div class="top-bar" style="margin-bottom:10px">
     <span class="sec-title" style="margin:0;border:none;padding:0">Circulars</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-green" onclick="ReportGenerator.saveCircularsToDrive()" style="padding:3px 10px;font-size:10px">📁 Google Drive</button>
       <button class="btn btn-sm btn-blue" onclick="document.getElementById('circFileInput').click()" style="padding:3px 10px;font-size:10px">📎 Attach File</button>
       <input type="file" id="circFileInput" style="display:none" onchange="ReportGenerator.attachCircularFile(this)" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip">
       <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportCircularsPDF()" style="padding:3px 10px;font-size:10px">Export PDF</button>
@@ -646,7 +645,6 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
   <div class="top-bar" style="margin-bottom:10px">
     <span class="sec-title" style="margin:0;border:none;padding:0">Meeting Minutes Report</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-green" onclick="ReportGenerator.saveMeetingsToDrive()" style="padding:3px 10px;font-size:10px">📁 Google Drive</button>
       <button class="btn btn-sm btn-blue" onclick="document.getElementById('meetFileInput').click()" style="padding:3px 10px;font-size:10px">📎 Attach File</button>
       <input type="file" id="meetFileInput" style="display:none" onchange="ReportGenerator.attachMeetingFile(this)" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip">
       <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportMeetingsPDF()" style="padding:3px 10px;font-size:10px">Export PDF</button>

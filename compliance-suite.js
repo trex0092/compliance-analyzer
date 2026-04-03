@@ -1846,33 +1846,6 @@
         </div>
       </div>
 
-      <div style="background:rgba(217,79,79,0.08);border:1px solid rgba(217,79,79,0.25);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
-        <strong style="color:var(--red)">🔴 UAE TFS MANDATORY OBLIGATIONS ON CONFIRMED MATCH:</strong><br>
-        <div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div>1. <strong>Freeze assets immediately</strong> — within 24 hours — without prior notice to subject</div>
-          <div>2. <strong>No tipping off</strong> — do not inform subject of freeze or report</div>
-          <div>3. <strong>File FFR via goAML</strong> — Funds Freeze Report to UAE FIU</div>
-          <div>4. <strong>Submit CNMR to EOCN</strong> — Confirmed Name Match Report within 5 business days</div>
-        </div>
-      </div>
-
-      <div style="background:rgba(232,160,48,0.08);border:1px solid rgba(232,160,48,0.25);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
-        <strong style="color:var(--amber)">🟡 UAE TFS PARTIAL MATCH OBLIGATIONS:</strong><br>
-        <div style="margin-top:6px">
-          1. <strong>Suspend transaction</strong> — hold, do not proceed<br>
-          2. <strong>Conduct enhanced verification</strong> — differentiate subject from listed person<br>
-          3. <strong>Submit PNMR to EOCN</strong> — Partial Name Match Report within 5 business days<br>
-          4. If match confirmed: treat as Confirmed Match above
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
-        <div class="metric m-c"><div class="metric-num">${events.filter(e=>e.outcome==='Confirmed Match').length}</div><div class="metric-lbl">Confirmed Matches</div></div>
-        <div class="metric m-h"><div class="metric-num">${events.filter(e=>e.outcome==='Partial Match').length}</div><div class="metric-lbl">Partial Matches</div></div>
-        <div class="metric m-ok"><div class="metric-num">${events.filter(e=>e.outcome==='Negative – No Match').length}</div><div class="metric-lbl">Cleared</div></div>
-        <div class="metric m-m"><div class="metric-num">${events.filter(e=>e.cnmrStatus==='Pending'||e.pnmrStatus==='Pending').length}</div><div class="metric-lbl">Report Pending</div></div>
-      </div>
-
       ${events.length===0?'<p style="color:var(--muted);font-size:13px;text-align:center;padding:2rem">No TFS screening events. Click "+ New Screening Event" to begin.</p>':''}
       ${events.map((e,i) => {
         const isConfirmed = e.outcome==='Confirmed Match';
@@ -1898,7 +1871,10 @@
         </div>`;
       }).join('')}
 
-      <button class="btn btn-gold" style="margin-top:1rem" onclick="if(typeof runScreening==='function')runScreening();else toast('Run screening from the form','info')">Run Screening</button>
+      <div style="display:flex;gap:10px;margin-top:1rem">
+        <button class="btn btn-green" style="flex:1;padding:12px;background:var(--green);color:#fff;border:none" onclick="if(typeof runScreening==='function')runScreening();else toast('Enter details via + New Screening Event','info')">Run Screening</button>
+        <button class="btn btn-gold" style="flex:1;padding:12px" onclick="suite2OpenTFSForm()">Save Screening</button>
+      </div>
     </div>
 
     <!-- TFS2 Modal -->
@@ -1919,7 +1895,7 @@
           <div><span class="lbl">Screening Event Type *</span>
             <select id="tfs2-event"><option>New Customer Onboarding</option><option>Periodic Rescreening</option><option>List Update Trigger</option><option>Transaction Pre-Approval</option><option>Supplier/Refinery Onboarding</option><option>UBO Screening</option><option>Ad Hoc Review</option></select>
           </div>
-          <div></div>
+          <div><span class="lbl">Country</span><input id="tfs2-country" placeholder="e.g. UAE, Iran, Russia"/></div>
         </div>
         <div><span class="lbl">Lists Screened (tick all that apply)</span>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface2);padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px">
@@ -2100,6 +2076,7 @@
     document.getElementById('tfs2-edit-idx').value = idx;
     document.getElementById('tfs2-name').value = e.screenedName||'';
     if (document.getElementById('tfs2-entity-type')) document.getElementById('tfs2-entity-type').value = e.entityType||'Individual';
+    if (document.getElementById('tfs2-country')) document.getElementById('tfs2-country').value = e.country||'';
     document.getElementById('tfs2-event').value = e.eventType||'';
     document.getElementById('tfs2-date').value = e.screeningDate||today();
     document.getElementById('tfs2-reviewer').value = e.reviewedBy||'';
@@ -2132,6 +2109,7 @@
       id: editIdx>=0 ? events[editIdx].id : `TFS2-${Date.now()}`,
       screenedName: name,
       entityType: document.getElementById('tfs2-entity-type')?.value || 'Individual',
+      country: document.getElementById('tfs2-country')?.value?.trim() || '',
       eventType: document.getElementById('tfs2-event').value,
       listsScreened: lists.join(' | '),
       screeningDate: document.getElementById('tfs2-date').value,
