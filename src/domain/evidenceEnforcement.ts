@@ -34,11 +34,32 @@ export function checkEvidenceCompleteness(
   const requiredItems = requirements.filter((r) => r.required);
   const missing: string[] = [];
 
+  // Group linked evidence by category and count how many are linked per category
+  const linkedByCategory = new Map<string, number>();
+  for (const e of linkedEvidence) {
+    if (e.status === "linked") {
+      linkedByCategory.set(e.category, (linkedByCategory.get(e.category) ?? 0) + 1);
+    }
+  }
+
+  // Count required items per category and check we have enough linked evidence
+  const requiredByCategory = new Map<string, { count: number; descriptions: string[] }>();
   for (const req of requiredItems) {
-    const found = linkedEvidence.some(
-      (e) => e.category === req.category && e.status === "linked"
-    );
-    if (!found) missing.push(req.description);
+    const entry = requiredByCategory.get(req.category) ?? { count: 0, descriptions: [] };
+    entry.count++;
+    entry.descriptions.push(req.description);
+    requiredByCategory.set(req.category, entry);
+  }
+
+  for (const [category, { count, descriptions }] of requiredByCategory) {
+    const linkedCount = linkedByCategory.get(category) ?? 0;
+    if (linkedCount < count) {
+      // Add descriptions for each missing item in this category
+      const missingCount = count - linkedCount;
+      for (let i = count - missingCount; i < count; i++) {
+        missing.push(descriptions[i]);
+      }
+    }
   }
 
   const completionPct =

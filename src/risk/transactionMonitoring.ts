@@ -14,7 +14,7 @@ export interface TMRule {
   description: string;
   severity: "medium" | "high" | "critical";
   regulatoryRef: string;
-  detect: (tx: TransactionInput) => boolean;
+  detect: (tx: TransactionInput, config?: TMConfig) => boolean;
 }
 
 export interface TransactionInput {
@@ -41,10 +41,21 @@ export interface TMAlert {
   regulatoryRef: string;
 }
 
-const HIGH_RISK_COUNTRIES = [
+export interface TMConfig {
+  highRiskCountries: string[];
+  cashThreshold: number;
+}
+
+// Default list — can be overridden at runtime via TMConfig
+export const DEFAULT_HIGH_RISK_COUNTRIES = [
   "AF", "MM", "SY", "IR", "KP", "IQ", "LY", "SO", "SS", "SD", "YE",
   "CD", "CF",
 ];
+
+export const DEFAULT_TM_CONFIG: TMConfig = {
+  highRiskCountries: DEFAULT_HIGH_RISK_COUNTRIES,
+  cashThreshold: 55000,
+};
 
 export const TM_RULES: TMRule[] = [
   {
@@ -53,11 +64,15 @@ export const TM_RULES: TMRule[] = [
     description: "Multiple transactions just below AED 55,000 within 30 days",
     severity: "critical",
     regulatoryRef: "FDL No.10/2025 Art.15-16, FATF Rec 22",
-    detect: (tx) =>
-      (tx.cumulativeAmountLast30Days ?? 0) >= 55000 &&
-      (tx.transactionsLast30Days ?? 0) >= 3 &&
-      tx.amount < 55000 &&
-      tx.amount > 40000,
+    detect: (tx, config) => {
+      const threshold = config?.cashThreshold ?? DEFAULT_TM_CONFIG.cashThreshold;
+      return (
+        (tx.cumulativeAmountLast30Days ?? 0) >= threshold &&
+        (tx.transactionsLast30Days ?? 0) >= 3 &&
+        tx.amount < threshold &&
+        tx.amount > threshold * 0.73 // ~40000 for 55000 threshold
+      );
+    },
   },
   {
     id: "profile-mismatch",
@@ -83,9 +98,13 @@ export const TM_RULES: TMRule[] = [
     description: "Transaction routed through FATF grey/black list jurisdiction",
     severity: "critical",
     regulatoryRef: "FDL No.10/2025 Art.17, FATF Rec 19",
-    detect: (tx) =>
-      HIGH_RISK_COUNTRIES.includes(tx.originCountry ?? "") ||
-      HIGH_RISK_COUNTRIES.includes(tx.destinationCountry ?? ""),
+    detect: (tx, config) => {
+      const countries = config?.highRiskCountries ?? DEFAULT_TM_CONFIG.highRiskCountries;
+      return (
+        countries.includes(tx.originCountry ?? "") ||
+        countries.includes(tx.destinationCountry ?? "")
+      );
+    },
   },
   {
     id: "rapid-buy-sell",
@@ -97,12 +116,14 @@ export const TM_RULES: TMRule[] = [
   },
   {
     id: "cash-threshold",
-    name: "Cash Transaction ≥ AED 55,000",
+    name: "Cash Transaction >= AED 55,000",
     description: "Single cash transaction at or above DPMSR threshold",
     severity: "critical",
     regulatoryRef: "FDL No.10/2025 Art.16, FATF Rec 22, MoE Circular 08/AML/2021",
-    detect: (tx) =>
-      tx.paymentMethod === "cash" && tx.amount >= 55000,
+    detect: (tx, config) => {
+      const threshold = config?.cashThreshold ?? DEFAULT_TM_CONFIG.cashThreshold;
+      return tx.paymentMethod === "cash" && tx.amount >= threshold;
+    },
   },
   {
     id: "round-tripping",
@@ -111,6 +132,8 @@ export const TM_RULES: TMRule[] = [
     severity: "critical",
     regulatoryRef: "FDL No.10/2025, FATF Typologies",
     detect: (tx) =>
+      !!tx.originCountry &&
+      !!tx.destinationCountry &&
       tx.originCountry === tx.destinationCountry &&
       tx.amount > 100000 &&
       !tx.payerMatchesCustomer,
@@ -122,15 +145,20 @@ export const TM_RULES: TMRule[] = [
     severity: "high",
     regulatoryRef: "UAE NRA 2024, FATF Rec 20",
     detect: (tx) => {
-      if (!tx.declaredValue || !tx.marketValue) return false;
+      if (!tx.declaredValue || !tx.marketValue || tx.marketValue === 0) return false;
       const deviation = Math.abs(tx.declaredValue - tx.marketValue) / tx.marketValue;
       return deviation > 0.25;
     },
   },
 ];
 
-export function runTransactionMonitoring(tx: TransactionInput): TMAlert[] {
-  return TM_RULES.filter((rule) => rule.detect(tx)).map((rule) => ({
+export function runTransactionMonitoring(
+  tx: TransactionInput,
+  config?: TMConfig
+): TMAlert[] {
+  if (!tx.customerName || tx.amount == null) return [];
+
+  return TM_RULES.filter((rule) => rule.detect(tx, config)).map((rule) => ({
     ruleId: rule.id,
     ruleName: rule.name,
     severity: rule.severity,

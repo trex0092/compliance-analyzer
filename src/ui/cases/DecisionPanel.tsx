@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import type { ComplianceCase } from "../../domain/cases";
 import { decideCase } from "../../risk/decisions";
+import { RED_FLAGS } from "../../risk/redFlags";
+import { calcFlagScore } from "../../risk/scoring";
 
 type Props = {
   item: ComplianceCase;
@@ -8,16 +10,38 @@ type Props = {
 
 export default function DecisionPanel({ item }: Props) {
   const decision = useMemo(() => {
-    const scores = item.redFlags.map(() => Math.max(item.riskScore, 1));
+    // Map each red flag code to its actual definition score, falling back to case riskScore
+    const scores = item.redFlags.map((flagCode) => {
+      const definition = RED_FLAGS.find((rf) => rf.code === flagCode);
+      return definition ? calcFlagScore(definition) : Math.max(item.riskScore, 1);
+    });
+
+    const highFlagCount = item.redFlags.filter((flagCode) => {
+      const def = RED_FLAGS.find((rf) => rf.code === flagCode);
+      if (!def) return false;
+      const score = calcFlagScore(def);
+      return score >= 11 && score < 16;
+    }).length;
+
+    const criticalFlagCount = item.redFlags.filter((flagCode) => {
+      const def = RED_FLAGS.find((rf) => rf.code === flagCode);
+      if (!def) return false;
+      return calcFlagScore(def) >= 16;
+    }).length;
+
     return decideCase({
-      sanctionMatch: item.redFlags.some((f) => f.includes("SANCTION") || f.includes("RF011")),
-      pepMatch: item.redFlags.some((f) => f.includes("PEP")),
+      sanctionMatch: item.redFlags.some(
+        (f) => f === "RF011" || f.toUpperCase().includes("SANCTION")
+      ),
+      pepMatch: item.redFlags.some(
+        (f) => f.toUpperCase().includes("PEP")
+      ),
       redFlagScores: scores,
-      highFlagCount: item.riskLevel === "high" ? item.redFlags.length : 0,
-      criticalFlagCount: item.riskLevel === "critical" ? item.redFlags.length : 0,
+      highFlagCount,
+      criticalFlagCount,
       missingCDD: item.findings.some((f) => f.toLowerCase().includes("missing cdd")),
       thirdPartyPayment: item.redFlags.some((f) => f.toLowerCase().includes("third")),
-      sourceOfFundsUnverified: item.redFlags.some((f) => f.includes("RF067")),
+      sourceOfFundsUnverified: item.redFlags.includes("RF067"),
     });
   }, [item]);
 

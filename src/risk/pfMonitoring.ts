@@ -19,17 +19,33 @@ export interface PFAlert {
   mandatoryAction: string;
 }
 
-const PF_HIGH_RISK_COUNTRIES = ["KP", "IR", "SY"];
+export interface PFConfig {
+  highRiskCountries: string[];
+  dualUseIndicators: string[];
+}
 
-const DUAL_USE_INDICATORS = [
+// Default lists — can be overridden at runtime via PFConfig
+export const DEFAULT_PF_HIGH_RISK_COUNTRIES = ["KP", "IR", "SY"];
+
+export const DEFAULT_DUAL_USE_INDICATORS = [
   "industrial platinum", "industrial palladium", "rhodium",
   "iridium", "osmium", "ruthenium", "rhenium",
   "nuclear", "centrifuge", "enrichment",
   "ballistic", "missile", "warhead",
 ];
 
-export function runPFScreening(input: PFScreeningInput): PFAlert[] {
+export const DEFAULT_PF_CONFIG: PFConfig = {
+  highRiskCountries: DEFAULT_PF_HIGH_RISK_COUNTRIES,
+  dualUseIndicators: DEFAULT_DUAL_USE_INDICATORS,
+};
+
+export function runPFScreening(
+  input: PFScreeningInput,
+  config?: PFConfig
+): PFAlert[] {
   const alerts: PFAlert[] = [];
+  const pfCountries = config?.highRiskCountries ?? DEFAULT_PF_CONFIG.highRiskCountries;
+  const dualUseList = config?.dualUseIndicators ?? DEFAULT_PF_CONFIG.dualUseIndicators;
 
   // Rule 1: Strategic goods list match
   if (input.onStrategicGoodsList) {
@@ -43,7 +59,7 @@ export function runPFScreening(input: PFScreeningInput): PFAlert[] {
   }
 
   // Rule 2: High-risk PF jurisdiction
-  if (PF_HIGH_RISK_COUNTRIES.includes(input.destinationCountry ?? "")) {
+  if (pfCountries.includes(input.destinationCountry ?? "")) {
     alerts.push({
       ruleId: "pf_jurisdiction",
       severity: "critical",
@@ -55,7 +71,7 @@ export function runPFScreening(input: PFScreeningInput): PFAlert[] {
 
   // Rule 3: Dual-use material indicators
   const goods = (input.goodsDescription ?? "").toLowerCase();
-  const dualUseMatch = DUAL_USE_INDICATORS.find((ind) => goods.includes(ind));
+  const dualUseMatch = dualUseList.find((ind) => goods.includes(ind));
   if (dualUseMatch) {
     alerts.push({
       ruleId: "pf_dual_use",

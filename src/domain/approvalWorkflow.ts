@@ -59,17 +59,22 @@ export function createApprovalRequest(
 export function canProceedWithoutApproval(
   gates: ApprovalGate[],
   approvals: ApprovalRequest[]
-): { canProceed: boolean; pendingGates: ApprovalGate[] } {
+): { canProceed: boolean; pendingGates: ApprovalGate[]; rejectedGates: ApprovalGate[] } {
   const approvedGates = approvals
     .filter((a) => a.status === "approved")
     .map((a) => a.requiredFor);
 
+  const rejectedGates = gates.filter((g) =>
+    approvals.some((a) => a.requiredFor === g && a.status === "rejected")
+  );
+
   const pendingGates = gates.filter(
-    (g) => !approvedGates.includes(g)
+    (g) => !approvedGates.includes(g) && !rejectedGates.includes(g)
   );
 
   return {
-    canProceed: pendingGates.length === 0,
+    canProceed: pendingGates.length === 0 && rejectedGates.length === 0,
     pendingGates,
+    rejectedGates,
   };
 }
