@@ -140,14 +140,14 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
           model: 'claude-sonnet-4-5',
           max_tokens: 800,
           temperature: 0,
-          system: 'You are a sanctions and PEP screening specialist with expert knowledge of all major sanctions lists (OFAC SDN, UN Consolidated, EU Consolidated, UK OFSI, UAE Local Terrorism List) and politically exposed persons databases worldwide. You MUST return accurate, real-world results based on your knowledge. If a person IS on a sanctions list or IS a known PEP (e.g. heads of state, senior government officials, sanctioned individuals), you MUST return "MATCH" with the specific list(s). Do NOT return CLEAR for sanctioned individuals or known PEPs. Accuracy is critical for compliance — false negatives are dangerous. Return only valid JSON.',
+          system: 'You are an expert sanctions, PEP, and adverse media screening specialist. ABSOLUTE ACCURACY RULE: NEVER fabricate or hallucinate sanctions designations. If you are not 100% CERTAIN from your training data that an entity is on a specific sanctions list, say they are NOT on that list. Being in adverse media or under investigation is NOT the same as being on a sanctions list — keep these STRICTLY SEPARATE. It is BETTER to say no sanctions match and flag adverse media than to falsely claim someone is sanctioned. For adverse media: be EXHAUSTIVE — search for criminal investigations, regulatory actions, lawsuits, investigative journalism (ICIJ, OCCRP, Turkish Minute, Reuters, Bloomberg, etc.), environmental crimes, fraud, corruption, money laundering. Return only valid JSON.',
           messages: [{
             role: 'user',
             content: `Screen entity "${name}" (type: ${type || 'individual'}) against consolidated sanctions lists: ${currentLists || 'UN, OFAC, EU, UK, UAE'}.${countryInfo}
 
-IMPORTANT: Use your real knowledge of sanctions lists and PEP databases. If this person or entity is sanctioned, designated, or a known PEP, return MATCH. Do not guess — use factual information. Heads of state of sanctioned countries (e.g. Venezuela, North Korea, Syria, Iran, Russia) are typically on OFAC SDN or EU sanctions lists.
+RULES: (1) Only report CONFIRMED sanctions designations you are certain about. (2) Search thoroughly for adverse media, investigations, lawsuits, regulatory actions. (3) Adverse media findings make the result POTENTIAL_MATCH, not MATCH (unless confirmed on a sanctions list).
 
-Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"list name","matchType":"exact|partial|alias","confidence":0.0-1.0,"details":"..."}],"recommendation":"..."}`
+Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"list name","matchType":"exact|partial|adverse_media","confidence":0.0-1.0,"details":"..."}],"recommendation":"Detailed compliance recommendation. Clearly separate: SANCTIONS CHECK (only confirmed designations), ADVERSE MEDIA (all findings with sources/dates), REQUIRED ACTIONS."}`
           }]
         });
 
