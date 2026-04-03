@@ -25,13 +25,30 @@ export interface PFConfig {
 }
 
 // Default lists — can be overridden at runtime via PFConfig
-export const DEFAULT_PF_HIGH_RISK_COUNTRIES = ["KP", "IR", "SY"];
+export const DEFAULT_PF_HIGH_RISK_COUNTRIES = [
+  "KP", // DPRK — UNSC Res 1718
+  "IR", // Iran — UNSC Res 2231
+  "SY", // Syria — EU/US sanctions
+  "MM", // Myanmar — FATF High-Risk
+  "YE", // Yemen — UNSC Res 2140
+];
 
 export const DEFAULT_DUAL_USE_INDICATORS = [
+  // Precious metals — industrial grade
   "industrial platinum", "industrial palladium", "rhodium",
   "iridium", "osmium", "ruthenium", "rhenium",
-  "nuclear", "centrifuge", "enrichment",
-  "ballistic", "missile", "warhead",
+  // Nuclear program indicators
+  "nuclear", "centrifuge", "enrichment", "uranium", "plutonium",
+  "heavy water", "hexafluoride", "yellowcake",
+  // Missile/weapons program indicators
+  "ballistic", "missile", "warhead", "propellant", "guidance system",
+  // Electronics / advanced manufacturing
+  "semiconductor", "carbon fiber", "maraging steel",
+  "frequency converter", "high-speed camera",
+  // Chemical precursors
+  "fluorine compound", "hydrogen fluoride", "tributyl phosphate",
+  // Rare earth elements (dual-use)
+  "rare earth", "neodymium", "samarium", "dysprosium",
 ];
 
 export const DEFAULT_PF_CONFIG: PFConfig = {
