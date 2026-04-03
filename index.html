@@ -95,7 +95,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
 .row-2{grid-template-columns:1fr 1fr}
 .row-3{grid-template-columns:1fr 1fr 1fr}
 .btn{padding:12px 20px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all 0.2s}
-.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#0E0F11;width:100%}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#0E0F11;width:100%;padding:8px 16px;font-size:12px}
 .btn-gold:hover{opacity:0.9}
 .btn-gold:disabled{opacity:0.4;cursor:not-allowed}
 .btn-sm{padding:3px 10px;font-size:10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif}
@@ -820,7 +820,7 @@ Examples:
         <div class="top-bar" style="margin-bottom:12px">
           <span class="lbl" style="margin:0">Live Asana Task Status</span>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-sm btn-blue" onclick="loadAsanaTasks()">Refresh</button>
+            <button class="btn btn-sm btn-blue" onclick="loadAsanaTasks(false)">Refresh</button>
             <button class="btn btn-sm" style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.4)" onclick="fixAsanaEntityTasks && fixAsanaEntityTasks()" title="Fix tasks with {entity} placeholder">Fix Placeholders</button>
             <button class="btn btn-sm btn-green" onclick="processAsanaRetryQueue(false)">Retry Failed Writes</button>
           </div>
@@ -3448,7 +3448,7 @@ function switchTab(name) {
   if (tabEl) tabEl.classList.add('active');
   if (name==='complianceprog') { loadDriveLink(); initEWRA(); initBWRA(); loadComplianceManual(); renderCProgAttachments('ewra'); renderCProgAttachments('bwra'); renderCProgAttachments('manual'); }
   if (name==='drive') renderDrive();
-  if (name==='asana') loadAsanaTasks();
+  if (name==='asana') { var hasPrev = asanaSyncState && asanaSyncState.modules && asanaSyncState.modules.tasks && asanaSyncState.modules.tasks.lastSuccess; loadAsanaTasks(!!hasPrev); }
   if (name==='shipments') { renderShipments(); refreshMetalsPrices(false); }
   if (name==='iarreport') { renderIARReports(); if (!iarUboCount) { addIARUboRow(); addIARUboRow(); } if (!iarManagerCount) { addIARManagerRow(); } }
   if (name==='screening') { if (typeof initSanctionsRefreshStatus === 'function') initSanctionsRefreshStatus(); if (typeof renderTFS2 === 'function') { var tfsEl=document.getElementById('tfs-embedded-content'); if(tfsEl&&!tfsEl.innerHTML.trim()) renderTFS2(); } }
