@@ -1,5 +1,5 @@
 /**
- * Workflow Engine Module — Compliance Analyser v2.5
+ * Workflow Engine Module -Compliance Analyser v2.5
  * Configurable automation rules, alert escalation, Asana sync, notification routing
  */
 (function () {
@@ -22,7 +22,7 @@
   }
 
   // ══════════════════════════════════════════════════════════════
-  // DEDUPLICATION — prevent same event firing duplicate actions
+  // DEDUPLICATION -prevent same event firing duplicate actions
   // ══════════════════════════════════════════════════════════════
 
   function getDedupCache() {
@@ -75,7 +75,7 @@
 
   const DEFAULT_RULES = [
     {
-      id: 'wf_critical_gap', name: 'Critical Gap → Asana + Notify', enabled: true,
+      id: 'wf_critical_gap', name: 'Critical Gap -Asana + Notify', enabled: true,
       trigger: 'new_gap', condition: { field: 'severity', op: 'eq', value: 'critical' },
       actions: [
         { type: 'create_asana_task', template: 'gap_remediation', priority: 'high' },
@@ -83,7 +83,7 @@
       ]
     },
     {
-      id: 'wf_threshold_breach', name: 'Threshold Breach → CTR + Asana', enabled: true,
+      id: 'wf_threshold_breach', name: 'Threshold Breach -CTR + Asana', enabled: true,
       trigger: 'threshold_breach', condition: { field: 'type', op: 'eq', value: 'THRESHOLD_BREACH' },
       actions: [
         { type: 'create_asana_task', template: 'threshold_review', priority: 'high' },
@@ -91,15 +91,15 @@
       ]
     },
     {
-      id: 'wf_new_incident', name: 'New Incident → Asana + Notify', enabled: true,
+      id: 'wf_new_incident', name: 'New Incident -Asana + Notify', enabled: true,
       trigger: 'new_incident', condition: { field: 'severity', op: 'in', value: ['critical', 'high'] },
       actions: [
         { type: 'create_asana_task', template: 'gap_remediation', priority: 'high' },
-        { type: 'browser_notify', title: 'New Incident', message: '{title} — {severity}' }
+        { type: 'browser_notify', title: 'New Incident', message: '{title} -{severity}' }
       ]
     },
     {
-      id: 'wf_overdue_deadline', name: 'Overdue Deadline → Email Escalation', enabled: true,
+      id: 'wf_overdue_deadline', name: 'Overdue Deadline -Email Escalation', enabled: true,
       trigger: 'deadline_overdue', condition: {},
       actions: [
         { type: 'email_alert', subject: 'OVERDUE: {title}', message: 'Regulatory deadline "{title}" is overdue. Immediate action required.' },
@@ -107,7 +107,7 @@
       ]
     },
     {
-      id: 'wf_screening_match', name: 'Screening Match → Asana + Email', enabled: true,
+      id: 'wf_screening_match', name: 'Screening Match -Asana + Email', enabled: true,
       trigger: 'screening_match', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'tfs_screening', priority: 'high' },
@@ -115,7 +115,7 @@
       ]
     },
     {
-      id: 'wf_training_overdue', name: 'Training Overdue → Asana Reminder', enabled: true,
+      id: 'wf_training_overdue', name: 'Training Overdue -Asana Reminder', enabled: true,
       trigger: 'training_overdue', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'training_completion', priority: 'medium' },
@@ -123,14 +123,14 @@
       ]
     },
     {
-      id: 'wf_daily_digest', name: 'Daily Compliance Digest → Asana', enabled: false,
+      id: 'wf_daily_digest', name: 'Daily Compliance Digest - Asana', enabled: true,
       trigger: 'scheduled_digest', condition: { frequency: 'daily' },
       actions: [
         { type: 'create_asana_task', template: 'co_report', priority: 'low' }
       ]
     },
     {
-      id: 'wf_reg_change', name: 'Regulatory Change → Asana + Email', enabled: true,
+      id: 'wf_reg_change', name: 'Regulatory Change -Asana + Email', enabled: true,
       trigger: 'regulatory_change', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'policy_review', priority: 'medium' },
@@ -138,7 +138,7 @@
       ]
     },
     {
-      id: 'wf_pep_detected', name: 'PEP Detected → EDD + Senior Management', enabled: true,
+      id: 'wf_pep_detected', name: 'PEP Detected -EDD + Senior Management', enabled: true,
       trigger: 'pep_detected', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'pep_identification', priority: 'high' },
@@ -146,7 +146,7 @@
       ]
     },
     {
-      id: 'wf_ubo_change', name: 'UBO Change → Re-verification Required', enabled: true,
+      id: 'wf_ubo_change', name: 'UBO Change -Re-verification Required', enabled: true,
       trigger: 'ubo_change', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'kyb_review', priority: 'high' },
@@ -154,7 +154,7 @@
       ]
     },
     {
-      id: 'wf_high_risk_onboard', name: 'High-Risk Customer → EDD + CRA Required', enabled: true,
+      id: 'wf_high_risk_onboard', name: 'High-Risk Customer -EDD + CRA Required', enabled: true,
       trigger: 'high_risk_customer', condition: { riskLevel: 'high' },
       actions: [
         { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
@@ -162,15 +162,15 @@
       ]
     },
     {
-      id: 'wf_str_post_filing', name: 'STR Filed → Post-Filing Monitoring', enabled: true,
+      id: 'wf_str_post_filing', name: 'STR Filed -Post-Filing Monitoring', enabled: true,
       trigger: 'str_filed', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'transaction_monitoring', priority: 'high' },
-        { type: 'browser_notify', title: 'STR Filed — Enhanced Monitoring Required', message: 'STR filed for {subjectName}. Enhanced monitoring must continue. Do not tip off subject.' }
+        { type: 'browser_notify', title: 'STR Filed -Enhanced Monitoring Required', message: 'STR filed for {subjectName}. Enhanced monitoring must continue. Do not tip off subject.' }
       ]
     },
     {
-      id: 'wf_sanctions_list_update', name: 'Sanctions List Update → Re-Screen All', enabled: true,
+      id: 'wf_sanctions_list_update', name: 'Sanctions List Update -Re-Screen All', enabled: true,
       trigger: 'sanctions_update', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'tfs_list_update', priority: 'high' },
@@ -178,7 +178,7 @@
       ]
     },
     {
-      id: 'wf_dpmsr_threshold', name: 'AED 55,000 Threshold → DPMSR Filing', enabled: true,
+      id: 'wf_dpmsr_threshold', name: 'AED 55,000 Threshold -DPMSR Filing', enabled: true,
       trigger: 'threshold_breach', condition: { amount: 55000 },
       actions: [
         { type: 'create_asana_task', template: 'threshold_review', priority: 'high' },
@@ -186,7 +186,7 @@
       ]
     },
     {
-      id: 'wf_lbma_supplier_risk', name: 'CAHRA Supplier → Supply Chain Alert', enabled: true,
+      id: 'wf_lbma_supplier_risk', name: 'CAHRA Supplier -Supply Chain Alert', enabled: true,
       trigger: 'cahra_detected', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'responsible_sourcing', priority: 'high' },
@@ -203,7 +203,7 @@
     },
     // ── FDL No.10/2025 & Cabinet Resolution aligned workflows ──
     {
-      id: 'wf_ubo_noncompliance', name: 'UBO Non-Compliance → Escalate', enabled: true,
+      id: 'wf_ubo_noncompliance', name: 'UBO Non-Compliance -Escalate', enabled: true,
       trigger: 'ubo_noncompliance', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'ubo_verification', priority: 'high' },
@@ -211,7 +211,7 @@
       ]
     },
     {
-      id: 'wf_pf_risk_trigger', name: 'PF Risk Detected → Assessment', enabled: true,
+      id: 'wf_pf_risk_trigger', name: 'PF Risk Detected -Assessment', enabled: true,
       trigger: 'pf_risk_detected', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'pf_assessment', priority: 'high' },
@@ -236,7 +236,7 @@
       ]
     },
     {
-      id: 'wf_moe_circular', name: 'MOE Circular → Policy Update', enabled: true,
+      id: 'wf_moe_circular', name: 'MOE Circular -Policy Update', enabled: true,
       trigger: 'moe_circular', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'reg_change_impact', priority: 'high' },
@@ -245,16 +245,16 @@
       ]
     },
     {
-      id: 'wf_asset_freeze', name: 'Sanctions Confirmed → Asset Freeze', enabled: true,
+      id: 'wf_asset_freeze', name: 'Sanctions Confirmed -Asset Freeze', enabled: true,
       trigger: 'sanctions_confirmed', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'sanctions_update', priority: 'high' },
-        { type: 'email_alert', subject: 'URGENT: Asset Freeze Required — {entityName}', message: 'Confirmed sanctions match. Freeze assets immediately. Report to EOCN within 24h. File CNMR within 5 days. Ref: Cabinet Resolution 74/2020.' },
+        { type: 'email_alert', subject: 'URGENT: Asset Freeze Required -{entityName}', message: 'Confirmed sanctions match. Freeze assets immediately. Report to EOCN within 24h. File CNMR within 5 days. Ref: Cabinet Resolution 74/2020.' },
         { type: 'browser_notify', title: 'ASSET FREEZE REQUIRED', message: 'Confirmed match: {entityName}. Freeze assets NOW.' }
       ]
     },
     {
-      id: 'wf_admin_penalty_risk', name: 'Violation → Penalty Risk Assessment', enabled: true,
+      id: 'wf_admin_penalty_risk', name: 'Violation -Penalty Risk Assessment', enabled: true,
       trigger: 'compliance_violation', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'breach_notification', priority: 'high' },
@@ -262,7 +262,7 @@
       ]
     },
     {
-      id: 'wf_customer_exit', name: 'Customer Exit → Retention + STR Review', enabled: true,
+      id: 'wf_customer_exit', name: 'Customer Exit -Retention + STR Review', enabled: true,
       trigger: 'customer_exit', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'record_retention', priority: 'medium' },
@@ -270,7 +270,7 @@
       ]
     },
     {
-      id: 'wf_evidence_expiry', name: 'Evidence Expiring → Refresh', enabled: true,
+      id: 'wf_evidence_expiry', name: 'Evidence Expiring -Refresh', enabled: true,
       trigger: 'evidence_expiring', condition: { daysUntilExpiry: 30 },
       actions: [
         { type: 'create_asana_task', template: 'kyc_refresh', priority: 'medium' },
@@ -286,7 +286,7 @@
       ]
     },
     {
-      id: 'wf_whistleblower', name: 'Whistleblower Report → Investigation', enabled: true,
+      id: 'wf_whistleblower', name: 'Whistleblower Report -Investigation', enabled: true,
       trigger: 'whistleblower_report', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'incident_response', priority: 'high' },
@@ -294,7 +294,7 @@
       ]
     },
     {
-      id: 'wf_lbma_audit_due', name: 'LBMA Audit Due → Preparation', enabled: true,
+      id: 'wf_lbma_audit_due', name: 'LBMA Audit Due -Preparation', enabled: true,
       trigger: 'scheduled_lbma_audit', condition: { frequency: 'annual' },
       actions: [
         { type: 'create_asana_task', template: 'supply_chain_audit', priority: 'high' },
@@ -303,16 +303,16 @@
       ]
     },
     {
-      id: 'wf_nra_update', name: 'NRA Updated → Risk Framework Review', enabled: true,
+      id: 'wf_nra_update', name: 'NRA Updated -Risk Framework Review', enabled: true,
       trigger: 'nra_update', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'ewra_review', priority: 'high' },
         { type: 'create_asana_task', template: 'compliance_manual', priority: 'medium' },
-        { type: 'email_alert', subject: 'UAE NRA Updated — Framework Review', message: 'New NRA published. Update EWRA and Compliance Manual per MoE Circular No.1/2024.' }
+        { type: 'email_alert', subject: 'UAE NRA Updated -Framework Review', message: 'New NRA published. Update EWRA and Compliance Manual per MoE Circular No.1/2024.' }
       ]
     },
     {
-      id: 'wf_cahra_shipment', name: 'CAHRA Shipment → Enhanced DD', enabled: true,
+      id: 'wf_cahra_shipment', name: 'CAHRA Shipment -Enhanced DD', enabled: true,
       trigger: 'cahra_shipment', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'responsible_sourcing', priority: 'high' },
@@ -321,7 +321,7 @@
       ]
     },
     {
-      id: 'wf_tipping_off_risk', name: 'Tipping Off Risk → Lock Down', enabled: true,
+      id: 'wf_tipping_off_risk', name: 'Tipping Off Risk -Lock Down', enabled: true,
       trigger: 'tipping_off_risk', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'tipping_off_review', priority: 'high' },
@@ -329,7 +329,7 @@
       ]
     },
     {
-      id: 'wf_data_destruction', name: 'Records Past Retention → Destruction', enabled: true,
+      id: 'wf_data_destruction', name: 'Records Past Retention -Destruction', enabled: true,
       trigger: 'scheduled_data_review', condition: { frequency: 'annual' },
       actions: [
         { type: 'create_asana_task', template: 'data_destruction', priority: 'low' },
@@ -347,7 +347,7 @@
     },
     // ── DPMS-Specific & FATF Rec 22 Workflows ──
     {
-      id: 'wf_cash_cumulative_55k', name: 'Cumulative Cash ≥ AED 55K → CDD + DPMSR', enabled: true,
+      id: 'wf_cash_cumulative_55k', name: 'Cumulative Cash ≥ AED 55K -CDD + DPMSR', enabled: true,
       trigger: 'cumulative_cash_threshold', condition: { amount: 55000, period: 30 },
       actions: [
         { type: 'create_asana_task', template: 'ctr_filing', priority: 'high' },
@@ -364,7 +364,7 @@
       ]
     },
     {
-      id: 'wf_third_party_payment', name: 'Third-Party Payer Detected → EDD', enabled: true,
+      id: 'wf_third_party_payment', name: 'Third-Party Payer Detected -EDD', enabled: true,
       trigger: 'third_party_payment', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
@@ -372,12 +372,12 @@
       ]
     },
     {
-      id: 'wf_gold_origin_mismatch', name: 'Gold Origin Discrepancy → Investigation', enabled: true,
+      id: 'wf_gold_origin_mismatch', name: 'Gold Origin Discrepancy -Investigation', enabled: true,
       trigger: 'origin_discrepancy', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'responsible_sourcing', priority: 'high' },
         { type: 'create_asana_task', template: 'gold_import_clearance', priority: 'high' },
-        { type: 'email_alert', subject: 'CRITICAL: Gold Origin Mismatch — {shipmentRef}', message: 'Declared country of origin does not match shipping route or supplier profile. Halt clearance pending investigation. Ref: OECD DDG Step 1-2, LBMA RGG v9.' }
+        { type: 'email_alert', subject: 'CRITICAL: Gold Origin Mismatch -{shipmentRef}', message: 'Declared country of origin does not match shipping route or supplier profile. Halt clearance pending investigation. Ref: OECD DDG Step 1-2, LBMA RGG v9.' }
       ]
     },
     {
@@ -385,11 +385,11 @@
       trigger: 'supply_chain_incident', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'supply_chain_audit', priority: 'high' },
-        { type: 'email_alert', subject: 'LBMA Incident: {supplierName}', message: 'Supply chain incident — possible conflict gold or refusal to provide origin info. Escalate per LBMA RGG v9 Step 3 & 5, OECD DDG Annex II.' }
+        { type: 'email_alert', subject: 'LBMA Incident: {supplierName}', message: 'Supply chain incident -possible conflict gold or refusal to provide origin info. Escalate per LBMA RGG v9 Step 3 & 5, OECD DDG Annex II.' }
       ]
     },
     {
-      id: 'wf_asm_source_detected', name: 'Artisanal Mining Source → Enhanced DD', enabled: true,
+      id: 'wf_asm_source_detected', name: 'Artisanal Mining Source -Enhanced DD', enabled: true,
       trigger: 'asm_source', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'responsible_sourcing', priority: 'high' },
@@ -398,7 +398,7 @@
       ]
     },
     {
-      id: 'wf_recycled_gold_verification', name: 'Recycled Gold → Origin Verification', enabled: true,
+      id: 'wf_recycled_gold_verification', name: 'Recycled Gold -Origin Verification', enabled: true,
       trigger: 'recycled_gold_declared', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'hallmarking_verification', priority: 'medium' },
@@ -406,7 +406,7 @@
       ]
     },
     {
-      id: 'wf_structuring_detected', name: 'Structuring Pattern → STR Review', enabled: true,
+      id: 'wf_structuring_detected', name: 'Structuring Pattern -STR Review', enabled: true,
       trigger: 'structuring_detected', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'str_filing', priority: 'high' },
@@ -419,12 +419,12 @@
       trigger: 'local_terrorist_match', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'sanctions_update', priority: 'high' },
-        { type: 'email_alert', subject: 'URGENT: UAE Local Terrorist List Match — {entityName}', message: 'Match against UAE Local Terrorist List. Freeze assets without delay. Report to EOCN within 24 hours. Ref: Cabinet Resolution 74/2020 Art.4-5.' },
+        { type: 'email_alert', subject: 'URGENT: UAE Local Terrorist List Match -{entityName}', message: 'Match against UAE Local Terrorist List. Freeze assets without delay. Report to EOCN within 24 hours. Ref: Cabinet Resolution 74/2020 Art.4-5.' },
         { type: 'browser_notify', title: 'LOCAL TERRORIST LIST MATCH', message: 'Freeze assets NOW: {entityName}' }
       ]
     },
     {
-      id: 'wf_pf_strategic_goods', name: 'PF Strategic Goods Nexus → Escalate', enabled: true,
+      id: 'wf_pf_strategic_goods', name: 'PF Strategic Goods Nexus -Escalate', enabled: true,
       trigger: 'strategic_goods_nexus', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'dual_use_screening', priority: 'high' },
@@ -433,11 +433,11 @@
       ]
     },
     {
-      id: 'wf_co_change', name: 'Compliance Officer Change → Notification', enabled: true,
+      id: 'wf_co_change', name: 'Compliance Officer Change -Notification', enabled: true,
       trigger: 'co_change', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'compliance_committee', priority: 'high' },
-        { type: 'email_alert', subject: 'Compliance Officer Change — Handover Required', message: 'CO/MLRO change detected. Complete handover checklist and notify MoE within regulatory timeframe. Ref: FDL Art.20, Cabinet Resolution 134/2025 Art.18.' }
+        { type: 'email_alert', subject: 'Compliance Officer Change -Handover Required', message: 'CO/MLRO change detected. Complete handover checklist and notify MoE within regulatory timeframe. Ref: FDL Art.20, Cabinet Resolution 134/2025 Art.18.' }
       ]
     },
     {
@@ -458,16 +458,16 @@
       ]
     },
     {
-      id: 'wf_fiu_info_request', name: 'FIU Information Request → Respond', enabled: true,
+      id: 'wf_fiu_info_request', name: 'FIU Information Request -Respond', enabled: true,
       trigger: 'fiu_request', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'moe_inspection', priority: 'high' },
         { type: 'email_alert', subject: 'URGENT: UAE FIU Information Request', message: 'Information request received from FIU. Respond within deadline. Do not tip off subject. Ref: FDL Art.14 & 42, Cabinet Resolution 134/2025 Art.17.' },
-        { type: 'browser_notify', title: 'FIU Request — Immediate Action', message: 'FIU information request received. Respond urgently.' }
+        { type: 'browser_notify', title: 'FIU Request -Immediate Action', message: 'FIU information request received. Respond urgently.' }
       ]
     },
     {
-      id: 'wf_unlicensed_broker', name: 'Unlicensed Broker Detected → Refuse', enabled: true,
+      id: 'wf_unlicensed_broker', name: 'Unlicensed Broker Detected -Refuse', enabled: true,
       trigger: 'unlicensed_broker', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'incident_response', priority: 'high' },
@@ -544,6 +544,19 @@
     return rules;
   }
 
+  function editRule(id) {
+    const rules = getRules();
+    const rule = rules.find(r => r.id === id);
+    if (!rule) return;
+    var newName = prompt('Rule name:', rule.name);
+    if (newName !== null && newName.trim()) {
+      rule.name = newName.trim();
+      saveRules(rules);
+      if (typeof toast === 'function') toast('Rule updated: ' + rule.name, 'success');
+      refresh();
+    }
+  }
+
   // ══════════════════════════════════════════════════════════════
   // WORKFLOW LOG
   // ══════════════════════════════════════════════════════════════
@@ -560,7 +573,7 @@
       timestamp: new Date().toISOString()
     });
     save(WF_LOG_KEY, log.slice(0, MAX_LOG));
-    if (typeof logAudit === 'function') logAudit('workflow_executed', `Rule: ${ruleName} — ${success ? 'OK' : 'FAILED'}`);
+    if (typeof logAudit === 'function') logAudit('workflow_executed', `Rule: ${ruleName} -${success ? 'OK' : 'FAILED'}`);
   }
 
   // ── Seed initial success status for all rules ────────────────
@@ -605,7 +618,7 @@
   async function executeCreateAsanaTask(action, data) {
     const proxy = window.PROXY_URL;
     const asanaToken = window.ASANA_TOKEN;
-    if (!proxy && !asanaToken) { return { skipped: true, reason: 'Asana not configured — set Proxy URL or Asana token in Settings' }; }
+    if (!proxy && !asanaToken) { return { skipped: true, reason: 'Asana not configured -set Proxy URL or Asana token in Settings' }; }
     const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
     const projectId = resolver ? resolver.resolveProject('workflow') : (localStorage.getItem('asanaProjectId') || '1213759768596515');
     const templates = (typeof IntegrationsEnhanced !== 'undefined' && IntegrationsEnhanced.asana?.TASK_TEMPLATES) ? IntegrationsEnhanced.asana.TASK_TEMPLATES : {};
@@ -642,7 +655,7 @@
     }
   }
 
-  // Slack removed — stub only
+  // Slack removed -stub only
   async function executeSlackAlert() {
     return { skipped: true, reason: 'Slack removed' };
   }
@@ -715,7 +728,7 @@
       for (const action of rule.actions) {
         // Deduplication: skip if same rule+action+event already processed within 24h
         if (isDuplicate(rule.id, action.type, eventData)) {
-          actionResults.push({ type: action.type, success: true, skipped: true, reason: 'Duplicate — already processed within 24h' });
+          actionResults.push({ type: action.type, success: true, skipped: true, reason: 'Duplicate -already processed within 24h' });
           continue;
         }
         try {
@@ -811,7 +824,7 @@
     if (!snap) return { skipped: true, reason: 'Analytics not available' };
 
     const summary = [
-      `Daily Compliance Digest — ${now.toLocaleDateString('en-AE', { timeZone: 'Asia/Dubai' })}`,
+      `Daily Compliance Digest -${now.toLocaleDateString('en-AE', { timeZone: 'Asia/Dubai' })}`,
       '',
       `Open Gaps: ${snap.openGaps} (Critical: ${snap.critGaps}, High: ${snap.highGaps})`,
       `Closed Gaps: ${snap.closedGaps} / ${snap.totalGaps} total`,
@@ -930,7 +943,7 @@
         <div style="display:flex;flex-direction:column;gap:8px">
           ${rules.map(rule => {
             const triggerLabel = TRIGGER_LABELS[rule.trigger] || rule.trigger;
-            const actionLabels = rule.actions.map(a => ACTION_LABELS[a.type] || a.type).join(' → ');
+            const actionLabels = rule.actions.map(a => ACTION_LABELS[a.type] || a.type).join(' -');
             const lastExec = log.find(l => l.ruleId === rule.id);
             return `
               <div style="padding:12px;background:var(--surface2);border-radius:10px;border-left:3px solid ${rule.enabled ? 'var(--green)' : 'var(--muted)'}">
@@ -941,7 +954,10 @@
                       <span style="font-size:13px;font-weight:500;color:var(--text)">${escHtml(rule.name)}</span>
                     </label>
                   </div>
-                  <span style="font-size:10px;padding:3px 8px;border-radius:6px;background:${rule.enabled ? 'var(--green-dim)' : 'var(--surface)'};color:${rule.enabled ? 'var(--green)' : 'var(--muted)'};font-family:'DM Mono',monospace">${rule.enabled ? 'ACTIVE' : 'DISABLED'}</span>
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <button class="btn btn-sm" style="padding:2px 8px;font-size:9px;border-color:var(--gold);color:var(--gold)" onclick="WorkflowEngine.editRule('${rule.id}')">Edit</button>
+                    <span style="font-size:10px;padding:3px 8px;border-radius:6px;background:${rule.enabled ? 'var(--green-dim)' : 'var(--surface)'};color:${rule.enabled ? 'var(--green)' : 'var(--muted)'};font-family:'DM Mono',monospace">${rule.enabled ? 'ACTIVE' : 'DISABLED'}</span>
+                  </div>
                 </div>
                 <div style="font-size:11px;color:var(--muted);margin-bottom:4px">
                   <strong>Trigger:</strong> ${triggerLabel}
@@ -950,7 +966,7 @@
                 <div style="font-size:11px;color:var(--gold)">
                   <strong>Actions:</strong> ${actionLabels}
                 </div>
-                ${lastExec ? `<div style="font-size:10px;color:var(--muted);margin-top:4px">Last run: ${new Date(lastExec.timestamp).toLocaleString('en-GB')} — ${lastExec.success ? '<span style="color:var(--green)">Success</span>' : '<span style="color:var(--red)">Failed</span>'}</div>` : ''}
+                ${lastExec ? `<div style="font-size:10px;color:var(--muted);margin-top:4px">Last run: ${new Date(lastExec.timestamp).toLocaleString('en-GB')} -${lastExec.success ? '<span style="color:var(--green)">Success</span>' : '<span style="color:var(--red)">Failed</span>'}</div>` : ''}
               </div>`;
           }).join('')}
         </div>
@@ -968,7 +984,7 @@
               <div style="padding:8px;border-bottom:1px solid var(--border);font-size:12px">
                 <span style="color:${e.severity === 'critical' ? 'var(--red)' : e.severity === 'high' ? 'var(--amber)' : 'var(--blue)'};font-weight:500">${(e.severity || '').toUpperCase()}</span>
                 <span style="color:var(--text);margin:0 6px">${escHtml(e.title)}</span>
-                <span style="color:var(--muted);font-family:'DM Mono',monospace">${e.hoursOverdue}h overdue — escalated ${new Date(e.escalatedAt).toLocaleString('en-GB')}</span>
+                <span style="color:var(--muted);font-family:'DM Mono',monospace">${e.hoursOverdue}h overdue -escalated ${new Date(e.escalatedAt).toLocaleString('en-GB')}</span>
               </div>
             `).join('')}
           </div>
@@ -991,7 +1007,7 @@
                 <span style="color:var(--gold);font-family:'DM Mono',monospace">${new Date(l.timestamp).toLocaleString('en-GB')}</span>
                 <span style="color:${l.success ? 'var(--green)' : 'var(--red)'}"> [${l.success ? 'OK' : 'FAIL'}]</span>
                 <span style="color:var(--text);font-weight:500"> ${escHtml(l.ruleName)}</span>
-                <span style="color:var(--muted)"> — ${escHtml(l.details || '')}</span>
+                <span style="color:var(--muted)"> -${escHtml(l.details || '')}</span>
               </div>
             `).join('')}
           </div>
@@ -1015,7 +1031,7 @@
             <button class="btn btn-sm btn-red" onclick="WorkflowEngine.resetChecklists()">Reset All</button>
           </div>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Pre-built compliance workflow checklists. Tick items as you complete them — progress is saved automatically.</p>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Pre-built compliance workflow checklists. Tick items as you complete them -progress is saved automatically.</p>
         <div style="display:flex;flex-direction:column;gap:10px" id="wfChecklists">
           ${renderChecklists()}
         </div>
@@ -1087,7 +1103,7 @@
       'Draft STR in goAML format',
       'Submit STR via goAML portal to UAE FIU',
       'Record STR reference number and submission date',
-      'Apply tipping-off restrictions — no disclosure to customer',
+      'Apply tipping-off restrictions -no disclosure to customer',
       'Continue monitoring the customer relationship',
       'File follow-up reports if additional information emerges',
     ]},
@@ -1235,7 +1251,7 @@
     const csv = ['Document,Version,Effective Date,Updated By,Changes,Status']
       .concat(docs.map(d => `"${d.name}","${d.version}","${d.date}","${d.updatedBy}","${(d.changes||'').replace(/"/g,'""')}","${d.status}"`))
       .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `Document_Versions_${new Date().toISOString().slice(0,10)}.csv`;
@@ -1267,7 +1283,7 @@
     const csv = ['timestamp,ruleId,ruleName,trigger,actions,success,details']
       .concat(log.map(l => [l.timestamp, l.ruleId, `"${l.ruleName}"`, l.trigger, `"${l.actions.join(';')}"`, l.success, `"${(l.details || '').replace(/"/g, '""')}"`].join(',')))
       .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `Workflow_Log_${new Date().toISOString().slice(0, 10)}.csv`;
@@ -1325,6 +1341,7 @@
     refresh,
     getRules,
     toggleRule,
+    editRule,
     resetRules,
     processTrigger,
     runScan,
