@@ -1904,7 +1904,7 @@ Examples:
             <button class="btn btn-gold" onclick="calculateRiskScore()">Calculate Risk Score</button>
             <button class="btn btn-sm btn-blue" onclick="completeOnboarding()">Complete & Save Onboarding</button>
             <button class="btn btn-sm btn-green" onclick="generateSTRFromOnboarding()">Generate STR/SAR</button>
-            <button class="btn btn-sm btn-red" onclick="resetOnboarding()">Clean</button>
+            <button class="btn btn-sm btn-red" onclick="resetOnboarding()">Clear</button>
           </div>
         </div>
         <div id="riskScoreResult" style="display:none;margin-top:16px"></div>
@@ -1996,8 +1996,8 @@ Examples:
         <span class="sec-title">Completed Risk Assessments</span>
         <div id="raHistoryList"><p style="font-size:13px;color:var(--muted)">No assessments recorded yet.</p></div>
       </div>
-      <!-- CRA (Customer Risk Assessment) embedded from compliance-suite -->
-      <div id="cra-embedded-content"></div>
+      <!-- CRA (Customer Risk Assessment) - hidden -->
+      <div id="cra-embedded-content" style="display:none"></div>
     </div>
 
     <!-- INCIDENTS TAB (Incident Register + Whistleblower + STR) -->
