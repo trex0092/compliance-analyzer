@@ -5394,8 +5394,8 @@ function exportIARReportCSV() {
       r.iarSourceFunds||'', r.iarSourceWealth||'', r.createdAt||''
     ]);
   });
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const csv = rows.map(r => r.map(v => { let s=String(v).replace(/"/g,'""'); if(/^[=+\-@\t\r]/.test(s)) s="'"+s; return '"'+s+'"'; }).join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `IAR_ComplianceReport_${new Date().toISOString().split('T')[0]}.csv`;
@@ -8245,7 +8245,7 @@ function renderLocalShipments() {
     return `<div class="asana-item" style="cursor:pointer" onclick="editLocalShipment(${s.id})">
       <div>
         <div class="asana-name">${escHtml(s.invoiceNo)} — ${escHtml(s.supplierCustomer||'—')}</div>
-        <div class="asana-meta">${s.material||'—'} | Amt: ${s.amount||'0'} ${s.currency||''} | Folder: ${s.folderNo||'—'} | Docs: ${docs}/${total}</div>
+        <div class="asana-meta">${escHtml(s.material||'—')} | Amt: ${escHtml(s.amount||'0')} ${escHtml(s.currency||'')} | Folder: ${escHtml(s.folderNo||'—')} | Docs: ${docs}/${total}</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         <span style="font-size:10px;font-weight:700;color:${color}">${pct}%</span>
@@ -10759,7 +10759,7 @@ function renderDefinitions() {
       const badge = isCustom ? ' <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(91,141,239,0.2);color:#5B8DEF;margin-left:4px">UPDATED</span>' : '';
       const editBtn = `<button class="btn btn-sm btn-gold" style="padding:1px 6px;font-size:9px;margin-left:4px" onclick="editDefinition('${section}','${term.replace(/'/g,"\\'")}')">Edit</button>`;
       const termColor = isGold ? 'color:var(--gold)' : 'color:var(--text)';
-      return `<tr class="def-row"><td style="${rowStyle};font-weight:700;${termColor};white-space:nowrap">${term}${badge}${editBtn}</td><td style="${rowStyle};line-height:1.5">${fullTerm}</td></tr>`;
+      return `<tr class="def-row"><td style="${rowStyle};font-weight:700;${termColor};white-space:nowrap">${escHtml(term)}${badge}${editBtn}</td><td style="${rowStyle};line-height:1.5">${escHtml(fullTerm)}</td></tr>`;
     }).join('');
   }
   abBody.innerHTML = renderRows(getMergedDefinitions('abbreviation'), 'abbreviation', true);
@@ -11721,7 +11721,7 @@ function refreshMyWork() {
   var audit = safeLocalParse(AUDIT_TRAIL_STORAGE, []);
   var shps = window.shipments || [];
   var now = new Date(); now.setHours(0,0,0,0);
-  var cfg = complianceConfig;
+  var cfg = complianceConfig || getDefaultComplianceConfig();
 
   // Metrics
   var expiredDocs = 0, expiringDocs = 0, openGaps = 0, openIncidents = 0, criticalShipments = 0, staleScreenings = 0;
