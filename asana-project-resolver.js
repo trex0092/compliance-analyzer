@@ -71,7 +71,7 @@
     var id = customerId || getActiveCompanyInfo().id;
     if (id && CUSTOMER_PROJECTS[id]) return CUSTOMER_PROJECTS[id].name;
     var comp = getActiveCompanyInfo();
-    return comp.name || 'Fine Gold LLC';
+    return comp.name || 'Hawkeye Sterling';
   }
 
   // ─── Retry Queue ───────────────────────────────────────────────────────────

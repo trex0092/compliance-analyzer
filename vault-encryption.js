@@ -279,11 +279,11 @@ var VaultEncryption = (function() {
         html += '<p style="color:#666;margin-top:0;">AES-GCM 256-bit encryption at rest with PBKDF2 key derivation.</p>';
 
         // Lock status indicator
-        html += '<div id="vault-lock-status" style="display:inline-block;padding:6px 14px;border-radius:20px;font-weight:bold;margin-bottom:18px;';
+        html += '<div id="vault-lock-status" style="display:inline-block;padding:6px 14px;border-radius:4px;font-weight:bold;margin-bottom:18px;';
         html += 'background:' + lockColour + ';color:#fff;">' + lockIcon + ' ' + lockLabel + '</div>';
 
         // Unlock / Lock panel
-        html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:18px;">';
+        html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:3px;padding:16px;margin-bottom:18px;">';
         if (locked) {
             html += '<h3 style="margin-top:0;">Unlock Vault</h3>';
             html += '<div style="display:flex;gap:8px;align-items:center;">';
@@ -304,7 +304,7 @@ var VaultEncryption = (function() {
         // Only show management UI when unlocked
         if (!locked) {
             // Add new item form
-            html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:18px;">';
+            html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:3px;padding:16px;margin-bottom:18px;">';
             html += '<h3 style="margin-top:0;">Add New Item</h3>';
             html += '<div style="margin-bottom:8px;">';
             html += '<input type="text" id="vault-new-key" placeholder="Item key (e.g. api-token)" ';
@@ -321,7 +321,7 @@ var VaultEncryption = (function() {
             html += '</div>';
 
             // Stored items list
-            html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:18px;">';
+            html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:3px;padding:16px;margin-bottom:18px;">';
             html += '<h3 style="margin-top:0;">Stored Items (' + keys.length + ')</h3>';
             if (keys.length === 0) {
                 html += '<p style="color:#999;font-style:italic;">No encrypted items stored yet.</p>';
@@ -348,7 +348,7 @@ var VaultEncryption = (function() {
             html += '</div>';
 
             // Change passphrase form
-            html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:18px;">';
+            html += '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:3px;padding:16px;margin-bottom:18px;">';
             html += '<h3 style="margin-top:0;">Change Passphrase</h3>';
             html += '<div style="margin-bottom:8px;">';
             html += '<input type="password" id="vault-old-pass" placeholder="Current passphrase" ';

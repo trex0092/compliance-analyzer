@@ -151,6 +151,7 @@ const SupplyChain = (function() {
     if (supplier.isASM) { score += 15; flags.push('Artisanal/small-scale mining (ASM) source — enhanced DD required'); }
     if (!supplier.kycCompleted) { score += 10; flags.push('KYC/CDD not completed for this supplier'); }
 
+    score = Math.min(score, 100);
     const level = score >= 50 ? 'HIGH' : score >= 25 ? 'MEDIUM' : 'LOW';
     return { score, level, flags };
   }
@@ -219,20 +220,20 @@ const SupplyChain = (function() {
     const statusBg = { 'NOT_STARTED': 'rgba(217,79,79,0.15)', 'IN_PROGRESS': 'rgba(232,168,56,0.15)', 'COMPLETED': 'rgba(39,174,96,0.15)', 'NEEDS_UPDATE': 'rgba(155,89,182,0.15)', 'NOT_APPLICABLE': 'rgba(74,143,193,0.15)' };
     const statusBorder = { 'NOT_STARTED': '#D94F4F', 'IN_PROGRESS': '#E8A838', 'COMPLETED': '#27AE60', 'NEEDS_UPDATE': '#9B59B6', 'NOT_APPLICABLE': '#4A8FC1' };
     const rggHtml = rggSteps.map(s => `
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid ${statusBorder[s.status]};border-radius:10px;margin-bottom:6px;background:${statusBg[s.status]}">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid ${statusBorder[s.status]};border-radius:4px;margin-bottom:6px;background:${statusBg[s.status]}">
         <div style="min-width:30px;width:30px;height:30px;border-radius:50%;background:${statusColors[s.status]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0">${s.step}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600">${s.title}</div>
           <div style="font-size:10px;color:var(--muted);margin-top:1px">${s.description}</div>
         </div>
-        <select onchange="SupplyChain.updateRGGStep(${s.step}, this.value)" style="width:120px;max-width:120px;flex-shrink:0;padding:4px 6px;border-radius:6px;font-size:10px;font-weight:600;border:2px solid ${statusBorder[s.status]};background:${statusBg[s.status]};color:${statusColors[s.status]};cursor:pointer">
+        <select onchange="SupplyChain.updateRGGStep(${s.step}, this.value)" style="width:120px;max-width:120px;flex-shrink:0;padding:4px 6px;border-radius:3px;font-size:10px;font-weight:600;border:2px solid ${statusBorder[s.status]};background:${statusBg[s.status]};color:${statusColors[s.status]};cursor:pointer">
           ${Object.entries(statusLabels).map(([k, v]) => `<option value="${k}" ${s.status === k ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
       </div>
     `).join('');
 
     const entriesHtml = entries.slice(0, 20).map(e => `
-      <div style="padding:10px;border:1px solid ${e.riskLevel === 'HIGH' ? 'var(--red)' : e.riskLevel === 'MEDIUM' ? 'var(--amber)' : 'var(--border)'};border-radius:8px;margin-bottom:8px;background:var(--surface2)">
+      <div style="padding:10px;border:1px solid ${e.riskLevel === 'HIGH' ? 'var(--red)' : e.riskLevel === 'MEDIUM' ? 'var(--amber)' : 'var(--border)'};border-radius:3px;margin-bottom:8px;background:var(--surface2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <div>
             <span class="badge ${e.riskLevel === 'HIGH' ? 'b-r' : e.riskLevel === 'MEDIUM' ? 'b-a' : 'b-g'}">${e.riskLevel} (${e.riskScore})</span>
@@ -295,7 +296,7 @@ const SupplyChain = (function() {
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">LBMA RGG v9 — Five-Step Framework</span>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Responsible Gold Guidance compliance tracker</span>
+          <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Responsible Gold Guidance compliance tracker</span>
         </div>
         ${rggHtml}
       </div>
@@ -304,7 +305,7 @@ const SupplyChain = (function() {
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">CAHRA Country List</span>
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Conflict-Affected and High-Risk Areas</span>
+            <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Conflict-Affected and High-Risk Areas</span>
             <button class="btn btn-sm btn-green" onclick="SupplyChain.checkListUpdate('cahra')" style="padding:3px 10px;font-size:10px">Update</button>
           </div>
         </div>
@@ -317,13 +318,13 @@ const SupplyChain = (function() {
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">FATF Gray List</span>
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Jurisdictions Under Increased Monitoring — February 2026</span>
+            <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Jurisdictions Under Increased Monitoring — February 2026</span>
             <button class="btn btn-sm btn-green" onclick="SupplyChain.checkListUpdate('fatf')" style="padding:3px 10px;font-size:10px">Update</button>
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Countries identified by FATF as having strategic deficiencies in their AML/CFT/CPF regimes and committed to action plans. Enhanced due diligence required for business relationships involving these jurisdictions. Auto-checked on supplier entry.</p>
         <div>${fatfHtml}</div>
-        <p style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">Source: FATF — fatf-gafi.org/en/countries/jurisdictions-under-increased-monitoring</p>
+        <p style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'Montserrat',sans-serif">Source: FATF — fatf-gafi.org/en/countries/jurisdictions-under-increased-monitoring</p>
         <div id="fatfUpdateNotif"></div>
       </div>
 
@@ -331,13 +332,13 @@ const SupplyChain = (function() {
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">EU High-Risk Third Countries</span>
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Delegated Regulation (EU) 2016/1675 — Latest Update 2026</span>
+            <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Delegated Regulation (EU) 2016/1675 — Latest Update 2026</span>
             <button class="btn btn-sm btn-green" onclick="SupplyChain.checkListUpdate('eu')" style="padding:3px 10px;font-size:10px">Update</button>
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Third countries identified by the European Commission as having strategic deficiencies in their AML/CFT frameworks. Enhanced due diligence is mandatory under EU AMLD for business relationships and transactions involving these jurisdictions. Auto-checked on supplier entry.</p>
         <div>${euHrHtml}</div>
-        <p style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">Source: European Commission — Delegated Regulation (EU) 2016/1675 as amended</p>
+        <p style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'Montserrat',sans-serif">Source: European Commission — Delegated Regulation (EU) 2016/1675 as amended</p>
         <div id="euUpdateNotif"></div>
       </div>
     `;
@@ -385,9 +386,9 @@ Format your response as a structured compliance update notification. Be concise 
 
       const now = new Date().toLocaleString('en-GB');
       notifEl.innerHTML = `
-        <div style="margin-top:12px;padding:12px;background:rgba(180,151,90,0.08);border:1px solid rgba(180,151,90,0.25);border-radius:8px">
+        <div style="margin-top:12px;padding:12px;background:rgba(180,151,90,0.08);border:1px solid rgba(180,151,90,0.25);border-radius:3px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-size:12px;font-weight:700;color:var(--gold);font-family:'DM Mono',monospace">LIST UPDATE CHECK</span>
+            <span style="font-size:12px;font-weight:700;color:var(--gold);font-family:'Montserrat',sans-serif">LIST UPDATE CHECK</span>
             <span style="font-size:10px;color:var(--muted)">${now}</span>
           </div>
           <div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>

@@ -1,5 +1,5 @@
 /**
- * ComplianceDB - IndexedDB Backend for Compliance Analyser
+ * ComplianceDB - IndexedDB Backend for Hawkeye Sterling V2
  *
  * Provides persistent storage using IndexedDB, replacing localStorage
  * for large datasets while maintaining backwards compatibility through

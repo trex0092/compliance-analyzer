@@ -1,5 +1,5 @@
 /**
- * Regulatory Monitor Module — Compliance Analyser v2.3
+ * Regulatory Monitor Module — Hawkeye Sterling V2 v2.3
  * Real-time regulatory monitoring, framework database, alerts, and health scoring
  */
 (function () {
@@ -238,6 +238,9 @@
   // ── Alert System ──
   function createAlert(alert) {
     const alerts = getAlertHistory();
+    const today = new Date().toISOString().slice(0, 10);
+    const isDup = alerts.some(a => a.type === alert.type && a.framework === alert.framework && a.message === alert.message && a.createdAt && a.createdAt.slice(0, 10) === today);
+    if (isDup) return;
     alerts.unshift({
       id: crypto.randomUUID(),
       ...alert,
@@ -279,7 +282,7 @@
     // Check overdue regulatory changes
     const changes = getRegChanges();
     const now = new Date();
-    changes.filter(c => c.status !== 'completed' && new Date(c.deadline) < now).forEach(c => {
+    changes.filter(c => c.status !== 'completed' && c.deadline && new Date(c.deadline + 'T23:59:59') < now).forEach(c => {
       newAlerts.push({
         severity: 'High',
         framework: c.framework || 'General',
@@ -326,14 +329,14 @@
 <div class="card">
   <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px">
     <div style="text-align:center">
-      <div style="font-size:48px;font-family:'Playfair Display',serif;color:${scoreBarColor}">${health.overall}</div>
-      <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">OVERALL SCORE</div>
+      <div style="font-size:48px;font-family:'Cinzel',serif;color:${scoreBarColor}">${health.overall}</div>
+      <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">OVERALL SCORE</div>
     </div>
     <div style="flex:1">
-      <div style="background:var(--surface2);border-radius:8px;height:12px;overflow:hidden">
-        <div style="width:${health.overall}%;height:100%;background:${scoreBarColor};border-radius:8px;transition:width 0.5s"></div>
+      <div style="background:var(--surface2);border-radius:3px;height:12px;overflow:hidden">
+        <div style="width:${health.overall}%;height:100%;background:${scoreBarColor};border-radius:3px;transition:width 0.5s"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">
         <span>Status: <span style="color:var(--${overallColor})">${health.status}</span></span>
         <span>${unackAlerts.length} unacknowledged alert${unackAlerts.length !== 1 ? 's' : ''}</span>
       </div>
@@ -351,10 +354,10 @@
       const barCol = fwScore.score >= 80 ? 'var(--green)' : fwScore.score >= 60 ? 'var(--amber)' : 'var(--red)';
 
       html += `
-    <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${barCol};border-radius:10px;padding:12px;cursor:pointer" onclick="RegulatoryMonitor.expandFramework('${fwId}')">
+    <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${barCol};border-radius:4px;padding:12px;cursor:pointer" onclick="RegulatoryMonitor.expandFramework('${fwId}')">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:13px;font-weight:500">${fw.icon} ${fw.name}</div>
-        <span style="font-size:20px;font-family:'Playfair Display',serif;color:${barCol}">${fwScore.score}%</span>
+        <span style="font-size:20px;font-family:'Cinzel',serif;color:${barCol}">${fwScore.score}%</span>
       </div>
       <div style="font-size:10px;color:var(--muted);margin:4px 0">${fw.jurisdiction} | ${fw.category}</div>
       <div style="font-size:9px;color:var(--muted);margin:4px 0;line-height:1.4;max-height:28px;overflow:hidden">${fw.description}</div>
@@ -362,10 +365,10 @@
         <div style="width:${fwScore.score}%;height:100%;background:${barCol};border-radius:4px"></div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${fwScore.completed}/${fwScore.total} requirements met</div>
-        <span style="font-size:9px;padding:1px 6px;background:${fwScore.score >= 80 ? 'rgba(63,185,80,0.1)' : fwScore.score >= 60 ? 'rgba(227,179,65,0.1)' : 'rgba(248,81,73,0.1)'};color:${barCol};border:1px solid ${barCol};font-family:'DM Mono',monospace">${fwScore.status}</span>
+        <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">${fwScore.completed}/${fwScore.total} requirements met</div>
+        <span style="font-size:9px;padding:1px 6px;background:${fwScore.score >= 80 ? 'rgba(63,185,80,0.1)' : fwScore.score >= 60 ? 'rgba(227,179,65,0.1)' : 'rgba(248,81,73,0.1)'};color:${barCol};border:1px solid ${barCol};font-family:'Montserrat',sans-serif">${fwScore.status}</span>
       </div>
-      <div style="font-size:9px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace">Updated: ${fw.last_updated} | ${fw.risk_areas.length} risk areas | ${fw.penalties.split(',')[0]}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:4px;font-family:'Montserrat',sans-serif">Updated: ${fw.last_updated} | ${fw.risk_areas.length} risk areas | ${fw.penalties.split(',')[0]}</div>
     </div>`;
     });
 
@@ -403,7 +406,7 @@
   // ── Render Regulatory Change Tracker (own tab) ──
   function renderChangeTrackerTab() {
     const changes = getRegChanges();
-    const overdueCount = changes.filter(c => c.status !== 'completed' && new Date(c.deadline) < new Date()).length;
+    const overdueCount = changes.filter(c => c.status !== 'completed' && c.deadline && new Date(c.deadline + 'T23:59:59') < new Date()).length;
     const pendingCount = changes.filter(c => c.status !== 'completed').length;
     const completedCount = changes.filter(c => c.status === 'completed').length;
 
@@ -411,20 +414,20 @@
 <div class="card">
   <div class="top-bar" style="margin-bottom:10px">
     <span class="sec-title" style="margin:0;border:none;padding:0">Regulatory Change Tracker</span>
-    <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Track regulatory updates, impact assessments, and compliance deadlines</span>
+    <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Track regulatory updates, impact assessments, and compliance deadlines</span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-    <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+    <div style="background:var(--surface2);border-radius:3px;padding:10px;text-align:center">
       <div style="font-size:20px;font-weight:500;color:var(--amber)">${pendingCount}</div>
-      <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Pending</div>
+      <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">Pending</div>
     </div>
-    <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+    <div style="background:var(--surface2);border-radius:3px;padding:10px;text-align:center">
       <div style="font-size:20px;font-weight:500;color:var(--red)">${overdueCount}</div>
-      <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Overdue</div>
+      <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">Overdue</div>
     </div>
-    <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+    <div style="background:var(--surface2);border-radius:3px;padding:10px;text-align:center">
       <div style="font-size:20px;font-weight:500;color:var(--green)">${completedCount}</div>
-      <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Completed</div>
+      <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">Completed</div>
     </div>
   </div>
 </div>
@@ -481,20 +484,20 @@
     el.innerHTML = `
 <div class="sec-title">${fw.icon} ${fw.name} — REQUIREMENTS CHECKLIST</div>
 <p style="font-size:12px;color:var(--muted);margin-bottom:12px">${fw.description}</p>
-<p style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:12px">
+<p style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif;margin-bottom:12px">
   Jurisdiction: ${fw.jurisdiction} | Category: ${fw.category} | Updated: ${fw.last_updated}<br>
   Penalties: ${fw.penalties}
 </p>
 <div style="margin-bottom:12px">
 ${fw.key_requirements.map((req, i) => {
   const done = completed.includes(i);
-  return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${done ? 'var(--green-dim)' : 'var(--surface2)'};border-radius:6px;margin-bottom:4px;cursor:pointer" onclick="RegulatoryMonitor.toggleRequirement('${fwId}',${i});switchTab('monitor')">
+  return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${done ? 'var(--green-dim)' : 'var(--surface2)'};border-radius:3px;margin-bottom:4px;cursor:pointer" onclick="RegulatoryMonitor.toggleRequirement('${fwId}',${i});switchTab('monitor')">
     <span style="font-size:16px">${done ? '✅' : '⬜'}</span>
     <span style="font-size:12px;color:${done ? 'var(--green)' : 'var(--text)'}">${req}</span>
   </div>`;
 }).join('')}
 </div>
-<div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">
+<div style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">
   <strong>Risk Areas:</strong> ${fw.risk_areas.join(' | ')}
 </div>
 <button class="btn-sm" onclick="document.getElementById('frameworkDetail').style.display='none'" style="margin-top:8px">Close</button>`;

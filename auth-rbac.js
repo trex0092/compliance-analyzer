@@ -486,7 +486,7 @@ const AuthRBAC = (function () {
             ">
                 <div style="
                     background:var(--surface,#1a1a2e);border:1px solid var(--border,#2a2a3e);
-                    border-radius:12px;padding:40px;width:380px;max-width:90vw;
+                    border-radius:4px;padding:40px;width:380px;max-width:90vw;
                 ">
                     <h2 style="color:var(--gold,#d4a843);margin:0 0 8px;font-size:1.5rem;text-align:center;">
                         Hawkeye Sterling V2
@@ -496,25 +496,25 @@ const AuthRBAC = (function () {
                     </p>
                     <div id="fgl-login-error" style="
                         display:none;background:#3a1a1a;border:1px solid #6a2a2a;
-                        color:#f08080;padding:10px 14px;border-radius:6px;margin-bottom:16px;
+                        color:#f08080;padding:10px 14px;border-radius:3px;margin-bottom:16px;
                         font-size:0.85rem;
                     "></div>
                     <label style="display:block;color:var(--text,#e0e0e0);font-size:0.8rem;margin-bottom:6px;">Username</label>
                     <input id="fgl-login-user" type="text" autocomplete="username" style="
-                        width:100%;padding:10px 12px;margin-bottom:16px;border-radius:6px;
+                        width:100%;padding:10px 12px;margin-bottom:16px;border-radius:3px;
                         border:1px solid var(--border,#2a2a3e);background:var(--surface2,#12121f);
                         color:var(--text,#e0e0e0);font-size:0.95rem;box-sizing:border-box;
                         outline:none;
                     " />
                     <label style="display:block;color:var(--text,#e0e0e0);font-size:0.8rem;margin-bottom:6px;">Password</label>
                     <input id="fgl-login-pass" type="password" autocomplete="current-password" style="
-                        width:100%;padding:10px 12px;margin-bottom:24px;border-radius:6px;
+                        width:100%;padding:10px 12px;margin-bottom:24px;border-radius:3px;
                         border:1px solid var(--border,#2a2a3e);background:var(--surface2,#12121f);
                         color:var(--text,#e0e0e0);font-size:0.95rem;box-sizing:border-box;
                         outline:none;
                     " />
                     <button id="fgl-login-btn" style="
-                        width:100%;padding:12px;border:none;border-radius:6px;
+                        width:100%;padding:12px;border:none;border-radius:3px;
                         background:var(--gold,#d4a843);color:#000;font-weight:600;
                         font-size:0.95rem;cursor:pointer;transition:opacity 0.2s;
                     ">Sign In</button>
@@ -565,7 +565,7 @@ const AuthRBAC = (function () {
         overlay.innerHTML = `
             <div style="
                 background:var(--surface,#1a1a2e);border:1px solid var(--border,#2a2a3e);
-                border-radius:12px;padding:40px;width:380px;max-width:90vw;
+                border-radius:4px;padding:40px;width:380px;max-width:90vw;
             ">
                 <h2 style="color:var(--gold,#d4a843);margin:0 0 8px;font-size:1.3rem;text-align:center;">
                     Change Default Password
@@ -573,28 +573,28 @@ const AuthRBAC = (function () {
                 <p style="color:var(--muted,#8888aa);text-align:center;margin:0 0 16px;font-size:0.85rem;">
                     You must change the default admin password before continuing.
                 </p>
-                <div style="background:var(--surface2,#12121f);border:1px solid var(--border,#2a2a3e);border-radius:6px;padding:10px 14px;margin-bottom:20px;font-size:0.78rem;color:var(--muted,#8888aa);line-height:1.5;">
+                <div style="background:var(--surface2,#12121f);border:1px solid var(--border,#2a2a3e);border-radius:3px;padding:10px 14px;margin-bottom:20px;font-size:0.78rem;color:var(--muted,#8888aa);line-height:1.5;">
                     <strong style="color:var(--gold,#d4a843);">Password Policy:</strong> Min ${PASSWORD_POLICY.minLength} chars, uppercase, lowercase, digit, and special character required.
                 </div>
                 <div id="fgl-chpw-error" style="
                     display:none;background:#3a1a1a;border:1px solid #6a2a2a;
-                    color:#f08080;padding:10px 14px;border-radius:6px;margin-bottom:16px;
+                    color:#f08080;padding:10px 14px;border-radius:3px;margin-bottom:16px;
                     font-size:0.85rem;
                 "></div>
                 <label style="display:block;color:var(--text,#e0e0e0);font-size:0.8rem;margin-bottom:6px;">New Password</label>
                 <input id="fgl-chpw-new" type="password" style="
-                    width:100%;padding:10px 12px;margin-bottom:16px;border-radius:6px;
+                    width:100%;padding:10px 12px;margin-bottom:16px;border-radius:3px;
                     border:1px solid var(--border,#2a2a3e);background:var(--surface2,#12121f);
                     color:var(--text,#e0e0e0);font-size:0.95rem;box-sizing:border-box;outline:none;
                 " />
                 <label style="display:block;color:var(--text,#e0e0e0);font-size:0.8rem;margin-bottom:6px;">Confirm Password</label>
                 <input id="fgl-chpw-confirm" type="password" style="
-                    width:100%;padding:10px 12px;margin-bottom:24px;border-radius:6px;
+                    width:100%;padding:10px 12px;margin-bottom:24px;border-radius:3px;
                     border:1px solid var(--border,#2a2a3e);background:var(--surface2,#12121f);
                     color:var(--text,#e0e0e0);font-size:0.95rem;box-sizing:border-box;outline:none;
                 " />
                 <button id="fgl-chpw-btn" style="
-                    width:100%;padding:12px;border:none;border-radius:6px;
+                    width:100%;padding:12px;border:none;border-radius:3px;
                     background:var(--gold,#d4a843);color:#000;font-weight:600;
                     font-size:0.95rem;cursor:pointer;
                 ">Update Password</button>
@@ -654,7 +654,7 @@ const AuthRBAC = (function () {
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
                         <h2 style="color:var(--gold,#d4a843);margin:0;font-size:1.4rem;">User Management</h2>
                         <button id="fgl-um-add-btn" style="
-                            padding:8px 18px;border:none;border-radius:6px;
+                            padding:8px 18px;border:none;border-radius:3px;
                             background:var(--gold,#d4a843);color:#000;font-weight:600;
                             cursor:pointer;font-size:0.85rem;
                         ">+ Add User</button>
@@ -663,7 +663,7 @@ const AuthRBAC = (function () {
                     <!-- Users Table -->
                     <div style="
                         background:var(--surface,#1a1a2e);border:1px solid var(--border,#2a2a3e);
-                        border-radius:8px;overflow:hidden;margin-bottom:24px;
+                        border-radius:3px;overflow:hidden;margin-bottom:24px;
                     ">
                         <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
                             <thead>
@@ -681,7 +681,7 @@ const AuthRBAC = (function () {
                                         <td style="padding:10px 16px;">${escapeHtml(u.username)}</td>
                                         <td style="padding:10px 16px;">
                                             <span style="
-                                                padding:3px 10px;border-radius:10px;font-size:0.78rem;
+                                                padding:3px 10px;border-radius:4px;font-size:0.78rem;
                                                 background:${roleBadgeColor(u.role)};color:#000;font-weight:500;
                                             ">${escapeHtml(u.role)}</span>
                                         </td>
@@ -713,7 +713,7 @@ const AuthRBAC = (function () {
                     <h3 style="color:var(--gold,#d4a843);margin:0 0 12px;font-size:1.1rem;">Active Sessions</h3>
                     <div style="
                         background:var(--surface,#1a1a2e);border:1px solid var(--border,#2a2a3e);
-                        border-radius:8px;overflow:hidden;margin-bottom:24px;
+                        border-radius:3px;overflow:hidden;margin-bottom:24px;
                     ">
                         ${sessions.length === 0
                             ? '<p style="padding:16px;color:var(--muted,#8888aa);margin:0;font-size:0.85rem;">No active sessions.</p>'
@@ -748,7 +748,7 @@ const AuthRBAC = (function () {
                     </div>
                     <div style="
                         background:var(--surface,#1a1a2e);border:1px solid var(--border,#2a2a3e);
-                        border-radius:8px;overflow:hidden;
+                        border-radius:3px;overflow:hidden;
                     ">
                         ${history.length === 0
                             ? '<p style="padding:16px;color:var(--muted,#8888aa);margin:0;font-size:0.85rem;">No login history.</p>'
@@ -783,29 +783,29 @@ const AuthRBAC = (function () {
                 ">
                     <div style="
                         background:var(--surface,#1a1a2e);border:1px solid var(--border,#2a2a3e);
-                        border-radius:12px;padding:32px;width:360px;max-width:90vw;
+                        border-radius:4px;padding:32px;width:360px;max-width:90vw;
                     ">
                         <h3 id="fgl-um-modal-title" style="color:var(--gold,#d4a843);margin:0 0 20px;font-size:1.1rem;"></h3>
                         <div id="fgl-um-modal-error" style="
                             display:none;background:#3a1a1a;border:1px solid #6a2a2a;
-                            color:#f08080;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:0.83rem;
+                            color:#f08080;padding:8px 12px;border-radius:3px;margin-bottom:12px;font-size:0.83rem;
                         "></div>
                         <input id="fgl-um-modal-id" type="hidden" />
                         <label style="display:block;color:var(--text,#e0e0e0);font-size:0.8rem;margin-bottom:4px;">Username</label>
                         <input id="fgl-um-modal-user" type="text" style="
-                            width:100%;padding:8px 10px;margin-bottom:12px;border-radius:6px;
+                            width:100%;padding:8px 10px;margin-bottom:12px;border-radius:3px;
                             border:1px solid var(--border,#2a2a3e);background:var(--surface2,#12121f);
                             color:var(--text,#e0e0e0);font-size:0.9rem;box-sizing:border-box;outline:none;
                         " />
                         <label style="display:block;color:var(--text,#e0e0e0);font-size:0.8rem;margin-bottom:4px;">Password <span id="fgl-um-modal-pw-hint" style="color:var(--muted,#8888aa);"></span></label>
                         <input id="fgl-um-modal-pass" type="password" style="
-                            width:100%;padding:8px 10px;margin-bottom:12px;border-radius:6px;
+                            width:100%;padding:8px 10px;margin-bottom:12px;border-radius:3px;
                             border:1px solid var(--border,#2a2a3e);background:var(--surface2,#12121f);
                             color:var(--text,#e0e0e0);font-size:0.9rem;box-sizing:border-box;outline:none;
                         " />
                         <label style="display:block;color:var(--text,#e0e0e0);font-size:0.8rem;margin-bottom:4px;">Role</label>
                         <select id="fgl-um-modal-role" style="
-                            width:100%;padding:8px 10px;margin-bottom:20px;border-radius:6px;
+                            width:100%;padding:8px 10px;margin-bottom:20px;border-radius:3px;
                             border:1px solid var(--border,#2a2a3e);background:var(--surface2,#12121f);
                             color:var(--text,#e0e0e0);font-size:0.9rem;box-sizing:border-box;outline:none;
                         ">
@@ -813,11 +813,11 @@ const AuthRBAC = (function () {
                         </select>
                         <div style="display:flex;gap:8px;">
                             <button id="fgl-um-modal-save" style="
-                                flex:1;padding:10px;border:none;border-radius:6px;
+                                flex:1;padding:10px;border:none;border-radius:3px;
                                 background:var(--gold,#d4a843);color:#000;font-weight:600;cursor:pointer;font-size:0.9rem;
                             ">Save</button>
                             <button id="fgl-um-modal-cancel" style="
-                                flex:1;padding:10px;border:1px solid var(--border,#2a2a3e);border-radius:6px;
+                                flex:1;padding:10px;border:1px solid var(--border,#2a2a3e);border-radius:3px;
                                 background:transparent;color:var(--text,#e0e0e0);cursor:pointer;font-size:0.9rem;
                             ">Cancel</button>
                         </div>

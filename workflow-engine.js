@@ -1,5 +1,5 @@
 /**
- * Workflow Engine Module -Compliance Analyser v2.5
+ * Workflow Engine Module -Hawkeye Sterling V2 v2.5
  * Configurable automation rules, alert escalation, Asana sync, notification routing
  */
 (function () {
@@ -624,7 +624,7 @@
     const templates = (typeof IntegrationsEnhanced !== 'undefined' && IntegrationsEnhanced.asana?.TASK_TEMPLATES) ? IntegrationsEnhanced.asana.TASK_TEMPLATES : {};
     const tmpl = templates[action.template] || {};
     // Inject active company name so {entity} placeholder is always resolved
-    const entityName = resolver ? resolver.resolveEntityName() : ((typeof getActiveCompany === 'function') ? (getActiveCompany().name || 'Fine Gold LLC') : 'Fine Gold LLC');
+    const entityName = resolver ? resolver.resolveEntityName() : ((typeof getActiveCompany === 'function') ? (getActiveCompany().name || 'Hawkeye Sterling') : 'Hawkeye Sterling');
     const enrichedData = Object.assign({ entity: entityName, company: entityName }, data);
     const taskName = interpolate(tmpl.name || action.template, enrichedData);
     const taskNotes = interpolate(tmpl.notes || '', enrichedData);
@@ -928,10 +928,10 @@
           Rules trigger actions automatically when compliance events occur.
         </p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div style="padding:8px 12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--green);font-size:11px">
+          <div style="padding:8px 12px;background:var(--surface2);border-radius:3px;border-left:3px solid var(--green);font-size:11px">
             <strong style="color:var(--green)">Run Scan Now</strong> <span style="color:var(--muted)">— Detection + Action: finds problems and creates tasks/alerts</span>
           </div>
-          <div style="padding:8px 12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--blue,#5B8DEF);font-size:11px">
+          <div style="padding:8px 12px;background:var(--surface2);border-radius:3px;border-left:3px solid var(--blue,#5B8DEF);font-size:11px">
             <strong style="color:var(--blue,#5B8DEF)">Run Digest</strong> <span style="color:var(--muted)">— Reporting: summarises the current compliance state into one message</span>
           </div>
         </div>
@@ -946,7 +946,7 @@
             const actionLabels = rule.actions.map(a => ACTION_LABELS[a.type] || a.type).join(' -');
             const lastExec = log.find(l => l.ruleId === rule.id);
             return `
-              <div style="padding:12px;background:var(--surface2);border-radius:10px;border-left:3px solid ${rule.enabled ? 'var(--green)' : 'var(--muted)'}">
+              <div style="padding:12px;background:var(--surface2);border-radius:4px;border-left:3px solid ${rule.enabled ? 'var(--green)' : 'var(--muted)'}">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                   <div style="display:flex;align-items:center;gap:8px">
                     <label style="cursor:pointer;display:flex;align-items:center;gap:6px">
@@ -956,7 +956,7 @@
                   </div>
                   <div style="display:flex;gap:6px;align-items:center">
                     <button class="btn btn-sm btn-gold" style="padding:2px 8px;font-size:9px" onclick="WorkflowEngine.editRule('${rule.id}')">Edit</button>
-                    <span style="font-size:10px;padding:3px 8px;border-radius:6px;background:${rule.enabled ? 'var(--green-dim)' : 'var(--surface)'};color:${rule.enabled ? 'var(--green)' : 'var(--muted)'};font-family:'DM Mono',monospace">${rule.enabled ? 'ACTIVE' : 'DISABLED'}</span>
+                    <span style="font-size:10px;padding:3px 8px;border-radius:3px;background:${rule.enabled ? 'var(--green-dim)' : 'var(--surface)'};color:${rule.enabled ? 'var(--green)' : 'var(--muted)'};font-family:'Montserrat',sans-serif">${rule.enabled ? 'ACTIVE' : 'DISABLED'}</span>
                   </div>
                 </div>
                 <div style="font-size:11px;color:var(--muted);margin-bottom:4px">
@@ -984,7 +984,7 @@
               <div style="padding:8px;border-bottom:1px solid var(--border);font-size:12px">
                 <span style="color:${e.severity === 'critical' ? 'var(--red)' : e.severity === 'high' ? 'var(--amber)' : 'var(--blue)'};font-weight:500">${(e.severity || '').toUpperCase()}</span>
                 <span style="color:var(--text);margin:0 6px">${escHtml(e.title)}</span>
-                <span style="color:var(--muted);font-family:'DM Mono',monospace">${e.hoursOverdue}h overdue -escalated ${new Date(e.escalatedAt).toLocaleString('en-GB')}</span>
+                <span style="color:var(--muted);font-family:'Montserrat',sans-serif">${e.hoursOverdue}h overdue -escalated ${new Date(e.escalatedAt).toLocaleString('en-GB')}</span>
               </div>
             `).join('')}
           </div>
@@ -1004,7 +1004,7 @@
           <div style="max-height:400px;overflow-y:auto">
             ${log.slice(0, 50).map(l => `
               <div style="padding:8px;border-bottom:1px solid var(--border);font-size:12px">
-                <span style="color:var(--gold);font-family:'DM Mono',monospace">${new Date(l.timestamp).toLocaleString('en-GB')}</span>
+                <span style="color:var(--gold);font-family:'Montserrat',sans-serif">${new Date(l.timestamp).toLocaleString('en-GB')}</span>
                 <span style="color:${l.success ? 'var(--green)' : 'var(--red)'}"> [${l.success ? 'OK' : 'FAIL'}]</span>
                 <span style="color:var(--text);font-weight:500"> ${escHtml(l.ruleName)}</span>
                 <span style="color:var(--muted)"> -${escHtml(l.details || '')}</span>
@@ -1151,14 +1151,14 @@
       const total = cl.items.length;
       const pct = total > 0 ? Math.round((done/total)*100) : 0;
       const barCol = pct === 100 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--red)';
-      return `<div style="padding:12px;background:var(--surface2);border-radius:10px;border-left:3px solid ${pct===100?'var(--green)':'var(--muted)'}">
+      return `<div style="padding:12px;background:var(--surface2);border-radius:4px;border-left:3px solid ${pct===100?'var(--green)':'var(--muted)'}">
         <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="this.parentElement.querySelector('.cl-items').style.display=this.parentElement.querySelector('.cl-items').style.display==='none'?'':'none'">
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:16px">${cl.icon}</span>
             <span style="font-size:13px;font-weight:500">${cl.title}</span>
           </div>
           <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${done}/${total}</span>
+            <span style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">${done}/${total}</span>
             <div style="width:80px;height:6px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${barCol};border-radius:3px"></div></div>
             <span style="font-size:10px;color:${barCol};font-weight:700">${pct}%</span>
           </div>
@@ -1212,7 +1212,7 @@
       const statusBg = d.status === 'Approved' ? 'rgba(63,185,80,0.1)' : d.status === 'Draft' ? 'rgba(227,179,65,0.1)' : d.status === 'Under Review' ? 'rgba(91,141,239,0.1)' : 'rgba(125,133,144,0.1)';
       return `<tr style="border-bottom:1px solid var(--border);background:${i%2===0?'var(--surface)':'var(--bg)'}">
         <td style="padding:5px 8px;font-size:10px;font-weight:600">${escHtml(d.name)}</td>
-        <td style="padding:5px 8px;font-size:10px;text-align:center;font-family:'DM Mono',monospace">${escHtml(d.version)}</td>
+        <td style="padding:5px 8px;font-size:10px;text-align:center;font-family:'Montserrat',sans-serif">${escHtml(d.version)}</td>
         <td style="padding:5px 8px;font-size:10px">${escHtml(d.date)}</td>
         <td style="padding:5px 8px;font-size:10px">${escHtml(d.updatedBy)}</td>
         <td style="padding:5px 8px;font-size:10px;color:var(--muted)">${escHtml(d.changes)}</td>
@@ -1261,7 +1261,7 @@
   }
 
   function renderChannelStatus(name, connected, desc) {
-    return `<div style="padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid ${connected ? 'var(--green)' : 'var(--muted)'}">
+    return `<div style="padding:10px;background:var(--surface2);border-radius:3px;border-left:3px solid ${connected ? 'var(--green)' : 'var(--muted)'}">
       <div style="font-size:12px;font-weight:500;color:var(--text)">${name}</div>
       <div style="font-size:10px;color:${connected ? 'var(--green)' : 'var(--red)'}; margin:2px 0">${connected ? 'Connected' : 'Not configured'}</div>
       <div style="font-size:10px;color:var(--muted)">${desc}</div>

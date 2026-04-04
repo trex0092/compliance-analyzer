@@ -223,7 +223,7 @@
     if (!container) return;
     if (!currentIndividuals.length) currentIndividuals.push(emptyIndividual(1));
     container.innerHTML = currentIndividuals.map((ind, i) => `
-      <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid var(--gold)">
+      <div style="background:var(--surface2);border-radius:3px;padding:10px;margin-bottom:8px;border-left:3px solid var(--gold)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="font-size:12px;font-weight:600;color:var(--gold)">Individual ${i + 1}</span>
           ${currentIndividuals.length > 1 ? `<button class="btn-sm btn-red" onclick="ManagementApprovals.removeIndividual(${i})" style="font-size:9px">Remove</button>` : ''}

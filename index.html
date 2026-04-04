@@ -12,7 +12,8 @@
 <meta name="apple-mobile-web-app-title" content="Sterling V2">
 <meta name="theme-color" content="#0A0A0A">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='32' fill='%230E0F11'/%3E%3Ctext x='90' y='120' text-anchor='middle' font-size='96' fill='%23C9A84C'%3E%E2%9A%96%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="assets/logos/hawkeye-icon.svg">
+<link rel="apple-touch-icon" href="assets/logos/hawkeye-icon.svg">
 <title>Hawkeye Sterling V2 — Compliance Suite</title>
 <script>
 // KILL all service workers and caches — must run FIRST
@@ -86,7 +87,7 @@ body{background:var(--bg);color:var(--text);font-family:'Montserrat',sans-serif;
 .app{max-width:980px;margin:0 auto;padding:2rem 1.5rem}
 .header{text-align:center;margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid rgba(201,168,76,0.08)}
 .logo{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:0.5rem}
-.logo-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.3s}
+.logo-icon{width:44px;height:44px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.3s}
 .logo-text{font-family:'Cinzel',serif;font-size:20px;font-weight:400;letter-spacing:6px;text-transform:uppercase;color:var(--gold);transition:color 0.3s}
 .subtitle{font-size:10px;color:var(--gold-dark);letter-spacing:6px;text-transform:uppercase;font-family:'Montserrat',sans-serif;margin-top:6px;font-weight:500}
 .card{background:linear-gradient(160deg,rgba(201,168,76,0.04) 0%,rgba(10,10,10,0.8) 100%);border:1px solid rgba(201,168,76,0.1);border-radius:4px;padding:1.5rem;margin-bottom:1.2rem;transition:border-color 0.3s}
@@ -157,11 +158,11 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .results{display:none}
 .company-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-radius:4px;margin-bottom:10px;gap:12px;flex-wrap:wrap;border:1px solid rgba(201,168,76,0.15);font-family:'Montserrat',sans-serif;transition:all 0.3s}
 .company-bar .cb-left{display:flex;align-items:center;gap:10px}
-.company-bar .cb-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.company-bar .cb-icon{width:32px;height:32px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .company-bar .cb-name{font-size:13px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase}
-.company-bar .cb-label{font-size:7px;letter-spacing:1.5px;opacity:0.5;margin-bottom:1px;font-family:'DM Mono',monospace}
+.company-bar .cb-label{font-size:7px;letter-spacing:1.5px;opacity:0.5;margin-bottom:1px;font-family:'Montserrat',sans-serif}
 .company-bar .cb-switch{display:flex;align-items:center;gap:6px}
-.company-bar .cb-switch select{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:inherit;padding:4px 8px;border-radius:6px;font-size:10px;font-family:'DM Mono',monospace;cursor:pointer}
+.company-bar .cb-switch select{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:inherit;padding:4px 8px;border-radius:3px;font-size:10px;font-family:'Montserrat',sans-serif;cursor:pointer}
 @keyframes cbPulse{0%,100%{opacity:1}50%{opacity:0.4}}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:1.2rem}
 .tab{padding:10px 14px;border-radius:0;font-size:10px;cursor:pointer;background:transparent;border:1px solid rgba(201,168,76,0.08);border-bottom:2px solid transparent;color:var(--ivory-dim);transition:all 0.3s;white-space:nowrap;text-align:center;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;letter-spacing:1px;text-transform:uppercase;font-weight:400}
@@ -178,8 +179,8 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .s-ok{background:var(--green-dim);color:var(--green);border:1px solid rgba(61,168,118,0.3)}
 .s-amber{background:rgba(232,168,56,0.15);color:#E8A838;border:1px solid rgba(232,168,56,0.3)}
 .s-red{background:rgba(217,79,79,0.15);color:#D94F4F;border:1px solid rgba(217,79,79,0.3)}
-.s-none{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
-.sync-status{font-size:10px;padding:3px 8px;border-radius:5px;font-family:'DM Mono',monospace;white-space:nowrap}
+.s-none{background:rgba(201,168,76,0.05);color:var(--muted);border:1px solid var(--border)}
+.sync-status{font-size:10px;padding:3px 8px;border-radius:2px;font-family:'Montserrat',sans-serif;white-space:nowrap}
 .sync-ok{background:var(--green-dim);color:var(--green);border:1px solid rgba(61,168,118,0.3)}
 .sync-pending{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(232,160,48,0.3)}
 .sync-failed{background:var(--red-dim);color:var(--red);border:1px solid rgba(217,79,79,0.3)}
@@ -190,7 +191,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .price-sym{font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif;letter-spacing:3px;text-transform:uppercase;font-weight:500}
 .price-val{font-size:24px;font-family:'Cinzel',serif;color:var(--gold)}
 .price-sub{font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif;letter-spacing:1px}
-.live-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;border:1px solid rgba(61,168,118,0.35);background:rgba(61,168,118,0.12);font-size:10px;color:var(--green);font-family:'DM Mono',monospace;letter-spacing:0.6px}
+.live-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:2px;border:1px solid rgba(61,168,118,0.35);background:rgba(61,168,118,0.12);font-size:10px;color:var(--green);font-family:'Montserrat',sans-serif;letter-spacing:0.6px}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(61,168,118,0.65)}
 .live-dot.pulse{animation:livePulse 0.9s ease-out}
 .live-pill.offline{border-color:rgba(217,79,79,0.35);background:rgba(217,79,79,0.12);color:var(--red)}
@@ -223,11 +224,11 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .evidence-item{background:rgba(201,168,76,0.03);border:1px solid rgba(201,168,76,0.1);border-radius:4px;padding:12px 14px;margin-bottom:8px}
 .evidence-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .evidence-name{font-size:13px;font-weight:500}
-.evidence-meta{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+.evidence-meta{font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif;margin-top:2px}
 .evidence-status{display:flex;align-items:center;gap:8px}
 .ev-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .ev-linked{background:var(--green)} .ev-partial{background:var(--amber)} .ev-missing{background:var(--red)}
-.ev-label{font-size:11px;font-family:'DM Mono',monospace}
+.ev-label{font-size:11px;font-family:'Montserrat',sans-serif}
 .ev-link-input{display:flex;gap:8px;margin-top:8px}
 .ev-link-input input{flex:1;font-size:12px;padding:7px 12px}
 /* SCHEDULE */
@@ -235,8 +236,8 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .schedule-item:hover{border-color:rgba(201,168,76,0.25)}
 .schedule-info{flex:1}
 .schedule-name{font-size:13px;font-weight:500}
-.schedule-meta{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px}
-.schedule-next{font-size:11px;color:var(--gold);font-family:'DM Mono',monospace;margin-top:3px}
+.schedule-meta{font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif;margin-top:3px}
+.schedule-next{font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:3px}
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
@@ -245,13 +246,13 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .modal-close{float:right;background:none;border:none;color:var(--ivory-dim);font-size:18px;cursor:pointer;line-height:1;transition:color 0.3s}
 .modal-close:hover{color:var(--gold)}
 /* WRITEBACK STATUS */
-.wb-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-family:'DM Mono',monospace;padding:3px 8px;border-radius:4px}
+.wb-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-family:'Montserrat',sans-serif;padding:3px 8px;border-radius:4px}
 .wb-done{background:var(--green-dim);color:var(--green);border:1px solid rgba(61,168,118,0.3)}
 .wb-pending{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(232,160,48,0.3)}
 /* Hamburger Menu */
 .hamburger-btn{display:none;background:transparent;border:1px solid rgba(201,168,76,0.2);color:var(--gold);font-size:24px;padding:6px 12px;border-radius:2px;cursor:pointer;line-height:1;transition:all 0.3s}
 .hamburger-btn:hover{background:rgba(201,168,76,0.08);border-color:var(--gold)}
-.mobile-menu-close{display:none;position:absolute;top:12px;right:16px;background:none;border:1px solid var(--border);color:var(--muted);font-size:20px;cursor:pointer;border-radius:8px;padding:4px 10px;z-index:96}
+.mobile-menu-close{display:none;position:absolute;top:12px;right:16px;background:none;border:1px solid var(--border);color:var(--muted);font-size:20px;cursor:pointer;border-radius:2px;padding:4px 10px;z-index:96}
 .mobile-menu-close:hover{color:var(--text)}
 .tab{flex:0 0 auto}
 /* Drag-and-drop upload zone */
@@ -318,7 +319,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
   .tab-content { padding: 6px; }
   body { font-size: 13px; }
   .app { padding: 0.5rem; }
-  .card { padding: 10px; border-radius: 10px; }
+  .card { padding: 10px; border-radius: 4px; }
   .btn { padding: 8px 12px; font-size: 12px; min-height: 44px; }
   /* Stack all grids */
   .metrics { grid-template-columns: 1fr 1fr; }
@@ -336,9 +337,9 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
   body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
 }
 /* Notification Bell */
-.notif-bell{position:relative;cursor:pointer;font-size:20px;padding:4px 8px;border-radius:8px;transition:all 0.2s}
-.notif-bell:hover{background:var(--surface2)}
-.notif-badge{position:absolute;top:-2px;right:0;background:#EF4444;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace}
+.notif-bell{position:relative;cursor:pointer;font-size:20px;padding:4px 8px;border-radius:3px;transition:all 0.2s}
+.notif-bell:hover{background:rgba(201,168,76,0.05)}
+.notif-badge{position:absolute;top:-2px;right:0;background:#EF4444;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif}
 .notif-panel{display:none;position:absolute;top:100%;right:0;width:380px;max-height:420px;overflow-y:auto;background:var(--charcoal);border:1px solid rgba(201,168,76,0.15);border-radius:4px;box-shadow:0 12px 40px rgba(0,0,0,0.5);z-index:200;padding:14px}
 .notif-panel.open{display:block}
 .notif-item{padding:10px 12px;border-radius:3px;margin-bottom:6px;font-size:12px;border-left:3px solid;cursor:default}
@@ -357,7 +358,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .login-box input{margin-bottom:12px}
 .login-box .login-error{color:#EF4444;font-size:12px;margin-bottom:8px;min-height:18px}
 /* Role badge */
-.role-badge{font-size:9px;padding:2px 8px;border-radius:4px;font-family:'DM Mono',monospace;letter-spacing:0.5px;font-weight:600}
+.role-badge{font-size:9px;padding:2px 8px;border-radius:4px;font-family:'Montserrat',sans-serif;letter-spacing:0.5px;font-weight:600}
 .role-admin{background:rgba(239,68,68,0.12);color:#EF4444}
 .role-co{background:rgba(56,132,244,0.12);color:#3884F4}
 .role-viewer{background:rgba(16,185,129,0.12);color:#10B981}
@@ -496,7 +497,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <span class="lbl">Confirm Password</span>
     <input type="password" id="setupPasswordConfirm" placeholder="Repeat password" onkeydown="if(event.key==='Enter')completeSetup()" />
     <button class="btn btn-gold" onclick="completeSetup()" style="width:100%;margin-top:8px">Create Account & Start</button>
-    <div style="margin-top:12px;padding:10px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)">
+    <div style="margin-top:12px;padding:10px;border-radius:3px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)">
       <div style="font-size:10px;color:#10B981;line-height:1.6">Your credentials are hashed (SHA-256) and stored only in your browser. Nothing is sent to any server. You can add more users later from Settings.</div>
     </div>
   </div>
@@ -507,24 +508,24 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="header" style="position:relative">
     <div style="display:flex;align-items:center;justify-content:center;gap:10px">
       <div class="logo" style="margin-bottom:0">
-        <div class="logo-icon" style="background:transparent"><svg width="32" height="32" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="40" r="18" stroke="#C9A84C" stroke-width="1.5" fill="none"/><circle cx="50" cy="40" r="8" fill="#C9A84C" opacity="0.3"/><circle cx="50" cy="40" r="3" fill="#C9A84C"/><path d="M30 55 Q50 75 70 55" stroke="#C9A84C" stroke-width="1.5" fill="none"/></svg></div>
+        <div class="logo-icon" style="background:transparent"><svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="40" r="18" stroke="#C9A84C" stroke-width="1.5" fill="none"/><circle cx="50" cy="40" r="8" fill="#C9A84C" opacity="0.3"/><circle cx="50" cy="40" r="3" fill="#C9A84C"/><path d="M30 55 Q50 75 70 55" stroke="#C9A84C" stroke-width="1.5" fill="none"/></svg></div>
         <div class="logo-text">Hawkeye Sterling V2</div>
       </div>
       <span style="color:var(--border);font-size:18px;font-weight:300">|</span>
-      <select id="headerCompanySelect" onchange="switchActiveCompany(this.value);updateCompanyBar()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--gold);font-size:11px;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;outline:none;padding:4px 8px"></select>
+      <select id="headerCompanySelect" onchange="switchActiveCompany(this.value);updateCompanyBar()" style="background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:3px;color:var(--gold);font-size:11px;font-weight:600;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none;padding:4px 8px"></select>
       <button class="theme-toggle" id="themeToggleBtn" onclick="toggleDarkMode()" title="Toggle dark mode" style="display:none">🌙</button>
       <div style="position:relative;display:none" id="notifBellWrap">
         <div class="notif-bell" onclick="toggleNotifPanel()">🔔<span class="notif-badge" id="notifBadge" style="display:none">0</span></div>
         <div class="notif-panel" id="notifPanel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-size:12px;font-weight:700;color:var(--gold);font-family:'DM Mono',monospace;letter-spacing:1px">REMINDERS & ALERTS</span>
+            <span style="font-size:12px;font-weight:700;color:var(--gold);font-family:'Montserrat',sans-serif;letter-spacing:1px">REMINDERS & ALERTS</span>
             <button class="btn btn-sm btn-blue" onclick="refreshReminders()" style="padding:2px 8px;font-size:9px">Refresh</button>
           </div>
           <div id="notifList"><p style="font-size:11px;color:var(--muted)">No alerts.</p></div>
         </div>
       </div>
       <div id="currentUserInfo" style="display:flex;align-items:center;gap:6px">
-        <span id="currentUserName" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace"></span>
+        <span id="currentUserName" style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif"></span>
         <span id="currentUserRole" class="role-badge"></span>
         <button class="btn btn-sm" onclick="logoutUser()" style="padding:2px 8px;font-size:9px">Logout</button>
       </div>
@@ -600,7 +601,7 @@ document.addEventListener('DOMContentLoaded', function(){
     </div>
 
     <!-- ALERT BANNER -->
-    <div id="alertBanner" style="display:none;margin:0 0 10px;padding:10px 16px;border-radius:10px;border:1px solid var(--red);background:rgba(248,81,73,0.06);font-size:12px;cursor:pointer" onclick="switchTab('employees')">
+    <div id="alertBanner" style="display:none;margin:0 0 10px;padding:10px 16px;border-radius:4px;border:1px solid var(--red);background:rgba(248,81,73,0.06);font-size:12px;cursor:pointer" onclick="switchTab('employees')">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span id="alertBannerExpired" style="display:none;color:var(--red);font-weight:700">⚠️ <span id="alertExpiredCount">0</span> EXPIRED</span>
         <span id="alertBannerExpiring" style="display:none;color:var(--amber);font-weight:600">⚠️ <span id="alertExpiringCount">0</span> EXPIRING IN 10 DAYS</span>
@@ -832,7 +833,7 @@ Examples:
             <button class="btn btn-sm btn-green" onclick="resetAnalysis()">New Analysis</button>
           </div>
         </div>
-        <div id="reportTimestamp" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:12px"></div>
+        <div id="reportTimestamp" style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif;margin-bottom:12px"></div>
         <div class="metrics" id="metrics"></div>
         <div class="sec-title">Executive Summary</div>
         <div class="summary-box" id="summaryBox"></div>
@@ -841,7 +842,7 @@ Examples:
         <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
           <div class="top-bar" style="margin-bottom:8px">
             <span class="lbl" style="margin:0">Asana Write-Back</span>
-            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Create tasks in your Asana project from individual findings</span>
+            <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Create tasks in your Asana project from individual findings</span>
           </div>
           <div id="writebackPanel"></div>
         </div>
@@ -946,7 +947,7 @@ Examples:
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Shipment Risk Register</span>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace" id="shipmentCountMeta">0 records</span>
+          <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif" id="shipmentCountMeta">0 records</span>
         </div>
         <div class="metrics" id="shipmentMetrics"></div>
         <div id="shipmentsList"><p style="color:var(--muted);font-size:13px">No shipments added yet.</p></div>
@@ -954,14 +955,14 @@ Examples:
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Customer Shipment Summary</span>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Counts by Customer ID / Supplier-Customer</span>
+          <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Counts by Customer ID / Supplier-Customer</span>
         </div>
         <div id="customerShipmentSummary"><p style="color:var(--muted);font-size:13px">No customer shipment data yet.</p></div>
       </div>
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Transaction Monitoring</span>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Red flag indicators and SAR/STR suggestions</span>
+          <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Red flag indicators and SAR/STR suggestions</span>
         </div>
         <div class="token-note" style="margin-bottom:10px">Compliance basis: Cabinet Resolution No.(134) of 2025 | Art.13 | Ongoing monitoring and periodic CDD review obligations for DNFBPs</div>
         <div id="shipmentMonitoringSummary"><p style="color:var(--muted);font-size:13px">No transaction monitoring alerts yet.</p></div>
@@ -1122,7 +1123,7 @@ Examples:
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">IAR Compliance Report Register</span>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace" id="iarReportCountMeta">0 records</span>
+          <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif" id="iarReportCountMeta">0 records</span>
         </div>
         <div id="iarReportsList"><p style="color:var(--muted);font-size:13px">No IAR compliance reports yet.</p></div>
       </div>
@@ -1133,18 +1134,18 @@ Examples:
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Evidence Upload Tracker</span>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace" id="evidenceSyncMeta">Evidence sync: Idle</span>
+          <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif" id="evidenceSyncMeta">Evidence sync: Idle</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
             <button class="btn btn-sm btn-blue" onclick="loadEvidenceFromAsana()">Sync from Asana</button>
             <button class="btn btn-sm btn-green" onclick="exportEvidencePDF()">PDF</button>
             <button class="btn btn-sm btn-green" onclick="exportEvidenceDOCX()">Word</button>
           </div>
         </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Track which Asana compliance tasks have Google Drive evidence documents linked. Paste the Drive folder URL against each task.</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">Track which Asana compliance tasks have Google Drive evidence documents linked. Paste the Drive folder URL against each task.</p>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem">
-          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:500;color:var(--green)" id="evCountLinked">0</div><div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">Linked</div></div>
-          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:500;color:var(--amber)" id="evCountPartial">0</div><div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">Partial</div></div>
-          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:500;color:var(--red)" id="evCountMissing">0</div><div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">Missing</div></div>
+          <div style="background:rgba(201,168,76,0.05);border-radius:3px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:500;color:var(--green)" id="evCountLinked">0</div><div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif;margin-top:3px">Linked</div></div>
+          <div style="background:rgba(201,168,76,0.05);border-radius:3px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:500;color:var(--amber)" id="evCountPartial">0</div><div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif;margin-top:3px">Partial</div></div>
+          <div style="background:rgba(201,168,76,0.05);border-radius:3px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:500;color:var(--red)" id="evCountMissing">0</div><div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif;margin-top:3px">Missing</div></div>
         </div>
         <div id="evidenceList">
           <p style="color:var(--muted);font-size:13px">Click Sync from Asana to load tasks, or use the pre-loaded Critical Gap items below.</p>
@@ -1344,7 +1345,7 @@ Examples:
           <span class="sec-title">Inherent Risk Assessment</span>
           <div id="ewraInherentRisks">
             <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
-              <thead><tr style="background:var(--surface2)">
+              <thead><tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:5px 8px;text-align:left;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold)">Risk Category</th>
                 <th style="padding:5px 8px;text-align:left;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold)">Risk Factor</th>
                 <th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold);width:100px">Likelihood</th>
@@ -1358,7 +1359,7 @@ Examples:
           <span class="sec-title">3. Control Environment Assessment</span>
           <div id="ewraControls">
             <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
-              <thead><tr style="background:var(--surface2)">
+              <thead><tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:5px 8px;text-align:left;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold)">Control Area</th>
                 <th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold);width:120px">Effectiveness</th>
                 <th style="padding:5px 8px;text-align:left;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold)">Notes / Gaps</th>
@@ -1416,7 +1417,7 @@ Examples:
           <span class="sec-title">2. Product & Service Risk</span>
           <div id="bwraProductRisks">
             <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
-              <thead><tr style="background:var(--surface2)">
+              <thead><tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:5px 8px;text-align:left;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold)">Product / Service</th>
                 <th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold);width:100px">Volume</th>
                 <th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold);width:100px">Risk Level</th>
@@ -1430,7 +1431,7 @@ Examples:
           <span class="sec-title">3. Customer Risk</span>
           <div id="bwraCustomerRisks">
             <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
-              <thead><tr style="background:var(--surface2)">
+              <thead><tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:5px 8px;text-align:left;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold)">Customer Category</th>
                 <th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold);width:100px">% of Base</th>
                 <th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold);width:100px">Risk Level</th>
@@ -1444,7 +1445,7 @@ Examples:
           <span class="sec-title">4. Geographic Risk</span>
           <div id="bwraGeoRisks">
             <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
-              <thead><tr style="background:var(--surface2)">
+              <thead><tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:5px 8px;text-align:left;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold)">Country / Region</th>
                 <th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold);width:100px">FATF Status</th>
                 <th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold);width:100px">Risk Level</th>
@@ -1458,7 +1459,7 @@ Examples:
           <span class="sec-title">5. Delivery Channel Risk</span>
           <div style="margin-bottom:10px">
             <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
-              <thead><tr style="background:var(--surface2)">
+              <thead><tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:5px 8px;text-align:left;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold)">Channel</th>
                 <th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid var(--gold);color:var(--gold);width:100px">Risk Level</th>
               </tr></thead>
@@ -1674,7 +1675,7 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Employee Training</span>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace" id="trainingCountMeta">0 employees</span>
+            <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif" id="trainingCountMeta">0 employees</span>
             <button class="btn btn-sm btn-blue" onclick="document.getElementById('trainingFileInput').click()">File</button>
             <button class="btn btn-sm btn-green" onclick="exportTrainingPDF()">PDF</button>
             <button class="btn btn-sm btn-green" onclick="exportTrainingDOCX()">Word</button>
@@ -1731,13 +1732,13 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">📚 External Learning Links</span>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace" id="extLinksMeta">0 links</span>
+            <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif" id="extLinksMeta">0 links</span>
             <button class="btn btn-sm btn-green" onclick="toggleAddExtLink()">+ Add Link</button>
             <button class="btn btn-sm btn-blue" onclick="resetExtLinksToDefault()" style="background:rgba(74,143,193,0.15);color:#4A8FC1;border:1px solid rgba(74,143,193,0.4)">↺ Refresh</button>
-            <input type="text" id="extLinkSearch" placeholder="Search links..." oninput="renderExternalLinks()" style="font-size:10px;padding:3px 8px;width:160px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace" />
+            <input type="text" id="extLinkSearch" placeholder="Search links..." oninput="renderExternalLinks()" style="font-size:10px;padding:3px 8px;width:160px;background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Montserrat',sans-serif" />
           </div>
         </div>
-        <div id="extLinkAddForm" style="display:none;margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div id="extLinkAddForm" style="display:none;margin-bottom:12px;padding:10px;background:rgba(201,168,76,0.05);border-radius:3px;border:1px solid var(--border)">
           <div class="row row-3" style="margin-bottom:8px">
             <div><span class="lbl">Institution Name</span><input type="text" id="extLinkName" placeholder="e.g. ACAMS" /></div>
             <div><span class="lbl">Website URL</span><input type="url" id="extLinkUrl" placeholder="https://..." /></div>
@@ -1791,15 +1792,15 @@ Examples:
           <div><span class="lbl">Date of Joining</span><input type="text" placeholder="dd/mm/yyyy" id="empJoinDate" /></div>
           <div><span class="lbl">Business Unit Involved</span>
             <div id="empBusinessUnit" style="position:relative">
-              <div onclick="document.getElementById('empBizDropdown').style.display=document.getElementById('empBizDropdown').style.display==='none'?'block':'none'" style="min-height:38px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:var(--surface2)">
+              <div onclick="document.getElementById('empBizDropdown').style.display=document.getElementById('empBizDropdown').style.display==='none'?'block':'none'" style="min-height:38px;border:1px solid var(--border);border-radius:3px;padding:6px 10px;cursor:pointer;display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:rgba(201,168,76,0.05)">
                 <span id="empBizPlaceholder" style="color:var(--muted);font-size:13px">Select entities...</span>
               </div>
-              <div id="empBizDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:4px;padding:6px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.4)">
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="MADISON JEWELLERY TRADING L.L.C" style="width:auto" onchange="updateBizSelection()" />MADISON JEWELLERY TRADING L.L.C</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="NAPLES JEWELLERY TRADING L.L.C" style="width:auto" onchange="updateBizSelection()" />NAPLES JEWELLERY TRADING L.L.C</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="GRAMALTIN A.S" style="width:auto" onchange="updateBizSelection()" />GRAMALTIN A.S</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="ZOE Precious Metals and Jewelery (FZE)" style="width:auto" onchange="updateBizSelection()" />ZOE Precious Metals and Jewelery (FZE)</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="FINE GOLD" style="width:auto" onchange="updateBizSelection()" />FINE GOLD</label>
+              <div id="empBizDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:3px;margin-top:4px;padding:6px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.4)">
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="MADISON JEWELLERY TRADING L.L.C" style="width:auto" onchange="updateBizSelection()" />MADISON JEWELLERY TRADING L.L.C</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="NAPLES JEWELLERY TRADING L.L.C" style="width:auto" onchange="updateBizSelection()" />NAPLES JEWELLERY TRADING L.L.C</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="GRAMALTIN A.S" style="width:auto" onchange="updateBizSelection()" />GRAMALTIN A.S</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="ZOE Precious Metals and Jewelery (FZE)" style="width:auto" onchange="updateBizSelection()" />ZOE Precious Metals and Jewelery (FZE)</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="FINE GOLD" style="width:auto" onchange="updateBizSelection()" />FINE GOLD</label>
               </div>
             </div>
           </div>
@@ -1945,7 +1946,7 @@ Examples:
         <div style="overflow-x:auto">
           <table id="raTable" style="width:100%;border-collapse:collapse;font-size:10px">
             <thead>
-              <tr style="background:var(--surface2)">
+              <tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:5px 8px;text-align:left;border-bottom:2px solid var(--gold);width:30px;color:var(--gold);font-size:10px">#</th>
                 <th style="padding:5px 8px;text-align:left;border-bottom:2px solid var(--gold);color:var(--gold);font-size:10px">ASSESSMENT CRITERION</th>
                 <th style="padding:5px 8px;text-align:left;border-bottom:2px solid var(--gold);width:240px;color:var(--gold);font-size:10px">RECORDED RESPONSE</th>
@@ -1955,7 +1956,7 @@ Examples:
             </thead>
             <tbody id="raCriteriaBody"></tbody>
             <tfoot>
-              <tr style="background:var(--surface2);border-top:2px solid var(--gold)">
+              <tr style="background:rgba(201,168,76,0.05);border-top:2px solid var(--gold)">
                 <td colspan="3" style="padding:10px;font-weight:700;font-size:13px">TOTAL RISK SCORE</td>
                 <td style="padding:10px;text-align:center;font-weight:700;font-size:18px;color:var(--gold)" id="raTotalScore">0</td>
                 <td style="padding:10px;text-align:center" id="raTotalRisk"></td>
@@ -2038,8 +2039,8 @@ Examples:
         </div>
 
         <!-- New Incident Form -->
-        <div id="newIncidentForm" style="display:none;margin-bottom:16px;padding:16px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
-          <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:12px;letter-spacing:1px;font-family:'DM Mono',monospace">NEW INCIDENT</div>
+        <div id="newIncidentForm" style="display:none;margin-bottom:16px;padding:16px;background:rgba(201,168,76,0.05);border-radius:4px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:12px;letter-spacing:1px;font-family:'Montserrat',sans-serif">NEW INCIDENT</div>
           <div class="row row-2" style="margin-bottom:10px">
             <div><span class="lbl">Incident Title</span><input type="text" id="incTitle" placeholder="Brief description" /></div>
             <div><span class="lbl">Incident Type</span><select id="incType">
@@ -2215,7 +2216,7 @@ Examples:
           <input type="email" id="wbAnonEmail" placeholder="Anonymous email (optional — only if you selected email follow-up)" style="margin-top:8px;font-size:12px" />
         </div>
         <button class="btn btn-gold" onclick="submitWhistleblower()">Submit Anonymously</button>
-        <div id="wbSubmitConfirmation" style="display:none;margin-top:12px;padding:12px 16px;border-radius:8px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3)"></div>
+        <div id="wbSubmitConfirmation" style="display:none;margin-top:12px;padding:12px 16px;border-radius:3px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3)"></div>
       </div>
 
       <!-- Whistleblower Report Log -->
@@ -2289,10 +2290,10 @@ Examples:
       <div class="card">
         <span class="sec-title">Risk Heat Map</span>
         <div id="riskHeatMap" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-          <div style="background:var(--red-dim);border:1px solid rgba(217,79,79,0.3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--red)" id="heatCritical">0</div><div style="font-size:10px;color:var(--muted);margin-top:4px">CRITICAL RISK</div></div>
-          <div style="background:var(--amber-dim);border:1px solid rgba(232,160,48,0.3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--amber)" id="heatHigh">0</div><div style="font-size:10px;color:var(--muted);margin-top:4px">HIGH RISK</div></div>
-          <div style="background:var(--blue-dim);border:1px solid rgba(74,143,193,0.3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--blue)" id="heatMedium">0</div><div style="font-size:10px;color:var(--muted);margin-top:4px">MEDIUM RISK</div></div>
-          <div style="background:var(--green-dim);border:1px solid rgba(61,168,118,0.3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--green)" id="heatLow">0</div><div style="font-size:10px;color:var(--muted);margin-top:4px">LOW RISK</div></div>
+          <div style="background:var(--red-dim);border:1px solid rgba(217,79,79,0.3);border-radius:4px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--red)" id="heatCritical">0</div><div style="font-size:10px;color:var(--muted);margin-top:4px">CRITICAL RISK</div></div>
+          <div style="background:var(--amber-dim);border:1px solid rgba(232,160,48,0.3);border-radius:4px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--amber)" id="heatHigh">0</div><div style="font-size:10px;color:var(--muted);margin-top:4px">HIGH RISK</div></div>
+          <div style="background:var(--blue-dim);border:1px solid rgba(74,143,193,0.3);border-radius:4px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--blue)" id="heatMedium">0</div><div style="font-size:10px;color:var(--muted);margin-top:4px">MEDIUM RISK</div></div>
+          <div style="background:var(--green-dim);border:1px solid rgba(61,168,118,0.3);border-radius:4px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--green)" id="heatLow">0</div><div style="font-size:10px;color:var(--muted);margin-top:4px">LOW RISK</div></div>
         </div>
       </div>
       <div class="card">
@@ -2320,7 +2321,7 @@ Examples:
           <span class="sec-title" style="margin:0;border:none;padding:0">Regulatory Calendar</span>
           <button class="btn btn-sm btn-green" onclick="showNewDeadlineForm()">+ Add Deadline</button>
         </div>
-        <div id="newDeadlineForm" style="display:none;margin-bottom:16px;padding:16px;background:var(--surface2);border-radius:12px">
+        <div id="newDeadlineForm" style="display:none;margin-bottom:16px;padding:16px;background:rgba(201,168,76,0.05);border-radius:4px">
           <div class="row row-2" style="margin-bottom:12px">
             <div><span class="lbl">Deadline Title</span><input type="text" id="calTitle" placeholder="e.g. FATF Mutual Evaluation" /></div>
             <div><span class="lbl">Due Date</span><input type="text" placeholder="dd/mm/yyyy" id="calDate" /></div>
@@ -2366,7 +2367,7 @@ Examples:
           <button class="btn btn-sm btn-green" onclick="showNewVaultDoc()">+ Add Document</button>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Store references to compliance documents, policies, certificates and licenses. Documents are tagged for easy retrieval.</p>
-        <div id="newVaultForm" style="display:none;margin-bottom:16px;padding:16px;background:var(--surface2);border-radius:12px">
+        <div id="newVaultForm" style="display:none;margin-bottom:16px;padding:16px;background:rgba(201,168,76,0.05);border-radius:4px">
           <div class="row row-2" style="margin-bottom:12px">
             <div><span class="lbl">Document Name</span><input type="text" id="vaultName" placeholder="e.g. AML Policy v3.2" /></div>
             <div><span class="lbl">Category</span><select id="vaultCategory"><option value="policy">Policy</option><option value="procedure">Procedure</option><option value="certificate">Certificate</option><option value="license">License</option><option value="kyc">KYC Document</option><option value="audit">Audit Report</option><option value="training">Training Record</option><option value="correspondence">Regulatory Correspondence</option><option value="other">Other</option></select></div>
@@ -2401,7 +2402,7 @@ Examples:
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px">View and manage compliance documents stored in your connected Google Drive folder. Connect via Settings tab.</p>
-        <div id="gdriveConnectionStatus" style="margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:8px;font-size:12px"></div>
+        <div id="gdriveConnectionStatus" style="margin-bottom:12px;padding:10px;background:rgba(201,168,76,0.05);border-radius:3px;font-size:12px"></div>
         <div id="gdriveFileList"><p style="font-size:13px;color:var(--muted)">Connect Google Drive in Settings to browse files.</p></div>
       </div>
     </div>
@@ -2529,7 +2530,7 @@ Examples:
               <col style="width:40px">
             </colgroup>
             <thead>
-              <tr style="background:var(--surface2)">
+              <tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Activity / Obligation</th>
                 <th style="padding:6px 2px;text-align:center;border-bottom:2px solid var(--border)">CM</th>
                 <th style="padding:6px 2px;text-align:center;border-bottom:2px solid var(--border)">MD</th>
@@ -2543,7 +2544,7 @@ Examples:
           </table>
         </div>
         <button class="btn btn-sm" style="margin-top:10px" onclick="toggleAddActivityForm()">+ Add Activity</button>
-        <div id="addActivityForm" style="display:none;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div id="addActivityForm" style="display:none;margin-top:12px;background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:4px;padding:16px">
           <span class="lbl" style="color:var(--amber);font-size:12px;margin-bottom:8px;display:block">NEW ACTIVITY</span>
           <div style="margin-bottom:10px">
             <span class="lbl">Activity / Obligation</span>
@@ -2609,7 +2610,7 @@ Examples:
         <input type="text" id="defSearchInput" placeholder="Search definitions..." style="margin-bottom:16px;width:100%" oninput="filterDefinitions(this.value)" />
 
         <!-- Add/Update Definition Form -->
-        <div id="defUpdateForm" style="display:none;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div id="defUpdateForm" style="display:none;margin-top:12px;background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:4px;padding:16px">
           <span class="lbl" style="color:var(--amber);font-size:12px;margin-bottom:10px;display:block">REGULATORY UPDATE — ADD / EDIT DEFINITION</span>
           <div class="row row-3" style="margin-bottom:10px">
             <div><span class="lbl">Section</span>
@@ -2651,7 +2652,7 @@ Examples:
         <div style="overflow-x:auto">
           <table class="def-table" id="defAbbrevTable" style="width:100%;border-collapse:collapse;font-size:12px">
             <thead>
-              <tr style="background:var(--surface2)">
+              <tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:8px 12px;text-align:left;border-bottom:2px solid var(--border);width:120px;font-weight:700;color:var(--gold)">Abbreviation</th>
                 <th style="padding:8px 12px;text-align:left;border-bottom:2px solid var(--border);font-weight:700;color:var(--gold)">Full Term</th>
               </tr>
@@ -2667,7 +2668,7 @@ Examples:
         <div style="overflow-x:auto">
           <table class="def-table" id="defKeyTable" style="width:100%;border-collapse:collapse;font-size:12px">
             <thead>
-              <tr style="background:var(--surface2)">
+              <tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:8px 12px;text-align:left;border-bottom:2px solid var(--border);width:200px;font-weight:700;color:var(--gold)">Term</th>
                 <th style="padding:8px 12px;text-align:left;border-bottom:2px solid var(--border);font-weight:700;color:var(--gold)">Definition</th>
               </tr>
@@ -2683,7 +2684,7 @@ Examples:
         <div style="overflow-x:auto">
           <table class="def-table" id="defLegalTable" style="width:100%;border-collapse:collapse;font-size:12px">
             <thead>
-              <tr style="background:var(--surface2)">
+              <tr style="background:rgba(201,168,76,0.05)">
                 <th style="padding:8px 12px;text-align:left;border-bottom:2px solid var(--border);width:200px;font-weight:700;color:var(--gold)">Term</th>
                 <th style="padding:8px 12px;text-align:left;border-bottom:2px solid var(--border);font-weight:700;color:var(--gold)">Definition</th>
               </tr>
@@ -2703,13 +2704,13 @@ Examples:
         <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Upload compliance documents, evidence files, shipment records, and other data. Files are stored securely on the server and persist across sessions and devices.</p>
 
         <!-- Upload Form with Drag & Drop -->
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px">
+        <div style="background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:20px">
           <span class="lbl" style="color:var(--gold);font-size:12px;margin-bottom:10px;display:block">UPLOAD NEW FILE</span>
           <div class="upload-dropzone" id="uploadDropzone" onclick="document.getElementById('uploadFileInput').click()">
             <div class="drop-icon">📁</div>
             <p><strong style="color:var(--gold)">Tap to select</strong> or drag & drop files here</p>
             <p style="font-size:11px;margin-top:6px">PDF, DOC, XLS, CSV, JPG, PNG, ZIP, JSON, XML — max 50 MB</p>
-            <div id="selectedFileName" style="display:none;margin-top:10px;padding:8px 12px;background:var(--surface);border-radius:8px;font-size:12px;color:var(--gold)"></div>
+            <div id="selectedFileName" style="display:none;margin-top:10px;padding:8px 12px;background:var(--surface);border-radius:3px;font-size:12px;color:var(--gold)"></div>
           </div>
           <input type="file" id="uploadFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip,.json,.xml" multiple style="display:none" onchange="showSelectedFile(this)" />
           <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
@@ -3572,7 +3573,7 @@ function renderEmployeeTraining() {
     const completedList = completedSubjects.length
       ? completedSubjects.map((s) => `<li style="margin-bottom:4px">${escHtml(s)}${subjectMeta(s)}</li>`).join('')
       : '<li>No completed trainings yet</li>';
-    return `<div class="card" style="margin-bottom:10px"><div class="top-bar" style="margin-bottom:6px"><div><div class="asana-name">${escHtml(r.employeeName || '')}</div><div class="asana-meta">Department: ${escHtml(r.department || '')} | Completed ${completedCount}/${target} (${progress}%)</div></div><button class="btn btn-sm btn-red" onclick="deleteEmployeeTraining('${escJsStr(r.id)}')">Remove Employee</button></div><div style="height:8px;border:1px solid var(--border);border-radius:999px;overflow:hidden;background:var(--surface2);margin-bottom:8px"><div style="height:100%;width:${progress}%;background:var(--green)"></div></div><details><summary style="cursor:pointer;color:var(--muted);font-size:12px;font-family:'DM Mono',monospace">Completed trainings (${completedSubjects.length})</summary><ul style="margin:8px 0 0 16px;color:var(--muted);font-size:12px">${completedList}</ul></details><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--muted);font-size:12px;font-family:'DM Mono',monospace">Pending trainings (${pendingSubjects.length})</summary><ul style="margin:8px 0 0 16px;color:var(--muted);font-size:12px">${pendingList}</ul></details></div>`;
+    return `<div class="card" style="margin-bottom:10px"><div class="top-bar" style="margin-bottom:6px"><div><div class="asana-name">${escHtml(r.employeeName || '')}</div><div class="asana-meta">Department: ${escHtml(r.department || '')} | Completed ${completedCount}/${target} (${progress}%)</div></div><button class="btn btn-sm btn-red" onclick="deleteEmployeeTraining('${escJsStr(r.id)}')">Remove Employee</button></div><div style="height:8px;border:1px solid var(--border);border-radius:999px;overflow:hidden;background:rgba(201,168,76,0.05);margin-bottom:8px"><div style="height:100%;width:${progress}%;background:var(--green)"></div></div><details><summary style="cursor:pointer;color:var(--muted);font-size:12px;font-family:'Montserrat',sans-serif">Completed trainings (${completedSubjects.length})</summary><ul style="margin:8px 0 0 16px;color:var(--muted);font-size:12px">${completedList}</ul></details><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--muted);font-size:12px;font-family:'Montserrat',sans-serif">Pending trainings (${pendingSubjects.length})</summary><ul style="margin:8px 0 0 16px;color:var(--muted);font-size:12px">${pendingList}</ul></details></div>`;
   }).join('');
 }
 
@@ -3845,11 +3846,11 @@ function renderExternalLinks() {
   filtered.forEach(l => { const c = l.category || 'Other'; if (!cats[c]) cats[c] = []; cats[c].push(l); });
   const catColors = { 'Compliance & AML':'#e74c3c', 'AI & Technology':'#9b59b6', 'Human Rights':'#3498db', 'Project Management':'#e67e22', 'Supply Chain':'#1abc9c', 'Data & Analytics':'#2ecc71', 'Finance & Trade':'#f39c12', 'Environment & SDG':'#27ae60', 'General Education':'#b4975a', 'Other':'#95a5a6' };
   el.innerHTML = Object.entries(cats).sort((a,b) => a[0].localeCompare(b[0])).map(([cat, links]) =>
-    '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:' + (catColors[cat]||'var(--gold)') + ';font-family:\'DM Mono\',monospace;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">' + escHtml(cat) + ' (' + links.length + ')</div>' +
+    '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:' + (catColors[cat]||'var(--gold)') + ';font-family:\'Montserrat\',sans-serif;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">' + escHtml(cat) + ' (' + links.length + ')</div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px">' +
-    links.map(l => '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;transition:border-color .2s" onmouseenter="this.style.borderColor=\'var(--gold)\'" onmouseleave="this.style.borderColor=\'var(--border)\'">' +
+    links.map(l => '<div style="background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:3px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;transition:border-color .2s" onmouseenter="this.style.borderColor=\'var(--gold)\'" onmouseleave="this.style.borderColor=\'var(--border)\'">' +
       '<div style="flex:1;min-width:0">' +
-        '<a href="' + escHtml(l.url) + '" target="_blank" rel="noopener" style="color:var(--gold);font-size:12px;font-weight:600;text-decoration:none;font-family:\'DM Mono\',monospace;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + escHtml(l.url) + '">' + escHtml(l.name) + '</a>' +
+        '<a href="' + escHtml(l.url) + '" target="_blank" rel="noopener" style="color:var(--gold);font-size:12px;font-weight:600;text-decoration:none;font-family:\'Montserrat\',sans-serif;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + escHtml(l.url) + '">' + escHtml(l.name) + '</a>' +
         (l.desc ? '<div style="color:var(--muted);font-size:10px;margin-top:2px;line-height:1.3">' + escHtml(l.desc) + '</div>' : '') +
         '<div style="color:var(--text);font-size:9px;margin-top:3px;opacity:0.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(l.url) + '</div>' +
       '</div>' +
@@ -3926,8 +3927,8 @@ function renderCompanyLinksPanelFor(company) {
   if (company.description) details.push(`${escHtml(company.description)}`);
   if (company.complianceProgram) details.push(`Programme: ${escHtml(company.complianceProgram)}`);
   if (details.length) {
-    html += `<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:8px">
-      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px;font-family:'DM Mono',monospace;letter-spacing:1px">COMPANY PROFILE</div>
+    html += `<div style="background:rgba(201,168,76,0.05);border-radius:3px;padding:10px 12px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px;font-family:'Montserrat',sans-serif;letter-spacing:1px">COMPANY PROFILE</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.6">${details.join(' · ')}</div>
     </div>`;
   }
@@ -4749,7 +4750,7 @@ async function addShipment() {
     syncMessage: ''
   };
 
-  if (!shipment.amount) {
+  if (!shipment.amount || isNaN(Number(shipment.amount)) || Number(shipment.amount) <= 0) {
     toast('Amount is required','error');
     return;
   }
@@ -5039,14 +5040,14 @@ function buildTransactionMonitoringFindings() {
     const sameCustomer = shipments.filter(s => (s.customerId || 'NO-ID') === c.customerId);
     const nearThreshold = sameCustomer.filter(s => {
       const amt = Number(s.amount || 0);
-      return amt >= (reportingThreshold * 0.7) && amt < reportingThreshold;
+      return amt >= (reportingThreshold * 0.85) && amt < reportingThreshold;
     });
     if (nearThreshold.length >= 3) {
       findings.push({
         level: 'HIGH',
         reportType: 'STR',
         title: 'Structuring pattern detected below reporting threshold',
-        detail: `${c.supplierCustomer} (${c.customerId}) | ${nearThreshold.length} shipments between ${reportingThreshold * 0.7} and ${reportingThreshold}`,
+        detail: `${c.supplierCustomer} (${c.customerId}) | ${nearThreshold.length} shipments between ${Math.round(reportingThreshold * 0.85)} and ${reportingThreshold}`,
         recommendation: 'Suggested STR: repeated near-threshold transaction values indicate potential structuring. Compile timeline and transaction linkage analysis.'
       });
     }
@@ -5092,7 +5093,7 @@ function renderTransactionMonitoring() {
     </div>`;
   }).join('');
 
-  el.innerHTML = `<div style="margin-bottom:8px;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Suggested filings -> SAR: ${sarCount} | STR: ${strCount}</div>${rows}`;
+  el.innerHTML = `<div style="margin-bottom:8px;font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Suggested filings -> SAR: ${sarCount} | STR: ${strCount}</div>${rows}`;
 }
 
 function renderShipments() {
@@ -5888,9 +5889,9 @@ function renderResults(r, query) {
   const rr = (r.risk_rating || '').toUpperCase();
   const rrColors = { CRITICAL: {bg:'rgba(217,79,79,0.15)',color:'#D94F4F',border:'rgba(217,79,79,0.3)'}, HIGH: {bg:'rgba(217,79,79,0.15)',color:'#D94F4F',border:'rgba(217,79,79,0.3)'}, MEDIUM: {bg:'rgba(232,168,56,0.15)',color:'#E8A838',border:'rgba(232,168,56,0.3)'}, LOW: {bg:'rgba(61,168,118,0.15)',color:'#3DA876',border:'rgba(61,168,118,0.3)'} };
   const rrStyle = rrColors[rr] || rrColors.MEDIUM;
-  const rrBanner = rr ? `<div style="background:${rrStyle.bg};border:1px solid ${rrStyle.border};border-radius:8px;padding:12px 16px;margin-bottom:12px">
+  const rrBanner = rr ? `<div style="background:${rrStyle.bg};border:1px solid ${rrStyle.border};border-radius:3px;padding:12px 16px;margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-      <span style="font-size:11px;font-weight:700;color:${rrStyle.color};padding:3px 10px;border-radius:4px;background:${rrStyle.bg};border:1px solid ${rrStyle.border};font-family:'DM Mono',monospace;letter-spacing:1px">OVERALL RISK: ${escHtml(rr)}</span>
+      <span style="font-size:11px;font-weight:700;color:${rrStyle.color};padding:3px 10px;border-radius:4px;background:${rrStyle.bg};border:1px solid ${rrStyle.border};font-family:'Montserrat',sans-serif;letter-spacing:1px">OVERALL RISK: ${escHtml(rr)}</span>
     </div>
     ${r.risk_rating_justification ? `<div style="font-size:12px;color:var(--muted);line-height:1.5;font-style:italic">${escHtml(r.risk_rating_justification)}</div>` : ''}
   </div>` : '';
@@ -5916,7 +5917,7 @@ function renderResults(r, query) {
     const ref = escHtml(f.regulatory_ref || '');
     const rec = escHtml(f.recommendation || '');
     const impact = escHtml(f.risk_impact || '');
-    const impactHtml = impact ? `<div style="font-size:11px;color:var(--amber);margin-top:6px;padding:6px 10px;background:rgba(232,168,56,0.08);border-radius:6px;border-left:2px solid var(--amber)"><strong>Risk Impact:</strong> ${impact}</div>` : '';
+    const impactHtml = impact ? `<div style="font-size:11px;color:var(--amber);margin-top:6px;padding:6px 10px;background:rgba(232,168,56,0.08);border-radius:3px;border-left:2px solid var(--amber)"><strong>Risk Impact:</strong> ${impact}</div>` : '';
     const taskBtn = f.asana_task_name
       ? `<div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('${escJsStr(f.asana_task_name)}','${escJsStr((f.body||'') + (f.regulatory_ref ? ' Ref: ' + f.regulatory_ref : ''))}')">+ Create Asana Task</button></div>`
       : '';
@@ -5998,7 +5999,7 @@ function wordDocHeader(reportTitle, extraStyle) {
   const company = typeof getActiveCompany === 'function' ? getActiveCompany() : {};
   const cId = company.id || 'company-5';
   const headerColor = getCompanyDocColor(cId);
-  const cName = (company.name || 'COMPLIANCE ANALYZER').toUpperCase();
+  const cName = (company.name || 'HAWKEYE STERLING V2').toUpperCase();
   const license = company.licenseNo ? 'License No. ' + escHtml(company.licenseNo) : '';
   const activity = company.activity || 'Non-Manufactured Precious Metal Trading';
   const loc = company.location || 'Dubai, UAE';
@@ -6257,7 +6258,7 @@ async function submitCreateTask() {
 // ======= ASANA READ =======
 async function loadAsanaTasks(silent) {
   if (!ASANA_TOKEN && !PROXY_URL) {
-    document.getElementById('asanaContent').innerHTML = '<p style="color:var(--amber);font-size:13px;font-family:DM Mono,monospace">No Asana token configured. Add it in Settings to see live tasks.</p>';
+    document.getElementById('asanaContent').innerHTML = '<p style="color:var(--amber);font-size:13px;font-family:\'Montserrat\',sans-serif">No Asana token configured. Add it in Settings to see live tasks.</p>';
     setAsanaModuleSync('tasks', { status: 'Idle', lastError: 'No Asana token configured' });
     return;
   }
@@ -6569,8 +6570,8 @@ async function runScheduledAnalysis(id) {
   // Advance next run date
   const next = new Date(s.nextRun);
   if (s.freq==='weekly') next.setDate(next.getDate()+7);
-  else if (s.freq==='monthly') next.setMonth(next.getMonth()+1);
-  else if (s.freq==='quarterly') next.setMonth(next.getMonth()+3);
+  else if (s.freq==='monthly') { const d=next.getDate(); next.setDate(1); next.setMonth(next.getMonth()+1); next.setDate(Math.min(d, new Date(next.getFullYear(),next.getMonth()+1,0).getDate())); }
+  else if (s.freq==='quarterly') { const d=next.getDate(); next.setDate(1); next.setMonth(next.getMonth()+3); next.setDate(Math.min(d, new Date(next.getFullYear(),next.getMonth()+1,0).getDate())); }
   s.nextRun = next.toISOString().split('T')[0];
   safeLocalSave('fgl_schedules', schedules);
   renderSchedules();
@@ -6593,14 +6594,14 @@ function renderHistory() {
     return `<div class="asana-item" style="flex-direction:column;align-items:flex-start;gap:6px">
       <div style="display:flex;width:100%;justify-content:space-between;align-items:center">
         <div class="asana-name" style="font-size:12px">${escHtml(h.query.substring(0,80))}${h.query.length>80?'...':''}</div>
-        <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;flex-shrink:0;margin-left:10px">${ts}</span>
+        <span style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif;flex-shrink:0;margin-left:10px">${ts}</span>
       </div>
       <div style="font-size:11px;color:var(--muted)">${h.summary?escHtml(h.summary.substring(0,120))+'...':''}</div>
       <div style="display:flex;gap:8px">
-        <span style="font-size:10px;color:var(--red);font-family:'DM Mono',monospace">C:${m.critical||0}</span>
-        <span style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace">H:${m.high||0}</span>
-        <span style="font-size:10px;color:var(--blue);font-family:'DM Mono',monospace">M:${m.medium||0}</span>
-        <span style="font-size:10px;color:var(--green);font-family:'DM Mono',monospace">OK:${m.compliant||0}</span>
+        <span style="font-size:10px;color:var(--red);font-family:'Montserrat',sans-serif">C:${m.critical||0}</span>
+        <span style="font-size:10px;color:var(--amber);font-family:'Montserrat',sans-serif">H:${m.high||0}</span>
+        <span style="font-size:10px;color:var(--blue);font-family:'Montserrat',sans-serif">M:${m.medium||0}</span>
+        <span style="font-size:10px;color:var(--green);font-family:'Montserrat',sans-serif">OK:${m.compliant||0}</span>
       </div>
     </div>`;
   }).join('');
@@ -6751,7 +6752,7 @@ function attachIARFile(input) {
 function renderIARAttachments() {
   const el = document.getElementById('iarAttachments');
   if (!el) return;
-  el.innerHTML = iarAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_iar_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_iar_attachments',${a.id},'iarAttachments','renderIARAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = iarAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_iar_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_iar_attachments',${a.id},'iarAttachments','renderIARAttachments')">&times;</span></span>`).join('');
 }
 
 // ======= DRIVE STRUCTURE =======
@@ -6952,7 +6953,7 @@ function renderEWRASaved() {
   if (!list.length) { el.innerHTML = '<p style="font-size:11px;color:var(--muted)">No saved EWRA assessments.</p>'; return; }
   el.innerHTML = '<span class="sec-title">Saved EWRA Assessments</span>' + list.slice(0, 10).map((d, i) => `<div style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px;display:flex;justify-content:space-between;align-items:center">
     <span>${d.entityName || 'Unnamed'} — ${d.residualRisk || 'N/A'} risk — ${d.date || 'No date'}</span>
-    <span style="color:var(--muted);font-family:'DM Mono',monospace">${new Date(d.savedAt).toLocaleString('en-GB')}</span>
+    <span style="color:var(--muted);font-family:'Montserrat',sans-serif">${new Date(d.savedAt).toLocaleString('en-GB')}</span>
   </div>`).join('');
 }
 
@@ -7050,7 +7051,7 @@ function exportGapRegisterDOCX() {
     if (rec) html += '<div class="rec">' + rec + '</div>';
   });
   html += '</body></html>';
-  var blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+  var blob = new Blob(['\ufeff' + html], { type: 'application/msword;charset=utf-8' });
   var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'Gap_Register_' + new Date().toISOString().split('T')[0] + '.doc'; a.click();
   toast('Word exported','success');
@@ -7179,7 +7180,7 @@ function renderBWRASaved() {
   if (!list.length) { el.innerHTML = '<p style="font-size:11px;color:var(--muted)">No saved BWRA assessments.</p>'; return; }
   el.innerHTML = '<span class="sec-title">Saved BWRA Assessments</span>' + list.slice(0, 10).map(d => `<div style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px;display:flex;justify-content:space-between;align-items:center">
     <span>${d.businessName || 'Unnamed'} — ${d.overallRisk || 'N/A'} risk — ${d.date || 'No date'}</span>
-    <span style="color:var(--muted);font-family:'DM Mono',monospace">${new Date(d.savedAt).toLocaleString('en-GB')}</span>
+    <span style="color:var(--muted);font-family:'Montserrat',sans-serif">${new Date(d.savedAt).toLocaleString('en-GB')}</span>
   </div>`).join('');
 }
 
@@ -7456,7 +7457,7 @@ async function shareAnalysisToGDrive() {
   const findings = (lastResult.findings || []).map(f => `[${f.severity}] ${f.title}\n${f.body || ''}\nRef: ${f.regulatory_ref || 'N/A'}\nAction: ${f.recommendation || 'N/A'}`).join('\n\n---\n\n');
   const text = `Summary:\n${lastResult.summary || 'N/A'}\n\nFindings:\n${findings || 'None'}`;
   const fileName = `FGL_Analysis_${lastArea || 'report'}_${new Date().toISOString().slice(0,10)}.txt`;
-  const content = `Fine Gold Analyzer Report\nDate: ${new Date().toISOString()}\nQuery: ${lastQuery}\nArea: ${lastArea}\n\n${text}`;
+  const content = `Hawkeye Sterling V2 Report\nDate: ${new Date().toISOString()}\nQuery: ${lastQuery}\nArea: ${lastArea}\n\n${text}`;
   await uploadToGDrive(fileName, content, 'text/plain');
 }
 
@@ -7546,7 +7547,8 @@ async function completeSetup() {
   if (!displayName) { errorEl.textContent = 'Enter your display name'; return; }
   if (!username || username.length < 3) { errorEl.textContent = 'Username must be at least 3 characters'; return; }
   if (!/^[a-z0-9_]+$/.test(username)) { errorEl.textContent = 'Username: lowercase letters, numbers, underscore only'; return; }
-  if (!password || password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters'; return; }
+  if (!password || password.length < 10) { errorEl.textContent = 'Password must be at least 10 characters with uppercase, lowercase, digit, and special character'; return; }
+  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) { errorEl.textContent = 'Password needs uppercase, lowercase, digit, and special character'; return; }
   if (password !== confirm) { errorEl.textContent = 'Passwords do not match'; return; }
 
   const users = [{
@@ -8081,15 +8083,15 @@ function renderScreeningResult(result, name) {
   el.style.display='block';
   el.querySelector('#screeningResultsContent').innerHTML = `
     <div class="finding ${cls}" style="animation:none;opacity:1">
-      <div class="f-head"><div class="f-head-left"><span class="badge ${badge}">${comp.label}</span><span class="f-title">${name}</span></div><span class="badge" style="background:var(--surface2)">${result.risk_level} RISK</span></div>
+      <div class="f-head"><div class="f-head-left"><span class="badge ${badge}">${comp.label}</span><span class="f-title">${name}</span></div><span class="badge" style="background:rgba(201,168,76,0.05)">${result.risk_level} RISK</span></div>
       <div class="f-body">${result.summary||''}</div>
       ${(result.sanctions_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Sanctions Hits:</strong> ${result.sanctions_hits.map(h=>`${h.list} (${h.match_type}): ${h.details}`).join('; ')}</div>`:''}
       ${(result.adverse_media_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Adverse Media Hits:</strong><ul style="margin:4px 0 0 16px;font-size:12px">${result.adverse_media_hits.map(h=>`<li><strong>${h.category}</strong> — ${h.details}${h.source?' <span style="color:var(--muted)">('+h.source+')</span>':''}${h.date?' <span style="color:var(--muted)">['+h.date+']</span>':''}</li>`).join('')}</ul></div>`:''}
       ${(result.risk_factors||[]).length?`<div class="rec" style="margin-top:8px"><strong>Risk Factors:</strong> ${result.risk_factors.join(', ')}</div>`:''}
       ${(result.recommended_actions||[]).length?`<div class="rec" style="margin-top:8px"><strong>Actions:</strong> ${result.recommended_actions.join('; ')}</div>`:''}
     </div>
-    <div style="margin-top:10px;padding:12px 14px;border-left:4px solid ${comp.border};background:${comp.bg};border-radius:6px">
-      <div style="font-size:12px;font-weight:600;color:${comp.color};margin-bottom:4px;font-family:'DM Mono',monospace">${comp.label} — COMPLIANCE BASIS</div>
+    <div style="margin-top:10px;padding:12px 14px;border-left:4px solid ${comp.border};background:${comp.bg};border-radius:3px">
+      <div style="font-size:12px;font-weight:600;color:${comp.color};margin-bottom:4px;font-family:'Montserrat',sans-serif">${comp.label} — COMPLIANCE BASIS</div>
       <div style="font-size:12px;color:var(--text);line-height:1.5">${comp.desc}</div>
     </div>`;
 }
@@ -8443,7 +8445,7 @@ function renderEmployeeDirectory() {
     return `<div class="asana-item" style="cursor:pointer;border-left:3px solid ${hasExpired?'var(--red)':hasAlert?'var(--amber)':'var(--green)'}" onclick="editEmployee(${e.id})">
       <div>
         <div class="asana-name">${escHtml(e.name)}</div>
-        <div class="asana-meta">${e.designation||'—'} | ${e.businessUnit||'—'} | ${e.nationality||'—'} | Joined: ${e.joinDate||'—'}</div>
+        <div class="asana-meta">${escHtml(e.designation||'—')} | ${escHtml(e.businessUnit||'—')} | ${escHtml(e.nationality||'—')} | Joined: ${escHtml(e.joinDate||'—')}</div>
         <div style="margin-top:4px">${docBadges}</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
@@ -8533,7 +8535,7 @@ function attachTrainingFile(input) {
 function renderTrainingAttachments() {
   const el = document.getElementById('trainingAttachments');
   if (!el) return;
-  el.innerHTML = trainingAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_training_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_training_attachments',${a.id},'trainingAttachments','renderTrainingAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = trainingAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_training_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_training_attachments',${a.id},'trainingAttachments','renderTrainingAttachments')">&times;</span></span>`).join('');
 }
 
 // ======= EMPLOYEE ATTACHMENTS & EXPORTS =======
@@ -8555,7 +8557,7 @@ function attachEmployeeFile(input) {
 function renderEmpAttachments() {
   const el = document.getElementById('empAttachments');
   if (!el) return;
-  el.innerHTML = empAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_emp_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_emp_attachments',${a.id},'empAttachments','renderEmpAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = empAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_emp_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_emp_attachments',${a.id},'empAttachments','renderEmpAttachments')">&times;</span></span>`).join('');
 }
 function exportEmployeePDF() {
   if (!requireJsPDF()) return;
@@ -8614,7 +8616,7 @@ function renderCompanyAttachments() {
   if (!el) return;
   const key = getCompanyAttachKey();
   const list = getCompanyAttachments();
-  el.innerHTML = list.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('${key}',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('${key}',${a.id},'','renderCompanyAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = list.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('${key}',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('${key}',${a.id},'','renderCompanyAttachments')">&times;</span></span>`).join('');
 }
 function exportCompanyPDF() {
   if (!requireJsPDF()) return;
@@ -8744,7 +8746,7 @@ const RACI_COLORS = {'R':'background:rgba(61,168,118,0.15);color:#3DA876;border:
 function raciBgFor(v) { return RACI_COLORS[v]||''; }
 
 function raciSectionHtml(r) {
-  return `<tr class="raci-section" data-section="${escHtml(r.section)}"><td colspan="7" style="padding:10px 8px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gold);font-family:'DM Mono',monospace;background:var(--surface2);border-bottom:2px solid var(--gold)">${escHtml(r.section)}</td></tr>`;
+  return `<tr class="raci-section" data-section="${escHtml(r.section)}"><td colspan="7" style="padding:10px 8px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gold);font-family:'Montserrat',sans-serif;background:rgba(201,168,76,0.05);border-bottom:2px solid var(--gold)">${escHtml(r.section)}</td></tr>`;
 }
 
 window.raciColorChange = function(el) {
@@ -8811,7 +8813,7 @@ function renderRACIAttachments() {
   const el = document.getElementById('raciAttachments');
   if (!el) return;
   if (!raciAttachments.length) { el.innerHTML = ''; return; }
-  el.innerHTML = raciAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 8px;font-size:10px;margin:2px">
+  el.innerHTML = raciAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px;margin:2px">
     <span style="color:var(--gold);cursor:pointer" onclick="downloadRACIAttachment(${a.id})" title="Download">📎 ${escHtml(a.name)}</span>
     <span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeRACIAttachment(${a.id})" title="Remove">&times;</span>
   </span>`).join('');
@@ -9055,7 +9057,7 @@ function calculateRiskScore() {
   if (docsCollected < 4) { score+=15; factors.push(`Incomplete documentation (${docsCollected}/${docs.length})`); }
 
   let level = score>=60?'CRITICAL':score>=40?'HIGH':score>=20?'MEDIUM':'LOW';
-  if (override!=='auto') level = override.toUpperCase();
+  if (override!=='auto' && ['LOW','MEDIUM','HIGH','CRITICAL'].includes(override.toUpperCase())) level = override.toUpperCase();
 
   const cls = level==='CRITICAL'||level==='PROHIBITED'?'f-critical':level==='HIGH'?'f-high':level==='MEDIUM'?'f-medium':'f-ok';
   const badge = level==='CRITICAL'||level==='PROHIBITED'?'b-c':level==='HIGH'?'b-h':level==='MEDIUM'?'b-m':'b-ok';
@@ -9075,6 +9077,8 @@ function calculateRiskScore() {
 function completeOnboarding() {
   const name = document.getElementById('obName').value.trim();
   if (!name) { toast('Enter customer name','error'); return; }
+  if (!document.getElementById('obCountry').value.trim()) { toast('Enter country','error'); return; }
+  if (!document.getElementById('obActivity').value.trim()) { toast('Enter business activity','error'); return; }
   const risk = calculateRiskScore();
   const docs = []; document.querySelectorAll('.ob-doc').forEach(d=>{ if(d.checked) docs.push(d.dataset.doc); });
 
@@ -9114,7 +9118,7 @@ function renderOnboardingList() {
   if (!list.length) { el.innerHTML='<p style="font-size:13px;color:var(--muted)">No customers onboarded yet.</p>'; return; }
   el.innerHTML = list.map(c=>{
     const badge = c.risk.level==='CRITICAL'?'b-c':c.risk.level==='HIGH'?'b-h':c.risk.level==='MEDIUM'?'b-m':'b-ok';
-    return `<div class="asana-item"><div><div class="asana-name">${c.name}</div><div class="asana-meta">${c.type} | ${c.country} | ${new Date(c.date).toLocaleDateString('en-GB')} | Score: ${c.risk.score}</div></div><span class="badge ${badge}">${c.risk.level}</span></div>`;
+    return `<div class="asana-item"><div><div class="asana-name">${escHtml(c.name)}</div><div class="asana-meta">${escHtml(c.type)} | ${escHtml(c.country)} | ${new Date(c.date).toLocaleDateString('en-GB')} | Score: ${c.risk.score}</div></div><span class="badge ${badge}">${escHtml(c.risk.level)}</span></div>`;
   }).join('');
 }
 
@@ -9140,7 +9144,7 @@ async function generateSTRDraft() {
     });
     const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     var strMissing = typeof validateSTRDraft === 'function' ? validateSTRDraft(text) : [];
-    var strWarning = strMissing.length ? '<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--red-dim);border:1px solid rgba(217,79,79,0.3);font-size:11px;color:var(--red)"><strong>Missing mandatory fields:</strong> ' + strMissing.join(', ') + '<br>Review and add these before goAML submission.</div>' : '<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--green-dim);border:1px solid rgba(61,168,118,0.3);font-size:11px;color:var(--green)">All mandatory STR fields detected.</div>';
+    var strWarning = strMissing.length ? '<div style="margin-top:8px;padding:10px;border-radius:3px;background:var(--red-dim);border:1px solid rgba(217,79,79,0.3);font-size:11px;color:var(--red)"><strong>Missing mandatory fields:</strong> ' + strMissing.join(', ') + '<br>Review and add these before goAML submission.</div>' : '<div style="margin-top:8px;padding:10px;border-radius:3px;background:var(--green-dim);border:1px solid rgba(61,168,118,0.3);font-size:11px;color:var(--green)">All mandatory STR fields detected.</div>';
     document.getElementById('strDraftResult').style.display='block';
     document.getElementById('strDraftResult').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${text}</div>${strWarning}<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="copySTR()">Copy STR</button></div>`;
     logAudit('str', `STR drafted for ${subject}`);
@@ -9615,7 +9619,7 @@ function generateEvalReport(data) {
     <div style="border:1px solid var(--border);padding:16px;background:var(--surface)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1px;color:var(--gold)">ENTITY RISK EVALUATION REPORT</div>
+          <div style="font-size:13px;font-weight:700;font-family:'Montserrat',sans-serif;letter-spacing:1px;color:var(--gold)">ENTITY RISK EVALUATION REPORT</div>
           <div style="font-size:10px;color:var(--muted);margin-top:2px">UAE MOE Regulations — FDL No.10/2025 & Cabinet Resolution 134/2025</div>
         </div>
         <div style="text-align:right">
@@ -9624,24 +9628,24 @@ function generateEvalReport(data) {
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-        <div style="background:var(--surface2);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">ENTITY</div><div style="font-size:11px;font-weight:600;margin-top:2px">${escapeHTML(data.entityName)}</div></div>
-        <div style="background:var(--surface2);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">TOTAL SCORE</div><div style="font-size:16px;font-weight:700;color:${detColor};margin-top:2px">${total}</div></div>
-        <div style="background:var(--surface2);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">DETERMINATION</div><div style="font-size:11px;font-weight:600;color:${detColor};margin-top:2px">${detFull}</div></div>
-        <div style="background:var(--surface2);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">DATE</div><div style="font-size:11px;font-weight:600;margin-top:2px">${data.assessDate||new Date().toLocaleDateString('en-GB')}</div></div>
+        <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">ENTITY</div><div style="font-size:11px;font-weight:600;margin-top:2px">${escapeHTML(data.entityName)}</div></div>
+        <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">TOTAL SCORE</div><div style="font-size:16px;font-weight:700;color:${detColor};margin-top:2px">${total}</div></div>
+        <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">DETERMINATION</div><div style="font-size:11px;font-weight:600;color:${detColor};margin-top:2px">${detFull}</div></div>
+        <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">DATE</div><div style="font-size:11px;font-weight:600;margin-top:2px">${data.assessDate||new Date().toLocaleDateString('en-GB')}</div></div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-        <div style="background:rgba(248,81,73,0.06);border:1px solid var(--red);padding:8px;text-align:center"><span style="font-size:16px;font-weight:700;color:var(--red)">${highCount}</span><div style="font-size:9px;color:var(--red);font-family:'DM Mono',monospace;margin-top:2px">HIGH RISK</div></div>
-        <div style="background:rgba(227,179,65,0.06);border:1px solid var(--amber);padding:8px;text-align:center"><span style="font-size:16px;font-weight:700;color:var(--amber)">${mediumCount}</span><div style="font-size:9px;color:var(--amber);font-family:'DM Mono',monospace;margin-top:2px">MEDIUM RISK</div></div>
-        <div style="background:rgba(63,185,80,0.06);border:1px solid var(--green);padding:8px;text-align:center"><span style="font-size:16px;font-weight:700;color:var(--green)">${lowCount}</span><div style="font-size:9px;color:var(--green);font-family:'DM Mono',monospace;margin-top:2px">LOW RISK</div></div>
+        <div style="background:rgba(248,81,73,0.06);border:1px solid var(--red);padding:8px;text-align:center"><span style="font-size:16px;font-weight:700;color:var(--red)">${highCount}</span><div style="font-size:9px;color:var(--red);font-family:'Montserrat',sans-serif;margin-top:2px">HIGH RISK</div></div>
+        <div style="background:rgba(227,179,65,0.06);border:1px solid var(--amber);padding:8px;text-align:center"><span style="font-size:16px;font-weight:700;color:var(--amber)">${mediumCount}</span><div style="font-size:9px;color:var(--amber);font-family:'Montserrat',sans-serif;margin-top:2px">MEDIUM RISK</div></div>
+        <div style="background:rgba(63,185,80,0.06);border:1px solid var(--green);padding:8px;text-align:center"><span style="font-size:16px;font-weight:700;color:var(--green)">${lowCount}</span><div style="font-size:9px;color:var(--green);font-family:'Montserrat',sans-serif;margin-top:2px">LOW RISK</div></div>
       </div>
 
       ${overallPlan}
 
-      <div style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;color:var(--gold);margin-bottom:8px;letter-spacing:0.5px">DETAILED CRITERIA EVALUATION</div>
+      <div style="font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;color:var(--gold);margin-bottom:8px;letter-spacing:0.5px">DETAILED CRITERIA EVALUATION</div>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse">
-          <thead><tr style="background:var(--surface2)">
+          <thead><tr style="background:rgba(201,168,76,0.05)">
             <th style="padding:5px 8px;text-align:left;border-bottom:2px solid var(--gold);width:25px;color:var(--gold);font-size:9px">#</th>
             <th style="padding:5px 8px;text-align:left;border-bottom:2px solid var(--gold);color:var(--gold);font-size:9px">CRITERION</th>
             <th style="padding:5px 8px;text-align:left;border-bottom:2px solid var(--gold);width:140px;color:var(--gold);font-size:9px">RESPONSE</th>
@@ -9652,7 +9656,7 @@ function generateEvalReport(data) {
         </table>
       </div>
 
-      <div style="margin-top:14px;padding:10px;background:var(--surface2);font-size:9px;line-height:1.5;color:var(--muted)">
+      <div style="margin-top:14px;padding:10px;background:rgba(201,168,76,0.05);font-size:9px;line-height:1.5;color:var(--muted)">
         <strong style="color:var(--text)">Regulatory References:</strong> UAE Federal Decree-Law No.10/2025 on Anti-Money Laundering and Combating the Financing of Terrorism and Illegal Organizations | Cabinet Resolution No.134/2025 on the Implementing Regulation | Cabinet Resolution No.74/2020 on Targeted Financial Sanctions | Cabinet Decision No.109/2023 on Beneficial Ownership | FATF Recommendations (updated Feb 2025) | LBMA Responsible Gold Guidance v9 | OECD Due Diligence Guidance for Responsible Supply Chains | UAE National Risk Assessment 2024 | Ministry of Economy DPMS Supervisory Guidance (March 2026)
       </div>
     </div>`;
@@ -9830,7 +9834,7 @@ function exportRiskAssessmentPDF() {
   doc.setFontSize(6); doc.setTextColor(...muted);
   doc.text('Regulatory References: UAE Federal Decree-Law No.10/2025 | Cabinet Resolution 134/2025 | Cabinet Resolution 74/2020 | FATF Recommendations | LBMA RGG v9', 14, y);
   y += 3;
-  doc.text('This document is auto-generated by the Compliance Analyser. For official use, verify all data against source records.', 14, y);
+  doc.text('This document is auto-generated by the Hawkeye Sterling V2. For official use, verify all data against source records.', 14, y);
 
   doc.save('Risk_Assessment_'+data.entityName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().split('T')[0]+'.pdf');
   toast('PDF exported','success');
@@ -10024,7 +10028,7 @@ function renderIncidents() {
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
           <span class="asana-name" style="margin:0">${escHtml(i.title)}</span>
-          ${i.wbRef ? `<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.12);color:#10B981;font-family:'DM Mono',monospace">${i.wbRef}</span>` : ''}
+          ${i.wbRef ? `<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.12);color:#10B981;font-family:'Montserrat',sans-serif">${i.wbRef}</span>` : ''}
           ${regFlag ? '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.12);color:#EF4444">REG. NOTIFY</span>' : ''}
           ${isOverdue ? '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--red-dim);color:var(--red)">OVERDUE</span>' : ''}
         </div>
@@ -10057,7 +10061,7 @@ function changeIncidentStatus(id, newStatus) {
 function closeIncident(id) {
   const list = safeLocalParse(INCIDENTS_STORAGE, []);
   const i = list.find(x=>x.id===id);
-  if (i) { i.status = i.status==='open'?'closed':'open'; safeLocalSave(INCIDENTS_STORAGE, list); renderIncidents(); logAudit('incident',`Incident ${i.status}: ${i.title}`); }
+  if (i) { i.status = i.status==='closed'?'open':'closed'; safeLocalSave(INCIDENTS_STORAGE, list); renderIncidents(); logAudit('incident',`Incident ${i.status}: ${i.title}`); }
 }
 
 function deleteIncident(id) {
@@ -10225,7 +10229,7 @@ function renderWBReports() {
     return `<div class="asana-item" style="margin-bottom:6px">
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <span style="font-size:12px;font-weight:700;color:var(--gold);font-family:'DM Mono',monospace">${r.refNumber}</span>
+          <span style="font-size:12px;font-weight:700;color:var(--gold);font-family:'Montserrat',sans-serif">${r.refNumber}</span>
           <span class="badge ${urgBadge}" style="font-size:9px">${(r.urgency||'medium').toUpperCase()}</span>
           <span class="asana-status ${statusBadge}">${statusLabel}</span>
         </div>
@@ -10343,7 +10347,7 @@ function refreshDashboard() {
 
   const trail = safeLocalParse(AUDIT_STORAGE, []);
   const trailEl = document.getElementById('auditTrailList');
-  trailEl.innerHTML = trail.length ? trail.slice(0,50).map(t=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--gold);font-family:'DM Mono',monospace">${new Date(t.ts).toLocaleString('en-GB')}</span> <span style="color:var(--muted)">[${t.action}]</span> ${t.detail}</div>`).join('') : '<p style="font-size:13px;color:var(--muted)">No activity yet.</p>';
+  trailEl.innerHTML = trail.length ? trail.slice(0,50).map(t=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--gold);font-family:'Montserrat',sans-serif">${new Date(t.ts).toLocaleString('en-GB')}</span> <span style="color:var(--muted)">[${t.action}]</span> ${t.detail}</div>`).join('') : '<p style="font-size:13px;color:var(--muted)">No activity yet.</p>';
 
   // Key Compliance Indicators
   const indicatorsEl = document.getElementById('dashComplianceIndicators');
@@ -10381,8 +10385,8 @@ function refreshDashboard() {
       { lbl:'OPEN INCIDENTS', val: String(openIncidents), col: openIncidents > 0 ? 'var(--red)' : 'var(--green)', icon:'🚨' },
       { lbl:'SCREENINGS (30D)', val: String(recentScreenings), col: recentScreenings > 0 ? 'var(--green)' : 'var(--amber)', icon:'🔍' },
     ];
-    indicatorsEl.innerHTML = indicators.map(ind => `<div style="background:var(--surface2);border-radius:8px;padding:10px;border-left:3px solid ${ind.col}">
-      <div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px">${ind.icon} ${ind.lbl}</div>
+    indicatorsEl.innerHTML = indicators.map(ind => `<div style="background:rgba(201,168,76,0.05);border-radius:3px;padding:10px;border-left:3px solid ${ind.col}">
+      <div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif;letter-spacing:0.5px">${ind.icon} ${ind.lbl}</div>
       <div style="font-size:16px;font-weight:700;color:${ind.col};margin-top:4px">${ind.val}</div>
     </div>`).join('');
   }
@@ -10400,7 +10404,7 @@ function refreshDashboard() {
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
           <div><span style="font-weight:600">${escapeHTML(d.title)}</span> <span style="color:var(--muted);font-size:10px;margin-left:6px">${d.category||''}</span></div>
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${d.date}</span>
+            <span style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">${d.date}</span>
             <span style="font-size:9px;padding:2px 8px;font-weight:700;background:${diff<0?'rgba(248,81,73,0.1)':diff<=7?'rgba(227,179,65,0.1)':'rgba(63,185,80,0.1)'};color:${col};border:1px solid ${col}">${label}</span>
           </div>
         </div>`;
@@ -10553,17 +10557,19 @@ function toggleDeadline(id) {
 
 function renderPreloadedCalendar() {
   document.getElementById('preloadedCalendar').innerHTML = UAE_CALENDAR.map(c=>
-    `<div class="asana-item"><div><div class="asana-name">${c.title}</div><div class="asana-meta">${c.category} ${c.recurring?'| Recurring':''}${c.note?' | '+c.note:''}</div></div><button class="btn btn-sm btn-green" onclick="addPreloadedDeadline('${c.title.replace(/'/g,"\\'")}','${c.category}')" style="padding:3px 8px;font-size:10px">+ Add</button></div>`
+    `<div class="asana-item"><div><div class="asana-name">${c.title}</div><div class="asana-meta">${c.category} ${c.recurring?'| Recurring':''}${c.note?' | '+c.note:''}</div></div><button class="btn btn-sm btn-green" onclick="addPreloadedDeadline('${c.title.replace(/'/g,"\\'")}','${c.category}',${c.month||0},${c.day||0})" style="padding:3px 8px;font-size:10px">+ Add</button></div>`
   ).join('');
 }
 
-function addPreloadedDeadline(title, category) {
+function addPreloadedDeadline(title, category, month, day) {
   const year = new Date().getFullYear();
   document.getElementById('calTitle').value = title;
   document.getElementById('calCategory').value = category;
-  document.getElementById('calDate').value = `${year}-12-31`;
+  const m = (month && day) ? String(month).padStart(2,'0') : '12';
+  const d = (month && day) ? String(day).padStart(2,'0') : '31';
+  document.getElementById('calDate').value = `${year}-${m}-${d}`;
   showNewDeadlineForm();
-  toast('Edit the date and save','info');
+  if (!month || !day) toast('Edit the date and save','info');
 }
 
 // ======= DOCUMENT VAULT =======
@@ -11205,7 +11211,7 @@ async function loadUploadedFiles() {
       var date = f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
       html += '<tr style="border-bottom:1px solid var(--border)">';
       html += '<td style="padding:6px 8px;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(f.name) + '">' + escHtml(f.name) + '</td>';
-      html += '<td style="padding:6px 8px"><span style="background:var(--surface2);border-radius:4px;padding:2px 6px;font-size:10px">' + escHtml(getCategoryLabel(f.category)) + '</span></td>';
+      html += '<td style="padding:6px 8px"><span style="background:rgba(201,168,76,0.05);border-radius:4px;padding:2px 6px;font-size:10px">' + escHtml(getCategoryLabel(f.category)) + '</span></td>';
       html += '<td style="padding:6px 8px;text-align:right;color:var(--muted)">' + formatFileSize(f.size) + '</td>';
       html += '<td style="padding:6px 8px;color:var(--muted)">' + date + '</td>';
       html += '<td style="padding:6px 8px;text-align:center;white-space:nowrap">';
@@ -11433,6 +11439,7 @@ function saveComplianceConfig() {
     riskMedium: Number(document.getElementById('cfgRiskMedium').value) || 4,
     highRiskCountries: (document.getElementById('cfgHighRiskCountries').value || '').toLowerCase().trim()
   };
+  if (complianceConfig.riskCritical <= complianceConfig.riskHigh || complianceConfig.riskHigh <= complianceConfig.riskMedium) { toast('Risk thresholds must be ordered: Critical > High > Medium','error'); return; }
   safeLocalSave(COMPLIANCE_CONFIG_STORAGE, complianceConfig);
   toast('Compliance configuration saved', 'success');
   runAlertScanner();
@@ -11759,10 +11766,10 @@ function refreshMyWork() {
   var forecastEl = document.getElementById('myWorkExpiryForecast');
   if (forecastEl) forecastEl.innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' +
-    '<div style="background:var(--red-dim);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--red)">' + forecast.d7 + '</div><div style="font-size:10px;color:var(--muted)">Next 7 days</div></div>' +
-    '<div style="background:var(--amber-dim);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--amber)">' + forecast.d30 + '</div><div style="font-size:10px;color:var(--muted)">Next 30 days</div></div>' +
-    '<div style="background:var(--blue-dim);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--blue)">' + forecast.d60 + '</div><div style="font-size:10px;color:var(--muted)">Next 60 days</div></div>' +
-    '<div style="background:var(--green-dim);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--green)">' + forecast.d90 + '</div><div style="font-size:10px;color:var(--muted)">Next 90 days</div></div>' +
+    '<div style="background:var(--red-dim);border-radius:3px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--red)">' + forecast.d7 + '</div><div style="font-size:10px;color:var(--muted)">Next 7 days</div></div>' +
+    '<div style="background:var(--amber-dim);border-radius:3px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--amber)">' + forecast.d30 + '</div><div style="font-size:10px;color:var(--muted)">Next 30 days</div></div>' +
+    '<div style="background:var(--blue-dim);border-radius:3px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--blue)">' + forecast.d60 + '</div><div style="font-size:10px;color:var(--muted)">Next 60 days</div></div>' +
+    '<div style="background:var(--green-dim);border-radius:3px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--green)">' + forecast.d90 + '</div><div style="font-size:10px;color:var(--muted)">Next 90 days</div></div>' +
     '</div>';
 
   // Cross-Shipment Anomalies
@@ -11816,7 +11823,7 @@ function refreshMyWork() {
     var recentAudit = audit.filter(function(a) { return new Date(a.ts || a.timestamp || 0).getTime() > cutoff; }).slice(0, 30);
     if (recentAudit.length) {
       actEl.innerHTML = recentAudit.map(function(a) {
-        return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--gold);font-family:\'DM Mono\',monospace;font-size:10px">' + new Date(a.ts || a.timestamp).toLocaleTimeString('en-GB') + '</span> ' + escHtml(a.action || a.type || '') + ' — ' + escHtml(a.detail || a.message || '') + '</div>';
+        return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--gold);font-family:\'Montserrat\',sans-serif;font-size:10px">' + new Date(a.ts || a.timestamp).toLocaleTimeString('en-GB') + '</span> ' + escHtml(a.action || a.type || '') + ' — ' + escHtml(a.detail || a.message || '') + '</div>';
       }).join('');
     } else {
       actEl.innerHTML = '<p style="font-size:13px;color:var(--muted)">No activity in the last 24 hours.</p>';

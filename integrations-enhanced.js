@@ -1,5 +1,5 @@
 /**
- * Enhanced Integrations Module — Compliance Analyser v2.3
+ * Enhanced Integrations Module — Hawkeye Sterling V2 v2.3
  * Improved Asana, Notion, Slack, Google Drive, ClickUp + health monitor
  */
 (function () {
@@ -362,7 +362,7 @@
   // ══════════════════════════════════════════════════════════════════
   const gdrive = {
     FOLDER_STRUCTURE: {
-      root: 'Compliance Analyser',
+      root: 'Hawkeye Sterling V2',
       children: ['Reports', 'Evidence', 'Audits', 'Training Records', 'Policies', 'STR Filings', 'Incident Reports'],
     },
 
@@ -411,8 +411,8 @@
     },
 
     async searchFiles(accessToken, folderId, query) {
-      const safeQuery = String(query || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      const safeFolderId = String(folderId || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeQuery = String(query || '').replace(/[^a-zA-Z0-9 _.\-]/g, '');
+      const safeFolderId = String(folderId || '').replace(/[^a-zA-Z0-9_\-]/g, '');
       const q = `'${safeFolderId}' in parents and name contains '${safeQuery}' and trashed = false`;
       const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,modifiedTime,size)`, {
         headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -494,13 +494,13 @@
       const lastSync = s.lastSync ? new Date(s.lastSync).toLocaleString('en-GB') : 'Never';
 
       html += `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:13px;font-weight:500">${svc.icon} ${svc.name}</span>
         <span style="width:8px;height:8px;border-radius:50%;background:${color}"></span>
       </div>
-      <div style="font-size:10px;color:${color};margin-top:4px;font-family:'DM Mono',monospace">${statusText}</div>
-      <div style="font-size:9px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace">Last: ${lastSync}</div>
+      <div style="font-size:10px;color:${color};margin-top:4px;font-family:'Montserrat',sans-serif">${statusText}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:2px;font-family:'Montserrat',sans-serif">Last: ${lastSync}</div>
       ${svc.required ? '<div style="font-size:9px;color:var(--amber);margin-top:2px">Required</div>' : ''}
     </div>`;
     });
@@ -516,7 +516,7 @@
       html += log.slice(0, 30).map(l => `
     <div style="display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border);font-size:11px">
       <span style="color:var(--text)">${l.integration} → ${l.action}</span>
-      <span style="color:${l.success ? 'var(--green)' : 'var(--red)'};font-family:'DM Mono',monospace">${l.success ? 'OK' : 'FAIL'} ${new Date(l.timestamp).toLocaleTimeString()}</span>
+      <span style="color:${l.success ? 'var(--green)' : 'var(--red)'};font-family:'Montserrat',sans-serif">${l.success ? 'OK' : 'FAIL'} ${new Date(l.timestamp).toLocaleTimeString()}</span>
     </div>`).join('');
     } else {
       html += '<p style="color:var(--muted);font-size:13px">No events logged.</p>';
@@ -530,7 +530,7 @@
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">`;
     Object.entries(asana.TASK_TEMPLATES).forEach(([key, tmpl]) => {
       html += `
-    <div style="background:var(--surface2);border-radius:8px;padding:10px;border:1px solid var(--border)">
+    <div style="background:var(--surface2);border-radius:3px;padding:10px;border:1px solid var(--border)">
       <div style="font-size:12px;font-weight:500;color:var(--gold)">${tmpl.name.replace(/:\s*\{.*?\}/, '')}</div>
       <div style="font-size:10px;color:var(--muted);margin-top:4px">${tmpl.tags.join(', ')}</div>
       <button class="btn btn-sm btn-green" style="margin-top:6px;font-size:10px" onclick="IntegrationsEnhanced.showTemplateDialog('${key}')">Create Task</button>
@@ -554,7 +554,7 @@
     const tmpl = asana.TASK_TEMPLATES[templateKey];
     if (!tmpl) return;
     const activeComp = typeof getActiveCompany === 'function' ? getActiveCompany() : {};
-    const defaultName = activeComp.name || 'Fine Gold LLC';
+    const defaultName = activeComp.name || 'Hawkeye Sterling';
     // Auto-use active company name — prompt only if no active company set
     const entity = defaultName || prompt('Enter company or entity name for "' + tmpl.name + '":', defaultName);
     if (!entity) return;

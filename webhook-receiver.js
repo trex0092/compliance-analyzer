@@ -1,5 +1,5 @@
 /**
- * Webhook Receiver Module — Compliance Analyser v2.3
+ * Webhook Receiver Module — Hawkeye Sterling V2 v2.3
  * Polls the Cloudflare Worker proxy for real-time Asana/Slack webhook events.
  * Browser-side: polls GET /webhooks/events, processes events, shows notifications.
  */
@@ -43,7 +43,7 @@
     }
 
     var toast = document.createElement('div');
-    toast.style.cssText = 'background:#1e293b;color:#f1f5f9;padding:12px 16px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.25);font-size:13px;line-height:1.4;opacity:0;transition:opacity .3s;border-left:4px solid ' + (event.source === 'asana' ? '#f06a6a' : '#4a154b') + ';';
+    toast.style.cssText = 'background:#1e293b;color:#f1f5f9;padding:12px 16px;border-radius:3px;box-shadow:0 4px 12px rgba(0,0,0,.25);font-size:13px;line-height:1.4;opacity:0;transition:opacity .3s;border-left:4px solid ' + (event.source === 'asana' ? '#f06a6a' : '#4a154b') + ';';
     toast.innerHTML = '<div style="font-weight:600;margin-bottom:2px;">' + escapeHtml(formatSourceLabel(event.source)) + '</div>' +
       '<div>' + escapeHtml(formatEventSummary(event)) + '</div>';
 
@@ -145,13 +145,14 @@
   }
 
   function normalizeEvent(raw) {
+    var sanitize = function(s) { return typeof s === 'string' ? s.replace(/[<>"'&]/g, '') : ''; };
     return {
-      id: raw.id || generateId(),
-      source: raw.source || 'unknown',
-      type: raw.type || 'unknown',
-      data: raw.data || {},
-      timestamp: raw.timestamp || new Date().toISOString(),
-      read: raw.read !== undefined ? raw.read : false,
+      id: sanitize(raw.id) || generateId(),
+      source: sanitize(raw.source) || 'unknown',
+      type: sanitize(raw.type) || 'unknown',
+      data: typeof raw.data === 'object' && raw.data !== null ? raw.data : {},
+      timestamp: sanitize(raw.timestamp) || new Date().toISOString(),
+      read: raw.read === true,
     };
   }
 
@@ -162,6 +163,7 @@
   }
 
   function generateId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return 'evt_' + crypto.randomUUID();
     return 'evt_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 8);
   }
 
@@ -252,7 +254,7 @@
         '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>' +
         '<path d="M13.73 21a2 2 0 0 1-3.46 0"/>' +
       '</svg>' +
-      '<span id="fgl-webhook-badge" style="display:' + badgeDisplay + ';position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 4px;">' +
+      '<span id="fgl-webhook-badge" style="display:' + badgeDisplay + ';position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:3px;align-items:center;justify-content:center;padding:0 4px;">' +
         badgeText +
       '</span>' +
     '</div>';
@@ -262,7 +264,7 @@
   function renderEventFeed() {
     var events = loadEvents();
 
-    var html = '<div id="fgl-webhook-feed" style="width:380px;max-height:480px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;">';
+    var html = '<div id="fgl-webhook-feed" style="width:380px;max-height:480px;background:#fff;border:1px solid #e2e8f0;border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;">';
 
     // Header
     html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">';

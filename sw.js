@@ -1,4 +1,4 @@
-const CACHE_NAME = 'compliance-analyzer-v1';
+const CACHE_NAME = 'hawkeye-sterling-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
