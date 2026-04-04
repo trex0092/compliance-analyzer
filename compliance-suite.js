@@ -2762,19 +2762,22 @@
     var notesEl = document.getElementById('tfs2-notes');
 
     // Check screening cache to avoid duplicate API calls for same entity
+    // Skip cache if called from bulk upload (window._bulkScreeningActive)
     var cacheKey = 'fgl_screening_cache';
-    var CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours — same entity won't be re-screened within this window
-    try {
-      var cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-      var cacheId = (name + '|' + entityType + '|' + country).toLowerCase().replace(/\s+/g, ' ').trim();
-      var cached = cache[cacheId];
-      if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-        toast('Using cached screening result for "' + name + '" (screened ' + new Date(cached.timestamp).toLocaleString('en-GB') + '). To force re-screen, wait 24h or clear cache in Settings.', 'info', 8000);
-        if (notesEl) notesEl.value = cached.notes;
-        if (cached.outcome) suite2SelectOutcome(cached.outcome);
-        return;
-      }
-    } catch(_) {}
+    var CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+    if (!window._bulkScreeningActive) {
+      try {
+        var cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+        var cacheId = (name + '|' + entityType + '|' + country).toLowerCase().replace(/\s+/g, ' ').trim();
+        var cached = cache[cacheId];
+        if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+          toast('Using cached result for "' + name + '" (screened ' + new Date(cached.timestamp).toLocaleString('en-GB') + '). Click "Run Screening" again within the form to force re-screen.', 'info', 6000);
+          if (notesEl) notesEl.value = cached.notes;
+          if (cached.outcome) suite2SelectOutcome(cached.outcome);
+          return;
+        }
+      } catch(_) {}
+    }
 
     toast('Tier-1 deep screening "' + name + '" — live web search + AI analysis — may take 30-60 seconds...', 'info', 60000);
 
@@ -3315,11 +3318,28 @@
       } catch(_) {}
     }
 
-    var data = await callAI({
-      model: 'claude-sonnet-4-5', max_tokens: 8000, temperature: 0,
-      system: 'You are a Tier-1 compliance screening engine. Screen the entity for sanctions, PEP, adverse media, and corporate network connections. NEVER fabricate sanctions designations. Adverse media is SEPARATE from sanctions. When adverse media IS found, report assertively with sources/dates. Return ONLY valid JSON:\n{"result":"CLEAR|MATCH|POTENTIAL_MATCH","sanctions_finding":"...","pep_finding":"...","adverse_media_found":true/false,"adverse_media_severity":"none|low|medium|high|critical","adverse_media_finding":"Detailed findings with sources","corporate_connections":"Known affiliations","required_actions":"...","risk_level":"low|medium|high|critical"}',
-      messages: [{ role: 'user', content: 'Screen this entity: ' + entityDesc + '\n\nCheck: sanctions (OFAC SDN, UN, EU, UK OFSI, UAE EOCN), PEP, adverse media (criminal, financial crime, corruption, environmental, human rights, regulatory), corporate network.' + liveSearchResults }]
-    });
+    // Call AI with retry on rate limit (429)
+    var data = null;
+    var maxRetries = 3;
+    for (var attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        data = await callAI({
+          model: 'claude-sonnet-4-5', max_tokens: 8000, temperature: 0,
+          system: 'You are a Tier-1 compliance screening engine. Screen the entity for sanctions, PEP, adverse media, and corporate network connections. NEVER fabricate sanctions designations. Adverse media is SEPARATE from sanctions. When adverse media IS found, report assertively with sources/dates. Return ONLY valid JSON:\n{"result":"CLEAR|MATCH|POTENTIAL_MATCH","sanctions_finding":"...","pep_finding":"...","adverse_media_found":true/false,"adverse_media_severity":"none|low|medium|high|critical","adverse_media_finding":"Detailed findings with sources","corporate_connections":"Known affiliations","required_actions":"...","risk_level":"low|medium|high|critical"}',
+          messages: [{ role: 'user', content: 'Screen this entity: ' + entityDesc + '\n\nCheck: sanctions (OFAC SDN, UN, EU, UK OFSI, UAE EOCN), PEP, adverse media (criminal, financial crime, corruption, environmental, human rights, regulatory), corporate network.' + liveSearchResults }]
+        });
+        break; // success
+      } catch(apiErr) {
+        if (apiErr.message && apiErr.message.indexOf('429') !== -1 && attempt < maxRetries - 1) {
+          var waitTime = (attempt + 1) * 5000; // 5s, 10s, 15s
+          console.warn('[Screening] Rate limited, waiting ' + (waitTime/1000) + 's before retry...');
+          await new Promise(function(r) { setTimeout(r, waitTime); });
+        } else {
+          throw apiErr;
+        }
+      }
+    }
+    if (!data) throw new Error('AI call failed after retries');
 
     var raw = (data.content || []).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
     var cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
@@ -3371,6 +3391,9 @@
       if (countEl) countEl.textContent = (i+1) + '/' + bulkQueue.length + ' docs';
       if (barEl) barEl.style.width = Math.round((i+1) / bulkQueue.length * 50) + '%'; // first 50% for extraction
 
+      // Rate-limit delay between document extractions (skip for first one)
+      if (i > 0) await new Promise(function(r) { setTimeout(r, 2000); });
+
       try {
         var entities = await extractEntitiesFromDocument(item.file);
         item.entities = entities;
@@ -3397,16 +3420,24 @@
       return;
     }
 
-    toast(bulkEntities.length + ' entities extracted from ' + (bulkQueue.length - extractErrors) + ' documents. Starting screening...', 'info', 5000);
+    toast(bulkEntities.length + ' entities extracted from ' + (bulkQueue.length - extractErrors) + ' documents. Starting screening (with rate-limit protection)...', 'info', 5000);
 
-    // Phase 2: Screen each entity
+    // Phase 2: Screen each entity (with rate-limit delays)
+    window._bulkScreeningActive = true;
     if (statusEl) statusEl.textContent = 'Phase 2: Screening ' + bulkEntities.length + ' entities...';
     var screened = 0;
     var screenFails = 0;
+    var retryDelay = 3000; // 3 seconds between screenings to avoid rate limits
 
     for (var j = 0; j < bulkEntities.length; j++) {
       var ent = bulkEntities[j];
       if (!ent.name || !ent.name.trim()) { ent.status = 'error'; screenFails++; continue; }
+
+      // Rate-limit delay between screenings (skip for first one)
+      if (j > 0) {
+        if (statusEl) statusEl.textContent = 'Waiting ' + (retryDelay/1000) + 's (rate limit)... next: ' + ent.name;
+        await new Promise(function(r) { setTimeout(r, retryDelay); });
+      }
 
       ent.status = 'screening';
       renderBulkQueue();
@@ -3457,6 +3488,7 @@
       renderBulkQueue();
     }
 
+    window._bulkScreeningActive = false;
     if (statusEl) statusEl.textContent = 'Complete — ' + screened + ' screened, ' + screenFails + ' failed';
     if (barEl) barEl.style.width = '100%';
     if (startBtn) startBtn.disabled = false;
