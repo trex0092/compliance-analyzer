@@ -5111,7 +5111,7 @@ function renderShipments() {
       <div style="display:flex;align-items:center;gap:8px">
         <span class="asana-status ${sClass}">${riskLevel} · ${riskScore}</span>
         <span class="sync-status ${syncClass}">${syncStatus}</span>
-        <button class="btn btn-sm" onclick="startEditShipment(${s.id})">Edit</button>
+        <button class="btn btn-sm btn-gold" onclick="startEditShipment(${s.id})">Edit</button>
         <button class="btn btn-sm btn-red" onclick="deleteShipment(${s.id})">Delete</button>
       </div>
     </div>`;
@@ -5464,7 +5464,7 @@ function renderIARReports() {
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <span class="asana-status ${riskClass}">${riskLevel}</span>
-        <button class="btn btn-sm" onclick="startEditIARReport(${r.id})">Edit</button>
+        <button class="btn btn-sm btn-gold" onclick="startEditIARReport(${r.id})">Edit</button>
         <button class="btn btn-sm btn-red" onclick="deleteIARReport(${r.id})">Delete</button>
       </div>
     </div>`;
@@ -10604,7 +10604,7 @@ function renderDefinitions() {
       const definition = entry[2] || '';
       const isCustom = cTerms.has(term.toLowerCase());
       const badge = isCustom ? ' <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(91,141,239,0.2);color:#5B8DEF;margin-left:4px">UPDATED</span>' : '';
-      const editBtn = `<button class="btn btn-sm" style="padding:1px 6px;font-size:9px;margin-left:4px" onclick="editDefinition('${section}','${term.replace(/'/g,"\\'")}')">Edit</button>`;
+      const editBtn = `<button class="btn btn-sm btn-gold" style="padding:1px 6px;font-size:9px;margin-left:4px" onclick="editDefinition('${section}','${term.replace(/'/g,"\\'")}')">Edit</button>`;
       const termColor = isGold ? 'color:var(--gold)' : 'color:var(--text)';
       return `<tr class="def-row"><td style="${rowStyle};font-weight:700;${termColor};white-space:nowrap">${term}${badge}${editBtn}</td><td style="${rowStyle};line-height:1.5">${fullTerm}</td></tr>`;
     }).join('');

@@ -363,7 +363,7 @@
                   </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center">
-                  <button class="btn btn-sm" onclick="suiteEditCRA(${i})">Edit</button>
+                  <button class="btn btn-sm btn-gold" onclick="suiteEditCRA(${i})">Edit</button>
                   <button class="btn btn-sm btn-blue" onclick="suiteSyncCRAToAsana(${i})">Asana</button>
                   <button class="btn btn-sm btn-red" onclick="suiteDeleteCRA(${i})">Delete</button>
                 </div>
@@ -923,7 +923,7 @@
                   <td style="padding:8px;font-size:12px;color:${new Date(r.nextReview)<new Date()?'var(--red)':'var(--text)'}">${fmtDate(r.nextReview)}</td>
                   <td style="padding:8px">
                     <div style="display:flex;gap:4px">
-                      <button class="btn btn-sm" onclick="suiteEditUBO(${i})">Edit</button>
+                      <button class="btn btn-sm btn-gold" onclick="suiteEditUBO(${i})">Edit</button>
                       <button class="btn btn-sm btn-blue" onclick="suiteSyncUBOToAsana(${i})">Asana</button>
                       <button class="btn btn-sm btn-red" onclick="suiteDeleteUBO(${i})">Del</button>
                     </div>
@@ -1129,7 +1129,7 @@
                 </div>
               </div>
               <div style="display:flex;gap:6px">
-                <button class="btn btn-sm" onclick="suiteEditSTR(${i})">View/Edit</button>
+                <button class="btn btn-sm btn-gold" onclick="suiteEditSTR(${i})">View/Edit</button>
                 <button class="btn btn-sm btn-blue" onclick="suiteSyncSTRToAsana(${i})">Asana</button>
                 <button class="btn btn-sm btn-red" onclick="suiteDeleteSTR(${i})">Delete</button>
               </div>
@@ -1661,7 +1661,7 @@
                     <div style="font-size:13px;font-weight:500;flex:1">🚩 ${f.flag}</div>
                     <div style="flex-shrink:0;display:flex;align-items:center;gap:6px">
                       <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:5px;padding:2px 8px;font-size:10px;font-family:'DM Mono',monospace;white-space:nowrap">${lvl} — ${score}</div>
-                      <button class="btn btn-sm" onclick="suiteEditRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Edit</button>
+                      <button class="btn btn-sm btn-gold" onclick="suiteEditRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Edit</button>
                       <button class="btn btn-sm btn-red" onclick="suiteDeleteRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Del</button>
                     </div>
                   </div>
@@ -2468,7 +2468,7 @@
               <div class="f-ref">Reviewer: ${e.reviewedBy||'—'} | Ref: ${e.id}</div>
             </div></div>
             <div style="display:flex;gap:6px">
-              <button class="btn btn-sm" onclick="suite2EditTFS(${i})">View/Edit</button>
+              <button class="btn btn-sm btn-gold" onclick="suite2EditTFS(${i})">View/Edit</button>
               <button class="btn btn-sm btn-red" onclick="suite2DeleteTFS(${i})">Delete</button>
             </div>
           </div>
@@ -3561,7 +3561,7 @@
               <div class="f-ref">DPMSR: ${c.reportingRequired} | Linked: ${c.linkedFlag||'No'} | Filed: ${c.dpmsr_filed||'No'}</div>
             </div></div>
             <div style="display:flex;gap:6px">
-              <button class="btn btn-sm" onclick="suite2EditDPMSR(${i})">Edit</button>
+              <button class="btn btn-sm btn-gold" onclick="suite2EditDPMSR(${i})">Edit</button>
               <button class="btn btn-sm btn-red" onclick="suite2DeleteDPMSR(${i})">Delete</button>
             </div>
           </div>

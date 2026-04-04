@@ -955,7 +955,7 @@
                     </label>
                   </div>
                   <div style="display:flex;gap:6px;align-items:center">
-                    <button class="btn btn-sm" style="padding:2px 8px;font-size:9px;border-color:var(--gold);color:var(--gold)" onclick="WorkflowEngine.editRule('${rule.id}')">Edit</button>
+                    <button class="btn btn-sm btn-gold" style="padding:2px 8px;font-size:9px" onclick="WorkflowEngine.editRule('${rule.id}')">Edit</button>
                     <span style="font-size:10px;padding:3px 8px;border-radius:6px;background:${rule.enabled ? 'var(--green-dim)' : 'var(--surface)'};color:${rule.enabled ? 'var(--green)' : 'var(--muted)'};font-family:'DM Mono',monospace">${rule.enabled ? 'ACTIVE' : 'DISABLED'}</span>
                   </div>
                 </div>

@@ -694,10 +694,8 @@ const AuthRBAC = (function () {
                                             ${new Date(u.createdAt).toLocaleDateString('en-GB')}
                                         </td>
                                         <td style="padding:10px 16px;text-align:right;">
-                                            <button class="fgl-um-edit" data-id="${u.id}" style="
-                                                padding:4px 12px;border:1px solid var(--border,#2a2a3e);
-                                                border-radius:4px;background:transparent;color:var(--text,#e0e0e0);
-                                                cursor:pointer;font-size:0.78rem;margin-right:4px;
+                                            <button class="btn btn-sm btn-gold fgl-um-edit" data-id="${u.id}" style="
+                                                padding:4px 12px;font-size:0.78rem;margin-right:4px;
                                             ">Edit</button>
                                             <button class="fgl-um-del" data-id="${u.id}" data-name="${escapeHtml(u.username)}" style="
                                                 padding:4px 12px;border:1px solid #6a2a2a;
@@ -744,8 +742,8 @@ const AuthRBAC = (function () {
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                         <h3 style="color:var(--gold,#d4a843);margin:0;font-size:1.1rem;">Login History</h3>
                         <div style="display:flex;gap:6px;">
-                            <button id="fgl-export-csv" style="padding:5px 12px;border:1px solid var(--border,#2a2a3e);border-radius:4px;background:transparent;color:var(--gold,#d4a843);cursor:pointer;font-size:0.75rem;">Export CSV</button>
-                            <button id="fgl-export-json" style="padding:5px 12px;border:1px solid var(--border,#2a2a3e);border-radius:4px;background:transparent;color:var(--gold,#d4a843);cursor:pointer;font-size:0.75rem;">Export JSON</button>
+                            <button id="fgl-export-csv" class="btn btn-sm btn-gold" style="padding:5px 12px;font-size:0.75rem;">Export CSV</button>
+                            <button id="fgl-export-json" class="btn btn-sm btn-gold" style="padding:5px 12px;font-size:0.75rem;">Export JSON</button>
                         </div>
                     </div>
                     <div style="
