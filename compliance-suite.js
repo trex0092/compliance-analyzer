@@ -1986,7 +1986,7 @@
         <div style="display:flex;gap:6px">
           <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function')refreshSanctionsLists();renderTFS2();toast('Refreshed','success')">Refresh</button>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
-          <button class="btn btn-sm btn-gold" style="padding:6px 12px;font-size:11px" onclick="suite2OpenBulkUpload()">Bulk Upload (max 20)</button>
+          <button class="btn btn-sm btn-red" style="padding:6px 12px;font-size:11px" onclick="suite2OpenBulkUpload()">Bulk Upload (max 20)</button>
         </div>
       </div>
 
@@ -2177,36 +2177,40 @@
       <div class="modal" style="max-width:750px;width:95%;max-height:92vh">
         <button class="modal-close" onclick="document.getElementById('tfs2BulkModal').classList.remove('open')">✕</button>
         <div class="modal-title">Bulk Document Upload — Extract & Screen</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Upload up to 20 PDF files (compliance assessments, due diligence reports, KYC docs). AI extracts all entities (company + individuals/UBOs) and screens each one automatically.</div>
+        <div class="token-note" style="margin-bottom:1rem">
+          <strong>Bulk Screening:</strong> Upload up to 20 PDF files (compliance assessments, due diligence reports, KYC documents). AI extracts all entities — company, shareholders, UBOs, managers, directors — and runs full Tier-1 screening on each entity automatically. Each screening is saved as a TFS event and synced to Asana.
+        </div>
 
-        <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;margin-bottom:1rem;cursor:pointer;transition:border-color 0.2s" id="tfs2-bulk-dropzone"
+        <div style="border:2px dashed var(--gold);border-radius:10px;padding:24px 20px;text-align:center;margin-bottom:1rem;cursor:pointer;transition:all 0.2s;background:rgba(180,151,90,0.03)" id="tfs2-bulk-dropzone"
           onclick="document.getElementById('tfs2-bulk-files').click()"
-          ondragover="event.preventDefault();this.style.borderColor='var(--gold)'"
-          ondragleave="this.style.borderColor='var(--border)'"
-          ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleBulkFiles(event.dataTransfer.files)">
-          <div style="font-size:28px;margin-bottom:8px">📄</div>
-          <div style="font-size:13px;font-weight:500">Drop PDF documents here or click to browse</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">PDF only — Compliance assessments, due diligence reports, KYC docs — Max 20 files</div>
+          onmouseover="this.style.background='rgba(180,151,90,0.08)';this.style.borderColor='var(--gold)'"
+          onmouseout="this.style.background='rgba(180,151,90,0.03)';this.style.borderColor='var(--gold)'"
+          ondragover="event.preventDefault();this.style.background='rgba(180,151,90,0.12)';this.style.borderColor='#d4af37'"
+          ondragleave="this.style.background='rgba(180,151,90,0.03)';this.style.borderColor='var(--gold)'"
+          ondrop="event.preventDefault();this.style.background='rgba(180,151,90,0.03)';this.style.borderColor='var(--gold)';handleBulkFiles(event.dataTransfer.files)">
+          <div style="font-size:32px;margin-bottom:10px;opacity:0.8">📋</div>
+          <div style="font-size:14px;font-weight:600;color:var(--gold)">Drop PDF files here or click to browse</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'DM Mono',monospace">PDF only — Max 20 files per batch</div>
           <input type="file" id="tfs2-bulk-files" multiple accept=".pdf" style="display:none" onchange="handleBulkFiles(this.files)">
         </div>
 
         <div id="tfs2-bulk-queue" style="max-height:300px;overflow-y:auto;margin-bottom:1rem"></div>
 
-        <div id="tfs2-bulk-progress" style="display:none;margin-bottom:1rem">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-            <span id="tfs2-bulk-status">Processing...</span>
-            <span id="tfs2-bulk-count">0/0</span>
+        <div id="tfs2-bulk-progress" style="display:none;margin-bottom:1rem;background:var(--surface2);border-radius:8px;padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;align-items:center">
+            <span id="tfs2-bulk-status" style="font-weight:500;color:var(--gold)">Processing...</span>
+            <span id="tfs2-bulk-count" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">0/0</span>
           </div>
-          <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
-            <div id="tfs2-bulk-bar" style="height:100%;background:var(--gold);width:0%;transition:width 0.3s"></div>
+          <div style="height:8px;background:var(--surface);border-radius:4px;overflow:hidden;border:1px solid var(--border)">
+            <div id="tfs2-bulk-bar" style="height:100%;background:linear-gradient(90deg,var(--gold),#d4af37);width:0%;transition:width 0.3s;border-radius:4px"></div>
           </div>
         </div>
 
         <div id="tfs2-bulk-results" style="max-height:250px;overflow-y:auto;margin-bottom:1rem"></div>
 
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-gold" id="tfs2-bulk-start" onclick="suite2RunBulkScreening()" style="flex:1" disabled>Extract & Screen All</button>
-          <button class="btn btn-sm" onclick="document.getElementById('tfs2BulkModal').classList.remove('open')" style="padding:12px 20px">Close</button>
+        <div style="display:flex;gap:10px;margin-top:0.5rem">
+          <button class="btn btn-gold" id="tfs2-bulk-start" onclick="suite2RunBulkScreening()" style="flex:1;padding:14px;font-size:13px;font-weight:600;letter-spacing:0.3px" disabled>Extract & Screen All</button>
+          <button class="btn btn-sm" onclick="document.getElementById('tfs2BulkModal').classList.remove('open')" style="padding:14px 24px;font-size:12px">Close</button>
         </div>
       </div>
     </div>`;
@@ -2621,37 +2625,47 @@
     bulkQueue.forEach(function(item, idx) {
       var statusIcon = item.status === 'pending' ? '⏳' : item.status === 'extracting' ? '🔄' : item.status === 'extracted' ? '✅' : '❌';
       var statusColor = item.status === 'error' ? 'var(--red)' : item.status === 'extracted' ? 'var(--green)' : 'var(--muted)';
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px">'
-        + '<span style="font-size:14px">' + statusIcon + '</span>'
+      var fileBorder = item.status === 'error' ? 'var(--red)' : item.status === 'extracted' ? 'var(--gold)' : 'var(--border)';
+      var fileBg = item.status === 'extracted' ? 'rgba(180,151,90,0.05)' : item.status === 'error' ? 'rgba(217,79,79,0.05)' : 'transparent';
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid ' + fileBorder + ';border-radius:8px;margin-bottom:5px;background:' + fileBg + '">'
+        + '<span style="font-size:16px">' + statusIcon + '</span>'
         + '<div style="flex:1;min-width:0">'
-        + '<div style="font-size:12px;font-weight:500">' + item.file.name + '</div>'
-        + (item.entities.length ? '<div style="font-size:10px;color:var(--green)">' + item.entities.length + ' entities extracted</div>' : '')
+        + '<div style="font-size:12px;font-weight:600">' + item.file.name + '</div>'
+        + (item.entities.length ? '<div style="font-size:10px;color:var(--gold);font-weight:500">' + item.entities.length + ' entities extracted</div>' : '')
         + (item.errorMsg ? '<div style="font-size:10px;color:var(--red)">' + item.errorMsg + '</div>' : '')
         + '</div>'
-        + '<span style="font-size:10px;color:' + statusColor + '">' + item.status + '</span>'
-        + (item.status === 'pending' ? '<button class="btn btn-sm btn-red" style="padding:2px 6px;font-size:10px" onclick="removeBulkFile(' + idx + ')">✕</button>' : '')
+        + '<span style="font-size:10px;color:' + statusColor + ';font-family:\'DM Mono\',monospace;font-weight:500">' + item.status.toUpperCase() + '</span>'
+        + (item.status === 'pending' ? '<button class="btn btn-sm btn-red" style="padding:3px 8px;font-size:10px" onclick="removeBulkFile(' + idx + ')">✕</button>' : '')
         + '</div>';
     });
 
-    // Show extracted entities
+    // Show extracted entities in gold/yellow table matching app design
     if (bulkEntities.length > 0) {
-      html += '<div style="margin-top:8px;padding:8px;background:var(--surface2);border-radius:8px">';
-      html += '<div style="font-size:11px;font-weight:600;margin-bottom:6px;font-family:\'DM Mono\',monospace">EXTRACTED ENTITIES (' + bulkEntities.length + ')</div>';
+      html += '<div style="margin-top:10px;border:1px solid var(--gold);border-radius:8px;overflow:hidden">';
+      html += '<div style="background:rgba(180,151,90,0.15);padding:8px 10px;border-bottom:1px solid var(--gold);display:flex;align-items:center;justify-content:space-between">';
+      html += '<span style="font-size:11px;font-weight:700;color:var(--gold);font-family:\'DM Mono\',monospace;letter-spacing:0.5px">EXTRACTED ENTITIES (' + bulkEntities.length + ')</span>';
+      html += '</div>';
+      // Table header
+      html += '<div style="display:grid;grid-template-columns:28px 1fr 80px 100px 120px 90px;gap:0;background:rgba(180,151,90,0.08);padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px;font-weight:600;color:var(--gold);font-family:\'DM Mono\',monospace">';
+      html += '<span></span><span>NAME</span><span>TYPE</span><span>COUNTRY</span><span>ID / REGISTER</span><span>STATUS</span>';
+      html += '</div>';
       bulkEntities.forEach(function(ent, idx) {
         var outcomeHtml = '';
         if (ent.outcome) {
           var bc = ent.outcome === 'Confirmed Match' ? 'b-r' : ent.outcome === 'Partial Match' ? 'b-a' : 'b-g';
-          outcomeHtml = ' <span class="badge ' + bc + '" style="font-size:9px">' + ent.outcome + '</span>';
+          outcomeHtml = ' <span class="badge ' + bc + '" style="font-size:8px;padding:1px 5px">' + ent.outcome + '</span>';
         }
         var statusIcon = ent.status === 'pending' ? '⏳' : ent.status === 'screening' ? '🔍' : ent.status === 'done' ? '✅' : '❌';
-        html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;border-bottom:1px solid var(--border);font-size:11px">'
-          + '<span>' + statusIcon + '</span>'
-          + '<span style="font-weight:500;min-width:140px">' + ent.name + outcomeHtml + '</span>'
-          + '<span style="color:var(--muted)">' + (ent.entity_type || '—') + '</span>'
-          + '<span style="color:var(--muted)">|</span>'
-          + '<span style="color:var(--muted)">' + (ent.country || '—') + '</span>'
-          + '<span style="color:var(--muted)">|</span>'
-          + '<span style="color:var(--muted)">' + (ent.idNumber || '—') + '</span>'
+        var statusLabel = ent.status === 'pending' ? 'Queued' : ent.status === 'screening' ? 'Screening...' : ent.status === 'done' ? 'Complete' : 'Error';
+        var statusColor = ent.status === 'done' ? 'var(--green)' : ent.status === 'error' ? 'var(--red)' : ent.status === 'screening' ? 'var(--amber)' : 'var(--muted)';
+        var rowBg = idx % 2 === 0 ? 'transparent' : 'rgba(180,151,90,0.04)';
+        html += '<div style="display:grid;grid-template-columns:28px 1fr 80px 100px 120px 90px;gap:0;padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px;background:' + rowBg + ';align-items:center">'
+          + '<span style="font-size:13px">' + statusIcon + '</span>'
+          + '<span style="font-weight:600;color:var(--gold)">' + ent.name + outcomeHtml + '</span>'
+          + '<span style="color:var(--muted);font-size:10px">' + (ent.entity_type || '—') + '</span>'
+          + '<span style="color:var(--text)">' + (ent.country || '—') + '</span>'
+          + '<span style="color:var(--text);font-family:\'DM Mono\',monospace;font-size:10px">' + (ent.idNumber || '—') + '</span>'
+          + '<span style="color:' + statusColor + ';font-size:10px;font-weight:500">' + statusLabel + '</span>'
           + '</div>';
       });
       html += '</div>';
