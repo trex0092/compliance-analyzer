@@ -1640,7 +1640,7 @@
                       <div style="font-size:10px;color:var(--muted);margin-top:3px;font-family:'Montserrat',sans-serif">L:${f.l} × I:${f.i} = ${score}</div>
                     </div>
                   </div>
-                  <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${f.ref}</div>
+                  <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${esc(f.ref)}</div>
                   <div style="font-size:11px;color:var(--muted);margin-top:4px">${rl.action}</div>
                   ${mxLabels.length ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${mxLabels.map(m=>`<span style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.3);border-radius:4px;padding:1px 6px;font-size:10px;font-family:'Montserrat',sans-serif">×${RF_MULTIPLIERS[(f.mx||[]).find(k=>RF_MULTIPLIERS[k]?.label===m)]?.factor} ${m}</span>`).join('')}</div>` : ''}
                 </div>`;
@@ -1665,7 +1665,7 @@
                       <button class="btn btn-sm btn-red" onclick="suiteDeleteRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Del</button>
                     </div>
                   </div>
-                  <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${f.ref}</div>
+                  <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${esc(f.ref)}</div>
                   <div style="font-size:11px;color:var(--muted);margin-top:4px">L:${f.l} × I:${f.i} = ${score} · ${rl.action}</div>
                 </div>`;
               }).join('')}
@@ -3296,7 +3296,7 @@
             ${RETENTION_CATEGORIES.map(r=>`<tr style="border-bottom:1px solid var(--border)">
               <td style="padding:8px;font-weight:500">${r.cat}</td>
               <td style="padding:8px;color:var(--gold);font-family:'Montserrat',sans-serif">${r.period} years</td>
-              <td style="padding:8px;font-size:11px;color:var(--muted)">${r.basis}</td>
+              <td style="padding:8px;font-size:11px;color:var(--muted)">${esc(r.basis)}</td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -3312,8 +3312,8 @@
           <div class="f-head">
             <div class="f-head-left"><div>
               <div class="f-title">${r.recordName} ${badge2(status)}</div>
-              <div class="f-body">Category: ${r.category} | Created: ${fmtDate(r.createdDate)} | Expires: ${fmtDate(expiry.toISOString())}</div>
-              <div class="f-ref">${r.basis} | Storage: ${r.storageLocation}</div>
+              <div class="f-body">Category: ${esc(r.category)} | Created: ${fmtDate(r.createdDate)} | Expires: ${fmtDate(expiry.toISOString())}</div>
+              <div class="f-ref">${esc(r.basis)} | Storage: ${esc(r.storageLocation)}</div>
             </div></div>
             <button class="btn btn-sm btn-red" onclick="suite2DeleteRetention(${i})">Delete</button>
           </div>
@@ -3416,9 +3416,9 @@
         <div class="finding ${l.decision==='Rejected – No Action'?'f-critical':l.decision==='Approved – Action Taken'?'f-ok':'f-high'}" style="margin-bottom:8px">
           <div class="f-head">
             <div class="f-head-left"><div>
-              <div class="f-title">${l.aiTask} ${badge2(l.decision)}</div>
-              <div class="f-body">Reviewed by: ${l.reviewer} | Date: ${fmtDate(l.reviewDate)}</div>
-              <div class="f-ref">Ref: ${l.id} | ${l.notes}</div>
+              <div class="f-title">${esc(l.aiTask)} ${badge2(l.decision)}</div>
+              <div class="f-body">Reviewed by: ${esc(l.reviewer)} | Date: ${fmtDate(l.reviewDate)}</div>
+              <div class="f-ref">Ref: ${l.id} | ${esc(l.notes)}</div>
             </div></div>
             <button class="btn btn-sm btn-red" onclick="suite2DeleteAILog(${i})">Delete</button>
           </div>
@@ -3616,16 +3616,16 @@
     toast('Syncing to Asana...','info');
     const notes = [
       `AI Review Log: ${l.id}`,
-      `Task Type: ${l.aiTask}`,
+      `Task Type: ${esc(l.aiTask)}`,
       `Decision: ${l.decision}`,
-      `Reviewed By: ${l.reviewer}`,
+      `Reviewed By: ${esc(l.reviewer)}`,
       `Review Date: ${fmtDate(l.reviewDate)}`,
       `AI Output Summary: ${l.output||'—'}`,
       `Reviewer Notes: ${l.notes||'—'}`,
       `\nRegulatory Basis: Cabinet Resolution 134/2025 Art.24 | PDPL — Human review of automated processing`,
     ].join('\n');
 
-    const title = `[AI-GOV] ${l.aiTask} — ${l.decision}`;
+    const title = `[AI-GOV] ${esc(l.aiTask)} — ${l.decision}`;
     const gid = await asanaPush(title, notes);
     if (gid) toast('Synced to Asana','success');
     else toast('Asana sync failed','error');

@@ -7826,7 +7826,7 @@ function refreshReminders() {
     if (!alerts.length) {
       listEl.innerHTML = '<div class="notif-item ni-green"><div class="ni-title">ALL CLEAR</div><div class="ni-detail">No pending reminders or expired documents.</div></div>';
     } else {
-      listEl.innerHTML = alerts.map(a => `<div class="notif-item ni-${a.type}"><div class="ni-title">${a.title}</div><div class="ni-detail">${a.detail}</div></div>`).join('');
+      listEl.innerHTML = alerts.map(a => `<div class="notif-item ni-${escHtml(a.type)}"><div class="ni-title">${escHtml(a.title)}</div><div class="ni-detail">${escHtml(a.detail)}</div></div>`).join('');
     }
   }
   if (badgeEl) {
@@ -8034,7 +8034,7 @@ Return JSON array: [{"id":"UAE","lastUpdate":"YYYY-MM-DD","entries":150,"status"
     statusEl.innerHTML = `✅ All ${lists.length} sanctions lists checked — <strong>${new Date().toLocaleString('en-GB')}</strong>`;
 
     const lastEl = document.getElementById('sanctionsLastRefresh');
-    if (lastEl) lastEl.innerHTML = results.map(r => `<span style="margin-right:12px">${r.id}: ${r.status === 'CURRENT' ? '🟢' : r.status === 'UPDATED' ? '🟡' : '🔴'} ${r.lastUpdate} (${(r.entries||0).toLocaleString('en-GB')} entries)</span>`).join('');
+    if (lastEl) lastEl.innerHTML = results.map(r => `<span style="margin-right:12px">${escHtml(r.id)}: ${r.status === 'CURRENT' ? '🟢' : r.status === 'UPDATED' ? '🟡' : '🔴'} ${escHtml(r.lastUpdate)} (${(r.entries||0).toLocaleString('en-GB')} entries)</span>`).join('');
 
     logAudit('sanctions_refresh', `Refreshed ${lists.length} sanctions lists`);
     toast('Sanctions lists refreshed', 'success');
@@ -8053,7 +8053,7 @@ function initSanctionsRefreshStatus() {
     const lastEl = document.getElementById('sanctionsLastRefresh');
     if (lastEl) {
       const dt = new Date(saved.timestamp);
-      lastEl.innerHTML = `Last refresh: ${dt.toLocaleString('en-GB')}` + (saved.results ? ' — ' + saved.results.map(r => `<span style="margin-right:8px">${r.id}: ${r.status === 'CURRENT' ? '🟢' : r.status === 'UPDATED' ? '🟡' : '🔴'}</span>`).join('') : '');
+      lastEl.innerHTML = `Last refresh: ${dt.toLocaleString('en-GB')}` + (saved.results ? ' — ' + saved.results.map(r => `<span style="margin-right:8px">${escHtml(r.id)}: ${r.status === 'CURRENT' ? '🟢' : r.status === 'UPDATED' ? '🟡' : '🔴'}</span>`).join('') : '');
     }
   }
 }
@@ -8935,7 +8935,7 @@ function loadRACIHistory() {
   const el = document.getElementById('raciHistoryList');
   if (!el) return;
   if (!list.length) { el.innerHTML='<p style="font-size:13px;color:var(--muted)">No RACI records saved yet.</p>'; return; }
-  el.innerHTML = list.map(r => `<div class="asana-item"><div><div class="asana-name">${r.docRef||'RACI Matrix'}</div><div class="asana-meta">${r.rows.length} activities | ${r.effDate||'No date'} | Saved: ${new Date(r.date).toLocaleDateString('en-GB')}</div></div><span class="badge b-ok">SAVED</span></div>`).join('');
+  el.innerHTML = list.map(r => `<div class="asana-item"><div><div class="asana-name">${escHtml(r.docRef||'RACI Matrix')}</div><div class="asana-meta">${r.rows.length} activities | ${escHtml(r.effDate||'No date')} | Saved: ${new Date(r.date).toLocaleDateString('en-GB')}</div></div><span class="badge b-ok">SAVED</span></div>`).join('');
 }
 
 function clearRACIMatrix() {
@@ -10348,7 +10348,7 @@ function refreshDashboard() {
 
   const trail = safeLocalParse(AUDIT_STORAGE, []);
   const trailEl = document.getElementById('auditTrailList');
-  trailEl.innerHTML = trail.length ? trail.slice(0,50).map(t=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--gold);font-family:'Montserrat',sans-serif">${new Date(t.ts).toLocaleString('en-GB')}</span> <span style="color:var(--muted)">[${t.action}]</span> ${t.detail}</div>`).join('') : '<p style="font-size:13px;color:var(--muted)">No activity yet.</p>';
+  trailEl.innerHTML = trail.length ? trail.slice(0,50).map(t=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--gold);font-family:'Montserrat',sans-serif">${new Date(t.ts).toLocaleString('en-GB')}</span> <span style="color:var(--muted)">[${escHtml(t.action)}]</span> ${escHtml(t.detail)}</div>`).join('') : '<p style="font-size:13px;color:var(--muted)">No activity yet.</p>';
 
   // Key Compliance Indicators
   const indicatorsEl = document.getElementById('dashComplianceIndicators');
@@ -10387,7 +10387,7 @@ function refreshDashboard() {
       { lbl:'SCREENINGS (30D)', val: String(recentScreenings), col: recentScreenings > 0 ? 'var(--green)' : 'var(--amber)', icon:'🔍' },
     ];
     indicatorsEl.innerHTML = indicators.map(ind => `<div style="background:rgba(201,168,76,0.05);border-radius:3px;padding:10px;border-left:3px solid ${ind.col}">
-      <div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif;letter-spacing:0.5px">${ind.icon} ${ind.lbl}</div>
+      <div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif;letter-spacing:0.5px">${escHtml(ind.icon)} ${escHtml(ind.lbl)}</div>
       <div style="font-size:16px;font-weight:700;color:${ind.col};margin-top:4px">${ind.val}</div>
     </div>`).join('');
   }
@@ -10610,7 +10610,7 @@ function renderVaultDocs(filter='') {
     const expired = d.expiry && new Date(d.expiry) < now;
     const status = expired?'s-overdue':expiring?'s-due':'s-ok';
     const label = expired?'EXPIRED':expiring?'EXPIRING SOON':d.expiry?'Valid':'—';
-    return `<div class="asana-item"><div><div class="asana-name">${d.url?`<a href="${d.url}" target="_blank" style="color:var(--gold)">${d.name}</a>`:d.name} <span style="color:var(--muted);font-size:10px">${d.version||''}</span></div><div class="asana-meta">${d.category} ${d.tags.length?'| '+d.tags.join(', '):''}${d.expiry?' | Exp: '+d.expiry:''}</div></div><div style="display:flex;gap:6px"><span class="asana-status ${status}">${label}</span><button class="btn btn-sm btn-red" onclick="deleteVaultDoc(${d.id})" style="padding:3px 8px;font-size:10px">Del</button></div></div>`;
+    return `<div class="asana-item"><div><div class="asana-name">${d.url?`<a href="${escHtml(d.url)}" target="_blank" style="color:var(--gold)">${escHtml(d.name)}</a>`:escHtml(d.name)} <span style="color:var(--muted);font-size:10px">${escHtml(d.version||'')} </span></div><div class="asana-meta">${escHtml(d.category)} ${d.tags.length?'| '+escHtml(d.tags.join(', ')):''}${d.expiry?' | Exp: '+escHtml(d.expiry):''}</div></div><div style="display:flex;gap:6px"><span class="asana-status ${status}">${label}</span><button class="btn btn-sm btn-red" onclick="deleteVaultDoc(${d.id})" style="padding:3px 8px;font-size:10px">Del</button></div></div>`;
   }).join('');
 }
 
