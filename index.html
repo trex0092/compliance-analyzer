@@ -6264,11 +6264,11 @@ async function loadAsanaTasks(silent) {
     </div>`;
     if (overdue.length) {
       html += `<div class="sec-title">Overdue Tasks (${overdue.length})</div>`;
-      overdue.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}</div></div><span class="asana-status s-overdue">OVERDUE</span></div>`; });
+      overdue.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}${t.assignee ? ' | ' + escHtml(t.assignee.name) : ''}</div></div><div style="display:flex;gap:4px;align-items:center"><button class="btn btn-sm btn-green" style="padding:2px 8px;font-size:9px" onclick="openEditAsanaTask('${t.gid}','${escHtml(t.name).replace(/'/g,"\\'")}','${t.due_on||''}','${t.assignee?escHtml(t.assignee.name).replace(/'/g,"\\'"):''}')">Edit</button><span class="asana-status s-overdue">OVERDUE</span></div></div>`; });
     }
     if (dueWeek.length) {
       html += `<div class="sec-title" style="margin-top:1rem">Due This Week (${dueWeek.length})</div>`;
-      dueWeek.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}</div></div><span class="asana-status s-due">DUE SOON</span></div>`; });
+      dueWeek.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}${t.assignee ? ' | ' + escHtml(t.assignee.name) : ''}</div></div><div style="display:flex;gap:4px;align-items:center"><button class="btn btn-sm btn-green" style="padding:2px 8px;font-size:9px" onclick="openEditAsanaTask('${t.gid}','${escHtml(t.name).replace(/'/g,"\\'")}','${t.due_on||''}','${t.assignee?escHtml(t.assignee.name).replace(/'/g,"\\'"):''}')">Edit</button><span class="asana-status s-due">DUE SOON</span></div></div>`; });
     }
     if (!overdue.length && !dueWeek.length) html += '<p style="color:var(--green);font-size:13px">No overdue or imminently due tasks.</p>';
     document.getElementById('asanaContent').innerHTML = html;
@@ -6293,6 +6293,110 @@ async function loadAsanaTasks(silent) {
       }
       setAsanaModuleSync('tasks', { status: 'Error', lastError: e.message, lastCount: 0 });
     }
+  }
+}
+
+// ======= EDIT ASANA TASK =======
+function openEditAsanaTask(gid, name, dueOn, assigneeName) {
+  var old = document.getElementById('editAsanaTaskModal');
+  if (old) old.remove();
+
+  var html = `<div class="modal-overlay" id="editAsanaTaskModal">
+    <div class="modal" style="max-width:500px;width:95%">
+      <button class="modal-close" onclick="document.getElementById('editAsanaTaskModal').classList.remove('open')">✕</button>
+      <div class="modal-title">Edit Asana Task</div>
+      <input type="hidden" id="eat-gid" value="${gid}">
+      <div style="margin-bottom:10px"><span class="lbl">Task Name *</span><input id="eat-name" value="${name.replace(/"/g,'&quot;')}"></div>
+      <div class="row row-2" style="margin-bottom:10px">
+        <div><span class="lbl">Due Date</span><input type="date" id="eat-due" value="${dueOn || ''}"></div>
+        <div><span class="lbl">Assignee</span><input id="eat-assignee" value="${(assigneeName || '').replace(/"/g,'&quot;')}" placeholder="Name or email"></div>
+      </div>
+      <div style="margin-bottom:10px"><span class="lbl">Notes (append)</span><textarea id="eat-notes" placeholder="Add notes to this task..." style="min-height:60px"></textarea></div>
+      <div style="display:flex;gap:8px;margin-top:1rem">
+        <button class="btn btn-green" onclick="saveEditAsanaTask()" style="flex:1;padding:12px;font-weight:600">Save & Update Asana</button>
+        <button class="btn btn-sm btn-gold" onclick="markAsanaTaskComplete()" style="padding:12px 16px">Mark Complete</button>
+        <button class="btn btn-sm" onclick="document.getElementById('editAsanaTaskModal').classList.remove('open')" style="padding:12px 16px">Cancel</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('editAsanaTaskModal').classList.add('open');
+}
+
+async function saveEditAsanaTask() {
+  var gid = document.getElementById('eat-gid').value;
+  var name = document.getElementById('eat-name').value.trim();
+  var dueOn = document.getElementById('eat-due').value;
+  var assignee = document.getElementById('eat-assignee').value.trim();
+  var notes = document.getElementById('eat-notes').value.trim();
+  if (!gid) return;
+  if (!name) { toast('Task name is required', 'error'); return; }
+
+  var updateData = { name: name };
+  if (dueOn) updateData.due_on = dueOn;
+
+  toast('Updating task in Asana...', 'info', 5000);
+  try {
+    // Update task name and due date
+    var r = await asanaFetch('/tasks/' + gid, {
+      method: 'PUT',
+      body: JSON.stringify({ data: updateData })
+    });
+    var d = await r.json();
+    if (d.errors) throw new Error(d.errors[0]?.message || 'Asana error');
+
+    // Append notes if provided
+    if (notes) {
+      await asanaFetch('/tasks/' + gid + '/stories', {
+        method: 'POST',
+        body: JSON.stringify({ data: { text: notes } })
+      });
+    }
+
+    // Assign if provided (search for user by name)
+    if (assignee) {
+      try {
+        var usersR = await asanaFetch('/workspaces/' + ASANA_WORKSPACE + '/users?opt_fields=name,email&limit=50');
+        var usersD = await usersR.json();
+        if (usersD.data) {
+          var match = usersD.data.find(u =>
+            u.name.toLowerCase().includes(assignee.toLowerCase()) ||
+            (u.email && u.email.toLowerCase().includes(assignee.toLowerCase()))
+          );
+          if (match) {
+            await asanaFetch('/tasks/' + gid, {
+              method: 'PUT',
+              body: JSON.stringify({ data: { assignee: match.gid } })
+            });
+          }
+        }
+      } catch(_) {}
+    }
+
+    document.getElementById('editAsanaTaskModal').classList.remove('open');
+    toast('Task updated in Asana', 'success');
+    loadAsanaTasks(false);
+  } catch(e) {
+    toast('Failed to update: ' + e.message, 'error');
+  }
+}
+
+async function markAsanaTaskComplete() {
+  var gid = document.getElementById('eat-gid').value;
+  if (!gid) return;
+  if (!confirm('Mark this task as complete in Asana?')) return;
+  try {
+    var r = await asanaFetch('/tasks/' + gid, {
+      method: 'PUT',
+      body: JSON.stringify({ data: { completed: true } })
+    });
+    var d = await r.json();
+    if (d.errors) throw new Error(d.errors[0]?.message);
+    document.getElementById('editAsanaTaskModal').classList.remove('open');
+    toast('Task marked complete', 'success');
+    loadAsanaTasks(false);
+  } catch(e) {
+    toast('Failed: ' + e.message, 'error');
   }
 }
 
