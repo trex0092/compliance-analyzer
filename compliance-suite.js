@@ -1991,9 +1991,9 @@
           const date = a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-GB') : '—';
           return '<div style="padding:10px 14px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px">'
             + '<div><div style="font-size:13px;font-weight:500">'+name+'</div>'
-            + '<div style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif;margin-top:2px">'+type+' | Risk: '+risk+' | '+date+'</div></div>'
+            + '<div style="font-size:11px;color:var(--muted);font-family:\'Montserrat\',sans-serif;margin-top:2px">'+type+' | Risk: '+risk+' | '+date+'</div></div>'
             + '<div style="display:flex;align-items:center;gap:8px">'
-            + '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif">'+st+'</span>'
+            + '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:3px;padding:2px 8px;font-size:10px;font-family:\'Montserrat\',sans-serif">'+st+'</span>'
             + '<button class="btn btn-sm btn-blue" onclick="suiteSyncMgmtApprovalToAsana('+i+')">Asana</button>'
             + '</div></div>';
         }).join('')}
