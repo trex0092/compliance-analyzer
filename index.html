@@ -2765,13 +2765,35 @@ var lastQuery = '';
 var lastArea = '';
 var REMEMBER_KEYS = false;
 const ASANA_PROJECT_MAP = {
-  'company-1': { compliance: '1213825539896477', workflow: '1213825580399850' },
-  'company-2': { compliance: '1213825365472836', workflow: '1213825542010518' },
-  'company-3': { compliance: '1213838252710765', workflow: '1213825541970651' },
-  'company-4': { compliance: '1213825578259027', workflow: '1213825580398407' },
-  'company-5': { compliance: '1213900474912902', workflow: '1213759768596515' },
-  'company-6': { compliance: '1213900370769721', workflow: '1213899469870046' }
+  'company-1': { compliance: '1213825539896477', workflow: '1213825580399850', nameMatch: 'MADISON' },
+  'company-2': { compliance: '1213825365472836', workflow: '1213825542010518', nameMatch: 'NAPLES' },
+  'company-3': { compliance: '1213838252710765', workflow: '1213825541970651', nameMatch: 'GRAMALTIN' },
+  'company-4': { compliance: '1213825578259027', workflow: '1213825580398407', nameMatch: 'ZOE' },
+  'company-5': { compliance: '1213900474912902', workflow: '1213759768596515', nameMatch: 'FG LLC' },
+  'company-6': { compliance: '1213900370769721', workflow: '1213899469870046', nameMatch: 'FG BRANCH' }
 };
+// Auto-resolve project GIDs from Asana workspace (runs once on connect)
+var _asanaProjectsResolved = false;
+async function resolveAsanaProjectGIDs() {
+  if (_asanaProjectsResolved || (!ASANA_TOKEN && !PROXY_URL)) return;
+  try {
+    const r = await asanaFetch('/projects?workspace=' + ASANA_WORKSPACE + '&opt_fields=name,archived&limit=100');
+    const data = await r.json();
+    if (!data.data) return;
+    const projects = data.data.filter(p => !p.archived);
+    for (const compId in ASANA_PROJECT_MAP) {
+      const entry = ASANA_PROJECT_MAP[compId];
+      const nameKey = entry.nameMatch;
+      if (!nameKey) continue;
+      const complianceProj = projects.find(p => p.name.includes(nameKey) && p.name.includes('COMPLIANCE PROGRAMME'));
+      const trainingProj = projects.find(p => p.name.includes(nameKey) && p.name.includes('TRAINING'));
+      if (complianceProj) entry.compliance = complianceProj.gid;
+      if (trainingProj) entry.workflow = trainingProj.gid;
+      if (!trainingProj && complianceProj) entry.workflow = complianceProj.gid;
+    }
+    _asanaProjectsResolved = true;
+  } catch(_) {}
+}
 function getAsanaProject() {
   const entry = ASANA_PROJECT_MAP[activeCompanyId] || ASANA_PROJECT_MAP['company-5'];
   return entry.workflow;
@@ -4034,6 +4056,8 @@ function switchActiveCompany(companyId) {
 function startAsanaAutoRefresh() {
   if (asanaAutoRefreshTimer) clearInterval(asanaAutoRefreshTimer);
   if (!ASANA_TOKEN && !PROXY_URL) return;
+  // Auto-resolve project GIDs from Asana workspace on first connect
+  resolveAsanaProjectGIDs().catch(function(){});
   asanaAutoRefreshTimer = setInterval(async () => {
     if (document.hidden) return;
     try {
