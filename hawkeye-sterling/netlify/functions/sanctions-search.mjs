@@ -194,36 +194,32 @@ async function fetchSanctionsData() {
 
   const results = { ofac: [], un: [], eu: [], uk: [], lastFetch: now, errors: [] };
 
-  // Fetch lists with short timeouts (Netlify free = 10s total)
+  // Fetch lists — UN (~2MB) and UK (~1MB) are fast
+  // OFAC SDN (~20MB) is too large for Netlify free tier (10s limit)
   const fetches = await Promise.allSettled([
-    // OFAC SDN — use OFAC's smaller search-ready format
-    fetch('https://www.treasury.gov/ofac/downloads/sdn.csv', { signal: AbortSignal.timeout(6000) })
-      .then(r => r.ok ? r.text() : Promise.reject('OFAC HTTP ' + r.status)),
     // UN Consolidated List (~2MB — fast)
-    fetch('https://scsanctions.un.org/resources/xml/en/consolidated.xml', { signal: AbortSignal.timeout(6000) })
+    fetch('https://scsanctions.un.org/resources/xml/en/consolidated.xml', { signal: AbortSignal.timeout(7000) })
       .then(r => r.ok ? r.text() : Promise.reject('UN HTTP ' + r.status)),
-    // UK OFSI
-    fetch('https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv', { signal: AbortSignal.timeout(6000) })
+    // UK OFSI (~1MB — fast)
+    fetch('https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv', { signal: AbortSignal.timeout(7000) })
       .then(r => r.ok ? r.text() : Promise.reject('UK HTTP ' + r.status)),
   ]);
 
   if (fetches[0].status === 'fulfilled') {
-    results.ofac = parseOFAC(fetches[0].value);
+    results.un = parseUN(fetches[0].value);
   } else {
-    results.errors.push('OFAC: ' + (fetches[0].reason || 'fetch failed'));
+    results.errors.push('UN: ' + (fetches[0].reason || 'fetch failed'));
   }
 
   if (fetches[1].status === 'fulfilled') {
-    results.un = parseUN(fetches[1].value);
+    results.uk = parseUK(fetches[1].value);
   } else {
-    results.errors.push('UN: ' + (fetches[1].reason || 'fetch failed'));
+    results.errors.push('UK OFSI: ' + (fetches[1].reason || 'fetch failed'));
   }
 
-  if (fetches[2].status === 'fulfilled') {
-    results.uk = parseUK(fetches[2].value);
-  } else {
-    results.errors.push('UK OFSI: ' + (fetches[2].reason || 'fetch failed'));
-  }
+  // Note: OFAC SDN skipped (20MB too large for serverless).
+  // Use Tavily web search to check OFAC status via news/public records.
+  results.errors.push('OFAC SDN: Use sanctionsearch.ofac.treas.gov for direct OFAC verification');
 
   cache = results;
   return results;
@@ -297,9 +293,9 @@ export default async function handler(req) {
       matchCount: matches.length,
       matches: matches.slice(0, 20), // Top 20 matches
       listsSearched: {
-        ofac: { name: 'OFAC SDN List', entries: (data.ofac || []).length, status: data.errors?.some(e => e.includes('OFAC')) ? 'ERROR' : 'OK' },
-        un: { name: 'UN Consolidated List', entries: (data.un || []).length, status: data.errors?.some(e => e.includes('UN')) ? 'ERROR' : 'OK' },
-        uk: { name: 'UK OFSI Consolidated List', entries: (data.uk || []).length, status: data.errors?.some(e => e.includes('UK')) ? 'ERROR' : 'OK' },
+        un: { name: 'UN Consolidated List', entries: (data.un || []).length, status: data.errors?.some(e => e.startsWith('UN:')) ? 'ERROR' : 'OK' },
+        uk: { name: 'UK OFSI Consolidated List', entries: (data.uk || []).length, status: data.errors?.some(e => e.startsWith('UK')) ? 'ERROR' : 'OK' },
+        ofac: { name: 'OFAC SDN (verify at sanctionsearch.ofac.treas.gov)', entries: 0, status: 'MANUAL CHECK' },
       },
       totalEntriesSearched: allEntries.length,
       timestamp: new Date().toISOString(),

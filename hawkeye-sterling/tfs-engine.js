@@ -142,11 +142,14 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
       let aiMatches = [];
       let aiRecommendation = '';
 
-      // Sanctions API with 8s timeout (Netlify free = 10s limit)
+      // Sanctions API with 8s client timeout
+      const sanctionsCtrl = new AbortController();
+      setTimeout(() => sanctionsCtrl.abort(), 8000);
       const sanctionsPromise = fetch('/.netlify/functions/sanctions-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, type, country })
+        body: JSON.stringify({ name, type, country }),
+        signal: sanctionsCtrl.signal
       }).then(r => {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
