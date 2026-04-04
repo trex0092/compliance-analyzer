@@ -2998,7 +2998,7 @@ let reminderTimer = null;
 let proxyFallbackNotified = false;
 let asanaAutoRefreshTimer = null;
 const REMINDER_INTERVAL_MS = 30 * 60 * 1000;
-const ASANA_AUTO_REFRESH_MS = 3 * 60 * 1000;
+const ASANA_AUTO_REFRESH_MS = 20 * 60 * 1000;
 
 let asanaSyncState = safeLocalParse(ASANA_SYNC_STORAGE, getDefaultAsanaSyncState());
 
@@ -3160,7 +3160,7 @@ function renderAsanaSyncOverview() {
         <div class="price-cell"><div class="price-head"><span class="price-sym">EVIDENCE</span><span class="sync-status ${evidenceModule.status === 'Healthy' ? 'sync-ok' : evidenceModule.status === 'Error' ? 'sync-failed' : 'sync-pending'}">${escHtml(evidenceModule.status)}</span></div><div class="price-sub">Last success: ${escHtml(formatSyncTs(evidenceModule.lastSuccess))}</div></div>
         <div class="price-cell"><div class="price-head"><span class="price-sym">WRITE-BACK</span><span class="sync-status ${writebackModule.status === 'Healthy' ? 'sync-ok' : writebackModule.status === 'Conflict' || writebackModule.status === 'Error' ? 'sync-failed' : 'sync-pending'}">${escHtml(writebackModule.status)}</span></div><div class="price-sub">Retries: ${retryCount} | Conflicts: ${conflictCount}</div></div>
       </div>
-      <div class="token-note">Auto-refresh every 3 minutes while the page is open. Failed writes are queued and retried automatically.</div>
+      <div class="token-note">Auto-refresh every 20 minutes while the page is open. Failed writes are queued and retried automatically.</div>
       ${tasks.lastError && tasks.status === 'Error' ? '<div style="color:var(--amber);font-size:12px;margin-top:6px">Asana: ' + escHtml('Could not connect — check your Asana token in Settings') + '</div>' : ''}`;
   }
   if (evidenceMeta) evidenceMeta.textContent = `Evidence sync: ${evidenceModule.status} | Last ${formatSyncTs(evidenceModule.lastSuccess)}`;
@@ -6208,9 +6208,23 @@ async function loadAsanaTasks(silent) {
   if (!silent) document.getElementById('asanaContent').innerHTML = '<p style="color:var(--muted);font-size:13px">Loading from Asana...</p>';
   setAsanaModuleSync('tasks', { status: 'Refreshing', lastError: '' });
   try {
-    const r = await asanaFetch(`/projects/${getAsanaProject()}/tasks?opt_fields=name,completed,due_on,assignee.name,memberships.section.name&limit=100`);
-    const d = await r.json();
-    if (d.errors) throw new Error(d.errors[0]?.message);
+    var projectGid = getAsanaProject();
+    var r, d;
+    try {
+      r = await asanaFetch(`/projects/${projectGid}/tasks?opt_fields=name,completed,due_on,assignee.name,memberships.section.name&limit=100`);
+      d = await r.json();
+      if (d.errors) throw new Error(d.errors[0]?.message);
+    } catch(primaryErr) {
+      // Fallback: try SCREENINGS project
+      var screeningsGid = localStorage.getItem('fgl_asana_screening_project_gid');
+      if (screeningsGid && screeningsGid !== projectGid) {
+        r = await asanaFetch(`/projects/${screeningsGid}/tasks?opt_fields=name,completed,due_on,assignee.name,memberships.section.name&limit=100`);
+        d = await r.json();
+        if (d.errors) throw new Error(d.errors[0]?.message);
+      } else {
+        throw primaryErr;
+      }
+    }
     const tasks = d.data || [];
     const today = new Date(); today.setHours(0,0,0,0);
     const week = new Date(today); week.setDate(week.getDate()+7);
