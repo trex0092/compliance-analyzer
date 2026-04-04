@@ -6570,8 +6570,8 @@ async function runScheduledAnalysis(id) {
   // Advance next run date
   const next = new Date(s.nextRun);
   if (s.freq==='weekly') next.setDate(next.getDate()+7);
-  else if (s.freq==='monthly') next.setMonth(next.getMonth()+1);
-  else if (s.freq==='quarterly') next.setMonth(next.getMonth()+3);
+  else if (s.freq==='monthly') { const d=next.getDate(); next.setDate(1); next.setMonth(next.getMonth()+1); next.setDate(Math.min(d, new Date(next.getFullYear(),next.getMonth()+1,0).getDate())); }
+  else if (s.freq==='quarterly') { const d=next.getDate(); next.setDate(1); next.setMonth(next.getMonth()+3); next.setDate(Math.min(d, new Date(next.getFullYear(),next.getMonth()+1,0).getDate())); }
   s.nextRun = next.toISOString().split('T')[0];
   safeLocalSave('fgl_schedules', schedules);
   renderSchedules();
@@ -7051,7 +7051,7 @@ function exportGapRegisterDOCX() {
     if (rec) html += '<div class="rec">' + rec + '</div>';
   });
   html += '</body></html>';
-  var blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+  var blob = new Blob(['\ufeff' + html], { type: 'application/msword;charset=utf-8' });
   var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'Gap_Register_' + new Date().toISOString().split('T')[0] + '.doc'; a.click();
   toast('Word exported','success');
@@ -8445,7 +8445,7 @@ function renderEmployeeDirectory() {
     return `<div class="asana-item" style="cursor:pointer;border-left:3px solid ${hasExpired?'var(--red)':hasAlert?'var(--amber)':'var(--green)'}" onclick="editEmployee(${e.id})">
       <div>
         <div class="asana-name">${escHtml(e.name)}</div>
-        <div class="asana-meta">${e.designation||'—'} | ${e.businessUnit||'—'} | ${e.nationality||'—'} | Joined: ${e.joinDate||'—'}</div>
+        <div class="asana-meta">${escHtml(e.designation||'—')} | ${escHtml(e.businessUnit||'—')} | ${escHtml(e.nationality||'—')} | Joined: ${escHtml(e.joinDate||'—')}</div>
         <div style="margin-top:4px">${docBadges}</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
@@ -9057,7 +9057,7 @@ function calculateRiskScore() {
   if (docsCollected < 4) { score+=15; factors.push(`Incomplete documentation (${docsCollected}/${docs.length})`); }
 
   let level = score>=60?'CRITICAL':score>=40?'HIGH':score>=20?'MEDIUM':'LOW';
-  if (override!=='auto') level = override.toUpperCase();
+  if (override!=='auto' && ['LOW','MEDIUM','HIGH','CRITICAL'].includes(override.toUpperCase())) level = override.toUpperCase();
 
   const cls = level==='CRITICAL'||level==='PROHIBITED'?'f-critical':level==='HIGH'?'f-high':level==='MEDIUM'?'f-medium':'f-ok';
   const badge = level==='CRITICAL'||level==='PROHIBITED'?'b-c':level==='HIGH'?'b-h':level==='MEDIUM'?'b-m':'b-ok';
@@ -9077,6 +9077,8 @@ function calculateRiskScore() {
 function completeOnboarding() {
   const name = document.getElementById('obName').value.trim();
   if (!name) { toast('Enter customer name','error'); return; }
+  if (!document.getElementById('obCountry').value.trim()) { toast('Enter country','error'); return; }
+  if (!document.getElementById('obActivity').value.trim()) { toast('Enter business activity','error'); return; }
   const risk = calculateRiskScore();
   const docs = []; document.querySelectorAll('.ob-doc').forEach(d=>{ if(d.checked) docs.push(d.dataset.doc); });
 
@@ -9116,7 +9118,7 @@ function renderOnboardingList() {
   if (!list.length) { el.innerHTML='<p style="font-size:13px;color:var(--muted)">No customers onboarded yet.</p>'; return; }
   el.innerHTML = list.map(c=>{
     const badge = c.risk.level==='CRITICAL'?'b-c':c.risk.level==='HIGH'?'b-h':c.risk.level==='MEDIUM'?'b-m':'b-ok';
-    return `<div class="asana-item"><div><div class="asana-name">${c.name}</div><div class="asana-meta">${c.type} | ${c.country} | ${new Date(c.date).toLocaleDateString('en-GB')} | Score: ${c.risk.score}</div></div><span class="badge ${badge}">${c.risk.level}</span></div>`;
+    return `<div class="asana-item"><div><div class="asana-name">${escHtml(c.name)}</div><div class="asana-meta">${escHtml(c.type)} | ${escHtml(c.country)} | ${new Date(c.date).toLocaleDateString('en-GB')} | Score: ${c.risk.score}</div></div><span class="badge ${badge}">${escHtml(c.risk.level)}</span></div>`;
   }).join('');
 }
 
@@ -10059,7 +10061,7 @@ function changeIncidentStatus(id, newStatus) {
 function closeIncident(id) {
   const list = safeLocalParse(INCIDENTS_STORAGE, []);
   const i = list.find(x=>x.id===id);
-  if (i) { i.status = i.status==='open'?'closed':'open'; safeLocalSave(INCIDENTS_STORAGE, list); renderIncidents(); logAudit('incident',`Incident ${i.status}: ${i.title}`); }
+  if (i) { i.status = i.status==='closed'?'open':'closed'; safeLocalSave(INCIDENTS_STORAGE, list); renderIncidents(); logAudit('incident',`Incident ${i.status}: ${i.title}`); }
 }
 
 function deleteIncident(id) {
@@ -10555,17 +10557,19 @@ function toggleDeadline(id) {
 
 function renderPreloadedCalendar() {
   document.getElementById('preloadedCalendar').innerHTML = UAE_CALENDAR.map(c=>
-    `<div class="asana-item"><div><div class="asana-name">${c.title}</div><div class="asana-meta">${c.category} ${c.recurring?'| Recurring':''}${c.note?' | '+c.note:''}</div></div><button class="btn btn-sm btn-green" onclick="addPreloadedDeadline('${c.title.replace(/'/g,"\\'")}','${c.category}')" style="padding:3px 8px;font-size:10px">+ Add</button></div>`
+    `<div class="asana-item"><div><div class="asana-name">${c.title}</div><div class="asana-meta">${c.category} ${c.recurring?'| Recurring':''}${c.note?' | '+c.note:''}</div></div><button class="btn btn-sm btn-green" onclick="addPreloadedDeadline('${c.title.replace(/'/g,"\\'")}','${c.category}',${c.month||0},${c.day||0})" style="padding:3px 8px;font-size:10px">+ Add</button></div>`
   ).join('');
 }
 
-function addPreloadedDeadline(title, category) {
+function addPreloadedDeadline(title, category, month, day) {
   const year = new Date().getFullYear();
   document.getElementById('calTitle').value = title;
   document.getElementById('calCategory').value = category;
-  document.getElementById('calDate').value = `${year}-12-31`;
+  const m = (month && day) ? String(month).padStart(2,'0') : '12';
+  const d = (month && day) ? String(day).padStart(2,'0') : '31';
+  document.getElementById('calDate').value = `${year}-${m}-${d}`;
   showNewDeadlineForm();
-  toast('Edit the date and save','info');
+  if (!month || !day) toast('Edit the date and save','info');
 }
 
 // ======= DOCUMENT VAULT =======
@@ -11435,6 +11439,7 @@ function saveComplianceConfig() {
     riskMedium: Number(document.getElementById('cfgRiskMedium').value) || 4,
     highRiskCountries: (document.getElementById('cfgHighRiskCountries').value || '').toLowerCase().trim()
   };
+  if (complianceConfig.riskCritical <= complianceConfig.riskHigh || complianceConfig.riskHigh <= complianceConfig.riskMedium) { toast('Risk thresholds must be ordered: Critical > High > Medium','error'); return; }
   safeLocalSave(COMPLIANCE_CONFIG_STORAGE, complianceConfig);
   toast('Compliance configuration saved', 'success');
   runAlertScanner();
