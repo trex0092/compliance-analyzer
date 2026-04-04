@@ -2388,6 +2388,7 @@ Examples:
         <span class="lbl">API Keys & Integrations</span>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Anthropic API Key</span><input type="password" id="anthropicKey2" placeholder="sk-ant-..." /></div></div>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Asana Personal Access Token</span><input type="password" id="asanaToken2" placeholder="1/xxxxxxxx..." /></div></div>
+        <div class="row" style="margin-bottom:12px"><div><span class="lbl">Tavily API Key <span style="font-size:10px;color:var(--muted)">(FREE — 1,000 searches/month — live web search for screening)</span></span><input type="password" id="tavilyKey2" placeholder="tvly-..." /></div></div>
         <input type="hidden" id="gdriveFolderId2" value="" />
         <div id="gdriveStatus" style="display:none"></div>
         <input type="hidden" id="gdriveClientId2" value="" />
@@ -2763,6 +2764,7 @@ var NOTION_DB_ID = ''; // removed — use Asana
 var CLICKUP_TOKEN = ''; // removed — use Asana
 var CLICKUP_LIST_ID = ''; // removed — use Asana
 var GEMINI_KEY = '';
+var TAVILY_KEY = '';
 var GDRIVE_CLIENT_ID = '';
 var GDRIVE_FOLDER_ID = '';
 var gdriveAccessToken = '';
@@ -3258,6 +3260,7 @@ function hydrateKeys() {
   PROXY_URL = normaliseProxyUrl(saved.proxyUrl || '');
   OPENAI_KEY = (saved.openaiKey || '').trim();
   GEMINI_KEY = (saved.geminiKey || '').trim();
+  TAVILY_KEY = (saved.tavilyKey || '').trim();
   GDRIVE_CLIENT_ID = (saved.gdriveClientId || '').trim();
   GDRIVE_FOLDER_ID = (saved.gdriveFolderId || '').trim();
   AI_PROVIDER = saved.aiProvider || 'claude';
@@ -3267,6 +3270,7 @@ function hydrateKeys() {
     asanaToken: ASANA_TOKEN, asanaToken2: ASANA_TOKEN,
     scheduleEmail: SCHEDULE_EMAIL, schedEmail2: SCHEDULE_EMAIL,
     proxyUrl: PROXY_URL, proxyUrl2: PROXY_URL,
+    tavilyKey2: TAVILY_KEY,
     gdriveClientId: GDRIVE_CLIENT_ID, gdriveClientId2: GDRIVE_CLIENT_ID,
     gdriveFolderId: GDRIVE_FOLDER_ID, gdriveFolderId2: GDRIVE_FOLDER_ID,
   };
@@ -3311,13 +3315,15 @@ function updateKeys() {
   if (document.getElementById('gdriveClientId2')?.value.trim()) GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId2').value.trim();
   if (document.getElementById('gdriveFolderId2')?.value.trim()) GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId2').value.trim();
   if (document.getElementById('proxyUrl2')?.value.trim()) PROXY_URL = normaliseProxyUrl(document.getElementById('proxyUrl2').value);
+  if (document.getElementById('tavilyKey2')?.value.trim()) TAVILY_KEY = document.getElementById('tavilyKey2').value.trim();
   persistKeys();
 
   // Sync setup panel fields
   const syncMap = {
     anthropicKey: ANTHROPIC_KEY, asanaToken: ASANA_TOKEN, scheduleEmail: SCHEDULE_EMAIL,
     proxyUrl: PROXY_URL, openaiKey: OPENAI_KEY,
-    geminiKey: GEMINI_KEY, gdriveClientId: GDRIVE_CLIENT_ID, gdriveFolderId: GDRIVE_FOLDER_ID
+    geminiKey: GEMINI_KEY, tavilyKey: TAVILY_KEY,
+    gdriveClientId: GDRIVE_CLIENT_ID, gdriveFolderId: GDRIVE_FOLDER_ID
   };
   for (const [id, val] of Object.entries(syncMap)) {
     const el = document.getElementById(id);
@@ -7187,6 +7193,54 @@ async function callAI(body) {
     return callOpenAI(body);
   }
   return callAnthropic(body);
+}
+
+// ======= LIVE WEB SEARCH FOR SCREENING (Tavily — free 1,000/month) =======
+/**
+ * Search the live web for adverse media, sanctions, and compliance-relevant information.
+ * Uses Tavily API (free tier: 1,000 searches/month at tavily.com).
+ * Returns aggregated search results as text to feed into the AI screening.
+ */
+async function searchWebForScreening(entityName, entityType, country) {
+  if (!TAVILY_KEY) return null;
+
+  const queries = [
+    entityName + ' sanctions investigation prosecution',
+    entityName + ' adverse media fraud money laundering corruption',
+    entityName + ' ' + (country || '') + ' court case criminal regulatory enforcement'
+  ];
+
+  let allResults = [];
+
+  for (const query of queries) {
+    try {
+      const r = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: TAVILY_KEY,
+          query: query,
+          search_depth: 'advanced',
+          include_answer: true,
+          max_results: 5,
+          include_domains: [],
+          exclude_domains: []
+        })
+      });
+      const data = await r.json();
+      if (data.answer) allResults.push('SEARCH ANSWER: ' + data.answer);
+      if (data.results) {
+        data.results.forEach(function(res) {
+          allResults.push('SOURCE: ' + res.url + '\nTITLE: ' + (res.title || '') + '\nCONTENT: ' + (res.content || '').substring(0, 500));
+        });
+      }
+    } catch(e) {
+      console.warn('[Tavily] Search failed for query:', query, e.message);
+    }
+  }
+
+  if (allResults.length === 0) return null;
+  return '=== LIVE WEB SEARCH RESULTS (searched ' + new Date().toISOString().split('T')[0] + ') ===\n\n' + allResults.join('\n\n---\n\n');
 }
 
 // ======= GOOGLE DRIVE INTEGRATION =======
