@@ -271,8 +271,8 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       summary: 'The screened entity has been POSITIVELY IDENTIFIED on one or more sanctions lists. IMMEDIATE regulatory action is required under UAE law — ZERO DELAY.',
       regulatory: [
         'UAE FDL No.(10)/2025, Art.22: All persons shall IMMEDIATELY and WITHOUT DELAY and WITHOUT PRIOR NOTICE freeze ALL funds, financial assets, economic resources, and proceeds of designated persons/entities.',
-        'UAE FDL No.(10)/2025, Art.15-16: File STR via goAML IMMEDIATELY — NO PRIOR CONSENT REQUIRED. Not from management, not from the customer, not from any party. The obligation is individual and mandatory.',
-        'UAE FDL No.(10)/2025, Art.19: TIPPING OFF IS A CRIMINAL OFFENCE. Do NOT inform the customer or any third party that an STR has been filed or that an investigation is underway. Punishable by imprisonment.',
+        'UAE FDL No.(10)/2025, Art.18: File STR via goAML IMMEDIATELY — NO PRIOR CONSENT REQUIRED. Not from management, not from the customer, not from any party. The obligation is individual and mandatory.',
+        'UAE FDL No.(10)/2025, Art.29: TIPPING OFF IS A CRIMINAL OFFENCE. Do NOT inform the customer or any third party that an STR has been filed or that an investigation is underway. Punishable by imprisonment.',
         'Cabinet Decision No.(74)/2020: File CNMR to EOCN within 5 business days. Non-compliance is a criminal offence.',
         'FATF Recommendations 6 & 7: Implement TFS related to terrorism and proliferation financing without delay.',
         'MoE Circular 08/AML/2021: DPMS must freeze assets immediately and report to FIU and supervisory authority.',
@@ -280,17 +280,17 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       ],
       actions: [
         'FREEZE ALL FUNDS & ASSETS — IMMEDIATELY, WITHOUT DELAY. Not within 24 hours — INSTANTLY. No court order needed, no notice required. (FDL Art.22)',
-        'FILE STR VIA goAML — IMMEDIATELY, WITHOUT ANY PRIOR CONSENT. No management approval needed. The legal obligation is on YOU. (FDL Art.15-16)',
+        'FILE STR VIA goAML — IMMEDIATELY, WITHOUT ANY PRIOR CONSENT. No management approval needed. The legal obligation is on YOU. (FDL Art.18-16)',
         'FILE FFR (FUNDS FREEZE REPORT) VIA goAML — Immediately after executing the freeze. Include frozen asset details. (FDL Art.22-23)',
         'FILE CNMR TO EOCN — Within 5 business days. Include match details, actions taken, frozen asset values. (Cabinet Decision 74/2020)',
         'NOTIFY MLRO & SENIOR MANAGEMENT — Immediately with documented timestamps. (FDL Art.20)',
         'NOTIFY SUPERVISORY AUTHORITY (MoE/CBUAE) — Without delay. (FDL Art.35)',
-        'DO NOT TIP OFF — Criminal offence. Do not inform customer or any third party. (FDL Art.19)',
+        'DO NOT TIP OFF — Criminal offence. Do not inform customer or any third party. (FDL Art.29)',
         'TERMINATE BUSINESS RELATIONSHIP — Immediately. No new transactions may be processed. (FDL Art.22)'
       ],
-      deadlines: 'Asset Freeze: IMMEDIATELY | STR: IMMEDIATELY (no consent needed) | FFR: Immediately after freeze | CNMR: 5 business days | MLRO: Immediately | MoE: Without delay',
-      records: 'Retain ALL records for minimum 5 years (recommended 10 years for DPMS). Records must permit reconstruction of transactions. (FDL Art.25)',
-      penalty: 'CRIMINAL PENALTIES: Imprisonment (Art.36-39), fines up to AED 5,000,000 (Art.40), entity dissolution, asset confiscation, deportation. Personal liability for CO, MLRO, and Senior Management. Tipping off carries separate imprisonment (Art.19).'
+      deadlines: 'Asset Freeze: IMMEDIATELY | STR: Without delay, max 10 business days (no consent) | FFR: Within 2 business days | EOCN: Within 24 hours | CNMR: 5 business days | MLRO: Immediately',
+      records: 'Retain ALL records for minimum 5 years from most recent trigger event (last transaction, account closure, supervisory inspection, or final judgment). Must permit reconstruction of transactions. (FDL Art.25, Cabinet Resolution 134/2025 Art.25(2))',
+      penalty: 'CRIMINAL PENALTIES: TFS non-compliance — imprisonment + fine AED 20,000-10,000,000. ML — 1-10 years + AED 100,000-5,000,000. TF — life/10+ years + AED 1M-10M. Tipping off — 1+ year imprisonment + AED 100,000-500,000 (Art.29). Admin fines AED 10,000-5,000,000. Legal entities AED 200,000-10,000,000. NO statute of limitations (Art.37). Personal liability for CO/MLRO/Senior Management.'
     };
     if (result === 'POTENTIAL_MATCH') return {
       label: 'POTENTIAL MATCH — ENHANCED DUE DILIGENCE REQUIRED',
@@ -298,7 +298,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       regulatory: [
         'UAE FDL No.(10)/2025, Art.16-18: Apply Enhanced Due Diligence (EDD) to verify identity and determine true positive or false positive.',
         'UAE FDL No.(10)/2025, Art.15: If suspicion of ML/TF arises during verification, file STR via goAML IMMEDIATELY — NO PRIOR CONSENT REQUIRED.',
-        'UAE FDL No.(10)/2025, Art.19: Tipping off prohibition applies from the moment a potential match is detected. Criminal offence.',
+        'UAE FDL No.(10)/2025, Art.29: Tipping off prohibition applies from the moment a potential match is detected. Criminal offence.',
         'Cabinet Decision No.(74)/2020: File PNMR to EOCN within 5 business days if match cannot be immediately resolved.',
         'MoE Circular 08/AML/2021: Suspend ALL transactions until match is resolved. Enhanced verification mandatory.',
         'Cabinet Resolution No.(134)/2025, Art.8: EDD includes verifying source of funds/wealth and senior management approval.'
@@ -306,15 +306,15 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       actions: [
         'SUSPEND ALL TRANSACTIONS IMMEDIATELY — No transactions may proceed until match is resolved. (FDL Art.16)',
         'CONDUCT ENHANCED IDENTITY VERIFICATION — Cross-reference ALL identifying data against the sanctioned entry. (FDL Art.16-18)',
-        'FILE STR IF SUSPICION ARISES — IMMEDIATELY via goAML, NO PRIOR CONSENT NEEDED. Do not wait for match confirmation. (FDL Art.15)',
+        'FILE STR IF SUSPICION ARISES — IMMEDIATELY via goAML, NO PRIOR CONSENT NEEDED. Do not wait for match confirmation. (FDL Art.18)',
         'FILE PNMR TO EOCN — Within 5 business days if unresolved. (Cabinet Decision 74/2020)',
         'ESCALATE TO CO/MLRO — MLRO has independent authority to file STRs without management consent. (FDL Art.20)',
-        'DO NOT TIP OFF — Criminal offence under Art.19, even at potential match stage.',
+        'DO NOT TIP OFF — Criminal offence under Art.29, even at potential match stage.',
         'DOCUMENT DIFFERENTIATION BASIS — If false positive, record exactly how entity was differentiated. (FDL Art.25)'
       ],
       deadlines: 'Transaction Suspension: IMMEDIATELY | STR (if suspicion): IMMEDIATELY, no consent | PNMR: 5 business days | CO Review: 48 hours',
-      records: 'Retain all records for minimum 5 years (recommended 10 years for DPMS). Include verification documents, PNMR, and resolution decision. (FDL Art.25)',
-      penalty: 'Processing a transaction for a potentially sanctioned person without EDD is a regulatory breach. If subsequently confirmed positive, all prior transactions subject to criminal investigation. Tipping off carries imprisonment (Art.19).'
+      records: 'Retain all records for minimum 5 years (5 years per FDL Art.25). Include verification documents, PNMR, and resolution decision. (FDL Art.25)',
+      penalty: 'Processing a transaction for a potentially sanctioned person without EDD is a regulatory breach. If subsequently confirmed positive, all prior transactions subject to criminal investigation. Tipping off carries imprisonment (Art.29).'
     };
     return {
       label: 'NEGATIVE MATCH — NO SANCTIONS HIT',
@@ -332,11 +332,11 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         'RECORD SCREENING RESULT — Save to customer file with all details. Must be available for regulatory inspection. (FDL Art.25)',
         'SCHEDULE RE-SCREENING — High Risk: 3 months, Medium: 6 months, Low: 12 months. Also on list updates and trigger events. (Cabinet Resolution 134/2025)',
         'COMPLETE RISK ASSESSMENT — Assign risk rating per EWRA. Document in customer file. (FDL Art.14)',
-        'ONGOING MONITORING & STR OBLIGATION — If suspicion arises at ANY point, file STR via goAML IMMEDIATELY, NO PRIOR CONSENT needed. (FDL Art.15-17)'
+        'ONGOING MONITORING & STR OBLIGATION — If suspicion arises at ANY point, file STR via goAML IMMEDIATELY, NO PRIOR CONSENT needed. (FDL Art.18-17)'
       ],
       deadlines: 'CDD: Before business relationship | Re-screening (High): 3mo, (Medium): 6mo, (Low): 12mo | STR (if suspicion): IMMEDIATELY, no consent | Records: 5-10 years',
-      records: 'Retain all records for minimum 5 years (recommended 10 years for DPMS). Must permit reconstruction of transactions. Available to authorities on request. (FDL Art.25)',
-      penalty: 'IMPORTANT: Negative screening is POINT-IN-TIME only. Sanctions lists update frequently. If suspicion of ML/TF arises at any point, file STR via goAML IMMEDIATELY without any prior consent (FDL Art.15). Failure to report is a criminal offence.'
+      records: 'Retain all records for minimum 5 years (5 years per FDL Art.25). Must permit reconstruction of transactions. Available to authorities on request. (FDL Art.25)',
+      penalty: 'IMPORTANT: Negative screening is POINT-IN-TIME only. Sanctions lists update frequently. If suspicion of ML/TF arises at any point, file STR via goAML IMMEDIATELY without any prior consent (FDL Art.18). Failure to report is a criminal offence.'
     };
   }
 
