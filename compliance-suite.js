@@ -1986,6 +1986,7 @@
         <div style="display:flex;gap:6px">
           <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function')refreshSanctionsLists();renderTFS2();toast('Refreshed','success')">Refresh</button>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
+          <button class="btn btn-sm btn-gold" style="padding:6px 12px;font-size:11px" onclick="suite2OpenBulkUpload()">Bulk Upload (max 20)</button>
         </div>
       </div>
 
@@ -2167,6 +2168,45 @@
           <button class="btn btn-gold" onclick="suite2SaveTFS()" style="flex:1">Save Screening Event</button>
           <button class="btn btn-sm btn-blue" onclick="suite2RunScreening()" style="flex:1;padding:12px">Run Screening</button>
           <button class="btn btn-sm" onclick="document.getElementById('tfs2Modal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulk Upload Modal -->
+    <div class="modal-overlay" id="tfs2BulkModal">
+      <div class="modal" style="max-width:750px;width:95%;max-height:92vh">
+        <button class="modal-close" onclick="document.getElementById('tfs2BulkModal').classList.remove('open')">✕</button>
+        <div class="modal-title">Bulk Document Upload — Extract & Screen</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Upload up to 20 documents (passport, trade license, EID, etc.). AI extracts Name, Country, ID and runs screening automatically.</div>
+
+        <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;margin-bottom:1rem;cursor:pointer;transition:border-color 0.2s" id="tfs2-bulk-dropzone"
+          onclick="document.getElementById('tfs2-bulk-files').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--gold)'"
+          ondragleave="this.style.borderColor='var(--border)'"
+          ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleBulkFiles(event.dataTransfer.files)">
+          <div style="font-size:28px;margin-bottom:8px">📄</div>
+          <div style="font-size:13px;font-weight:500">Drop documents here or click to browse</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">PDF, Word (.doc, .docx) — Max 20 files</div>
+          <input type="file" id="tfs2-bulk-files" multiple accept=".pdf,.doc,.docx" style="display:none" onchange="handleBulkFiles(this.files)">
+        </div>
+
+        <div id="tfs2-bulk-queue" style="max-height:300px;overflow-y:auto;margin-bottom:1rem"></div>
+
+        <div id="tfs2-bulk-progress" style="display:none;margin-bottom:1rem">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span id="tfs2-bulk-status">Processing...</span>
+            <span id="tfs2-bulk-count">0/0</span>
+          </div>
+          <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+            <div id="tfs2-bulk-bar" style="height:100%;background:var(--gold);width:0%;transition:width 0.3s"></div>
+          </div>
+        </div>
+
+        <div id="tfs2-bulk-results" style="max-height:250px;overflow-y:auto;margin-bottom:1rem"></div>
+
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-gold" id="tfs2-bulk-start" onclick="suite2RunBulkScreening()" style="flex:1" disabled>Extract & Screen All</button>
+          <button class="btn btn-sm" onclick="document.getElementById('tfs2BulkModal').classList.remove('open')" style="padding:12px 20px">Close</button>
         </div>
       </div>
     </div>`;
@@ -2518,6 +2558,246 @@
     const events = load(SK2.TFS2)||[];
     events.splice(idx,1);
     save(SK2.TFS2, events);
+    renderTFS2();
+  };
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // BULK UPLOAD — Extract entities from documents & auto-screen (max 20)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  var bulkQueue = [];
+
+  global.suite2OpenBulkUpload = function() {
+    bulkQueue = [];
+    var queueEl = document.getElementById('tfs2-bulk-queue');
+    var resultsEl = document.getElementById('tfs2-bulk-results');
+    var progressEl = document.getElementById('tfs2-bulk-progress');
+    if (queueEl) queueEl.innerHTML = '<p style="color:var(--muted);font-size:12px;text-align:center">No documents added yet.</p>';
+    if (resultsEl) resultsEl.innerHTML = '';
+    if (progressEl) progressEl.style.display = 'none';
+    var startBtn = document.getElementById('tfs2-bulk-start');
+    if (startBtn) startBtn.disabled = true;
+    document.getElementById('tfs2BulkModal').classList.add('open');
+  };
+
+  global.handleBulkFiles = function(files) {
+    if (!files || !files.length) return;
+    var maxFiles = 20;
+    var added = 0;
+    for (var i = 0; i < files.length && bulkQueue.length < maxFiles; i++) {
+      var file = files[i];
+      var ext = file.name.split('.').pop().toLowerCase();
+      if (!['pdf','doc','docx'].includes(ext)) {
+        toast('Skipped "' + file.name + '" — only PDF and Word files accepted', 'error');
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast('Skipped "' + file.name + '" — max 10MB per file', 'error');
+        continue;
+      }
+      bulkQueue.push({ file: file, status: 'pending', extracted: null });
+      added++;
+    }
+    if (bulkQueue.length >= maxFiles && i < files.length) {
+      toast('Maximum 20 documents reached — ' + (files.length - i) + ' files skipped', 'info');
+    }
+    renderBulkQueue();
+    var startBtn = document.getElementById('tfs2-bulk-start');
+    if (startBtn) startBtn.disabled = bulkQueue.length === 0;
+  };
+
+  function renderBulkQueue() {
+    var el = document.getElementById('tfs2-bulk-queue');
+    if (!el) return;
+    if (bulkQueue.length === 0) {
+      el.innerHTML = '<p style="color:var(--muted);font-size:12px;text-align:center">No documents added yet.</p>';
+      return;
+    }
+    el.innerHTML = bulkQueue.map(function(item, idx) {
+      var statusIcon = item.status === 'pending' ? '⏳' : item.status === 'extracting' ? '🔄' : item.status === 'extracted' ? '✅' : item.status === 'screening' ? '🔍' : item.status === 'done' ? '✅' : '❌';
+      var statusColor = item.status === 'error' ? 'var(--red)' : item.status === 'done' ? 'var(--green)' : 'var(--muted)';
+      var extracted = item.extracted ? '<div style="font-size:11px;color:var(--text);margin-top:2px"><strong>' + (item.extracted.name||'—') + '</strong> | ' + (item.extracted.country||'—') + ' | ' + (item.extracted.idNumber||'—') + '</div>' : '';
+      var outcome = item.outcome ? ' <span class="badge ' + (item.outcome === 'Confirmed Match' ? 'b-r' : item.outcome === 'Partial Match' ? 'b-a' : 'b-g') + '" style="font-size:9px">' + item.outcome + '</span>' : '';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px">'
+        + '<span style="font-size:14px">' + statusIcon + '</span>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + item.file.name + outcome + '</div>'
+        + extracted
+        + '</div>'
+        + '<span style="font-size:10px;color:' + statusColor + '">' + item.status + '</span>'
+        + (item.status === 'pending' ? '<button class="btn btn-sm btn-red" style="padding:2px 6px;font-size:10px" onclick="removeBulkFile(' + idx + ')">✕</button>' : '')
+        + '</div>';
+    }).join('');
+  }
+
+  global.removeBulkFile = function(idx) {
+    bulkQueue.splice(idx, 1);
+    renderBulkQueue();
+    var startBtn = document.getElementById('tfs2-bulk-start');
+    if (startBtn) startBtn.disabled = bulkQueue.length === 0;
+  };
+
+  async function fileToBase64(file) {
+    return new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function() { resolve(reader.result.split(',')[1]); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function extractTextFromWord(file) {
+    // Extract raw text from .docx files using JSZip-based parsing
+    var base64 = await fileToBase64(file);
+    var binary = atob(base64);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+    // .docx is a ZIP containing word/document.xml
+    try {
+      if (typeof JSZip !== 'undefined') {
+        var zip = await JSZip.loadAsync(bytes);
+        var docXml = await zip.file('word/document.xml').async('string');
+        // Strip XML tags to get plain text
+        return docXml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 10000);
+      }
+    } catch(_) {}
+
+    // Fallback: send raw text extraction request to AI
+    return null;
+  }
+
+  async function extractEntityFromDocument(file) {
+    if (typeof callAI !== 'function') throw new Error('No AI provider');
+    var ext = file.name.split('.').pop().toLowerCase();
+    var base64 = await fileToBase64(file);
+
+    var extractPrompt = 'Extract the following from this document. Return ONLY valid JSON:\n{"name":"Full legal name of the person or entity","entity_type":"Individual or Company","country":"Country of citizenship/registration","idNumber":"ID number, passport number, trade license number, or registration number","dob":"Date of birth or registration date if visible (YYYY-MM-DD or empty)"}\n\nIf multiple people appear, extract the MAIN subject (the document holder/applicant). If a field is not visible, use empty string.';
+
+    var messages;
+    if (ext === 'pdf') {
+      messages = [{ role: 'user', content: [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+        { type: 'text', text: extractPrompt }
+      ] }];
+    } else {
+      // Word document (.doc/.docx) — extract text first, then send as text
+      var wordText = await extractTextFromWord(file);
+      if (wordText) {
+        messages = [{ role: 'user', content: 'The following is the text content of a Word document ("' + file.name + '"):\n\n---\n' + wordText + '\n---\n\n' + extractPrompt }];
+      } else {
+        // Fallback: send as generic document
+        var mediaType = ext === 'doc' ? 'application/msword' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        messages = [{ role: 'user', content: [
+          { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: extractPrompt }
+        ] }];
+      }
+    }
+
+    var data = await callAI({
+      model: 'claude-haiku-4-5',
+      max_tokens: 500,
+      temperature: 0,
+      system: 'You are a document data extraction specialist. Extract entity information from identity documents, passports, trade licenses, company registrations, and similar documents. Return ONLY valid JSON, nothing else.',
+      messages: messages
+    });
+
+    var raw = (data.content || []).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
+    var cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
+    var m = cleaned.match(/\{[\s\S]*\}/);
+    if (m) {
+      try { return JSON.parse(m[0]); } catch(_) {}
+    }
+    throw new Error('Could not extract entity data from document');
+  }
+
+  global.suite2RunBulkScreening = async function() {
+    if (!bulkQueue.length) return;
+    if (typeof callAI !== 'function') { toast('No AI provider configured', 'error'); return; }
+
+    var startBtn = document.getElementById('tfs2-bulk-start');
+    if (startBtn) startBtn.disabled = true;
+    var progressEl = document.getElementById('tfs2-bulk-progress');
+    if (progressEl) progressEl.style.display = 'block';
+    var resultsEl = document.getElementById('tfs2-bulk-results');
+    if (resultsEl) resultsEl.innerHTML = '';
+
+    var total = bulkQueue.length;
+    var completed = 0;
+    var successes = 0;
+    var failures = 0;
+
+    for (var i = 0; i < bulkQueue.length; i++) {
+      var item = bulkQueue[i];
+      var statusEl = document.getElementById('tfs2-bulk-status');
+      var countEl = document.getElementById('tfs2-bulk-count');
+      var barEl = document.getElementById('tfs2-bulk-bar');
+
+      // Step 1: Extract entity data from document
+      item.status = 'extracting';
+      renderBulkQueue();
+      if (statusEl) statusEl.textContent = 'Extracting: ' + item.file.name;
+
+      try {
+        var extracted = await extractEntityFromDocument(item.file);
+        item.extracted = extracted;
+        item.status = 'extracted';
+        renderBulkQueue();
+
+        if (!extracted.name || extracted.name.trim() === '') {
+          item.status = 'error';
+          item.errorMsg = 'No name found in document';
+          failures++;
+          renderBulkQueue();
+          completed++;
+          if (countEl) countEl.textContent = completed + '/' + total;
+          if (barEl) barEl.style.width = Math.round(completed / total * 100) + '%';
+          continue;
+        }
+
+        // Step 2: Run screening
+        item.status = 'screening';
+        renderBulkQueue();
+        if (statusEl) statusEl.textContent = 'Screening: ' + extracted.name;
+
+        // Set form values and trigger screening
+        var nameEl = document.getElementById('tfs2-name');
+        var typeEl = document.getElementById('tfs2-entity-type');
+        var countryEl = document.getElementById('tfs2-country');
+        var idEl = document.getElementById('tfs2-idnumber');
+        var dobEl = document.getElementById('tfs2-dob');
+        if (nameEl) nameEl.value = extracted.name;
+        if (typeEl) typeEl.value = extracted.entity_type || 'Individual';
+        if (countryEl) countryEl.value = extracted.country || '';
+        if (idEl) idEl.value = extracted.idNumber || '';
+        if (dobEl) dobEl.value = extracted.dob || '';
+
+        // Run the screening (reuse existing function logic)
+        await suite2RunScreening();
+
+        // Auto-save the screening event
+        var outcomeEl = document.getElementById('tfs2-outcome');
+        item.outcome = outcomeEl ? outcomeEl.value : 'Partial Match';
+        item.status = 'done';
+        suite2SaveTFS();
+
+        successes++;
+      } catch(e) {
+        item.status = 'error';
+        item.errorMsg = e.message;
+        failures++;
+      }
+
+      completed++;
+      renderBulkQueue();
+      if (countEl) countEl.textContent = completed + '/' + total;
+      if (barEl) barEl.style.width = Math.round(completed / total * 100) + '%';
+    }
+
+    if (statusEl) statusEl.textContent = 'Complete — ' + successes + ' screened, ' + failures + ' failed';
+    if (startBtn) startBtn.disabled = false;
+    toast('Bulk screening complete: ' + successes + ' entities screened, ' + failures + ' failed', successes > 0 ? 'success' : 'error');
     renderTFS2();
   };
 
