@@ -104,15 +104,15 @@
   }
 
   function switchToSuiteTab(name) {
-    // Deactivate all tabs and contents
+    // Deactivate all tabs and main tab contents
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     // Activate this tab button
     const btn = document.getElementById('suite-tab-' + name);
     if (btn) btn.classList.add('active');
-    // Activate content
+    // Activate content — also set display:block explicitly as fallback
     const content = document.getElementById('suite-content-' + name);
-    if (content) content.classList.add('active');
+    if (content) { content.classList.add('active'); content.style.display = 'block'; }
     // Render
     const renders = {
       cra: renderCRA, ubo: renderUBO, str: renderSTR,
@@ -2395,7 +2395,7 @@
     const btn = document.getElementById('suite2-tab-'+name);
     if (btn) btn.classList.add('active');
     const content = document.getElementById('suite2-content-'+name);
-    if (content) content.classList.add('active');
+    if (content) { content.classList.add('active'); content.style.display = 'block'; }
     const renders = { tfs2: renderTFS2, dpmsr: renderDPMSR, retention: renderRetention, ailog: renderAILog };
     if (renders[name]) renders[name]();
   }

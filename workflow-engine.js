@@ -508,6 +508,77 @@
         { type: 'create_asana_task', template: 'dpms_reporting', priority: 'medium' },
         { type: 'browser_notify', title: 'DPMS License Renewal Due', message: 'DPMS trade license/MoE registration expires in {daysUntilExpiry} days. Begin renewal process. Ref: FDL Art.53, MoE requirements.' }
       ]
+    },
+    // ── Additional DPMS & Gold-Specific Workflows ──
+    {
+      id: 'wf_gold_import_clearance', name: 'Gold Import → CDD + Provenance', enabled: true,
+      trigger: 'gold_import', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'gold_provenance', priority: 'high' },
+        { type: 'create_asana_task', template: 'cdd_review', priority: 'high' },
+        { type: 'browser_notify', title: 'Gold Import — Provenance Required', message: 'Gold import for {supplierName}. Verify provenance, assay certificates, and chain of custody per LBMA RGG v9.' }
+      ]
+    },
+    {
+      id: 'wf_refiner_risk', name: 'Non-LBMA Refiner → Enhanced DD', enabled: true,
+      trigger: 'non_lbma_refiner', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'refiner_due_diligence', priority: 'high' },
+        { type: 'email_alert', subject: 'Non-LBMA Refiner Alert: {refinerName}', message: 'Shipment from non-LBMA Good Delivery refiner. Enhanced due diligence required per LBMA RGG v9 and DMCC Rules.' }
+      ]
+    },
+    {
+      id: 'wf_asm_source', name: 'ASM Source → OECD Due Diligence', enabled: true,
+      trigger: 'asm_source_detected', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'asm_assessment', priority: 'high' },
+        { type: 'create_asana_task', template: 'responsible_sourcing', priority: 'high' },
+        { type: 'browser_notify', title: 'ASM Source Detected', message: 'Artisanal/small-scale mining source identified. OECD DDG Annex II enhanced DD required before proceeding.' }
+      ]
+    },
+    {
+      id: 'wf_employee_doc_expiry', name: 'Employee Document Expiry → Alert', enabled: true,
+      trigger: 'employee_doc_expiring', condition: { daysUntilExpiry: 30 },
+      actions: [
+        { type: 'create_asana_task', template: 'kye_review', priority: 'medium' },
+        { type: 'browser_notify', title: 'Employee Document Expiring', message: '{documentType} for {employeeName} expires in {daysUntilExpiry} days. Initiate renewal process.' }
+      ]
+    },
+    {
+      id: 'wf_dmcc_audit', name: 'DMCC Audit Due → Preparation', enabled: true,
+      trigger: 'scheduled_dmcc_audit', condition: { frequency: 'annual' },
+      actions: [
+        { type: 'create_asana_task', template: 'dmcc_compliance', priority: 'high' },
+        { type: 'create_asana_task', template: 'audit_preparation', priority: 'high' },
+        { type: 'browser_notify', title: 'DMCC Audit Due', message: 'DMCC compliance audit approaching. Prepare DPMS documentation, screening records, and training logs.' }
+      ]
+    },
+    {
+      id: 'wf_moe_inspection', name: 'MOE Inspection → Full Preparation', enabled: true,
+      trigger: 'moe_inspection_notice', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'moe_inspection_prep', priority: 'high' },
+        { type: 'create_asana_task', template: 'internal_audit', priority: 'high' },
+        { type: 'email_alert', subject: 'URGENT: MOE Inspection Notice', message: 'Ministry of Economy inspection scheduled. Prepare all compliance documentation, CDD files, training records, and screening logs.' },
+        { type: 'browser_notify', title: 'MOE INSPECTION', message: 'MOE inspection notice received. Begin immediate preparation.' }
+      ]
+    },
+    {
+      id: 'wf_fatf_list_change', name: 'FATF List Change → Customer Review', enabled: true,
+      trigger: 'fatf_list_update', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'ewra_review', priority: 'high' },
+        { type: 'email_alert', subject: 'FATF List Updated — Customer Review Required', message: 'FATF Grey/Black list updated. Review all customers/counterparties from affected jurisdictions. Update risk ratings and apply EDD where required.' }
+      ]
+    },
+    {
+      id: 'wf_cpf_trigger', name: 'CPF Risk Indicator → Assessment', enabled: true,
+      trigger: 'cpf_risk_detected', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'pf_assessment', priority: 'high' },
+        { type: 'email_alert', subject: 'CPF Risk: {entityName}', message: 'Counter-proliferation financing risk indicator detected. Assess per FDL No.10/2025 and UNSC PF-related resolutions. Screen against WMD lists.' },
+        { type: 'browser_notify', title: 'CPF Risk Alert', message: 'PF/CPF risk for {entityName}. Immediate assessment required.' }
+      ]
     }
   ];
 
