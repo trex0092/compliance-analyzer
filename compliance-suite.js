@@ -4074,7 +4074,7 @@
 </style>
 </head><body>
 <h1>🏛️ ${esc(entity)} — Compliance Data Export</h1>
-<p style="color:#aaa;font-size:12px">Generated: ${new Date().toLocaleString('en-GB')} | Modules: ${totalExported} | Tool: Fine Gold Compliance Analyzer v2.1</p>
+<p style="color:#aaa;font-size:12px">Generated: ${new Date().toLocaleString('en-GB')} | Modules: ${totalExported} | Tool: Hawkeye Sterling V2 v2.1</p>
 <h2>Table of Contents</h2>
 <table style="border-collapse:collapse;margin-bottom:2rem"><tbody>${tocRows}</tbody></table>
 <h2>Module Data</h2>
@@ -4171,14 +4171,14 @@ ${sheetsHTML}
     <h1>🏛️ ${esc(entity)}</h1>
     <p><strong>Compliance Programme Status Report</strong><br>
     Generated: ${ts}<br>
-    Tool: Fine Gold Compliance Analyzer v2.1<br>
+    Tool: Hawkeye Sterling V2 v2.1<br>
     Frameworks: UAE FDL No.(10)/2025 | Cabinet Resolution 134/2025 | FATF | LBMA RGG v9</p>
     <table>
       <thead><tr><th>Module</th><th style="text-align:center">Records</th><th>Status</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <p style="margin-top:24px;color:#888;font-size:11px">
-      This report was generated from the Fine Gold LLC Compliance Analyzer. Data is stored locally in the browser.
+      This report was generated from the Hawkeye Sterling V2. Data is stored locally in the browser.
       For audit purposes, export individual modules using the Excel or CSV export functions.
     </p>
     </body></html>`;

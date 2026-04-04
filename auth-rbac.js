@@ -489,7 +489,7 @@ const AuthRBAC = (function () {
                     border-radius:12px;padding:40px;width:380px;max-width:90vw;
                 ">
                     <h2 style="color:var(--gold,#d4a843);margin:0 0 8px;font-size:1.5rem;text-align:center;">
-                        Compliance Analyzer
+                        Hawkeye Sterling V2
                     </h2>
                     <p style="color:var(--muted,#8888aa);text-align:center;margin:0 0 28px;font-size:0.85rem;">
                         Sign in to continue
