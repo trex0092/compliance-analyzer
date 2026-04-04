@@ -316,6 +316,37 @@ textarea.hs-input{min-height:100px;resize:vertical}
           <input class="hs-input" id="qs-country" placeholder="e.g. UAE, Iran, Russia"/>
         </div>
       </div>
+      <div class="hs-form-grid">
+        <div class="hs-form-group">
+          <label class="hs-label">Date of Birth / Date of Incorporation</label>
+          <input type="date" class="hs-input" id="qs-dob"/>
+        </div>
+        <div class="hs-form-group">
+          <label class="hs-label">ID / Passport / Trade License No.</label>
+          <input class="hs-input" id="qs-idnum" placeholder="EID, Passport, Trade License"/>
+        </div>
+        <div class="hs-form-group" style="justify-content:flex-end">
+          <label class="hs-check-label" style="padding:12px 0">
+            <input type="checkbox" id="qs-ongoing" checked/>
+            <span style="color:var(--gold);font-weight:500;letter-spacing:1px;font-size:11px">ONGOING SCREENING</span>
+          </label>
+          <p style="font-size:9px;color:var(--muted);margin-top:-2px">Auto re-screen on sanctions list updates</p>
+        </div>
+      </div>
+
+      <!-- API KEY SETUP -->
+      <div id="qs-apikey-section" style="margin-bottom:16px">
+        <div class="hs-form-group">
+          <label class="hs-label">Anthropic API Key</label>
+          <div style="display:flex;gap:8px">
+            <input type="password" class="hs-input" id="qs-apikey" placeholder="sk-ant-..." style="flex:1"/>
+            <button class="hs-btn hs-btn-sm" onclick="localStorage.setItem('hs_api_key',document.getElementById('qs-apikey').value);HawkeyeApp.toast('API key saved','success');document.getElementById('qs-apikey-section').style.display='none'">Save Key</button>
+          </div>
+          <p style="font-size:9px;color:var(--muted);margin-top:4px">Required for AI screening. Key stored locally only. Get one at <a href="https://console.anthropic.com" target="_blank" style="color:var(--gold)">console.anthropic.com</a></p>
+        </div>
+      </div>
+      <script>if(localStorage.getItem('hs_api_key'))document.getElementById('qs-apikey-section').style.display='none';</script>
+
       <button class="hs-btn hs-btn-screen" onclick="HawkeyeApp.runQuickScreen()">Run Deep Screening</button>
     </div>
 
@@ -582,6 +613,42 @@ textarea.hs-input{min-height:100px;resize:vertical}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script>
+// Anthropic API integration
+async function callAI(opts) {
+  const key = localStorage.getItem('hs_api_key');
+  if (!key) {
+    document.getElementById('qs-apikey-section').style.display = 'block';
+    throw new Error('API key required — enter your Anthropic API key above');
+  }
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: opts.model || 'claude-sonnet-4-5-20250514',
+      max_tokens: opts.max_tokens || 2000,
+      temperature: opts.temperature !== undefined ? opts.temperature : 0,
+      system: opts.system || '',
+      messages: opts.messages || []
+    })
+  });
+  if (!resp.ok) {
+    const err = await resp.text();
+    if (resp.status === 401) {
+      localStorage.removeItem('hs_api_key');
+      document.getElementById('qs-apikey-section').style.display = 'block';
+      throw new Error('Invalid API key — please re-enter');
+    }
+    throw new Error('API error: ' + resp.status + ' ' + err);
+  }
+  return resp.json();
+}
+</script>
 <script src="tfs-engine.js"></script>
 <script src="screening-app.js"></script>
 </body>

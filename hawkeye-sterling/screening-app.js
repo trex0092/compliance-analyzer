@@ -374,6 +374,9 @@ const HawkeyeApp = (function() {
     const name = document.getElementById('qs-name')?.value?.trim();
     const type = document.getElementById('qs-type')?.value;
     const country = document.getElementById('qs-country')?.value?.trim() || '';
+    const dob = document.getElementById('qs-dob')?.value || '';
+    const idNum = document.getElementById('qs-idnum')?.value?.trim() || '';
+    const ongoing = document.getElementById('qs-ongoing')?.checked || false;
     if (!name) { toast('Enter entity name', 'error'); return; }
 
     const resultEl = document.getElementById('qs-result');
@@ -382,7 +385,13 @@ const HawkeyeApp = (function() {
       resultEl.innerHTML = '<p class="hs-screening-status">Screening in progress \u2014 deep sanctions, PEP & adverse media check...</p>';
     }
 
-    const match = await TFSEngine.screenEntity(name, type, country);
+    // Build enhanced entity description with DOB and ID
+    let entityDesc = name + ' (' + type + ')';
+    if (dob) entityDesc += ', DOB/DOI: ' + dob;
+    if (country) entityDesc += ', ' + country;
+    if (idNum) entityDesc += ', ID: ' + idNum;
+
+    const match = await TFSEngine.screenEntity(entityDesc, type, country);
     if (match && resultEl) {
       const matchesHtml = (match.matches || []).map(m =>
         '<div class="hs-match-hit"><strong>'+m.list+'</strong> \u2014 '+m.matchType+' ('+Math.round((m.confidence||0)*100)+'%)<div class="hs-hit-detail">'+(m.details||'')+'</div></div>'
