@@ -82,10 +82,10 @@
   // ─── INJECT TABS ─────────────────────────────────────────────────────────────
   const NEW_TABS = [
     // CRA merged into Risk Assessment tab
-    { id: 'ubo',       icon: '', label: 'UBO',       title: 'UBO Register' },
-    { id: 'redflags',  icon: '', label: 'Red Flags', title: 'Red Flag Library' },
-    { id: 'approvals2','icon':'', label: '4-Eyes', title: 'Four-Eyes Approval Matrix' },
-    { id: 'str',       icon: '', label: 'STR Cases', title: 'STR Case Management' },
+    { id: 'ubo',       icon: '🏛️', label: 'UBO',       title: 'UBO Register' },
+    { id: 'redflags',  icon: '🚩', label: 'Red Flags', title: 'Red Flag Library' },
+    { id: 'approvals2','icon':'✅', label: '4-Eyes', title: 'Four-Eyes Approval Matrix' },
+    { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management' },
   ];
 
   function injectTabs() {
@@ -2362,9 +2362,9 @@
   // ── INJECT NEW TABS ─────────────────────────────────────────────────────────
   const SUITE2_TABS = [
     // TFS merged into Screening & TFS tab
-    { id: 'dpmsr',   icon: '', label: 'DPMSR',      title: 'DPMSR Threshold Reporting' },
-    { id: 'retention', icon: '', label: 'Retention', title: 'Record Retention — Art.25' },
-    { id: 'ailog',   icon: '', label: 'AI Govern',  title: 'AI Output Governance' },
+    { id: 'dpmsr',   icon: '📊', label: 'DPMSR',      title: 'DPMSR Threshold Reporting' },
+    { id: 'retention', icon: '🗄️', label: 'Retention', title: 'Record Retention — Art.25' },
+    { id: 'ailog',   icon: '🤖', label: 'AI Govern',  title: 'AI Output Governance' },
   ];
 
   function injectSuite2() {
@@ -3892,9 +3892,9 @@
   'use strict';
 
   const ALL_MODULES = [
-    { key:'fgl_cra_v1',            label:'Customer Risk Assessments',   icon: '', cols:['id','customerName','customerType','rating','cddLevel','reviewDate','reviewedBy','notes'] },
-    { key:'fgl_ubo_v1',            label:'UBO Register',                icon: '', cols:['id','entityName','uboName','nationality','dob','ownershipPct','verifiedDate','idType','idNumber','pepStatus','notes'] },
-    { key:'fgl_str_cases_v1',      label:'STR / SAR Cases',             icon: '', cols:['id','reportType','subjectName','subjectType','transactionRef','amount','currency','suspicionDate','status','filedBy','goamlRef','notes'] },
+    { key:'fgl_cra_v1',            label:'Customer Risk Assessments',   icon: '📋', cols:['id','customerName','customerType','rating','cddLevel','reviewDate','reviewedBy','notes'] },
+    { key:'fgl_ubo_v1',            label:'UBO Register',                icon: '🏛️', cols:['id','entityName','uboName','nationality','dob','ownershipPct','verifiedDate','idType','idNumber','pepStatus','notes'] },
+    { key:'fgl_str_cases_v1',      label:'STR / SAR Cases',             icon: '🚨', cols:['id','reportType','subjectName','subjectType','transactionRef','amount','currency','suspicionDate','status','filedBy','goamlRef','notes'] },
     { key:'fgl_tfs2_v1',           label:'TFS Screening Events',        icon:'🇦🇪', cols:['id','screenedName','eventType','listsScreened','screeningDate','outcome','reviewedBy','frozenWithin24h','ffrFiled','cnmrStatus','cnmrRef','notes'] },
     { key:'fgl_approvals_v1',      label:'Four-Eyes Approvals',         icon: '', cols:['id','approvalType','subject','requestedBy','status','decision','decidedBy','createdAt','notes'] },
     { key:'fgl_mgmt_approvals',    label:'Management CDD Approvals',    icon: '', cols:['id','customerName','customerType','riskRating','status','reviewedBy','createdAt','notes'] },
