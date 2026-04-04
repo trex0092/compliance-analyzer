@@ -3283,8 +3283,8 @@
         <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 — Minimum 10 years | Records must enable transaction reconstruction</span>
         <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2AddRetentionRecord()">+ Add Record</button>
       </div>
-      <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
-        <strong>UAE FDL No.(10) of 2025 — 10 Year Minimum:</strong> All records must be retained for a minimum of 10 years. Records must be organized so individual transactions can be reconstructed and provided promptly to competent authorities upon request. This applies to all CDD, transaction, STR, risk assessment, training, audit, and correspondence records.
+      <div style="background:rgba(217,79,79,0.08);border:1px solid var(--red);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px;color:var(--red)">
+        <strong style="color:var(--red)">UAE FDL No.(10) of 2025 — 10 Year Minimum:</strong> <span style="color:var(--text)">All records must be retained for a minimum of 10 years. Records must be organized so individual transactions can be reconstructed and provided promptly to competent authorities upon request. This applies to all CDD, transaction, STR, risk assessment, training, audit, and correspondence records.</span>
       </div>
       <div class="sec-title" style="margin-bottom:10px">Statutory Retention Schedule</div>
       <div style="overflow-x:auto;margin-bottom:1.5rem">
