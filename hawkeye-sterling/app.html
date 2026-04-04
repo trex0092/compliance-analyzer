@@ -301,6 +301,7 @@ textarea.hs-input{min-height:100px;resize:vertical}
         </div>
         <div class="hs-card-actions">
           <button class="hs-btn hs-btn-sm" onclick="TFSEngine.exportPDF()">Export PDF</button>
+          <button class="hs-btn hs-btn-sm" onclick="TFSEngine.exportDOCX()">Export Word</button>
           <button class="hs-btn hs-btn-sm" onclick="TFSEngine.exportCSV()">Export CSV</button>
           <button class="hs-btn hs-btn-sm hs-btn-danger" onclick="TFSEngine.clearResults()">Clear All</button>
         </div>
@@ -456,6 +457,7 @@ textarea.hs-input{min-height:100px;resize:vertical}
   <p class="hs-footer-copy">&copy; 2026 Hawkeye Sterling. All rights reserved.</p>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <script src="tfs-engine.js"></script>
 <script src="screening-app.js"></script>
 </body>

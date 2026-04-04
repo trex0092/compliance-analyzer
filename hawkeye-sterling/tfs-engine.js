@@ -269,28 +269,239 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     if (!matches.length) { HawkeyeApp.toast('No results to export','error'); return; }
     const doc = new jspdf.jsPDF();
     const pw = doc.internal.pageSize.getWidth();
-    doc.setFillColor(10,10,10); doc.rect(0,0,pw,28,'F');
-    doc.setFontSize(16); doc.setTextColor(201,168,76); doc.text('Hawkeye Sterling — TFS Screening Report', 14, 18);
-    doc.setFontSize(8); doc.setTextColor(120); doc.text('Generated: ' + new Date().toLocaleDateString('en-GB'), pw-14, 18, {align:'right'});
-    let y = 36;
+    const ph = doc.internal.pageSize.getHeight();
+    const ml = 16, mr = pw - 16;
+    const tw = mr - ml;
+    const dateStr = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+    const timeStr = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+
+    function addFooter(pageNum) {
+      doc.setDrawColor(201,168,76); doc.setLineWidth(0.3);
+      doc.line(ml, ph-18, mr, ph-18);
+      doc.setFontSize(7); doc.setTextColor(140);
+      doc.text('HAWKEYE STERLING  |  CONFIDENTIAL  |  TFS Screening Report', ml, ph-12);
+      doc.text('Page ' + pageNum, mr, ph-12, { align:'right' });
+      doc.setFontSize(6); doc.setTextColor(160);
+      doc.text('Generated: ' + dateStr + ' at ' + timeStr + '  |  Regulatory: UAE FDL No.10/2025, FATF Rec 6 & 7, Cabinet Decision 74/2020', ml, ph-8);
+    }
+
+    function checkPage(neededY) {
+      if (neededY > ph - 30) { addFooter(doc.getNumberOfPages()); doc.addPage(); return 24; }
+      return neededY;
+    }
+
+    // Cover header
+    doc.setFillColor(10,10,10); doc.rect(0,0,pw,52,'F');
+    doc.setDrawColor(201,168,76); doc.setLineWidth(0.5);
+    doc.line(ml, 48, mr, 48);
+    doc.setFontSize(22); doc.setTextColor(201,168,76);
+    doc.text('HAWKEYE STERLING', ml, 20);
+    doc.setFontSize(10); doc.setTextColor(180,160,120);
+    doc.text('TFS Screening Results Report', ml, 30);
+    doc.setFontSize(8); doc.setTextColor(140);
+    doc.text(dateStr + '  |  ' + matches.length + ' screening(s)  |  CONFIDENTIAL', ml, 40);
+
+    // Summary stats
+    let y = 62;
+    const clearCount = matches.filter(m=>m.result==='CLEAR').length;
+    const potentialCount = matches.filter(m=>m.result==='POTENTIAL_MATCH').length;
+    const matchCount = matches.filter(m=>m.result==='MATCH').length;
+    doc.setFillColor(245,245,240); doc.rect(ml, y-4, tw, 18, 'F');
+    doc.setFontSize(9); doc.setTextColor(60);
+    doc.text('SUMMARY:', ml+4, y+4);
+    doc.setTextColor(39,174,96); doc.text('Negative: '+clearCount, ml+40, y+4);
+    doc.setTextColor(232,168,56); doc.text('Potential Match: '+potentialCount, ml+80, y+4);
+    doc.setTextColor(217,79,79); doc.text('Confirmed Match: '+matchCount, ml+130, y+4);
+    doc.setTextColor(80); doc.text('Total: '+matches.length, mr-4, y+4, {align:'right'});
+    y += 24;
+
+    // Each screening result
     matches.forEach((m, idx) => {
-      if (y > 260) { doc.addPage(); y = 20; }
+      y = checkPage(y + 40);
       const rc = m.result==='MATCH'?[217,79,79]:m.result==='POTENTIAL_MATCH'?[232,168,56]:[39,174,96];
       const label = m.result==='MATCH'?'POSITIVE MATCH':m.result==='POTENTIAL_MATCH'?'POTENTIAL MATCH':'NEGATIVE MATCH';
-      doc.setFillColor(26,26,26); doc.rect(14, y-4, pw-28, 8, 'F');
-      doc.setFontSize(10); doc.setTextColor(201,168,76); doc.text((idx+1)+'. '+(m.entity||'Unknown'), 16, y+1);
-      doc.setTextColor(...rc); doc.text(label, pw-16, y+1, {align:'right'});
-      y += 10;
-      doc.setFontSize(8); doc.setTextColor(160);
-      doc.text('Type: '+(m.type||'-')+'  |  Country: '+(m.country||'-')+'  |  Date: '+new Date(m.date||0).toLocaleDateString('en-GB'), 16, y);
-      y += 5;
-      if (m.matches && m.matches.length) {
-        m.matches.forEach(hit => { doc.text('  List: '+(hit.list||'-')+' | Confidence: '+Math.round((hit.confidence||0)*100)+'%', 16, y); y += 4; });
-      }
+
+      // Entity header bar
+      doc.setFillColor(26,26,26); doc.rect(ml, y-4, tw, 10, 'F');
+      doc.setFontSize(10); doc.setTextColor(201,168,76);
+      doc.text((idx+1)+'.  '+(m.entity||'Unknown'), ml+3, y+2);
+      doc.setFontSize(9); doc.setTextColor(...rc);
+      doc.text(label, mr-3, y+2, {align:'right'});
+      y += 12;
+
+      // Metadata
+      doc.setFontSize(8); doc.setTextColor(100);
+      doc.text('Type: '+(m.type||'—')+'    Country: '+(m.country||'—')+'    Date: '+new Date(m.date||0).toLocaleDateString('en-GB'), ml+3, y);
       y += 6;
+
+      // List matches
+      if (m.matches && m.matches.length) {
+        doc.setFontSize(8); doc.setTextColor(80);
+        doc.text('DATABASE HITS:', ml+3, y); y += 5;
+        m.matches.forEach(hit => {
+          y = checkPage(y + 5);
+          doc.setFontSize(7); doc.setTextColor(80);
+          const conf = Math.round((hit.confidence||0)*100);
+          doc.text('  \u2022  ' + (hit.list||'—') + '  |  ' + (hit.matchType||'—') + '  |  Confidence: ' + conf + '%', ml+6, y);
+          y += 4;
+          if (hit.details) {
+            const detailLines = doc.splitTextToSize(hit.details, tw - 20);
+            doc.setFontSize(6.5); doc.setTextColor(120);
+            detailLines.slice(0,4).forEach(line => { y = checkPage(y+4); doc.text(line, ml+12, y); y += 3.5; });
+          }
+        });
+        y += 2;
+      }
+
+      // Recommendation
+      if (m.recommendation) {
+        y = checkPage(y + 10);
+        doc.setFontSize(7.5); doc.setTextColor(60);
+        doc.text('RECOMMENDATION:', ml+3, y); y += 4;
+        doc.setFontSize(7); doc.setTextColor(90);
+        const recLines = doc.splitTextToSize(m.recommendation, tw - 10);
+        recLines.slice(0, 12).forEach(line => { y = checkPage(y+4); doc.text(line, ml+6, y); y += 3.5; });
+        y += 3;
+      }
+
+      // Separator
+      doc.setDrawColor(201,168,76); doc.setLineWidth(0.15);
+      doc.line(ml, y, mr, y);
+      y += 8;
     });
-    doc.save('Hawkeye_Sterling_TFS_'+new Date().toISOString().slice(0,10)+'.pdf');
-    HawkeyeApp.toast('PDF exported','success');
+
+    // Add footer to all pages
+    const totalPages = doc.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) { doc.setPage(p); addFooter(p); }
+
+    doc.save('Hawkeye_Sterling_TFS_' + new Date().toISOString().slice(0,10) + '.pdf');
+    HawkeyeApp.toast('PDF exported', 'success');
+  }
+
+  function exportDOCX() {
+    const matches = getMatches();
+    if (!matches.length) { HawkeyeApp.toast('No results to export','error'); return; }
+    const dateStr = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+    const labelFor = r => r==='MATCH'?'POSITIVE MATCH':r==='POTENTIAL_MATCH'?'POTENTIAL MATCH':'NEGATIVE MATCH';
+    const colorFor = r => r==='MATCH'?'#D94F4F':r==='POTENTIAL_MATCH'?'#E8A030':'#3DA876';
+
+    const clearCount = matches.filter(m=>m.result==='CLEAR').length;
+    const potentialCount = matches.filter(m=>m.result==='POTENTIAL_MATCH').length;
+    const matchCount = matches.filter(m=>m.result==='MATCH').length;
+
+    let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Hawkeye Sterling TFS Report</title>
+<style>
+  @page { size: A4; margin: 2cm 2.5cm; }
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1A1A1A; line-height: 1.5; }
+  .header { border-bottom: 3px solid #C9A84C; padding-bottom: 12px; margin-bottom: 20px; }
+  .header h1 { font-size: 22pt; color: #0A0A0A; margin: 0; letter-spacing: 3px; }
+  .header h2 { font-size: 12pt; color: #8B6914; font-weight: normal; margin: 4px 0 0; }
+  .meta { font-size: 9pt; color: #666; margin-bottom: 16px; }
+  .summary-box { background: #F8F6F0; border: 1px solid #E0D9C8; border-left: 4px solid #C9A84C; padding: 12px 16px; margin-bottom: 20px; }
+  .summary-box span { font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th { background: #0A0A0A; color: #C9A84C; font-size: 9pt; text-transform: uppercase; letter-spacing: 1px; padding: 8px 10px; text-align: left; }
+  td { padding: 8px 10px; font-size: 10pt; border-bottom: 1px solid #E8E4DA; vertical-align: top; }
+  tr:nth-child(even) td { background: #FAFAF8; }
+  .result-match { color: #D94F4F; font-weight: 700; }
+  .result-potential { color: #E8A030; font-weight: 700; }
+  .result-clear { color: #3DA876; font-weight: 700; }
+  .detail-section { margin-top: 24px; }
+  .detail-section h3 { font-size: 13pt; color: #0A0A0A; border-bottom: 2px solid #C9A84C; padding-bottom: 4px; margin-bottom: 10px; }
+  .entity-block { border: 1px solid #E0D9C8; border-left: 4px solid; padding: 14px; margin-bottom: 14px; page-break-inside: avoid; }
+  .entity-block.match { border-left-color: #D94F4F; }
+  .entity-block.potential { border-left-color: #E8A030; }
+  .entity-block.clear { border-left-color: #3DA876; }
+  .entity-name { font-size: 12pt; font-weight: 700; margin-bottom: 4px; }
+  .entity-meta { font-size: 9pt; color: #666; margin-bottom: 6px; }
+  .entity-hits { font-size: 9.5pt; margin: 6px 0; }
+  .entity-hits li { margin-bottom: 4px; }
+  .entity-rec { font-size: 9.5pt; color: #333; background: #F8F6F0; padding: 8px 12px; margin-top: 8px; line-height: 1.5; }
+  .footer { border-top: 2px solid #C9A84C; margin-top: 30px; padding-top: 8px; font-size: 8pt; color: #999; }
+  .reg-note { font-size: 8.5pt; color: #888; margin-top: 16px; padding: 10px; background: #FAFAF8; border: 1px solid #E8E4DA; }
+</style></head><body>
+
+<div class="header">
+  <h1>HAWKEYE STERLING</h1>
+  <h2>Targeted Financial Sanctions &mdash; Screening Report</h2>
+</div>
+
+<div class="meta">
+  Generated: ${dateStr} &nbsp;|&nbsp; Total Screenings: ${matches.length} &nbsp;|&nbsp; Classification: CONFIDENTIAL
+</div>
+
+<div class="summary-box">
+  <span style="color:#3DA876">Negative Match: ${clearCount}</span> &nbsp;&nbsp;&nbsp;
+  <span style="color:#E8A030">Potential Match: ${potentialCount}</span> &nbsp;&nbsp;&nbsp;
+  <span style="color:#D94F4F">Confirmed Match: ${matchCount}</span> &nbsp;&nbsp;&nbsp;
+  <span>Total: ${matches.length}</span>
+</div>
+
+<table>
+  <tr><th>#</th><th>Entity</th><th>Type</th><th>Country</th><th>Result</th><th>Date</th><th>Lists Checked</th></tr>`;
+
+    matches.forEach((m, idx) => {
+      const cls = m.result==='MATCH'?'result-match':m.result==='POTENTIAL_MATCH'?'result-potential':'result-clear';
+      const hitLists = (m.matches||[]).map(h=>h.list).join(', ')||'All';
+      html += `<tr>
+        <td>${idx+1}</td>
+        <td><strong>${m.entity||''}</strong></td>
+        <td>${m.type||'—'}</td>
+        <td>${m.country||'—'}</td>
+        <td class="${cls}">${labelFor(m.result)}</td>
+        <td>${new Date(m.date||0).toLocaleDateString('en-GB')}</td>
+        <td style="font-size:9pt">${hitLists}</td>
+      </tr>`;
+    });
+
+    html += `</table>
+
+<div class="detail-section">
+  <h3>Detailed Screening Results</h3>`;
+
+    matches.forEach((m, idx) => {
+      const cls = m.result==='MATCH'?'match':m.result==='POTENTIAL_MATCH'?'potential':'clear';
+      html += `<div class="entity-block ${cls}">
+        <div class="entity-name">${idx+1}. ${m.entity||'Unknown'} &mdash; <span style="color:${colorFor(m.result)}">${labelFor(m.result)}</span></div>
+        <div class="entity-meta">Type: ${m.type||'—'} &nbsp;|&nbsp; Country: ${m.country||'—'} &nbsp;|&nbsp; Screened: ${new Date(m.date||0).toLocaleDateString('en-GB')}</div>`;
+
+      if (m.matches && m.matches.length) {
+        html += '<ul class="entity-hits">';
+        m.matches.forEach(hit => {
+          html += `<li><strong>${hit.list||'—'}</strong> (${hit.matchType||'—'}, ${Math.round((hit.confidence||0)*100)}%) &mdash; ${hit.details||''}</li>`;
+        });
+        html += '</ul>';
+      }
+
+      if (m.recommendation) {
+        html += `<div class="entity-rec">${m.recommendation.replace(/\n/g,'<br>')}</div>`;
+      }
+      html += '</div>';
+    });
+
+    html += `</div>
+
+<div class="reg-note">
+  <strong>Regulatory Basis:</strong> UAE Federal Decree-Law No.(10) of 2025 (Art.22), FATF Recommendations 6 &amp; 7,
+  Cabinet Decision No.(74) of 2020, EOCN TFS Guidance. Screening covers: OFAC SDN, UN Consolidated, EU Consolidated,
+  UK OFSI, UAE Local Terrorist List, Interpol, PEP databases, and adverse media sources.<br>
+  <strong>Disclaimer:</strong> AI-powered screening is based on training data with a knowledge cutoff. Always supplement
+  with live database checks (Refinitiv World-Check, Dow Jones, LexisNexis) before making final compliance decisions.
+</div>
+
+<div class="footer">
+  HAWKEYE STERLING &nbsp;|&nbsp; CONFIDENTIAL &nbsp;|&nbsp; ${dateStr} &nbsp;|&nbsp; &copy; 2026 Hawkeye Sterling. All rights reserved.
+</div>
+
+</body></html>`;
+
+    const blob = new Blob(['\ufeff'+html], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Hawkeye_Sterling_TFS_' + new Date().toISOString().slice(0,10) + '.doc';
+    a.click();
+    HawkeyeApp.toast('Word document exported', 'success');
   }
 
   function exportCSV() {
@@ -327,6 +538,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     SANCTIONS_LISTS,
     clearResults,
     exportPDF,
+    exportDOCX,
     exportCSV,
     isStale,
   };
