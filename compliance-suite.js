@@ -2862,6 +2862,7 @@
     if (document.getElementById('tfs2-list-pep')?.checked) lists.push('Political Controversy / PEP');
     const events = load(SK2.TFS2)||[];
     const editIdx = parseInt(document.getElementById('tfs2-edit-idx').value);
+    if (editIdx >= 0 && editIdx >= events.length) { toast('Record not found','error'); return; }
     const record = {
       id: editIdx>=0 ? events[editIdx].id : `TFS2-${Date.now()}`,
       screenedName: name,
