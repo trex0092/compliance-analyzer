@@ -39,6 +39,7 @@
   }
   function today() { return new Date().toISOString().slice(0, 10); }
   function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB'); }
+  function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function toast(msg, type) {
     if (global.toast) { global.toast(msg, type); return; }
     const t = document.createElement('div');
@@ -2349,6 +2350,7 @@
     while (added < days) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6) added++; }
     return d.toISOString().slice(0,10);
   }
+  function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function toast(msg,type) { if(global.toast) global.toast(msg,type); }
 
   const SK2 = {

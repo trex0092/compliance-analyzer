@@ -566,8 +566,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     <div class="tabs" id="tabsNav">
       <button class="mobile-menu-close" id="mobileMenuClose" onclick="MobileResponsive.toggleMenu()">&times;</button>
-      <div class="tab active" onclick="switchTab('mywork');if(window.MobileResponsive)MobileResponsive.closeMenu()">📌 My Work</div>
-      <div class="tab" onclick="switchTab('analyse');if(window.MobileResponsive)MobileResponsive.closeMenu()">🔍 Analyze</div>
+      <div class="tab active" onclick="switchTab('analyse');if(window.MobileResponsive)MobileResponsive.closeMenu()">🔍 Analyze</div>
       <div class="tab" onclick="switchTab('shipments')">🚚 IAR Shipments</div>
       <div class="tab" onclick="switchTab('localshipments')">📦 Local Shipments</div>
       <div class="tab" onclick="switchTab('iarreport')">📝 IAR Report</div>
@@ -613,44 +612,8 @@ document.addEventListener('DOMContentLoaded', function(){
       </div>
     </div>
 
-    <!-- MY WORK TAB -->
-    <div id="tab-mywork" class="tab-content active">
-      <div class="card">
-        <div class="top-bar" style="margin-bottom:10px">
-          <span class="sec-title" style="margin:0;border:none;padding:0">📌 My Work — Compliance Officer Dashboard</span>
-          <button class="btn btn-sm btn-blue" onclick="refreshMyWork()">Refresh</button>
-        </div>
-      </div>
-      <div class="metrics" id="myWorkMetrics" style="grid-template-columns:repeat(6,1fr)"></div>
-      <!-- Document Expiry Forecast -->
-      <div class="card">
-        <span class="sec-title">Document Expiry Forecast</span>
-        <div id="myWorkExpiryForecast"></div>
-      </div>
-      <!-- Anomaly Detection Alerts -->
-      <div class="card" id="myWorkAnomaliesCard" style="display:none">
-        <span class="sec-title" style="color:var(--red)">Cross-Shipment Anomaly Alerts</span>
-        <div id="myWorkAnomalies"></div>
-      </div>
-      <!-- Pending Actions -->
-      <div class="card">
-        <span class="sec-title">Pending Actions</span>
-        <div id="myWorkPendingActions"><p style="font-size:13px;color:var(--muted)">Loading...</p></div>
-      </div>
-      <!-- Screening Staleness -->
-      <div class="card">
-        <span class="sec-title">Screening Re-check Required</span>
-        <div id="myWorkStaleScreenings"><p style="font-size:13px;color:var(--muted)">Loading...</p></div>
-      </div>
-      <!-- Recent Activity -->
-      <div class="card">
-        <span class="sec-title">Recent Activity (Last 24h)</span>
-        <div id="myWorkRecentActivity" style="max-height:300px;overflow-y:auto"><p style="font-size:13px;color:var(--muted)">Loading...</p></div>
-      </div>
-    </div>
-
     <!-- ANALYSE TAB -->
-    <div id="tab-analyse" class="tab-content">
+    <div id="tab-analyse" class="tab-content active">
       <div class="card">
         <span class="lbl">Describe what you want to analyze</span>
         <textarea id="queryInput" placeholder="Describe the compliance area, process, or scenario you want to analyze. Be specific about regulations, entities, risk factors, or operational gaps you need assessed.
@@ -3531,7 +3494,6 @@ function switchTab(name) {
   if (name==='uploads') loadUploadedFiles();
   if (name==='incidents') { if (typeof updateIncidentMetrics === 'function') updateIncidentMetrics(); }
   if (name==='riskassessment') renderRiskAssessment();
-  if (name==='mywork') refreshMyWork();
 }
 
 function persistEmployeeTraining() {
@@ -11716,129 +11678,6 @@ function validateSTRDraft(text) {
   return missing;
 }
 
-// ======= MY WORK DASHBOARD =======
-function refreshMyWork() {
-  var employees = safeLocalParse(EMPLOYEE_INFO_STORAGE, []);
-  var gaps = safeLocalParse('fgl_gaps_v2', []);
-  var incidents = safeLocalParse('fgl_incidents', []);
-  var history = safeLocalParse(SCREENING_STORAGE, []);
-  var onboarding = safeLocalParse('fgl_onboarding', []);
-  var audit = safeLocalParse(AUDIT_TRAIL_STORAGE, []);
-  var shps = window.shipments || [];
-  var now = new Date(); now.setHours(0,0,0,0);
-  var cfg = complianceConfig || getDefaultComplianceConfig();
-
-  // Metrics
-  var expiredDocs = 0, expiringDocs = 0, openGaps = 0, openIncidents = 0, criticalShipments = 0, staleScreenings = 0;
-  employees.forEach(function(e) {
-    ['eidExpiry','passportExpiry'].forEach(function(field) {
-      if (!e[field]) return;
-      var exp = new Date(e[field]); exp.setHours(0,0,0,0);
-      var diff = Math.ceil((exp - now) / 86400000);
-      if (diff < 0) expiredDocs++;
-      else if (diff <= cfg.docExpiryDays) expiringDocs++;
-    });
-  });
-  gaps.filter(function(g) { return g.status !== 'closed' && g.status !== 'resolved'; }).forEach(function() { openGaps++; });
-  incidents.filter(function(inc) { return inc.status !== 'closed'; }).forEach(function() { openIncidents++; });
-  shps.filter(function(s) { return s.riskLevel === 'CRITICAL'; }).forEach(function() { criticalShipments++; });
-  history.forEach(function(h) {
-    var age = (Date.now() - new Date(h.date).getTime()) / 86400000;
-    if (age > cfg.screeningStaleDays) staleScreenings++;
-  });
-
-  var metricsEl = document.getElementById('myWorkMetrics');
-  if (metricsEl) metricsEl.innerHTML =
-    '<div class="metric m-c"><div class="metric-num">' + expiredDocs + '</div><div class="metric-lbl">Expired Docs</div></div>' +
-    '<div class="metric m-h"><div class="metric-num">' + expiringDocs + '</div><div class="metric-lbl">Expiring (' + cfg.docExpiryDays + 'd)</div></div>' +
-    '<div class="metric m-c"><div class="metric-num">' + openGaps + '</div><div class="metric-lbl">Open Gaps</div></div>' +
-    '<div class="metric m-h"><div class="metric-num">' + openIncidents + '</div><div class="metric-lbl">Open Incidents</div></div>' +
-    '<div class="metric m-c"><div class="metric-num">' + criticalShipments + '</div><div class="metric-lbl">Critical Shipments</div></div>' +
-    '<div class="metric" style="border-color:rgba(232,160,48,0.3)"><div class="metric-num" style="color:var(--amber)">' + staleScreenings + '</div><div class="metric-lbl">Stale Screenings</div></div>';
-
-  // Document Expiry Forecast (30/60/90 day buckets)
-  var forecast = { d7: 0, d30: 0, d60: 0, d90: 0 };
-  employees.forEach(function(e) {
-    ['eidExpiry','passportExpiry'].forEach(function(field) {
-      if (!e[field]) return;
-      var exp = new Date(e[field]); exp.setHours(0,0,0,0);
-      var diff = Math.ceil((exp - now) / 86400000);
-      if (diff > 0 && diff <= 7) forecast.d7++;
-      if (diff > 0 && diff <= 30) forecast.d30++;
-      if (diff > 0 && diff <= 60) forecast.d60++;
-      if (diff > 0 && diff <= 90) forecast.d90++;
-    });
-  });
-  var forecastEl = document.getElementById('myWorkExpiryForecast');
-  if (forecastEl) forecastEl.innerHTML =
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' +
-    '<div style="background:var(--red-dim);border-radius:3px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--red)">' + forecast.d7 + '</div><div style="font-size:10px;color:var(--muted)">Next 7 days</div></div>' +
-    '<div style="background:var(--amber-dim);border-radius:3px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--amber)">' + forecast.d30 + '</div><div style="font-size:10px;color:var(--muted)">Next 30 days</div></div>' +
-    '<div style="background:var(--blue-dim);border-radius:3px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--blue)">' + forecast.d60 + '</div><div style="font-size:10px;color:var(--muted)">Next 60 days</div></div>' +
-    '<div style="background:var(--green-dim);border-radius:3px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600;color:var(--green)">' + forecast.d90 + '</div><div style="font-size:10px;color:var(--muted)">Next 90 days</div></div>' +
-    '</div>';
-
-  // Cross-Shipment Anomalies
-  var anomalies = detectShipmentAnomalies();
-  var anomalyCard = document.getElementById('myWorkAnomaliesCard');
-  var anomalyEl = document.getElementById('myWorkAnomalies');
-  if (anomalyCard && anomalyEl) {
-    if (anomalies.length) {
-      anomalyCard.style.display = 'block';
-      anomalyEl.innerHTML = anomalies.map(function(a) {
-        var cls = a.severity === 'CRITICAL' ? 'f-critical' : 'f-high';
-        var badge = a.severity === 'CRITICAL' ? 'b-c' : 'b-h';
-        return '<div class="finding ' + cls + '" style="opacity:1"><div class="f-head"><div class="f-head-left"><span class="badge ' + badge + '">' + a.type.replace(/_/g,' ') + '</span><span class="f-title">' + escHtml(a.detail) + '</span></div></div></div>';
-      }).join('');
-    } else {
-      anomalyCard.style.display = 'none';
-    }
-  }
-
-  // Pending Actions
-  var pendingEl = document.getElementById('myWorkPendingActions');
-  if (pendingEl) {
-    var actions = [];
-    if (expiredDocs > 0) actions.push('<div class="asana-item"><div><div class="asana-name" style="color:var(--red)">' + expiredDocs + ' expired document(s) — immediate renewal required</div></div><button class="btn btn-sm btn-red" onclick="switchTab(\'employees\')">Go to Employees</button></div>');
-    if (openGaps > 0) actions.push('<div class="asana-item"><div><div class="asana-name">' + openGaps + ' open compliance gap(s) — remediation needed</div></div><button class="btn btn-sm" onclick="switchTab(\'gaps\')">Go to Gaps</button></div>');
-    if (openIncidents > 0) actions.push('<div class="asana-item"><div><div class="asana-name">' + openIncidents + ' open incident(s) — investigation pending</div></div><button class="btn btn-sm" onclick="switchTab(\'incidents\')">Go to Incidents</button></div>');
-    if (criticalShipments > 0) actions.push('<div class="asana-item"><div><div class="asana-name" style="color:var(--red)">' + criticalShipments + ' CRITICAL risk shipment(s)</div></div><button class="btn btn-sm btn-red" onclick="switchTab(\'shipments\')">Go to Shipments</button></div>');
-    var pendingOnboard = onboarding.filter(function(o) { return !o.completedAt; });
-    if (pendingOnboard.length) actions.push('<div class="asana-item"><div><div class="asana-name">' + pendingOnboard.length + ' onboarding(s) pending completion</div></div><button class="btn btn-sm" onclick="switchTab(\'onboarding\')">Go to Onboarding</button></div>');
-    pendingEl.innerHTML = actions.length ? actions.join('') : '<p style="font-size:13px;color:var(--green)">No pending actions — all clear.</p>';
-  }
-
-  // Stale Screenings
-  var staleEl = document.getElementById('myWorkStaleScreenings');
-  if (staleEl) {
-    var staleItems = history.filter(function(h) { return (Date.now() - new Date(h.date).getTime()) / 86400000 > cfg.screeningStaleDays; });
-    if (staleItems.length) {
-      staleEl.innerHTML = staleItems.slice(0, 20).map(function(h) {
-        var age = Math.floor((Date.now() - new Date(h.date).getTime()) / 86400000);
-        return '<div class="asana-item"><div><div class="asana-name">' + escHtml(h.name) + '</div><div class="asana-meta">' + h.type + ' | Last screened: ' + new Date(h.date).toLocaleDateString('en-GB') + ' (' + age + ' days ago)</div></div><span class="badge b-h">STALE</span></div>';
-      }).join('');
-    } else {
-      staleEl.innerHTML = '<p style="font-size:13px;color:var(--green)">All screenings within ' + cfg.screeningStaleDays + '-day window.</p>';
-    }
-  }
-
-  // Recent Activity (last 24h)
-  var actEl = document.getElementById('myWorkRecentActivity');
-  if (actEl) {
-    var cutoff = Date.now() - 86400000;
-    var recentAudit = audit.filter(function(a) { return new Date(a.ts || a.timestamp || 0).getTime() > cutoff; }).slice(0, 30);
-    if (recentAudit.length) {
-      actEl.innerHTML = recentAudit.map(function(a) {
-        return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--gold);font-family:\'Montserrat\',sans-serif;font-size:10px">' + new Date(a.ts || a.timestamp).toLocaleTimeString('en-GB') + '</span> ' + escHtml(a.action || a.type || '') + ' — ' + escHtml(a.detail || a.message || '') + '</div>';
-      }).join('');
-    } else {
-      actEl.innerHTML = '<p style="font-size:13px;color:var(--muted)">No activity in the last 24 hours.</p>';
-    }
-  }
-
-  // Trigger anomaly check for Asana bi-sync
-  pullAsanaTaskStatuses().catch(function(){});
-}
 
 // ======= INIT NEW FEATURES =======
 function initNewFeatures() {
@@ -11851,7 +11690,7 @@ function initNewFeatures() {
     ['Vault', renderVaultDocs],
     ['Dashboard', refreshDashboard],
     ['Definitions', renderDefinitions],
-    ['MyWork', refreshMyWork],
+
     ['ComplianceConfig', loadComplianceConfigUI],
     ['StorageQuota', checkStorageQuota],
     ['OfflineCache', function() { ComplianceCache.syncAll(); }],
