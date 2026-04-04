@@ -3524,6 +3524,7 @@
   function load(key) { try { return JSON.parse(localStorage.getItem(key)||'null'); } catch{return null;} }
   function save(key,val) { try { localStorage.setItem(key,JSON.stringify(val)); } catch(e){} }
   function fmtDate(d) { if(!d) return '—'; return new Date(d).toLocaleDateString('en-GB'); }
+  function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function toast(msg,type) { if(global.toast) global.toast(msg,type); }
 
   const SK2 = {
