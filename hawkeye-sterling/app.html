@@ -214,6 +214,30 @@ textarea.hs-input{min-height:100px;resize:vertical}
 .hs-action-item p{font-size:12px;line-height:1.65;color:var(--ivory-dim);margin:0}
 .hs-compliance-footer{font-size:11px;color:var(--gold-dark);padding:14px 16px;background:rgba(201,168,76,0.04);border:1px solid rgba(201,168,76,0.12);border-radius:3px;line-height:1.6;font-weight:400;letter-spacing:0.3px}
 
+/* goAML Report Type Tags */
+.hs-goaml-ref{margin-top:8px;padding-top:8px;border-top:1px solid rgba(201,168,76,0.1);font-size:10px;letter-spacing:1px;color:var(--muted)}
+.hs-goaml-tag{display:inline-block;padding:2px 8px;margin:2px 3px 2px 0;border-radius:2px;font-size:9px;font-weight:600;letter-spacing:1.5px;font-family:'Montserrat',sans-serif}
+.hs-goaml-tag.str{background:rgba(217,79,79,0.15);color:#D94F4F;border:1px solid rgba(217,79,79,0.3)}
+.hs-goaml-tag.sar{background:rgba(217,79,79,0.1);color:#E07070;border:1px solid rgba(217,79,79,0.25)}
+.hs-goaml-tag.ffr{background:rgba(201,168,76,0.15);color:var(--gold);border:1px solid rgba(201,168,76,0.3)}
+.hs-goaml-tag.pnmr{background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.3)}
+.hs-goaml-tag.dpmsr{background:rgba(74,144,217,0.15);color:var(--blue);border:1px solid rgba(74,144,217,0.3)}
+.hs-goaml-tag.hrc,.hs-goaml-tag.hrca{background:rgba(180,120,200,0.12);color:#B478C8;border:1px solid rgba(180,120,200,0.25)}
+
+/* goAML Reference Grid */
+.hs-goaml-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.hs-goaml-card{padding:14px;border:1px solid var(--border);border-radius:4px;background:var(--surface);transition:all 0.3s}
+.hs-goaml-card:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+.hs-goaml-card.critical{border-left:3px solid var(--red)}
+.hs-goaml-card.freeze{border-left:3px solid var(--gold)}
+.hs-goaml-card.warning{border-left:3px solid var(--amber)}
+.hs-goaml-card.info{border-left:3px solid var(--blue)}
+.hs-goaml-card.neutral{border-left:3px solid rgba(201,168,76,0.2)}
+.hs-goaml-code{font-family:'Cinzel',serif;font-size:16px;color:var(--gold);letter-spacing:2px;margin-bottom:4px}
+.hs-goaml-name{font-size:11px;font-weight:500;color:var(--ivory);margin-bottom:6px;letter-spacing:0.5px}
+.hs-goaml-desc{font-size:10.5px;color:var(--muted);line-height:1.5}
+@media(max-width:900px){.hs-goaml-grid{grid-template-columns:1fr}}
+
 /* TOAST */
 .hs-toast{position:fixed;bottom:30px;right:30px;z-index:300;padding:14px 28px;background:var(--charcoal);border:1px solid var(--border);color:var(--ivory);font-size:12px;letter-spacing:1px;border-radius:3px;transform:translateY(100px);opacity:0;transition:all 0.4s ease;pointer-events:none;max-width:400px}
 .hs-toast.show{transform:translateY(0);opacity:1;pointer-events:auto}
@@ -294,6 +318,79 @@ textarea.hs-input{min-height:100px;resize:vertical}
       </div>
       <button class="hs-btn hs-btn-screen" onclick="HawkeyeApp.runQuickScreen()">Run Deep Screening</button>
     </div>
+
+    <!-- goAML REPORT TYPE REFERENCE -->
+    <div class="hs-card" style="margin-top:20px">
+      <div class="hs-card-header">
+        <div>
+          <h3 class="hs-card-title">goAML Report Types &mdash; UAE FIU</h3>
+          <p class="hs-card-subtitle">Official report types per UAE FIU goAML Portal (v1.2, April 2024) &mdash; <a href="https://uaefiu.gov.ae" target="_blank" style="color:var(--gold)">uaefiu.gov.ae</a></p>
+        </div>
+      </div>
+      <div class="hs-goaml-grid">
+        <div class="hs-goaml-card critical">
+          <div class="hs-goaml-code">STR</div>
+          <div class="hs-goaml-name">Suspicious Transaction Report</div>
+          <div class="hs-goaml-desc">Suspicious executed transaction linked to ML/TF. File via goAML <strong>immediately, without any prior consent</strong>.</div>
+        </div>
+        <div class="hs-goaml-card critical">
+          <div class="hs-goaml-code">SAR</div>
+          <div class="hs-goaml-name">Suspicious Activity Report</div>
+          <div class="hs-goaml-desc">Suspicious activity or attempted / non-executed transaction. File when no transaction occurred but behaviour is suspicious.</div>
+        </div>
+        <div class="hs-goaml-card freeze">
+          <div class="hs-goaml-code">FFR</div>
+          <div class="hs-goaml-name">Funds Freeze Report</div>
+          <div class="hs-goaml-desc">Filed when funds/assets are frozen under Targeted Financial Sanctions. Required immediately upon confirmed sanctions match.</div>
+        </div>
+        <div class="hs-goaml-card warning">
+          <div class="hs-goaml-code">PNMR</div>
+          <div class="hs-goaml-name">Partial Name Match Report</div>
+          <div class="hs-goaml-desc">Partial hit on a sanctions or watchlist name. File within 5 business days if match cannot be resolved. Also submit to EOCN.</div>
+        </div>
+        <div class="hs-goaml-card info">
+          <div class="hs-goaml-code">DPMSR</div>
+          <div class="hs-goaml-name">Dealers in Precious Metals &amp; Stones Report</div>
+          <div class="hs-goaml-desc">DPMS-specific reporting for suspicious or threshold-based activities. AED 55,000+ cash transactions for precious metals/stones.</div>
+        </div>
+        <div class="hs-goaml-card info">
+          <div class="hs-goaml-code">HRC</div>
+          <div class="hs-goaml-name">High Risk Country Transaction Report</div>
+          <div class="hs-goaml-desc">Transaction involving a FATF-listed or FIU-designated high-risk country (Black/Grey list jurisdictions).</div>
+        </div>
+        <div class="hs-goaml-card info">
+          <div class="hs-goaml-code">HRCA</div>
+          <div class="hs-goaml-name">High Risk Country Activity Report</div>
+          <div class="hs-goaml-desc">Activity or attempted activity involving a high-risk country. No completed transaction required.</div>
+        </div>
+        <div class="hs-goaml-card neutral">
+          <div class="hs-goaml-code">AIF</div>
+          <div class="hs-goaml-name">Additional Information File (no transactions)</div>
+          <div class="hs-goaml-desc">Response to FIU request for additional information (clarifications, documents, KYC) without transaction data.</div>
+        </div>
+        <div class="hs-goaml-card neutral">
+          <div class="hs-goaml-code">AIFT</div>
+          <div class="hs-goaml-name">Additional Information File (with transactions)</div>
+          <div class="hs-goaml-desc">Response to FIU request for additional information that includes transaction data.</div>
+        </div>
+        <div class="hs-goaml-card neutral">
+          <div class="hs-goaml-code">RFI</div>
+          <div class="hs-goaml-name">Request for Information (no transactions)</div>
+          <div class="hs-goaml-desc">Response to FIU mass information request to multiple reporting entities without transaction data.</div>
+        </div>
+        <div class="hs-goaml-card neutral">
+          <div class="hs-goaml-code">RFIT</div>
+          <div class="hs-goaml-name">Request for Information (with transactions)</div>
+          <div class="hs-goaml-desc">Response to FIU mass information request that includes transaction details.</div>
+        </div>
+        <div class="hs-goaml-card info">
+          <div class="hs-goaml-code">REAR</div>
+          <div class="hs-goaml-name">Real Estate Activity Report</div>
+          <div class="hs-goaml-desc">Real estate-related activities including virtual asset-linked property transactions.</div>
+        </div>
+      </div>
+    </div>
+
     <div id="qs-result" style="display:none"></div>
   </div>
 
