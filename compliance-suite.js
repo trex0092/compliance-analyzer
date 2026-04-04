@@ -218,54 +218,103 @@
     return entries;
   }
 
-  const CRA_RISK_WEIGHTS = {
-    customerType:   { Individual: 1, 'Corporate Entity': 2, 'Trust/Foundation': 3, 'NPO/Charity': 3 },
-    nationality:    {}, // Dynamic — calculated from country risk DB
-    pepStatus:      { 'Not a PEP': 0, 'Former PEP (>1yr)': 2, 'Family/Associate of PEP': 2, 'Active PEP': 4 },
-    businessType:   { 'Gold Retailer': 2, 'Refinery': 3, 'Jewellery Manufacturer': 2, 'Bullion Trader': 3, 'End Consumer': 1, 'Financial Institution': 2, 'Other': 2 },
-    transactionVol: { 'Under AED 55,000': 0, 'AED 55,000–500,000': 1, 'AED 500,000–2M': 2, 'Over AED 2M': 3 },
-    cashPayment:    { 'No': 0, 'Partial': 2, 'Majority Cash': 4 },
-    sanctionsHit:   { 'No Match': 0, 'Potential Match – Pending': 3, 'Cleared False Positive': 0, 'Confirmed Match': 10 },
-    sourceOfFunds:  { 'Verified/Documented': 0, 'Partially Verified': 2, 'Unverified': 4 },
-    geography:      {}, // Dynamic — calculated from country risk DB
-    adverseMedia:   { 'None': 0, 'Possible': 2, 'Confirmed': 4 },
+  // ─── FULL RISK MODEL — Editable, persistent, auto-updatable ────────────
+  const CRA_RISK_MODEL_KEY = 'fgl_cra_risk_model';
+
+  const CRA_RISK_MODEL_DEFAULTS = {
+    // Risk factor weights: { category: { option: score } }
+    weights: {
+      customerType:   { Individual: 1, 'Corporate Entity': 2, 'Trust/Foundation': 3, 'NPO/Charity': 3 },
+      pepStatus:      { 'Not a PEP': 0, 'Former PEP (>1yr)': 2, 'Family/Associate of PEP': 2, 'Active PEP': 4 },
+      businessType:   { 'Gold Retailer': 2, 'Refinery': 3, 'Jewellery Manufacturer': 2, 'Bullion Trader': 3, 'End Consumer': 1, 'Financial Institution': 2, 'Other': 2 },
+      transactionVol: { 'Under AED 55,000': 0, 'AED 55,000–500,000': 1, 'AED 500,000–2M': 2, 'Over AED 2M': 3 },
+      cashPayment:    { 'No': 0, 'Partial': 2, 'Majority Cash': 4 },
+      sanctionsHit:   { 'No Match': 0, 'Potential Match – Pending': 3, 'Cleared False Positive': 0, 'Confirmed Match': 10 },
+      sourceOfFunds:  { 'Verified/Documented': 0, 'Partially Verified': 2, 'Unverified': 4 },
+      geography:      { 'UAE Only': 0, 'GCC': 1, 'FATF Member Country': 1, 'FATF Grey List Country': 3, 'FATF Black List Country': 4, 'CAHRA Region': 4, 'Other': 2 },
+      adverseMedia:   { 'None': 0, 'Possible': 2, 'Confirmed': 4 },
+    },
+    // Score thresholds: what total score = what rating
+    thresholds: { 'Very High': 15, 'High': 9, 'Medium': 4, 'Low': 0 },
+    // CDD level per rating
+    cddLevels: {
+      'Very High': 'EDD Required + Senior Management Approval',
+      'High': 'EDD Required',
+      'Medium': 'Standard CDD + Enhanced Monitoring',
+      'Low': 'Standard CDD',
+    },
+    // Review frequency in months per rating
+    reviewFrequency: { 'Very High': 3, 'High': 6, 'Medium': 12, 'Low': 24 },
+    // Regulatory basis
+    regulatoryBasis: 'UAE FDL No.(10) of 2025 | Art. 12-16 | FATF Rec. 10 | FATF DPMS Guidance 2020',
+    // Last updated
+    lastUpdated: new Date().toISOString(),
+    lastUpdatedBy: 'System Default',
   };
 
-  // Populate nationality and geography weights dynamically
-  (function updateDynamicWeights() {
-    var db = getCountryRiskDB();
+  // Category display labels
+  const CRA_CATEGORY_LABELS = {
+    customerType: 'Customer Type',
+    nationality: 'Nationality / Jurisdiction',
+    pepStatus: 'PEP Status',
+    businessType: 'Business Type',
+    transactionVol: 'Transaction Volume',
+    cashPayment: 'Cash Payment',
+    sanctionsHit: 'Sanctions Screening',
+    sourceOfFunds: 'Source of Funds',
+    geography: 'Geographic Exposure',
+    adverseMedia: 'Adverse Media',
+  };
+
+  function getRiskModel() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(CRA_RISK_MODEL_KEY));
+      if (saved && saved.weights && saved.thresholds) return saved;
+    } catch(_) {}
+    localStorage.setItem(CRA_RISK_MODEL_KEY, JSON.stringify(CRA_RISK_MODEL_DEFAULTS));
+    return JSON.parse(JSON.stringify(CRA_RISK_MODEL_DEFAULTS));
+  }
+
+  function saveRiskModel(model) {
+    model.lastUpdated = new Date().toISOString();
+    localStorage.setItem(CRA_RISK_MODEL_KEY, JSON.stringify(model));
+  }
+
+  // Build CRA_RISK_WEIGHTS from the stored model (for backward compatibility)
+  var CRA_RISK_WEIGHTS = {};
+  function refreshRiskWeights() {
+    var model = getRiskModel();
+    CRA_RISK_WEIGHTS = { ...model.weights };
+    // Add nationality from country risk DB
     CRA_RISK_WEIGHTS.nationality = {};
-    CRA_RISK_WEIGHTS.geography = {};
-    for (var country in db) {
-      CRA_RISK_WEIGHTS.nationality[country] = countryRiskToScore(db[country]);
-    }
+    var db = getCountryRiskDB();
+    for (var country in db) CRA_RISK_WEIGHTS.nationality[country] = countryRiskToScore(db[country]);
     CRA_RISK_WEIGHTS.nationality['Other'] = 2;
-    // Geography uses risk categories
-    CRA_RISK_WEIGHTS.geography = { 'UAE Only': 0, 'GCC': 1, 'FATF Member Country': 1, 'FATF Grey List Country': 3, 'FATF Black List Country': 4, 'CAHRA Region': 4, 'Other': 2 };
-  })();
+  }
+  refreshRiskWeights();
 
   function calcCRAScore(form) {
-    let score = 0;
-    Object.keys(CRA_RISK_WEIGHTS).forEach(k => {
-      const val = form[k];
-      const w = CRA_RISK_WEIGHTS[k];
+    var score = 0;
+    Object.keys(CRA_RISK_WEIGHTS).forEach(function(k) {
+      var val = form[k];
+      var w = CRA_RISK_WEIGHTS[k];
       if (w && val !== undefined) score += (w[val] || 0);
     });
     return score;
   }
 
   function scoreToRating(score) {
-    if (score >= 15) return 'Very High';
-    if (score >= 9)  return 'High';
-    if (score >= 4)  return 'Medium';
+    var model = getRiskModel();
+    var t = model.thresholds;
+    if (score >= t['Very High']) return 'Very High';
+    if (score >= t['High']) return 'High';
+    if (score >= t['Medium']) return 'Medium';
     return 'Low';
   }
 
   function scoreToCDD(rating) {
-    if (rating === 'Very High') return 'EDD Required + Senior Management Approval';
-    if (rating === 'High')      return 'EDD Required';
-    if (rating === 'Medium')    return 'Standard CDD + Enhanced Monitoring';
-    return 'Standard CDD';
+    var model = getRiskModel();
+    return model.cddLevels[rating] || 'Standard CDD';
   }
 
   function renderCRA() {
@@ -292,8 +341,8 @@
           <span class="sec-title">👤 Customer Risk Assessment — CDD/EDD</span>
           <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 | Art. 12-16 | FATF Rec. 10</span>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenCRAForm()">+ New Assessment</button>
-          <button class="btn btn-sm btn-gold" style="padding:6px 12px;font-size:11px" onclick="suiteUpdateCountryRisk()">Update Country Risk Data</button>
-          <button class="btn btn-sm" style="padding:6px 12px;font-size:11px" onclick="suiteViewCountryRisk()">View Country Risk DB</button>
+          <button class="btn btn-sm btn-gold" style="padding:6px 12px;font-size:11px" onclick="suiteOpenRiskConfig()">Risk Model Config</button>
+          <button class="btn btn-sm btn-red" style="padding:6px 12px;font-size:11px" onclick="suiteAutoUpdateRiskModel()">Auto-Update Risk Model</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
           <div class="metric m-c"><div class="metric-num">${records.filter(r=>r.rating==='Very High').length}</div><div class="metric-lbl">Very High Risk</div></div>
@@ -636,6 +685,186 @@
     delete CRA_RISK_WEIGHTS.nationality[name];
     toast(name + ' removed', 'success');
     suiteViewCountryRisk();
+  };
+
+  // ─── RISK MODEL CONFIGURATION — Edit all weights, thresholds, CDD levels ───
+  global.suiteOpenRiskConfig = function() {
+    var model = getRiskModel();
+    var html = '<div class="modal-overlay" id="riskConfigModal"><div class="modal" style="max-width:800px;width:95%;max-height:92vh">';
+    html += '<button class="modal-close" onclick="document.getElementById(\'riskConfigModal\').classList.remove(\'open\')">✕</button>';
+    html += '<div class="modal-title">Risk Model Configuration</div>';
+    html += '<div class="token-note" style="margin-bottom:1rem"><strong>Risk Appetite & Regulatory Configuration:</strong> Modify risk factor weights, score thresholds, CDD levels, and review frequencies. Changes take effect immediately for all new assessments. Last updated: ' + new Date(model.lastUpdated).toLocaleDateString('en-GB') + ' by ' + (model.lastUpdatedBy || 'System') + '</div>';
+
+    // Score Thresholds
+    html += '<div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:12px;border-left:3px solid var(--gold)">';
+    html += '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px;font-family:\'DM Mono\',monospace">SCORE THRESHOLDS & CDD LEVELS</div>';
+    html += '<div style="display:grid;grid-template-columns:100px 80px 1fr 80px;gap:6px;font-size:11px;align-items:center">';
+    html += '<span style="font-weight:600;color:var(--muted)">Rating</span><span style="font-weight:600;color:var(--muted)">Min Score</span><span style="font-weight:600;color:var(--muted)">CDD Level</span><span style="font-weight:600;color:var(--muted)">Review (months)</span>';
+    ['Very High','High','Medium','Low'].forEach(function(r) {
+      var color = r === 'Very High' || r === 'High' ? 'var(--red)' : r === 'Medium' ? 'var(--amber)' : 'var(--green)';
+      html += '<span style="color:' + color + ';font-weight:600">' + r + '</span>';
+      html += '<input type="number" id="rc-thresh-' + r.replace(/ /g,'_') + '" value="' + (model.thresholds[r] || 0) + '" min="0" max="50" style="font-size:11px;padding:4px;width:70px">';
+      html += '<input id="rc-cdd-' + r.replace(/ /g,'_') + '" value="' + (model.cddLevels[r] || '') + '" style="font-size:11px;padding:4px">';
+      html += '<input type="number" id="rc-review-' + r.replace(/ /g,'_') + '" value="' + (model.reviewFrequency[r] || 12) + '" min="1" max="60" style="font-size:11px;padding:4px;width:70px">';
+    });
+    html += '</div></div>';
+
+    // Risk Factor Weights
+    var weightCategories = ['customerType','pepStatus','businessType','transactionVol','cashPayment','sanctionsHit','sourceOfFunds','geography','adverseMedia'];
+    weightCategories.forEach(function(cat) {
+      var label = CRA_CATEGORY_LABELS[cat] || cat;
+      var weights = model.weights[cat] || {};
+      html += '<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:8px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+      html += '<span style="font-size:11px;font-weight:600;color:var(--gold);font-family:\'DM Mono\',monospace">' + label.toUpperCase() + '</span>';
+      html += '<button class="btn btn-sm" onclick="suiteAddRiskOption(\'' + cat + '\')" style="padding:2px 8px;font-size:9px">+ Add Option</button>';
+      html += '</div>';
+      html += '<div id="rc-cat-' + cat + '" style="display:grid;grid-template-columns:1fr 60px 30px;gap:4px;font-size:11px">';
+      Object.entries(weights).forEach(function(e) {
+        html += '<span style="padding:2px 0">' + e[0] + '</span>';
+        html += '<input type="number" class="rc-weight" data-cat="' + cat + '" data-opt="' + e[0].replace(/"/g,'&quot;') + '" value="' + e[1] + '" min="0" max="20" style="font-size:11px;padding:2px 4px;width:55px">';
+        html += '<button class="btn btn-sm btn-red" onclick="suiteRemoveRiskOption(\'' + cat + '\',\'' + e[0].replace(/'/g,"\\'") + '\')" style="padding:1px 4px;font-size:8px">✕</button>';
+      });
+      html += '</div></div>';
+    });
+
+    // Regulatory basis
+    html += '<div style="margin-top:8px"><span class="lbl">Regulatory Basis</span>';
+    html += '<input id="rc-reg-basis" value="' + (model.regulatoryBasis || '').replace(/"/g,'&quot;') + '" style="font-size:11px"></div>';
+
+    // Country Risk DB link
+    html += '<div style="margin-top:8px;display:flex;gap:8px">';
+    html += '<button class="btn btn-sm btn-gold" onclick="suiteViewCountryRisk()" style="padding:6px 12px;font-size:11px">Edit Country Risk Database</button>';
+    html += '<button class="btn btn-sm btn-red" onclick="suiteAutoUpdateRiskModel()" style="padding:6px 12px;font-size:11px">Auto-Update from Regulations</button>';
+    html += '</div>';
+
+    // Save / Cancel
+    html += '<div style="display:flex;gap:8px;margin-top:1rem">';
+    html += '<button class="btn btn-gold" onclick="suiteSaveRiskConfig()" style="flex:1;padding:12px;font-size:13px;font-weight:600">Save Risk Model</button>';
+    html += '<button class="btn btn-sm" onclick="document.getElementById(\'riskConfigModal\').classList.remove(\'open\')" style="padding:12px 20px">Cancel</button>';
+    html += '</div>';
+
+    html += '</div></div>';
+
+    var old = document.getElementById('riskConfigModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.getElementById('riskConfigModal').classList.add('open');
+  };
+
+  global.suiteSaveRiskConfig = function() {
+    var model = getRiskModel();
+    // Save thresholds
+    ['Very High','High','Medium','Low'].forEach(function(r) {
+      var key = r.replace(/ /g,'_');
+      model.thresholds[r] = parseInt(document.getElementById('rc-thresh-' + key).value) || 0;
+      model.cddLevels[r] = document.getElementById('rc-cdd-' + key).value;
+      model.reviewFrequency[r] = parseInt(document.getElementById('rc-review-' + key).value) || 12;
+    });
+    // Save weights
+    document.querySelectorAll('.rc-weight').forEach(function(el) {
+      var cat = el.getAttribute('data-cat');
+      var opt = el.getAttribute('data-opt');
+      if (!model.weights[cat]) model.weights[cat] = {};
+      model.weights[cat][opt] = parseInt(el.value) || 0;
+    });
+    model.regulatoryBasis = document.getElementById('rc-reg-basis').value;
+    model.lastUpdatedBy = 'Manual Edit';
+    saveRiskModel(model);
+    refreshRiskWeights();
+    document.getElementById('riskConfigModal').classList.remove('open');
+    toast('Risk model saved — all weights and thresholds updated', 'success');
+    renderCRA();
+  };
+
+  global.suiteAddRiskOption = function(cat) {
+    var name = prompt('Enter new option name for ' + (CRA_CATEGORY_LABELS[cat] || cat) + ':');
+    if (!name) return;
+    var score = parseInt(prompt('Enter risk score (0-10) for "' + name + '":'));
+    if (isNaN(score)) return;
+    var model = getRiskModel();
+    if (!model.weights[cat]) model.weights[cat] = {};
+    model.weights[cat][name] = score;
+    saveRiskModel(model);
+    refreshRiskWeights();
+    suiteOpenRiskConfig(); // refresh modal
+  };
+
+  global.suiteRemoveRiskOption = function(cat, opt) {
+    var model = getRiskModel();
+    if (model.weights[cat]) delete model.weights[cat][opt];
+    saveRiskModel(model);
+    refreshRiskWeights();
+    suiteOpenRiskConfig();
+  };
+
+  // Auto-Update Risk Model using AI + live web search
+  global.suiteAutoUpdateRiskModel = async function() {
+    if (typeof callAI !== 'function') { toast('No AI provider', 'error'); return; }
+    toast('Auto-updating risk model from latest regulations — searching live sources...', 'info', 45000);
+
+    var currentModel = getRiskModel();
+
+    // Live web search for latest regulatory changes
+    var liveData = '';
+    if (typeof searchWebForScreening === 'function') {
+      try {
+        var r1 = await searchWebForScreening('FATF grey list black list 2025 2026 update', 'regulation', '');
+        var r2 = await searchWebForScreening('UAE AML CFT regulation 2025 2026 FDL CBUAE update', 'regulation', '');
+        if (r1) liveData += '\n\n' + r1;
+        if (r2) liveData += '\n\n' + r2;
+      } catch(_) {}
+    }
+
+    try {
+      var data = await callAI({
+        model: 'claude-sonnet-4-5', max_tokens: 6000, temperature: 0,
+        system: 'You are a UAE AML/CFT regulatory specialist for the gold and precious metals sector. Return ONLY valid JSON.',
+        messages: [{ role: 'user', content: 'Based on the LATEST regulations and FATF guidance, provide an updated risk model for a UAE DPMS (Dealer in Precious Metals and Stones) Customer Risk Assessment.\n\nCurrent model:\n' + JSON.stringify(currentModel.weights, null, 2) + '\n\nCurrent thresholds: ' + JSON.stringify(currentModel.thresholds) + '\nCurrent CDD levels: ' + JSON.stringify(currentModel.cddLevels) + '\nCurrent review frequency: ' + JSON.stringify(currentModel.reviewFrequency) + '\n\nReturn updated JSON:\n{"weights":{"customerType":{"option":score},"pepStatus":{"option":score},"businessType":{"option":score},"transactionVol":{"option":score},"cashPayment":{"option":score},"sanctionsHit":{"option":score},"sourceOfFunds":{"option":score},"geography":{"option":score},"adverseMedia":{"option":score}},"thresholds":{"Very High":number,"High":number,"Medium":number,"Low":0},"cddLevels":{"Very High":"...","High":"...","Medium":"...","Low":"..."},"reviewFrequency":{"Very High":months,"High":months,"Medium":months,"Low":months},"regulatoryBasis":"updated regulatory references","countryRiskUpdates":{"country":"FATF Black List|FATF Grey List|CAHRA|GCC|FATF Member|Other"}}\n\nIMPORTANT:\n- Add any NEW risk categories that recent regulations require (e.g., new business types, new PEP categories)\n- Update thresholds if regulatory guidance has changed\n- Include countryRiskUpdates ONLY for countries whose FATF status has CHANGED\n- Reference: UAE FDL No.10/2025, Cabinet Resolution 134/2025, FATF Rec 10/12/22, FATF DPMS Guidance 2020, CBUAE guidance\n- Keep ALL existing options, only add/modify as needed' + liveData }]
+      });
+
+      var raw = (data.content || []).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
+      var cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
+      var m = cleaned.match(/\{[\s\S]*\}/);
+      if (m) {
+        var updated = JSON.parse(m[0]);
+
+        // Apply weight updates
+        if (updated.weights) {
+          Object.keys(updated.weights).forEach(function(cat) {
+            currentModel.weights[cat] = updated.weights[cat];
+          });
+        }
+        if (updated.thresholds) currentModel.thresholds = updated.thresholds;
+        if (updated.cddLevels) currentModel.cddLevels = updated.cddLevels;
+        if (updated.reviewFrequency) currentModel.reviewFrequency = updated.reviewFrequency;
+        if (updated.regulatoryBasis) currentModel.regulatoryBasis = updated.regulatoryBasis;
+        currentModel.lastUpdatedBy = 'AI Auto-Update';
+        saveRiskModel(currentModel);
+        refreshRiskWeights();
+
+        // Apply country risk updates
+        if (updated.countryRiskUpdates) {
+          var db = getCountryRiskDB();
+          var countryChanges = 0;
+          Object.entries(updated.countryRiskUpdates).forEach(function(e) {
+            if (db[e[0]] !== e[1]) { db[e[0]] = e[1]; countryChanges++; }
+          });
+          if (countryChanges > 0) {
+            saveCountryRiskDB(db);
+            refreshRiskWeights();
+          }
+          toast('Risk model auto-updated — ' + countryChanges + ' country changes applied', 'success');
+        } else {
+          toast('Risk model auto-updated from latest regulations', 'success');
+        }
+        renderCRA();
+        return;
+      }
+      toast('Could not parse AI response', 'error');
+    } catch(e) {
+      toast('Auto-update failed: ' + e.message, 'error');
+    }
   };
 
   global.suiteSyncCRAToAsana = async function(idx) {
