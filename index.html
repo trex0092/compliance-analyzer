@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="Sterling V2">
 <meta name="theme-color" content="#0A0A0A">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='32' fill='%230E0F11'/%3E%3Ctext x='90' y='120' text-anchor='middle' font-size='96' fill='%23C9A84C'%3E%E2%9A%96%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='32' fill='%230A0A0A'/%3E%3Ccircle cx='90' cy='78' r='30' stroke='%23C9A84C' stroke-width='3' fill='none'/%3E%3Ccircle cx='90' cy='78' r='12' fill='%23C9A84C' opacity='0.3'/%3E%3Ccircle cx='90' cy='78' r='5' fill='%23C9A84C'/%3E%3Cpath d='M58 100 Q90 140 122 100' stroke='%23C9A84C' stroke-width='3' fill='none'/%3E%3C/svg%3E">
 <title>Hawkeye Sterling V2 — Compliance Suite</title>
 <script>
 // KILL all service workers and caches — must run FIRST
@@ -161,7 +161,7 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .company-bar .cb-name{font-size:13px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase}
 .company-bar .cb-label{font-size:7px;letter-spacing:1.5px;opacity:0.5;margin-bottom:1px;font-family:'Montserrat',sans-serif}
 .company-bar .cb-switch{display:flex;align-items:center;gap:6px}
-.company-bar .cb-switch select{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:inherit;padding:4px 8px;border-radius:6px;font-size:10px;font-family:'Montserrat',sans-serif;cursor:pointer}
+.company-bar .cb-switch select{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:inherit;padding:4px 8px;border-radius:3px;font-size:10px;font-family:'Montserrat',sans-serif;cursor:pointer}
 @keyframes cbPulse{0%,100%{opacity:1}50%{opacity:0.4}}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:1.2rem}
 .tab{padding:10px 14px;border-radius:0;font-size:10px;cursor:pointer;background:transparent;border:1px solid rgba(201,168,76,0.08);border-bottom:2px solid transparent;color:var(--ivory-dim);transition:all 0.3s;white-space:nowrap;text-align:center;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;letter-spacing:1px;text-transform:uppercase;font-weight:400}
@@ -511,7 +511,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="logo-text">Hawkeye Sterling V2</div>
       </div>
       <span style="color:var(--border);font-size:18px;font-weight:300">|</span>
-      <select id="headerCompanySelect" onchange="switchActiveCompany(this.value);updateCompanyBar()" style="background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:6px;color:var(--gold);font-size:11px;font-weight:600;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none;padding:4px 8px"></select>
+      <select id="headerCompanySelect" onchange="switchActiveCompany(this.value);updateCompanyBar()" style="background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:3px;color:var(--gold);font-size:11px;font-weight:600;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none;padding:4px 8px"></select>
       <button class="theme-toggle" id="themeToggleBtn" onclick="toggleDarkMode()" title="Toggle dark mode" style="display:none">🌙</button>
       <div style="position:relative;display:none" id="notifBellWrap">
         <div class="notif-bell" onclick="toggleNotifPanel()">🔔<span class="notif-badge" id="notifBadge" style="display:none">0</span></div>
@@ -1734,7 +1734,7 @@ Examples:
             <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif" id="extLinksMeta">0 links</span>
             <button class="btn btn-sm btn-green" onclick="toggleAddExtLink()">+ Add Link</button>
             <button class="btn btn-sm btn-blue" onclick="resetExtLinksToDefault()" style="background:rgba(74,143,193,0.15);color:#4A8FC1;border:1px solid rgba(74,143,193,0.4)">↺ Refresh</button>
-            <input type="text" id="extLinkSearch" placeholder="Search links..." oninput="renderExternalLinks()" style="font-size:10px;padding:3px 8px;width:160px;background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Montserrat',sans-serif" />
+            <input type="text" id="extLinkSearch" placeholder="Search links..." oninput="renderExternalLinks()" style="font-size:10px;padding:3px 8px;width:160px;background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Montserrat',sans-serif" />
           </div>
         </div>
         <div id="extLinkAddForm" style="display:none;margin-bottom:12px;padding:10px;background:rgba(201,168,76,0.05);border-radius:3px;border:1px solid var(--border)">
@@ -1795,11 +1795,11 @@ Examples:
                 <span id="empBizPlaceholder" style="color:var(--muted);font-size:13px">Select entities...</span>
               </div>
               <div id="empBizDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:3px;margin-top:4px;padding:6px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.4)">
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="MADISON JEWELLERY TRADING L.L.C" style="width:auto" onchange="updateBizSelection()" />MADISON JEWELLERY TRADING L.L.C</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="NAPLES JEWELLERY TRADING L.L.C" style="width:auto" onchange="updateBizSelection()" />NAPLES JEWELLERY TRADING L.L.C</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="GRAMALTIN A.S" style="width:auto" onchange="updateBizSelection()" />GRAMALTIN A.S</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="ZOE Precious Metals and Jewelery (FZE)" style="width:auto" onchange="updateBizSelection()" />ZOE Precious Metals and Jewelery (FZE)</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="FINE GOLD" style="width:auto" onchange="updateBizSelection()" />FINE GOLD</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="MADISON JEWELLERY TRADING L.L.C" style="width:auto" onchange="updateBizSelection()" />MADISON JEWELLERY TRADING L.L.C</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="NAPLES JEWELLERY TRADING L.L.C" style="width:auto" onchange="updateBizSelection()" />NAPLES JEWELLERY TRADING L.L.C</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="GRAMALTIN A.S" style="width:auto" onchange="updateBizSelection()" />GRAMALTIN A.S</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="ZOE Precious Metals and Jewelery (FZE)" style="width:auto" onchange="updateBizSelection()" />ZOE Precious Metals and Jewelery (FZE)</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="FINE GOLD" style="width:auto" onchange="updateBizSelection()" />FINE GOLD</label>
               </div>
             </div>
           </div>
@@ -5916,7 +5916,7 @@ function renderResults(r, query) {
     const ref = escHtml(f.regulatory_ref || '');
     const rec = escHtml(f.recommendation || '');
     const impact = escHtml(f.risk_impact || '');
-    const impactHtml = impact ? `<div style="font-size:11px;color:var(--amber);margin-top:6px;padding:6px 10px;background:rgba(232,168,56,0.08);border-radius:6px;border-left:2px solid var(--amber)"><strong>Risk Impact:</strong> ${impact}</div>` : '';
+    const impactHtml = impact ? `<div style="font-size:11px;color:var(--amber);margin-top:6px;padding:6px 10px;background:rgba(232,168,56,0.08);border-radius:3px;border-left:2px solid var(--amber)"><strong>Risk Impact:</strong> ${impact}</div>` : '';
     const taskBtn = f.asana_task_name
       ? `<div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('${escJsStr(f.asana_task_name)}','${escJsStr((f.body||'') + (f.regulatory_ref ? ' Ref: ' + f.regulatory_ref : ''))}')">+ Create Asana Task</button></div>`
       : '';
@@ -5998,7 +5998,7 @@ function wordDocHeader(reportTitle, extraStyle) {
   const company = typeof getActiveCompany === 'function' ? getActiveCompany() : {};
   const cId = company.id || 'company-5';
   const headerColor = getCompanyDocColor(cId);
-  const cName = (company.name || 'COMPLIANCE ANALYZER').toUpperCase();
+  const cName = (company.name || 'HAWKEYE STERLING V2').toUpperCase();
   const license = company.licenseNo ? 'License No. ' + escHtml(company.licenseNo) : '';
   const activity = company.activity || 'Non-Manufactured Precious Metal Trading';
   const loc = company.location || 'Dubai, UAE';
@@ -6751,7 +6751,7 @@ function attachIARFile(input) {
 function renderIARAttachments() {
   const el = document.getElementById('iarAttachments');
   if (!el) return;
-  el.innerHTML = iarAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:6px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_iar_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_iar_attachments',${a.id},'iarAttachments','renderIARAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = iarAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_iar_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_iar_attachments',${a.id},'iarAttachments','renderIARAttachments')">&times;</span></span>`).join('');
 }
 
 // ======= DRIVE STRUCTURE =======
@@ -8088,7 +8088,7 @@ function renderScreeningResult(result, name) {
       ${(result.risk_factors||[]).length?`<div class="rec" style="margin-top:8px"><strong>Risk Factors:</strong> ${result.risk_factors.join(', ')}</div>`:''}
       ${(result.recommended_actions||[]).length?`<div class="rec" style="margin-top:8px"><strong>Actions:</strong> ${result.recommended_actions.join('; ')}</div>`:''}
     </div>
-    <div style="margin-top:10px;padding:12px 14px;border-left:4px solid ${comp.border};background:${comp.bg};border-radius:6px">
+    <div style="margin-top:10px;padding:12px 14px;border-left:4px solid ${comp.border};background:${comp.bg};border-radius:3px">
       <div style="font-size:12px;font-weight:600;color:${comp.color};margin-bottom:4px;font-family:'Montserrat',sans-serif">${comp.label} — COMPLIANCE BASIS</div>
       <div style="font-size:12px;color:var(--text);line-height:1.5">${comp.desc}</div>
     </div>`;
@@ -8533,7 +8533,7 @@ function attachTrainingFile(input) {
 function renderTrainingAttachments() {
   const el = document.getElementById('trainingAttachments');
   if (!el) return;
-  el.innerHTML = trainingAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:6px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_training_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_training_attachments',${a.id},'trainingAttachments','renderTrainingAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = trainingAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_training_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_training_attachments',${a.id},'trainingAttachments','renderTrainingAttachments')">&times;</span></span>`).join('');
 }
 
 // ======= EMPLOYEE ATTACHMENTS & EXPORTS =======
@@ -8555,7 +8555,7 @@ function attachEmployeeFile(input) {
 function renderEmpAttachments() {
   const el = document.getElementById('empAttachments');
   if (!el) return;
-  el.innerHTML = empAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:6px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_emp_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_emp_attachments',${a.id},'empAttachments','renderEmpAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = empAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_emp_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_emp_attachments',${a.id},'empAttachments','renderEmpAttachments')">&times;</span></span>`).join('');
 }
 function exportEmployeePDF() {
   if (!requireJsPDF()) return;
@@ -8614,7 +8614,7 @@ function renderCompanyAttachments() {
   if (!el) return;
   const key = getCompanyAttachKey();
   const list = getCompanyAttachments();
-  el.innerHTML = list.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:6px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('${key}',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('${key}',${a.id},'','renderCompanyAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = list.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('${key}',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('${key}',${a.id},'','renderCompanyAttachments')">&times;</span></span>`).join('');
 }
 function exportCompanyPDF() {
   if (!requireJsPDF()) return;
@@ -8811,7 +8811,7 @@ function renderRACIAttachments() {
   const el = document.getElementById('raciAttachments');
   if (!el) return;
   if (!raciAttachments.length) { el.innerHTML = ''; return; }
-  el.innerHTML = raciAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:6px;padding:3px 8px;font-size:10px;margin:2px">
+  el.innerHTML = raciAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px;margin:2px">
     <span style="color:var(--gold);cursor:pointer" onclick="downloadRACIAttachment(${a.id})" title="Download">📎 ${escHtml(a.name)}</span>
     <span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeRACIAttachment(${a.id})" title="Remove">&times;</span>
   </span>`).join('');
@@ -9830,7 +9830,7 @@ function exportRiskAssessmentPDF() {
   doc.setFontSize(6); doc.setTextColor(...muted);
   doc.text('Regulatory References: UAE Federal Decree-Law No.10/2025 | Cabinet Resolution 134/2025 | Cabinet Resolution 74/2020 | FATF Recommendations | LBMA RGG v9', 14, y);
   y += 3;
-  doc.text('This document is auto-generated by the Compliance Analyser. For official use, verify all data against source records.', 14, y);
+  doc.text('This document is auto-generated by the Hawkeye Sterling V2. For official use, verify all data against source records.', 14, y);
 
   doc.save('Risk_Assessment_'+data.entityName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().split('T')[0]+'.pdf');
   toast('PDF exported','success');

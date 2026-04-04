@@ -5,7 +5,7 @@
  * for DPMS sector compliance per MoE, FIU, EOCN, and FATF standards.
  *
  * This module is the single source of truth for regulatory references
- * used across the compliance analyzer.
+ * used across the Hawkeye Sterling V2.
  */
 
 // ─── Regulatory Bodies ───────────────────────────────────────────────────────

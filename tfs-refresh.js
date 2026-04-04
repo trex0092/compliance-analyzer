@@ -200,7 +200,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     const statusIcon = s => s === 'CURRENT' ? '🟢' : s === 'REFRESHING' ? '🔄' : s === 'ERROR' ? '🔴' : '⚪';
 
     const listsHtml = lists.map(l => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px;${isStale(l) ? 'border-color:var(--amber)' : ''}">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:3px;margin-bottom:4px;${isStale(l) ? 'border-color:var(--amber)' : ''}">
         <span style="font-size:14px">${statusIcon(l.status)}</span>
         <div style="flex:1">
           <div style="font-size:12px;font-weight:500">${l.name}</div>
@@ -238,17 +238,17 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         </div>
 
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
-          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="background:var(--surface2);border-radius:3px;padding:10px;text-align:center">
             <div style="font-size:20px;font-weight:500;color:var(--green)">${currentCount}</div>
-            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Lists Current</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">Lists Current</div>
           </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="background:var(--surface2);border-radius:3px;padding:10px;text-align:center">
             <div style="font-size:20px;font-weight:500;color:var(--amber)">${staleCount}</div>
-            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Stale (>24h)</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">Stale (>24h)</div>
           </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="background:var(--surface2);border-radius:3px;padding:10px;text-align:center">
             <div style="font-size:20px;font-weight:500">${lists.reduce((s, l) => s + (l.entryCount || 0), 0).toLocaleString('en-GB')}</div>
-            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Total Entries</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">Total Entries</div>
           </div>
         </div>
 
@@ -294,14 +294,14 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         : { label:'NEGATIVE MATCH', desc:'No matches found against sanctions lists. The entity is cleared for onboarding or transaction processing under standard CDD. Per FATF Rec 10 and UAE Federal Decree-Law No.10/2025 (Art.16), maintain records for a minimum of 5 years. Re-screen periodically or upon trigger events.', color:'#27AE60', bg:'rgba(39,174,96,0.08)' };
 
       resultEl.innerHTML = `
-        <div style="padding:10px;border:1px solid ${match.result === 'CLEAR' ? 'var(--green)' : 'var(--red)'};border-radius:8px;margin-top:8px">
+        <div style="padding:10px;border:1px solid ${match.result === 'CLEAR' ? 'var(--green)' : 'var(--red)'};border-radius:3px;margin-top:8px">
           <span class="badge ${match.result === 'CLEAR' ? 'b-g' : 'b-r'}">${tfsComp.label}</span>
           <span style="font-size:13px;margin-left:8px;font-weight:500">${match.entity}</span>
           ${matchesHtml}
           <p style="font-size:12px;margin-top:8px">${match.recommendation || ''}</p>
         </div>
-        <div style="margin-top:10px;padding:12px 14px;border-left:4px solid ${tfsComp.color};background:${tfsComp.bg};border-radius:6px">
-          <div style="font-size:12px;font-weight:600;color:${tfsComp.color};margin-bottom:4px;font-family:'DM Mono',monospace">${tfsComp.label} — COMPLIANCE BASIS</div>
+        <div style="margin-top:10px;padding:12px 14px;border-left:4px solid ${tfsComp.color};background:${tfsComp.bg};border-radius:3px">
+          <div style="font-size:12px;font-weight:600;color:${tfsComp.color};margin-bottom:4px;font-family:'Montserrat',sans-serif">${tfsComp.label} — COMPLIANCE BASIS</div>
           <div style="font-size:12px;line-height:1.5">${tfsComp.desc}</div>
         </div>
       `;

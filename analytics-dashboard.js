@@ -1,5 +1,5 @@
 /**
- * Analytics Dashboard Module — Compliance Analyser v2.5
+ * Analytics Dashboard Module — Hawkeye Sterling V2 v2.5
  * Chart.js-powered visual analytics with Asana task metrics
  * Provides: trend charts, risk distribution, gap analysis, screening activity, Asana KPIs
  */
@@ -93,7 +93,7 @@
     if (!window.Chart) return;
     Chart.defaults.color = C.muted;
     Chart.defaults.borderColor = C.border;
-    Chart.defaults.font.family = "'DM Sans', sans-serif";
+    Chart.defaults.font.family = "'Montserrat', sans-serif";
     Chart.defaults.font.size = 11;
     Chart.defaults.plugins.legend.labels.usePointStyle = true;
     Chart.defaults.plugins.legend.labels.pointStyleWidth = 10;
@@ -101,8 +101,8 @@
     Chart.defaults.plugins.tooltip.borderColor = C.border;
     Chart.defaults.plugins.tooltip.borderWidth = 1;
     Chart.defaults.plugins.tooltip.cornerRadius = 8;
-    Chart.defaults.plugins.tooltip.titleFont = { family: "'DM Mono', monospace", size: 11 };
-    Chart.defaults.plugins.tooltip.bodyFont = { family: "'DM Sans', sans-serif", size: 12 };
+    Chart.defaults.plugins.tooltip.titleFont = { family: "'Montserrat', sans-serif", size: 11 };
+    Chart.defaults.plugins.tooltip.bodyFont = { family: "'Montserrat', sans-serif", size: 12 };
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -324,8 +324,8 @@
   // ══════════════════════════════════════════════════════════════
 
   function kpiCard(label, value, color, subtitle, icon) {
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;text-align:center">
-      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:6px">${icon ? icon + ' ' : ''}${label}</div>
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1rem;text-align:center">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-family:'Montserrat',sans-serif;margin-bottom:6px">${icon ? icon + ' ' : ''}${label}</div>
       <div style="font-size:28px;font-weight:700;color:${color};font-family:'Inter',sans-serif">${value}</div>
       ${subtitle ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${subtitle}</div>` : ''}
     </div>`;
@@ -568,9 +568,9 @@
         </div>
         <div style="height:${Math.max(200, Object.keys(asanaStats.bySection).length * 40)}px;position:relative"><canvas id="chartAsanaSections"></canvas></div>
         <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px">
-          <div style="padding:8px;background:var(--surface2);border-radius:8px;text-align:center"><span style="color:var(--green);font-weight:600">${asanaStats.completed}</span> <span style="color:var(--muted)">Completed</span></div>
-          <div style="padding:8px;background:var(--surface2);border-radius:8px;text-align:center"><span style="color:var(--blue);font-weight:600">${asanaStats.inProgress}</span> <span style="color:var(--muted)">In Progress</span></div>
-          <div style="padding:8px;background:var(--surface2);border-radius:8px;text-align:center"><span style="color:var(--red);font-weight:600">${asanaStats.overdue}</span> <span style="color:var(--muted)">Overdue</span></div>
+          <div style="padding:8px;background:var(--surface2);border-radius:3px;text-align:center"><span style="color:var(--green);font-weight:600">${asanaStats.completed}</span> <span style="color:var(--muted)">Completed</span></div>
+          <div style="padding:8px;background:var(--surface2);border-radius:3px;text-align:center"><span style="color:var(--blue);font-weight:600">${asanaStats.inProgress}</span> <span style="color:var(--muted)">In Progress</span></div>
+          <div style="padding:8px;background:var(--surface2);border-radius:3px;text-align:center"><span style="color:var(--red);font-weight:600">${asanaStats.overdue}</span> <span style="color:var(--muted)">Overdue</span></div>
         </div>
       </div>` : ''}
 

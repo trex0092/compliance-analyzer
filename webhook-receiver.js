@@ -1,5 +1,5 @@
 /**
- * Webhook Receiver Module — Compliance Analyser v2.3
+ * Webhook Receiver Module — Hawkeye Sterling V2 v2.3
  * Polls the Cloudflare Worker proxy for real-time Asana/Slack webhook events.
  * Browser-side: polls GET /webhooks/events, processes events, shows notifications.
  */
@@ -43,7 +43,7 @@
     }
 
     var toast = document.createElement('div');
-    toast.style.cssText = 'background:#1e293b;color:#f1f5f9;padding:12px 16px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.25);font-size:13px;line-height:1.4;opacity:0;transition:opacity .3s;border-left:4px solid ' + (event.source === 'asana' ? '#f06a6a' : '#4a154b') + ';';
+    toast.style.cssText = 'background:#1e293b;color:#f1f5f9;padding:12px 16px;border-radius:3px;box-shadow:0 4px 12px rgba(0,0,0,.25);font-size:13px;line-height:1.4;opacity:0;transition:opacity .3s;border-left:4px solid ' + (event.source === 'asana' ? '#f06a6a' : '#4a154b') + ';';
     toast.innerHTML = '<div style="font-weight:600;margin-bottom:2px;">' + escapeHtml(formatSourceLabel(event.source)) + '</div>' +
       '<div>' + escapeHtml(formatEventSummary(event)) + '</div>';
 
@@ -262,7 +262,7 @@
   function renderEventFeed() {
     var events = loadEvents();
 
-    var html = '<div id="fgl-webhook-feed" style="width:380px;max-height:480px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;">';
+    var html = '<div id="fgl-webhook-feed" style="width:380px;max-height:480px;background:#fff;border:1px solid #e2e8f0;border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;">';
 
     // Header
     html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">';

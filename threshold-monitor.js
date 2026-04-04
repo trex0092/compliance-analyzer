@@ -157,7 +157,7 @@ const ThresholdMonitor = (function() {
     const ctrQueue = getCTRQueue();
 
     const alertsHtml = alerts.slice(0, 20).map(a => `
-      <div style="padding:10px;border:1px solid ${a.severity === 'CRITICAL' ? 'var(--red)' : 'var(--amber)'};border-radius:8px;margin-bottom:8px;background:var(--surface2)">
+      <div style="padding:10px;border:1px solid ${a.severity === 'CRITICAL' ? 'var(--red)' : 'var(--amber)'};border-radius:3px;margin-bottom:8px;background:var(--surface2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div>
             <span class="badge ${a.severity === 'CRITICAL' ? 'b-r' : 'b-a'}">${a.type.replace('_', ' ')}</span>
@@ -192,7 +192,7 @@ const ThresholdMonitor = (function() {
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">DPMS Threshold Monitor</span>
           <div style="display:flex;gap:6px;align-items:center">
-            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">UAE FDL Art.24 | AED 55,000</span>
+            <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">UAE FDL Art.24 | AED 55,000</span>
             <button class="btn btn-sm btn-green" onclick="ThresholdMonitor.refresh()">Scan Now</button>
           </div>
         </div>
@@ -200,21 +200,21 @@ const ThresholdMonitor = (function() {
           <strong>Regulatory basis:</strong> UAE Federal Decree-Law No.10/2025, Article 24 requires Dealers in Precious Metals and Stones (DPMS) to file a Cash Transaction Report (CTR) for any cash transaction ≥ AED 55,000 (~USD 14,972). Structuring detection monitors split transactions designed to avoid the threshold.
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="background:var(--surface2);border-radius:3px;padding:10px;text-align:center">
             <div style="font-size:20px;font-weight:500;color:var(--red)" id="tmAlertCount">${alerts.filter(a => a.severity === 'CRITICAL').length}</div>
-            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Critical</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">Critical</div>
           </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="background:var(--surface2);border-radius:3px;padding:10px;text-align:center">
             <div style="font-size:20px;font-weight:500;color:var(--amber)" id="tmWarningCount">${alerts.filter(a => a.severity === 'HIGH').length}</div>
-            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Warnings</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">Warnings</div>
           </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="background:var(--surface2);border-radius:3px;padding:10px;text-align:center">
             <div style="font-size:20px;font-weight:500;color:var(--amber)">${ctrQueue.filter(c => c.status === 'QUEUED').length}</div>
-            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">CTR Pending</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">CTR Pending</div>
           </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="background:var(--surface2);border-radius:3px;padding:10px;text-align:center">
             <div style="font-size:20px;font-weight:500;color:var(--green)">${ctrQueue.filter(c => c.status === 'FILED').length}</div>
-            <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">CTR Filed</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">CTR Filed</div>
           </div>
         </div>
         ${alertsHtml}
@@ -223,7 +223,7 @@ const ThresholdMonitor = (function() {
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">CTR Filing Queue</span>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Cash Transaction Reports pending goAML submission</span>
+          <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Cash Transaction Reports pending goAML submission</span>
         </div>
         ${ctrHtml}
       </div>

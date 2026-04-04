@@ -1,5 +1,5 @@
 /**
- * Fine Gold LLC — UAE AML/CFT Compliance Suite
+ * Hawkeye Sterling — UAE AML/CFT Compliance Suite
  * Version 2.0.0 | April 2026
  * Regulatory: UAE FDL No.(10) of 2025 | FATF Rec. 22/23 | LBMA RGG v9
  *
@@ -42,7 +42,7 @@
   function toast(msg, type) {
     if (global.toast) { global.toast(msg, type); return; }
     const t = document.createElement('div');
-    t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#333;color:#fff;padding:12px 20px;border-radius:10px;z-index:9999;font-size:13px';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#333;color:#fff;padding:12px 20px;border-radius:4px;z-index:9999;font-size:13px';
     t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 3000);
@@ -57,7 +57,7 @@
       'Active':'#3DA876','Inactive':'#7A7870',
     };
     const col = map[status] || '#7A7870';
-    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:'DM Mono',monospace;white-space:nowrap">${status}</span>`;
+    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${status}</span>`;
   }
 
   // ─── ASANA INTEGRATION ───────────────────────────────────────────────────────
@@ -379,7 +379,7 @@
         <div class="modal" style="max-width:600px;width:95%">
           <button class="modal-close" onclick="document.getElementById('craModal').classList.remove('open')">✕</button>
           <div class="modal-title">Customer Risk Assessment Form</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">UAE FDL No.(10) of 2025 | FATF Rec. 10 | FATF DPMS Guidance 2020</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">UAE FDL No.(10) of 2025 | FATF Rec. 10 | FATF DPMS Guidance 2020</div>
 
           <input type="hidden" id="cra-edit-idx" value="-1">
 
@@ -432,12 +432,12 @@
             </div>
           </div>
 
-          <div id="cra-score-box" style="background:var(--surface2);border-radius:10px;padding:12px;margin:10px 0;display:none">
+          <div id="cra-score-box" style="background:var(--surface2);border-radius:4px;padding:12px;margin:10px 0;display:none">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span class="lbl" style="margin:0">CALCULATED RISK RATING</span>
-              <span id="cra-score-display" style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif"></span>
+              <span id="cra-score-display" style="font-size:22px;font-weight:700;font-family:'Cinzel',serif"></span>
             </div>
-            <div id="cra-cdd-display" style="font-size:12px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace"></div>
+            <div id="cra-cdd-display" style="font-size:12px;color:var(--muted);margin-top:4px;font-family:'Montserrat',sans-serif"></div>
           </div>
 
           <div><span class="lbl">Compliance Notes / Observations</span>
@@ -645,8 +645,8 @@
     html += '</div>';
 
     // Country table
-    html += '<div style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">';
-    html += '<div style="display:grid;grid-template-columns:1fr 140px 60px;padding:6px 10px;background:rgba(180,151,90,0.1);font-size:10px;font-weight:600;color:var(--gold);font-family:\'DM Mono\',monospace;border-bottom:1px solid var(--border)"><span>COUNTRY</span><span>CLASSIFICATION</span><span></span></div>';
+    html += '<div style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:3px">';
+    html += '<div style="display:grid;grid-template-columns:1fr 140px 60px;padding:6px 10px;background:rgba(180,151,90,0.1);font-size:10px;font-weight:600;color:var(--gold);font-family:\'Montserrat\',sans-serif;border-bottom:1px solid var(--border)"><span>COUNTRY</span><span>CLASSIFICATION</span><span></span></div>';
     entries.forEach(function(e) {
       html += '<div style="display:grid;grid-template-columns:1fr 140px 60px;padding:4px 10px;border-bottom:1px solid var(--border);font-size:11px;align-items:center">';
       html += '<span>' + e[0] + '</span>';
@@ -696,8 +696,8 @@
     html += '<div class="token-note" style="margin-bottom:1rem"><strong>Risk Appetite & Regulatory Configuration:</strong> Modify risk factor weights, score thresholds, CDD levels, and review frequencies. Changes take effect immediately for all new assessments. Last updated: ' + new Date(model.lastUpdated).toLocaleDateString('en-GB') + ' by ' + (model.lastUpdatedBy || 'System') + '</div>';
 
     // Score Thresholds
-    html += '<div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:12px;border-left:3px solid var(--gold)">';
-    html += '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px;font-family:\'DM Mono\',monospace">SCORE THRESHOLDS & CDD LEVELS</div>';
+    html += '<div style="background:var(--surface2);border-radius:4px;padding:14px;margin-bottom:12px;border-left:3px solid var(--gold)">';
+    html += '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px;font-family:\'Montserrat\',sans-serif">SCORE THRESHOLDS & CDD LEVELS</div>';
     html += '<div style="display:grid;grid-template-columns:100px 80px 1fr 80px;gap:6px;font-size:11px;align-items:center">';
     html += '<span style="font-weight:600;color:var(--muted)">Rating</span><span style="font-weight:600;color:var(--muted)">Min Score</span><span style="font-weight:600;color:var(--muted)">CDD Level</span><span style="font-weight:600;color:var(--muted)">Review (months)</span>';
     ['Very High','High','Medium','Low'].forEach(function(r) {
@@ -714,9 +714,9 @@
     weightCategories.forEach(function(cat) {
       var label = CRA_CATEGORY_LABELS[cat] || cat;
       var weights = model.weights[cat] || {};
-      html += '<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:8px">';
+      html += '<div style="background:var(--surface2);border-radius:3px;padding:10px 12px;margin-bottom:8px">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
-      html += '<span style="font-size:11px;font-weight:600;color:var(--gold);font-family:\'DM Mono\',monospace">' + label.toUpperCase() + '</span>';
+      html += '<span style="font-size:11px;font-weight:600;color:var(--gold);font-family:\'Montserrat\',sans-serif">' + label.toUpperCase() + '</span>';
       html += '<button class="btn btn-sm" onclick="suiteAddRiskOption(\'' + cat + '\')" style="padding:2px 8px;font-size:9px">+ Add Option</button>';
       html += '</div>';
       html += '<div id="rc-cat-' + cat + '" style="display:grid;grid-template-columns:1fr 60px 30px;gap:4px;font-size:11px">';
@@ -905,7 +905,7 @@
           <table style="width:100%;border-collapse:collapse">
             <thead>
               <tr style="border-bottom:1px solid var(--border)">
-                ${['Entity','UBO Name','Nationality','DOB','Ownership %','Control Type','Screening','Verified','Next Review','Actions'].map(h=>`<th style="text-align:left;padding:8px;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">${h}</th>`).join('')}
+                ${['Entity','UBO Name','Nationality','DOB','Ownership %','Control Type','Screening','Verified','Next Review','Actions'].map(h=>`<th style="text-align:left;padding:8px;font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">${h}</th>`).join('')}
               </tr>
             </thead>
             <tbody id="ubo-tbody">
@@ -940,7 +940,7 @@
         <div class="modal" style="max-width:580px;width:95%">
           <button class="modal-close" onclick="document.getElementById('uboModal').classList.remove('open')">✕</button>
           <div class="modal-title">UBO Record</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">UAE Cabinet Decision No.(10) of 2019 | Capture all persons owning ≥25% or exercising ultimate control</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">UAE Cabinet Decision No.(10) of 2019 | Capture all persons owning ≥25% or exercising ultimate control</div>
           <input type="hidden" id="ubo-edit-idx" value="-1">
           <div class="row row-2">
             <div><span class="lbl">Legal Entity Name *</span><input id="ubo-entity" placeholder="Company/Trust/Fund name"/></div>
@@ -1108,7 +1108,7 @@
           <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 Art.20 | goAML | FATF Rec.20 | File within 30 days of suspicion</span>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenSTRForm()">+ New STR Case</button>
         </div>
-        <div style="background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.3);border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:var(--red);font-family:'DM Mono',monospace">
+        <div style="background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.3);border-radius:4px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:var(--red);font-family:'Montserrat',sans-serif">
           ⚠️ CONFIDENTIALITY NOTICE: STR information is strictly confidential. Tipping off a subject is a criminal offence under UAE FDL No.(10) of 2025 Art.21. Do not disclose to any person that a report has been or will be filed.
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
@@ -1134,7 +1134,7 @@
                 <button class="btn btn-sm btn-red" onclick="suiteDeleteSTR(${i})">Delete</button>
               </div>
             </div>
-            <div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px;background:var(--surface2);border-radius:6px;line-height:1.5">${(c.narrative||'').slice(0,200)}${(c.narrative||'').length>200?'...':''}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px;background:var(--surface2);border-radius:3px;line-height:1.5">${(c.narrative||'').slice(0,200)}${(c.narrative||'').length>200?'...':''}</div>
           </div>
         `).join('')}
       </div>
@@ -1144,7 +1144,7 @@
         <div class="modal" style="max-width:680px;width:95%;max-height:90vh">
           <button class="modal-close" onclick="document.getElementById('strModal').classList.remove('open')">✕</button>
           <div class="modal-title">STR Case File</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">UAE FDL No.(10) of 2025 Art.20 | File to UAE FIU via goAML within 30 days of suspicion arising</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">UAE FDL No.(10) of 2025 Art.20 | File to UAE FIU via goAML within 30 days of suspicion arising</div>
           <input type="hidden" id="str-edit-idx" value="-1">
 
           <div class="row row-2">
@@ -1166,7 +1166,7 @@
             <div><span class="lbl">Filing Deadline (auto +30d)</span><input type="date" id="str-deadline" readonly style="opacity:0.7"/></div>
           </div>
           <div><span class="lbl">Red Flags Identified (select all that apply) *</span>
-            <div id="str-flags-container" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface2);padding:10px;border-radius:8px;border:1px solid var(--border);max-height:180px;overflow-y:auto;margin-top:4px">
+            <div id="str-flags-container" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface2);padding:10px;border-radius:3px;border:1px solid var(--border);max-height:180px;overflow-y:auto;margin-top:4px">
               ${STR_RED_FLAGS_DPMS.map((f,i)=>`<label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;font-size:11px;padding:3px 0"><input type="checkbox" id="strf-${i}" style="width:auto;margin-top:2px"/>${f}</label>`).join('')}
             </div>
           </div>
@@ -1572,7 +1572,7 @@
         </div>
 
         <!-- Scoring Model Reference -->
-        <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
+        <div style="background:var(--surface2);border-radius:4px;padding:12px;margin-bottom:1rem;font-size:12px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div>
               <strong style="color:var(--gold)">Risk Score = Likelihood (1–5) × Impact (1–5)</strong><br>
@@ -1586,22 +1586,22 @@
         </div>
 
         <!-- System Action Rules -->
-        <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
+        <div style="background:var(--surface2);border-radius:4px;padding:12px;margin-bottom:1rem;font-size:12px">
           <strong style="color:var(--gold)">Composite Risk Rule:</strong> TOTAL_SCORE = Σ (each flag score × multiplier)<br>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px">
-            <div style="background:rgba(217,79,79,0.1);border-radius:6px;padding:8px;border-left:3px solid var(--red)">
+            <div style="background:rgba(217,79,79,0.1);border-radius:3px;padding:8px;border-left:3px solid var(--red)">
               <div style="font-weight:600;color:var(--red)">≥1 CRITICAL flag</div>
               <div style="color:var(--muted);margin-top:2px">Immediate escalation + STR consideration</div>
             </div>
-            <div style="background:rgba(232,160,48,0.1);border-radius:6px;padding:8px;border-left:3px solid var(--amber)">
+            <div style="background:rgba(232,160,48,0.1);border-radius:3px;padding:8px;border-left:3px solid var(--amber)">
               <div style="font-weight:600;color:var(--amber)">≥2 HIGH flags</div>
               <div style="color:var(--muted);margin-top:2px">STR consideration + EDD required</div>
             </div>
-            <div style="background:rgba(74,143,193,0.1);border-radius:6px;padding:8px;border-left:3px solid var(--blue)">
+            <div style="background:rgba(74,143,193,0.1);border-radius:3px;padding:8px;border-left:3px solid var(--blue)">
               <div style="font-weight:600;color:#4A8FC1">≥3 MEDIUM flags</div>
               <div style="color:var(--muted);margin-top:2px">EDD trigger + enhanced monitoring</div>
             </div>
-            <div style="background:rgba(61,168,118,0.1);border-radius:6px;padding:8px;border-left:3px solid var(--green)">
+            <div style="background:rgba(61,168,118,0.1);border-radius:3px;padding:8px;border-left:3px solid var(--green)">
               <div style="font-weight:600;color:var(--green)">LOW only</div>
               <div style="color:var(--muted);margin-top:2px">Log + trend analysis only</div>
             </div>
@@ -1632,17 +1632,17 @@
                 const mxLabels = (f.mx||[]).map(m => RF_MULTIPLIERS[m]?.label).filter(Boolean);
                 return `
                 <div class="rf-item" data-text="${f.flag.toLowerCase()}" data-level="${lvl}"
-                  style="padding:10px 12px;border-radius:8px;border:1px solid ${rl.border};margin-bottom:6px;background:${rl.bg}">
+                  style="padding:10px 12px;border-radius:3px;border:1px solid ${rl.border};margin-bottom:6px;background:${rl.bg}">
                   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
                     <div style="font-size:13px;font-weight:500;flex:1">🚩 ${f.flag}</div>
                     <div style="flex-shrink:0;text-align:right">
-                      <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:5px;padding:2px 8px;font-size:10px;font-family:'DM Mono',monospace;white-space:nowrap">${lvl} — ${score}</div>
-                      <div style="font-size:10px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace">L:${f.l} × I:${f.i} = ${score}</div>
+                      <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:5px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${lvl} — ${score}</div>
+                      <div style="font-size:10px;color:var(--muted);margin-top:3px;font-family:'Montserrat',sans-serif">L:${f.l} × I:${f.i} = ${score}</div>
                     </div>
                   </div>
-                  <div style="font-size:11px;color:var(--gold);font-family:'DM Mono',monospace;margin-top:4px">${f.ref}</div>
+                  <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${f.ref}</div>
                   <div style="font-size:11px;color:var(--muted);margin-top:4px">${rl.action}</div>
-                  ${mxLabels.length ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${mxLabels.map(m=>`<span style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.3);border-radius:4px;padding:1px 6px;font-size:10px;font-family:'DM Mono',monospace">×${RF_MULTIPLIERS[(f.mx||[]).find(k=>RF_MULTIPLIERS[k]?.label===m)]?.factor} ${m}</span>`).join('')}</div>` : ''}
+                  ${mxLabels.length ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${mxLabels.map(m=>`<span style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.3);border-radius:4px;padding:1px 6px;font-size:10px;font-family:'Montserrat',sans-serif">×${RF_MULTIPLIERS[(f.mx||[]).find(k=>RF_MULTIPLIERS[k]?.label===m)]?.factor} ${m}</span>`).join('')}</div>` : ''}
                 </div>`;
               }).join('')}
             </div>
@@ -1656,16 +1656,16 @@
                 const rl = RF_LEVEL[lvl];
                 return `
                 <div class="rf-item" data-text="${f.flag.toLowerCase()}" data-level="${lvl}"
-                  style="padding:10px 12px;border-radius:8px;border:1px solid ${rl.border};margin-bottom:6px;background:${rl.bg}">
+                  style="padding:10px 12px;border-radius:3px;border:1px solid ${rl.border};margin-bottom:6px;background:${rl.bg}">
                   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
                     <div style="font-size:13px;font-weight:500;flex:1">🚩 ${f.flag}</div>
                     <div style="flex-shrink:0;display:flex;align-items:center;gap:6px">
-                      <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:5px;padding:2px 8px;font-size:10px;font-family:'DM Mono',monospace;white-space:nowrap">${lvl} — ${score}</div>
+                      <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:5px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${lvl} — ${score}</div>
                       <button class="btn btn-sm btn-gold" onclick="suiteEditRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Edit</button>
                       <button class="btn btn-sm btn-red" onclick="suiteDeleteRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Del</button>
                     </div>
                   </div>
-                  <div style="font-size:11px;color:var(--gold);font-family:'DM Mono',monospace;margin-top:4px">${f.ref}</div>
+                  <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${f.ref}</div>
                   <div style="font-size:11px;color:var(--muted);margin-top:4px">L:${f.l} × I:${f.i} = ${score} · ${rl.action}</div>
                 </div>`;
               }).join('')}
@@ -1932,7 +1932,7 @@
         <div class="sec-title" style="margin-bottom:10px">Approval Type Reference — SLA Requirements</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.5rem">
           ${APPROVAL_TYPES.map(a=>`
-            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px">
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:10px">
               <div style="font-size:12px;font-weight:600">${a.type} — SLA: ${a.sla}h</div>
               <div style="font-size:11px;color:var(--muted);margin-top:3px">${a.desc}</div>
             </div>
@@ -1989,11 +1989,11 @@
           const type = a.customerType||a.entityType||'—';
           const risk = a.riskRating||'—';
           const date = a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-GB') : '—';
-          return '<div style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px">'
+          return '<div style="padding:10px 14px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px">'
             + '<div><div style="font-size:13px;font-weight:500">'+name+'</div>'
-            + '<div style="font-size:11px;color:var(--muted);font-family:DM Mono,monospace;margin-top:2px">'+type+' | Risk: '+risk+' | '+date+'</div></div>'
+            + '<div style="font-size:11px;color:var(--muted);font-family:Montserrat,sans-serif;margin-top:2px">'+type+' | Risk: '+risk+' | '+date+'</div></div>'
             + '<div style="display:flex;align-items:center;gap:8px">'
-            + '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:DM Mono,monospace">'+st+'</span>'
+            + '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:Montserrat,sans-serif">'+st+'</span>'
             + '<button class="btn btn-sm btn-blue" onclick="suiteSyncMgmtApprovalToAsana('+i+')">Asana</button>'
             + '</div></div>';
         }).join('')}
@@ -2189,8 +2189,8 @@
               ${Object.keys(JURISDICTION_RULES).map(j=>`<option ${j===jurisdiction?'selected':''}>${j}</option>`).join('')}
             </select>
           </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:10px">
-            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">SUPERVISOR</div>
+          <div style="background:var(--surface2);border-radius:3px;padding:10px">
+            <div style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">SUPERVISOR</div>
             <div style="font-size:14px;font-weight:600;margin-top:4px;color:var(--gold)">${jRules.supervisor||'—'}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px">${jRules.primaryLaw||'—'}</div>
           </div>
@@ -2206,14 +2206,14 @@
         <div style="overflow-x:auto">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead><tr style="border-bottom:1px solid var(--border)">
-              ${['Framework','Area','Provision','Applicability','Status'].map(h=>`<th style="text-align:left;padding:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px">${h}</th>`).join('')}
+              ${['Framework','Area','Provision','Applicability','Status'].map(h=>`<th style="text-align:left;padding:8px;color:var(--muted);font-family:'Montserrat',sans-serif;font-size:11px">${h}</th>`).join('')}
             </tr></thead>
             <tbody>
               ${REGULATORY_FRAMEWORK.map(r=>`
                 <tr style="border-bottom:1px solid var(--border)">
                   <td style="padding:8px;font-weight:500;color:var(--gold)">${r.framework}</td>
                   <td style="padding:8px">${r.area}</td>
-                  <td style="padding:8px;font-family:'DM Mono',monospace;font-size:11px">${r.articles}</td>
+                  <td style="padding:8px;font-family:'Montserrat',sans-serif;font-size:11px">${r.articles}</td>
                   <td style="padding:8px">${r.applicability}</td>
                   <td style="padding:8px">${badge(r.status)}</td>
                 </tr>
@@ -2407,7 +2407,7 @@
       'Approved':'#3DA876','Rejected':'#D94F4F','Pending':'#E8A030',
     };
     const col = map[status]||'#7A7870';
-    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:'DM Mono',monospace">${status}</span>`;
+    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif">${status}</span>`;
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -2434,19 +2434,19 @@
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">
-        <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid var(--gold)">
+        <div style="background:var(--surface2);border-radius:4px;padding:14px;border-left:3px solid var(--gold)">
           <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">MANDATORY UAE Lists</div>
           <div style="font-size:12px;margin-bottom:6px">✅ <strong>UAE Local Terrorist List</strong> — EOCN / Executive Office</div>
           <div style="font-size:12px;margin-bottom:6px">✅ <strong>UNSC Consolidated Sanctions List</strong> — UN Security Council</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">Cabinet Decision No.(74)/2020 — These two lists are legally mandatory for all UAE reporting entities. Failure to screen constitutes a regulatory offence.</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'Montserrat',sans-serif">Cabinet Decision No.(74)/2020 — These two lists are legally mandatory for all UAE reporting entities. Failure to screen constitutes a regulatory offence.</div>
         </div>
-        <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid var(--blue)">
+        <div style="background:var(--surface2);border-radius:4px;padding:14px;border-left:3px solid var(--blue)">
           <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">ENHANCED CONTROLS (Not Legally Mandatory)</div>
           <div style="font-size:12px;margin-bottom:4px">⬜ OFAC SDN — US unilateral sanctions</div>
           <div style="font-size:12px;margin-bottom:4px">⬜ EU Consolidated Sanctions</div>
           <div style="font-size:12px;margin-bottom:4px">⬜ UK OFSI Consolidated</div>
           <div style="font-size:12px;margin-bottom:4px">⬜ Interpol Red Notices</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace">EOCN Guidance — For non-UAE unilateral/multilateral lists, consult your supervisory authority for appropriate course of action.</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'Montserrat',sans-serif">EOCN Guidance — For non-UAE unilateral/multilateral lists, consult your supervisory authority for appropriate course of action.</div>
         </div>
       </div>
 
@@ -2482,7 +2482,7 @@
       <div class="modal" style="max-width:680px;width:95%;max-height:92vh">
         <button class="modal-close" onclick="document.getElementById('tfs2Modal').classList.remove('open')">✕</button>
         <div class="modal-title">TFS Screening Event</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance | Mandatory: UAE Local Terrorist List + UNSC Consolidated List</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance | Mandatory: UAE Local Terrorist List + UNSC Consolidated List</div>
         <input type="hidden" id="tfs2-edit-idx" value="-1">
 
         <div class="row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
@@ -2500,7 +2500,7 @@
           <div><span class="lbl">ID / Register No.</span><input id="tfs2-idnumber" placeholder="Passport, EID, Trade License"/></div>
         </div>
         <div><span class="lbl">Lists Screened (tick all that apply)</span>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface2);padding:10px;border-radius:8px;border:1px solid var(--border);margin-top:4px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface2);padding:10px;border-radius:3px;border:1px solid var(--border);margin-top:4px">
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-uae" style="width:auto" checked/> 🇦🇪 UAE Local Terrorist List (EOCN)</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-un" style="width:auto" checked/> 🌐 UNSC Consolidated Sanctions List</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-list-ofac" style="width:auto" checked/> 🇺🇸 OFAC SDN (Enhanced)</label>
@@ -2535,7 +2535,7 @@
 
         <!-- FALSE POSITIVE SECTION -->
         <div id="tfs2-fp-section" style="display:none;margin-top:10px">
-          <div style="background:rgba(61,168,118,0.1);border:1px solid rgba(61,168,118,0.3);border-radius:10px;padding:12px">
+          <div style="background:rgba(61,168,118,0.1);border:1px solid rgba(61,168,118,0.3);border-radius:4px;padding:12px">
             <div style="color:var(--green);font-weight:600;font-size:13px;margin-bottom:8px">⚪ FALSE POSITIVE — Differentiation Required</div>
             <div><span class="lbl">Differentiation Basis *</span>
               <select id="tfs2-fp-basis"><option value="">Select</option><option>Different date of birth confirmed</option><option>Different nationality confirmed</option><option>Different gender confirmed</option><option>Name spelling variation — different person</option><option>ID document verification confirms different person</option><option>Other</option></select>
@@ -2546,7 +2546,7 @@
 
         <!-- PARTIAL MATCH SECTION -->
         <div id="tfs2-partial-section" style="display:none;margin-top:10px">
-          <div style="background:rgba(232,160,48,0.1);border:1px solid rgba(232,160,48,0.3);border-radius:10px;padding:12px">
+          <div style="background:rgba(232,160,48,0.1);border:1px solid rgba(232,160,48,0.3);border-radius:4px;padding:12px">
             <div style="color:var(--amber);font-weight:600;font-size:13px;margin-bottom:8px">🟡 PARTIAL MATCH — PNMR Required within 5 Business Days</div>
             <div class="row row-2">
               <div><span class="lbl">Transaction Suspended?</span>
@@ -2565,9 +2565,9 @@
 
         <!-- CONFIRMED MATCH SECTION -->
         <div id="tfs2-confirmed-section" style="display:none;margin-top:10px">
-          <div style="background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.4);border-radius:10px;padding:12px">
+          <div style="background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.4);border-radius:4px;padding:12px">
             <div style="color:var(--red);font-weight:700;font-size:13px;margin-bottom:8px">🔴 CONFIRMED MATCH — IMMEDIATE ACTION REQUIRED</div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace">Cabinet Decision 74/2020 | EOCN TFS Guidance | Freeze within 24h | CNMR within 5 business days</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-family:'Montserrat',sans-serif">Cabinet Decision 74/2020 | EOCN TFS Guidance | Freeze within 24h | CNMR within 5 business days</div>
             <div class="row row-2">
               <div><span class="lbl">Assets Frozen Within 24h? *</span>
                 <select id="tfs2-frozen"><option value="">Select</option><option>Yes – Frozen Immediately</option><option>No Assets to Freeze</option><option>Freeze Pending – Escalated</option></select>
@@ -2968,24 +2968,24 @@
         <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenDPMSRForm()">+ New Threshold Case</button>
       </div>
 
-      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:1rem">
+      <div style="background:var(--surface2);border-radius:4px;padding:14px;margin-bottom:1rem">
         <div class="sec-title" style="margin-bottom:10px;border:none;padding:0">AED 55,000 Threshold — Mandatory CDD Requirements</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:12px">
-          <div style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid var(--gold)">
+          <div style="background:var(--surface);border-radius:3px;padding:10px;border-left:3px solid var(--gold)">
             <div style="font-weight:600;margin-bottom:6px">Resident Individual</div>
             <div>✅ Emirates ID or valid residence permit</div>
             <div>✅ Transaction amount and date</div>
             <div>✅ Payment method</div>
             <div style="color:var(--muted);font-size:11px;margin-top:6px">Cash transactions ≥ AED 55,000</div>
           </div>
-          <div style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid var(--blue)">
+          <div style="background:var(--surface);border-radius:3px;padding:10px;border-left:3px solid var(--blue)">
             <div style="font-weight:600;margin-bottom:6px">Non-Resident Individual</div>
             <div>✅ Passport copy (valid)</div>
             <div>✅ Country of residence</div>
             <div>✅ Transaction amount and date</div>
             <div style="color:var(--muted);font-size:11px;margin-top:6px">Cash transactions ≥ AED 55,000</div>
           </div>
-          <div style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid var(--amber)">
+          <div style="background:var(--surface);border-radius:3px;padding:10px;border-left:3px solid var(--amber)">
             <div style="font-weight:600;margin-bottom:6px">Entity / Company</div>
             <div>✅ Trade licence (valid)</div>
             <div>✅ Company representative ID</div>
@@ -2993,7 +2993,7 @@
             <div style="color:var(--muted);font-size:11px;margin-top:6px">Cash or wire transfer ≥ AED 55,000</div>
           </div>
         </div>
-        <div style="margin-top:10px;font-size:12px;color:var(--amber);font-family:'DM Mono',monospace">
+        <div style="margin-top:10px;font-size:12px;color:var(--amber);font-family:'Montserrat',sans-serif">
           ⚠️ LINKED TRANSACTION RULE: The AED 55,000 threshold applies to a single transaction OR several transactions that appear to be linked. The tool tracks linked transactions to detect structuring.
         </div>
       </div>
@@ -3028,7 +3028,7 @@
       <div class="modal" style="max-width:620px;width:95%">
         <button class="modal-close" onclick="document.getElementById('dpmsrModal').classList.remove('open')">✕</button>
         <div class="modal-title">DPMSR Threshold Case</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">MoE Circular 08/AML/2021 | AED 55,000 Threshold | goAML DPMSR Reporting</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">MoE Circular 08/AML/2021 | AED 55,000 Threshold | goAML DPMSR Reporting</div>
         <input type="hidden" id="dpmsr-edit-idx" value="-1">
 
         <div class="row row-2">
@@ -3055,12 +3055,12 @@
           </div>
         </div>
 
-        <div id="dpmsr-threshold-alert" style="display:none;background:rgba(232,160,48,0.12);border:1px solid rgba(232,160,48,0.4);border-radius:10px;padding:10px;margin:10px 0;font-size:12px;color:var(--amber);font-family:'DM Mono',monospace">
+        <div id="dpmsr-threshold-alert" style="display:none;background:rgba(232,160,48,0.12);border:1px solid rgba(232,160,48,0.4);border-radius:4px;padding:10px;margin:10px 0;font-size:12px;color:var(--amber);font-family:'Montserrat',sans-serif">
           ⚠️ AED 55,000 THRESHOLD TRIGGERED — CDD documentation and DPMSR filing required
         </div>
 
         <div class="sec-title" style="margin-top:10px;margin-bottom:8px">CDD Requirements — Based on Customer Type</div>
-        <div id="dpmsr-cdd-requirements" style="background:var(--surface2);border-radius:8px;padding:10px;font-size:12px;margin-bottom:10px">
+        <div id="dpmsr-cdd-requirements" style="background:var(--surface2);border-radius:3px;padding:10px;font-size:12px;margin-bottom:10px">
           Select customer type above to see required CDD documents.
         </div>
 
@@ -3076,7 +3076,7 @@
           <div><span class="lbl">Company Representative Name</span><input id="dpmsr-rep-name" placeholder="Name of authorized representative"/></div>
         </div>
 
-        <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-top:10px">
+        <div style="background:var(--surface2);border-radius:4px;padding:12px;margin-top:10px">
           <div class="sec-title" style="margin-bottom:8px;border:none;padding:0">Linked Transaction Check</div>
           <div class="row row-2">
             <div><span class="lbl">Linked to Previous Transaction?</span>
@@ -3103,7 +3103,7 @@
         <div><span class="lbl">CDD Completeness</span>
           <select id="dpmsr-cdd-complete"><option>Complete</option><option>Incomplete</option><option>Partially Complete</option></select>
         </div>
-        <div id="dpmsr-cdd-warning" style="display:none;background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.3);border-radius:8px;padding:10px;margin-top:6px;font-size:12px;color:var(--red)">
+        <div id="dpmsr-cdd-warning" style="display:none;background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.3);border-radius:3px;padding:10px;margin-top:6px;font-size:12px;color:var(--red)">
           ⛔ HARD STOP — Cabinet Resolution 134/2025 Art.14: The business relationship or transaction cannot proceed where CDD cannot be applied. Do not complete this transaction until CDD is obtained.
         </div>
         <div><span class="lbl">Notes</span><textarea id="dpmsr-notes" style="min-height:60px" placeholder="Additional context, source of funds notes, escalation notes..."></textarea></div>
@@ -3283,19 +3283,19 @@
         <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 — Minimum 10 years | Records must enable transaction reconstruction</span>
         <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2AddRetentionRecord()">+ Add Record</button>
       </div>
-      <div style="background:rgba(217,79,79,0.08);border:1px solid var(--red);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px;color:var(--red)">
+      <div style="background:rgba(217,79,79,0.08);border:1px solid var(--red);border-radius:4px;padding:12px;margin-bottom:1rem;font-size:12px;color:var(--red)">
         <strong style="color:var(--red)">UAE FDL No.(10) of 2025 — 10 Year Minimum:</strong> <span style="color:var(--text)">All records must be retained for a minimum of 10 years. Records must be organized so individual transactions can be reconstructed and provided promptly to competent authorities upon request. This applies to all CDD, transaction, STR, risk assessment, training, audit, and correspondence records.</span>
       </div>
       <div class="sec-title" style="margin-bottom:10px">Statutory Retention Schedule</div>
       <div style="overflow-x:auto;margin-bottom:1.5rem">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <thead><tr style="border-bottom:1px solid var(--border)">
-            ${['Record Category','Retention Period','Regulatory Basis'].map(h=>`<th style="text-align:left;padding:8px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px">${h}</th>`).join('')}
+            ${['Record Category','Retention Period','Regulatory Basis'].map(h=>`<th style="text-align:left;padding:8px;color:var(--muted);font-family:'Montserrat',sans-serif;font-size:11px">${h}</th>`).join('')}
           </tr></thead>
           <tbody>
             ${RETENTION_CATEGORIES.map(r=>`<tr style="border-bottom:1px solid var(--border)">
               <td style="padding:8px;font-weight:500">${r.cat}</td>
-              <td style="padding:8px;color:var(--gold);font-family:'DM Mono',monospace">${r.period} years</td>
+              <td style="padding:8px;color:var(--gold);font-family:'Montserrat',sans-serif">${r.period} years</td>
               <td style="padding:8px;font-size:11px;color:var(--muted)">${r.basis}</td>
             </tr>`).join('')}
           </tbody>
@@ -3403,7 +3403,7 @@
         <span style="font-size:11px;color:var(--muted)">Cabinet Resolution 134/2025 Art.24 | PDPL — Human review of automated processing decisions</span>
         <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2LogAIReview()">+ Log AI Review</button>
       </div>
-      <div style="background:rgba(74,143,193,0.1);border:1px solid rgba(74,143,193,0.3);border-radius:10px;padding:12px;margin-bottom:1rem;font-size:12px">
+      <div style="background:rgba(74,143,193,0.1);border:1px solid rgba(74,143,193,0.3);border-radius:4px;padding:12px;margin-bottom:1rem;font-size:12px">
         <strong>Governance Requirement (Art.24):</strong> All AI-generated compliance outputs — gap assessments, risk scores, STR drafts, screening results, recommendations — must be reviewed and signed off by a qualified human compliance professional before any action is taken. AI outputs are advisory only and cannot constitute regulatory decisions without human review and approval.
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem">
@@ -3698,7 +3698,7 @@
       if (typeof asanaFetch !== 'function') { if(typeof toast==='function') toast('Asana not connected — configure token in Settings','error'); return; }
       const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
       const projectId = resolver ? resolver.resolveProject('workflow') : ((typeof ASANA_PROJECT !== 'undefined' && ASANA_PROJECT) ? ASANA_PROJECT : '1213759768596515');
-      const companyName = (resolver ? resolver.resolveEntityName() : ((typeof getActiveCompany === 'function') ? (getActiveCompany().name || 'Fine Gold LLC') : 'Fine Gold LLC')).trim();
+      const companyName = (resolver ? resolver.resolveEntityName() : ((typeof getActiveCompany === 'function') ? (getActiveCompany().name || 'Hawkeye Sterling') : 'Hawkeye Sterling')).trim();
 
       if (typeof toast === 'function') toast('Scanning Asana for {entity} tasks...', 'info');
 
@@ -3761,7 +3761,7 @@
   function fixEntityPlaceholders() {
     try {
       const activeComp = (typeof getActiveCompany === 'function') ? getActiveCompany() : {};
-      const companyName = activeComp.name || 'Fine Gold LLC';
+      const companyName = activeComp.name || 'Hawkeye Sterling';
       if (!companyName) return;
 
       // Fix CALENDAR_STORAGE deadlines
@@ -3971,7 +3971,7 @@
       </div>
       <input type="file" id="dm-import-file" accept=".json,.xlsx" style="display:none" onchange="dmImportBackup(this)"/>
 
-      <div style="background:rgba(61,168,118,0.08);border:1px solid rgba(61,168,118,0.3);border-radius:10px;padding:12px;margin-bottom:1.5rem;font-size:12px">
+      <div style="background:rgba(61,168,118,0.08);border:1px solid rgba(61,168,118,0.3);border-radius:4px;padding:12px;margin-bottom:1.5rem;font-size:12px">
         <strong style="color:var(--green)">✅ Ready to use.</strong>
         All data is in your browser. <strong>Download Full Backup daily</strong> — it opens directly in Excel, one tab per module. Save to your Google Drive compliance folder. This is your audit evidence file.
         <span style="color:var(--muted);display:block;margin-top:4px">${localStorage.getItem('fgl_last_backup') ? '🕐 Last backup: ' + fmtDate(localStorage.getItem('fgl_last_backup')) : '⚠️ No backup yet — click Full Backup now.'}</span>
@@ -3981,7 +3981,7 @@
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <thead><tr style="border-bottom:2px solid var(--gold)">
-            ${['','Module','Records','Size','Export'].map(h=>`<th style="text-align:left;padding:8px 10px;color:var(--gold);font-family:'DM Mono',monospace;font-size:10px;white-space:nowrap">${h}</th>`).join('')}
+            ${['','Module','Records','Size','Export'].map(h=>`<th style="text-align:left;padding:8px 10px;color:var(--gold);font-family:'Montserrat',sans-serif;font-size:10px;white-space:nowrap">${h}</th>`).join('')}
           </tr></thead>
           <tbody>
             ${moduleStats.map(m => {
@@ -3989,8 +3989,8 @@
               return `<tr style="border-bottom:1px solid var(--border);opacity:${has?1:0.45}">
                 <td style="padding:8px 10px;font-size:15px">${m.icon}</td>
                 <td style="padding:8px 10px;font-weight:${has?600:400}">${m.label}</td>
-                <td style="padding:8px 10px;font-family:'DM Mono',monospace;color:${has?'var(--gold)':'var(--muted)'}">${has?m.count:'—'}</td>
-                <td style="padding:8px 10px;font-family:'DM Mono',monospace;color:var(--muted)">${has?m.kb+' KB':'—'}</td>
+                <td style="padding:8px 10px;font-family:'Montserrat',sans-serif;color:${has?'var(--gold)':'var(--muted)'}">${has?m.count:'—'}</td>
+                <td style="padding:8px 10px;font-family:'Montserrat',sans-serif;color:var(--muted)">${has?m.kb+' KB':'—'}</td>
                 <td style="padding:8px 10px">
                   ${has ? `<div style="display:flex;gap:4px">
                     <button class="btn btn-sm" onclick="dmExportModuleExcel('${m.key}','${m.label}')" style="padding:3px 10px;font-size:10px">Excel</button>
@@ -4021,7 +4021,7 @@
 
   // ── FULL BACKUP → EXCEL-LIKE HTML (opens in Excel) ───────────────────────
   global.dmExportAll = function() {
-    const entity = (typeof getActiveCompany === 'function' ? getActiveCompany().name : 'Fine Gold LLC');
+    const entity = (typeof getActiveCompany === 'function' ? getActiveCompany().name : 'Hawkeye Sterling');
     const ts = new Date().toISOString().slice(0,10);
     let sheetsHTML = '';
     let tocRows = '';
@@ -4066,7 +4066,7 @@
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<title>Fine Gold LLC — Compliance Data Export ${ts}</title>
+<title>Hawkeye Sterling — Compliance Data Export ${ts}</title>
 <style>
   body { font-family: Arial, sans-serif; background: #0d0d1a; color: #e0e0e0; padding: 20px; }
   h1 { color: #d4a017; } h2 { color: #d4a017; border-bottom: 2px solid #d4a017; padding-bottom: 6px; }
@@ -4145,7 +4145,7 @@ ${sheetsHTML}
 
   // ── COMPLIANCE SUMMARY REPORT (HTML — printable / PDF) ───────────────────
   global.dmExportSummaryReport = function() {
-    const entity = (typeof getActiveCompany === 'function' ? getActiveCompany().name : 'Fine Gold LLC');
+    const entity = (typeof getActiveCompany === 'function' ? getActiveCompany().name : 'Hawkeye Sterling');
     const ts = new Date().toLocaleString('en-GB');
     const rows = ALL_MODULES.map(m => {
       const s = getSize(m.key);
@@ -4167,7 +4167,7 @@ ${sheetsHTML}
       @media print { button { display:none; } }
     </style>
     </head><body>
-    <button onclick="window.print()" style="float:right;padding:8px 16px;background:#8B6914;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px">🖨️ Print / Save PDF</button>
+    <button onclick="window.print()" style="float:right;padding:8px 16px;background:#8B6914;color:white;border:none;border-radius:3px;cursor:pointer;font-size:13px">🖨️ Print / Save PDF</button>
     <h1>🏛️ ${esc(entity)}</h1>
     <p><strong>Compliance Programme Status Report</strong><br>
     Generated: ${ts}<br>
