@@ -2185,9 +2185,9 @@
           ondragleave="this.style.borderColor='var(--border)'"
           ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleBulkFiles(event.dataTransfer.files)">
           <div style="font-size:28px;margin-bottom:8px">📄</div>
-          <div style="font-size:13px;font-weight:500">Drop documents here or click to browse</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">PDF, Word, Images (passport, EID, trade license) — Max 20 files</div>
-          <input type="file" id="tfs2-bulk-files" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" style="display:none" onchange="handleBulkFiles(this.files)">
+          <div style="font-size:13px;font-weight:500">Drop PDF documents here or click to browse</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">PDF only — Compliance assessments, due diligence reports, KYC docs — Max 20 files</div>
+          <input type="file" id="tfs2-bulk-files" multiple accept=".pdf" style="display:none" onchange="handleBulkFiles(this.files)">
         </div>
 
         <div id="tfs2-bulk-queue" style="max-height:300px;overflow-y:auto;margin-bottom:1rem"></div>
@@ -2589,8 +2589,8 @@
     for (var i = 0; i < files.length && bulkQueue.length < maxFiles; i++) {
       var file = files[i];
       var ext = file.name.split('.').pop().toLowerCase();
-      if (!['pdf','doc','docx','jpg','jpeg','png','webp'].includes(ext)) {
-        toast('Skipped "' + file.name + '" — unsupported format', 'error');
+      if (ext !== 'pdf') {
+        toast('Skipped "' + file.name + '" — only PDF files accepted. Convert Word to PDF first.', 'error');
         continue;
       }
       if (file.size > 10 * 1024 * 1024) {
@@ -2803,27 +2803,10 @@
       + '[{"name":"TORA BULLION JEWELLERY CO. L.L.C","entity_type":"Company","country":"United Arab Emirates","idNumber":"1106002","dob":"2022-10-07"},{"name":"John Smith","entity_type":"Individual","country":"India","idNumber":"U9861464","dob":"1991-11-23"}]\n\n'
       + 'Extract EVERY entity. Do NOT skip any individual (shareholder, UBO, manager). Return empty array [] if no entities found.';
 
-    var messages;
-    if (isImage) {
-      var mediaType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-      messages = [{ role: 'user', content: [
-        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-        { type: 'text', text: extractPrompt }
-      ] }];
-    } else if (ext === 'pdf') {
-      messages = [{ role: 'user', content: [
-        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-        { type: 'text', text: extractPrompt }
-      ] }];
-    } else {
-      // Word doc
-      var wordText = await extractTextFromWord(file);
-      if (wordText) {
-        messages = [{ role: 'user', content: 'Document content ("' + file.name + '"):\n\n---\n' + wordText + '\n---\n\n' + extractPrompt }];
-      } else {
-        throw new Error('Could not read Word file. Please convert to PDF and re-upload.');
-      }
-    }
+    var messages = [{ role: 'user', content: [
+      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+      { type: 'text', text: extractPrompt }
+    ] }];
 
     var data = await callAI({
       model: 'claude-sonnet-4-5',
