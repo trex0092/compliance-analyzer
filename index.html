@@ -6057,6 +6057,108 @@ async function autoSyncToAsana(taskName, taskNotes, dueInDays) {
   }
 }
 
+// ======= SCREENING PROJECT — Dedicated Asana project for all screening tasks =======
+const SCREENING_PROJECT_CACHE_KEY = 'fgl_asana_screening_projects';
+
+/**
+ * Find or create a dedicated "SCREENING" project in Asana for the given entity.
+ * Project name format: "SCREENING — {Entity Name}"
+ * Caches project GIDs to avoid duplicate creation.
+ */
+async function getOrCreateScreeningProject(entityName) {
+  if (!ASANA_TOKEN && !PROXY_URL) return null;
+  const normalizedName = entityName.trim().toUpperCase();
+  const projectName = 'SCREENING — ' + entityName.trim();
+
+  // Check local cache first
+  let cache = {};
+  try { cache = JSON.parse(localStorage.getItem(SCREENING_PROJECT_CACHE_KEY) || '{}'); } catch(_) {}
+  if (cache[normalizedName]) {
+    // Verify project still exists
+    try {
+      const check = await asanaFetch('/projects/' + cache[normalizedName] + '?opt_fields=name,archived');
+      const checkData = await check.json();
+      if (checkData.data && !checkData.data.archived) return cache[normalizedName];
+      // Project was deleted/archived — remove from cache and recreate
+      delete cache[normalizedName];
+      localStorage.setItem(SCREENING_PROJECT_CACHE_KEY, JSON.stringify(cache));
+    } catch(_) {
+      // Network error — use cached GID anyway
+      return cache[normalizedName];
+    }
+  }
+
+  // Search for existing project by name in workspace
+  try {
+    const searchUrl = '/projects?workspace=' + ASANA_WORKSPACE + '&opt_fields=name,archived&limit=100';
+    const searchR = await asanaFetch(searchUrl);
+    const searchData = await searchR.json();
+    if (searchData.data) {
+      const existing = searchData.data.find(p => !p.archived && p.name === projectName);
+      if (existing) {
+        cache[normalizedName] = existing.gid;
+        localStorage.setItem(SCREENING_PROJECT_CACHE_KEY, JSON.stringify(cache));
+        return existing.gid;
+      }
+    }
+  } catch(_) {}
+
+  // Create new SCREENING project
+  try {
+    const createBody = {
+      data: {
+        name: projectName,
+        workspace: ASANA_WORKSPACE,
+        notes: 'TFS / Sanctions Screening project for: ' + entityName
+          + '\nCreated automatically by Compliance Analyzer.'
+          + '\nAll screening tasks for this entity are tracked here.'
+          + '\n\nRegulatory Basis: UAE FDL No.10/2025, FATF Rec 6, Cabinet Decision No.74/2020',
+        layout: 'list',
+        default_view: 'list'
+      }
+    };
+    const createR = await asanaFetch('/projects', { method: 'POST', body: JSON.stringify(createBody) });
+    const createData = await createR.json();
+    if (createData.errors) throw new Error(createData.errors[0]?.message || 'Asana project creation error');
+    const newGid = createData.data?.gid;
+    if (newGid) {
+      cache[normalizedName] = newGid;
+      localStorage.setItem(SCREENING_PROJECT_CACHE_KEY, JSON.stringify(cache));
+      return newGid;
+    }
+  } catch(e) {
+    console.error('[Screening Project] Failed to create:', e.message);
+  }
+  return null;
+}
+
+/**
+ * Sync a screening task to the entity's dedicated SCREENING project in Asana.
+ * Creates the project if it doesn't exist yet.
+ */
+async function syncScreeningToAsana(entityName, taskName, taskNotes, dueInDays) {
+  if (!ASANA_TOKEN && !PROXY_URL) return null;
+  try {
+    const projectGid = await getOrCreateScreeningProject(entityName);
+    if (!projectGid) {
+      // Fallback to default project if screening project creation fails
+      return autoSyncToAsana(taskName, taskNotes, dueInDays);
+    }
+    const due = new Date(); due.setDate(due.getDate() + (dueInDays || 14));
+    const body = { data: { name: taskName, notes: taskNotes, projects: [projectGid], workspace: ASANA_WORKSPACE, due_on: due.toISOString().split('T')[0] } };
+    setAsanaModuleSync('writeback', { status: 'Syncing', lastError: '' });
+    const r = await asanaFetch('/tasks', { method: 'POST', body: JSON.stringify(body) });
+    const d = await r.json();
+    if (d.errors) throw new Error(d.errors[0]?.message || 'Asana error');
+    setAsanaModuleSync('writeback', { status: 'Healthy', lastSuccess: new Date().toISOString(), lastError: '', lastCount: 1 });
+    return d.data?.gid || null;
+  } catch (e) {
+    setAsanaModuleSync('writeback', { status: 'Degraded', lastError: e.message });
+    // Fallback: try default sync
+    return autoSyncToAsana(taskName, taskNotes, dueInDays);
+  }
+}
+
 // ======= ASANA WRITE-BACK =======
 let pendingTaskData = {};
 

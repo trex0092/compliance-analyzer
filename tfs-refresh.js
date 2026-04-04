@@ -69,8 +69,8 @@ const TFSRefresh = (function() {
     try {
       if (typeof callAI === 'function') {
         const data = await callAI({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 1500,
+          model: 'claude-haiku-4-5',
+          max_tokens: 500,
           temperature: 0,
           system: 'You are a sanctions compliance specialist. Return only valid JSON.',
           messages: [{

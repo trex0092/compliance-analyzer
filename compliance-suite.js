@@ -2271,8 +2271,24 @@
     if (document.getElementById('tfs2-list-adverse')?.checked) selectedLists.push('Adverse Media');
     if (document.getElementById('tfs2-list-pep')?.checked) selectedLists.push('PEP');
 
-    toast('Tier-1 deep screening "' + name + '" — sanctions, corporate network, adverse media, PEP — may take 30-60 seconds...', 'info', 60000);
     var notesEl = document.getElementById('tfs2-notes');
+
+    // Check screening cache to avoid duplicate API calls for same entity
+    var cacheKey = 'fgl_screening_cache';
+    var CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours — same entity won't be re-screened within this window
+    try {
+      var cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+      var cacheId = (name + '|' + entityType + '|' + country).toLowerCase().replace(/\s+/g, ' ').trim();
+      var cached = cache[cacheId];
+      if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+        toast('Using cached screening result for "' + name + '" (screened ' + new Date(cached.timestamp).toLocaleString('en-GB') + '). To force re-screen, wait 24h or clear cache in Settings.', 'info', 8000);
+        if (notesEl) notesEl.value = cached.notes;
+        if (cached.outcome) suite2SelectOutcome(cached.outcome);
+        return;
+      }
+    } catch(_) {}
+
+    toast('Tier-1 deep screening "' + name + '" — sanctions, corporate network, adverse media, PEP — may take 30-60 seconds...', 'info', 60000);
 
     try {
       if (typeof callAI !== 'function') { toast('No AI provider — select outcome manually', 'info'); return; }
@@ -2361,6 +2377,24 @@
 
       if (notesEl) notesEl.value = '[AI Screening] ' + report;
 
+      // Cache the screening result to avoid duplicate API calls
+      try {
+        var cacheToSave = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+        var saveCacheId = (name + '|' + entityType + '|' + country).toLowerCase().replace(/\s+/g, ' ').trim();
+        cacheToSave[saveCacheId] = {
+          timestamp: Date.now(),
+          notes: '[AI Screening] ' + report,
+          outcome: r === 'CLEAR' || r === 'NO_MATCH' ? 'Negative – No Match' : r === 'MATCH' ? 'Confirmed Match' : 'Partial Match'
+        };
+        // Keep cache under 50 entries to avoid storage bloat
+        var cacheKeys = Object.keys(cacheToSave);
+        if (cacheKeys.length > 50) {
+          cacheKeys.sort(function(a,b){ return (cacheToSave[a].timestamp||0) - (cacheToSave[b].timestamp||0); });
+          for (var ci = 0; ci < cacheKeys.length - 50; ci++) delete cacheToSave[cacheKeys[ci]];
+        }
+        localStorage.setItem(cacheKey, JSON.stringify(cacheToSave));
+      } catch(_) {}
+
     } catch(e) {
       toast('Screening error: ' + e.message, 'error');
       if (notesEl) notesEl.value = '[AI Screening Error] ' + e.message + '. Manual screening required per FATF Rec 6 and UAE FDL No.10/2025 Art.22.';
@@ -2425,10 +2459,10 @@
     else toast('TFS event saved — '+outcome,'success');
     renderTFS2();
 
-    // Auto-sync to Asana
+    // Auto-sync to dedicated SCREENING project in Asana
     var savedIdx = editIdx>=0 ? editIdx : 0;
     try {
-      if (typeof asanaPush === 'function' || typeof autoSyncToAsana === 'function') {
+      if (typeof syncScreeningToAsana === 'function' || typeof autoSyncToAsana === 'function' || typeof asanaPush === 'function') {
         var syncTitle = '[TFS] ' + name + ' — ' + outcome;
         var syncNotes = 'TFS Screening Event: ' + record.id
           + '\nEntity: ' + name + ' (' + (record.entityType||'') + ')'
@@ -2442,7 +2476,12 @@
           + (record.notes ? '\n\nNotes:\n' + record.notes : '')
           + '\n\nRegulatory Basis: UAE FDL No.10/2025, FATF Rec 6, Cabinet Decision No.74/2020';
         var daysUrgency = outcome==='Confirmed Match' ? 1 : outcome==='Partial Match' ? 5 : 30;
-        if (typeof autoSyncToAsana === 'function') {
+        // Use dedicated SCREENING project per entity
+        if (typeof syncScreeningToAsana === 'function') {
+          syncScreeningToAsana(name, syncTitle, syncNotes, daysUrgency).then(function(gid) {
+            if (gid) { var ev = load(SK2.TFS2)||[]; if(ev[savedIdx]) { ev[savedIdx].asanaGid = gid; save(SK2.TFS2, ev); } toast('Screening synced to Asana (SCREENING project)','success',2000); }
+          }).catch(function(){});
+        } else if (typeof autoSyncToAsana === 'function') {
           autoSyncToAsana(syncTitle, syncNotes, daysUrgency).then(function(gid) {
             if (gid) { var ev = load(SK2.TFS2)||[]; if(ev[savedIdx]) { ev[savedIdx].asanaGid = gid; save(SK2.TFS2, ev); } toast('Screening synced to Asana','success',2000); }
           }).catch(function(){});
