@@ -259,7 +259,7 @@ export default function App() {
 
   return (
     <div style={{ padding: 16, fontFamily: "Arial, sans-serif" }}>
-      <h1>Compliance Analyzer</h1>
+      <h1>Hawkeye Sterling V2</h1>
 
       <div style={{ marginBottom: 16 }}>
         <button onClick={() => setTab("cases")} style={{ marginRight: 8 }}>
