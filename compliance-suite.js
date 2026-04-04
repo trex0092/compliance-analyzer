@@ -138,18 +138,111 @@
   // Reg: UAE FDL No.(10) of 2025, Art. 12-16 | FATF Rec. 10 | FATF DPMS 2020
   // ════════════════════════════════════════════════════════════════════════════
 
+  // Country Risk Database — editable, stored in localStorage so it survives updates
+  const CRA_COUNTRY_RISK_KEY = 'fgl_country_risk_db';
+  const CRA_COUNTRY_RISK_DEFAULTS = {
+    // FATF Black List (High-Risk Jurisdictions Subject to Call for Action) — as of Feb 2025
+    'Myanmar': 'FATF Black List', 'Iran': 'FATF Black List', 'North Korea (DPRK)': 'FATF Black List',
+    // FATF Grey List (Jurisdictions Under Increased Monitoring) — as of Feb 2025
+    'Algeria': 'FATF Grey List', 'Angola': 'FATF Grey List', 'Bulgaria': 'FATF Grey List',
+    'Burkina Faso': 'FATF Grey List', 'Cameroon': 'FATF Grey List', 'Côte d\'Ivoire': 'FATF Grey List',
+    'Croatia': 'FATF Grey List', 'Democratic Republic of Congo': 'FATF Grey List',
+    'Haiti': 'FATF Grey List', 'Kenya': 'FATF Grey List', 'Lebanon': 'FATF Grey List',
+    'Mali': 'FATF Grey List', 'Monaco': 'FATF Grey List', 'Mozambique': 'FATF Grey List',
+    'Namibia': 'FATF Grey List', 'Nepal': 'FATF Grey List', 'Nigeria': 'FATF Grey List',
+    'Philippines': 'FATF Grey List', 'Senegal': 'FATF Grey List', 'South Africa': 'FATF Grey List',
+    'South Sudan': 'FATF Grey List', 'Syria': 'FATF Grey List', 'Tanzania': 'FATF Grey List',
+    'Venezuela': 'FATF Grey List', 'Vietnam': 'FATF Grey List', 'Yemen': 'FATF Grey List',
+    // CAHRA (Conflict-Affected and High-Risk Areas)
+    'Afghanistan': 'CAHRA', 'Central African Republic': 'CAHRA', 'Libya': 'CAHRA',
+    'Somalia': 'CAHRA', 'Sudan': 'CAHRA', 'Iraq': 'CAHRA', 'Colombia': 'CAHRA',
+    'Democratic Republic of Congo': 'CAHRA', 'Eritrea': 'CAHRA',
+    // GCC
+    'UAE': 'GCC', 'Saudi Arabia': 'GCC', 'Qatar': 'GCC', 'Kuwait': 'GCC', 'Bahrain': 'GCC', 'Oman': 'GCC',
+    // FATF Members / Low Risk (sample)
+    'United States': 'FATF Member', 'United Kingdom': 'FATF Member', 'Germany': 'FATF Member',
+    'France': 'FATF Member', 'Japan': 'FATF Member', 'Canada': 'FATF Member', 'Australia': 'FATF Member',
+    'Italy': 'FATF Member', 'Spain': 'FATF Member', 'Netherlands': 'FATF Member',
+    'Switzerland': 'FATF Member', 'Singapore': 'FATF Member', 'Hong Kong': 'FATF Member',
+    'India': 'FATF Member', 'China': 'FATF Member', 'Russia': 'FATF Member',
+    'Brazil': 'FATF Member', 'Mexico': 'FATF Member', 'Turkey': 'FATF Member',
+    'South Korea': 'FATF Member', 'Israel': 'FATF Member', 'Belgium': 'FATF Member',
+    'Austria': 'FATF Member', 'Sweden': 'FATF Member', 'Norway': 'FATF Member',
+    'Denmark': 'FATF Member', 'Finland': 'FATF Member', 'Portugal': 'FATF Member',
+    'Ireland': 'FATF Member', 'New Zealand': 'FATF Member', 'Luxembourg': 'FATF Member',
+    'Greece': 'FATF Member', 'Czech Republic': 'FATF Member', 'Poland': 'FATF Member',
+    'Argentina': 'FATF Member', 'Malaysia': 'FATF Member', 'Thailand': 'FATF Member',
+    'Indonesia': 'FATF Member', 'Pakistan': 'FATF Member', 'Egypt': 'FATF Member',
+    'Jordan': 'FATF Member', 'Morocco': 'FATF Member', 'Tunisia': 'FATF Member',
+  };
+
+  function getCountryRiskDB() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(CRA_COUNTRY_RISK_KEY));
+      if (saved && Object.keys(saved).length > 0) return saved;
+    } catch(_) {}
+    // Initialize with defaults
+    localStorage.setItem(CRA_COUNTRY_RISK_KEY, JSON.stringify(CRA_COUNTRY_RISK_DEFAULTS));
+    return { ...CRA_COUNTRY_RISK_DEFAULTS };
+  }
+
+  function saveCountryRiskDB(db) {
+    localStorage.setItem(CRA_COUNTRY_RISK_KEY, JSON.stringify(db));
+  }
+
+  function getCountryRiskLevel(countryName) {
+    var db = getCountryRiskDB();
+    if (db[countryName]) return db[countryName];
+    // Try partial match
+    for (var k in db) {
+      if (k.toLowerCase() === countryName.toLowerCase()) return db[k];
+    }
+    return 'Other';
+  }
+
+  function countryRiskToScore(riskLevel) {
+    if (riskLevel === 'FATF Black List') return 4;
+    if (riskLevel === 'CAHRA') return 4;
+    if (riskLevel === 'FATF Grey List') return 3;
+    if (riskLevel === 'GCC') return 1;
+    if (riskLevel === 'FATF Member') return 1;
+    return 2; // Unknown/Other
+  }
+
+  // Build nationality options sorted by risk (highest first)
+  function getNationalityOptions() {
+    var db = getCountryRiskDB();
+    var entries = Object.entries(db);
+    var order = { 'FATF Black List': 0, 'CAHRA': 1, 'FATF Grey List': 2, 'Other': 3, 'GCC': 4, 'FATF Member': 5 };
+    entries.sort(function(a, b) { return (order[a[1]] || 3) - (order[b[1]] || 3) || a[0].localeCompare(b[0]); });
+    return entries;
+  }
+
   const CRA_RISK_WEIGHTS = {
     customerType:   { Individual: 1, 'Corporate Entity': 2, 'Trust/Foundation': 3, 'NPO/Charity': 3 },
-    nationality:    { UAE: 0, GCC: 1, 'FATF Member': 1, 'FATF Grey List': 3, 'FATF Black List': 4, 'CAHRA Country': 4 },
+    nationality:    {}, // Dynamic — calculated from country risk DB
     pepStatus:      { 'Not a PEP': 0, 'Former PEP (>1yr)': 2, 'Family/Associate of PEP': 2, 'Active PEP': 4 },
     businessType:   { 'Gold Retailer': 2, 'Refinery': 3, 'Jewellery Manufacturer': 2, 'Bullion Trader': 3, 'End Consumer': 1, 'Financial Institution': 2, 'Other': 2 },
     transactionVol: { 'Under AED 55,000': 0, 'AED 55,000–500,000': 1, 'AED 500,000–2M': 2, 'Over AED 2M': 3 },
     cashPayment:    { 'No': 0, 'Partial': 2, 'Majority Cash': 4 },
     sanctionsHit:   { 'No Match': 0, 'Potential Match – Pending': 3, 'Cleared False Positive': 0, 'Confirmed Match': 10 },
     sourceOfFunds:  { 'Verified/Documented': 0, 'Partially Verified': 2, 'Unverified': 4 },
-    geography:      { 'UAE Only': 0, 'GCC': 1, 'EU/US/UK': 1, 'High Risk Jurisdiction': 3, 'CAHRA Region': 4 },
+    geography:      {}, // Dynamic — calculated from country risk DB
     adverseMedia:   { 'None': 0, 'Possible': 2, 'Confirmed': 4 },
   };
+
+  // Populate nationality and geography weights dynamically
+  (function updateDynamicWeights() {
+    var db = getCountryRiskDB();
+    CRA_RISK_WEIGHTS.nationality = {};
+    CRA_RISK_WEIGHTS.geography = {};
+    for (var country in db) {
+      CRA_RISK_WEIGHTS.nationality[country] = countryRiskToScore(db[country]);
+    }
+    CRA_RISK_WEIGHTS.nationality['Other'] = 2;
+    // Geography uses risk categories
+    CRA_RISK_WEIGHTS.geography = { 'UAE Only': 0, 'GCC': 1, 'FATF Member Country': 1, 'FATF Grey List Country': 3, 'FATF Black List Country': 4, 'CAHRA Region': 4, 'Other': 2 };
+  })();
 
   function calcCRAScore(form) {
     let score = 0;
@@ -199,6 +292,8 @@
           <span class="sec-title">👤 Customer Risk Assessment — CDD/EDD</span>
           <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 | Art. 12-16 | FATF Rec. 10</span>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenCRAForm()">+ New Assessment</button>
+          <button class="btn btn-sm btn-gold" style="padding:6px 12px;font-size:11px" onclick="suiteUpdateCountryRisk()">Update Country Risk Data</button>
+          <button class="btn btn-sm" style="padding:6px 12px;font-size:11px" onclick="suiteViewCountryRisk()">View Country Risk DB</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
           <div class="metric m-c"><div class="metric-num">${records.filter(r=>r.rating==='Very High').length}</div><div class="metric-lbl">Very High Risk</div></div>
@@ -248,7 +343,11 @@
               <select id="cra-type"><option value="">Select</option>${Object.keys(CRA_RISK_WEIGHTS.customerType).map(v=>`<option>${v}</option>`).join('')}</select>
             </div>
             <div><span class="lbl">Nationality / Jurisdiction *</span>
-              <select id="cra-nationality"><option value="">Select</option>${Object.keys(CRA_RISK_WEIGHTS.nationality).map(v=>`<option>${v}</option>`).join('')}</select>
+              <select id="cra-nationality"><option value="">Select Country</option>${getNationalityOptions().map(function(e){
+                var c=e[0], r=e[1];
+                var riskLabel = r === 'FATF Black List' ? ' ⚫ BLACK LIST' : r === 'CAHRA' ? ' 🔴 CAHRA' : r === 'FATF Grey List' ? ' 🟡 GREY LIST' : r === 'GCC' ? ' 🟢 GCC' : r === 'FATF Member' ? ' 🟢 FATF' : '';
+                return '<option value="'+c+'">'+c+riskLabel+'</option>';
+              }).join('')}<option value="Other">Other</option></select>
             </div>
           </div>
           <div class="row row-2">
@@ -421,6 +520,122 @@
     records.splice(idx, 1);
     save(SK.CRA, records);
     renderCRA();
+  };
+
+  // Update Country Risk Database using AI + live web search
+  global.suiteUpdateCountryRisk = async function() {
+    if (typeof callAI !== 'function') { toast('No AI provider configured', 'error'); return; }
+    toast('Updating country risk data — fetching latest FATF lists...', 'info', 30000);
+
+    // Use Tavily for live search if available
+    var liveData = '';
+    if (typeof searchWebForScreening === 'function') {
+      try {
+        var webResults = await searchWebForScreening('FATF grey list black list 2025 2026', 'regulation', '');
+        if (webResults) liveData = '\n\nLIVE WEB SEARCH RESULTS:\n' + webResults;
+      } catch(_) {}
+    }
+
+    try {
+      var data = await callAI({
+        model: 'claude-sonnet-4-5', max_tokens: 4000, temperature: 0,
+        system: 'You are a regulatory compliance specialist. Return ONLY valid JSON — a single object where keys are country names and values are one of: "FATF Black List", "FATF Grey List", "CAHRA", "GCC", "FATF Member", or "Other".',
+        messages: [{ role: 'user', content: 'Provide the CURRENT and most up-to-date country risk classifications:\n\n1. FATF Black List (High-Risk Jurisdictions Subject to a Call for Action) — list ALL countries currently on it\n2. FATF Grey List (Jurisdictions Under Increased Monitoring) — list ALL countries currently on it\n3. CAHRA (Conflict-Affected and High-Risk Areas per EU/OECD) — list all\n4. GCC member states\n5. FATF Member countries\n\nReturn a JSON object: {"country name": "risk classification", ...}\nInclude at least 80 countries covering all the above categories. Countries not in any special list should be "FATF Member" if they are, or "Other".' + liveData }]
+      });
+
+      var raw = (data.content || []).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
+      var cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
+      var m = cleaned.match(/\{[\s\S]*\}/);
+      if (m) {
+        var newDB = JSON.parse(m[0]);
+        if (Object.keys(newDB).length > 20) {
+          saveCountryRiskDB(newDB);
+          // Refresh dynamic weights
+          CRA_RISK_WEIGHTS.nationality = {};
+          for (var c in newDB) CRA_RISK_WEIGHTS.nationality[c] = countryRiskToScore(newDB[c]);
+          CRA_RISK_WEIGHTS.nationality['Other'] = 2;
+          toast('Country risk data updated — ' + Object.keys(newDB).length + ' countries refreshed', 'success');
+          renderCRA();
+          return;
+        }
+      }
+      toast('Could not parse updated country risk data', 'error');
+    } catch(e) {
+      toast('Country risk update failed: ' + e.message, 'error');
+    }
+  };
+
+  // View/Edit Country Risk Database
+  global.suiteViewCountryRisk = function() {
+    var db = getCountryRiskDB();
+    var entries = Object.entries(db);
+    var order = { 'FATF Black List': 0, 'CAHRA': 1, 'FATF Grey List': 2, 'Other': 3, 'GCC': 4, 'FATF Member': 5 };
+    entries.sort(function(a, b) { return (order[a[1]] || 3) - (order[b[1]] || 3) || a[0].localeCompare(b[0]); });
+
+    var colorFor = function(r) { return r === 'FATF Black List' ? '#D94F4F' : r === 'CAHRA' ? '#D94F4F' : r === 'FATF Grey List' ? '#E8A838' : r === 'GCC' ? '#3DA876' : r === 'FATF Member' ? '#3DA876' : 'var(--muted)'; };
+    var countByRisk = {};
+    entries.forEach(function(e) { countByRisk[e[1]] = (countByRisk[e[1]] || 0) + 1; });
+
+    var html = '<div class="modal-overlay" id="countryRiskModal"><div class="modal" style="max-width:700px;width:95%;max-height:90vh">';
+    html += '<button class="modal-close" onclick="document.getElementById(\'countryRiskModal\').classList.remove(\'open\')">✕</button>';
+    html += '<div class="modal-title">Country Risk Database</div>';
+    html += '<div class="token-note" style="margin-bottom:1rem"><strong>FATF & CAHRA Classifications:</strong> This database determines risk scoring in the CRA. Update it when FATF publishes new grey/black list changes (typically every February, June, October). Click "Update Country Risk Data" to auto-refresh from the latest sources.</div>';
+
+    // Summary badges
+    html += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">';
+    ['FATF Black List','CAHRA','FATF Grey List','GCC','FATF Member','Other'].forEach(function(r) {
+      if (countByRisk[r]) html += '<span style="font-size:10px;padding:3px 8px;border-radius:4px;background:' + colorFor(r) + '22;color:' + colorFor(r) + ';border:1px solid ' + colorFor(r) + '44;font-weight:600">' + r + ': ' + countByRisk[r] + '</span>';
+    });
+    html += '</div>';
+
+    // Add country form
+    html += '<div style="display:flex;gap:6px;margin-bottom:10px">';
+    html += '<input id="crisk-new-country" placeholder="Country name" style="flex:1;font-size:12px">';
+    html += '<select id="crisk-new-level" style="font-size:12px"><option>FATF Black List</option><option>FATF Grey List</option><option>CAHRA</option><option>GCC</option><option>FATF Member</option><option>Other</option></select>';
+    html += '<button class="btn btn-sm btn-gold" onclick="suiteAddCountryRisk()" style="padding:4px 10px;font-size:11px">Add</button>';
+    html += '</div>';
+
+    // Country table
+    html += '<div style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">';
+    html += '<div style="display:grid;grid-template-columns:1fr 140px 60px;padding:6px 10px;background:rgba(180,151,90,0.1);font-size:10px;font-weight:600;color:var(--gold);font-family:\'DM Mono\',monospace;border-bottom:1px solid var(--border)"><span>COUNTRY</span><span>CLASSIFICATION</span><span></span></div>';
+    entries.forEach(function(e) {
+      html += '<div style="display:grid;grid-template-columns:1fr 140px 60px;padding:4px 10px;border-bottom:1px solid var(--border);font-size:11px;align-items:center">';
+      html += '<span>' + e[0] + '</span>';
+      html += '<span style="color:' + colorFor(e[1]) + ';font-weight:600;font-size:10px">' + e[1] + '</span>';
+      html += '<button class="btn btn-sm btn-red" onclick="suiteRemoveCountryRisk(\'' + e[0].replace(/'/g,"\\'") + '\')" style="padding:1px 6px;font-size:9px">✕</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:8px;margin-top:1rem"><button class="btn btn-sm" onclick="document.getElementById(\'countryRiskModal\').classList.remove(\'open\')" style="flex:1;padding:10px">Close</button></div>';
+    html += '</div></div>';
+
+    // Remove old modal if exists
+    var old = document.getElementById('countryRiskModal');
+    if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.getElementById('countryRiskModal').classList.add('open');
+  };
+
+  global.suiteAddCountryRisk = function() {
+    var name = document.getElementById('crisk-new-country').value.trim();
+    var level = document.getElementById('crisk-new-level').value;
+    if (!name) { toast('Enter country name', 'error'); return; }
+    var db = getCountryRiskDB();
+    db[name] = level;
+    saveCountryRiskDB(db);
+    CRA_RISK_WEIGHTS.nationality[name] = countryRiskToScore(level);
+    toast(name + ' → ' + level, 'success');
+    suiteViewCountryRisk(); // refresh modal
+  };
+
+  global.suiteRemoveCountryRisk = function(name) {
+    var db = getCountryRiskDB();
+    delete db[name];
+    saveCountryRiskDB(db);
+    delete CRA_RISK_WEIGHTS.nationality[name];
+    toast(name + ' removed', 'success');
+    suiteViewCountryRisk();
   };
 
   global.suiteSyncCRAToAsana = async function(idx) {
