@@ -587,7 +587,7 @@
 
     try {
       var data = await callAI({
-        model: 'claude-sonnet-4-5', max_tokens: 4000, temperature: 0,
+        model: 'claude-sonnet-4-5', max_tokens: 2000, temperature: 0,
         system: 'You are a regulatory compliance specialist. Return ONLY valid JSON — a single object where keys are country names and values are one of: "FATF Black List", "FATF Grey List", "CAHRA", "GCC", "FATF Member", or "Other".',
         messages: [{ role: 'user', content: 'Provide the CURRENT and most up-to-date country risk classifications:\n\n1. FATF Black List (High-Risk Jurisdictions Subject to a Call for Action) — list ALL countries currently on it\n2. FATF Grey List (Jurisdictions Under Increased Monitoring) — list ALL countries currently on it\n3. CAHRA (Conflict-Affected and High-Risk Areas per EU/OECD) — list all\n4. GCC member states\n5. FATF Member countries\n\nReturn a JSON object: {"country name": "risk classification", ...}\nInclude at least 80 countries covering all the above categories. Countries not in any special list should be "FATF Member" if they are, or "Other".' + liveData }]
       });
@@ -818,7 +818,7 @@
 
     try {
       var data = await callAI({
-        model: 'claude-sonnet-4-5', max_tokens: 6000, temperature: 0,
+        model: 'claude-sonnet-4-5', max_tokens: 2000, temperature: 0,
         system: 'You are a UAE AML/CFT regulatory specialist for the gold and precious metals sector. Return ONLY valid JSON.',
         messages: [{ role: 'user', content: 'Based on the LATEST regulations and FATF guidance, provide an updated risk model for a UAE DPMS (Dealer in Precious Metals and Stones) Customer Risk Assessment.\n\nCurrent model:\n' + JSON.stringify(currentModel.weights, null, 2) + '\n\nCurrent thresholds: ' + JSON.stringify(currentModel.thresholds) + '\nCurrent CDD levels: ' + JSON.stringify(currentModel.cddLevels) + '\nCurrent review frequency: ' + JSON.stringify(currentModel.reviewFrequency) + '\n\nReturn updated JSON:\n{"weights":{"customerType":{"option":score},"pepStatus":{"option":score},"businessType":{"option":score},"transactionVol":{"option":score},"cashPayment":{"option":score},"sanctionsHit":{"option":score},"sourceOfFunds":{"option":score},"geography":{"option":score},"adverseMedia":{"option":score}},"thresholds":{"Very High":number,"High":number,"Medium":number,"Low":0},"cddLevels":{"Very High":"...","High":"...","Medium":"...","Low":"..."},"reviewFrequency":{"Very High":months,"High":months,"Medium":months,"Low":months},"regulatoryBasis":"updated regulatory references","countryRiskUpdates":{"country":"FATF Black List|FATF Grey List|CAHRA|GCC|FATF Member|Other"}}\n\nIMPORTANT:\n- Add any NEW risk categories that recent regulations require (e.g., new business types, new PEP categories)\n- Update thresholds if regulatory guidance has changed\n- Include countryRiskUpdates ONLY for countries whose FATF status has CHANGED\n- Reference: UAE FDL No.10/2025, Cabinet Resolution 134/2025, FATF Rec 10/12/22, FATF DPMS Guidance 2020, CBUAE guidance\n- Keep ALL existing options, only add/modify as needed' + liveData }]
       });
@@ -2747,7 +2747,7 @@
 
       // Step 2: AI screening with live search results included (with 429 retry)
       var screeningBody = {
-        model: 'claude-sonnet-4-5', max_tokens: 2000, temperature: 0,
+        model: 'claude-sonnet-4-5', max_tokens: 1024, temperature: 0,
         system: 'Compliance screening engine. RULES: Never fabricate sanctions. Adverse media separate from sanctions. Report findings with sources/dates. Check corporate network. If LIVE WEB SEARCH RESULTS provided, prioritize them. Return ONLY JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","sanctions_finding":"","pep_finding":"","adverse_media_found":false,"adverse_media_severity":"none|low|medium|high|critical","adverse_media_finding":"findings with sources","corporate_connections":"","required_actions":"","risk_level":"low|medium|high|critical"}',
         messages: [{ role: 'user', content: 'Screen: ' + entityDesc + '. Check sanctions (OFAC,UN,EU,UK,UAE EOCN), PEP, corporate network, adverse media (financial crime, corruption, terrorism, environmental, human rights). Be concise but thorough.' + liveSearchResults }]
       };

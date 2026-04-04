@@ -5808,7 +5808,7 @@ async function runAnalysis(queryOverride, areaOverride) {
   try {
     const data = await callAI({
       model: 'claude-sonnet-4-5',
-      max_tokens: 3000,
+      max_tokens: 1024,
       temperature: 0,
       system: buildSystemPrompt(area, asanaCtx, companyName),
       messages: [{ role: 'user', content: `Analyze for entity "${companyName || 'Compliance Tasks'}"${companyLicense}${companyDesc}: ${query}` }]
@@ -7899,13 +7899,13 @@ JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","risk_level":"LOW|MEDIUM|HIGH|CRIT
   }
 
   try {
-    const data = await callAI({ model:'claude-sonnet-4-5', max_tokens:4000, temperature:0, system:'Sanctions screening expert. Return ONLY raw compact JSON. No markdown. No code fences. No explanation. Keep strings very short.', messages:[{role:'user',content:prompt}] });
+    const data = await callAI({ model:'claude-sonnet-4-5', max_tokens:1024, temperature:0, system:'Sanctions screening expert. Return ONLY raw compact JSON. No markdown. No code fences. No explanation. Keep strings very short.', messages:[{role:'user',content:prompt}] });
     const raw = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     let cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
     let result = repairJSON(cleaned);
     if (!result) {
       toast('Retrying screening...','info',2000);
-      const retry = await callAI({ model:'claude-sonnet-4-5', max_tokens:4000, temperature:0, system:'Return ONLY raw compact JSON. No markdown. No fences.', messages:[{role:'user',content:prompt}] });
+      const retry = await callAI({ model:'claude-sonnet-4-5', max_tokens:1024, temperature:0, system:'Return ONLY raw compact JSON. No markdown. No fences.', messages:[{role:'user',content:prompt}] });
       const retryRaw = (retry.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
       let retryCleaned = retryRaw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
       result = repairJSON(retryCleaned);
@@ -9147,7 +9147,7 @@ Include: reporter info placeholders, subject details, grounds for suspicion base
 
   try {
     toast('Generating STR draft...', 'info');
-    const data = await callAI({ model:'claude-sonnet-4-5', max_tokens:2500, temperature:0,
+    const data = await callAI({ model:'claude-sonnet-4-5', max_tokens:1024, temperature:0,
       system:'You are a UAE AML/CFT compliance expert specializing in STR/SAR drafting for goAML. Generate professional, detailed Suspicious Transaction Reports aligned with UAE Central Bank and FIU requirements under Federal Decree-Law No. 20/2018.',
       messages:[{role:'user',content:prompt}]
     });
