@@ -5,6 +5,7 @@
  */
 const TFSRefresh = (function() {
   'use strict';
+  function esc(s) { if (!s && s!==0) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 
   const STORAGE_KEY = 'fgl_tfs_lists';
   const REFRESH_LOG_KEY = 'fgl_tfs_refresh_log';
@@ -372,7 +373,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     html += '<table><tr><th>#</th><th>Entity</th><th>Type</th><th>Country</th><th>Result</th><th>Date</th><th>Lists Checked</th></tr>';
     matches.forEach((m, idx) => {
       const hits = (m.matches||[]).map(h=>h.list).join(', ')||'—';
-      html += '<tr><td>'+(idx+1)+'</td><td>'+(m.name||'')+'</td><td>'+(m.type||'')+'</td><td>'+(m.country||'')+'</td><td style="color:'+colorFor(m.result)+';font-weight:700">'+labelFor(m.result)+'</td><td>'+new Date(m.timestamp||m.date||0).toLocaleDateString('en-GB')+'</td><td>'+hits+'</td></tr>';
+      html += '<tr><td>'+(idx+1)+'</td><td>'+(esc(m.name)||'')+'</td><td>'+(esc(m.type)||'')+'</td><td>'+(esc(m.country)||'')+'</td><td style="color:'+colorFor(m.result)+';font-weight:700">'+labelFor(m.result)+'</td><td>'+new Date(m.timestamp||m.date||0).toLocaleDateString('en-GB')+'</td><td>'+esc(hits)+'</td></tr>';
     });
     html += '</table>' + (window.wordDocFooter ? window.wordDocFooter() : '</body></html>');
     if (window.downloadWordDoc) { window.downloadWordDoc(html, 'TFS_Screening_'+new Date().toISOString().slice(0,10)+'.doc'); }

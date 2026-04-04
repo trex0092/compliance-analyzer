@@ -5,6 +5,8 @@
 (function () {
   'use strict';
 
+  function esc(s) { if (!s && s!==0) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+
   const REPORT_HISTORY_KEY = 'fgl_report_history';
   const REPORT_SCHEDULES_KEY = 'fgl_report_schedules';
 
@@ -821,7 +823,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     const list=getCirculars(); if(!list.length){toast('No circulars','error');return;}
     let html = window.wordDocHeader ? window.wordDocHeader('Circulars Register') : '<html><head><meta charset="utf-8"></head><body>';
     html += '<table><tr><th>#</th><th>Reference</th><th>Subject</th><th>Month</th><th>Date</th></tr>';
-    list.forEach((c,i)=>{html+='<tr><td>'+(i+1)+'</td><td>'+c.ref+'</td><td>'+c.subject+'</td><td>'+(c.month||'')+'</td><td>'+(c.date||'')+'</td></tr>';});
+    list.forEach((c,i)=>{html+='<tr><td>'+(i+1)+'</td><td>'+esc(c.ref)+'</td><td>'+esc(c.subject)+'</td><td>'+esc(c.month||'')+'</td><td>'+esc(c.date||'')+'</td></tr>';});
     html += '</table>' + (window.wordDocFooter ? window.wordDocFooter() : '</body></html>');
     if (window.downloadWordDoc) { window.downloadWordDoc(html, 'Circulars_'+new Date().toISOString().slice(0,10)+'.doc'); }
     else { const blob=new Blob(['\ufeff'+html],{type:'application/msword'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Circulars_'+new Date().toISOString().slice(0,10)+'.doc';a.click(); }
@@ -876,8 +878,8 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     const list = getMeetings();
     if (!list.length) return '<p style="color:var(--muted);font-size:13px">No meeting minutes recorded.</p>';
     return list.map(m => {
-      const attachHtml = m.attachment ? `<span style="color:var(--green);font-size:10px;margin-left:6px" title="${m.attachment.name}">📎 ${m.attachment.name} (${formatFileSize(m.attachment.size)})</span> <button class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.downloadAttachment('meeting',${m.id})">Download</button> <button class="btn btn-sm" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.removeAttachment('meeting',${m.id})">Remove</button>` : '';
-      return `<div class="asana-item"><div><div class="asana-name">${m.ref}${attachHtml}</div><div class="asana-meta">${m.month||'—'} | ${m.date||'—'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-gold" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.editMeeting(${m.id})">Edit</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteMeeting(${m.id})">Delete</button></div></div>`;
+      const attachHtml = m.attachment ? `<span style="color:var(--green);font-size:10px;margin-left:6px" title="${esc(m.attachment.name)}">📎 ${esc(m.attachment.name)} (${formatFileSize(m.attachment.size)})</span> <button class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.downloadAttachment('meeting',${m.id})">Download</button> <button class="btn btn-sm" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.removeAttachment('meeting',${m.id})">Remove</button>` : '';
+      return `<div class="asana-item"><div><div class="asana-name">${esc(m.ref)}${attachHtml}</div><div class="asana-meta">${esc(m.month||'—')} | ${esc(m.date||'—')}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-gold" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.editMeeting(${m.id})">Edit</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteMeeting(${m.id})">Delete</button></div></div>`;
     }).join('');
   }
   function renderMeetingsInPlace() { const el=document.getElementById('meetingsList'); if(el) el.innerHTML=renderMeetingsList(); }

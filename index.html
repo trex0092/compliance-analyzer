@@ -2952,7 +2952,8 @@ function safeLocalParse(key, fallback) {
   }
 }
 function safeLocalSave(key, value) {
-  localStorage.setItem(scopeKey(key), JSON.stringify(value));
+  try { localStorage.setItem(scopeKey(key), JSON.stringify(value)); }
+  catch(e) { if (e.name==='QuotaExceededError'||e.code===22) { console.error('[Storage] Quota exceeded for key:',key); toast('Storage full — please export and clear old data','error',5000); } else { throw e; } }
 }
 function safeLocalRemove(key) {
   localStorage.removeItem(scopeKey(key));
@@ -5393,8 +5394,8 @@ function exportIARReportCSV() {
       r.iarSourceFunds||'', r.iarSourceWealth||'', r.createdAt||''
     ]);
   });
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const csv = rows.map(r => r.map(v => { let s=String(v).replace(/"/g,'""'); if(/^[=+\-@\t\r]/.test(s)) s="'"+s; return '"'+s+'"'; }).join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `IAR_ComplianceReport_${new Date().toISOString().split('T')[0]}.csv`;
@@ -6297,11 +6298,11 @@ async function loadAsanaTasks(silent) {
     </div>`;
     if (overdue.length) {
       html += `<div class="sec-title">Overdue Tasks (${overdue.length})</div>`;
-      overdue.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}${t.assignee ? ' | ' + escHtml(t.assignee.name) : ''}</div></div><div style="display:flex;gap:4px;align-items:center"><button class="btn btn-sm btn-green" style="padding:2px 8px;font-size:9px" onclick="openEditAsanaTask('${t.gid}','${escHtml(t.name).replace(/'/g,"\\'")}','${t.due_on||''}','${t.assignee?escHtml(t.assignee.name).replace(/'/g,"\\'"):''}')">Edit</button><span class="asana-status s-overdue">OVERDUE</span></div></div>`; });
+      overdue.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}${t.assignee ? ' | ' + escHtml(t.assignee.name) : ''}</div></div><div style="display:flex;gap:4px;align-items:center"><button class="btn btn-sm btn-green" style="padding:2px 8px;font-size:9px" onclick="openEditAsanaTask('${escHtml(t.gid)}','${escHtml(t.name).replace(/'/g,"\\'")}','${t.due_on||''}','${t.assignee?escHtml(t.assignee.name).replace(/'/g,"\\'"):''}')">Edit</button><span class="asana-status s-overdue">OVERDUE</span></div></div>`; });
     }
     if (dueWeek.length) {
       html += `<div class="sec-title" style="margin-top:1rem">Due This Week (${dueWeek.length})</div>`;
-      dueWeek.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}${t.assignee ? ' | ' + escHtml(t.assignee.name) : ''}</div></div><div style="display:flex;gap:4px;align-items:center"><button class="btn btn-sm btn-green" style="padding:2px 8px;font-size:9px" onclick="openEditAsanaTask('${t.gid}','${escHtml(t.name).replace(/'/g,"\\'")}','${t.due_on||''}','${t.assignee?escHtml(t.assignee.name).replace(/'/g,"\\'"):''}')">Edit</button><span class="asana-status s-due">DUE SOON</span></div></div>`; });
+      dueWeek.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}${t.assignee ? ' | ' + escHtml(t.assignee.name) : ''}</div></div><div style="display:flex;gap:4px;align-items:center"><button class="btn btn-sm btn-green" style="padding:2px 8px;font-size:9px" onclick="openEditAsanaTask('${escHtml(t.gid)}','${escHtml(t.name).replace(/'/g,"\\'")}','${t.due_on||''}','${t.assignee?escHtml(t.assignee.name).replace(/'/g,"\\'"):''}')">Edit</button><span class="asana-status s-due">DUE SOON</span></div></div>`; });
     }
     if (!overdue.length && !dueWeek.length) html += '<p style="color:var(--green);font-size:13px">No overdue or imminently due tasks.</p>';
     document.getElementById('asanaContent').innerHTML = html;
@@ -6338,7 +6339,7 @@ function openEditAsanaTask(gid, name, dueOn, assigneeName) {
     <div class="modal" style="max-width:500px;width:95%">
       <button class="modal-close" onclick="document.getElementById('editAsanaTaskModal').classList.remove('open')">✕</button>
       <div class="modal-title">Edit Asana Task</div>
-      <input type="hidden" id="eat-gid" value="${gid}">
+      <input type="hidden" id="eat-gid" value="${escHtml(gid)}">
       <div style="margin-bottom:10px"><span class="lbl">Task Name *</span><input id="eat-name" value="${name.replace(/"/g,'&quot;')}"></div>
       <div class="row row-2" style="margin-bottom:10px">
         <div><span class="lbl">Due Date</span><input type="date" id="eat-due" value="${dueOn || ''}"></div>
@@ -7472,7 +7473,7 @@ async function refreshGDriveFileList() {
     }
     return;
   }
-  if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">Connected</span>' + (GDRIVE_FOLDER_ID ? ` · Folder: ${GDRIVE_FOLDER_ID}` : ' · Root folder');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">Connected</span>' + (GDRIVE_FOLDER_ID ? ` · Folder: ${escHtml(GDRIVE_FOLDER_ID)}` : ' · Root folder');
   if (listEl) listEl.innerHTML = '<p style="color:var(--muted);font-size:12px">Loading...</p>';
   try {
     const files = await listGDriveFiles();
@@ -7825,7 +7826,7 @@ function refreshReminders() {
     if (!alerts.length) {
       listEl.innerHTML = '<div class="notif-item ni-green"><div class="ni-title">ALL CLEAR</div><div class="ni-detail">No pending reminders or expired documents.</div></div>';
     } else {
-      listEl.innerHTML = alerts.map(a => `<div class="notif-item ni-${a.type}"><div class="ni-title">${a.title}</div><div class="ni-detail">${a.detail}</div></div>`).join('');
+      listEl.innerHTML = alerts.map(a => `<div class="notif-item ni-${escHtml(a.type)}"><div class="ni-title">${escHtml(a.title)}</div><div class="ni-detail">${escHtml(a.detail)}</div></div>`).join('');
     }
   }
   if (badgeEl) {
@@ -8033,7 +8034,7 @@ Return JSON array: [{"id":"UAE","lastUpdate":"YYYY-MM-DD","entries":150,"status"
     statusEl.innerHTML = `✅ All ${lists.length} sanctions lists checked — <strong>${new Date().toLocaleString('en-GB')}</strong>`;
 
     const lastEl = document.getElementById('sanctionsLastRefresh');
-    if (lastEl) lastEl.innerHTML = results.map(r => `<span style="margin-right:12px">${r.id}: ${r.status === 'CURRENT' ? '🟢' : r.status === 'UPDATED' ? '🟡' : '🔴'} ${r.lastUpdate} (${(r.entries||0).toLocaleString('en-GB')} entries)</span>`).join('');
+    if (lastEl) lastEl.innerHTML = results.map(r => `<span style="margin-right:12px">${escHtml(r.id)}: ${r.status === 'CURRENT' ? '🟢' : r.status === 'UPDATED' ? '🟡' : '🔴'} ${escHtml(r.lastUpdate)} (${(r.entries||0).toLocaleString('en-GB')} entries)</span>`).join('');
 
     logAudit('sanctions_refresh', `Refreshed ${lists.length} sanctions lists`);
     toast('Sanctions lists refreshed', 'success');
@@ -8052,7 +8053,7 @@ function initSanctionsRefreshStatus() {
     const lastEl = document.getElementById('sanctionsLastRefresh');
     if (lastEl) {
       const dt = new Date(saved.timestamp);
-      lastEl.innerHTML = `Last refresh: ${dt.toLocaleString('en-GB')}` + (saved.results ? ' — ' + saved.results.map(r => `<span style="margin-right:8px">${r.id}: ${r.status === 'CURRENT' ? '🟢' : r.status === 'UPDATED' ? '🟡' : '🔴'}</span>`).join('') : '');
+      lastEl.innerHTML = `Last refresh: ${dt.toLocaleString('en-GB')}` + (saved.results ? ' — ' + saved.results.map(r => `<span style="margin-right:8px">${escHtml(r.id)}: ${r.status === 'CURRENT' ? '🟢' : r.status === 'UPDATED' ? '🟡' : '🔴'}</span>`).join('') : '');
     }
   }
 }
@@ -8084,11 +8085,11 @@ function renderScreeningResult(result, name) {
   el.querySelector('#screeningResultsContent').innerHTML = `
     <div class="finding ${cls}" style="animation:none;opacity:1">
       <div class="f-head"><div class="f-head-left"><span class="badge ${badge}">${comp.label}</span><span class="f-title">${name}</span></div><span class="badge" style="background:rgba(201,168,76,0.05)">${result.risk_level} RISK</span></div>
-      <div class="f-body">${result.summary||''}</div>
-      ${(result.sanctions_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Sanctions Hits:</strong> ${result.sanctions_hits.map(h=>`${h.list} (${h.match_type}): ${h.details}`).join('; ')}</div>`:''}
-      ${(result.adverse_media_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Adverse Media Hits:</strong><ul style="margin:4px 0 0 16px;font-size:12px">${result.adverse_media_hits.map(h=>`<li><strong>${h.category}</strong> — ${h.details}${h.source?' <span style="color:var(--muted)">('+h.source+')</span>':''}${h.date?' <span style="color:var(--muted)">['+h.date+']</span>':''}</li>`).join('')}</ul></div>`:''}
-      ${(result.risk_factors||[]).length?`<div class="rec" style="margin-top:8px"><strong>Risk Factors:</strong> ${result.risk_factors.join(', ')}</div>`:''}
-      ${(result.recommended_actions||[]).length?`<div class="rec" style="margin-top:8px"><strong>Actions:</strong> ${result.recommended_actions.join('; ')}</div>`:''}
+      <div class="f-body">${escHtml(result.summary||'')} </div>
+      ${(result.sanctions_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Sanctions Hits:</strong> ${result.sanctions_hits.map(h=>`${escHtml(h.list)} (${escHtml(h.match_type)}): ${escHtml(h.details)}`).join('; ')}</div>`:''}
+      ${(result.adverse_media_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Adverse Media Hits:</strong><ul style="margin:4px 0 0 16px;font-size:12px">${result.adverse_media_hits.map(h=>`<li><strong>${escHtml(h.category)}</strong> — ${escHtml(h.details)}${h.source?' <span style="color:var(--muted)">('+escHtml(h.source)+')</span>':''}${h.date?' <span style="color:var(--muted)">['+escHtml(h.date)+']</span>':''}</li>`).join('')}</ul></div>`:''}
+      ${(result.risk_factors||[]).length?`<div class="rec" style="margin-top:8px"><strong>Risk Factors:</strong> ${escHtml(result.risk_factors.join(', '))}</div>`:''}
+      ${(result.recommended_actions||[]).length?`<div class="rec" style="margin-top:8px"><strong>Actions:</strong> ${escHtml(result.recommended_actions.join('; '))}</div>`:''}
     </div>
     <div style="margin-top:10px;padding:12px 14px;border-left:4px solid ${comp.border};background:${comp.bg};border-radius:3px">
       <div style="font-size:12px;font-weight:600;color:${comp.color};margin-bottom:4px;font-family:'Montserrat',sans-serif">${comp.label} — COMPLIANCE BASIS</div>
@@ -8244,7 +8245,7 @@ function renderLocalShipments() {
     return `<div class="asana-item" style="cursor:pointer" onclick="editLocalShipment(${s.id})">
       <div>
         <div class="asana-name">${escHtml(s.invoiceNo)} — ${escHtml(s.supplierCustomer||'—')}</div>
-        <div class="asana-meta">${s.material||'—'} | Amt: ${s.amount||'0'} ${s.currency||''} | Folder: ${s.folderNo||'—'} | Docs: ${docs}/${total}</div>
+        <div class="asana-meta">${escHtml(s.material||'—')} | Amt: ${escHtml(s.amount||'0')} ${escHtml(s.currency||'')} | Folder: ${escHtml(s.folderNo||'—')} | Docs: ${docs}/${total}</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         <span style="font-size:10px;font-weight:700;color:${color}">${pct}%</span>
@@ -8934,7 +8935,7 @@ function loadRACIHistory() {
   const el = document.getElementById('raciHistoryList');
   if (!el) return;
   if (!list.length) { el.innerHTML='<p style="font-size:13px;color:var(--muted)">No RACI records saved yet.</p>'; return; }
-  el.innerHTML = list.map(r => `<div class="asana-item"><div><div class="asana-name">${r.docRef||'RACI Matrix'}</div><div class="asana-meta">${r.rows.length} activities | ${r.effDate||'No date'} | Saved: ${new Date(r.date).toLocaleDateString('en-GB')}</div></div><span class="badge b-ok">SAVED</span></div>`).join('');
+  el.innerHTML = list.map(r => `<div class="asana-item"><div><div class="asana-name">${escHtml(r.docRef||'RACI Matrix')}</div><div class="asana-meta">${r.rows.length} activities | ${escHtml(r.effDate||'No date')} | Saved: ${new Date(r.date).toLocaleDateString('en-GB')}</div></div><span class="badge b-ok">SAVED</span></div>`).join('');
 }
 
 function clearRACIMatrix() {
@@ -9018,7 +9019,7 @@ function addObUboRow(name, shares, findings) {
   row.style.cssText = 'margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end';
   row.id = 'obUboRow' + obUboCount;
   row.innerHTML = `
-    <div><span class="lbl">Name ${obUboCount}</span><input type="text" class="ob-ubo-name" placeholder="Full name" value="${name||''}"/></div>
+    <div><span class="lbl">Name ${obUboCount}</span><input type="text" class="ob-ubo-name" placeholder="Full name" value="${escHtml(name||'')} "/></div>
     <div><span class="lbl">Shares %</span><input type="number" class="ob-ubo-shares" placeholder="0" value="${shares||''}"/></div>
     <div><span class="lbl">Findings</span><select class="ob-ubo-findings"><option value="">Select</option><option value="Clear"${findings==='Clear'?' selected':''}>Clear</option><option value="Match"${findings==='Match'?' selected':''}>Match</option><option value="Potential Match"${findings==='Potential Match'?' selected':''}>Potential Match</option><option value="PEP"${findings==='PEP'?' selected':''}>PEP</option><option value="Adverse Media"${findings==='Adverse Media'?' selected':''}>Adverse Media</option></select></div>
     <button class="btn btn-sm btn-red" style="height:36px" onclick="this.parentElement.remove()">X</button>`;
@@ -9067,7 +9068,7 @@ function calculateRiskScore() {
   document.getElementById('riskScoreResult').innerHTML = `
     <div class="finding ${cls}" style="animation:none;opacity:1">
       <div class="f-head"><div class="f-head-left"><span class="badge ${badge}">RISK: ${level}</span><span class="f-title">Score: ${score}/100</span></div></div>
-      <div class="f-body"><strong>Risk Factors:</strong> ${factors.length?factors.join(', '):'No elevated risk factors identified'}</div>
+      <div class="f-body"><strong>Risk Factors:</strong> ${factors.length?escHtml(factors.join(', ')):'No elevated risk factors identified'}</div>
       <div class="f-body" style="margin-top:6px"><strong>CDD Level:</strong> ${level==='LOW'?'Simplified':'Standard'} Due Diligence ${level==='HIGH'||level==='CRITICAL'?'+ Enhanced Due Diligence':''}${level==='CRITICAL'?' + Senior Management Approval':''}</div>
       ${edd}
     </div>`;
@@ -9146,7 +9147,7 @@ async function generateSTRDraft() {
     var strMissing = typeof validateSTRDraft === 'function' ? validateSTRDraft(text) : [];
     var strWarning = strMissing.length ? '<div style="margin-top:8px;padding:10px;border-radius:3px;background:var(--red-dim);border:1px solid rgba(217,79,79,0.3);font-size:11px;color:var(--red)"><strong>Missing mandatory fields:</strong> ' + strMissing.join(', ') + '<br>Review and add these before goAML submission.</div>' : '<div style="margin-top:8px;padding:10px;border-radius:3px;background:var(--green-dim);border:1px solid rgba(61,168,118,0.3);font-size:11px;color:var(--green)">All mandatory STR fields detected.</div>';
     document.getElementById('strDraftResult').style.display='block';
-    document.getElementById('strDraftResult').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${text}</div>${strWarning}<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="copySTR()">Copy STR</button></div>`;
+    document.getElementById('strDraftResult').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${escHtml(text)}</div>${strWarning}<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="copySTR()">Copy STR</button></div>`;
     logAudit('str', `STR drafted for ${subject}`);
   } catch(e) { toast(`STR error: ${e.message}`,'error'); }
 }
@@ -9190,11 +9191,11 @@ Include: reporter info placeholders, subject details, grounds for suspicion base
     const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     const resultDiv = document.getElementById('riskScoreResult');
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div style="margin-top:12px"><span class="sec-title" style="color:var(--amber)">STR Draft — ' + escapeHTML(name) + '</span>' +
-      '<div class="summary-box" style="white-space:pre-wrap;font-size:12px;max-height:400px;overflow-y:auto">' + escapeHTML(text) + '</div>' +
+    resultDiv.innerHTML = '<div style="margin-top:12px"><span class="sec-title" style="color:var(--amber)">STR Draft — ' + escHtml(name) + '</span>' +
+      '<div class="summary-box" style="white-space:pre-wrap;font-size:12px;max-height:400px;overflow-y:auto">' + escHtml(text) + '</div>' +
       '<div style="display:flex;gap:8px;margin-top:8px">' +
       '<button class="btn btn-sm btn-green" onclick="copyElText(this.closest(\'.card\').querySelector(\'.summary-box\'))">Copy STR</button>' +
-      '<button class="btn btn-sm btn-blue" onclick="downloadStrDraft(\'' + escapeHTML(name).replace(/'/g,"\\'") + '\')">Download</button>' +
+      '<button class="btn btn-sm btn-blue" onclick="downloadStrDraft(\'' + escHtml(name).replace(/'/g,"\\'") + '\')">Download</button>' +
       '</div></div>';
     logAudit('str', 'STR draft generated from onboarding for ' + name);
     toast('STR draft generated', 'success');
@@ -9419,7 +9420,7 @@ function finaliseRiskAssessment() {
   safeLocalSave(RA_STORAGE, list);
   renderRAHistory();
   const conf = document.getElementById('raConfirmation');
-  if (conf) { conf.style.display = 'block'; conf.innerHTML = `<strong>Assessment recorded.</strong> Entity: <em>${escapeHTML(data.entityName)}</em> — Determination: <strong>${data.determination}</strong> — Score: ${data.totalScore}`; }
+  if (conf) { conf.style.display = 'block'; conf.innerHTML = `<strong>Assessment recorded.</strong> Entity: <em>${escHtml(data.entityName)}</em> — Determination: <strong>${data.determination}</strong> — Score: ${data.totalScore}`; }
   generateEvalReport(data);
   toast('Risk assessment finalised','success');
   logAudit('risk_assessment','Finalised for '+data.entityName+' — '+data.determination+' (Score: '+data.totalScore+')');
@@ -9548,7 +9549,7 @@ function generateEvalReport(data) {
     criteriaRows += `<tr style="border-bottom:1px solid var(--border);background:${i%2===0?'var(--surface)':'var(--bg)'}">
       <td style="padding:6px 8px;font-size:10px;color:var(--muted);font-weight:600;vertical-align:top">${i+1}</td>
       <td style="padding:6px 8px;font-size:10px;vertical-align:top;font-weight:600">${c.label}</td>
-      <td style="padding:6px 8px;font-size:10px;vertical-align:top">${escapeHTML(val)||'—'}</td>
+      <td style="padding:6px 8px;font-size:10px;vertical-align:top">${escHtml(val)||'—'}</td>
       <td style="padding:6px 8px;text-align:center;vertical-align:top"><span style="display:inline-block;padding:2px 8px;font-size:9px;font-weight:700;background:${lBg};color:${lColor};border:1px solid ${lColor}">${level}</span></td>
       <td style="padding:6px 8px;font-size:9px;line-height:1.4;color:var(--muted);vertical-align:top">${plan}</td>
     </tr>`;
@@ -9628,7 +9629,7 @@ function generateEvalReport(data) {
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-        <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">ENTITY</div><div style="font-size:11px;font-weight:600;margin-top:2px">${escapeHTML(data.entityName)}</div></div>
+        <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">ENTITY</div><div style="font-size:11px;font-weight:600;margin-top:2px">${escHtml(data.entityName)}</div></div>
         <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">TOTAL SCORE</div><div style="font-size:16px;font-weight:700;color:${detColor};margin-top:2px">${total}</div></div>
         <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">DETERMINATION</div><div style="font-size:11px;font-weight:600;color:${detColor};margin-top:2px">${detFull}</div></div>
         <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">DATE</div><div style="font-size:11px;font-weight:600;margin-top:2px">${data.assessDate||new Date().toLocaleDateString('en-GB')}</div></div>
@@ -9674,7 +9675,7 @@ function renderRAHistory() {
     const color = colors[detType]||'var(--muted)';
     return `<div style="padding:10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <div>
-        <strong style="font-size:13px">${escapeHTML(a.entityName)}</strong>
+        <strong style="font-size:13px">${escHtml(a.entityName)}</strong>
         <span style="font-size:10px;color:var(--muted);margin-left:8px">${a.savedAt?new Date(a.savedAt).toLocaleString('en-GB'):''}</span>
         <span style="font-size:9px;margin-left:8px;padding:2px 6px;border:1px solid var(--border);color:var(--muted)">${a.status?.toUpperCase()||'DRAFT'}</span>
       </div>
@@ -9861,8 +9862,8 @@ function exportRiskAssessmentDOCX() {
     const rowBg = i % 2 === 0 ? '#FAFAF8' : '#FFFFFF';
     rows += `<tr style="background:${rowBg}">
       <td style="text-align:center;color:#888;font-weight:bold">${i+1}</td>
-      <td style="font-weight:600">${escapeHTML(c.label)}</td>
-      <td>${escapeHTML(val)}</td>
+      <td style="font-weight:600">${escHtml(c.label)}</td>
+      <td>${escHtml(val)}</td>
       <td style="text-align:center"><span style="display:inline-block;padding:2px 8px;background:${scoreColor};color:white;font-weight:bold;border-radius:4px;min-width:20px">${score !== null ? score : '—'}</span></td>
       <td style="text-align:center"><span style="display:inline-block;padding:2px 10px;background:${riskBg};color:${scoreColor};font-weight:bold;border:1px solid ${scoreColor};border-radius:4px;font-size:8pt">${riskLbl}</span></td>
     </tr>`;
@@ -9901,7 +9902,7 @@ function exportRiskAssessmentDOCX() {
       <td class="info-label">DETERMINATION</td>
     </tr>
     <tr>
-      <td class="info-value">${escapeHTML(data.entityName)}</td>
+      <td class="info-value">${escHtml(data.entityName)}</td>
       <td class="info-value">${dateStr}</td>
       <td class="info-value" style="text-align:center;color:${detColor};font-size:16pt">${total}</td>
       <td class="info-value" style="text-align:center;color:${detColor}">${det}</td>
@@ -10028,11 +10029,11 @@ function renderIncidents() {
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
           <span class="asana-name" style="margin:0">${escHtml(i.title)}</span>
-          ${i.wbRef ? `<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.12);color:#10B981;font-family:'Montserrat',sans-serif">${i.wbRef}</span>` : ''}
+          ${i.wbRef ? `<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.12);color:#10B981;font-family:'Montserrat',sans-serif">${escHtml(i.wbRef)}</span>` : ''}
           ${regFlag ? '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.12);color:#EF4444">REG. NOTIFY</span>' : ''}
           ${isOverdue ? '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--red-dim);color:var(--red)">OVERDUE</span>' : ''}
         </div>
-        <div class="asana-meta">${typeLabel} | ${i.date||'—'} | ${i.reporter||'Unknown'}${i.department ? ' | Dept: '+i.department : ''}${i.rootCause ? ' | Cause: '+i.rootCause.replace(/_/g,' ') : ''}${i.financialImpact ? ' | USD '+Number(i.financialImpact).toLocaleString('en-GB') : ''}</div>
+        <div class="asana-meta">${escHtml(typeLabel)} | ${escHtml(i.date||'—')} | ${escHtml(i.reporter||'Unknown')}${i.department ? ' | Dept: '+escHtml(i.department) : ''}${i.rootCause ? ' | Cause: '+escHtml(i.rootCause.replace(/_/g,' ')) : ''}${i.financialImpact ? ' | USD '+Number(i.financialImpact).toLocaleString('en-GB') : ''}</div>
         ${i.description ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;cursor:pointer" onclick="this.classList.toggle('inc-expand')" class="inc-desc">${escHtml((i.description||'').slice(0,100))}${i.description.length>100?'... <span style=color:var(--gold)>[more]</span>':''}</div>` : ''}
       </div>
       <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;flex-wrap:wrap">
@@ -10347,7 +10348,7 @@ function refreshDashboard() {
 
   const trail = safeLocalParse(AUDIT_STORAGE, []);
   const trailEl = document.getElementById('auditTrailList');
-  trailEl.innerHTML = trail.length ? trail.slice(0,50).map(t=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--gold);font-family:'Montserrat',sans-serif">${new Date(t.ts).toLocaleString('en-GB')}</span> <span style="color:var(--muted)">[${t.action}]</span> ${t.detail}</div>`).join('') : '<p style="font-size:13px;color:var(--muted)">No activity yet.</p>';
+  trailEl.innerHTML = trail.length ? trail.slice(0,50).map(t=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--gold);font-family:'Montserrat',sans-serif">${new Date(t.ts).toLocaleString('en-GB')}</span> <span style="color:var(--muted)">[${escHtml(t.action)}]</span> ${escHtml(t.detail)}</div>`).join('') : '<p style="font-size:13px;color:var(--muted)">No activity yet.</p>';
 
   // Key Compliance Indicators
   const indicatorsEl = document.getElementById('dashComplianceIndicators');
@@ -10386,7 +10387,7 @@ function refreshDashboard() {
       { lbl:'SCREENINGS (30D)', val: String(recentScreenings), col: recentScreenings > 0 ? 'var(--green)' : 'var(--amber)', icon:'🔍' },
     ];
     indicatorsEl.innerHTML = indicators.map(ind => `<div style="background:rgba(201,168,76,0.05);border-radius:3px;padding:10px;border-left:3px solid ${ind.col}">
-      <div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif;letter-spacing:0.5px">${ind.icon} ${ind.lbl}</div>
+      <div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif;letter-spacing:0.5px">${escHtml(ind.icon)} ${escHtml(ind.lbl)}</div>
       <div style="font-size:16px;font-weight:700;color:${ind.col};margin-top:4px">${ind.val}</div>
     </div>`).join('');
   }
@@ -10402,7 +10403,7 @@ function refreshDashboard() {
         const col = diff < 0 ? 'var(--red)' : diff <= 7 ? 'var(--amber)' : 'var(--green)';
         const label = diff < 0 ? Math.abs(diff)+'d OVERDUE' : diff === 0 ? 'TODAY' : diff+'d left';
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
-          <div><span style="font-weight:600">${escapeHTML(d.title)}</span> <span style="color:var(--muted);font-size:10px;margin-left:6px">${d.category||''}</span></div>
+          <div><span style="font-weight:600">${escHtml(d.title)}</span> <span style="color:var(--muted);font-size:10px;margin-left:6px">${d.category||''}</span></div>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">${d.date}</span>
             <span style="font-size:9px;padding:2px 8px;font-weight:700;background:${diff<0?'rgba(248,81,73,0.1)':diff<=7?'rgba(227,179,65,0.1)':'rgba(63,185,80,0.1)'};color:${col};border:1px solid ${col}">${label}</span>
@@ -10430,7 +10431,7 @@ async function exportBoardReport() {
       messages:[{role:'user',content:`Generate a Board/MLRO Compliance Report based on:\nOpen Gaps: ${gaps.filter(g=>g.status!=='closed').length}\nTotal Incidents: ${incidents.length} (Open: ${incidents.filter(i=>i.status==='open').length})\nScreenings (30d): ${screenings.length}\nCustomers Onboarded: ${customers.length}\nHigh Risk Customers: ${customers.filter(c=>c.risk?.level==='HIGH'||c.risk?.level==='CRITICAL').length}\n\nIncident Summary: ${incidents.slice(0,5).map(i=>`${i.severity}: ${i.title}`).join('; ')}`}]
     });
     const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-    document.getElementById('boardReportPreview').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${text}</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="navigator.clipboard.writeText(document.querySelector('#boardReportPreview .summary-box').textContent);toast('Copied','success')">Copy Report</button></div>`;
+    document.getElementById('boardReportPreview').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${escHtml(text)}</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="navigator.clipboard.writeText(document.querySelector('#boardReportPreview .summary-box').textContent);toast('Copied','success')">Copy Report</button></div>`;
     logAudit('board_report', 'Board report generated');
   } catch(e) { toast(`Report error: ${e.message}`,'error'); }
 }
@@ -10609,7 +10610,7 @@ function renderVaultDocs(filter='') {
     const expired = d.expiry && new Date(d.expiry) < now;
     const status = expired?'s-overdue':expiring?'s-due':'s-ok';
     const label = expired?'EXPIRED':expiring?'EXPIRING SOON':d.expiry?'Valid':'—';
-    return `<div class="asana-item"><div><div class="asana-name">${d.url?`<a href="${d.url}" target="_blank" style="color:var(--gold)">${d.name}</a>`:d.name} <span style="color:var(--muted);font-size:10px">${d.version||''}</span></div><div class="asana-meta">${d.category} ${d.tags.length?'| '+d.tags.join(', '):''}${d.expiry?' | Exp: '+d.expiry:''}</div></div><div style="display:flex;gap:6px"><span class="asana-status ${status}">${label}</span><button class="btn btn-sm btn-red" onclick="deleteVaultDoc(${d.id})" style="padding:3px 8px;font-size:10px">Del</button></div></div>`;
+    return `<div class="asana-item"><div><div class="asana-name">${d.url?`<a href="${escHtml(d.url)}" target="_blank" style="color:var(--gold)">${escHtml(d.name)}</a>`:escHtml(d.name)} <span style="color:var(--muted);font-size:10px">${escHtml(d.version||'')} </span></div><div class="asana-meta">${escHtml(d.category)} ${d.tags.length?'| '+escHtml(d.tags.join(', ')):''}${d.expiry?' | Exp: '+escHtml(d.expiry):''}</div></div><div style="display:flex;gap:6px"><span class="asana-status ${status}">${label}</span><button class="btn btn-sm btn-red" onclick="deleteVaultDoc(${d.id})" style="padding:3px 8px;font-size:10px">Del</button></div></div>`;
   }).join('');
 }
 
@@ -10758,7 +10759,7 @@ function renderDefinitions() {
       const badge = isCustom ? ' <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(91,141,239,0.2);color:#5B8DEF;margin-left:4px">UPDATED</span>' : '';
       const editBtn = `<button class="btn btn-sm btn-gold" style="padding:1px 6px;font-size:9px;margin-left:4px" onclick="editDefinition('${section}','${term.replace(/'/g,"\\'")}')">Edit</button>`;
       const termColor = isGold ? 'color:var(--gold)' : 'color:var(--text)';
-      return `<tr class="def-row"><td style="${rowStyle};font-weight:700;${termColor};white-space:nowrap">${term}${badge}${editBtn}</td><td style="${rowStyle};line-height:1.5">${fullTerm}</td></tr>`;
+      return `<tr class="def-row"><td style="${rowStyle};font-weight:700;${termColor};white-space:nowrap">${escHtml(term)}${badge}${editBtn}</td><td style="${rowStyle};line-height:1.5">${escHtml(fullTerm)}</td></tr>`;
     }).join('');
   }
   abBody.innerHTML = renderRows(getMergedDefinitions('abbreviation'), 'abbreviation', true);
@@ -11720,7 +11721,7 @@ function refreshMyWork() {
   var audit = safeLocalParse(AUDIT_TRAIL_STORAGE, []);
   var shps = window.shipments || [];
   var now = new Date(); now.setHours(0,0,0,0);
-  var cfg = complianceConfig;
+  var cfg = complianceConfig || getDefaultComplianceConfig();
 
   // Metrics
   var expiredDocs = 0, expiringDocs = 0, openGaps = 0, openIncidents = 0, criticalShipments = 0, staleScreenings = 0;

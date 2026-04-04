@@ -357,8 +357,8 @@
               <div class="f-head">
                 <div class="f-head-left">
                   <div>
-                    <div class="f-title">${r.customerName} ${badge(r.rating)}</div>
-                    <div class="f-body" style="margin-top:4px">${r.customerType} | ${r.nationality} | Score: ${r.score} | CDD: ${r.cddLevel}</div>
+                    <div class="f-title">${esc(r.customerName)} ${badge(r.rating)}</div>
+                    <div class="f-body" style="margin-top:4px">${esc(r.customerType)} | ${esc(r.nationality)} | Score: ${r.score} | CDD: ${esc(r.cddLevel)}</div>
                     <div class="f-ref">Assessed: ${fmtDate(r.date)} | Ref: ${r.id} | Next Review: ${fmtDate(r.nextReview)}</div>
                   </div>
                 </div>
@@ -368,7 +368,7 @@
                   <button class="btn btn-sm btn-red" onclick="suiteDeleteCRA(${i})">Delete</button>
                 </div>
               </div>
-              ${r.notes ? `<div class="rec">${r.notes}</div>` : ''}
+              ${r.notes ? `<div class="rec">${esc(r.notes)}</div>` : ''}
             </div>
           `).join('')}
         </div>
@@ -912,12 +912,12 @@
               ${records.length===0 ? `<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--muted);font-size:13px">No UBO records. Click "+ Add UBO" to begin.</td></tr>` : ''}
               ${records.map((r,i)=>`
                 <tr style="border-bottom:1px solid var(--border)">
-                  <td style="padding:8px;font-size:12px;font-weight:500">${r.entityName}</td>
-                  <td style="padding:8px;font-size:12px">${r.uboName}</td>
-                  <td style="padding:8px;font-size:12px">${r.nationality}</td>
+                  <td style="padding:8px;font-size:12px;font-weight:500">${esc(r.entityName)}</td>
+                  <td style="padding:8px;font-size:12px">${esc(r.uboName)}</td>
+                  <td style="padding:8px;font-size:12px">${esc(r.nationality)}</td>
                   <td style="padding:8px;font-size:12px">${fmtDate(r.dob)}</td>
                   <td style="padding:8px;font-size:12px;text-align:center;font-weight:600;color:${r.ownershipPct>=25?'var(--gold)':'var(--text)'}">${r.ownershipPct}%</td>
-                  <td style="padding:8px;font-size:12px">${r.controlType}</td>
+                  <td style="padding:8px;font-size:12px">${esc(r.controlType)}</td>
                   <td style="padding:8px">${badge(r.screeningStatus||'Pending')}</td>
                   <td style="padding:8px;font-size:12px">${fmtDate(r.verifiedDate)}</td>
                   <td style="padding:8px;font-size:12px;color:${new Date(r.nextReview)<new Date()?'var(--red)':'var(--text)'}">${fmtDate(r.nextReview)}</td>
@@ -1123,9 +1123,9 @@
             <div class="f-head">
               <div class="f-head-left">
                 <div>
-                  <div class="f-title">${c.id} — ${c.subjectName} ${badge(c.status)}</div>
-                  <div class="f-body" style="margin-top:4px">Type: ${c.reportType} | Priority: ${c.priority} | Opened: ${fmtDate(c.dateOpened)}</div>
-                  <div class="f-ref">Filing Deadline: ${fmtDate(c.filingDeadline)} | Investigator: ${c.investigator||'Unassigned'}</div>
+                  <div class="f-title">${esc(c.id)} — ${esc(c.subjectName)} ${badge(c.status)}</div>
+                  <div class="f-body" style="margin-top:4px">Type: ${esc(c.reportType)} | Priority: ${esc(c.priority)} | Opened: ${fmtDate(c.dateOpened)}</div>
+                  <div class="f-ref">Filing Deadline: ${fmtDate(c.filingDeadline)} | Investigator: ${esc(c.investigator||'Unassigned')}</div>
                 </div>
               </div>
               <div style="display:flex;gap:6px">
@@ -1134,7 +1134,7 @@
                 <button class="btn btn-sm btn-red" onclick="suiteDeleteSTR(${i})">Delete</button>
               </div>
             </div>
-            <div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px;background:var(--surface2);border-radius:3px;line-height:1.5">${(c.narrative||'').slice(0,200)}${(c.narrative||'').length>200?'...':''}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px;background:var(--surface2);border-radius:3px;line-height:1.5">${esc((c.narrative||'').slice(0,200))}${(c.narrative||'').length>200?'...':''}</div>
           </div>
         `).join('')}
       </div>
@@ -1197,7 +1197,9 @@
     // Wire up auto-deadline
     const sd = document.getElementById('str-suspicion-date');
     if (sd) sd.addEventListener('change', function() {
+      if (!this.value) return;
       const d = new Date(this.value);
+      if (isNaN(d.getTime())) return;
       d.setDate(d.getDate() + 30);
       document.getElementById('str-deadline').value = d.toISOString().slice(0,10);
     });
@@ -1640,7 +1642,7 @@
                       <div style="font-size:10px;color:var(--muted);margin-top:3px;font-family:'Montserrat',sans-serif">L:${f.l} × I:${f.i} = ${score}</div>
                     </div>
                   </div>
-                  <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${f.ref}</div>
+                  <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${esc(f.ref)}</div>
                   <div style="font-size:11px;color:var(--muted);margin-top:4px">${rl.action}</div>
                   ${mxLabels.length ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${mxLabels.map(m=>`<span style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.3);border-radius:4px;padding:1px 6px;font-size:10px;font-family:'Montserrat',sans-serif">×${RF_MULTIPLIERS[(f.mx||[]).find(k=>RF_MULTIPLIERS[k]?.label===m)]?.factor} ${m}</span>`).join('')}</div>` : ''}
                 </div>`;
@@ -1665,7 +1667,7 @@
                       <button class="btn btn-sm btn-red" onclick="suiteDeleteRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Del</button>
                     </div>
                   </div>
-                  <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${f.ref}</div>
+                  <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${esc(f.ref)}</div>
                   <div style="font-size:11px;color:var(--muted);margin-top:4px">L:${f.l} × I:${f.i} = ${score} · ${rl.action}</div>
                 </div>`;
               }).join('')}
@@ -2862,6 +2864,7 @@
     if (document.getElementById('tfs2-list-pep')?.checked) lists.push('Political Controversy / PEP');
     const events = load(SK2.TFS2)||[];
     const editIdx = parseInt(document.getElementById('tfs2-edit-idx').value);
+    if (editIdx >= 0 && editIdx >= events.length) { toast('Record not found','error'); return; }
     const record = {
       id: editIdx>=0 ? events[editIdx].id : `TFS2-${Date.now()}`,
       screenedName: name,
@@ -3296,7 +3299,7 @@
             ${RETENTION_CATEGORIES.map(r=>`<tr style="border-bottom:1px solid var(--border)">
               <td style="padding:8px;font-weight:500">${r.cat}</td>
               <td style="padding:8px;color:var(--gold);font-family:'Montserrat',sans-serif">${r.period} years</td>
-              <td style="padding:8px;font-size:11px;color:var(--muted)">${r.basis}</td>
+              <td style="padding:8px;font-size:11px;color:var(--muted)">${esc(r.basis)}</td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -3312,8 +3315,8 @@
           <div class="f-head">
             <div class="f-head-left"><div>
               <div class="f-title">${r.recordName} ${badge2(status)}</div>
-              <div class="f-body">Category: ${r.category} | Created: ${fmtDate(r.createdDate)} | Expires: ${fmtDate(expiry.toISOString())}</div>
-              <div class="f-ref">${r.basis} | Storage: ${r.storageLocation}</div>
+              <div class="f-body">Category: ${esc(r.category)} | Created: ${fmtDate(r.createdDate)} | Expires: ${fmtDate(expiry.toISOString())}</div>
+              <div class="f-ref">${esc(r.basis)} | Storage: ${esc(r.storageLocation)}</div>
             </div></div>
             <button class="btn btn-sm btn-red" onclick="suite2DeleteRetention(${i})">Delete</button>
           </div>
@@ -3416,9 +3419,9 @@
         <div class="finding ${l.decision==='Rejected – No Action'?'f-critical':l.decision==='Approved – Action Taken'?'f-ok':'f-high'}" style="margin-bottom:8px">
           <div class="f-head">
             <div class="f-head-left"><div>
-              <div class="f-title">${l.aiTask} ${badge2(l.decision)}</div>
-              <div class="f-body">Reviewed by: ${l.reviewer} | Date: ${fmtDate(l.reviewDate)}</div>
-              <div class="f-ref">Ref: ${l.id} | ${l.notes}</div>
+              <div class="f-title">${esc(l.aiTask)} ${badge2(l.decision)}</div>
+              <div class="f-body">Reviewed by: ${esc(l.reviewer)} | Date: ${fmtDate(l.reviewDate)}</div>
+              <div class="f-ref">Ref: ${l.id} | ${esc(l.notes)}</div>
             </div></div>
             <button class="btn btn-sm btn-red" onclick="suite2DeleteAILog(${i})">Delete</button>
           </div>
@@ -3616,16 +3619,16 @@
     toast('Syncing to Asana...','info');
     const notes = [
       `AI Review Log: ${l.id}`,
-      `Task Type: ${l.aiTask}`,
+      `Task Type: ${esc(l.aiTask)}`,
       `Decision: ${l.decision}`,
-      `Reviewed By: ${l.reviewer}`,
+      `Reviewed By: ${esc(l.reviewer)}`,
       `Review Date: ${fmtDate(l.reviewDate)}`,
       `AI Output Summary: ${l.output||'—'}`,
       `Reviewer Notes: ${l.notes||'—'}`,
       `\nRegulatory Basis: Cabinet Resolution 134/2025 Art.24 | PDPL — Human review of automated processing`,
     ].join('\n');
 
-    const title = `[AI-GOV] ${l.aiTask} — ${l.decision}`;
+    const title = `[AI-GOV] ${esc(l.aiTask)} — ${l.decision}`;
     const gid = await asanaPush(title, notes);
     if (gid) toast('Synced to Asana','success');
     else toast('Asana sync failed','error');
