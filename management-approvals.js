@@ -60,7 +60,7 @@
   <div class="asana-item">
     <div style="flex:1">
       <div class="asana-name">${esc(a.customerInfo?.companyName || 'Unnamed')}</div>
-      <div class="asana-meta">${a.customerInfo?.country || 'N/A'} | Risk: <span style="color:${riskColor};font-weight:600">${a.riskClassification || 'Not assessed'}</span> | CDD: ${a.cddLevel || 'N/A'} | ${a.businessDecision || 'Pending'}</div>
+      <div class="asana-meta">${esc(a.customerInfo?.country || 'N/A')} | Risk: <span style="color:${riskColor};font-weight:600">${esc(a.riskClassification || 'Not assessed')}</span> | CDD: ${esc(a.cddLevel || 'N/A')} | ${esc(a.businessDecision || 'Pending')}</div>
       <div class="asana-meta">Created: ${new Date(a.createdAt).toLocaleDateString('en-GB')}</div>
     </div>
     <div style="display:flex;gap:4px">

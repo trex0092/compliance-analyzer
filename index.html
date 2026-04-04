@@ -7473,7 +7473,7 @@ async function refreshGDriveFileList() {
     }
     return;
   }
-  if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">Connected</span>' + (GDRIVE_FOLDER_ID ? ` · Folder: ${GDRIVE_FOLDER_ID}` : ' · Root folder');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">Connected</span>' + (GDRIVE_FOLDER_ID ? ` · Folder: ${escHtml(GDRIVE_FOLDER_ID)}` : ' · Root folder');
   if (listEl) listEl.innerHTML = '<p style="color:var(--muted);font-size:12px">Loading...</p>';
   try {
     const files = await listGDriveFiles();
@@ -9191,11 +9191,11 @@ Include: reporter info placeholders, subject details, grounds for suspicion base
     const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     const resultDiv = document.getElementById('riskScoreResult');
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div style="margin-top:12px"><span class="sec-title" style="color:var(--amber)">STR Draft — ' + escapeHTML(name) + '</span>' +
-      '<div class="summary-box" style="white-space:pre-wrap;font-size:12px;max-height:400px;overflow-y:auto">' + escapeHTML(text) + '</div>' +
+    resultDiv.innerHTML = '<div style="margin-top:12px"><span class="sec-title" style="color:var(--amber)">STR Draft — ' + escHtml(name) + '</span>' +
+      '<div class="summary-box" style="white-space:pre-wrap;font-size:12px;max-height:400px;overflow-y:auto">' + escHtml(text) + '</div>' +
       '<div style="display:flex;gap:8px;margin-top:8px">' +
       '<button class="btn btn-sm btn-green" onclick="copyElText(this.closest(\'.card\').querySelector(\'.summary-box\'))">Copy STR</button>' +
-      '<button class="btn btn-sm btn-blue" onclick="downloadStrDraft(\'' + escapeHTML(name).replace(/'/g,"\\'") + '\')">Download</button>' +
+      '<button class="btn btn-sm btn-blue" onclick="downloadStrDraft(\'' + escHtml(name).replace(/'/g,"\\'") + '\')">Download</button>' +
       '</div></div>';
     logAudit('str', 'STR draft generated from onboarding for ' + name);
     toast('STR draft generated', 'success');
@@ -9420,7 +9420,7 @@ function finaliseRiskAssessment() {
   safeLocalSave(RA_STORAGE, list);
   renderRAHistory();
   const conf = document.getElementById('raConfirmation');
-  if (conf) { conf.style.display = 'block'; conf.innerHTML = `<strong>Assessment recorded.</strong> Entity: <em>${escapeHTML(data.entityName)}</em> — Determination: <strong>${data.determination}</strong> — Score: ${data.totalScore}`; }
+  if (conf) { conf.style.display = 'block'; conf.innerHTML = `<strong>Assessment recorded.</strong> Entity: <em>${escHtml(data.entityName)}</em> — Determination: <strong>${data.determination}</strong> — Score: ${data.totalScore}`; }
   generateEvalReport(data);
   toast('Risk assessment finalised','success');
   logAudit('risk_assessment','Finalised for '+data.entityName+' — '+data.determination+' (Score: '+data.totalScore+')');
@@ -9549,7 +9549,7 @@ function generateEvalReport(data) {
     criteriaRows += `<tr style="border-bottom:1px solid var(--border);background:${i%2===0?'var(--surface)':'var(--bg)'}">
       <td style="padding:6px 8px;font-size:10px;color:var(--muted);font-weight:600;vertical-align:top">${i+1}</td>
       <td style="padding:6px 8px;font-size:10px;vertical-align:top;font-weight:600">${c.label}</td>
-      <td style="padding:6px 8px;font-size:10px;vertical-align:top">${escapeHTML(val)||'—'}</td>
+      <td style="padding:6px 8px;font-size:10px;vertical-align:top">${escHtml(val)||'—'}</td>
       <td style="padding:6px 8px;text-align:center;vertical-align:top"><span style="display:inline-block;padding:2px 8px;font-size:9px;font-weight:700;background:${lBg};color:${lColor};border:1px solid ${lColor}">${level}</span></td>
       <td style="padding:6px 8px;font-size:9px;line-height:1.4;color:var(--muted);vertical-align:top">${plan}</td>
     </tr>`;
@@ -9629,7 +9629,7 @@ function generateEvalReport(data) {
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-        <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">ENTITY</div><div style="font-size:11px;font-weight:600;margin-top:2px">${escapeHTML(data.entityName)}</div></div>
+        <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">ENTITY</div><div style="font-size:11px;font-weight:600;margin-top:2px">${escHtml(data.entityName)}</div></div>
         <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">TOTAL SCORE</div><div style="font-size:16px;font-weight:700;color:${detColor};margin-top:2px">${total}</div></div>
         <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">DETERMINATION</div><div style="font-size:11px;font-weight:600;color:${detColor};margin-top:2px">${detFull}</div></div>
         <div style="background:rgba(201,168,76,0.05);padding:8px;text-align:center"><div style="font-size:9px;color:var(--muted);font-family:'Montserrat',sans-serif">DATE</div><div style="font-size:11px;font-weight:600;margin-top:2px">${data.assessDate||new Date().toLocaleDateString('en-GB')}</div></div>
@@ -9675,7 +9675,7 @@ function renderRAHistory() {
     const color = colors[detType]||'var(--muted)';
     return `<div style="padding:10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <div>
-        <strong style="font-size:13px">${escapeHTML(a.entityName)}</strong>
+        <strong style="font-size:13px">${escHtml(a.entityName)}</strong>
         <span style="font-size:10px;color:var(--muted);margin-left:8px">${a.savedAt?new Date(a.savedAt).toLocaleString('en-GB'):''}</span>
         <span style="font-size:9px;margin-left:8px;padding:2px 6px;border:1px solid var(--border);color:var(--muted)">${a.status?.toUpperCase()||'DRAFT'}</span>
       </div>
@@ -9862,8 +9862,8 @@ function exportRiskAssessmentDOCX() {
     const rowBg = i % 2 === 0 ? '#FAFAF8' : '#FFFFFF';
     rows += `<tr style="background:${rowBg}">
       <td style="text-align:center;color:#888;font-weight:bold">${i+1}</td>
-      <td style="font-weight:600">${escapeHTML(c.label)}</td>
-      <td>${escapeHTML(val)}</td>
+      <td style="font-weight:600">${escHtml(c.label)}</td>
+      <td>${escHtml(val)}</td>
       <td style="text-align:center"><span style="display:inline-block;padding:2px 8px;background:${scoreColor};color:white;font-weight:bold;border-radius:4px;min-width:20px">${score !== null ? score : '—'}</span></td>
       <td style="text-align:center"><span style="display:inline-block;padding:2px 10px;background:${riskBg};color:${scoreColor};font-weight:bold;border:1px solid ${scoreColor};border-radius:4px;font-size:8pt">${riskLbl}</span></td>
     </tr>`;
@@ -9902,7 +9902,7 @@ function exportRiskAssessmentDOCX() {
       <td class="info-label">DETERMINATION</td>
     </tr>
     <tr>
-      <td class="info-value">${escapeHTML(data.entityName)}</td>
+      <td class="info-value">${escHtml(data.entityName)}</td>
       <td class="info-value">${dateStr}</td>
       <td class="info-value" style="text-align:center;color:${detColor};font-size:16pt">${total}</td>
       <td class="info-value" style="text-align:center;color:${detColor}">${det}</td>
@@ -10029,11 +10029,11 @@ function renderIncidents() {
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
           <span class="asana-name" style="margin:0">${escHtml(i.title)}</span>
-          ${i.wbRef ? `<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.12);color:#10B981;font-family:'Montserrat',sans-serif">${i.wbRef}</span>` : ''}
+          ${i.wbRef ? `<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.12);color:#10B981;font-family:'Montserrat',sans-serif">${escHtml(i.wbRef)}</span>` : ''}
           ${regFlag ? '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.12);color:#EF4444">REG. NOTIFY</span>' : ''}
           ${isOverdue ? '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--red-dim);color:var(--red)">OVERDUE</span>' : ''}
         </div>
-        <div class="asana-meta">${typeLabel} | ${i.date||'—'} | ${i.reporter||'Unknown'}${i.department ? ' | Dept: '+i.department : ''}${i.rootCause ? ' | Cause: '+i.rootCause.replace(/_/g,' ') : ''}${i.financialImpact ? ' | USD '+Number(i.financialImpact).toLocaleString('en-GB') : ''}</div>
+        <div class="asana-meta">${escHtml(typeLabel)} | ${escHtml(i.date||'—')} | ${escHtml(i.reporter||'Unknown')}${i.department ? ' | Dept: '+escHtml(i.department) : ''}${i.rootCause ? ' | Cause: '+escHtml(i.rootCause.replace(/_/g,' ')) : ''}${i.financialImpact ? ' | USD '+Number(i.financialImpact).toLocaleString('en-GB') : ''}</div>
         ${i.description ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;cursor:pointer" onclick="this.classList.toggle('inc-expand')" class="inc-desc">${escHtml((i.description||'').slice(0,100))}${i.description.length>100?'... <span style=color:var(--gold)>[more]</span>':''}</div>` : ''}
       </div>
       <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;flex-wrap:wrap">
@@ -10403,7 +10403,7 @@ function refreshDashboard() {
         const col = diff < 0 ? 'var(--red)' : diff <= 7 ? 'var(--amber)' : 'var(--green)';
         const label = diff < 0 ? Math.abs(diff)+'d OVERDUE' : diff === 0 ? 'TODAY' : diff+'d left';
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
-          <div><span style="font-weight:600">${escapeHTML(d.title)}</span> <span style="color:var(--muted);font-size:10px;margin-left:6px">${d.category||''}</span></div>
+          <div><span style="font-weight:600">${escHtml(d.title)}</span> <span style="color:var(--muted);font-size:10px;margin-left:6px">${d.category||''}</span></div>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:10px;color:var(--muted);font-family:'Montserrat',sans-serif">${d.date}</span>
             <span style="font-size:9px;padding:2px 8px;font-weight:700;background:${diff<0?'rgba(248,81,73,0.1)':diff<=7?'rgba(227,179,65,0.1)':'rgba(63,185,80,0.1)'};color:${col};border:1px solid ${col}">${label}</span>

@@ -357,8 +357,8 @@
               <div class="f-head">
                 <div class="f-head-left">
                   <div>
-                    <div class="f-title">${r.customerName} ${badge(r.rating)}</div>
-                    <div class="f-body" style="margin-top:4px">${r.customerType} | ${r.nationality} | Score: ${r.score} | CDD: ${r.cddLevel}</div>
+                    <div class="f-title">${esc(r.customerName)} ${badge(r.rating)}</div>
+                    <div class="f-body" style="margin-top:4px">${esc(r.customerType)} | ${esc(r.nationality)} | Score: ${r.score} | CDD: ${esc(r.cddLevel)}</div>
                     <div class="f-ref">Assessed: ${fmtDate(r.date)} | Ref: ${r.id} | Next Review: ${fmtDate(r.nextReview)}</div>
                   </div>
                 </div>
@@ -368,7 +368,7 @@
                   <button class="btn btn-sm btn-red" onclick="suiteDeleteCRA(${i})">Delete</button>
                 </div>
               </div>
-              ${r.notes ? `<div class="rec">${r.notes}</div>` : ''}
+              ${r.notes ? `<div class="rec">${esc(r.notes)}</div>` : ''}
             </div>
           `).join('')}
         </div>
@@ -912,12 +912,12 @@
               ${records.length===0 ? `<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--muted);font-size:13px">No UBO records. Click "+ Add UBO" to begin.</td></tr>` : ''}
               ${records.map((r,i)=>`
                 <tr style="border-bottom:1px solid var(--border)">
-                  <td style="padding:8px;font-size:12px;font-weight:500">${r.entityName}</td>
-                  <td style="padding:8px;font-size:12px">${r.uboName}</td>
-                  <td style="padding:8px;font-size:12px">${r.nationality}</td>
+                  <td style="padding:8px;font-size:12px;font-weight:500">${esc(r.entityName)}</td>
+                  <td style="padding:8px;font-size:12px">${esc(r.uboName)}</td>
+                  <td style="padding:8px;font-size:12px">${esc(r.nationality)}</td>
                   <td style="padding:8px;font-size:12px">${fmtDate(r.dob)}</td>
                   <td style="padding:8px;font-size:12px;text-align:center;font-weight:600;color:${r.ownershipPct>=25?'var(--gold)':'var(--text)'}">${r.ownershipPct}%</td>
-                  <td style="padding:8px;font-size:12px">${r.controlType}</td>
+                  <td style="padding:8px;font-size:12px">${esc(r.controlType)}</td>
                   <td style="padding:8px">${badge(r.screeningStatus||'Pending')}</td>
                   <td style="padding:8px;font-size:12px">${fmtDate(r.verifiedDate)}</td>
                   <td style="padding:8px;font-size:12px;color:${new Date(r.nextReview)<new Date()?'var(--red)':'var(--text)'}">${fmtDate(r.nextReview)}</td>
@@ -1123,9 +1123,9 @@
             <div class="f-head">
               <div class="f-head-left">
                 <div>
-                  <div class="f-title">${c.id} — ${c.subjectName} ${badge(c.status)}</div>
-                  <div class="f-body" style="margin-top:4px">Type: ${c.reportType} | Priority: ${c.priority} | Opened: ${fmtDate(c.dateOpened)}</div>
-                  <div class="f-ref">Filing Deadline: ${fmtDate(c.filingDeadline)} | Investigator: ${c.investigator||'Unassigned'}</div>
+                  <div class="f-title">${esc(c.id)} — ${esc(c.subjectName)} ${badge(c.status)}</div>
+                  <div class="f-body" style="margin-top:4px">Type: ${esc(c.reportType)} | Priority: ${esc(c.priority)} | Opened: ${fmtDate(c.dateOpened)}</div>
+                  <div class="f-ref">Filing Deadline: ${fmtDate(c.filingDeadline)} | Investigator: ${esc(c.investigator||'Unassigned')}</div>
                 </div>
               </div>
               <div style="display:flex;gap:6px">
@@ -1134,7 +1134,7 @@
                 <button class="btn btn-sm btn-red" onclick="suiteDeleteSTR(${i})">Delete</button>
               </div>
             </div>
-            <div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px;background:var(--surface2);border-radius:3px;line-height:1.5">${(c.narrative||'').slice(0,200)}${(c.narrative||'').length>200?'...':''}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px;background:var(--surface2);border-radius:3px;line-height:1.5">${esc((c.narrative||'').slice(0,200))}${(c.narrative||'').length>200?'...':''}</div>
           </div>
         `).join('')}
       </div>
