@@ -145,13 +145,14 @@
   }
 
   function normalizeEvent(raw) {
+    var sanitize = function(s) { return typeof s === 'string' ? s.replace(/[<>"'&]/g, '') : ''; };
     return {
-      id: raw.id || generateId(),
-      source: raw.source || 'unknown',
-      type: raw.type || 'unknown',
-      data: raw.data || {},
-      timestamp: raw.timestamp || new Date().toISOString(),
-      read: raw.read !== undefined ? raw.read : false,
+      id: sanitize(raw.id) || generateId(),
+      source: sanitize(raw.source) || 'unknown',
+      type: sanitize(raw.type) || 'unknown',
+      data: typeof raw.data === 'object' && raw.data !== null ? raw.data : {},
+      timestamp: sanitize(raw.timestamp) || new Date().toISOString(),
+      read: raw.read === true,
     };
   }
 
@@ -162,6 +163,7 @@
   }
 
   function generateId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return 'evt_' + crypto.randomUUID();
     return 'evt_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 8);
   }
 

@@ -238,6 +238,9 @@
   // ── Alert System ──
   function createAlert(alert) {
     const alerts = getAlertHistory();
+    const today = new Date().toISOString().slice(0, 10);
+    const isDup = alerts.some(a => a.type === alert.type && a.framework === alert.framework && a.message === alert.message && a.createdAt && a.createdAt.slice(0, 10) === today);
+    if (isDup) return;
     alerts.unshift({
       id: crypto.randomUUID(),
       ...alert,
@@ -279,7 +282,7 @@
     // Check overdue regulatory changes
     const changes = getRegChanges();
     const now = new Date();
-    changes.filter(c => c.status !== 'completed' && new Date(c.deadline) < now).forEach(c => {
+    changes.filter(c => c.status !== 'completed' && c.deadline && new Date(c.deadline + 'T23:59:59') < now).forEach(c => {
       newAlerts.push({
         severity: 'High',
         framework: c.framework || 'General',
@@ -403,7 +406,7 @@
   // ── Render Regulatory Change Tracker (own tab) ──
   function renderChangeTrackerTab() {
     const changes = getRegChanges();
-    const overdueCount = changes.filter(c => c.status !== 'completed' && new Date(c.deadline) < new Date()).length;
+    const overdueCount = changes.filter(c => c.status !== 'completed' && c.deadline && new Date(c.deadline + 'T23:59:59') < new Date()).length;
     const pendingCount = changes.filter(c => c.status !== 'completed').length;
     const completedCount = changes.filter(c => c.status === 'completed').length;
 

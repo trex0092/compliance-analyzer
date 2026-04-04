@@ -151,6 +151,7 @@ const SupplyChain = (function() {
     if (supplier.isASM) { score += 15; flags.push('Artisanal/small-scale mining (ASM) source — enhanced DD required'); }
     if (!supplier.kycCompleted) { score += 10; flags.push('KYC/CDD not completed for this supplier'); }
 
+    score = Math.min(score, 100);
     const level = score >= 50 ? 'HIGH' : score >= 25 ? 'MEDIUM' : 'LOW';
     return { score, level, flags };
   }

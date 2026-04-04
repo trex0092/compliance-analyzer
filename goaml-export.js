@@ -31,6 +31,12 @@ const GoAMLExport = (function() {
       .replace(/'/g, '&apos;');
   }
 
+  function validateDate(dateStr) {
+    if (!dateStr) return '';
+    var d = String(dateStr).slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d).getTime()) ? d : '';
+  }
+
   function generateReportId() {
     return 'RPT-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
   }
@@ -102,7 +108,7 @@ const GoAMLExport = (function() {
   </suspiciousSubject>
 
   <transactionDetails>
-    <transactionDate>${escapeXml(data.transactionDate || dateOnly)}</transactionDate>
+    <transactionDate>${escapeXml(validateDate(data.transactionDate) || dateOnly)}</transactionDate>
     <transactionType>${escapeXml(data.transactionType || 'PURCHASE')}</transactionType>
     <amount>${escapeXml(String(data.amount || '0'))}</amount>
     <currency>${escapeXml(data.currency || 'USD')}</currency>
@@ -181,7 +187,7 @@ ${(data.attachments || []).map(a => `    <attachment>
   </transactingParty>
 
   <cashTransaction>
-    <transactionDate>${escapeXml(data.transactionDate || dateOnly)}</transactionDate>
+    <transactionDate>${escapeXml(validateDate(data.transactionDate) || dateOnly)}</transactionDate>
     <cashAmount>${escapeXml(String(data.amount || '0'))}</cashAmount>
     <currency>${escapeXml(data.currency || 'AED')}</currency>
     <transactionType>${escapeXml(data.transactionType || 'PURCHASE')}</transactionType>

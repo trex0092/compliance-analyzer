@@ -258,7 +258,7 @@
     if (!tasks.length) return null;
     const completed = tasks.filter(t => t.completed).length;
     const overdue = tasks.filter(t => !t.completed && t.due_on && new Date(t.due_on) < new Date()).length;
-    const inProgress = tasks.filter(t => !t.completed && !t.due_on || (t.due_on && new Date(t.due_on) >= new Date())).length;
+    const inProgress = tasks.filter(t => !t.completed && (!t.due_on || (t.due_on && new Date(t.due_on) >= new Date()))).length;
 
     // Group by section/tag
     const bySection = {};

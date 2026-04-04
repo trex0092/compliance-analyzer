@@ -21,11 +21,12 @@ const ThresholdMonitor = (function() {
   function toAED(amount, currency) {
     if (!amount) return 0;
     const num = Number(amount);
+    if (isNaN(num)) return 0;
     if (currency === 'AED') return num;
     if (currency === 'USD') return num * USD_TO_AED;
-    if (currency === 'EUR') return num * USD_TO_AED * 1.08;
-    if (currency === 'GBP') return num * USD_TO_AED * 1.27;
-    return num * USD_TO_AED; // default assume USD
+    if (currency === 'EUR') return num * USD_TO_AED * 1.10;
+    if (currency === 'GBP') return num * USD_TO_AED * 1.30;
+    return num * USD_TO_AED;
   }
 
   function scanShipments() {

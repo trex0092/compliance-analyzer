@@ -4750,7 +4750,7 @@ async function addShipment() {
     syncMessage: ''
   };
 
-  if (!shipment.amount) {
+  if (!shipment.amount || isNaN(Number(shipment.amount)) || Number(shipment.amount) <= 0) {
     toast('Amount is required','error');
     return;
   }
@@ -5040,14 +5040,14 @@ function buildTransactionMonitoringFindings() {
     const sameCustomer = shipments.filter(s => (s.customerId || 'NO-ID') === c.customerId);
     const nearThreshold = sameCustomer.filter(s => {
       const amt = Number(s.amount || 0);
-      return amt >= (reportingThreshold * 0.7) && amt < reportingThreshold;
+      return amt >= (reportingThreshold * 0.85) && amt < reportingThreshold;
     });
     if (nearThreshold.length >= 3) {
       findings.push({
         level: 'HIGH',
         reportType: 'STR',
         title: 'Structuring pattern detected below reporting threshold',
-        detail: `${c.supplierCustomer} (${c.customerId}) | ${nearThreshold.length} shipments between ${reportingThreshold * 0.7} and ${reportingThreshold}`,
+        detail: `${c.supplierCustomer} (${c.customerId}) | ${nearThreshold.length} shipments between ${Math.round(reportingThreshold * 0.85)} and ${reportingThreshold}`,
         recommendation: 'Suggested STR: repeated near-threshold transaction values indicate potential structuring. Compile timeline and transaction linkage analysis.'
       });
     }
@@ -7547,7 +7547,8 @@ async function completeSetup() {
   if (!displayName) { errorEl.textContent = 'Enter your display name'; return; }
   if (!username || username.length < 3) { errorEl.textContent = 'Username must be at least 3 characters'; return; }
   if (!/^[a-z0-9_]+$/.test(username)) { errorEl.textContent = 'Username: lowercase letters, numbers, underscore only'; return; }
-  if (!password || password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters'; return; }
+  if (!password || password.length < 10) { errorEl.textContent = 'Password must be at least 10 characters with uppercase, lowercase, digit, and special character'; return; }
+  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) { errorEl.textContent = 'Password needs uppercase, lowercase, digit, and special character'; return; }
   if (password !== confirm) { errorEl.textContent = 'Passwords do not match'; return; }
 
   const users = [{
