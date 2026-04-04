@@ -122,6 +122,8 @@
     return { synced: totalSynced };
   }
 
+  var initTimeout = null;
+
   /**
    * Start the polling loop.
    */
@@ -130,7 +132,8 @@
     var interval = options.interval || POLL_INTERVAL;
     stop();
     // Initial poll after 5 seconds (let other modules initialize)
-    setTimeout(function() {
+    initTimeout = setTimeout(function() {
+      initTimeout = null;
       pollAllProjects();
       pollTimer = setInterval(pollAllProjects, interval);
     }, 5000);
@@ -138,6 +141,10 @@
   }
 
   function stop() {
+    if (initTimeout) {
+      clearTimeout(initTimeout);
+      initTimeout = null;
+    }
     if (pollTimer) {
       clearInterval(pollTimer);
       pollTimer = null;
