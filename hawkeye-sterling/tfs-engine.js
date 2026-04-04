@@ -128,87 +128,137 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
 
     const lists = getListStatus();
     const currentLists = lists.filter(l => l.status === 'CURRENT').map(l => l.name).join(', ');
-    const countryInfo = country ? ` Registered Country/Citizenship: ${country}.` : '';
 
-    if (typeof callAI === 'function') {
+    try {
+      // ═══════════════════════════════════════════════════════════
+      // STEP 1: REAL SANCTIONS DATABASE SEARCH (LIVE DATA)
+      // Searches OFAC SDN, UN Consolidated, UK OFSI — real data
+      // ═══════════════════════════════════════════════════════════
+      let sanctionsResult = null;
+      let sanctionsMatches = [];
+      let sanctionsError = null;
+      let listsSearchedInfo = '';
+
       try {
-        const data = await callAI({
-          model: 'claude-sonnet-4-5-20250514',
-          max_tokens: 3000,
-          temperature: 0,
-          system: `You are a compliance screening assistant. You help compliance officers by searching your training data for information about entities.
-
-CRITICAL ANTI-HALLUCINATION RULES — VIOLATION IS UNACCEPTABLE:
-
-1. YOU ARE NOT A LIVE DATABASE. You are an AI with a training data cutoff. You CANNOT access live sanctions lists, real-time databases, or current records. ALWAYS state this clearly.
-
-2. NEVER state that someone IS on a sanctions list unless you are 100% CERTAIN from your training data. If you are not absolutely sure, say "NOT FOUND IN TRAINING DATA" — do NOT guess or infer.
-
-3. NEVER fabricate OFAC SDN entries, UN designations, EU sanctions, UK OFSI entries, or any other sanctions listing. Do NOT invent OFAC IDs, designation dates, executive orders, or programme references.
-
-4. NEVER present adverse media findings as confirmed facts unless you are certain the specific article/report exists. If you recall general information but cannot cite a specific source with confidence, say "UNVERIFIED — requires manual check".
-
-5. For EVERY finding you report, you MUST indicate your CONFIDENCE LEVEL:
-   - CONFIRMED: You are certain this is accurate based on training data
-   - LIKELY: You believe this is accurate but cannot verify with 100% certainty
-   - UNVERIFIED: You have some information but it needs manual verification
-   - NOT FOUND: No information found in training data
-
-6. DEFAULT TO "NOT FOUND" rather than fabricating. It is FAR better to report nothing than to report false information.
-
-7. ALWAYS include this disclaimer: "This screening is based on AI training data with a knowledge cutoff. It is NOT a substitute for live database checks (Refinitiv World-Check, Dow Jones, LexisNexis, OFAC search tool). All findings must be independently verified before any compliance action is taken."
-
-8. The result field should be:
-   - "CLEAR" — ONLY if you genuinely found nothing
-   - "POTENTIAL_MATCH" — If you found adverse media OR you are unsure about sanctions status OR the entity operates in a high-risk sector
-   - "MATCH" — ONLY if you are 100% CERTAIN the entity is on a specific sanctions list with specific details you can cite
-
-Return ONLY valid JSON.`,
-          messages: [{
-            role: 'user',
-            content: `Screen this entity against your training data. Remember: DO NOT HALLUCINATE. Report ONLY what you are confident about. Default to NOT FOUND.
-
-Entity: "${name}" (type: ${type || 'individual'}).${countryInfo}
-
-Search your training data for:
-1. SANCTIONS: Is this entity on OFAC SDN, UN, EU, UK OFSI, UAE EOCN, or other sanctions lists? ONLY report if you are CERTAIN.
-2. PEP: Is this entity a Politically Exposed Person?
-3. ADVERSE MEDIA: Any credible news reports about this entity? ONLY cite specific articles you are confident exist.
-
-Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","confidence_note":"Your overall confidence assessment","matches":[{"list":"source name","matchType":"sanctions|adverse_media|pep","confidence":"CONFIRMED|LIKELY|UNVERIFIED","details":"specific findings — cite sources ONLY if you are confident they exist"}],"recommendation":"Your assessment including: what was found, what was NOT found, what needs manual verification, and the mandatory disclaimer about AI limitations."}`
-          }]
+        HawkeyeApp.toast('Searching live sanctions databases (OFAC, UN, UK OFSI)...', 'info', 15000);
+        const sanctionsResp = await fetch('/.netlify/functions/sanctions-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, type, country })
         });
 
-        const raw = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-        let cleaned2 = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
-        const objM2 = cleaned2.match(/\{[\s\S]*\}/);
-        if (objM2) cleaned2 = objM2[0];
-        let result;
-        try { result = JSON.parse(cleaned2); } catch(_) { result = { result: 'POTENTIAL_MATCH', matches: [], recommendation: 'Manual review required — AI response could not be parsed. Verify with live databases.' }; }
+        if (sanctionsResp.ok) {
+          sanctionsResult = await sanctionsResp.json();
+          sanctionsMatches = (sanctionsResult.matches || []).map(m => ({
+            list: m.list + ' [LIVE DATA]',
+            matchType: 'sanctions',
+            confidence: m.matchScore / 100,
+            matchCategory: m.matchType,
+            details: 'MATCHED NAME: "' + m.matchedName + '" | Type: ' + m.entryType + ' | Program: ' + (m.program || 'N/A') + ' | Entry ID: ' + (m.entryId || 'N/A') + (m.listedOn ? ' | Listed: ' + m.listedOn : '') + ' | Match Score: ' + m.matchScore + '% (' + m.matchType + ')'
+          }));
 
-        // Add mandatory AI disclaimer to recommendation
-        const disclaimer = '\n\n⚠ AI SCREENING LIMITATION: This result is based on AI training data, NOT live database lookups. All findings MUST be independently verified using official sources (OFAC Search Tool, UN Consolidated List, Refinitiv World-Check, Dow Jones, LexisNexis) before any compliance action is taken. Do NOT rely solely on this AI screening for regulatory decisions.';
-        result.recommendation = (result.recommendation || '') + disclaimer;
-
-        const match = {
-          id: Date.now(),
-          entity: name,
-          type,
-          country: country || '',
-          result: result.result,
-          matches: result.matches || [],
-          recommendation: result.recommendation,
-          date: new Date().toISOString(),
-          listsChecked: currentLists,
-        };
-
-        const matches = getMatches();
-        matches.unshift(match);
-        saveMatches(matches);
-
-        return match;
+          const ls = sanctionsResult.listsSearched || {};
+          listsSearchedInfo = Object.values(ls).map(l => l.name + ' (' + l.entries + ' entries, ' + l.status + ')').join(' | ');
+        } else {
+          sanctionsError = 'Sanctions API returned ' + sanctionsResp.status;
+        }
       } catch (e) {
-        HawkeyeApp.toast(`Screening error: ${e.message}`, 'error');
+        sanctionsError = 'Sanctions API unavailable: ' + e.message;
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // STEP 2: AI ADVERSE MEDIA & PEP CHECK (supplementary only)
+      // AI is used ONLY for adverse media — NOT for sanctions
+      // ═══════════════════════════════════════════════════════════
+      let aiMatches = [];
+      let aiRecommendation = '';
+
+      if (typeof callAI === 'function') {
+        try {
+          HawkeyeApp.toast('Running AI adverse media & PEP check...', 'info', 15000);
+          const countryInfo = country ? ', Country: ' + country : '';
+          const data = await callAI({
+            model: 'claude-sonnet-4-5-20250514',
+            max_tokens: 2000,
+            temperature: 0,
+            system: 'You are an adverse media research assistant. You search your training data for news reports and PEP status ONLY. CRITICAL RULES: 1) Do NOT report sanctions list status — that is handled by live database searches. 2) ONLY report adverse media you are CONFIDENT exists — cite the publication name, approximate date, and what was reported. 3) If you are not sure an article exists, say UNVERIFIED. 4) Check PEP status. 5) Return ONLY valid JSON.',
+            messages: [{
+              role: 'user',
+              content: 'Search your training data for ADVERSE MEDIA and PEP status ONLY (sanctions are checked separately via live databases). Entity: "' + name + '" (' + (type || 'individual') + ')' + countryInfo + '. Return JSON: {"pep_status":"yes|no|unknown","adverse_media_found":true|false,"matches":[{"list":"Publication/Source","matchType":"adverse_media|pep","confidence":"CONFIRMED|LIKELY|UNVERIFIED","details":"What was reported, when, by whom"}],"summary":"Brief assessment of adverse media findings"}'
+            }]
+          });
+
+          const raw = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+          let cleaned = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+          const objM = cleaned.match(/\{[\s\S]*\}/);
+          if (objM) cleaned = objM[0];
+          let aiResult;
+          try { aiResult = JSON.parse(cleaned); } catch(_) { aiResult = { matches: [], summary: 'AI response could not be parsed.' }; }
+
+          aiMatches = (aiResult.matches || []).map(m => ({
+            ...m,
+            list: (m.list || 'Adverse Media') + ' [AI — VERIFY INDEPENDENTLY]'
+          }));
+          aiRecommendation = aiResult.summary || '';
+        } catch (e) {
+          aiRecommendation = 'AI adverse media check failed: ' + e.message;
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // STEP 3: COMBINE RESULTS
+      // Sanctions = REAL DATA | Adverse Media = AI (flagged)
+      // ═══════════════════════════════════════════════════════════
+      const allMatches = [...sanctionsMatches, ...aiMatches];
+
+      // Determine result based on REAL sanctions data only
+      let finalResult = 'CLEAR';
+      if (sanctionsResult && sanctionsResult.result === 'MATCH') finalResult = 'MATCH';
+      else if (sanctionsResult && sanctionsResult.result === 'POTENTIAL_MATCH') finalResult = 'POTENTIAL_MATCH';
+      else if (aiMatches.length > 0) finalResult = 'POTENTIAL_MATCH';
+
+      // Build recommendation
+      let recommendation = '';
+      if (sanctionsMatches.length > 0) {
+        recommendation += 'SANCTIONS DATABASE RESULTS (LIVE DATA):\n';
+        recommendation += sanctionsMatches.length + ' match(es) found in official sanctions databases.\n';
+        recommendation += 'Lists searched: ' + listsSearchedInfo + '\n';
+        recommendation += 'Total entries searched: ' + (sanctionsResult?.totalEntriesSearched || 'N/A') + '\n\n';
+      } else if (sanctionsResult) {
+        recommendation += 'SANCTIONS DATABASE RESULTS (LIVE DATA):\nNo matches found in official sanctions databases.\n';
+        recommendation += 'Lists searched: ' + listsSearchedInfo + '\n';
+        recommendation += 'Total entries searched: ' + (sanctionsResult?.totalEntriesSearched || 'N/A') + '\n\n';
+      }
+      if (sanctionsError) {
+        recommendation += 'SANCTIONS API NOTE: ' + sanctionsError + '. Manual verification required.\n\n';
+      }
+      if (aiRecommendation) {
+        recommendation += 'ADVERSE MEDIA (AI-assisted — verify independently):\n' + aiRecommendation + '\n\n';
+      }
+      recommendation += 'DATA SOURCES: Sanctions results are from LIVE official government databases (OFAC SDN from US Treasury, UN Consolidated List, UK OFSI from HM Treasury). Adverse media results are AI-assisted and must be independently verified. For UAE Local Terrorist List, check EOCN at uaeiec.gov.ae/en-us/un-page.';
+
+      const matchRecord = {
+        id: Date.now(),
+        entity: name,
+        type,
+        country: country || '',
+        result: finalResult,
+        matches: allMatches,
+        recommendation,
+        date: new Date().toISOString(),
+        listsChecked: listsSearchedInfo || currentLists,
+        dataSource: sanctionsResult ? 'LIVE SANCTIONS + AI ADVERSE MEDIA' : 'AI ONLY (sanctions API unavailable)',
+      };
+
+      const matches = getMatches();
+      matches.unshift(matchRecord);
+      saveMatches(matches);
+
+      HawkeyeApp.toast('Screening complete', 'success');
+      return matchRecord;
+
+    } catch (e) {
+      HawkeyeApp.toast(`Screening error: ${e.message}`, 'error');
       }
     }
     return null;
