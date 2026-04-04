@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hawkeye Sterling — Screening Console</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Montserrat:wght@200;300;400;500;600&family=Cinzel:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --gold:#C9A84C;--gold-light:#E8D48B;--gold-dark:#8B6914;
+  --black:#0A0A0A;--black-soft:#111111;--charcoal:#1A1A1A;
+  --ivory:#F5F0E8;--ivory-dim:#D4CFC7;--white:#FEFEFE;
+  --green:#3DA876;--amber:#E8A030;--red:#D94F4F;--blue:#4A90D9;
+  --surface:rgba(201,168,76,0.03);--surface2:rgba(201,168,76,0.06);
+  --border:rgba(201,168,76,0.12);--border-strong:rgba(201,168,76,0.25);
+  --muted:rgba(245,240,232,0.45);--text:var(--ivory);
+}
+html{scroll-behavior:smooth}
+body{background:var(--black);color:var(--ivory);font-family:'Montserrat',sans-serif;font-weight:300;overflow-x:hidden;-webkit-font-smoothing:antialiased;min-height:100vh}
+
+/* NAV */
+.hs-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:18px 40px;display:flex;justify-content:space-between;align-items:center;background:rgba(10,10,10,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.hs-nav-logo{font-family:'Cinzel',serif;font-size:15px;letter-spacing:8px;color:var(--gold);text-transform:uppercase;text-decoration:none}
+.hs-nav-right{display:flex;align-items:center;gap:24px}
+.hs-nav-right a{color:var(--ivory-dim);text-decoration:none;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:400;transition:color 0.3s}
+.hs-nav-right a:hover{color:var(--gold)}
+.hs-nav-badge{font-size:9px;letter-spacing:2px;color:var(--gold-dark);text-transform:uppercase;padding:4px 12px;border:1px solid rgba(201,168,76,0.2);border-radius:2px}
+
+/* MAIN */
+.hs-main{padding-top:80px;max-width:1320px;margin:0 auto;padding-left:32px;padding-right:32px;padding-bottom:60px}
+.hs-header{padding:32px 0 24px;border-bottom:1px solid var(--border);margin-bottom:28px}
+.hs-header h1{font-family:'Cinzel',serif;font-size:28px;font-weight:400;letter-spacing:6px;text-transform:uppercase;color:var(--ivory)}
+.hs-header h1 span{color:var(--gold)}
+.hs-header p{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--ivory-dim);font-style:italic;margin-top:6px;letter-spacing:1px}
+
+/* TABS */
+.hs-tabs{display:flex;gap:0;margin-bottom:28px;border-bottom:1px solid var(--border)}
+.hs-tab{padding:14px 28px;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--ivory-dim);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.3s;font-weight:400;user-select:none}
+.hs-tab:hover{color:var(--gold)}
+.hs-tab.active{color:var(--gold);border-bottom-color:var(--gold);font-weight:500}
+.hs-tab-content{display:none}
+.hs-tab-content.active{display:block;animation:fadeIn 0.4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARDS */
+.hs-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:28px;margin-bottom:20px}
+.hs-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.hs-card-title{font-family:'Cinzel',serif;font-size:16px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:400}
+.hs-card-subtitle{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:1px}
+.hs-card-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* BUTTONS */
+.hs-btn{padding:10px 22px;border:1px solid var(--border-strong);color:var(--gold);font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;background:transparent;cursor:pointer;transition:all 0.3s;font-weight:500;border-radius:2px}
+.hs-btn:hover{background:rgba(201,168,76,0.1);border-color:var(--gold)}
+.hs-btn-sm{padding:6px 14px;font-size:9px;letter-spacing:2px}
+.hs-btn-gold{background:var(--gold);color:var(--black);border-color:var(--gold)}
+.hs-btn-gold:hover{background:var(--gold-light);border-color:var(--gold-light)}
+.hs-btn-danger{color:var(--red);border-color:rgba(217,79,79,0.3)}
+.hs-btn-danger:hover{background:rgba(217,79,79,0.1);border-color:var(--red)}
+.hs-btn-screen{padding:14px 36px;font-size:11px;letter-spacing:4px;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:var(--black);border:none;font-weight:600}
+.hs-btn-screen:hover{background:linear-gradient(135deg,var(--gold-light),var(--gold));box-shadow:0 4px 30px rgba(201,168,76,0.3)}
+
+/* FORM */
+.hs-form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+.hs-form-group{display:flex;flex-direction:column;gap:6px}
+.hs-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:500}
+.hs-input,.hs-select{background:rgba(201,168,76,0.04);border:1px solid var(--border);color:var(--ivory);padding:12px 16px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:300;border-radius:2px;outline:none;transition:border-color 0.3s}
+.hs-input:focus,.hs-select:focus{border-color:var(--gold)}
+.hs-input::placeholder{color:var(--muted)}
+.hs-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23C9A84C'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.hs-select option{background:var(--charcoal);color:var(--ivory)}
+textarea.hs-input{min-height:100px;resize:vertical}
+
+/* STATS */
+.hs-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.hs-stat{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px;text-align:center}
+.hs-stat-value{font-family:'Cinzel',serif;font-size:28px;font-weight:400;color:var(--ivory);margin-bottom:4px}
+.hs-stat-value.current{color:var(--green)}
+.hs-stat-value.stale{color:var(--amber)}
+.hs-stat-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-weight:500}
+
+/* LIST GRID */
+.hs-list-grid{display:flex;flex-direction:column;gap:6px}
+.hs-list-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border);border-radius:3px;transition:border-color 0.3s}
+.hs-list-item.stale{border-color:rgba(232,160,48,0.3)}
+.hs-list-item:hover{border-color:var(--border-strong)}
+.hs-list-info{flex:1;min-width:0}
+.hs-list-name{font-size:12px;font-weight:400;color:var(--ivory);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hs-list-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.hs-list-date{text-align:right;font-size:10px;color:var(--muted);min-width:80px}
+.hs-new-entries{color:var(--amber);font-size:10px;font-weight:500}
+
+/* STATUS DOT */
+.status-dot{width:8px;height:8px;border-radius:50%;background:rgba(201,168,76,0.2);flex-shrink:0}
+.status-dot.current{background:var(--green);box-shadow:0 0 8px rgba(61,168,118,0.4)}
+.status-dot.refreshing{background:var(--blue);animation:pulse 1s infinite}
+.status-dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* BADGES */
+.hs-badge{display:inline-block;padding:3px 10px;border-radius:2px;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:600;font-family:'Montserrat',sans-serif}
+.hs-badge.clear{background:rgba(61,168,118,0.12);color:var(--green);border:1px solid rgba(61,168,118,0.3)}
+.hs-badge.potential{background:rgba(232,160,48,0.12);color:var(--amber);border:1px solid rgba(232,160,48,0.3)}
+.hs-badge.match{background:rgba(217,79,79,0.12);color:var(--red);border:1px solid rgba(217,79,79,0.3)}
+.hs-outcome-badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:500;font-family:'Montserrat',sans-serif;border:1px solid}
+
+/* MATCH HISTORY */
+.hs-match-item{padding:14px 16px;border:1px solid var(--border);border-radius:3px;margin-bottom:8px;transition:border-color 0.3s}
+.hs-match-item.match{border-left:3px solid var(--red)}
+.hs-match-item.potential{border-left:3px solid var(--amber)}
+.hs-match-item.clear{border-left:3px solid var(--green)}
+.hs-match-header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hs-match-entity{font-size:13px;font-weight:400}
+.hs-match-date{font-size:10px;color:var(--muted);margin-left:auto}
+.hs-match-detail{font-size:12px;color:var(--ivory-dim);margin-top:8px;line-height:1.6;padding-top:8px;border-top:1px solid var(--border)}
+
+/* SCREEN RESULT */
+.hs-screen-result{padding:20px;border:1px solid var(--border);border-radius:4px;margin-top:20px}
+.hs-screen-result.match{border-color:rgba(217,79,79,0.4);background:rgba(217,79,79,0.04)}
+.hs-screen-result.potential{border-color:rgba(232,160,48,0.4);background:rgba(232,160,48,0.04)}
+.hs-screen-result.clear{border-color:rgba(61,168,118,0.4);background:rgba(61,168,118,0.04)}
+.hs-result-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.hs-result-entity{font-size:15px;font-weight:500}
+.hs-result-recommendation{font-size:12px;line-height:1.7;color:var(--ivory-dim);margin-top:12px;padding:12px;background:var(--surface);border-radius:3px}
+.hs-result-basis{margin-top:14px;padding:14px;border-left:3px solid var(--gold);background:var(--surface)}
+.hs-result-basis strong{font-size:11px;letter-spacing:2px;color:var(--gold);display:block;margin-bottom:6px}
+.hs-result-basis p{font-size:12px;line-height:1.6;color:var(--ivory-dim)}
+.hs-match-hit{padding:8px 12px;background:var(--surface);border-radius:3px;margin-bottom:6px;font-size:12px}
+.hs-hit-detail{font-size:11px;color:var(--muted);margin-top:3px}
+.hs-screening-status{color:var(--gold);font-size:13px;animation:pulse 1.5s infinite}
+
+/* EVENT CARDS */
+.hs-event-card{border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:10px;transition:border-color 0.3s}
+.hs-event-card.critical{border-left:4px solid var(--red);background:rgba(217,79,79,0.03)}
+.hs-event-card.warning{border-left:4px solid var(--amber);background:rgba(232,160,48,0.03)}
+.hs-event-card.ok{border-left:4px solid var(--green);background:rgba(61,168,118,0.03)}
+.hs-event-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.hs-event-info{flex:1}
+.hs-event-title{font-size:14px;font-weight:400;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hs-event-meta{font-size:11px;color:var(--ivory-dim);margin-bottom:3px}
+.hs-event-actions-req{font-size:11px;color:var(--amber);margin-bottom:3px}
+.hs-event-ref{font-size:10px;color:var(--muted)}
+.hs-event-btns{display:flex;gap:6px;flex-shrink:0}
+.hs-event-notes{font-size:12px;color:var(--ivory-dim);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);line-height:1.6;white-space:pre-wrap;max-height:150px;overflow-y:auto}
+
+/* MANDATORY LISTS */
+.hs-mandatory-lists{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.hs-mandatory-card{padding:16px;border-radius:4px;border:1px solid var(--border)}
+.hs-mandatory-card.mandatory{border-color:rgba(201,168,76,0.3);background:rgba(201,168,76,0.04)}
+.hs-mandatory-card.enhanced{border-color:rgba(74,144,217,0.2);background:rgba(74,144,217,0.03)}
+.hs-mandatory-card h4{font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:10px;font-weight:400}
+.hs-mandatory-card p{font-size:12px;margin-bottom:4px;line-height:1.5}
+.hs-reg-note{font-size:10px!important;color:var(--muted)!important;margin-top:8px!important;letter-spacing:0.5px}
+.hs-empty{color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;font-style:italic}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.8);backdrop-filter:blur(6px);display:none;align-items:flex-start;justify-content:center;padding:60px 20px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.hs-modal{background:var(--charcoal);border:1px solid var(--border-strong);border-radius:4px;max-width:720px;width:100%;max-height:90vh;overflow-y:auto;padding:32px}
+.hs-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.hs-modal-title{font-family:'Cinzel',serif;font-size:18px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);font-weight:400}
+.hs-modal-close{background:none;border:none;color:var(--ivory-dim);font-size:20px;cursor:pointer;padding:4px;transition:color 0.3s}
+.hs-modal-close:hover{color:var(--gold)}
+.hs-modal-reg{font-size:10px;color:var(--muted);margin-bottom:20px;letter-spacing:0.5px}
+
+/* CHECKBOXES */
+.hs-check-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--surface);padding:14px;border:1px solid var(--border);border-radius:3px;margin-top:6px}
+.hs-check-label{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;color:var(--ivory-dim);transition:color 0.3s}
+.hs-check-label:hover{color:var(--ivory)}
+.hs-check-label input[type="checkbox"]{width:auto;accent-color:var(--gold)}
+
+/* OUTCOME BUTTONS */
+.hs-outcome-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:6px}
+.hs-outcome-btn{background:rgba(201,168,76,0.03);border:2px solid rgba(201,168,76,0.15);color:var(--ivory);font-size:11px;padding:12px 8px;cursor:pointer;transition:all 0.3s;font-family:'Montserrat',sans-serif;border-radius:3px;text-align:center}
+.hs-outcome-btn:hover{border-color:var(--gold);background:rgba(201,168,76,0.08)}
+
+/* CONDITIONAL SECTIONS */
+.hs-fp-section,.hs-partial-section,.hs-confirmed-section{margin-top:14px}
+.hs-outcome-detail{padding:16px;border-radius:4px;border:1px solid}
+.hs-outcome-detail.fp{border-color:rgba(61,168,118,0.3);background:rgba(61,168,118,0.05)}
+.hs-outcome-detail.partial{border-color:rgba(232,160,48,0.3);background:rgba(232,160,48,0.05)}
+.hs-outcome-detail.confirmed{border-color:rgba(217,79,79,0.4);background:rgba(217,79,79,0.05)}
+.hs-outcome-detail h4{font-size:13px;font-weight:600;margin-bottom:10px}
+.hs-outcome-detail h4.fp-title{color:var(--green)}
+.hs-outcome-detail h4.partial-title{color:var(--amber)}
+.hs-outcome-detail h4.confirmed-title{color:var(--red)}
+.hs-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+
+/* TOAST */
+.hs-toast{position:fixed;bottom:30px;right:30px;z-index:300;padding:14px 28px;background:var(--charcoal);border:1px solid var(--border);color:var(--ivory);font-size:12px;letter-spacing:1px;border-radius:3px;transform:translateY(100px);opacity:0;transition:all 0.4s ease;pointer-events:none;max-width:400px}
+.hs-toast.show{transform:translateY(0);opacity:1;pointer-events:auto}
+.hs-toast.success{border-color:var(--green);color:var(--green)}
+.hs-toast.error{border-color:var(--red);color:var(--red)}
+.hs-toast.info{border-color:var(--gold);color:var(--gold)}
+
+/* FOOTER */
+.hs-footer{text-align:center;padding:40px;border-top:1px solid var(--border);margin-top:40px}
+.hs-footer-logo{font-family:'Cinzel',serif;font-size:12px;letter-spacing:8px;color:var(--gold-dark);text-transform:uppercase;margin-bottom:8px}
+.hs-footer-copy{font-size:9px;letter-spacing:3px;color:rgba(245,240,232,0.2);text-transform:uppercase}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .hs-nav{padding:14px 20px}
+  .hs-main{padding-left:16px;padding-right:16px}
+  .hs-form-grid{grid-template-columns:1fr}
+  .hs-stats-row{grid-template-columns:repeat(2,1fr)}
+  .hs-mandatory-lists{grid-template-columns:1fr}
+  .hs-outcome-grid{grid-template-columns:repeat(2,1fr)}
+  .hs-row-2{grid-template-columns:1fr}
+  .hs-tabs{overflow-x:auto}
+  .hs-tab{padding:12px 16px;font-size:10px;white-space:nowrap}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="hs-nav">
+  <a href="index.html" class="hs-nav-logo">Hawkeye Sterling</a>
+  <div class="hs-nav-right">
+    <span class="hs-nav-badge">Screening Console</span>
+    <a href="index.html">Home</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="hs-main">
+  <div class="hs-header">
+    <h1>Screening <span>Console</span></h1>
+    <p>Targeted Financial Sanctions &mdash; Nothing Escapes. Everything Is Verified.</p>
+  </div>
+
+  <!-- TABS -->
+  <div class="hs-tabs">
+    <div class="hs-tab active" data-tab="screen">Quick Screen</div>
+    <div class="hs-tab" data-tab="workflow">TFS Workflow</div>
+    <div class="hs-tab" data-tab="lists">Sanctions Lists</div>
+    <div class="hs-tab" data-tab="history">Screening History</div>
+  </div>
+
+  <!-- TAB: QUICK SCREEN -->
+  <div class="hs-tab-content active" id="tab-screen">
+    <div class="hs-card">
+      <div class="hs-card-header">
+        <div>
+          <h3 class="hs-card-title">Entity Screening</h3>
+          <p class="hs-card-subtitle">AI-powered deep screening &mdash; sanctions, PEP, adverse media across 15 global databases</p>
+        </div>
+      </div>
+      <div class="hs-form-grid">
+        <div class="hs-form-group">
+          <label class="hs-label">Entity Name *</label>
+          <input class="hs-input" id="qs-name" placeholder="Full legal name of individual or entity"/>
+        </div>
+        <div class="hs-form-group">
+          <label class="hs-label">Entity Type</label>
+          <select class="hs-select" id="qs-type">
+            <option value="individual">Individual</option>
+            <option value="company">Company</option>
+          </select>
+        </div>
+        <div class="hs-form-group">
+          <label class="hs-label">Country / Citizenship</label>
+          <input class="hs-input" id="qs-country" placeholder="e.g. UAE, Iran, Russia"/>
+        </div>
+      </div>
+      <button class="hs-btn hs-btn-screen" onclick="HawkeyeApp.runQuickScreen()">Run Deep Screening</button>
+    </div>
+    <div id="qs-result" style="display:none"></div>
+  </div>
+
+  <!-- TAB: TFS WORKFLOW -->
+  <div class="hs-tab-content" id="tab-workflow">
+    <div id="tfs-workflow-content"></div>
+  </div>
+
+  <!-- TAB: SANCTIONS LISTS -->
+  <div class="hs-tab-content" id="tab-lists">
+    <div class="hs-card">
+      <div class="hs-card-header">
+        <div>
+          <h3 class="hs-card-title">Sanctions List Manager</h3>
+          <p class="hs-card-subtitle">FATF Rec 6 &amp; 7 &mdash; 15 international &amp; UAE sanctions sources monitored</p>
+        </div>
+        <div class="hs-card-actions">
+          <button class="hs-btn hs-btn-gold" onclick="TFSEngine.refreshAll()">Refresh All Lists</button>
+        </div>
+      </div>
+      <div id="tfs-list-panel"></div>
+    </div>
+  </div>
+
+  <!-- TAB: SCREENING HISTORY -->
+  <div class="hs-tab-content" id="tab-history">
+    <div class="hs-card">
+      <div class="hs-card-header">
+        <div>
+          <h3 class="hs-card-title">Screening History</h3>
+          <p class="hs-card-subtitle">Complete audit trail of all entity screenings</p>
+        </div>
+        <div class="hs-card-actions">
+          <button class="hs-btn hs-btn-sm" onclick="TFSEngine.exportPDF()">Export PDF</button>
+          <button class="hs-btn hs-btn-sm" onclick="TFSEngine.exportCSV()">Export CSV</button>
+          <button class="hs-btn hs-btn-sm hs-btn-danger" onclick="TFSEngine.clearResults()">Clear All</button>
+        </div>
+      </div>
+      <div id="tfs-match-history"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TFS MODAL -->
+<div class="modal-overlay" id="tfsModal">
+  <div class="hs-modal">
+    <div class="hs-modal-header">
+      <h3 class="hs-modal-title">TFS Screening Event</h3>
+      <button class="hs-modal-close" onclick="HawkeyeApp.closeTFSForm()">&times;</button>
+    </div>
+    <div class="hs-modal-reg">Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance | Mandatory: UAE Local Terrorist List + UNSC Consolidated List</div>
+    <input type="hidden" id="tfs-edit-idx" value="-1">
+    <input type="hidden" id="tfs-outcome" value="">
+
+    <div class="hs-form-grid">
+      <div class="hs-form-group"><label class="hs-label">Name Screened *</label><input class="hs-input" id="tfs-name" placeholder="Full legal name"/></div>
+      <div class="hs-form-group"><label class="hs-label">Entity Type *</label>
+        <select class="hs-select" id="tfs-entity-type"><option value="Individual">Individual</option><option value="Company">Company</option></select>
+      </div>
+      <div class="hs-form-group"><label class="hs-label">Date of Birth / Registration</label><input type="date" class="hs-input" id="tfs-dob"/></div>
+    </div>
+    <div class="hs-form-grid">
+      <div class="hs-form-group"><label class="hs-label">Screening Event Type *</label>
+        <select class="hs-select" id="tfs-event"><option>New Customer Onboarding</option><option>Periodic Rescreening</option><option>List Update Trigger</option><option>Transaction Pre-Approval</option><option>Supplier/Refinery Onboarding</option><option>UBO Screening</option><option>Ad Hoc Review</option></select>
+      </div>
+      <div class="hs-form-group"><label class="hs-label">Country</label><input class="hs-input" id="tfs-country" placeholder="e.g. UAE, Iran, Russia"/></div>
+      <div class="hs-form-group"><label class="hs-label">ID / Register No.</label><input class="hs-input" id="tfs-idnumber" placeholder="Passport, EID, Trade License"/></div>
+    </div>
+
+    <div class="hs-form-group">
+      <label class="hs-label">Lists Screened (tick all that apply)</label>
+      <div class="hs-check-grid">
+        <label class="hs-check-label"><input type="checkbox" id="tfs-list-uae" checked/> UAE Local Terrorist List (EOCN)</label>
+        <label class="hs-check-label"><input type="checkbox" id="tfs-list-un" checked/> UNSC Consolidated Sanctions List</label>
+        <label class="hs-check-label"><input type="checkbox" id="tfs-list-ofac" checked/> OFAC SDN (Enhanced)</label>
+        <label class="hs-check-label"><input type="checkbox" id="tfs-list-eu" checked/> EU Consolidated (Enhanced)</label>
+        <label class="hs-check-label"><input type="checkbox" id="tfs-list-uk" checked/> UK OFSI (Enhanced)</label>
+        <label class="hs-check-label"><input type="checkbox" id="tfs-list-interpol" checked/> Interpol Red Notices (Enhanced)</label>
+        <label class="hs-check-label"><input type="checkbox" id="tfs-list-adverse" checked/> Adverse Media Screening</label>
+        <label class="hs-check-label"><input type="checkbox" id="tfs-list-pep" checked/> PEP Database</label>
+      </div>
+    </div>
+
+    <div class="hs-row-2" style="margin-top:14px">
+      <div class="hs-form-group"><label class="hs-label">Screening Date *</label><input type="date" class="hs-input" id="tfs-date"/></div>
+      <div class="hs-form-group"><label class="hs-label">Reviewed By</label><input class="hs-input" id="tfs-reviewer" placeholder="Compliance Officer / MLRO name"/></div>
+    </div>
+
+    <div class="hs-form-group" style="margin-top:14px">
+      <label class="hs-label">Screening Outcome *</label>
+      <div class="hs-outcome-grid">
+        <button type="button" class="hs-outcome-btn" id="tfs-btn-Negative_&#x2013;_No_Match" onclick="HawkeyeApp.selectOutcome('Negative \u2013 No Match')">&#x2705; Negative &ndash; No Match</button>
+        <button type="button" class="hs-outcome-btn" id="tfs-btn-False_Positive" onclick="HawkeyeApp.selectOutcome('False Positive')">&#x26AA; False Positive</button>
+        <button type="button" class="hs-outcome-btn" id="tfs-btn-Partial_Match" onclick="HawkeyeApp.selectOutcome('Partial Match')">&#x1F7E1; Partial Match</button>
+        <button type="button" class="hs-outcome-btn" id="tfs-btn-Confirmed_Match" onclick="HawkeyeApp.selectOutcome('Confirmed Match')">&#x1F534; Confirmed Match</button>
+      </div>
+    </div>
+
+    <!-- FALSE POSITIVE SECTION -->
+    <div id="tfs-fp-section" style="display:none" class="hs-fp-section">
+      <div class="hs-outcome-detail fp">
+        <h4 class="fp-title">FALSE POSITIVE &mdash; Differentiation Required</h4>
+        <div class="hs-form-group"><label class="hs-label">Differentiation Basis *</label>
+          <select class="hs-select" id="tfs-fp-basis"><option value="">Select</option><option>Different date of birth confirmed</option><option>Different nationality confirmed</option><option>Different gender confirmed</option><option>Name spelling variation &mdash; different person</option><option>ID document verification confirms different person</option><option>Other</option></select>
+        </div>
+        <div class="hs-form-group" style="margin-top:10px"><label class="hs-label">Supporting Evidence</label><input class="hs-input" id="tfs-fp-evidence" placeholder="Document reference confirming differentiation"/></div>
+      </div>
+    </div>
+
+    <!-- PARTIAL MATCH SECTION -->
+    <div id="tfs-partial-section" style="display:none" class="hs-partial-section">
+      <div class="hs-outcome-detail partial">
+        <h4 class="partial-title">PARTIAL MATCH &mdash; PNMR Required within 5 Business Days</h4>
+        <div class="hs-row-2">
+          <div class="hs-form-group"><label class="hs-label">Transaction Suspended?</label>
+            <select class="hs-select" id="tfs-tx-suspended"><option value="">Select</option><option>Yes &ndash; Transaction Suspended</option><option>No Transaction Involved</option></select>
+          </div>
+          <div class="hs-form-group"><label class="hs-label">PNMR Deadline</label><input type="date" class="hs-input" id="tfs-pnmr-deadline" readonly style="opacity:0.7"/></div>
+        </div>
+        <div class="hs-row-2">
+          <div class="hs-form-group"><label class="hs-label">PNMR Filed to EOCN?</label>
+            <select class="hs-select" id="tfs-pnmr-status"><option>Pending</option><option>Filed &ndash; Reference Obtained</option><option>Not Required &ndash; False Positive Confirmed</option></select>
+          </div>
+          <div class="hs-form-group"><label class="hs-label">PNMR Reference</label><input class="hs-input" id="tfs-pnmr-ref" placeholder="EOCN PNMR reference number"/></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRMED MATCH SECTION -->
+    <div id="tfs-confirmed-section" style="display:none" class="hs-confirmed-section">
+      <div class="hs-outcome-detail confirmed">
+        <h4 class="confirmed-title">CONFIRMED MATCH &mdash; IMMEDIATE ACTION REQUIRED</h4>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Cabinet Decision 74/2020 | EOCN TFS Guidance | Freeze within 24h | CNMR within 5 business days</div>
+        <div class="hs-row-2">
+          <div class="hs-form-group"><label class="hs-label">Assets Frozen Within 24h? *</label>
+            <select class="hs-select" id="tfs-frozen"><option value="">Select</option><option>Yes &ndash; Frozen Immediately</option><option>No Assets to Freeze</option><option>Freeze Pending &ndash; Escalated</option></select>
+          </div>
+          <div class="hs-form-group"><label class="hs-label">Freeze Date/Time</label><input type="datetime-local" class="hs-input" id="tfs-freeze-dt"/></div>
+        </div>
+        <div class="hs-row-2">
+          <div class="hs-form-group"><label class="hs-label">FFR Filed via goAML? *</label>
+            <select class="hs-select" id="tfs-ffr"><option value="">Select</option><option>Yes &ndash; FFR Filed</option><option>Pending &ndash; Within 24h</option><option>Not Required</option></select>
+          </div>
+          <div class="hs-form-group"><label class="hs-label">goAML FFR Reference</label><input class="hs-input" id="tfs-ffr-ref" placeholder="goAML FFR reference"/></div>
+        </div>
+        <div class="hs-row-2">
+          <div class="hs-form-group"><label class="hs-label">CNMR Filed to EOCN? *</label>
+            <select class="hs-select" id="tfs-cnmr-status"><option>Pending</option><option>Filed &ndash; Reference Obtained</option></select>
+          </div>
+          <div class="hs-form-group"><label class="hs-label">CNMR Deadline (5 business days)</label><input type="date" class="hs-input" id="tfs-cnmr-deadline" readonly style="opacity:0.7"/></div>
+        </div>
+        <div class="hs-row-2">
+          <div class="hs-form-group"><label class="hs-label">CNMR Reference</label><input class="hs-input" id="tfs-cnmr-ref" placeholder="EOCN CNMR reference"/></div>
+          <div class="hs-form-group"><label class="hs-label">Supervisor Notified?</label>
+            <select class="hs-select" id="tfs-supervisor"><option value="">Select</option><option>Yes &ndash; MoE Notified</option><option>Yes &ndash; CBUAE Notified</option><option>Yes &ndash; DFSA Notified</option><option>Pending</option></select>
+          </div>
+        </div>
+        <div class="hs-row-2">
+          <div class="hs-form-group"><label class="hs-label">MLRO Notified?</label>
+            <select class="hs-select" id="tfs-mlro"><option value="">Select</option><option>Yes &ndash; Immediately</option><option>Pending</option></select>
+          </div>
+          <div class="hs-form-group"><label class="hs-label">Senior Management Notified?</label>
+            <select class="hs-select" id="tfs-mgmt"><option value="">Select</option><option>Yes &ndash; Immediately</option><option>Pending</option></select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hs-form-group" style="margin-top:14px">
+      <label class="hs-label">Disposition Rationale / Notes *</label>
+      <textarea class="hs-input" id="tfs-notes" placeholder="Document the full basis for your screening decision."></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="hs-btn hs-btn-gold" onclick="HawkeyeApp.saveTFS()" style="flex:1">Save Screening Event</button>
+      <button class="hs-btn" onclick="HawkeyeApp.closeTFSForm()" style="padding:14px 24px">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="hs-toast" class="hs-toast"></div>
+
+<!-- FOOTER -->
+<div class="hs-footer">
+  <div class="hs-footer-logo">Hawkeye Sterling</div>
+  <p class="hs-footer-copy">&copy; 2026 Hawkeye Sterling. All rights reserved.</p>
+</div>
+
+<script src="tfs-engine.js"></script>
+<script src="screening-app.js"></script>
+</body>
+</html>
