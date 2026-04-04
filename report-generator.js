@@ -172,6 +172,17 @@
     const contentW = pageW - margin * 2;
     let y = margin;
 
+    // ── Company color & logo (must be before nested functions that reference them) ──
+    const company = typeof getActiveCompany === 'function' ? getActiveCompany() : {};
+    const companyColor = typeof getCompanyDocColor === 'function' ? getCompanyDocColor(company.id || 'company-5') : '#1a1a6e';
+    const ccRGB = [parseInt(companyColor.slice(1,3),16), parseInt(companyColor.slice(3,5),16), parseInt(companyColor.slice(5,7),16)];
+    const cName = (company.name || data.company || 'N/A').toUpperCase();
+    const activity = company.activity || 'Non-Manufactured Precious Metal Trading';
+    const licenseNo = company.licenseNo || '';
+    const logo = typeof getCompanyLogoBase64 === 'function' ? getCompanyLogoBase64(company.id) : '';
+    const loc = company.location || 'Dubai, UAE';
+    const yr = new Date().getFullYear();
+
     function addPage() {
       doc.addPage();
       y = margin + 4;
@@ -219,17 +230,6 @@
       doc.text(lines, margin, y);
       y += lines.length * 3.5 + 3;
     }
-
-    // ── Company color & logo ──
-    const company = typeof getActiveCompany === 'function' ? getActiveCompany() : {};
-    const companyColor = typeof getCompanyDocColor === 'function' ? getCompanyDocColor(company.id || 'company-5') : '#1a1a6e';
-    const ccRGB = [parseInt(companyColor.slice(1,3),16), parseInt(companyColor.slice(3,5),16), parseInt(companyColor.slice(5,7),16)];
-    const cName = (company.name || data.company || 'N/A').toUpperCase();
-    const activity = company.activity || 'Non-Manufactured Precious Metal Trading';
-    const licenseNo = company.licenseNo || '';
-    const logo = typeof getCompanyLogoBase64 === 'function' ? getCompanyLogoBase64(company.id) : '';
-    const loc = company.location || 'Dubai, UAE';
-    const yr = new Date().getFullYear();
 
     // ── Header band ──
     doc.setFillColor(...ccRGB);
