@@ -2459,10 +2459,10 @@
     else toast('TFS event saved — '+outcome,'success');
     renderTFS2();
 
-    // Auto-sync to Asana
+    // Auto-sync to dedicated SCREENING project in Asana
     var savedIdx = editIdx>=0 ? editIdx : 0;
     try {
-      if (typeof asanaPush === 'function' || typeof autoSyncToAsana === 'function') {
+      if (typeof syncScreeningToAsana === 'function' || typeof autoSyncToAsana === 'function' || typeof asanaPush === 'function') {
         var syncTitle = '[TFS] ' + name + ' — ' + outcome;
         var syncNotes = 'TFS Screening Event: ' + record.id
           + '\nEntity: ' + name + ' (' + (record.entityType||'') + ')'
@@ -2476,7 +2476,12 @@
           + (record.notes ? '\n\nNotes:\n' + record.notes : '')
           + '\n\nRegulatory Basis: UAE FDL No.10/2025, FATF Rec 6, Cabinet Decision No.74/2020';
         var daysUrgency = outcome==='Confirmed Match' ? 1 : outcome==='Partial Match' ? 5 : 30;
-        if (typeof autoSyncToAsana === 'function') {
+        // Use dedicated SCREENING project per entity
+        if (typeof syncScreeningToAsana === 'function') {
+          syncScreeningToAsana(name, syncTitle, syncNotes, daysUrgency).then(function(gid) {
+            if (gid) { var ev = load(SK2.TFS2)||[]; if(ev[savedIdx]) { ev[savedIdx].asanaGid = gid; save(SK2.TFS2, ev); } toast('Screening synced to Asana (SCREENING project)','success',2000); }
+          }).catch(function(){});
+        } else if (typeof autoSyncToAsana === 'function') {
           autoSyncToAsana(syncTitle, syncNotes, daysUrgency).then(function(gid) {
             if (gid) { var ev = load(SK2.TFS2)||[]; if(ev[savedIdx]) { ev[savedIdx].asanaGid = gid; save(SK2.TFS2, ev); } toast('Screening synced to Asana','success',2000); }
           }).catch(function(){});
