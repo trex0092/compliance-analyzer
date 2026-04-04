@@ -12,7 +12,8 @@
 <meta name="apple-mobile-web-app-title" content="Sterling V2">
 <meta name="theme-color" content="#0A0A0A">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='32' fill='%230A0A0A'/%3E%3Ccircle cx='90' cy='78' r='30' stroke='%23C9A84C' stroke-width='3' fill='none'/%3E%3Ccircle cx='90' cy='78' r='12' fill='%23C9A84C' opacity='0.3'/%3E%3Ccircle cx='90' cy='78' r='5' fill='%23C9A84C'/%3E%3Cpath d='M58 100 Q90 140 122 100' stroke='%23C9A84C' stroke-width='3' fill='none'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="assets/logos/hawkeye-icon.svg">
+<link rel="apple-touch-icon" href="assets/logos/hawkeye-icon.svg">
 <title>Hawkeye Sterling V2 — Compliance Suite</title>
 <script>
 // KILL all service workers and caches — must run FIRST
@@ -6257,7 +6258,7 @@ async function submitCreateTask() {
 // ======= ASANA READ =======
 async function loadAsanaTasks(silent) {
   if (!ASANA_TOKEN && !PROXY_URL) {
-    document.getElementById('asanaContent').innerHTML = '<p style="color:var(--amber);font-size:13px;font-family:Montserrat,sans-serif">No Asana token configured. Add it in Settings to see live tasks.</p>';
+    document.getElementById('asanaContent').innerHTML = '<p style="color:var(--amber);font-size:13px;font-family:\'Montserrat\',sans-serif">No Asana token configured. Add it in Settings to see live tasks.</p>';
     setAsanaModuleSync('tasks', { status: 'Idle', lastError: 'No Asana token configured' });
     return;
   }
