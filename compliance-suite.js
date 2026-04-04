@@ -2761,24 +2761,6 @@
 
     var notesEl = document.getElementById('tfs2-notes');
 
-    // Check screening cache to avoid duplicate API calls for same entity
-    // Skip cache if called from bulk upload (window._bulkScreeningActive)
-    var cacheKey = 'fgl_screening_cache';
-    var CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
-    if (!window._bulkScreeningActive) {
-      try {
-        var cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-        var cacheId = (name + '|' + entityType + '|' + country).toLowerCase().replace(/\s+/g, ' ').trim();
-        var cached = cache[cacheId];
-        if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-          toast('Using cached result for "' + name + '" (screened ' + new Date(cached.timestamp).toLocaleString('en-GB') + '). Click "Run Screening" again within the form to force re-screen.', 'info', 6000);
-          if (notesEl) notesEl.value = cached.notes;
-          if (cached.outcome) suite2SelectOutcome(cached.outcome);
-          return;
-        }
-      } catch(_) {}
-    }
-
     toast('Tier-1 deep screening "' + name + '" — live web search + AI analysis — may take 30-60 seconds...', 'info', 60000);
 
     try {
@@ -2886,24 +2868,6 @@
       report += '\n\nIMPORTANT DISCLAIMER: This AI screening is based on training data' + (liveSearchResults ? ' supplemented with live web search results' : ' with a knowledge cutoff') + '. Always supplement with live database checks (Refinitiv World-Check, Dow Jones, LexisNexis) and current news searches before making final compliance decisions.';
 
       if (notesEl) notesEl.value = '[AI Screening] ' + report;
-
-      // Cache the screening result to avoid duplicate API calls
-      try {
-        var cacheToSave = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-        var saveCacheId = (name + '|' + entityType + '|' + country).toLowerCase().replace(/\s+/g, ' ').trim();
-        cacheToSave[saveCacheId] = {
-          timestamp: Date.now(),
-          notes: '[AI Screening] ' + report,
-          outcome: r === 'CLEAR' || r === 'NO_MATCH' ? 'Negative – No Match' : r === 'MATCH' ? 'Confirmed Match' : 'Partial Match'
-        };
-        // Keep cache under 50 entries to avoid storage bloat
-        var cacheKeys = Object.keys(cacheToSave);
-        if (cacheKeys.length > 50) {
-          cacheKeys.sort(function(a,b){ return (cacheToSave[a].timestamp||0) - (cacheToSave[b].timestamp||0); });
-          for (var ci = 0; ci < cacheKeys.length - 50; ci++) delete cacheToSave[cacheKeys[ci]];
-        }
-        localStorage.setItem(cacheKey, JSON.stringify(cacheToSave));
-      } catch(_) {}
 
     } catch(e) {
       toast('Screening error: ' + e.message, 'error');
@@ -4042,6 +4006,8 @@
   // ─── INIT ────────────────────────────────────────────────────────────────────
   function initSuite2() {
     injectSuite2();
+    // Clear old screening cache (removed — was causing false negatives)
+    try { localStorage.removeItem('fgl_screening_cache'); } catch(_) {}
     // Auto-render TFS into embedded container (merged into Screening & TFS tab)
     setTimeout(function() { if (document.getElementById('tfs-embedded-content')) renderTFS2(); }, 600);
   }
