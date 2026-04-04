@@ -324,7 +324,7 @@ textarea.hs-input{min-height:100px;resize:vertical}
       <div class="hs-card-header">
         <div>
           <h3 class="hs-card-title">goAML Report Types &mdash; UAE FIU</h3>
-          <p class="hs-card-subtitle">Official report types per UAE FIU goAML Portal (v1.2, April 2024) &mdash; <a href="https://uaefiu.gov.ae" target="_blank" style="color:var(--gold)">uaefiu.gov.ae</a></p>
+          <p class="hs-card-subtitle">Official report types per UAE FIU goAML Portal (v1.2, April 2024) &mdash; <a href="https://uaefiu.gov.ae" target="_blank" style="color:var(--gold)">uaefiu.gov.ae</a> | EOCN TFS: <a href="https://www.uaeiec.gov.ae/en-us/un-page" target="_blank" style="color:var(--gold)">uaeiec.gov.ae</a> | TFS Inquiries: <span style="color:var(--gold)">tfs@eocn.gov.ae</span></p>
         </div>
       </div>
       <div class="hs-goaml-grid">
@@ -339,14 +339,14 @@ textarea.hs-input{min-height:100px;resize:vertical}
           <div class="hs-goaml-desc">Suspicious activity or attempted / non-executed transaction. File when no transaction occurred but behaviour is suspicious.</div>
         </div>
         <div class="hs-goaml-card freeze">
-          <div class="hs-goaml-code">FFR</div>
-          <div class="hs-goaml-name">Funds Freeze Report</div>
-          <div class="hs-goaml-desc">Filed when funds/assets are frozen under Targeted Financial Sanctions. Required immediately upon confirmed sanctions match.</div>
+          <div class="hs-goaml-code">FFR / CNMR</div>
+          <div class="hs-goaml-name">Funds Freeze Report / Confirmed Name Match Report</div>
+          <div class="hs-goaml-desc">Filed when funds/assets are frozen under TFS. <strong>CNMR</strong> is the updated EOCN term for FFR. Submit via goAML within <strong>5 business days</strong> of implementing freeze. (Cabinet Decision 74/2020, Art.21)</div>
         </div>
         <div class="hs-goaml-card warning">
           <div class="hs-goaml-code">PNMR</div>
           <div class="hs-goaml-name">Partial Name Match Report</div>
-          <div class="hs-goaml-desc">Partial hit on a sanctions or watchlist name. File within 5 business days if match cannot be resolved. Also submit to EOCN.</div>
+          <div class="hs-goaml-desc">Partial hit on sanctions/watchlist name. Entity has <strong>10 business days</strong> to verify/discount. If unresolved: reject transaction, then file PNMR within <strong>5 business days</strong> of rejection. (Cabinet Decision 74/2020)</div>
         </div>
         <div class="hs-goaml-card info">
           <div class="hs-goaml-code">DPMSR</div>
