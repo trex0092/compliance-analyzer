@@ -131,78 +131,71 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
 
     try {
       // ═══════════════════════════════════════════════════════════
-      // STEP 1: REAL SANCTIONS DATABASE SEARCH (LIVE DATA)
-      // Searches OFAC SDN, UN Consolidated, UK OFSI — real data
+      // RUN BOTH IN PARALLEL — sanctions + adverse media at once
       // ═══════════════════════════════════════════════════════════
+      HawkeyeApp.toast('Screening against OFAC, UN, UK OFSI + adverse media...', 'info', 30000);
+
       let sanctionsResult = null;
       let sanctionsMatches = [];
       let sanctionsError = null;
       let listsSearchedInfo = '';
-
-      try {
-        HawkeyeApp.toast('Searching live sanctions databases (OFAC, UN, UK OFSI)...', 'info', 15000);
-        const sanctionsResp = await fetch('/.netlify/functions/sanctions-search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, type, country })
-        });
-
-        if (sanctionsResp.ok) {
-          sanctionsResult = await sanctionsResp.json();
-          sanctionsMatches = (sanctionsResult.matches || []).map(m => ({
-            list: m.list + ' [LIVE DATA]',
-            matchType: 'sanctions',
-            confidence: m.matchScore / 100,
-            matchCategory: m.matchType,
-            details: 'MATCHED NAME: "' + m.matchedName + '" | Type: ' + m.entryType + ' | Program: ' + (m.program || 'N/A') + ' | Entry ID: ' + (m.entryId || 'N/A') + (m.listedOn ? ' | Listed: ' + m.listedOn : '') + ' | Match Score: ' + m.matchScore + '% (' + m.matchType + ')'
-          }));
-
-          const ls = sanctionsResult.listsSearched || {};
-          listsSearchedInfo = Object.values(ls).map(l => l.name + ' (' + l.entries + ' entries, ' + l.status + ')').join(' | ');
-        } else {
-          sanctionsError = 'Sanctions API returned ' + sanctionsResp.status;
-        }
-      } catch (e) {
-        sanctionsError = 'Sanctions API unavailable: ' + e.message;
-      }
-
-      // ═══════════════════════════════════════════════════════════
-      // STEP 2: AI ADVERSE MEDIA & PEP CHECK (supplementary only)
-      // AI is used ONLY for adverse media — NOT for sanctions
-      // ═══════════════════════════════════════════════════════════
       let aiMatches = [];
       let aiRecommendation = '';
 
-      if (typeof callAI === 'function') {
-        try {
-          HawkeyeApp.toast('Running AI adverse media & PEP check...', 'info', 15000);
-          const countryInfo = country ? ', Country: ' + country : '';
-          const data = await callAI({
+      // Build promises for parallel execution
+      const sanctionsPromise = fetch('/.netlify/functions/sanctions-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, type, country }),
+        signal: AbortSignal.timeout(25000)
+      }).then(r => r.ok ? r.json() : Promise.reject('HTTP ' + r.status))
+        .catch(e => ({ error: String(e) }));
+
+      const countryInfo = country ? ', Country: ' + country : '';
+      const aiPromise = typeof callAI === 'function'
+        ? callAI({
             model: 'claude-sonnet-4-5-20250514',
-            max_tokens: 2000,
+            max_tokens: 1500,
             temperature: 0,
-            system: 'You are an adverse media research assistant. You search your training data for news reports and PEP status ONLY. CRITICAL RULES: 1) Do NOT report sanctions list status — that is handled by live database searches. 2) ONLY report adverse media you are CONFIDENT exists — cite the publication name, approximate date, and what was reported. 3) If you are not sure an article exists, say UNVERIFIED. 4) Check PEP status. 5) Return ONLY valid JSON.',
-            messages: [{
-              role: 'user',
-              content: 'Search your training data for ADVERSE MEDIA and PEP status ONLY (sanctions are checked separately via live databases). Entity: "' + name + '" (' + (type || 'individual') + ')' + countryInfo + '. Return JSON: {"pep_status":"yes|no|unknown","adverse_media_found":true|false,"matches":[{"list":"Publication/Source","matchType":"adverse_media|pep","confidence":"CONFIRMED|LIKELY|UNVERIFIED","details":"What was reported, when, by whom"}],"summary":"Brief assessment of adverse media findings"}'
-            }]
-          });
+            system: 'You are an adverse media research assistant. RULES: 1) Do NOT report sanctions — that is done by live databases. 2) ONLY report adverse media you are CONFIDENT exists — cite publication, date, what was reported. 3) If unsure, say UNVERIFIED. 4) Check PEP status. 5) Be CONCISE. 6) Return ONLY valid JSON.',
+            messages: [{ role: 'user', content: 'ADVERSE MEDIA and PEP check ONLY. Entity: "' + name + '" (' + (type||'individual') + ')' + countryInfo + '. Return JSON: {"pep_status":"yes|no|unknown","adverse_media_found":true|false,"matches":[{"list":"Source","matchType":"adverse_media|pep","confidence":"CONFIRMED|LIKELY|UNVERIFIED","details":"Brief finding"}],"summary":"Brief assessment"}' }]
+          }).catch(e => ({ error: String(e) }))
+        : Promise.resolve({ error: 'No AI provider' });
 
-          const raw = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-          let cleaned = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
-          const objM = cleaned.match(/\{[\s\S]*\}/);
-          if (objM) cleaned = objM[0];
-          let aiResult;
-          try { aiResult = JSON.parse(cleaned); } catch(_) { aiResult = { matches: [], summary: 'AI response could not be parsed.' }; }
+      // Run BOTH at the same time
+      const [sanctionsData, aiData] = await Promise.all([sanctionsPromise, aiPromise]);
 
-          aiMatches = (aiResult.matches || []).map(m => ({
-            ...m,
-            list: (m.list || 'Adverse Media') + ' [AI — VERIFY INDEPENDENTLY]'
-          }));
-          aiRecommendation = aiResult.summary || '';
-        } catch (e) {
-          aiRecommendation = 'AI adverse media check failed: ' + e.message;
-        }
+      // Process sanctions results
+      if (sanctionsData && !sanctionsData.error) {
+        sanctionsResult = sanctionsData;
+        sanctionsMatches = (sanctionsResult.matches || []).map(m => ({
+          list: m.list + ' [LIVE DATA]',
+          matchType: 'sanctions',
+          confidence: m.matchScore / 100,
+          matchCategory: m.matchType,
+          details: 'MATCHED NAME: "' + m.matchedName + '" | Type: ' + m.entryType + ' | Program: ' + (m.program || 'N/A') + ' | Entry ID: ' + (m.entryId || 'N/A') + (m.listedOn ? ' | Listed: ' + m.listedOn : '') + ' | Match Score: ' + m.matchScore + '% (' + m.matchType + ')'
+        }));
+        const ls = sanctionsResult.listsSearched || {};
+        listsSearchedInfo = Object.values(ls).map(l => l.name + ' (' + l.entries + ' entries, ' + l.status + ')').join(' | ');
+      } else {
+        sanctionsError = 'Sanctions API: ' + (sanctionsData?.error || 'unavailable');
+      }
+
+      // Process AI results
+      if (aiData && !aiData.error) {
+        const raw = (aiData.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+        let cleaned = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+        const objM = cleaned.match(/\{[\s\S]*\}/);
+        if (objM) cleaned = objM[0];
+        let aiResult;
+        try { aiResult = JSON.parse(cleaned); } catch(_) { aiResult = { matches: [], summary: '' }; }
+        aiMatches = (aiResult.matches || []).map(m => ({
+          ...m,
+          list: (m.list || 'Adverse Media') + ' [AI — VERIFY INDEPENDENTLY]'
+        }));
+        aiRecommendation = aiResult.summary || '';
+      } else {
+        aiRecommendation = aiData?.error ? 'AI check: ' + aiData.error : '';
       }
 
       // ═══════════════════════════════════════════════════════════

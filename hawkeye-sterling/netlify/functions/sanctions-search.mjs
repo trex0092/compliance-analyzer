@@ -197,13 +197,13 @@ async function fetchSanctionsData() {
   // Fetch in parallel
   const fetches = await Promise.allSettled([
     // OFAC SDN
-    fetch('https://www.treasury.gov/ofac/downloads/sdn.csv', { signal: AbortSignal.timeout(8000) })
+    fetch('https://www.treasury.gov/ofac/downloads/sdn.csv', { signal: AbortSignal.timeout(15000) })
       .then(r => r.ok ? r.text() : Promise.reject('OFAC HTTP ' + r.status)),
     // UN Consolidated List
-    fetch('https://scsanctions.un.org/resources/xml/en/consolidated.xml', { signal: AbortSignal.timeout(8000) })
+    fetch('https://scsanctions.un.org/resources/xml/en/consolidated.xml', { signal: AbortSignal.timeout(15000) })
       .then(r => r.ok ? r.text() : Promise.reject('UN HTTP ' + r.status)),
     // UK OFSI
-    fetch('https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv', { signal: AbortSignal.timeout(8000) })
+    fetch('https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv', { signal: AbortSignal.timeout(15000) })
       .then(r => r.ok ? r.text() : Promise.reject('UK HTTP ' + r.status)),
   ]);
 
