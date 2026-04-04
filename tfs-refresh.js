@@ -285,8 +285,8 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     if (match && resultEl) {
       const matchesHtml = (match.matches || []).map(m => `
         <div style="padding:6px;background:var(--surface2);border-radius:4px;margin-top:4px;font-size:12px">
-          <strong>${m.list}</strong> — ${m.matchType} match (${Math.round((m.confidence || 0) * 100)}% confidence)
-          <div style="color:var(--muted);font-size:11px">${m.details || ''}</div>
+          <strong>${esc(m.list)}</strong> — ${esc(m.matchType)} match (${Math.round((m.confidence || 0) * 100)}% confidence)
+          <div style="color:var(--muted);font-size:11px">${esc(m.details || '')}</div>
         </div>
       `).join('');
 
@@ -297,9 +297,9 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       resultEl.innerHTML = `
         <div style="padding:10px;border:1px solid ${match.result === 'CLEAR' ? 'var(--green)' : 'var(--red)'};border-radius:3px;margin-top:8px">
           <span class="badge ${match.result === 'CLEAR' ? 'b-g' : 'b-r'}">${tfsComp.label}</span>
-          <span style="font-size:13px;margin-left:8px;font-weight:500">${match.entity}</span>
+          <span style="font-size:13px;margin-left:8px;font-weight:500">${esc(match.entity)}</span>
           ${matchesHtml}
-          <p style="font-size:12px;margin-top:8px">${match.recommendation || ''}</p>
+          <p style="font-size:12px;margin-top:8px">${esc(match.recommendation || '')}</p>
         </div>
         <div style="margin-top:10px;padding:12px 14px;border-left:4px solid ${tfsComp.color};background:${tfsComp.bg};border-radius:3px">
           <div style="font-size:12px;font-weight:600;color:${tfsComp.color};margin-bottom:4px;font-family:'Montserrat',sans-serif">${tfsComp.label} — COMPLIANCE BASIS</div>

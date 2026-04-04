@@ -6,7 +6,7 @@
  * Adds:
  *  1. Customer Risk Assessment (CRA/CDD/EDD)
  *  2. UBO Register
- *  3. STR Case Management
+ *  3. 🚨 STR Case Management
  *  4. TFS Operations
  *  5. Red Flag Library
  *  6. Approval Matrix (Four-Eyes)
@@ -82,10 +82,10 @@
   // ─── INJECT TABS ─────────────────────────────────────────────────────────────
   const NEW_TABS = [
     // CRA merged into Risk Assessment tab
-    { id: 'ubo',       icon: '🏛️', label: 'UBO',       title: 'UBO Register' },
-    { id: 'redflags',  icon: '🚩', label: 'Red Flags', title: 'Red Flag Library' },
-    { id: 'approvals2','icon':'✅', label: '4-Eyes', title: 'Four-Eyes Approval Matrix' },
-    { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management' },
+    { id: 'ubo',       icon: '', label: 'UBO',       title: 'UBO Register' },
+    { id: 'redflags',  icon: '', label: 'Red Flags', title: 'Red Flag Library' },
+    { id: 'approvals2','icon':'', label: '4-Eyes', title: 'Four-Eyes Approval Matrix' },
+    { id: 'str',       icon: '', label: 'STR Cases', title: 'STR Case Management' },
   ];
 
   function injectTabs() {
@@ -97,7 +97,7 @@
       el.className = 'tab';
       el.id = 'suite-tab-' + t.id;
       el.title = t.title;
-      el.innerHTML = `${t.icon} ${t.label}`;
+      el.innerHTML = (t.icon ? t.icon + ' ' : '') + t.label;
       el.onclick = () => switchToSuiteTab(t.id);
       nav.appendChild(el);
     });
@@ -1104,7 +1104,7 @@
     el.innerHTML = `
       <div class="card">
         <div class="top-bar">
-          <span class="sec-title">🚨 STR Case Management</span>
+          <span class="sec-title">STR Case Management</span>
           <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 Art.20 | goAML | FATF Rec.20 | File within 30 days of suspicion</span>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenSTRForm()">+ New STR Case</button>
         </div>
@@ -1636,7 +1636,7 @@
                 <div class="rf-item" data-text="${f.flag.toLowerCase()}" data-level="${lvl}"
                   style="padding:10px 12px;border-radius:3px;border:1px solid ${rl.border};margin-bottom:6px;background:${rl.bg}">
                   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-                    <div style="font-size:13px;font-weight:500;flex:1">🚩 ${f.flag}</div>
+                    <div style="font-size:13px;font-weight:500;flex:1">${esc(f.flag)}</div>
                     <div style="flex-shrink:0;text-align:right">
                       <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${lvl} — ${score}</div>
                       <div style="font-size:10px;color:var(--muted);margin-top:3px;font-family:'Montserrat',sans-serif">L:${f.l} × I:${f.i} = ${score}</div>
@@ -1660,7 +1660,7 @@
                 <div class="rf-item" data-text="${f.flag.toLowerCase()}" data-level="${lvl}"
                   style="padding:10px 12px;border-radius:3px;border:1px solid ${rl.border};margin-bottom:6px;background:${rl.bg}">
                   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-                    <div style="font-size:13px;font-weight:500;flex:1">🚩 ${f.flag}</div>
+                    <div style="font-size:13px;font-weight:500;flex:1">${esc(f.flag)}</div>
                     <div style="flex-shrink:0;display:flex;align-items:center;gap:6px">
                       <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${lvl} — ${score}</div>
                       <button class="btn btn-sm btn-gold" onclick="suiteEditRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Edit</button>
@@ -2362,9 +2362,9 @@
   // ── INJECT NEW TABS ─────────────────────────────────────────────────────────
   const SUITE2_TABS = [
     // TFS merged into Screening & TFS tab
-    { id: 'dpmsr',   icon: '📊', label: 'DPMSR',      title: 'DPMSR Threshold Reporting' },
-    { id: 'retention', icon: '🗄️', label: 'Retention', title: 'Record Retention — Art.25' },
-    { id: 'ailog',   icon: '🤖', label: 'AI Govern',  title: 'AI Output Governance' },
+    { id: 'dpmsr',   icon: '', label: 'DPMSR',      title: 'DPMSR Threshold Reporting' },
+    { id: 'retention', icon: '', label: 'Retention', title: 'Record Retention — Art.25' },
+    { id: 'ailog',   icon: '', label: 'AI Govern',  title: 'AI Output Governance' },
   ];
 
   function injectSuite2() {
@@ -2376,7 +2376,7 @@
       el.className = 'tab';
       el.id = 'suite2-tab-'+t.id;
       el.title = t.title;
-      el.innerHTML = `${t.icon} ${t.label}`;
+      el.innerHTML = (t.icon ? t.icon + ' ' : '') + t.label;
       el.onclick = () => switchToSuite2Tab(t.id);
       nav.appendChild(el);
     });
@@ -2861,7 +2861,7 @@
     if (document.getElementById('tfs2-list-uk')?.checked) lists.push('UK OFSI');
     if (document.getElementById('tfs2-list-interpol')?.checked) lists.push('Interpol');
     if (document.getElementById('tfs2-list-adverse')?.checked) lists.push('Adverse Media');
-    if (document.getElementById('tfs2-list-pep')?.checked) lists.push('Political Controversy / PEP');
+    if (document.getElementById('tfs2-list-pep')?.checked) lists.push('🏛️ Political Controversy / PEP');
     const events = load(SK2.TFS2)||[];
     const editIdx = parseInt(document.getElementById('tfs2-edit-idx').value);
     if (editIdx >= 0 && editIdx >= events.length) { toast('Record not found','error'); return; }
@@ -2966,7 +2966,7 @@
     el.innerHTML = `
     <div class="card">
       <div class="top-bar">
-        <span class="sec-title">📊 DPMSR — Threshold Reporting & Linked Transaction Detection</span>
+        <span class="sec-title">DPMSR — Threshold Reporting & Linked Transaction Detection</span>
         <span style="font-size:11px;color:var(--muted)">MoE Circular 08/AML/2021 | AED 55,000 Threshold | Cabinet Resolution 134/2025 Art.13</span>
         <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenDPMSRForm()">+ New Threshold Case</button>
       </div>
@@ -3892,27 +3892,27 @@
   'use strict';
 
   const ALL_MODULES = [
-    { key:'fgl_cra_v1',            label:'Customer Risk Assessments',   icon:'👤', cols:['id','customerName','customerType','rating','cddLevel','reviewDate','reviewedBy','notes'] },
-    { key:'fgl_ubo_v1',            label:'UBO Register',                icon:'🏛️', cols:['id','entityName','uboName','nationality','dob','ownershipPct','verifiedDate','idType','idNumber','pepStatus','notes'] },
-    { key:'fgl_str_cases_v1',      label:'STR / SAR Cases',             icon:'🚨', cols:['id','reportType','subjectName','subjectType','transactionRef','amount','currency','suspicionDate','status','filedBy','goamlRef','notes'] },
+    { key:'fgl_cra_v1',            label:'Customer Risk Assessments',   icon: '', cols:['id','customerName','customerType','rating','cddLevel','reviewDate','reviewedBy','notes'] },
+    { key:'fgl_ubo_v1',            label:'UBO Register',                icon: '', cols:['id','entityName','uboName','nationality','dob','ownershipPct','verifiedDate','idType','idNumber','pepStatus','notes'] },
+    { key:'fgl_str_cases_v1',      label:'STR / SAR Cases',             icon: '', cols:['id','reportType','subjectName','subjectType','transactionRef','amount','currency','suspicionDate','status','filedBy','goamlRef','notes'] },
     { key:'fgl_tfs2_v1',           label:'TFS Screening Events',        icon:'🇦🇪', cols:['id','screenedName','eventType','listsScreened','screeningDate','outcome','reviewedBy','frozenWithin24h','ffrFiled','cnmrStatus','cnmrRef','notes'] },
-    { key:'fgl_approvals_v1',      label:'Four-Eyes Approvals',         icon:'✅', cols:['id','approvalType','subject','requestedBy','status','decision','decidedBy','createdAt','notes'] },
-    { key:'fgl_mgmt_approvals',    label:'Management CDD Approvals',    icon:'📋', cols:['id','customerName','customerType','riskRating','status','reviewedBy','createdAt','notes'] },
-    { key:'fgl_dpmsr_v1',          label:'DPMSR Threshold Cases',       icon:'📊', cols:['id','customerName','customerType','amount','txDate','paymentMethod','reportingRequired','dpmsr_filed','cddComplete','linkedFlag','notes'] },
-    { key:'fgl_retention_v1',      label:'Record Retention Register',   icon:'🗄️', cols:['id','recordName','category','createdDate','retentionYears','basis','storageLocation'] },
-    { key:'fgl_ailog_v1',          label:'AI Governance Log',           icon:'🤖', cols:['id','aiTask','reviewer','reviewDate','decision','output','notes'] },
-    { key:'fgl_shipments',         label:'IAR Shipments',               icon:'🚢', cols:['id','shipmentRef','supplier','origin','weight','purity','invoiceValue','currency','screeningStatus','cddStatus','date'] },
-    { key:'fgl_local_shipments',   label:'Local Shipments',             icon:'📦', cols:['id','shipmentRef','customer','weight','purity','value','date','status'] },
-    { key:'fgl_onboarding',        label:'Customer Onboarding',         icon:'🧑', cols:['id','customerName','customerType','nationality','riskRating','status','createdAt'] },
-    { key:'fgl_risk_assessments',  label:'Risk Assessments',            icon:'⚖️', cols:['id','entityName','totalScore','determination','assessDate','assessedBy'] },
-    { key:'fgl_incidents',         label:'Incidents',                   icon:'⚠️', cols:['id','title','type','severity','status','reportedBy','reportedAt','resolution'] },
-    { key:'fgl_employee_info',     label:'Employees',                   icon:'👥', cols:['id','name','role','department','email','joinDate','trainingStatus'] },
-    { key:'fgl_employee_training', label:'Training Records',            icon:'🎓', cols:['id','employeeName','course','completedDate','score','status'] },
-    { key:'fgl_gaps_v2',           label:'Gap Register',                icon:'🎯', cols:['id','title','severity','status','owner','targetDate','regulatoryRef'] },
-    { key:'fgl_evidence',          label:'Evidence Tracker',            icon:'🔍', cols:['id','title','category','status','linkedTo','uploadedAt'] },
-    { key:'fgl_calendar',          label:'Compliance Calendar',         icon:'📅', cols:['id','title','date','category','completed','notes'] },
-    { key:'fgl_iar_reports',       label:'IAR Reports',                 icon:'📄', cols:['id','reportRef','createdAt','status'] },
-    { key:'fgl_company_profiles',  label:'Company Profiles',            icon:'🏢', cols:['id','name','activity','location'] },
+    { key:'fgl_approvals_v1',      label:'Four-Eyes Approvals',         icon: '', cols:['id','approvalType','subject','requestedBy','status','decision','decidedBy','createdAt','notes'] },
+    { key:'fgl_mgmt_approvals',    label:'Management CDD Approvals',    icon: '', cols:['id','customerName','customerType','riskRating','status','reviewedBy','createdAt','notes'] },
+    { key:'fgl_dpmsr_v1',          label:'DPMSR Threshold Cases',       icon: '', cols:['id','customerName','customerType','amount','txDate','paymentMethod','reportingRequired','dpmsr_filed','cddComplete','linkedFlag','notes'] },
+    { key:'fgl_retention_v1',      label:'Record Retention Register',   icon: '', cols:['id','recordName','category','createdDate','retentionYears','basis','storageLocation'] },
+    { key:'fgl_ailog_v1',          label:'AI Governance Log',           icon: '', cols:['id','aiTask','reviewer','reviewDate','decision','output','notes'] },
+    { key:'fgl_shipments',         label:'IAR Shipments',               icon: '', cols:['id','shipmentRef','supplier','origin','weight','purity','invoiceValue','currency','screeningStatus','cddStatus','date'] },
+    { key:'fgl_local_shipments',   label:'Local Shipments',             icon: '', cols:['id','shipmentRef','customer','weight','purity','value','date','status'] },
+    { key:'fgl_onboarding',        label:'Customer Onboarding',         icon: '', cols:['id','customerName','customerType','nationality','riskRating','status','createdAt'] },
+    { key:'fgl_risk_assessments',  label:'Risk Assessments',            icon: '', cols:['id','entityName','totalScore','determination','assessDate','assessedBy'] },
+    { key:'fgl_incidents',         label:'Incidents',                   icon: '', cols:['id','title','type','severity','status','reportedBy','reportedAt','resolution'] },
+    { key:'fgl_employee_info',     label:'Employees',                   icon: '', cols:['id','name','role','department','email','joinDate','trainingStatus'] },
+    { key:'fgl_employee_training', label:'Training Records',            icon: '', cols:['id','employeeName','course','completedDate','score','status'] },
+    { key:'fgl_gaps_v2',           label:'Gap Register',                icon: '', cols:['id','title','severity','status','owner','targetDate','regulatoryRef'] },
+    { key:'fgl_evidence',          label:'Evidence Tracker',            icon: '', cols:['id','title','category','status','linkedTo','uploadedAt'] },
+    { key:'fgl_calendar',          label:'Compliance Calendar',         icon: '', cols:['id','title','date','category','completed','notes'] },
+    { key:'fgl_iar_reports',       label:'IAR Reports',                 icon: '', cols:['id','reportRef','createdAt','status'] },
+    { key:'fgl_company_profiles',  label:'Company Profiles',            icon: '', cols:['id','name','activity','location'] },
   ];
 
   function getSize(key) {
