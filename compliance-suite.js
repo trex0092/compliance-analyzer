@@ -57,7 +57,7 @@
       'Active':'#3DA876','Inactive':'#7A7870',
     };
     const col = map[status] || '#7A7870';
-    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${status}</span>`;
+    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${status}</span>`;
   }
 
   // ─── ASANA INTEGRATION ───────────────────────────────────────────────────────
@@ -1636,7 +1636,7 @@
                   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
                     <div style="font-size:13px;font-weight:500;flex:1">🚩 ${f.flag}</div>
                     <div style="flex-shrink:0;text-align:right">
-                      <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:5px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${lvl} — ${score}</div>
+                      <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${lvl} — ${score}</div>
                       <div style="font-size:10px;color:var(--muted);margin-top:3px;font-family:'Montserrat',sans-serif">L:${f.l} × I:${f.i} = ${score}</div>
                     </div>
                   </div>
@@ -1660,7 +1660,7 @@
                   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
                     <div style="font-size:13px;font-weight:500;flex:1">🚩 ${f.flag}</div>
                     <div style="flex-shrink:0;display:flex;align-items:center;gap:6px">
-                      <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:5px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${lvl} — ${score}</div>
+                      <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${lvl} — ${score}</div>
                       <button class="btn btn-sm btn-gold" onclick="suiteEditRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Edit</button>
                       <button class="btn btn-sm btn-red" onclick="suiteDeleteRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Del</button>
                     </div>
@@ -1991,9 +1991,9 @@
           const date = a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-GB') : '—';
           return '<div style="padding:10px 14px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px">'
             + '<div><div style="font-size:13px;font-weight:500">'+name+'</div>'
-            + '<div style="font-size:11px;color:var(--muted);font-family:Montserrat,sans-serif;margin-top:2px">'+type+' | Risk: '+risk+' | '+date+'</div></div>'
+            + '<div style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif;margin-top:2px">'+type+' | Risk: '+risk+' | '+date+'</div></div>'
             + '<div style="display:flex;align-items:center;gap:8px">'
-            + '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:Montserrat,sans-serif">'+st+'</span>'
+            + '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif">'+st+'</span>'
             + '<button class="btn btn-sm btn-blue" onclick="suiteSyncMgmtApprovalToAsana('+i+')">Asana</button>'
             + '</div></div>';
         }).join('')}
@@ -2197,7 +2197,7 @@
         </div>
         <div style="margin-top:1rem">
           <div class="sec-title" style="margin-bottom:8px">Key Obligations — ${jurisdiction}</div>
-          ${(jRules.obligations||[]).map(o=>`<div style="padding:8px 12px;background:var(--surface2);border-left:3px solid var(--gold);border-radius:0 6px 6px 0;margin-bottom:6px;font-size:13px">✓ ${o}</div>`).join('')}
+          ${(jRules.obligations||[]).map(o=>`<div style="padding:8px 12px;background:var(--surface2);border-left:3px solid var(--gold);border-radius:0 3px 3px 0;margin-bottom:6px;font-size:13px">✓ ${o}</div>`).join('')}
         </div>
       </div>
 
@@ -2407,7 +2407,7 @@
       'Approved':'#3DA876','Rejected':'#D94F4F','Pending':'#E8A030',
     };
     const col = map[status]||'#7A7870';
-    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:5px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif">${status}</span>`;
+    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif">${status}</span>`;
   }
 
   // ════════════════════════════════════════════════════════════════════════════

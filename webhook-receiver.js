@@ -252,7 +252,7 @@
         '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>' +
         '<path d="M13.73 21a2 2 0 0 1-3.46 0"/>' +
       '</svg>' +
-      '<span id="fgl-webhook-badge" style="display:' + badgeDisplay + ';position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 4px;">' +
+      '<span id="fgl-webhook-badge" style="display:' + badgeDisplay + ';position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:3px;align-items:center;justify-content:center;padding:0 4px;">' +
         badgeText +
       '</span>' +
     '</div>';

@@ -7456,7 +7456,7 @@ async function shareAnalysisToGDrive() {
   const findings = (lastResult.findings || []).map(f => `[${f.severity}] ${f.title}\n${f.body || ''}\nRef: ${f.regulatory_ref || 'N/A'}\nAction: ${f.recommendation || 'N/A'}`).join('\n\n---\n\n');
   const text = `Summary:\n${lastResult.summary || 'N/A'}\n\nFindings:\n${findings || 'None'}`;
   const fileName = `FGL_Analysis_${lastArea || 'report'}_${new Date().toISOString().slice(0,10)}.txt`;
-  const content = `Fine Gold Analyzer Report\nDate: ${new Date().toISOString()}\nQuery: ${lastQuery}\nArea: ${lastArea}\n\n${text}`;
+  const content = `Hawkeye Sterling V2 Report\nDate: ${new Date().toISOString()}\nQuery: ${lastQuery}\nArea: ${lastArea}\n\n${text}`;
   await uploadToGDrive(fileName, content, 'text/plain');
 }
 

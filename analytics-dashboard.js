@@ -326,7 +326,7 @@
   function kpiCard(label, value, color, subtitle, icon) {
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1rem;text-align:center">
       <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-family:'Montserrat',sans-serif;margin-bottom:6px">${icon ? icon + ' ' : ''}${label}</div>
-      <div style="font-size:28px;font-weight:700;color:${color};font-family:'Inter',sans-serif">${value}</div>
+      <div style="font-size:28px;font-weight:700;color:${color};font-family:'Cinzel',serif">${value}</div>
       ${subtitle ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${subtitle}</div>` : ''}
     </div>`;
   }
