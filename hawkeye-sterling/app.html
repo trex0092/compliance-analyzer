@@ -334,18 +334,31 @@ textarea.hs-input{min-height:100px;resize:vertical}
         </div>
       </div>
 
-      <!-- API KEY SETUP -->
-      <div id="qs-apikey-section" style="margin-bottom:16px">
-        <div class="hs-form-group">
-          <label class="hs-label">Anthropic API Key</label>
-          <div style="display:flex;gap:8px">
-            <input type="password" class="hs-input" id="qs-apikey" placeholder="sk-ant-..." style="flex:1"/>
-            <button class="hs-btn hs-btn-sm" onclick="localStorage.setItem('hs_api_key',document.getElementById('qs-apikey').value);HawkeyeApp.toast('API key saved','success');document.getElementById('qs-apikey-section').style.display='none'">Save Key</button>
+      <!-- API KEYS SETUP -->
+      <div id="qs-keys-section" style="margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="hs-form-group">
+            <label class="hs-label">Tavily API Key (Real-Time Web Search)</label>
+            <div style="display:flex;gap:8px">
+              <input type="password" class="hs-input" id="qs-tavily-key" placeholder="tvly-..." style="flex:1"/>
+              <button class="hs-btn hs-btn-sm" onclick="localStorage.setItem('hs_tavily_key',document.getElementById('qs-tavily-key').value);HawkeyeApp.toast('Tavily key saved','success');document.getElementById('qs-tavily-key').style.borderColor='var(--green)'">Save</button>
+            </div>
+            <p style="font-size:9px;color:var(--muted);margin-top:4px">For LIVE adverse media search. Free at <a href="https://tavily.com" target="_blank" style="color:var(--gold)">tavily.com</a></p>
           </div>
-          <p style="font-size:9px;color:var(--muted);margin-top:4px">Required for AI screening. Key stored locally only. Get one at <a href="https://console.anthropic.com" target="_blank" style="color:var(--gold)">console.anthropic.com</a></p>
+          <div class="hs-form-group">
+            <label class="hs-label">Anthropic API Key (AI Analysis)</label>
+            <div style="display:flex;gap:8px">
+              <input type="password" class="hs-input" id="qs-apikey" placeholder="sk-ant-..." style="flex:1"/>
+              <button class="hs-btn hs-btn-sm" onclick="localStorage.setItem('hs_api_key',document.getElementById('qs-apikey').value);HawkeyeApp.toast('Anthropic key saved','success');document.getElementById('qs-apikey').style.borderColor='var(--green)'">Save</button>
+            </div>
+            <p style="font-size:9px;color:var(--muted);margin-top:4px">For PEP check &amp; analysis. <a href="https://console.anthropic.com" target="_blank" style="color:var(--gold)">console.anthropic.com</a></p>
+          </div>
         </div>
       </div>
-      <script>if(localStorage.getItem('hs_api_key'))document.getElementById('qs-apikey-section').style.display='none';</script>
+      <script>
+        if(localStorage.getItem('hs_tavily_key')){document.getElementById('qs-tavily-key').value='••••••••';document.getElementById('qs-tavily-key').style.borderColor='var(--green)';}
+        if(localStorage.getItem('hs_api_key')){document.getElementById('qs-apikey').value='••••••••';document.getElementById('qs-apikey').style.borderColor='var(--green)';}
+      </script>
 
       <button class="hs-btn hs-btn-screen" onclick="HawkeyeApp.runQuickScreen()">Run Deep Screening</button>
     </div>

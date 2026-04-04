@@ -152,21 +152,38 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
         return r.json();
       }).catch(e => ({ error: String(e.message || e) }));
 
-      // AI adverse media (only if API key exists)
-      const countryInfo = country ? ', Country: ' + country : '';
+      // TAVILY — Real-time web search for adverse media
+      const tavilyKey = localStorage.getItem('hs_tavily_key');
+      const countryInfo = country ? ', ' + country : '';
+      const tavilyPromise = tavilyKey
+        ? fetch('https://api.tavily.com/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: tavilyKey,
+              query: name + countryInfo + ' sanctions OR money laundering OR terrorism financing OR fraud OR criminal OR investigation OR prosecution OR regulatory action OR PEP OR politically exposed',
+              search_depth: 'advanced',
+              max_results: 10,
+              include_answer: true
+            })
+          }).then(r => r.ok ? r.json() : Promise.reject('Tavily HTTP ' + r.status))
+            .catch(e => ({ error: String(e.message || e) }))
+        : Promise.resolve(null);
+
+      // AI for PEP check and analysis summary (optional)
       const hasApiKey = typeof callAI === 'function' && localStorage.getItem('hs_api_key');
       const aiPromise = hasApiKey
         ? callAI({
             model: 'claude-sonnet-4-5-20250514',
-            max_tokens: 1500,
+            max_tokens: 800,
             temperature: 0,
-            system: 'You are an adverse media research assistant. RULES: 1) Do NOT report sanctions — done by live databases. 2) ONLY report adverse media you are CONFIDENT exists. 3) If unsure, say UNVERIFIED. 4) Check PEP status. 5) Return ONLY valid JSON. Be concise.',
-            messages: [{ role: 'user', content: 'ADVERSE MEDIA and PEP ONLY. Entity: "' + name + '" (' + (type||'individual') + ')' + countryInfo + '. JSON: {"pep_status":"yes|no|unknown","adverse_media_found":true|false,"matches":[{"list":"Source","matchType":"adverse_media|pep","confidence":"CONFIRMED|LIKELY|UNVERIFIED","details":"Finding"}],"summary":"Brief assessment"}' }]
+            system: 'You check PEP status only. Is this person a Politically Exposed Person (head of state, minister, military, SOE executive, judge, central banker, or their family/associate)? Return ONLY valid JSON. Be very concise.',
+            messages: [{ role: 'user', content: 'PEP check: "' + name + '" (' + (type||'individual') + ')' + countryInfo + '. JSON: {"pep_status":"yes|no|unknown","pep_details":"If yes, what role/position","confidence":"CONFIRMED|LIKELY|UNVERIFIED"}' }]
           }).catch(e => ({ error: String(e.message || e) }))
         : Promise.resolve(null);
 
-      // Run BOTH at the same time
-      const [sanctionsData, aiData] = await Promise.all([sanctionsPromise, aiPromise]);
+      // Run ALL THREE at the same time
+      const [sanctionsData, tavilyData, aiData] = await Promise.all([sanctionsPromise, tavilyPromise, aiPromise]);
 
       // Process sanctions results
       if (sanctionsData && !sanctionsData.error) {
@@ -184,7 +201,21 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
         sanctionsError = sanctionsData?.error || 'Sanctions API unavailable';
       }
 
-      // Process AI results
+      // Process Tavily results (REAL web search — not AI)
+      let tavilyMatches = [];
+      let tavilySummary = '';
+      if (tavilyData && !tavilyData.error && tavilyData.results) {
+        tavilyMatches = tavilyData.results.map(r => ({
+          list: (new URL(r.url).hostname).replace('www.','') + ' [LIVE WEB SEARCH]',
+          matchType: 'adverse_media',
+          confidence: r.score || 0.5,
+          details: r.title + ' — ' + (r.content || '').substring(0, 300),
+          url: r.url
+        }));
+        tavilySummary = tavilyData.answer || '';
+      }
+
+      // Process AI results (PEP check only)
       if (aiData && !aiData.error && aiData.content) {
         const raw = (aiData.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
         let cleaned = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
@@ -207,13 +238,13 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
       // STEP 3: COMBINE RESULTS
       // Sanctions = REAL DATA | Adverse Media = AI (flagged)
       // ═══════════════════════════════════════════════════════════
-      const allMatches = [...sanctionsMatches, ...aiMatches];
+      const allMatches = [...sanctionsMatches, ...tavilyMatches, ...aiMatches];
 
       // Determine result based on REAL sanctions data only
       let finalResult = 'CLEAR';
       if (sanctionsResult && sanctionsResult.result === 'MATCH') finalResult = 'MATCH';
       else if (sanctionsResult && sanctionsResult.result === 'POTENTIAL_MATCH') finalResult = 'POTENTIAL_MATCH';
-      else if (aiMatches.length > 0) finalResult = 'POTENTIAL_MATCH';
+      else if (tavilyMatches.length > 0 || aiMatches.length > 0) finalResult = 'POTENTIAL_MATCH';
 
       // Build recommendation
       let recommendation = '';
@@ -230,10 +261,20 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
       if (sanctionsError) {
         recommendation += 'SANCTIONS API NOTE: ' + sanctionsError + '. Manual verification required.\n\n';
       }
-      if (aiRecommendation) {
-        recommendation += 'ADVERSE MEDIA (AI-assisted — verify independently):\n' + aiRecommendation + '\n\n';
+      if (tavilyMatches.length > 0) {
+        recommendation += 'ADVERSE MEDIA (LIVE WEB SEARCH — ' + tavilyMatches.length + ' results):\n';
+        recommendation += tavilySummary ? tavilySummary + '\n\n' : '';
+        tavilyMatches.forEach((m, i) => {
+          recommendation += (i+1) + '. ' + m.details + '\n   Source: ' + (m.url || '') + '\n';
+        });
+        recommendation += '\n';
+      } else if (tavilyKey) {
+        recommendation += 'ADVERSE MEDIA (LIVE WEB SEARCH): No significant adverse media found.\n\n';
       }
-      recommendation += 'DATA SOURCES: Sanctions results are from LIVE official government databases (OFAC SDN from US Treasury, UN Consolidated List, UK OFSI from HM Treasury). Adverse media results are AI-assisted and must be independently verified. For UAE Local Terrorist List, check EOCN at uaeiec.gov.ae/en-us/un-page.';
+      if (aiRecommendation) {
+        recommendation += 'PEP CHECK (AI): ' + aiRecommendation + '\n\n';
+      }
+      recommendation += 'DATA SOURCES: Sanctions = LIVE government databases (OFAC, UN, UK OFSI). Adverse media = LIVE web search (Tavily). PEP = AI analysis. UAE Local Terrorist List: check EOCN at uaeiec.gov.ae/en-us/un-page.';
 
       const matchRecord = {
         id: Date.now(),
@@ -245,7 +286,7 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
         recommendation,
         date: new Date().toISOString(),
         listsChecked: listsSearchedInfo || currentLists,
-        dataSource: sanctionsResult ? 'LIVE SANCTIONS + AI ADVERSE MEDIA' : 'AI ONLY (sanctions API unavailable)',
+        dataSource: (sanctionsResult ? 'LIVE SANCTIONS' : '') + (tavilyMatches.length > 0 ? ' + LIVE WEB SEARCH' : '') + (aiData ? ' + AI PEP' : '') || 'SCREENING COMPLETED',
       };
 
       const matches = getMatches();
