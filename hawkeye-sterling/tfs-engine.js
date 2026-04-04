@@ -133,19 +133,49 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
     if (typeof callAI === 'function') {
       try {
         const data = await callAI({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 2000,
+          model: 'claude-sonnet-4-5-20250514',
+          max_tokens: 3000,
           temperature: 0,
-          system: 'You are the most thorough compliance screening investigator in the world. ABSOLUTE ACCURACY: NEVER fabricate sanctions designations — only report confirmed ones. Adverse media is SEPARATE from sanctions. For EVERY entity you MUST do a DEEP search of: (1) ALL sanctions lists: OFAC SDN/SSI/CAPTA, UN, EU, UK OFSI, UAE EOCN, UAE Central Bank, Swiss SECO, Australian DFAT, Canadian SEMA, (2) PEP databases, (3) EXHAUSTIVE adverse media: criminal investigations, money laundering, fraud, corruption, environmental crimes, illegal mining/gold, human rights violations, regulatory fines, lawsuits, terrorism financing, narcotics, sanctions evasion. Search: ICIJ, OCCRP, Reporter Brasil, Mongabay, Amazon Watch, Global Witness, Turkish Minute, Middle East Eye, Al Jazeera, Bellingcat, BBC, Reuters, Bloomberg, FT, local media. NGOs: Transparency International, BHRRC, Amnesty, HRW. Gold/metals: LBMA, DMCC. UAE-specific: EOCN, UAE Central Bank circulars, MENAFATF, DMCC disciplinary. Return only valid JSON.',
+          system: `You are a compliance screening assistant. You help compliance officers by searching your training data for information about entities.
+
+CRITICAL ANTI-HALLUCINATION RULES — VIOLATION IS UNACCEPTABLE:
+
+1. YOU ARE NOT A LIVE DATABASE. You are an AI with a training data cutoff. You CANNOT access live sanctions lists, real-time databases, or current records. ALWAYS state this clearly.
+
+2. NEVER state that someone IS on a sanctions list unless you are 100% CERTAIN from your training data. If you are not absolutely sure, say "NOT FOUND IN TRAINING DATA" — do NOT guess or infer.
+
+3. NEVER fabricate OFAC SDN entries, UN designations, EU sanctions, UK OFSI entries, or any other sanctions listing. Do NOT invent OFAC IDs, designation dates, executive orders, or programme references.
+
+4. NEVER present adverse media findings as confirmed facts unless you are certain the specific article/report exists. If you recall general information but cannot cite a specific source with confidence, say "UNVERIFIED — requires manual check".
+
+5. For EVERY finding you report, you MUST indicate your CONFIDENCE LEVEL:
+   - CONFIRMED: You are certain this is accurate based on training data
+   - LIKELY: You believe this is accurate but cannot verify with 100% certainty
+   - UNVERIFIED: You have some information but it needs manual verification
+   - NOT FOUND: No information found in training data
+
+6. DEFAULT TO "NOT FOUND" rather than fabricating. It is FAR better to report nothing than to report false information.
+
+7. ALWAYS include this disclaimer: "This screening is based on AI training data with a knowledge cutoff. It is NOT a substitute for live database checks (Refinitiv World-Check, Dow Jones, LexisNexis, OFAC search tool). All findings must be independently verified before any compliance action is taken."
+
+8. The result field should be:
+   - "CLEAR" — ONLY if you genuinely found nothing
+   - "POTENTIAL_MATCH" — If you found adverse media OR you are unsure about sanctions status OR the entity operates in a high-risk sector
+   - "MATCH" — ONLY if you are 100% CERTAIN the entity is on a specific sanctions list with specific details you can cite
+
+Return ONLY valid JSON.`,
           messages: [{
             role: 'user',
-            content: `MAXIMUM DEPTH SCREENING — LEAVE NO STONE UNTURNED:
+            content: `Screen this entity against your training data. Remember: DO NOT HALLUCINATE. Report ONLY what you are confident about. Default to NOT FOUND.
 
 Entity: "${name}" (type: ${type || 'individual'}).${countryInfo}
 
-Check ALL: sanctions (OFAC, UN, EU, UK, UAE EOCN, UAE Central Bank), PEP, and do an EXHAUSTIVE adverse media deep search. Search every investigative journalism outlet, NGO, court database, and regulatory enforcer. For gold/precious metals/mining entities apply maximum scrutiny.
+Search your training data for:
+1. SANCTIONS: Is this entity on OFAC SDN, UN, EU, UK OFSI, UAE EOCN, or other sanctions lists? ONLY report if you are CERTAIN.
+2. PEP: Is this entity a Politically Exposed Person?
+3. ADVERSE MEDIA: Any credible news reports about this entity? ONLY cite specific articles you are confident exist.
 
-Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source","matchType":"sanctions|adverse_media|pep","confidence":0.0-1.0,"details":"specific findings with sources and dates"}],"recommendation":"COMPREHENSIVE report: SANCTIONS (confirmed only), ADVERSE MEDIA (every finding with source/date), PEP, REQUIRED ACTIONS, RISK LEVEL."}`
+Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","confidence_note":"Your overall confidence assessment","matches":[{"list":"source name","matchType":"sanctions|adverse_media|pep","confidence":"CONFIRMED|LIKELY|UNVERIFIED","details":"specific findings — cite sources ONLY if you are confident they exist"}],"recommendation":"Your assessment including: what was found, what was NOT found, what needs manual verification, and the mandatory disclaimer about AI limitations."}`
           }]
         });
 
@@ -154,7 +184,11 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         const objM2 = cleaned2.match(/\{[\s\S]*\}/);
         if (objM2) cleaned2 = objM2[0];
         let result;
-        try { result = JSON.parse(cleaned2); } catch(_) { result = { result: 'POTENTIAL_MATCH', matches: [], recommendation: 'Manual review required — AI response could not be parsed' }; }
+        try { result = JSON.parse(cleaned2); } catch(_) { result = { result: 'POTENTIAL_MATCH', matches: [], recommendation: 'Manual review required — AI response could not be parsed. Verify with live databases.' }; }
+
+        // Add mandatory AI disclaimer to recommendation
+        const disclaimer = '\n\n⚠ AI SCREENING LIMITATION: This result is based on AI training data, NOT live database lookups. All findings MUST be independently verified using official sources (OFAC Search Tool, UN Consolidated List, Refinitiv World-Check, Dow Jones, LexisNexis) before any compliance action is taken. Do NOT rely solely on this AI screening for regulatory decisions.';
+        result.recommendation = (result.recommendation || '') + disclaimer;
 
         const match = {
           id: Date.now(),
