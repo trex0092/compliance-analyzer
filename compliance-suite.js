@@ -2676,11 +2676,17 @@
     });
   }
 
+  /**
+   * Extract text from .docx files using multiple strategies.
+   * .docx is a ZIP containing word/document.xml — we extract and strip XML tags.
+   */
   async function extractTextFromWord(file) {
     var base64 = await fileToBase64(file);
     var binary = atob(base64);
     var bytes = new Uint8Array(binary.length);
     for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+    // Strategy 1: JSZip if available
     try {
       if (typeof JSZip !== 'undefined') {
         var zip = await JSZip.loadAsync(bytes);
@@ -2688,6 +2694,86 @@
         return docXml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 15000);
       }
     } catch(_) {}
+
+    // Strategy 2: Manual ZIP parsing (no library needed)
+    // .docx ZIP structure: find word/document.xml entry and decompress it
+    try {
+      var text = await parseDocxManual(bytes);
+      if (text && text.length > 50) return text.substring(0, 15000);
+    } catch(_) {}
+
+    // Strategy 3: Scan raw bytes for readable text patterns
+    // .docx XML contains text between <w:t> tags — even compressed, some text is readable
+    try {
+      var rawText = '';
+      var decoder = new TextDecoder('utf-8', { fatal: false });
+      var rawStr = decoder.decode(bytes);
+      // Extract text between XML text tags that may appear in the raw data
+      var textMatches = rawStr.match(/<w:t[^>]*>([^<]+)<\/w:t>/g);
+      if (textMatches && textMatches.length > 5) {
+        rawText = textMatches.map(function(m) {
+          return m.replace(/<[^>]+>/g, '');
+        }).join(' ').trim();
+        if (rawText.length > 50) return rawText.substring(0, 15000);
+      }
+    } catch(_) {}
+
+    return null;
+  }
+
+  /**
+   * Manual ZIP parser for .docx — extracts word/document.xml without any library.
+   * ZIP format: local file headers followed by compressed data.
+   */
+  async function parseDocxManual(bytes) {
+    // Find the word/document.xml entry in the ZIP
+    var targetName = 'word/document.xml';
+    var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+
+    for (var offset = 0; offset < bytes.length - 30; offset++) {
+      // Look for local file header signature: PK\x03\x04
+      if (bytes[offset] === 0x50 && bytes[offset+1] === 0x4B && bytes[offset+2] === 0x03 && bytes[offset+3] === 0x04) {
+        var compressionMethod = view.getUint16(offset + 8, true);
+        var compressedSize = view.getUint32(offset + 18, true);
+        var uncompressedSize = view.getUint32(offset + 22, true);
+        var nameLength = view.getUint16(offset + 26, true);
+        var extraLength = view.getUint16(offset + 28, true);
+        var fileName = new TextDecoder().decode(bytes.slice(offset + 30, offset + 30 + nameLength));
+
+        if (fileName === targetName) {
+          var dataStart = offset + 30 + nameLength + extraLength;
+          var compressedData = bytes.slice(dataStart, dataStart + (compressedSize || (uncompressedSize + 100)));
+
+          if (compressionMethod === 0) {
+            // Stored (no compression)
+            var xml = new TextDecoder().decode(compressedData.slice(0, uncompressedSize));
+            return xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+          } else if (compressionMethod === 8) {
+            // Deflated — use DecompressionStream API
+            try {
+              var blob = new Blob([compressedData]);
+              var ds = new DecompressionStream('raw');
+              var decompressedStream = blob.stream().pipeThrough(ds);
+              var reader = decompressedStream.getReader();
+              var chunks = [];
+              while (true) {
+                var readResult = await reader.read();
+                if (readResult.done) break;
+                chunks.push(readResult.value);
+              }
+              var totalLength = chunks.reduce(function(s, c) { return s + c.length; }, 0);
+              var result = new Uint8Array(totalLength);
+              var pos = 0;
+              chunks.forEach(function(c) { result.set(c, pos); pos += c.length; });
+              var xml2 = new TextDecoder().decode(result);
+              return xml2.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            } catch(decompressionError) {
+              console.warn('[DOCX] DecompressionStream failed:', decompressionError.message);
+            }
+          }
+        }
+      }
+    }
     return null;
   }
 
@@ -2735,11 +2821,7 @@
       if (wordText) {
         messages = [{ role: 'user', content: 'Document content ("' + file.name + '"):\n\n---\n' + wordText + '\n---\n\n' + extractPrompt }];
       } else {
-        var mediaType2 = ext === 'doc' ? 'application/msword' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        messages = [{ role: 'user', content: [
-          { type: 'document', source: { type: 'base64', media_type: mediaType2, data: base64 } },
-          { type: 'text', text: extractPrompt }
-        ] }];
+        throw new Error('Could not read Word file. Please convert to PDF and re-upload.');
       }
     }
 
