@@ -9344,7 +9344,7 @@ function getRiskAssessmentData() {
   const data = { entityName: document.getElementById('raEntityName')?.value||'', assessDate: document.getElementById('raAssessDate')?.value||'', responses: {} };
   RA_CRITERIA.forEach(c => { const el = document.getElementById('ra_'+c.key); if (el) data.responses[c.key] = el.value; });
   data.totalScore = parseInt(document.getElementById('raTotalScore')?.textContent||'0',10);
-  data.determination = document.getElementById('raDetLabel')?.textContent||'';
+  data.determination = data.totalScore >= 23 ? 'EDD — ENHANCED DUE DILIGENCE' : data.totalScore >= 20 ? 'SDD — SIMPLIFIED DUE DILIGENCE' : 'CDD — STANDARD CUSTOMER DUE DILIGENCE';
   return data;
 }
 
