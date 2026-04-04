@@ -137,19 +137,19 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
     if (typeof callAI === 'function') {
       try {
         const data = await callAI({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 2000,
+          model: 'claude-opus-4-6',
+          max_tokens: 8000,
           temperature: 0,
-          system: 'You are the most thorough compliance screening investigator in the world. ABSOLUTE ACCURACY: NEVER fabricate sanctions designations — only report confirmed ones. Adverse media is SEPARATE from sanctions. For EVERY entity you MUST do a DEEP search of: (1) ALL sanctions lists: OFAC SDN/SSI/CAPTA, UN, EU, UK OFSI, UAE EOCN, UAE Central Bank, Swiss SECO, Australian DFAT, Canadian SEMA, (2) PEP databases, (3) EXHAUSTIVE adverse media: criminal investigations, money laundering, fraud, corruption, environmental crimes, illegal mining/gold, human rights violations, regulatory fines, lawsuits, terrorism financing, narcotics, sanctions evasion. Search: ICIJ, OCCRP, Reporter Brasil, Mongabay, Amazon Watch, Global Witness, Turkish Minute, Middle East Eye, Al Jazeera, Bellingcat, BBC, Reuters, Bloomberg, FT, local media. NGOs: Transparency International, BHRRC, Amnesty, HRW. Gold/metals: LBMA, DMCC. UAE-specific: EOCN, UAE Central Bank circulars, MENAFATF, DMCC disciplinary. Return only valid JSON.',
+          system: 'You are a Tier-1 compliance screening engine operating at the standard of Refinitiv World-Check, Dow Jones Risk & Compliance, and LexisNexis Bridger.\n\nRULES:\n1. NEVER fabricate sanctions designations — only report confirmed ones.\n2. Adverse media is SEPARATE from sanctions. Being investigated != being sanctioned.\n3. When adverse media IS found, report it ASSERTIVELY with full detail — sources, dates, jurisdictions, status.\n4. ALWAYS investigate the entity\'s CORPORATE NETWORK: family, business partners, directorships, beneficial ownership.\n5. Categorize adverse media: Financial Crime, Corruption, Terrorism, Organized Crime, Environmental Crime, Human Rights, Regulatory Enforcement, Litigation, Sanctions Evasion.\n\nSources: ICIJ, OCCRP, Reporter Brasil, Mongabay, Global Witness, Turkish Minute, Ahval News, Cumhuriyet, Middle East Eye, Al Jazeera, Bellingcat, BBC, Reuters, Bloomberg, FT, local media. NGOs: Transparency International, BHRRC, Amnesty, HRW. Gold: LBMA, DMCC.\n\nReturn only valid JSON.',
           messages: [{
             role: 'user',
-            content: `MAXIMUM DEPTH SCREENING — LEAVE NO STONE UNTURNED:
+            content: `TIER-1 COMPLIANCE SCREENING — REFINITIV/DOW JONES STANDARD:
 
 Entity: "${name}" (type: ${type || 'individual'}).${countryInfo}
 
-Check ALL: sanctions (OFAC, UN, EU, UK, UAE EOCN, UAE Central Bank), PEP, and do an EXHAUSTIVE adverse media deep search. Search every investigative journalism outlet, NGO, court database, and regulatory enforcer. For gold/precious metals/mining entities apply maximum scrutiny.
+Check ALL: sanctions (OFAC SDN/SSI/CAPTA, UN, EU, UK OFSI, UAE EOCN, UAE Central Bank, Swiss SECO, Australian DFAT, Canadian SEMA), PEP, corporate network, and do EXHAUSTIVE adverse media investigation. For each adverse media finding provide: allegation, source, date, jurisdiction, status. Investigate corporate connections and family business ties.
 
-Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source","matchType":"sanctions|adverse_media|pep","confidence":0.0-1.0,"details":"specific findings with sources and dates"}],"recommendation":"COMPREHENSIVE report: SANCTIONS (confirmed only), ADVERSE MEDIA (every finding with source/date), PEP, REQUIRED ACTIONS, RISK LEVEL."}`
+Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source","matchType":"sanctions|adverse_media|pep|corporate_network","confidence":0.0-1.0,"details":"specific findings with sources and dates","category":"risk category"}],"recommendation":"COMPREHENSIVE Tier-1 report: SANCTIONS (confirmed only), CORPORATE NETWORK, ADVERSE MEDIA (every finding with source/date/category), PEP, REQUIRED ACTIONS, RISK LEVEL, REGULATORY BASIS."}`
           }]
         });
 
