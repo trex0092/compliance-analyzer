@@ -2186,8 +2186,8 @@
           ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleBulkFiles(event.dataTransfer.files)">
           <div style="font-size:28px;margin-bottom:8px">📄</div>
           <div style="font-size:13px;font-weight:500">Drop documents here or click to browse</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">PDF, Word (.doc, .docx) — Max 20 files</div>
-          <input type="file" id="tfs2-bulk-files" multiple accept=".pdf,.doc,.docx" style="display:none" onchange="handleBulkFiles(this.files)">
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">PDF, Word, Images (passport, EID, trade license) — Max 20 files</div>
+          <input type="file" id="tfs2-bulk-files" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" style="display:none" onchange="handleBulkFiles(this.files)">
         </div>
 
         <div id="tfs2-bulk-queue" style="max-height:300px;overflow-y:auto;margin-bottom:1rem"></div>
@@ -2566,9 +2566,12 @@
   // ════════════════════════════════════════════════════════════════════════════
 
   var bulkQueue = [];
+  // Flat list of all extracted entities across all documents
+  var bulkEntities = [];
 
   global.suite2OpenBulkUpload = function() {
     bulkQueue = [];
+    bulkEntities = [];
     var queueEl = document.getElementById('tfs2-bulk-queue');
     var resultsEl = document.getElementById('tfs2-bulk-results');
     var progressEl = document.getElementById('tfs2-bulk-progress');
@@ -2583,23 +2586,21 @@
   global.handleBulkFiles = function(files) {
     if (!files || !files.length) return;
     var maxFiles = 20;
-    var added = 0;
     for (var i = 0; i < files.length && bulkQueue.length < maxFiles; i++) {
       var file = files[i];
       var ext = file.name.split('.').pop().toLowerCase();
-      if (!['pdf','doc','docx'].includes(ext)) {
-        toast('Skipped "' + file.name + '" — only PDF and Word files accepted', 'error');
+      if (!['pdf','doc','docx','jpg','jpeg','png','webp'].includes(ext)) {
+        toast('Skipped "' + file.name + '" — unsupported format', 'error');
         continue;
       }
       if (file.size > 10 * 1024 * 1024) {
         toast('Skipped "' + file.name + '" — max 10MB per file', 'error');
         continue;
       }
-      bulkQueue.push({ file: file, status: 'pending', extracted: null });
-      added++;
+      bulkQueue.push({ file: file, status: 'pending', entities: [] });
     }
     if (bulkQueue.length >= maxFiles && i < files.length) {
-      toast('Maximum 20 documents reached — ' + (files.length - i) + ' files skipped', 'info');
+      toast('Maximum 20 documents reached', 'info');
     }
     renderBulkQueue();
     var startBtn = document.getElementById('tfs2-bulk-start');
@@ -2609,25 +2610,54 @@
   function renderBulkQueue() {
     var el = document.getElementById('tfs2-bulk-queue');
     if (!el) return;
-    if (bulkQueue.length === 0) {
+    if (bulkQueue.length === 0 && bulkEntities.length === 0) {
       el.innerHTML = '<p style="color:var(--muted);font-size:12px;text-align:center">No documents added yet.</p>';
       return;
     }
-    el.innerHTML = bulkQueue.map(function(item, idx) {
-      var statusIcon = item.status === 'pending' ? '⏳' : item.status === 'extracting' ? '🔄' : item.status === 'extracted' ? '✅' : item.status === 'screening' ? '🔍' : item.status === 'done' ? '✅' : '❌';
-      var statusColor = item.status === 'error' ? 'var(--red)' : item.status === 'done' ? 'var(--green)' : 'var(--muted)';
-      var extracted = item.extracted ? '<div style="font-size:11px;color:var(--text);margin-top:2px"><strong>' + (item.extracted.name||'—') + '</strong> | ' + (item.extracted.country||'—') + ' | ' + (item.extracted.idNumber||'—') + '</div>' : '';
-      var outcome = item.outcome ? ' <span class="badge ' + (item.outcome === 'Confirmed Match' ? 'b-r' : item.outcome === 'Partial Match' ? 'b-a' : 'b-g') + '" style="font-size:9px">' + item.outcome + '</span>' : '';
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px">'
+
+    var html = '';
+
+    // Show document files
+    bulkQueue.forEach(function(item, idx) {
+      var statusIcon = item.status === 'pending' ? '⏳' : item.status === 'extracting' ? '🔄' : item.status === 'extracted' ? '✅' : '❌';
+      var statusColor = item.status === 'error' ? 'var(--red)' : item.status === 'extracted' ? 'var(--green)' : 'var(--muted)';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px">'
         + '<span style="font-size:14px">' + statusIcon + '</span>'
         + '<div style="flex:1;min-width:0">'
-        + '<div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + item.file.name + outcome + '</div>'
-        + extracted
+        + '<div style="font-size:12px;font-weight:500">' + item.file.name + '</div>'
+        + (item.entities.length ? '<div style="font-size:10px;color:var(--green)">' + item.entities.length + ' entities extracted</div>' : '')
+        + (item.errorMsg ? '<div style="font-size:10px;color:var(--red)">' + item.errorMsg + '</div>' : '')
         + '</div>'
         + '<span style="font-size:10px;color:' + statusColor + '">' + item.status + '</span>'
         + (item.status === 'pending' ? '<button class="btn btn-sm btn-red" style="padding:2px 6px;font-size:10px" onclick="removeBulkFile(' + idx + ')">✕</button>' : '')
         + '</div>';
-    }).join('');
+    });
+
+    // Show extracted entities
+    if (bulkEntities.length > 0) {
+      html += '<div style="margin-top:8px;padding:8px;background:var(--surface2);border-radius:8px">';
+      html += '<div style="font-size:11px;font-weight:600;margin-bottom:6px;font-family:\'DM Mono\',monospace">EXTRACTED ENTITIES (' + bulkEntities.length + ')</div>';
+      bulkEntities.forEach(function(ent, idx) {
+        var outcomeHtml = '';
+        if (ent.outcome) {
+          var bc = ent.outcome === 'Confirmed Match' ? 'b-r' : ent.outcome === 'Partial Match' ? 'b-a' : 'b-g';
+          outcomeHtml = ' <span class="badge ' + bc + '" style="font-size:9px">' + ent.outcome + '</span>';
+        }
+        var statusIcon = ent.status === 'pending' ? '⏳' : ent.status === 'screening' ? '🔍' : ent.status === 'done' ? '✅' : '❌';
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;border-bottom:1px solid var(--border);font-size:11px">'
+          + '<span>' + statusIcon + '</span>'
+          + '<span style="font-weight:500;min-width:140px">' + ent.name + outcomeHtml + '</span>'
+          + '<span style="color:var(--muted)">' + (ent.entity_type || '—') + '</span>'
+          + '<span style="color:var(--muted)">|</span>'
+          + '<span style="color:var(--muted)">' + (ent.country || '—') + '</span>'
+          + '<span style="color:var(--muted)">|</span>'
+          + '<span style="color:var(--muted)">' + (ent.idNumber || '—') + '</span>'
+          + '</div>';
+      });
+      html += '</div>';
+    }
+
+    el.innerHTML = html;
   }
 
   global.removeBulkFile = function(idx) {
@@ -2647,69 +2677,150 @@
   }
 
   async function extractTextFromWord(file) {
-    // Extract raw text from .docx files using JSZip-based parsing
     var base64 = await fileToBase64(file);
     var binary = atob(base64);
     var bytes = new Uint8Array(binary.length);
     for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-
-    // .docx is a ZIP containing word/document.xml
     try {
       if (typeof JSZip !== 'undefined') {
         var zip = await JSZip.loadAsync(bytes);
         var docXml = await zip.file('word/document.xml').async('string');
-        // Strip XML tags to get plain text
-        return docXml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 10000);
+        return docXml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 15000);
       }
     } catch(_) {}
-
-    // Fallback: send raw text extraction request to AI
     return null;
   }
 
-  async function extractEntityFromDocument(file) {
+  /**
+   * Extract ALL entities from a compliance document.
+   * Returns array: [{name, entity_type, country, idNumber, dob}, ...]
+   * Handles: company info, UBOs, shareholders, managers, individuals.
+   */
+  async function extractEntitiesFromDocument(file) {
     if (typeof callAI !== 'function') throw new Error('No AI provider');
     var ext = file.name.split('.').pop().toLowerCase();
+    var isImage = ['jpg','jpeg','png','webp'].includes(ext);
     var base64 = await fileToBase64(file);
 
-    var extractPrompt = 'Extract the following from this document. Return ONLY valid JSON:\n{"name":"Full legal name of the person or entity","entity_type":"Individual or Company","country":"Country of citizenship/registration","idNumber":"ID number, passport number, trade license number, or registration number","dob":"Date of birth or registration date if visible (YYYY-MM-DD or empty)"}\n\nIf multiple people appear, extract the MAIN subject (the document holder/applicant). If a field is not visible, use empty string.';
+    var extractPrompt = 'This is a compliance/due diligence document. Extract ALL entities that need to be screened.\n\n'
+      + 'Look for:\n'
+      + '- COMPANY/ENTITY: Company Name, Country of Registration, Commercial Register / Trade License number\n'
+      + '- INDIVIDUALS: Shareholders, UBOs, Directors, Managers — each person\'s Name, Nationality, Passport/ID number\n'
+      + '- Any other person or entity mentioned that would require sanctions/adverse media screening\n\n'
+      + 'For each entity found, extract exactly these fields:\n'
+      + '- name: Full legal name\n'
+      + '- entity_type: "Individual" or "Company"\n'
+      + '- country: Nationality or Country of Registration\n'
+      + '- idNumber: Passport number, Emirates ID, Trade License, Commercial Register number\n'
+      + '- dob: Date of birth or registration (YYYY-MM-DD format, or empty string)\n\n'
+      + 'Return ONLY a valid JSON array. Example:\n'
+      + '[{"name":"TORA BULLION JEWELLERY CO. L.L.C","entity_type":"Company","country":"United Arab Emirates","idNumber":"1106002","dob":"2022-10-07"},{"name":"John Smith","entity_type":"Individual","country":"India","idNumber":"U9861464","dob":"1991-11-23"}]\n\n'
+      + 'Extract EVERY entity. Do NOT skip any individual (shareholder, UBO, manager). Return empty array [] if no entities found.';
 
     var messages;
-    if (ext === 'pdf') {
+    if (isImage) {
+      var mediaType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      messages = [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: extractPrompt }
+      ] }];
+    } else if (ext === 'pdf') {
       messages = [{ role: 'user', content: [
         { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
         { type: 'text', text: extractPrompt }
       ] }];
     } else {
-      // Word document (.doc/.docx) — extract text first, then send as text
+      // Word doc
       var wordText = await extractTextFromWord(file);
       if (wordText) {
-        messages = [{ role: 'user', content: 'The following is the text content of a Word document ("' + file.name + '"):\n\n---\n' + wordText + '\n---\n\n' + extractPrompt }];
+        messages = [{ role: 'user', content: 'Document content ("' + file.name + '"):\n\n---\n' + wordText + '\n---\n\n' + extractPrompt }];
       } else {
-        // Fallback: send as generic document
-        var mediaType = ext === 'doc' ? 'application/msword' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        var mediaType2 = ext === 'doc' ? 'application/msword' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         messages = [{ role: 'user', content: [
-          { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'document', source: { type: 'base64', media_type: mediaType2, data: base64 } },
           { type: 'text', text: extractPrompt }
         ] }];
       }
     }
 
     var data = await callAI({
-      model: 'claude-haiku-4-5',
-      max_tokens: 500,
+      model: 'claude-sonnet-4-5',
+      max_tokens: 2000,
       temperature: 0,
-      system: 'You are a document data extraction specialist. Extract entity information from identity documents, passports, trade licenses, company registrations, and similar documents. Return ONLY valid JSON, nothing else.',
+      system: 'You are a compliance document data extraction specialist. You extract entity information from compliance assessments, due diligence reports, KYC documents, passports, trade licenses, and company registrations. Documents may contain multiple entities (company + shareholders/UBOs/managers). Extract ALL of them. Return ONLY a valid JSON array.',
       messages: messages
     });
 
     var raw = (data.content || []).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
     var cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
-    var m = cleaned.match(/\{[\s\S]*\}/);
-    if (m) {
-      try { return JSON.parse(m[0]); } catch(_) {}
+
+    // Try parsing as array
+    var arrMatch = cleaned.match(/\[[\s\S]*\]/);
+    if (arrMatch) {
+      try {
+        var arr = JSON.parse(arrMatch[0]);
+        if (Array.isArray(arr) && arr.length > 0) return arr;
+      } catch(_) {}
     }
-    throw new Error('Could not extract entity data from document');
+    // Try parsing as single object and wrap in array
+    var objMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (objMatch) {
+      try {
+        var obj = JSON.parse(objMatch[0]);
+        if (obj.name) return [obj];
+      } catch(_) {}
+    }
+    throw new Error('Could not extract entities from document');
+  }
+
+  /**
+   * Run screening for a single entity (standalone, does not touch the form).
+   * Returns {outcome, notes} or throws.
+   */
+  async function screenSingleEntity(entity) {
+    var entityDesc = entity.name + ' (' + (entity.entity_type || 'Individual') + ')';
+    if (entity.dob) entityDesc += ', DOB/Registration: ' + entity.dob;
+    if (entity.country) entityDesc += ', ' + entity.country;
+    if (entity.idNumber) entityDesc += ', ID: ' + entity.idNumber;
+
+    // Live web search if available
+    var liveSearchResults = '';
+    if (typeof searchWebForScreening === 'function') {
+      try {
+        var webResults = await searchWebForScreening(entity.name, entity.entity_type, entity.country);
+        if (webResults) liveSearchResults = '\n\n' + webResults;
+      } catch(_) {}
+    }
+
+    var data = await callAI({
+      model: 'claude-sonnet-4-5', max_tokens: 8000, temperature: 0,
+      system: 'You are a Tier-1 compliance screening engine. Screen the entity for sanctions, PEP, adverse media, and corporate network connections. NEVER fabricate sanctions designations. Adverse media is SEPARATE from sanctions. When adverse media IS found, report assertively with sources/dates. Return ONLY valid JSON:\n{"result":"CLEAR|MATCH|POTENTIAL_MATCH","sanctions_finding":"...","pep_finding":"...","adverse_media_found":true/false,"adverse_media_severity":"none|low|medium|high|critical","adverse_media_finding":"Detailed findings with sources","corporate_connections":"Known affiliations","required_actions":"...","risk_level":"low|medium|high|critical"}',
+      messages: [{ role: 'user', content: 'Screen this entity: ' + entityDesc + '\n\nCheck: sanctions (OFAC SDN, UN, EU, UK OFSI, UAE EOCN), PEP, adverse media (criminal, financial crime, corruption, environmental, human rights, regulatory), corporate network.' + liveSearchResults }]
+    });
+
+    var raw = (data.content || []).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
+    var cleaned = raw.replace(/```json?\n?/g,'').replace(/```/g,'').trim();
+    var result = null;
+    try { result = JSON.parse(cleaned); } catch(_) {}
+    if (!result) { var m = cleaned.match(/\{[\s\S]*\}/); if (m) { try { result = JSON.parse(m[0]); } catch(_) {} } }
+    if (!result) result = { result: 'POTENTIAL_MATCH', sanctions_finding: 'Manual review required', adverse_media_found: false, adverse_media_severity: 'unknown', adverse_media_finding: raw.substring(0, 2000), required_actions: 'Manual review', risk_level: 'medium' };
+
+    // Downgrade MATCH to POTENTIAL_MATCH if no confirmed sanctions
+    var hasSanctions = result.sanctions_finding && /confirmed.*designation|designated.*on|appears.*on.*SDN|sanctioned/i.test(result.sanctions_finding);
+    if (result.result === 'MATCH' && !hasSanctions) result.result = 'POTENTIAL_MATCH';
+    if (result.adverse_media_found && result.adverse_media_severity !== 'none' && result.adverse_media_severity !== 'low' && !hasSanctions) result.result = 'POTENTIAL_MATCH';
+
+    var r = result.result;
+    var outcome = r === 'CLEAR' || r === 'NO_MATCH' ? 'Negative – No Match' : r === 'MATCH' ? 'Confirmed Match' : 'Partial Match';
+
+    var report = 'SANCTIONS & PEP CHECK: ' + (result.sanctions_finding || 'No confirmed designations.');
+    if (result.pep_finding) report += ' PEP: ' + result.pep_finding;
+    if (result.corporate_connections) report += '\nCORPORATE NETWORK: ' + result.corporate_connections;
+    report += '\nADVERSE MEDIA' + (result.adverse_media_found ? ' [FINDINGS DETECTED — ' + (result.adverse_media_severity||'').toUpperCase() + ']' : ' [No significant findings]') + ': ' + (result.adverse_media_finding || 'None.');
+    report += '\nREQUIRED ACTIONS: ' + (result.required_actions || 'Review results.');
+    report += '\nRISK LEVEL: ' + (result.risk_level || 'TBD').toUpperCase();
+
+    return { outcome: outcome, notes: '[AI Screening] ' + report };
   }
 
   global.suite2RunBulkScreening = async function() {
@@ -2720,84 +2831,113 @@
     if (startBtn) startBtn.disabled = true;
     var progressEl = document.getElementById('tfs2-bulk-progress');
     if (progressEl) progressEl.style.display = 'block';
-    var resultsEl = document.getElementById('tfs2-bulk-results');
-    if (resultsEl) resultsEl.innerHTML = '';
+    var statusEl = document.getElementById('tfs2-bulk-status');
+    var countEl = document.getElementById('tfs2-bulk-count');
+    var barEl = document.getElementById('tfs2-bulk-bar');
 
-    var total = bulkQueue.length;
-    var completed = 0;
-    var successes = 0;
-    var failures = 0;
+    // Phase 1: Extract entities from all documents
+    if (statusEl) statusEl.textContent = 'Phase 1: Extracting entities from documents...';
+    bulkEntities = [];
+    var extractErrors = 0;
 
     for (var i = 0; i < bulkQueue.length; i++) {
       var item = bulkQueue[i];
-      var statusEl = document.getElementById('tfs2-bulk-status');
-      var countEl = document.getElementById('tfs2-bulk-count');
-      var barEl = document.getElementById('tfs2-bulk-bar');
-
-      // Step 1: Extract entity data from document
       item.status = 'extracting';
       renderBulkQueue();
-      if (statusEl) statusEl.textContent = 'Extracting: ' + item.file.name;
+      if (statusEl) statusEl.textContent = 'Extracting: ' + item.file.name + ' (' + (i+1) + '/' + bulkQueue.length + ')';
+      if (countEl) countEl.textContent = (i+1) + '/' + bulkQueue.length + ' docs';
+      if (barEl) barEl.style.width = Math.round((i+1) / bulkQueue.length * 50) + '%'; // first 50% for extraction
 
       try {
-        var extracted = await extractEntityFromDocument(item.file);
-        item.extracted = extracted;
+        var entities = await extractEntitiesFromDocument(item.file);
+        item.entities = entities;
         item.status = 'extracted';
-        renderBulkQueue();
-
-        if (!extracted.name || extracted.name.trim() === '') {
-          item.status = 'error';
-          item.errorMsg = 'No name found in document';
-          failures++;
-          renderBulkQueue();
-          completed++;
-          if (countEl) countEl.textContent = completed + '/' + total;
-          if (barEl) barEl.style.width = Math.round(completed / total * 100) + '%';
-          continue;
-        }
-
-        // Step 2: Run screening
-        item.status = 'screening';
-        renderBulkQueue();
-        if (statusEl) statusEl.textContent = 'Screening: ' + extracted.name;
-
-        // Set form values and trigger screening
-        var nameEl = document.getElementById('tfs2-name');
-        var typeEl = document.getElementById('tfs2-entity-type');
-        var countryEl = document.getElementById('tfs2-country');
-        var idEl = document.getElementById('tfs2-idnumber');
-        var dobEl = document.getElementById('tfs2-dob');
-        if (nameEl) nameEl.value = extracted.name;
-        if (typeEl) typeEl.value = extracted.entity_type || 'Individual';
-        if (countryEl) countryEl.value = extracted.country || '';
-        if (idEl) idEl.value = extracted.idNumber || '';
-        if (dobEl) dobEl.value = extracted.dob || '';
-
-        // Run the screening (reuse existing function logic)
-        await suite2RunScreening();
-
-        // Auto-save the screening event
-        var outcomeEl = document.getElementById('tfs2-outcome');
-        item.outcome = outcomeEl ? outcomeEl.value : 'Partial Match';
-        item.status = 'done';
-        suite2SaveTFS();
-
-        successes++;
+        entities.forEach(function(ent) {
+          ent.sourceFile = item.file.name;
+          ent.status = 'pending';
+          ent.outcome = null;
+          ent.notes = null;
+          bulkEntities.push(ent);
+        });
       } catch(e) {
         item.status = 'error';
         item.errorMsg = e.message;
-        failures++;
+        extractErrors++;
       }
-
-      completed++;
       renderBulkQueue();
-      if (countEl) countEl.textContent = completed + '/' + total;
-      if (barEl) barEl.style.width = Math.round(completed / total * 100) + '%';
     }
 
-    if (statusEl) statusEl.textContent = 'Complete — ' + successes + ' screened, ' + failures + ' failed';
+    if (bulkEntities.length === 0) {
+      if (statusEl) statusEl.textContent = 'No entities extracted from documents.';
+      if (startBtn) startBtn.disabled = false;
+      toast('No entities found in uploaded documents', 'error');
+      return;
+    }
+
+    toast(bulkEntities.length + ' entities extracted from ' + (bulkQueue.length - extractErrors) + ' documents. Starting screening...', 'info', 5000);
+
+    // Phase 2: Screen each entity
+    if (statusEl) statusEl.textContent = 'Phase 2: Screening ' + bulkEntities.length + ' entities...';
+    var screened = 0;
+    var screenFails = 0;
+
+    for (var j = 0; j < bulkEntities.length; j++) {
+      var ent = bulkEntities[j];
+      if (!ent.name || !ent.name.trim()) { ent.status = 'error'; screenFails++; continue; }
+
+      ent.status = 'screening';
+      renderBulkQueue();
+      if (statusEl) statusEl.textContent = 'Screening: ' + ent.name + ' (' + (j+1) + '/' + bulkEntities.length + ')';
+      if (countEl) countEl.textContent = (j+1) + '/' + bulkEntities.length + ' entities';
+      if (barEl) barEl.style.width = (50 + Math.round((j+1) / bulkEntities.length * 50)) + '%';
+
+      try {
+        var screenResult = await screenSingleEntity(ent);
+        ent.outcome = screenResult.outcome;
+        ent.notes = screenResult.notes;
+        ent.status = 'done';
+
+        // Save as TFS screening event
+        var events = load(SK2.TFS2) || [];
+        var record = {
+          id: 'TFS2-' + Date.now() + '-' + j,
+          screenedName: ent.name,
+          entityType: ent.entity_type || 'Individual',
+          dob: ent.dob || '',
+          country: ent.country || '',
+          idNumber: ent.idNumber || '',
+          eventType: 'New Customer Onboarding',
+          listsScreened: 'UAE Local Terrorist List (EOCN) | UNSC Consolidated | OFAC SDN | EU Consolidated | UK OFSI | Interpol | Adverse Media | Political Controversy / PEP',
+          screeningDate: today(),
+          reviewedBy: '',
+          outcome: ent.outcome,
+          notes: ent.notes,
+          updatedAt: new Date().toISOString(),
+          bulkSource: ent.sourceFile
+        };
+        events.unshift(record);
+        save(SK2.TFS2, events);
+
+        // Sync to Asana SCREENING project
+        if (typeof syncScreeningToAsana === 'function') {
+          var syncTitle = '[TFS] ' + ent.name + ' — ' + ent.outcome;
+          var daysUrg = ent.outcome === 'Confirmed Match' ? 1 : ent.outcome === 'Partial Match' ? 5 : 30;
+          syncScreeningToAsana(ent.name, syncTitle, ent.notes || '', daysUrg).catch(function(){});
+        }
+
+        screened++;
+      } catch(e) {
+        ent.status = 'error';
+        ent.errorMsg = e.message;
+        screenFails++;
+      }
+      renderBulkQueue();
+    }
+
+    if (statusEl) statusEl.textContent = 'Complete — ' + screened + ' screened, ' + screenFails + ' failed';
+    if (barEl) barEl.style.width = '100%';
     if (startBtn) startBtn.disabled = false;
-    toast('Bulk screening complete: ' + successes + ' entities screened, ' + failures + ' failed', successes > 0 ? 'success' : 'error');
+    toast('Bulk screening complete: ' + screened + ' entities screened, ' + screenFails + ' failed', screened > 0 ? 'success' : 'error');
     renderTFS2();
   };
 
