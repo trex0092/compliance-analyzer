@@ -494,6 +494,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <input type="text" id="setupUsername" placeholder="Choose a username (lowercase)" />
     <span class="lbl">Password</span>
     <input type="password" id="setupPassword" placeholder="Choose a strong password" />
+    <div style="font-size:9px;color:var(--muted);margin:-8px 0 8px;letter-spacing:0.5px;line-height:1.5">Min 10 characters &bull; Uppercase &bull; Lowercase &bull; Digit &bull; Special character</div>
     <span class="lbl">Confirm Password</span>
     <input type="password" id="setupPasswordConfirm" placeholder="Repeat password" onkeydown="if(event.key==='Enter')completeSetup()" />
     <button class="btn btn-gold" onclick="completeSetup()" style="width:100%;margin-top:8px">Create Account & Start</button>
@@ -876,6 +877,7 @@ Examples:
             <button class="btn btn-sm btn-blue" onclick="refreshShipmentData()">Refresh</button>
             <button class="btn btn-sm btn-green" onclick="exportShipmentsDOCX()">Word</button>
             <button class="btn btn-sm btn-green" onclick="exportShipmentsPDF()">PDF</button>
+            <button class="btn btn-sm btn-green" onclick="exportShipmentsCSV()">CSV</button>
             <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all shipments?'))clearShipments()">Clear</button>
           </div>
         </div>
@@ -1033,6 +1035,7 @@ Examples:
             <button class="btn btn-sm btn-blue" onclick="document.getElementById('iarFileInput').click()">File</button>
             <button class="btn btn-sm btn-green" onclick="exportIARReportPDF()">PDF</button>
             <button class="btn btn-sm btn-green" onclick="exportIARReportDOCX()">Word</button>
+            <button class="btn btn-sm btn-green" onclick="exportIARReportCSV()">CSV</button>
             <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all IAR reports?'))clearIARReports()">Clear</button>
             <input type="file" id="iarFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachIARFile(this)" />
           </div>
@@ -1810,10 +1813,12 @@ Examples:
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Employee Directory</span>
+          <input type="text" id="empSearch" placeholder="Search employees..." oninput="renderEmployeeDirectory()" style="font-size:11px;padding:4px 10px;width:180px;background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.12);border-radius:2px;color:var(--text);font-family:'Montserrat',sans-serif" />
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-sm btn-blue" onclick="document.getElementById('empFileInput').click()">File</button>
             <button class="btn btn-sm btn-green" onclick="exportEmployeePDF()">PDF</button>
             <button class="btn btn-sm btn-green" onclick="exportEmployeeDOCX()">Word</button>
+            <button class="btn btn-sm btn-green" onclick="exportEmployeeExcel()">Excel</button>
             <button class="btn btn-sm btn-red" onclick="clearEmployees()">Clear</button>
             <input type="file" id="empFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachEmployeeFile(this)" />
           </div>
@@ -5726,7 +5731,7 @@ function normalizeAnalysisResult(obj) {
 }
 
 async function callAnthropic(body) {
-  const fetchWithTimeout = async (url, options, timeoutMs = 15000) => {
+  const fetchWithTimeout = async (url, options, timeoutMs = 60000) => {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), timeoutMs);
     try {
@@ -5743,7 +5748,7 @@ async function callAnthropic(body) {
 
   const directEndpoint = 'https://api.anthropic.com/v1/messages';
   const doDirectCall = async () => {
-    const r = await fetch(directEndpoint, {
+    const r = await fetchWithTimeout(directEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -5831,7 +5836,7 @@ async function runAnalysis(queryOverride, areaOverride) {
       const today = new Date(); today.setHours(0,0,0,0);
       const overdue = (d.data||[]).filter(t=>!t.completed&&t.due_on&&new Date(t.due_on)<today).map(t=>t.name).slice(0,12);
       if (overdue.length) asanaCtx = `\n\nLIVE ASANA DATA - Overdue tasks (${overdue.length}): ${overdue.join('; ')}`;
-    } catch(e) {}
+    } catch(e) { console.warn('[Analysis] Asana context unavailable:', e.message); }
   }
 
   const activeCompany = getActiveCompany();
@@ -5906,6 +5911,7 @@ function renderResults(r, query) {
   document.getElementById('summaryBox').innerHTML = (r.summary ? escHtml(r.summary) : '') + rrBanner;
   const c = document.getElementById('findingsContainer'); c.innerHTML = '';
   const wb = document.getElementById('writebackPanel'); wb.innerHTML = '';
+  if (!(r.findings||[]).length) { c.innerHTML = '<p style="font-size:13px;color:var(--green);padding:16px">No compliance gaps identified for this query. Your framework appears well-aligned.</p>'; }
   (r.findings||[]).forEach((f,i) => {
     const s = (f.severity||'medium').toLowerCase();
     const sc = s==='critical'?'critical':s==='high'?'high':s==='compliant'?'ok':'medium';
@@ -8429,10 +8435,12 @@ function getDocExpiryStatus(expiryDate) {
 }
 
 function renderEmployeeDirectory() {
-  const list = safeLocalParse(EMPLOYEE_INFO_STORAGE, []);
+  let list = safeLocalParse(EMPLOYEE_INFO_STORAGE, []);
   const el = document.getElementById('employeeDirectoryList');
   if (!el) return;
-  if (!list.length) { el.innerHTML='<p style="font-size:13px;color:var(--muted)">No employees added yet.</p>'; return; }
+  const q = (document.getElementById('empSearch')?.value||'').toLowerCase().trim();
+  if (q) list = list.filter(e => (e.name||'').toLowerCase().includes(q) || (e.designation||'').toLowerCase().includes(q) || (e.businessUnit||'').toLowerCase().includes(q) || (e.nationality||'').toLowerCase().includes(q) || (e.email||'').toLowerCase().includes(q));
+  if (!list.length) { el.innerHTML='<p style="font-size:13px;color:var(--muted)">'+(q?'No employees matching "'+escHtml(q)+'"':'No employees added yet.')+'</p>'; return; }
   el.innerHTML = list.map(e => {
     const eidStatus = getDocExpiryStatus(e.eidExpiry);
     const ppStatus = getDocExpiryStatus(e.passportExpiry);
