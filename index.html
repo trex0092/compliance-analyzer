@@ -1948,15 +1948,6 @@ Examples:
           </div>
         </div>
 
-        <!-- Determination Banner -->
-        <div id="raDetermination" style="margin-top:12px;padding:14px 18px;border:1px solid var(--green);background:rgba(63,185,80,0.08);display:flex;align-items:center;gap:14px">
-          <div style="font-size:22px" id="raDetIcon">✓</div>
-          <div>
-            <div style="font-weight:700;font-size:13px" id="raDetLabel">CDD — STANDARD CUSTOMER DUE DILIGENCE</div>
-            <div style="font-size:11px;color:var(--muted)" id="raDetRange">Score 0–19</div>
-          </div>
-        </div>
-
         <!-- Actions -->
         <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
           <button class="btn btn-gold" onclick="finaliseRiskAssessment()">Finalise Assessment</button>
@@ -6063,91 +6054,76 @@ async function autoSyncToAsana(taskName, taskNotes, dueInDays) {
   }
 }
 
-// ======= SCREENING PROJECT — Dedicated Asana project for all screening tasks =======
-const SCREENING_PROJECT_CACHE_KEY = 'fgl_asana_screening_projects';
+// ======= SCREENING PROJECT — Single Asana project for ALL screening tasks =======
+const SCREENING_PROJECT_CACHE_KEY = 'fgl_asana_screening_project_gid';
 
 /**
- * Find or create a dedicated "SCREENING" project in Asana for the given entity.
- * Project name format: "SCREENING — {Entity Name}"
- * Caches project GIDs to avoid duplicate creation.
+ * Find or create a single "SCREENINGS" project in Asana.
+ * ALL screening tasks go into this one project.
  */
-async function getOrCreateScreeningProject(entityName) {
+async function getOrCreateScreeningProject() {
   if (!ASANA_TOKEN && !PROXY_URL) return null;
-  const normalizedName = entityName.trim().toUpperCase();
-  const projectName = 'SCREENING — ' + entityName.trim();
+  const projectName = 'SCREENINGS';
 
-  // Check local cache first
-  let cache = {};
-  try { cache = JSON.parse(localStorage.getItem(SCREENING_PROJECT_CACHE_KEY) || '{}'); } catch(_) {}
-  if (cache[normalizedName]) {
-    // Verify project still exists
+  // Check cache
+  const cachedGid = localStorage.getItem(SCREENING_PROJECT_CACHE_KEY);
+  if (cachedGid) {
     try {
-      const check = await asanaFetch('/projects/' + cache[normalizedName] + '?opt_fields=name,archived');
+      const check = await asanaFetch('/projects/' + cachedGid + '?opt_fields=name,archived');
       const checkData = await check.json();
-      if (checkData.data && !checkData.data.archived) return cache[normalizedName];
-      // Project was deleted/archived — remove from cache and recreate
-      delete cache[normalizedName];
-      localStorage.setItem(SCREENING_PROJECT_CACHE_KEY, JSON.stringify(cache));
+      if (checkData.data && !checkData.data.archived) return cachedGid;
+      localStorage.removeItem(SCREENING_PROJECT_CACHE_KEY);
     } catch(_) {
-      // Network error — use cached GID anyway
-      return cache[normalizedName];
+      return cachedGid; // Network error — use cached
     }
   }
 
-  // Search for existing project by name in workspace
+  // Search for existing SCREENINGS project
   try {
-    const searchUrl = '/projects?workspace=' + ASANA_WORKSPACE + '&opt_fields=name,archived&limit=100';
-    const searchR = await asanaFetch(searchUrl);
+    const searchR = await asanaFetch('/projects?workspace=' + ASANA_WORKSPACE + '&opt_fields=name,archived&limit=100');
     const searchData = await searchR.json();
     if (searchData.data) {
       const existing = searchData.data.find(p => !p.archived && p.name === projectName);
       if (existing) {
-        cache[normalizedName] = existing.gid;
-        localStorage.setItem(SCREENING_PROJECT_CACHE_KEY, JSON.stringify(cache));
+        localStorage.setItem(SCREENING_PROJECT_CACHE_KEY, existing.gid);
         return existing.gid;
       }
     }
   } catch(_) {}
 
-  // Create new SCREENING project
+  // Create SCREENINGS project
   try {
     const createBody = {
       data: {
         name: projectName,
         workspace: ASANA_WORKSPACE,
-        notes: 'TFS / Sanctions Screening project for: ' + entityName
-          + '\nCreated automatically by Compliance Analyzer.'
-          + '\nAll screening tasks for this entity are tracked here.'
-          + '\n\nRegulatory Basis: UAE FDL No.10/2025, FATF Rec 6, Cabinet Decision No.74/2020',
+        notes: 'TFS / Sanctions Screening — All screening tasks\nCreated by Compliance Analyzer.\n\nRegulatory Basis: UAE FDL No.10/2025, FATF Rec 6, Cabinet Decision No.74/2020',
         layout: 'list',
         default_view: 'list'
       }
     };
     const createR = await asanaFetch('/projects', { method: 'POST', body: JSON.stringify(createBody) });
     const createData = await createR.json();
-    if (createData.errors) throw new Error(createData.errors[0]?.message || 'Asana project creation error');
+    if (createData.errors) throw new Error(createData.errors[0]?.message || 'Asana error');
     const newGid = createData.data?.gid;
     if (newGid) {
-      cache[normalizedName] = newGid;
-      localStorage.setItem(SCREENING_PROJECT_CACHE_KEY, JSON.stringify(cache));
+      localStorage.setItem(SCREENING_PROJECT_CACHE_KEY, newGid);
       return newGid;
     }
   } catch(e) {
-    console.error('[Screening Project] Failed to create:', e.message);
+    console.error('[SCREENINGS] Failed to create project:', e.message);
   }
   return null;
 }
 
 /**
- * Sync a screening task to the entity's dedicated SCREENING project in Asana.
- * Creates the project if it doesn't exist yet.
+ * Sync a screening task to the SCREENINGS project in Asana.
  */
 async function syncScreeningToAsana(entityName, taskName, taskNotes, dueInDays) {
   if (!ASANA_TOKEN && !PROXY_URL) return null;
   try {
-    const projectGid = await getOrCreateScreeningProject(entityName);
+    const projectGid = await getOrCreateScreeningProject();
     if (!projectGid) {
-      // Fallback to default project if screening project creation fails
       return autoSyncToAsana(taskName, taskNotes, dueInDays);
     }
     const due = new Date(); due.setDate(due.getDate() + (dueInDays || 14));
