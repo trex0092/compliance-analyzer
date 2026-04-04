@@ -264,6 +264,76 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       `).join('');
   }
 
+  // UAE MoE Compliance Guidance per screening outcome
+  function getReportGuidance(result) {
+    if (result === 'MATCH') return {
+      label: 'CONFIRMED MATCH — SANCTIONS HIT',
+      summary: 'The screened entity has been positively identified on one or more sanctions lists. Immediate regulatory action is required under UAE law.',
+      regulatory: [
+        'UAE Federal Decree-Law No.(10) of 2025, Art.22: Reporting entities must immediately freeze all funds, financial assets, and economic resources of designated persons without prior notice.',
+        'Cabinet Decision No.(74) of 2020: All natural and legal persons must comply with TFS without delay. Non-compliance is a criminal offence.',
+        'FATF Recommendations 6 & 7: Implement targeted financial sanctions related to terrorism and proliferation financing without delay.',
+        'MoE Circular 08/AML/2021: DPMS must screen all customers, UBOs, and counterparties against UAE Local Terrorist List and UNSC Consolidated List.',
+        'Cabinet Resolution No.(134) of 2025, Art.13: Enhanced monitoring obligations for designated persons.'
+      ],
+      actions: [
+        'FREEZE ALL ASSETS IMMEDIATELY — within 24 hours. No prior court order required. (FDL Art.22)',
+        'FILE FUNDS FREEZE REPORT (FFR) via goAML — immediately. (FDL Art.22/23)',
+        'FILE CNMR TO EOCN — within 5 business days. Include match details and frozen asset values. (Cabinet Decision 74/2020)',
+        'FILE STR VIA goAML — within 30 calendar days. (FDL Art.23)',
+        'NOTIFY MLRO & SENIOR MANAGEMENT — immediately with documented timestamps. (FDL Art.20)',
+        'NOTIFY SUPERVISORY AUTHORITY (MoE) — without delay. (FDL Art.35)',
+        'DO NOT PROCEED — terminate business relationship. Tipping off is a criminal offence. (FDL Art.26)'
+      ],
+      deadlines: 'Asset Freeze: 24h | FFR: Immediate | CNMR to EOCN: 5 business days | STR: 30 days | MoE Notification: Without delay',
+      records: 'Retain all records for minimum 5 years from last transaction or termination. (FDL Art.25, Cabinet Resolution 134/2025 Art.24)',
+      penalty: 'Administrative fines up to AED 5,000,000 and/or criminal prosecution under FDL Art.36-42.'
+    };
+    if (result === 'POTENTIAL_MATCH') return {
+      label: 'POTENTIAL MATCH — ENHANCED DUE DILIGENCE REQUIRED',
+      summary: 'Partial or similar name match detected. The match must be resolved through enhanced verification before any transaction or business relationship may proceed.',
+      regulatory: [
+        'UAE Federal Decree-Law No.(10) of 2025, Art.16-18: Apply Enhanced Due Diligence (EDD) to verify identity and determine true positive or false positive.',
+        'Cabinet Decision No.(74) of 2020: File Partial Name Match Report (PNMR) with EOCN within 5 business days if match cannot be immediately resolved.',
+        'FATF Recommendation 10: Where risk is higher, apply enhanced measures including additional identification and enhanced monitoring.',
+        'MoE Circular 08/AML/2021: Suspend all transactions until match is resolved. Conduct enhanced verification.',
+        'Cabinet Resolution No.(134) of 2025, Art.8: EDD requirements include verifying source of funds/wealth and obtaining senior management approval.'
+      ],
+      actions: [
+        'SUSPEND ALL PENDING TRANSACTIONS — immediately. Document suspension. (FDL Art.16)',
+        'CONDUCT ENHANCED IDENTITY VERIFICATION — cross-reference DOB, nationality, passport/EID, address. (FDL Art.16-18)',
+        'FILE PNMR TO EOCN — within 5 business days if unresolved. (Cabinet Decision 74/2020)',
+        'ESCALATE TO COMPLIANCE OFFICER / MLRO — for review and approval. (FDL Art.20)',
+        'APPLY EDD EVEN IF RULED OUT — enhanced monitoring given name similarity. (Cabinet Resolution 134/2025 Art.8)',
+        'DOCUMENT DIFFERENTIATION BASIS — if false positive, record exactly how entity was differentiated. (FDL Art.25)'
+      ],
+      deadlines: 'Transaction Suspension: Immediate | PNMR: 5 business days | CO Review: 48 hours | Match Resolution: Before any transaction',
+      records: 'Retain screening records, verification documents, PNMR filings, and resolution decision for minimum 5 years. (FDL Art.25)',
+      penalty: 'Processing a transaction for a potentially sanctioned person without completing EDD constitutes a regulatory breach.'
+    };
+    return {
+      label: 'NEGATIVE MATCH — NO SANCTIONS HIT',
+      summary: 'Entity cleared against all screened sanctions lists, PEP databases, and adverse media sources. Standard CDD applies.',
+      regulatory: [
+        'UAE Federal Decree-Law No.(10) of 2025, Art.12-16: Standard CDD applies. Entity may proceed for onboarding subject to CDD completion.',
+        'Cabinet Decision No.(74) of 2020: Negative result satisfies mandatory TFS screening obligation.',
+        'FATF Recommendation 10: CDD measures must still be applied including customer identification and UBO determination.',
+        'MoE Circular 08/AML/2021: Retain negative screening result in customer file. Re-screen at defined intervals.',
+        'Cabinet Resolution No.(134) of 2025, Art.6: Complete standard CDD before establishing the business relationship.'
+      ],
+      actions: [
+        'PROCEED WITH STANDARD CDD — verify identity, identify UBOs (>25%), determine source of funds/wealth. (FDL Art.12-16)',
+        'RECORD SCREENING RESULT — save to customer file with entity name, lists checked, date, officer name. (FDL Art.25)',
+        'SCHEDULE RE-SCREENING — High Risk: 3 months, Medium: 6 months, Low: 12 months. (Cabinet Resolution 134/2025 Art.13)',
+        'COMPLETE RISK ASSESSMENT — assign risk rating based on type, jurisdiction, products, delivery channel. (FDL Art.14)',
+        'APPLY ONGOING MONITORING — ensure transactions are consistent with known profile. Report any suspicious activity. (FDL Art.17)'
+      ],
+      deadlines: 'CDD: Before business relationship | Re-screening (High): 3 months | (Medium): 6 months | (Low): 12 months',
+      records: 'Retain screening records, CDD documents, and risk assessments for minimum 5 years (recommended 10 years for DPMS). (FDL Art.25)',
+      penalty: 'A negative screening result is point-in-time only. Continuous monitoring and periodic re-screening are mandatory obligations.'
+    };
+  }
+
   function exportPDF() {
     const matches = getMatches();
     if (!matches.length) { HawkeyeApp.toast('No results to export','error'); return; }
@@ -364,10 +434,45 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         y += 3;
       }
 
+      // Compliance Guidance Box
+      const guidance = getReportGuidance(m.result);
+      y = checkPage(y + 12);
+      const boxColor = m.result==='MATCH'?[217,79,79]:m.result==='POTENTIAL_MATCH'?[232,168,56]:[39,174,96];
+      doc.setFillColor(boxColor[0], boxColor[1], boxColor[2]); doc.rect(ml, y-2, 3, 0, 'F');
+      doc.setFillColor(248,246,242); doc.rect(ml, y-2, tw, 8, 'F');
+      doc.setFontSize(8); doc.setTextColor(boxColor[0], boxColor[1], boxColor[2]);
+      doc.text(guidance.label, ml+4, y+3);
+      y += 10;
+      doc.setFontSize(7); doc.setTextColor(80);
+      const summaryLines = doc.splitTextToSize(guidance.summary, tw - 8);
+      summaryLines.forEach(line => { y = checkPage(y+4); doc.text(line, ml+4, y); y += 3.5; });
+      y += 3;
+
+      // Required Actions
+      doc.setFontSize(7.5); doc.setTextColor(60);
+      doc.text('REQUIRED ACTIONS:', ml+4, y); y += 5;
+      doc.setFontSize(6.5); doc.setTextColor(80);
+      guidance.actions.forEach((action, ai) => {
+        y = checkPage(y + 5);
+        const aLines = doc.splitTextToSize((ai+1) + '. ' + action, tw - 14);
+        aLines.forEach(line => { doc.text(line, ml+8, y); y += 3.5; });
+        y += 1;
+      });
+      y += 2;
+
+      // Deadlines & Records
+      doc.setFontSize(7); doc.setTextColor(100);
+      y = checkPage(y + 5);
+      doc.text('Deadlines: ' + guidance.deadlines, ml+4, y); y += 4;
+      y = checkPage(y + 5);
+      const recLines = doc.splitTextToSize('Records: ' + guidance.records, tw - 8);
+      recLines.forEach(line => { doc.text(line, ml+4, y); y += 3.5; });
+      y += 3;
+
       // Separator
       doc.setDrawColor(201,168,76); doc.setLineWidth(0.15);
       doc.line(ml, y, mr, y);
-      y += 8;
+      y += 10;
     });
 
     // Add footer to all pages
@@ -477,6 +582,28 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       if (m.recommendation) {
         html += `<div class="entity-rec">${m.recommendation.replace(/\n/g,'<br>')}</div>`;
       }
+
+      // Compliance Guidance
+      const g = getReportGuidance(m.result);
+      const gBorderColor = m.result==='MATCH'?'#D94F4F':m.result==='POTENTIAL_MATCH'?'#E8A030':'#3DA876';
+      html += `<div style="margin-top:12px;border:1px solid ${gBorderColor};border-left:4px solid ${gBorderColor};padding:14px;background:#FAFAF8;page-break-inside:avoid">
+        <div style="font-size:11pt;font-weight:700;color:${gBorderColor};margin-bottom:6px">${g.label}</div>
+        <div style="font-size:9.5pt;color:#333;margin-bottom:10px;line-height:1.5">${g.summary}</div>
+        <div style="font-size:9pt;font-weight:700;color:#1A1A1A;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #E0D9C8;padding-bottom:3px">Regulatory Basis</div>
+        <ul style="font-size:9pt;color:#444;margin:4px 0 10px 16px;line-height:1.5">
+          ${g.regulatory.map(r => '<li style="margin-bottom:4px">'+r+'</li>').join('')}
+        </ul>
+        <div style="font-size:9pt;font-weight:700;color:#1A1A1A;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #E0D9C8;padding-bottom:3px">Required Actions</div>
+        <ol style="font-size:9pt;color:#444;margin:4px 0 10px 16px;line-height:1.6">
+          ${g.actions.map(a => '<li style="margin-bottom:6px;padding-left:4px">'+a+'</li>').join('')}
+        </ol>
+        <div style="font-size:9pt;font-weight:700;color:#1A1A1A;margin-bottom:3px;text-transform:uppercase;letter-spacing:1px">Compliance Deadlines</div>
+        <div style="font-size:9pt;color:#555;margin-bottom:8px">${g.deadlines}</div>
+        <div style="font-size:9pt;font-weight:700;color:#1A1A1A;margin-bottom:3px;text-transform:uppercase;letter-spacing:1px">Record Keeping</div>
+        <div style="font-size:9pt;color:#555;margin-bottom:8px">${g.records}</div>
+        <div style="font-size:8.5pt;color:#8B6914;background:#FDF8ED;border:1px solid #E8D48B;padding:8px;margin-top:6px;border-radius:2px">${g.penalty}</div>
+      </div>`;
+
       html += '</div>';
     });
 
