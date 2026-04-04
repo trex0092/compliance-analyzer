@@ -2430,7 +2430,7 @@
         <div style="display:flex;gap:6px">
           <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function')refreshSanctionsLists();renderTFS2();toast('Refreshed','success')">Refresh</button>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
-          <button class="btn btn-sm btn-red" style="padding:6px 12px;font-size:11px" onclick="suite2OpenBulkUpload()">Bulk Upload (max 20)</button>
+          <button class="btn btn-sm btn-red" style="padding:6px 12px;font-size:11px" onclick="suite2OpenBulkUpload()">Bulk Upload</button>
         </div>
       </div>
 
@@ -2634,7 +2634,7 @@
           ondrop="event.preventDefault();this.style.background='rgba(180,151,90,0.03)';this.style.borderColor='var(--gold)';handleBulkFiles(event.dataTransfer.files)">
           <div style="font-size:32px;margin-bottom:10px;opacity:0.8">📋</div>
           <div style="font-size:14px;font-weight:600;color:var(--gold)">Drop PDF files here or click to browse</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'DM Mono',monospace">PDF only — Max 20 files per batch</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'DM Mono',monospace">PDF only — up to 100 files per batch</div>
           <input type="file" id="tfs2-bulk-files" multiple accept=".pdf" style="display:none" onchange="handleBulkFiles(this.files)">
         </div>
 
@@ -2789,9 +2789,9 @@
 
       // Step 2: AI screening with live search results included (with 429 retry)
       var screeningBody = {
-        model: 'claude-sonnet-4-5', max_tokens: 4000, temperature: 0,
-        system: 'You are a Tier-1 compliance screening engine (Refinitiv/Dow Jones standard). RULES: (1) NEVER fabricate sanctions designations. (2) Adverse media is SEPARATE from sanctions. (3) Report adverse media ASSERTIVELY with sources/dates. (4) Investigate corporate network: family, directorships, beneficial ownership. (5) If LIVE WEB SEARCH RESULTS are provided, PRIORITIZE them. Return ONLY valid JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","sanctions_finding":"...","pep_finding":"...","adverse_media_found":true/false,"adverse_media_severity":"none|low|medium|high|critical","adverse_media_categories":["..."],"adverse_media_finding":"Detailed narrative with sources/dates/jurisdiction/status for each finding","corporate_connections":"...","required_actions":"...","risk_level":"low|medium|high|critical","regulatory_basis":"..."}',
-        messages: [{ role: 'user', content: 'SCREEN: ' + entityDesc + '\n\nCheck: (1) Sanctions: OFAC SDN/SSI/CAPTA, UN, EU, UK OFSI, UAE EOCN, Swiss SECO, Australian DFAT, Canadian SEMA. (2) PEP: heads of state, ministers, military, SOE executives, family, associates. (3) Corporate network: directorships, beneficial ownership, family business ties. (4) Adverse media: financial crime, corruption, terrorism, organized crime, narcotics, sanctions evasion, environmental crime, human rights, regulatory enforcement, litigation. Search: ICIJ, OCCRP, BBC, Reuters, Bloomberg, FT, Al Jazeera, Bellingcat, local media, NGOs. (5) UAE checks: EOCN, Central Bank, MENAFATF.' + liveSearchResults }]
+        model: 'claude-sonnet-4-5', max_tokens: 2000, temperature: 0,
+        system: 'Compliance screening engine. RULES: Never fabricate sanctions. Adverse media separate from sanctions. Report findings with sources/dates. Check corporate network. If LIVE WEB SEARCH RESULTS provided, prioritize them. Return ONLY JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","sanctions_finding":"","pep_finding":"","adverse_media_found":false,"adverse_media_severity":"none|low|medium|high|critical","adverse_media_finding":"findings with sources","corporate_connections":"","required_actions":"","risk_level":"low|medium|high|critical"}',
+        messages: [{ role: 'user', content: 'Screen: ' + entityDesc + '. Check sanctions (OFAC,UN,EU,UK,UAE EOCN), PEP, corporate network, adverse media (financial crime, corruption, terrorism, environmental, human rights). Be concise but thorough.' + liveSearchResults }]
       };
       var data = null;
       for (var _retry = 0; _retry < 3; _retry++) {
@@ -3013,7 +3013,7 @@
 
   global.handleBulkFiles = function(files) {
     if (!files || !files.length) return;
-    var maxFiles = 20;
+    var maxFiles = 100;
     for (var i = 0; i < files.length && bulkQueue.length < maxFiles; i++) {
       var file = files[i];
       var ext = file.name.split('.').pop().toLowerCase();
@@ -3247,10 +3247,10 @@
     ] }];
 
     var data = await callAI({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 2000,
+      model: 'claude-haiku-4-5',
+      max_tokens: 1000,
       temperature: 0,
-      system: 'You are a compliance document data extraction specialist. You extract entity information from compliance assessments, due diligence reports, KYC documents, passports, trade licenses, and company registrations. Documents may contain multiple entities (company + shareholders/UBOs/managers). Extract ALL of them. Return ONLY a valid JSON array.',
+      system: 'Extract ALL entities from this compliance document. Return ONLY a JSON array: [{"name":"","entity_type":"Individual|Company","country":"","idNumber":"","dob":""}]. Include company AND every individual (shareholders, UBOs, managers, directors).',
       messages: messages
     });
 
@@ -3301,14 +3301,14 @@
     for (var attempt = 0; attempt < maxRetries; attempt++) {
       try {
         data = await callAI({
-          model: 'claude-sonnet-4-5', max_tokens: 4000, temperature: 0,
-          system: 'You are a Tier-1 compliance screening engine. Screen the entity for sanctions, PEP, adverse media, and corporate network connections. NEVER fabricate sanctions designations. Adverse media is SEPARATE from sanctions. When adverse media IS found, report assertively with sources/dates. Return ONLY valid JSON:\n{"result":"CLEAR|MATCH|POTENTIAL_MATCH","sanctions_finding":"...","pep_finding":"...","adverse_media_found":true/false,"adverse_media_severity":"none|low|medium|high|critical","adverse_media_finding":"Detailed findings with sources","corporate_connections":"Known affiliations","required_actions":"...","risk_level":"low|medium|high|critical"}',
-          messages: [{ role: 'user', content: 'Screen this entity: ' + entityDesc + '\n\nCheck: sanctions (OFAC SDN, UN, EU, UK OFSI, UAE EOCN), PEP, adverse media (criminal, financial crime, corruption, environmental, human rights, regulatory), corporate network.' + liveSearchResults }]
+          model: 'claude-sonnet-4-5', max_tokens: 2000, temperature: 0,
+          system: 'Compliance screening engine. Never fabricate sanctions. Adverse media separate from sanctions. Report findings with sources/dates. Check corporate network. Return ONLY JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","sanctions_finding":"","pep_finding":"","adverse_media_found":false,"adverse_media_severity":"none|low|medium|high|critical","adverse_media_finding":"","corporate_connections":"","required_actions":"","risk_level":"low|medium|high|critical"}',
+          messages: [{ role: 'user', content: 'Screen: ' + entityDesc + '. Check sanctions (OFAC,UN,EU,UK,UAE EOCN), PEP, corporate network, adverse media. Be concise.' + liveSearchResults }]
         });
-        break; // success
+        break;
       } catch(apiErr) {
         if (apiErr.message && apiErr.message.indexOf('429') !== -1 && attempt < maxRetries - 1) {
-          var waitTime = (attempt + 1) * 5000; // 5s, 10s, 15s
+          var waitTime = (attempt + 1) * 15000; // 15s, 30s, 45s
           console.warn('[Screening] Rate limited, waiting ' + (waitTime/1000) + 's before retry...');
           await new Promise(function(r) { setTimeout(r, waitTime); });
         } else {
@@ -3404,7 +3404,7 @@
     if (statusEl) statusEl.textContent = 'Phase 2: Screening ' + bulkEntities.length + ' entities...';
     var screened = 0;
     var screenFails = 0;
-    var retryDelay = 3000; // 3 seconds between screenings to avoid rate limits
+    var retryDelay = 35000; // 35 seconds between screenings — respects 8,000 tokens/min output limit
 
     for (var j = 0; j < bulkEntities.length; j++) {
       var ent = bulkEntities[j];

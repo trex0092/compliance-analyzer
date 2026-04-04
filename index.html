@@ -7322,15 +7322,11 @@ async function callAI(body) {
 async function searchWebForScreening(entityName, entityType, country) {
   if (!TAVILY_KEY) return null;
 
-  const queries = [
-    entityName + ' sanctions investigation prosecution',
-    entityName + ' adverse media fraud money laundering corruption',
-    entityName + ' ' + (country || '') + ' court case criminal regulatory enforcement'
-  ];
-
+  // Single search query (saves Tavily credits — 1 query instead of 3)
+  const query = entityName + ' sanctions adverse media investigation fraud corruption ' + (country || '');
   let allResults = [];
 
-  for (const query of queries) {
+  {
     try {
       const r = await fetch('https://api.tavily.com/search', {
         method: 'POST',
@@ -7338,9 +7334,9 @@ async function searchWebForScreening(entityName, entityType, country) {
         body: JSON.stringify({
           api_key: TAVILY_KEY,
           query: query,
-          search_depth: 'advanced',
+          search_depth: 'basic',
           include_answer: true,
-          max_results: 5,
+          max_results: 3,
           include_domains: [],
           exclude_domains: []
         })
