@@ -131,9 +131,9 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
 
     try {
       // ═══════════════════════════════════════════════════════════
-      // RUN BOTH IN PARALLEL — sanctions + adverse media at once
+      // SCREENING — Live sanctions + AI adverse media in parallel
       // ═══════════════════════════════════════════════════════════
-      HawkeyeApp.toast('Screening against OFAC, UN, UK OFSI + adverse media...', 'info', 30000);
+      HawkeyeApp.toast('Screening in progress...', 'info', 30000);
 
       let sanctionsResult = null;
       let sanctionsMatches = [];
@@ -142,25 +142,28 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
       let aiMatches = [];
       let aiRecommendation = '';
 
-      // Build promises for parallel execution
+      // Sanctions API with 8s timeout (Netlify free = 10s limit)
       const sanctionsPromise = fetch('/.netlify/functions/sanctions-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, type, country }),
-        signal: AbortSignal.timeout(25000)
-      }).then(r => r.ok ? r.json() : Promise.reject('HTTP ' + r.status))
-        .catch(e => ({ error: String(e) }));
+        body: JSON.stringify({ name, type, country })
+      }).then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).catch(e => ({ error: String(e.message || e) }));
 
+      // AI adverse media (only if API key exists)
       const countryInfo = country ? ', Country: ' + country : '';
-      const aiPromise = typeof callAI === 'function'
+      const hasApiKey = typeof callAI === 'function' && localStorage.getItem('hs_api_key');
+      const aiPromise = hasApiKey
         ? callAI({
             model: 'claude-sonnet-4-5-20250514',
             max_tokens: 1500,
             temperature: 0,
-            system: 'You are an adverse media research assistant. RULES: 1) Do NOT report sanctions — that is done by live databases. 2) ONLY report adverse media you are CONFIDENT exists — cite publication, date, what was reported. 3) If unsure, say UNVERIFIED. 4) Check PEP status. 5) Be CONCISE. 6) Return ONLY valid JSON.',
-            messages: [{ role: 'user', content: 'ADVERSE MEDIA and PEP check ONLY. Entity: "' + name + '" (' + (type||'individual') + ')' + countryInfo + '. Return JSON: {"pep_status":"yes|no|unknown","adverse_media_found":true|false,"matches":[{"list":"Source","matchType":"adverse_media|pep","confidence":"CONFIRMED|LIKELY|UNVERIFIED","details":"Brief finding"}],"summary":"Brief assessment"}' }]
-          }).catch(e => ({ error: String(e) }))
-        : Promise.resolve({ error: 'No AI provider' });
+            system: 'You are an adverse media research assistant. RULES: 1) Do NOT report sanctions — done by live databases. 2) ONLY report adverse media you are CONFIDENT exists. 3) If unsure, say UNVERIFIED. 4) Check PEP status. 5) Return ONLY valid JSON. Be concise.',
+            messages: [{ role: 'user', content: 'ADVERSE MEDIA and PEP ONLY. Entity: "' + name + '" (' + (type||'individual') + ')' + countryInfo + '. JSON: {"pep_status":"yes|no|unknown","adverse_media_found":true|false,"matches":[{"list":"Source","matchType":"adverse_media|pep","confidence":"CONFIRMED|LIKELY|UNVERIFIED","details":"Finding"}],"summary":"Brief assessment"}' }]
+          }).catch(e => ({ error: String(e.message || e) }))
+        : Promise.resolve(null);
 
       // Run BOTH at the same time
       const [sanctionsData, aiData] = await Promise.all([sanctionsPromise, aiPromise]);
@@ -178,11 +181,11 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
         const ls = sanctionsResult.listsSearched || {};
         listsSearchedInfo = Object.values(ls).map(l => l.name + ' (' + l.entries + ' entries, ' + l.status + ')').join(' | ');
       } else {
-        sanctionsError = 'Sanctions API: ' + (sanctionsData?.error || 'unavailable');
+        sanctionsError = sanctionsData?.error || 'Sanctions API unavailable';
       }
 
       // Process AI results
-      if (aiData && !aiData.error) {
+      if (aiData && !aiData.error && aiData.content) {
         const raw = (aiData.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
         let cleaned = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
         const objM = cleaned.match(/\{[\s\S]*\}/);
@@ -194,8 +197,10 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-04-04","entryCount":${list.l
           list: (m.list || 'Adverse Media') + ' [AI — VERIFY INDEPENDENTLY]'
         }));
         aiRecommendation = aiResult.summary || '';
-      } else {
-        aiRecommendation = aiData?.error ? 'AI check: ' + aiData.error : '';
+      } else if (aiData?.error) {
+        aiRecommendation = 'AI: ' + aiData.error;
+      } else if (!hasApiKey) {
+        aiRecommendation = 'No API key set — adverse media check skipped. Enter your Anthropic API key above for AI-powered adverse media screening.';
       }
 
       // ═══════════════════════════════════════════════════════════

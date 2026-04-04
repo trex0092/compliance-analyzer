@@ -194,16 +194,16 @@ async function fetchSanctionsData() {
 
   const results = { ofac: [], un: [], eu: [], uk: [], lastFetch: now, errors: [] };
 
-  // Fetch in parallel
+  // Fetch lists with short timeouts (Netlify free = 10s total)
   const fetches = await Promise.allSettled([
-    // OFAC SDN
-    fetch('https://www.treasury.gov/ofac/downloads/sdn.csv', { signal: AbortSignal.timeout(15000) })
+    // OFAC SDN — use OFAC's smaller search-ready format
+    fetch('https://www.treasury.gov/ofac/downloads/sdn.csv', { signal: AbortSignal.timeout(6000) })
       .then(r => r.ok ? r.text() : Promise.reject('OFAC HTTP ' + r.status)),
-    // UN Consolidated List
-    fetch('https://scsanctions.un.org/resources/xml/en/consolidated.xml', { signal: AbortSignal.timeout(15000) })
+    // UN Consolidated List (~2MB — fast)
+    fetch('https://scsanctions.un.org/resources/xml/en/consolidated.xml', { signal: AbortSignal.timeout(6000) })
       .then(r => r.ok ? r.text() : Promise.reject('UN HTTP ' + r.status)),
     // UK OFSI
-    fetch('https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv', { signal: AbortSignal.timeout(15000) })
+    fetch('https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv', { signal: AbortSignal.timeout(6000) })
       .then(r => r.ok ? r.text() : Promise.reject('UK HTTP ' + r.status)),
   ]);
 
