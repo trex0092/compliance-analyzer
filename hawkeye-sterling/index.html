@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hawkeye Sterling</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Montserrat:wght@200;300;400;500;600&family=Cinzel:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+--gold: #C9A84C;
+--gold-light: #E8D48B;
+--gold-dark: #8B6914;
+--black: #0A0A0A;
+--black-soft: #111111;
+--charcoal: #1A1A1A;
+--ivory: #F5F0E8;
+--ivory-dim: #D4CFC7;
+--white: #FEFEFE;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+background: var(--black);
+color: var(--ivory);
+font-family: 'Montserrat', sans-serif;
+font-weight: 300;
+overflow-x: hidden;
+-webkit-font-smoothing: antialiased;
+}
+
+/* === PRELOADER === */
+.preloader {
+position: fixed; inset: 0; z-index: 9999;
+background: var(--black);
+display: flex; align-items: center; justify-content: center;
+flex-direction: column; gap: 30px;
+animation: preloaderOut 0.8s ease 2.8s forwards;
+}
+.preloader-icon {
+width: 80px; height: 80px;
+opacity: 0;
+animation: fadeScale 1s ease 0.3s forwards;
+}
+.preloader-text {
+font-family: 'Cinzel', serif;
+font-size: 14px;
+letter-spacing: 12px;
+text-transform: uppercase;
+color: var(--gold);
+opacity: 0;
+animation: fadeUp 1s ease 0.8s forwards;
+}
+.preloader-line {
+width: 60px; height: 1px;
+background: linear-gradient(90deg, transparent, var(--gold), transparent);
+opacity: 0;
+animation: fadeUp 1s ease 1.2s forwards;
+}
+
+@keyframes preloaderOut {
+to { opacity: 0; pointer-events: none; }
+}
+@keyframes fadeScale {
+from { opacity: 0; transform: scale(0.7); }
+to { opacity: 1; transform: scale(1); }
+}
+@keyframes fadeUp {
+from { opacity: 0; transform: translateY(15px); }
+to { opacity: 1; transform: translateY(0); }
+}
+
+/* === NAV === */
+nav {
+position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+padding: 28px 60px;
+display: flex; justify-content: space-between; align-items: center;
+background: linear-gradient(180deg, rgba(10,10,10,0.95) 0%, transparent 100%);
+backdrop-filter: blur(8px);
+}
+.nav-logo {
+font-family: 'Cinzel', serif;
+font-size: 16px;
+letter-spacing: 8px;
+color: var(--gold);
+text-transform: uppercase;
+}
+.nav-links {
+display: flex; gap: 36px; list-style: none;
+}
+.nav-links a {
+color: var(--ivory-dim);
+text-decoration: none;
+font-size: 11px;
+letter-spacing: 3px;
+text-transform: uppercase;
+font-weight: 400;
+transition: color 0.4s;
+}
+.nav-links a:hover { color: var(--gold); }
+
+/* === HERO === */
+.hero {
+min-height: 100vh;
+display: flex; align-items: center; justify-content: center;
+position: relative;
+overflow: hidden;
+}
+.hero::before {
+content: '';
+position: absolute; inset: 0;
+background:
+radial-gradient(ellipse 600px 600px at 50% 45%, rgba(201,168,76,0.06) 0%, transparent 70%),
+radial-gradient(ellipse 300px 300px at 30% 60%, rgba(201,168,76,0.03) 0%, transparent 70%),
+radial-gradient(ellipse 250px 250px at 70% 35%, rgba(201,168,76,0.04) 0%, transparent 70%);
+}
+.hero::after {
+content: '';
+position: absolute; inset: 0;
+background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C9A84C' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+opacity: 0.5;
+}
+
+.hero-content {
+text-align: center; position: relative; z-index: 2;
+padding: 0 20px;
+}
+
+.hero-icon {
+width: 90px; height: 90px; margin: 0 auto 40px;
+opacity: 0;
+animation: fadeScale 1.2s ease 3.2s forwards;
+}
+.hero-icon svg {
+filter: drop-shadow(0 0 30px rgba(201,168,76,0.3));
+}
+
+.hero-badge {
+font-family: 'Montserrat', sans-serif;
+font-size: 10px;
+letter-spacing: 8px;
+text-transform: uppercase;
+color: var(--gold);
+margin-bottom: 30px;
+font-weight: 500;
+opacity: 0;
+animation: fadeUp 1.2s ease 3.5s forwards;
+}
+
+.hero-title {
+font-family: 'Cinzel', serif;
+font-size: clamp(42px, 7vw, 90px);
+font-weight: 400;
+letter-spacing: 18px;
+text-transform: uppercase;
+line-height: 1.15;
+color: var(--ivory);
+margin-bottom: 10px;
+opacity: 0;
+animation: fadeUp 1.2s ease 3.8s forwards;
+}
+.hero-title .gold { color: var(--gold); }
+
+.hero-subtitle {
+font-family: 'Cormorant Garamond', serif;
+font-size: clamp(18px, 2.5vw, 28px);
+font-weight: 300;
+font-style: italic;
+color: var(--ivory-dim);
+letter-spacing: 4px;
+margin-top: 15px;
+opacity: 0;
+animation: fadeUp 1.2s ease 4.1s forwards;
+}
+
+.hero-divider {
+width: 100px; height: 1px; margin: 40px auto;
+background: linear-gradient(90deg, transparent, var(--gold), transparent);
+opacity: 0;
+animation: fadeUp 1s ease 4.4s forwards;
+}
+
+.hero-tagline {
+font-size: 11px;
+letter-spacing: 6px;
+text-transform: uppercase;
+color: var(--gold-dark);
+font-weight: 400;
+opacity: 0;
+animation: fadeUp 1s ease 4.6s forwards;
+}
+
+/* === SECTION SHARED === */
+section { padding: 120px 60px; position: relative; }
+
+.section-label {
+font-family: 'Montserrat', sans-serif;
+font-size: 10px;
+letter-spacing: 8px;
+text-transform: uppercase;
+color: var(--gold);
+margin-bottom: 20px;
+font-weight: 500;
+}
+.section-title {
+font-family: 'Cinzel', serif;
+font-size: clamp(28px, 4vw, 48px);
+font-weight: 400;
+letter-spacing: 6px;
+text-transform: uppercase;
+margin-bottom: 30px;
+line-height: 1.3;
+}
+.section-desc {
+font-family: 'Cormorant Garamond', serif;
+font-size: 20px;
+font-weight: 300;
+line-height: 1.8;
+color: var(--ivory-dim);
+max-width: 600px;
+}
+
+/* === ABOUT === */
+.about {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 80px; align-items: center;
+background: var(--black-soft);
+border-top: 1px solid rgba(201,168,76,0.08);
+border-bottom: 1px solid rgba(201,168,76,0.08);
+}
+.about-visual {
+display: flex; align-items: center; justify-content: center;
+position: relative; min-height: 400px;
+}
+.about-visual::before {
+content: '';
+position: absolute;
+width: 300px; height: 300px;
+border: 1px solid rgba(201,168,76,0.12);
+transform: rotate(45deg);
+}
+.about-visual::after {
+content: '';
+position: absolute;
+width: 200px; height: 200px;
+border: 1px solid rgba(201,168,76,0.08);
+transform: rotate(45deg);
+animation: rotateSlow 30s linear infinite;
+}
+@keyframes rotateSlow {
+to { transform: rotate(405deg); }
+}
+.about-visual-icon {
+width: 120px; height: 120px;
+filter: drop-shadow(0 0 60px rgba(201,168,76,0.2));
+}
+
+/* === FEATURES === */
+.features {
+text-align: center;
+}
+.features-grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 40px;
+margin-top: 70px;
+max-width: 1100px;
+margin-left: auto; margin-right: auto;
+}
+.feature-card {
+background: linear-gradient(160deg, rgba(201,168,76,0.04) 0%, rgba(10,10,10,0.8) 100%);
+border: 1px solid rgba(201,168,76,0.08);
+padding: 50px 35px;
+text-align: center;
+transition: all 0.5s ease;
+position: relative;
+overflow: hidden;
+}
+.feature-card::before {
+content: '';
+position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+width: 40px; height: 2px;
+background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+.feature-card:hover {
+border-color: rgba(201,168,76,0.2);
+transform: translateY(-5px);
+box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 40px rgba(201,168,76,0.05);
+}
+.feature-number {
+font-family: 'Cinzel', serif;
+font-size: 36px;
+color: rgba(201,168,76,0.15);
+margin-bottom: 20px;
+}
+.feature-name {
+font-family: 'Cinzel', serif;
+font-size: 16px;
+letter-spacing: 4px;
+text-transform: uppercase;
+color: var(--gold);
+margin-bottom: 18px;
+}
+.feature-desc {
+font-family: 'Cormorant Garamond', serif;
+font-size: 17px;
+line-height: 1.7;
+color: var(--ivory-dim);
+font-weight: 300;
+}
+
+/* === CTA === */
+.cta {
+text-align: center;
+background: var(--black-soft);
+border-top: 1px solid rgba(201,168,76,0.08);
+padding: 140px 60px;
+}
+.cta-title {
+font-family: 'Cinzel', serif;
+font-size: clamp(24px, 3.5vw, 40px);
+font-weight: 400;
+letter-spacing: 8px;
+text-transform: uppercase;
+margin-bottom: 20px;
+}
+.cta-sub {
+font-family: 'Cormorant Garamond', serif;
+font-size: 20px;
+font-style: italic;
+color: var(--ivory-dim);
+margin-bottom: 50px;
+letter-spacing: 2px;
+}
+.cta-btn {
+display: inline-block;
+padding: 18px 55px;
+border: 1px solid var(--gold);
+color: var(--gold);
+font-family: 'Montserrat', sans-serif;
+font-size: 11px;
+letter-spacing: 5px;
+text-transform: uppercase;
+text-decoration: none;
+font-weight: 500;
+transition: all 0.5s ease;
+position: relative;
+overflow: hidden;
+cursor: pointer;
+background: transparent;
+}
+.cta-btn::before {
+content: '';
+position: absolute; inset: 0;
+background: var(--gold);
+transform: translateY(100%);
+transition: transform 0.5s ease;
+z-index: 0;
+}
+.cta-btn:hover::before { transform: translateY(0); }
+.cta-btn:hover { color: var(--black); }
+.cta-btn span { position: relative; z-index: 1; }
+
+/* === FOOTER === */
+footer {
+padding: 60px;
+text-align: center;
+border-top: 1px solid rgba(201,168,76,0.06);
+}
+.footer-logo {
+font-family: 'Cinzel', serif;
+font-size: 14px;
+letter-spacing: 10px;
+color: var(--gold-dark);
+text-transform: uppercase;
+margin-bottom: 18px;
+}
+.footer-copy {
+font-size: 10px;
+letter-spacing: 3px;
+color: rgba(245,240,232,0.25);
+text-transform: uppercase;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 900px) {
+nav { padding: 20px 30px; }
+.nav-links { display: none; }
+section { padding: 80px 30px; }
+.about { grid-template-columns: 1fr; gap: 40px; }
+.about-visual { min-height: 250px; }
+.features-grid { grid-template-columns: 1fr; max-width: 500px; }
+.hero-title { letter-spacing: 8px; }
+}
+
+/* === SCROLL ANIMATIONS === */
+.reveal {
+opacity: 0; transform: translateY(30px);
+transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.reveal.visible {
+opacity: 1; transform: translateY(0);
+}
+</style>
+</head>
+<body>
+
+<!-- PRELOADER -->
+<div class="preloader">
+  <svg class="preloader-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="40" r="18" stroke="#C9A84C" stroke-width="1.5" fill="none"/>
+    <circle cx="50" cy="40" r="8" fill="#C9A84C" opacity="0.3"/>
+    <circle cx="50" cy="40" r="3" fill="#C9A84C"/>
+    <path d="M30 55 Q50 75 70 55" stroke="#C9A84C" stroke-width="1.5" fill="none"/>
+    <path d="M22 50 Q50 82 78 50" stroke="#C9A84C" stroke-width="1" fill="none" opacity="0.5"/>
+    <line x1="50" y1="22" x2="50" y2="10" stroke="#C9A84C" stroke-width="1" opacity="0.4"/>
+    <line x1="35" y1="28" x2="28" y2="18" stroke="#C9A84C" stroke-width="1" opacity="0.4"/>
+    <line x1="65" y1="28" x2="72" y2="18" stroke="#C9A84C" stroke-width="1" opacity="0.4"/>
+  </svg>
+  <div class="preloader-text">Hawkeye Sterling</div>
+  <div class="preloader-line"></div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Hawkeye Sterling</div>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#features">Capabilities</a></li>
+    <li><a href="app.html">Launch App</a></li>
+    <li><a href="#contact">Inquire</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-icon">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="40" r="20" stroke="#C9A84C" stroke-width="1.2" fill="none"/>
+        <circle cx="50" cy="40" r="10" stroke="#C9A84C" stroke-width="0.8" fill="none" opacity="0.5"/>
+        <circle cx="50" cy="40" r="3.5" fill="#C9A84C"/>
+        <path d="M28 56 Q50 80 72 56" stroke="#C9A84C" stroke-width="1.2" fill="none"/>
+        <path d="M20 50 Q50 85 80 50" stroke="#C9A84C" stroke-width="0.8" fill="none" opacity="0.4"/>
+      </svg>
+    </div>
+    <div class="hero-badge">Precision Screening Redefined</div>
+    <h1 class="hero-title">
+      Hawkeye<br><span class="gold">Sterling</span>
+    </h1>
+    <p class="hero-subtitle">Where Vision Meets Vigilance</p>
+    <div class="hero-divider"></div>
+    <p class="hero-tagline">Nothing Escapes. Everything Is Verified.</p>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="about" id="about">
+  <div>
+    <div class="section-label reveal">The Standard</div>
+    <h2 class="section-title reveal">Screening<br>Without<br>Compromise</h2>
+    <p class="section-desc reveal">
+      Hawkeye Sterling is the definitive screening instrument for organizations
+      that accept nothing less than absolute clarity. Engineered for precision.
+      Designed for those who lead.
+    </p>
+  </div>
+  <div class="about-visual">
+    <svg class="about-visual-icon" viewBox="0 0 100 100" fill="none">
+      <circle cx="50" cy="40" r="22" stroke="#C9A84C" stroke-width="1" fill="none"/>
+      <circle cx="50" cy="40" r="12" stroke="#C9A84C" stroke-width="0.6" fill="none" opacity="0.4"/>
+      <circle cx="50" cy="40" r="4" fill="#C9A84C" opacity="0.6"/>
+      <path d="M26 58 Q50 84 74 58" stroke="#C9A84C" stroke-width="1" fill="none"/>
+    </svg>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="section-label reveal">Capabilities</div>
+  <h2 class="section-title reveal">Built for the<br>Uncompromising</h2>
+  <div class="features-grid">
+    <div class="feature-card reveal">
+      <div class="feature-number">I</div>
+      <div class="feature-name">Precision</div>
+      <p class="feature-desc">Multi-layered filtering with surgical accuracy. Every data point verified, every risk identified before it materializes.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-number">II</div>
+      <div class="feature-name">Vigilance</div>
+      <p class="feature-desc">Continuous, real-time monitoring that never sleeps. Persistent surveillance across every vector of exposure.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-number">III</div>
+      <div class="feature-name">Intelligence</div>
+      <p class="feature-desc">Adaptive analytics that anticipate threats before they emerge. Pattern recognition refined to an art form.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-number">IV</div>
+      <div class="feature-name">Integrity</div>
+      <p class="feature-desc">Immutable audit trails and transparent reporting. Every decision documented, every action accountable.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-number">V</div>
+      <div class="feature-name">Sovereignty</div>
+      <p class="feature-desc">Complete data sovereignty with enterprise-grade encryption. Your intelligence remains exclusively yours.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-number">VI</div>
+      <div class="feature-name">Elegance</div>
+      <p class="feature-desc">Complexity distilled into clarity. An interface so refined, power feels effortless in your hands.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta" id="contact">
+  <h2 class="cta-title reveal">Experience the Standard</h2>
+  <p class="cta-sub reveal">By invitation. By reputation. By design.</p>
+  <a href="app.html" class="cta-btn reveal"><span>Launch Screening Console</span></a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Hawkeye Sterling</div>
+  <p class="footer-copy">&copy; 2026 Hawkeye Sterling. All rights reserved.</p>
+</footer>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
