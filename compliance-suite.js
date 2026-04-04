@@ -1197,7 +1197,9 @@
     // Wire up auto-deadline
     const sd = document.getElementById('str-suspicion-date');
     if (sd) sd.addEventListener('change', function() {
+      if (!this.value) return;
       const d = new Date(this.value);
+      if (isNaN(d.getTime())) return;
       d.setDate(d.getDate() + 30);
       document.getElementById('str-deadline').value = d.toISOString().slice(0,10);
     });

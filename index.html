@@ -8085,11 +8085,11 @@ function renderScreeningResult(result, name) {
   el.querySelector('#screeningResultsContent').innerHTML = `
     <div class="finding ${cls}" style="animation:none;opacity:1">
       <div class="f-head"><div class="f-head-left"><span class="badge ${badge}">${comp.label}</span><span class="f-title">${name}</span></div><span class="badge" style="background:rgba(201,168,76,0.05)">${result.risk_level} RISK</span></div>
-      <div class="f-body">${result.summary||''}</div>
-      ${(result.sanctions_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Sanctions Hits:</strong> ${result.sanctions_hits.map(h=>`${h.list} (${h.match_type}): ${h.details}`).join('; ')}</div>`:''}
-      ${(result.adverse_media_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Adverse Media Hits:</strong><ul style="margin:4px 0 0 16px;font-size:12px">${result.adverse_media_hits.map(h=>`<li><strong>${h.category}</strong> — ${h.details}${h.source?' <span style="color:var(--muted)">('+h.source+')</span>':''}${h.date?' <span style="color:var(--muted)">['+h.date+']</span>':''}</li>`).join('')}</ul></div>`:''}
-      ${(result.risk_factors||[]).length?`<div class="rec" style="margin-top:8px"><strong>Risk Factors:</strong> ${result.risk_factors.join(', ')}</div>`:''}
-      ${(result.recommended_actions||[]).length?`<div class="rec" style="margin-top:8px"><strong>Actions:</strong> ${result.recommended_actions.join('; ')}</div>`:''}
+      <div class="f-body">${escHtml(result.summary||'')} </div>
+      ${(result.sanctions_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Sanctions Hits:</strong> ${result.sanctions_hits.map(h=>`${escHtml(h.list)} (${escHtml(h.match_type)}): ${escHtml(h.details)}`).join('; ')}</div>`:''}
+      ${(result.adverse_media_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Adverse Media Hits:</strong><ul style="margin:4px 0 0 16px;font-size:12px">${result.adverse_media_hits.map(h=>`<li><strong>${escHtml(h.category)}</strong> — ${escHtml(h.details)}${h.source?' <span style="color:var(--muted)">('+escHtml(h.source)+')</span>':''}${h.date?' <span style="color:var(--muted)">['+escHtml(h.date)+']</span>':''}</li>`).join('')}</ul></div>`:''}
+      ${(result.risk_factors||[]).length?`<div class="rec" style="margin-top:8px"><strong>Risk Factors:</strong> ${escHtml(result.risk_factors.join(', '))}</div>`:''}
+      ${(result.recommended_actions||[]).length?`<div class="rec" style="margin-top:8px"><strong>Actions:</strong> ${escHtml(result.recommended_actions.join('; '))}</div>`:''}
     </div>
     <div style="margin-top:10px;padding:12px 14px;border-left:4px solid ${comp.border};background:${comp.bg};border-radius:3px">
       <div style="font-size:12px;font-weight:600;color:${comp.color};margin-bottom:4px;font-family:'Montserrat',sans-serif">${comp.label} — COMPLIANCE BASIS</div>
@@ -9019,7 +9019,7 @@ function addObUboRow(name, shares, findings) {
   row.style.cssText = 'margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end';
   row.id = 'obUboRow' + obUboCount;
   row.innerHTML = `
-    <div><span class="lbl">Name ${obUboCount}</span><input type="text" class="ob-ubo-name" placeholder="Full name" value="${name||''}"/></div>
+    <div><span class="lbl">Name ${obUboCount}</span><input type="text" class="ob-ubo-name" placeholder="Full name" value="${escHtml(name||'')} "/></div>
     <div><span class="lbl">Shares %</span><input type="number" class="ob-ubo-shares" placeholder="0" value="${shares||''}"/></div>
     <div><span class="lbl">Findings</span><select class="ob-ubo-findings"><option value="">Select</option><option value="Clear"${findings==='Clear'?' selected':''}>Clear</option><option value="Match"${findings==='Match'?' selected':''}>Match</option><option value="Potential Match"${findings==='Potential Match'?' selected':''}>Potential Match</option><option value="PEP"${findings==='PEP'?' selected':''}>PEP</option><option value="Adverse Media"${findings==='Adverse Media'?' selected':''}>Adverse Media</option></select></div>
     <button class="btn btn-sm btn-red" style="height:36px" onclick="this.parentElement.remove()">X</button>`;
@@ -9068,7 +9068,7 @@ function calculateRiskScore() {
   document.getElementById('riskScoreResult').innerHTML = `
     <div class="finding ${cls}" style="animation:none;opacity:1">
       <div class="f-head"><div class="f-head-left"><span class="badge ${badge}">RISK: ${level}</span><span class="f-title">Score: ${score}/100</span></div></div>
-      <div class="f-body"><strong>Risk Factors:</strong> ${factors.length?factors.join(', '):'No elevated risk factors identified'}</div>
+      <div class="f-body"><strong>Risk Factors:</strong> ${factors.length?escHtml(factors.join(', ')):'No elevated risk factors identified'}</div>
       <div class="f-body" style="margin-top:6px"><strong>CDD Level:</strong> ${level==='LOW'?'Simplified':'Standard'} Due Diligence ${level==='HIGH'||level==='CRITICAL'?'+ Enhanced Due Diligence':''}${level==='CRITICAL'?' + Senior Management Approval':''}</div>
       ${edd}
     </div>`;
@@ -9147,7 +9147,7 @@ async function generateSTRDraft() {
     var strMissing = typeof validateSTRDraft === 'function' ? validateSTRDraft(text) : [];
     var strWarning = strMissing.length ? '<div style="margin-top:8px;padding:10px;border-radius:3px;background:var(--red-dim);border:1px solid rgba(217,79,79,0.3);font-size:11px;color:var(--red)"><strong>Missing mandatory fields:</strong> ' + strMissing.join(', ') + '<br>Review and add these before goAML submission.</div>' : '<div style="margin-top:8px;padding:10px;border-radius:3px;background:var(--green-dim);border:1px solid rgba(61,168,118,0.3);font-size:11px;color:var(--green)">All mandatory STR fields detected.</div>';
     document.getElementById('strDraftResult').style.display='block';
-    document.getElementById('strDraftResult').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${text}</div>${strWarning}<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="copySTR()">Copy STR</button></div>`;
+    document.getElementById('strDraftResult').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${escHtml(text)}</div>${strWarning}<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="copySTR()">Copy STR</button></div>`;
     logAudit('str', `STR drafted for ${subject}`);
   } catch(e) { toast(`STR error: ${e.message}`,'error'); }
 }
@@ -10431,7 +10431,7 @@ async function exportBoardReport() {
       messages:[{role:'user',content:`Generate a Board/MLRO Compliance Report based on:\nOpen Gaps: ${gaps.filter(g=>g.status!=='closed').length}\nTotal Incidents: ${incidents.length} (Open: ${incidents.filter(i=>i.status==='open').length})\nScreenings (30d): ${screenings.length}\nCustomers Onboarded: ${customers.length}\nHigh Risk Customers: ${customers.filter(c=>c.risk?.level==='HIGH'||c.risk?.level==='CRITICAL').length}\n\nIncident Summary: ${incidents.slice(0,5).map(i=>`${i.severity}: ${i.title}`).join('; ')}`}]
     });
     const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-    document.getElementById('boardReportPreview').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${text}</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="navigator.clipboard.writeText(document.querySelector('#boardReportPreview .summary-box').textContent);toast('Copied','success')">Copy Report</button></div>`;
+    document.getElementById('boardReportPreview').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${escHtml(text)}</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="navigator.clipboard.writeText(document.querySelector('#boardReportPreview .summary-box').textContent);toast('Copied','success')">Copy Report</button></div>`;
     logAudit('board_report', 'Board report generated');
   } catch(e) { toast(`Report error: ${e.message}`,'error'); }
 }

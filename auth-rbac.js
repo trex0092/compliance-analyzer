@@ -1014,7 +1014,10 @@ const AuthRBAC = (function () {
         }
     }
 
+    var _idleListeners = [];
+
     function startIdleMonitor(onIdle) {
+        stopIdleMonitor();
         const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
         function resetTimer() {
             touchSession();
@@ -1028,12 +1031,17 @@ const AuthRBAC = (function () {
                 }
             }, IDLE_TIMEOUT_MS);
         }
-        events.forEach(evt => document.addEventListener(evt, resetTimer, { passive: true }));
+        events.forEach(evt => {
+            document.addEventListener(evt, resetTimer, { passive: true });
+            _idleListeners.push({ evt, fn: resetTimer });
+        });
         resetTimer();
     }
 
     function stopIdleMonitor() {
         clearTimeout(idleTimer);
+        _idleListeners.forEach(l => document.removeEventListener(l.evt, l.fn));
+        _idleListeners = [];
     }
 
     // --------------- Audit Log Export ---------------
