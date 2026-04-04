@@ -2177,7 +2177,7 @@
       <div class="modal" style="max-width:750px;width:95%;max-height:92vh">
         <button class="modal-close" onclick="document.getElementById('tfs2BulkModal').classList.remove('open')">✕</button>
         <div class="modal-title">Bulk Document Upload — Extract & Screen</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Upload up to 20 documents (passport, trade license, EID, etc.). AI extracts Name, Country, ID and runs screening automatically.</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Upload up to 20 PDF files (compliance assessments, due diligence reports, KYC docs). AI extracts all entities (company + individuals/UBOs) and screens each one automatically.</div>
 
         <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;margin-bottom:1rem;cursor:pointer;transition:border-color 0.2s" id="tfs2-bulk-dropzone"
           onclick="document.getElementById('tfs2-bulk-files').click()"
