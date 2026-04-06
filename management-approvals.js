@@ -25,6 +25,18 @@
   }
 
   // ══════════════════════════════════════════════════════════════
+  // DATE FORMAT HELPER — dd/mm/yyyy auto-formatting
+  // ══════════════════════════════════════════════════════════════
+
+  window.maFormatDateInput = function (el) {
+    let v = el.value.replace(/[^0-9]/g, '');
+    if (v.length > 8) v = v.slice(0, 8);
+    if (v.length >= 5) v = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+    else if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+    el.value = v;
+  };
+
+  // ══════════════════════════════════════════════════════════════
   // RENDER MAIN TAB
   // ══════════════════════════════════════════════════════════════
 
@@ -94,9 +106,9 @@
     <div><span class="lbl">Country of Registration</span><input type="text" id="maCountry" placeholder="e.g., United Arab Emirates" /></div>
   </div>
   <div class="row row-3" style="margin-bottom:8px">
-    <div><span class="lbl">Date of Registration</span><input type="date" id="maRegDate" /></div>
+    <div><span class="lbl">Date of Registration</span><input type="text" id="maRegDate" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
     <div><span class="lbl">Commercial Register</span><input type="text" id="maCommRegister" placeholder="e.g., DMCC-31770" /></div>
-    <div><span class="lbl">License Expiry Date</span><input type="date" id="maLicenseExpiry" /></div>
+    <div><span class="lbl">License Expiry Date</span><input type="text" id="maLicenseExpiry" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
   </div>
   <div class="row row-3" style="margin-bottom:8px">
     <div><span class="lbl">GoAML Registration Status</span><select id="maGoAML"><option value="Registered">Registered</option><option value="Not Registered">Not Registered</option><option value="Pending">Pending</option></select></div>
@@ -176,7 +188,7 @@
     <div><span class="lbl">Prepared By (Title)</span><input type="text" id="maPreparedTitle" placeholder="e.g., Compliance Officer" /></div>
   </div>
   <div class="row row-2">
-    <div><span class="lbl">Approval Date</span><input type="date" id="maApprovalDate" /></div>
+    <div><span class="lbl">Approval Date</span><input type="text" id="maApprovalDate" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
   </div>
 </div>
 
@@ -190,7 +202,7 @@
     return `<div style="display:grid;grid-template-columns:1fr 100px 120px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
       <span style="font-size:11px;color:var(--text)">${label}</span>
       <select id="${prefix}_result" onchange="this.style.color=this.value==='Negative'?'var(--green)':this.value==='Positive'?'var(--red)':'var(--amber)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option><option value="Pending" style="color:var(--amber)">Pending</option></select>
-      <input type="date" id="${prefix}_date" style="font-size:10px" />
+      <input type="text" id="${prefix}_date" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" style="font-size:10px" />
       <input type="text" id="${prefix}_remarks" placeholder="Remarks..." style="font-size:10px" />
     </div>`;
   }
@@ -239,13 +251,13 @@
           <div><span class="lbl">Passport Number/ID</span><input type="text" class="maInd_passport" value="${esc(ind.passport)}" /></div>
         </div>
         <div class="row row-3" style="margin-bottom:6px">
-          <div><span class="lbl">Passport Expiry Date</span><input type="date" class="maInd_passportExpiry" value="${ind.passportExpiry}" /></div>
+          <div><span class="lbl">Passport Expiry Date</span><input type="text" class="maInd_passportExpiry" value="${ind.passportExpiry}" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
           <div><span class="lbl">Gender</span><select class="maInd_gender"><option value="Male" ${ind.gender==='Male'?'selected':''}>Male</option><option value="Female" ${ind.gender==='Female'?'selected':''}>Female</option></select></div>
-          <div><span class="lbl">Date of Birth/Registration</span><input type="date" class="maInd_dob" value="${ind.dob}" /></div>
+          <div><span class="lbl">Date of Birth/Registration</span><input type="text" class="maInd_dob" value="${ind.dob}" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
         </div>
         <div class="row row-3" style="margin-bottom:6px">
           <div><span class="lbl">Emirates ID</span><input type="text" class="maInd_eid" value="${esc(ind.eid)}" placeholder="784-XXXX-XXXXXXX-X" /></div>
-          <div><span class="lbl">Emirates ID Expiry</span><input type="date" class="maInd_eidExpiry" value="${ind.eidExpiry}" /></div>
+          <div><span class="lbl">Emirates ID Expiry</span><input type="text" class="maInd_eidExpiry" value="${ind.eidExpiry}" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
           <div><span class="lbl">Proof of Address</span><input type="text" class="maInd_proofAddr" value="${esc(ind.proofAddr)}" placeholder="e.g., Lease Agreement" /></div>
         </div>
         <div class="row row-2">

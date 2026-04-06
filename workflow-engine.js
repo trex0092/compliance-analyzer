@@ -508,6 +508,139 @@
         { type: 'create_asana_task', template: 'dpms_reporting', priority: 'medium' },
         { type: 'browser_notify', title: 'DPMS License Renewal Due', message: 'DPMS trade license/MoE registration expires in {daysUntilExpiry} days. Begin renewal process. Ref: FDL Art.53, MoE requirements.' }
       ]
+    },
+    // ── UAE FIU / EOCN / MOE Additional Workflows ──
+    {
+      id: 'wf_fiu_str_deadline', name: 'STR Filing Deadline -FIU Compliance', enabled: true,
+      trigger: 'str_deadline_approaching', condition: { daysRemaining: 3 },
+      actions: [
+        { type: 'create_asana_task', template: 'str_filing', priority: 'high' },
+        { type: 'email_alert', subject: 'URGENT: STR Filing Deadline Approaching', message: 'STR report for {subjectName} must be submitted to UAE FIU via goAML within {daysRemaining} days. Failure to file timely is a criminal offence. Ref: FDL No.10/2025 Art.26-27.' },
+        { type: 'browser_notify', title: 'STR Deadline Alert', message: 'STR filing deadline in {daysRemaining} days for {subjectName}.' }
+      ]
+    },
+    {
+      id: 'wf_eocn_designation_update', name: 'EOCN New Designation -Immediate Screening', enabled: true,
+      trigger: 'eocn_designation', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'tfs_list_update', priority: 'high' },
+        { type: 'create_asana_task', template: 'tfs_screening', priority: 'high' },
+        { type: 'email_alert', subject: 'EOCN Designation Update -Screen All Databases', message: 'New EOCN/Executive Office designation received. Screen all customers, counterparties, suppliers, and UBOs within 24 hours. File CNMR for any matches. Ref: Cabinet Resolution 74/2020, EOCN TFS Guidance.' },
+        { type: 'browser_notify', title: 'EOCN Designation Update', message: 'New designation. Screen all databases immediately.' }
+      ]
+    },
+    {
+      id: 'wf_cnmr_filing', name: 'CNMR Filing Required -5 Business Days', enabled: true,
+      trigger: 'cnmr_required', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'sanctions_update', priority: 'high' },
+        { type: 'email_alert', subject: 'CNMR Filing Required for {entityName}', message: 'Confirmed or partial match against sanctions/terrorist list. File CNMR (Compliance No-Match Report) with EOCN within 5 business days. Ref: Cabinet Resolution 74/2020 Art.6, EOCN Guidance.' }
+      ]
+    },
+    {
+      id: 'wf_moe_inspection_prep', name: 'MOE Inspection Notification -Preparation', enabled: true,
+      trigger: 'moe_inspection_notice', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'moe_inspection', priority: 'high' },
+        { type: 'create_asana_task', template: 'audit_preparation', priority: 'high' },
+        { type: 'email_alert', subject: 'MOE Inspection Scheduled -Preparation Required', message: 'Ministry of Economy on-site inspection scheduled. Prepare compliance manual, training records, risk assessments, STR log, TFS screening records, and goAML registration proof. Ref: FDL No.10/2025 Art.42-44, Cabinet Resolution 134/2025.' },
+        { type: 'browser_notify', title: 'MOE Inspection Alert', message: 'Prepare all compliance documentation for upcoming MOE inspection.' }
+      ]
+    },
+    {
+      id: 'wf_goaml_registration_check', name: 'goAML Registration Verification', enabled: true,
+      trigger: 'scheduled_goaml_check', condition: { frequency: 'monthly' },
+      actions: [
+        { type: 'create_asana_task', template: 'dpms_reporting', priority: 'medium' },
+        { type: 'browser_notify', title: 'goAML Registration Check', message: 'Monthly goAML registration and access verification. Ensure all authorized users can access portal. Ref: FDL No.10/2025 Art.25, MoE Circular 08/AML/2021.' }
+      ]
+    },
+    {
+      id: 'wf_fiu_dissemination', name: 'FIU Intelligence Dissemination -Action', enabled: true,
+      trigger: 'fiu_dissemination', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'moe_inspection', priority: 'high' },
+        { type: 'create_asana_task', template: 'transaction_monitoring', priority: 'high' },
+        { type: 'email_alert', subject: 'FIU Intelligence Received -Immediate Action', message: 'FIU has disseminated intelligence regarding {subjectName}. Implement enhanced monitoring, restrict transactions if necessary, and respond within deadline. Do NOT tip off. Ref: FDL No.10/2025 Art.14 & 29.' }
+      ]
+    },
+    {
+      id: 'wf_eocn_false_positive', name: 'EOCN Screening False Positive -Document', enabled: true,
+      trigger: 'screening_false_positive', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'tfs_screening', priority: 'medium' },
+        { type: 'browser_notify', title: 'False Positive -Document Rationale', message: 'Screening match for {entityName} determined to be false positive. Document rationale, retain screening evidence per EOCN TFS Guidance. Update whitelisting if applicable.' }
+      ]
+    },
+    {
+      id: 'wf_moe_penalty_notice', name: 'MOE Penalty Notice -Remediation', enabled: true,
+      trigger: 'moe_penalty_received', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'breach_notification', priority: 'high' },
+        { type: 'create_asana_task', template: 'compliance_committee', priority: 'high' },
+        { type: 'email_alert', subject: 'MOE Administrative Penalty Received', message: 'Administrative penalty notice from MoE received. Assess violation, determine remediation plan, and consider appeal within prescribed timeframe. Ref: Cabinet Resolution 71/2024, FDL No.10/2025 Art.46-50.' }
+      ]
+    },
+    {
+      id: 'wf_high_value_cash_declaration', name: 'High-Value Cash Declaration -Border', enabled: true,
+      trigger: 'cash_declaration', condition: { amount: 60000 },
+      actions: [
+        { type: 'create_asana_task', template: 'ctr_filing', priority: 'high' },
+        { type: 'email_alert', subject: 'Cross-Border Cash Declaration: AED {amount}', message: 'Cash or bearer negotiable instruments exceeding AED 60,000 declared at UAE border. Verify source and legitimacy. Ref: FDL No.10/2025 Art.17, Cabinet Resolution 134/2025 Art.16.' }
+      ]
+    },
+    {
+      id: 'wf_dpms_quarterly_activity', name: 'DPMS Quarterly Activity Report -goAML', enabled: true,
+      trigger: 'scheduled_dpms_quarterly', condition: { frequency: 'quarterly' },
+      actions: [
+        { type: 'create_asana_task', template: 'dpms_reporting', priority: 'high' },
+        { type: 'create_asana_task', template: 'co_report', priority: 'medium' },
+        { type: 'email_alert', subject: 'DPMS Quarterly Activity Report Due', message: 'Quarterly DPMS activity report must be submitted to MoE via goAML portal. Include transaction volumes, CDD statistics, STR filings, and screening results. Ref: MoE Circular 08/AML/2021, FDL Art.25.' }
+      ]
+    },
+    {
+      id: 'wf_tfs_freeze_confirmation', name: 'TFS Asset Freeze Confirmation -EOCN', enabled: true,
+      trigger: 'asset_freeze_executed', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'sanctions_update', priority: 'high' },
+        { type: 'email_alert', subject: 'Asset Freeze Executed -Confirm to EOCN', message: 'Asset freeze executed for {entityName}. Confirm freeze to EOCN within 24 hours. Document all frozen assets/accounts. No de-freezing without EOCN authorization. Ref: Cabinet Resolution 74/2020 Art.4-7.' },
+        { type: 'browser_notify', title: 'Confirm Freeze to EOCN', message: 'Asset freeze executed. Report to EOCN within 24h.' }
+      ]
+    },
+    {
+      id: 'wf_internal_compliance_review', name: 'Semi-Annual Internal Compliance Review', enabled: true,
+      trigger: 'scheduled_compliance_review', condition: { frequency: 'semi_annual' },
+      actions: [
+        { type: 'create_asana_task', template: 'internal_audit', priority: 'high' },
+        { type: 'create_asana_task', template: 'compliance_manual', priority: 'medium' },
+        { type: 'email_alert', subject: 'Semi-Annual Internal Compliance Review Due', message: 'Conduct internal review of AML/CFT/CPF controls, policies, and procedures. Report findings to Board/Senior Management. Ref: Cabinet Resolution 134/2025 Art.19, FATF Rec 18.' }
+      ]
+    },
+    {
+      id: 'wf_suspicious_refund', name: 'Suspicious Refund Request -STR Review', enabled: true,
+      trigger: 'suspicious_refund', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'str_filing', priority: 'high' },
+        { type: 'create_asana_task', template: 'transaction_monitoring', priority: 'high' },
+        { type: 'browser_notify', title: 'Suspicious Refund Alert', message: 'Refund request for {entityName} shows indicators of ML/TF. Customer purchased gold and requested immediate refund to different account/method. Review for STR. Ref: FDL Art.15-16.' }
+      ]
+    },
+    {
+      id: 'wf_risk_appetite_breach', name: 'Risk Appetite Breach -Board Notification', enabled: true,
+      trigger: 'risk_appetite_breach', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'risk_appetite', priority: 'high' },
+        { type: 'create_asana_task', template: 'compliance_committee', priority: 'high' },
+        { type: 'email_alert', subject: 'Risk Appetite Breach -Board Attention Required', message: 'Business activity has exceeded approved risk appetite thresholds. Notify Board/Senior Management. Consider suspending high-risk onboarding. Ref: Cabinet Resolution 134/2025 Art.5, FDL Art.20-21.' }
+      ]
+    },
+    {
+      id: 'wf_correspondent_bank_alert', name: 'Correspondent Banking -RBA Alert', enabled: true,
+      trigger: 'correspondent_bank_alert', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
+        { type: 'browser_notify', title: 'Correspondent Bank Alert', message: 'Correspondent bank has flagged transaction involving {entityName}. Review and respond within required timeframe. Ref: FATF Rec 13, CBUAE Guidance.' }
+      ]
     }
   ];
 

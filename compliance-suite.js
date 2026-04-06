@@ -13,6 +13,15 @@
  *  7. Regulatory Mapping & Jurisdiction Selector
  */
 
+// Global date format helper for dd/mm/yyyy auto-formatting
+window.csFormatDateInput = function (el) {
+  let v = el.value.replace(/[^0-9]/g, '');
+  if (v.length > 8) v = v.slice(0, 8);
+  if (v.length >= 5) v = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+  else if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+  el.value = v;
+};
+
 (function (global) {
   'use strict';
 
@@ -37,8 +46,10 @@
   function uid(prefix) {
     return prefix + '-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-6);
   }
-  function today() { return new Date().toISOString().slice(0, 10); }
-  function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB'); }
+  function today() { const n=new Date(); return String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+'/'+n.getFullYear(); }
+  function parseDDMMYYYY(s) { if(!s) return null; const p=s.split('/'); if(p.length!==3) return null; return new Date(p[2],p[1]-1,p[0]); }
+  function fmtDate(d) { if (!d) return '—'; const dt = d.includes('/') ? parseDDMMYYYY(d) : new Date(d); if(!dt||isNaN(dt.getTime())) return d; return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
+  function fmtDateDDMMYYYY(dt) { return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
   function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function toast(msg, type) {
     if (global.toast) { global.toast(msg, type); return; }
@@ -445,8 +456,8 @@
             <textarea id="cra-notes" placeholder="Document any specific risk observations, mitigating factors, or actions required..." style="min-height:80px"></textarea>
           </div>
           <div class="row row-2" style="margin-top:10px">
-            <div><span class="lbl">Assessment Date</span><input type="date" id="cra-date" value="${today()}"/></div>
-            <div><span class="lbl">Next Review Date</span><input type="date" id="cra-review"/></div>
+            <div><span class="lbl">Assessment Date</span><input type="text" id="cra-date" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
+            <div><span class="lbl">Next Review Date</span><input type="text" id="cra-review" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           </div>
 
           <div style="display:flex;gap:8px;margin-top:1rem">
@@ -949,7 +960,7 @@
           </div>
           <div class="row row-2">
             <div><span class="lbl">Nationality</span><input id="ubo-nationality" placeholder="Country of citizenship"/></div>
-            <div><span class="lbl">Date of Birth</span><input type="date" id="ubo-dob"/></div>
+            <div><span class="lbl">Date of Birth</span><input type="text" id="ubo-dob" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           </div>
           <div class="row row-2">
             <div><span class="lbl">Country of Residence</span><input id="ubo-residence" placeholder="Country"/></div>
@@ -973,11 +984,11 @@
           </div>
           <div class="row row-2">
             <div><span class="lbl">Document Reference / Number</span><input id="ubo-docref" placeholder="Document number"/></div>
-            <div><span class="lbl">Document Expiry Date</span><input type="date" id="ubo-docexpiry"/></div>
+            <div><span class="lbl">Document Expiry Date</span><input type="text" id="ubo-docexpiry" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           </div>
           <div class="row row-2">
-            <div><span class="lbl">Date Verified</span><input type="date" id="ubo-verified" value="${today()}"/></div>
-            <div><span class="lbl">Next Review Date</span><input type="date" id="ubo-review"/></div>
+            <div><span class="lbl">Date Verified</span><input type="text" id="ubo-verified" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
+            <div><span class="lbl">Next Review Date</span><input type="text" id="ubo-review" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           </div>
           <div><span class="lbl">Notes</span><textarea id="ubo-notes" style="min-height:60px" placeholder="Ownership structure notes, supporting documents, escalation notes..."></textarea></div>
           <div style="display:flex;gap:8px;margin-top:1rem">
@@ -1163,8 +1174,8 @@
             </div>
           </div>
           <div class="row row-2">
-            <div><span class="lbl">Date Suspicion Arose *</span><input type="date" id="str-suspicion-date"/></div>
-            <div><span class="lbl">Filing Deadline (auto +30d)</span><input type="date" id="str-deadline" readonly style="opacity:0.7"/></div>
+            <div><span class="lbl">Date Suspicion Arose *</span><input type="text" id="str-suspicion-date" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
+            <div><span class="lbl">Filing Deadline (auto +30d)</span><input type="text" id="str-deadline" readonly style="opacity:0.7" placeholder="dd/mm/yyyy"/></div>
           </div>
           <div><span class="lbl">Red Flags Identified (select all that apply) *</span>
             <div id="str-flags-container" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface2);padding:10px;border-radius:3px;border:1px solid var(--border);max-height:180px;overflow-y:auto;margin-top:4px">
@@ -1197,12 +1208,12 @@
 
     // Wire up auto-deadline
     const sd = document.getElementById('str-suspicion-date');
-    if (sd) sd.addEventListener('change', function() {
-      if (!this.value) return;
-      const d = new Date(this.value);
-      if (isNaN(d.getTime())) return;
+    if (sd) sd.addEventListener('input', function() {
+      if (!this.value || this.value.length < 10) return;
+      const d = parseDDMMYYYY(this.value);
+      if (!d || isNaN(d.getTime())) return;
       d.setDate(d.getDate() + 30);
-      document.getElementById('str-deadline').value = d.toISOString().slice(0,10);
+      document.getElementById('str-deadline').value = fmtDateDDMMYYYY(d);
     });
   }
 
@@ -1525,6 +1536,67 @@
       { flag:'Compliance controls bypassed or overridden by senior management instruction', ref:'UAE FDL No.(10)/2025 Art.21 | FATF Rec.18', l:5, i:5, mx:[] },
       { flag:'Customer uses legal professional privilege to obstruct compliance inquiries', ref:'FATF Rec.10 | UAE FDL No.(10)/2025', l:4, i:4, mx:[] },
       { flag:'Customer has outstanding regulatory fines or administrative penalties unpaid', ref:'Cabinet Resolution 71/2024 | UAE FDL No.(10)/2025', l:3, i:4, mx:[] },
+    ],
+    'Proliferation Financing — EOCN/FIU Institutional Risk': [
+      { flag:'Customer or counterparty has nexus to DPRK, Iran, Syria, or UNSC PF-sanctioned state procurement networks', ref:'EOCN PF Guidance 2025 | UNSCR 1718/2231/1540 | Cabinet Resolution 74/2020', l:5, i:5, mx:['sanctions','high_risk_jurisdiction'] },
+      { flag:'Transaction involves materials or equipment listed on UAE Strategic Goods Control List (Cabinet Resolution 156/2025)', ref:'Cabinet Resolution 156/2025 | UNSCR 1540 | EOCN PF RA Guidance', l:5, i:5, mx:['sanctions'] },
+      { flag:'Customer attempts to procure high-purity precious metals or rare earth elements in quantities inconsistent with stated business', ref:'EOCN PF Guidance 2025 | FATF Rec.7 | UNSCR 2231', l:4, i:5, mx:[] },
+      { flag:'End-user located in jurisdiction with known WMD development programme refuses to provide end-use certificate', ref:'EOCN PF Guidance 2025 | Cabinet Resolution 156/2025 | Wassenaar Arrangement', l:5, i:5, mx:['sanctions','high_risk_jurisdiction'] },
+      { flag:'Transaction routed through multiple intermediaries to obscure final destination linked to PF-risk jurisdiction', ref:'EOCN PF Guidance 2025 | FATF PF Guidance 2021 | FDL No.10/2025', l:5, i:5, mx:['high_risk_jurisdiction','sanctions'] },
+      { flag:'Customer entity is a front company or has opaque ownership linked to state-sponsored procurement agent', ref:'EOCN PF Guidance 2025 | FATF Rec.7 | Cabinet Resolution 74/2020', l:5, i:5, mx:['sanctions'] },
+      { flag:'Shipping documentation shows transhipment through free zones to obfuscate final delivery to PF-sanctioned entity', ref:'EOCN PF Guidance 2025 | Cabinet Resolution 156/2025 | FATF Rec.7', l:5, i:5, mx:['sanctions','high_risk_jurisdiction'] },
+      { flag:'Customer uses academic, research, or diplomatic cover to procure controlled or dual-use materials', ref:'EOCN PF Guidance 2025 | UNSCR 1540 | FATF PF Guidance 2021', l:4, i:5, mx:['sanctions'] },
+      { flag:'Institutional PF risk assessment not conducted or not updated within 12 months as required by EOCN', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.5 | FDL No.10/2025 Art.6', l:4, i:4, mx:[] },
+      { flag:'Entity fails to implement targeted financial sanctions (TFS) freezing obligations without delay upon EOCN notification', ref:'EOCN TFS Guidance | Cabinet Resolution 74/2020 Art.4 | FDL No.10/2025 Art.14', l:5, i:5, mx:['sanctions'] },
+      { flag:'Customer linked to military, intelligence, or defence procurement entity of PF-sanctioned country', ref:'EOCN PF Guidance 2025 | UNSCR 1718/2231 | FATF Rec.7', l:5, i:5, mx:['sanctions','high_risk_jurisdiction'] },
+      { flag:'Transaction value or pattern inconsistent with legitimate commercial activity and consistent with PF acquisition typology', ref:'EOCN PF Guidance 2025 | FATF PF Guidance 2021 | UAE NRA 2024', l:4, i:5, mx:[] },
+    ],
+    'UAE FIU / goAML Reporting Red Flags': [
+      { flag:'Failure to file STR/SAR within prescribed timeline after identifying suspicious activity', ref:'FDL No.10/2025 Art.26-27 | UAE FIU Guidance | FATF Rec.20', l:5, i:5, mx:[] },
+      { flag:'goAML system access credentials shared among multiple staff members', ref:'UAE FIU goAML Guidance | FDL No.10/2025 Art.25 | Cabinet Resolution 134/2025', l:4, i:4, mx:[] },
+      { flag:'DPMSR (DPMS Report) not filed for single or cumulative cash transactions ≥ AED 55,000', ref:'MoE Circular 08/AML/2021 | FDL No.10/2025 Art.16 | FATF Rec.22', l:5, i:5, mx:['cash'] },
+      { flag:'Defensive STR filing without genuine suspicion analysis to avoid regulatory penalty', ref:'UAE FIU Guidance | FDL No.10/2025 Art.26 | FATF Rec.20', l:3, i:4, mx:[] },
+      { flag:'STR filed but entity continues business relationship without enhanced monitoring or risk reassessment', ref:'UAE FIU Guidance | FDL No.10/2025 Art.26 | Cabinet Resolution 134/2025 Art.13', l:4, i:5, mx:['repeat'] },
+      { flag:'Entity fails to respond to FIU information request within specified deadline', ref:'FDL No.10/2025 Art.14 & Art.42 | UAE FIU Guidance', l:5, i:5, mx:[] },
+      { flag:'No SAR/STR log maintained or log does not capture required fields (date, subject, status, outcome)', ref:'FDL No.10/2025 Art.26 | Cabinet Resolution 134/2025 Art.17 | MoE Inspection Checklist', l:4, i:4, mx:[] },
+      { flag:'Customer exhibits same suspicious patterns previously reported in STR but no escalation or exit decision made', ref:'UAE FIU Guidance | FDL No.10/2025 Art.15-16 | Cabinet Resolution 134/2025', l:5, i:5, mx:['repeat'] },
+    ],
+    'EOCN / Executive Office TFS Compliance': [
+      { flag:'Screening not conducted within 24 hours of new EOCN/UNSC designation notification', ref:'EOCN TFS Guidance | Cabinet Resolution 74/2020 Art.4 | FDL No.10/2025 Art.14', l:5, i:5, mx:['sanctions'] },
+      { flag:'CNMR (Compliance No-Match Report) not filed within 5 business days of confirmed/partial match', ref:'EOCN TFS Guidance | Cabinet Resolution 74/2020 Art.6', l:5, i:5, mx:['sanctions'] },
+      { flag:'Entity does not maintain documented TFS screening procedures or screening audit trail', ref:'EOCN TFS Guidance | Cabinet Resolution 74/2020 | Cabinet Resolution 134/2025 Art.14', l:4, i:5, mx:[] },
+      { flag:'Assets not frozen without delay upon confirmed match — any delay in executing freeze order', ref:'EOCN TFS Guidance | Cabinet Resolution 74/2020 Art.4-5 | FDL No.10/2025 Art.14', l:5, i:5, mx:['sanctions'] },
+      { flag:'De-listing or unfreezing executed without prior EOCN authorization', ref:'EOCN TFS Guidance | Cabinet Resolution 74/2020 Art.7 | FDL No.10/2025', l:5, i:5, mx:['sanctions'] },
+      { flag:'TFS screening database not updated to include latest EOCN Local Terrorist List and UNSC Consolidated List', ref:'EOCN TFS Guidance | Cabinet Resolution 74/2020 | Cabinet Resolution 134/2025', l:4, i:5, mx:['sanctions'] },
+      { flag:'Attempt to circumvent or evade TFS measures through use of agents, nominees, or alternative payment channels', ref:'EOCN TFS Guidance | Cabinet Resolution 74/2020 Art.5 | FDL No.10/2025 Art.14', l:5, i:5, mx:['sanctions'] },
+      { flag:'Entity permits transactions with designated person during "without delay" freeze period', ref:'EOCN TFS Guidance | Cabinet Resolution 74/2020 Art.4 | FATF Rec.6', l:5, i:5, mx:['sanctions'] },
+    ],
+    'MOE Supervisory & Inspection Red Flags': [
+      { flag:'Entity unable to produce compliance manual, EWRA/BWRA, or risk appetite statement during MOE inspection', ref:'Cabinet Resolution 134/2025 Art.5-6 | FDL No.10/2025 Art.20-21 | MoE Inspection Framework', l:5, i:5, mx:[] },
+      { flag:'Compliance Officer (CO/MLRO) not appointed or does not meet minimum competency requirements', ref:'FDL No.10/2025 Art.20 | Cabinet Resolution 134/2025 Art.18 | MoE DPMS Guidance', l:5, i:5, mx:[] },
+      { flag:'No evidence of AML/CFT/CPF training conducted within the past 12 months for all relevant staff', ref:'FDL No.10/2025 Art.21 | Cabinet Resolution 134/2025 Art.20 | MoE Inspection Checklist', l:4, i:4, mx:[] },
+      { flag:'Customer risk assessment (CRA) methodology does not align with NRA 2024 findings or sectoral guidance', ref:'Cabinet Resolution 134/2025 Art.5 | UAE NRA 2024 | MoE DPMS Circular', l:4, i:4, mx:[] },
+      { flag:'Record retention policy missing or records destroyed before the mandatory 5-year retention period', ref:'FDL No.10/2025 Art.24 | Cabinet Resolution 134/2025 Art.21 | MoE Inspection Framework', l:5, i:5, mx:[] },
+      { flag:'Entity has not conducted independent AML/CFT audit as required by Cabinet Resolution 134/2025', ref:'Cabinet Resolution 134/2025 Art.19 | FATF Rec.18 | MoE Inspection Checklist', l:4, i:5, mx:[] },
+      { flag:'Board/Senior Management have not been briefed on compliance findings within the last reporting period', ref:'FDL No.10/2025 Art.20-21 | Cabinet Resolution 134/2025 Art.18-19', l:4, i:4, mx:[] },
+      { flag:'Entity operates without valid MoE DPMS registration or goAML portal access', ref:'FDL No.10/2025 Art.53 | MoE Circular 08/AML/2021 | MoE DPMS Registration Requirements', l:5, i:5, mx:[] },
+    ],
+    'PF Threats, Vulnerabilities & Consequences (EOCN Guidance)': [
+      { flag:'UBO of customer entity is owned or controlled by UN-sanctioned person (indirect sanctions exposure)', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 74/2020 | FATF Rec.7', l:5, i:5, mx:['sanctions'] },
+      { flag:'Customer uses front or shell company to obscure link to proliferation network or sanctioned entity', ref:'EOCN PF RA Guidance 2025 | FATF Rec.24 | Cabinet Resolution 134/2025', l:5, i:5, mx:['sanctions','high_risk_jurisdiction'] },
+      { flag:'Customer engages in production or trade of proliferation-sensitive goods alongside precious metals trading', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 156/2025 Art.3-5', l:4, i:5, mx:['sanctions'] },
+      { flag:'Gold purchase routed through neighbouring country of DPRK or Iran to circumvent TFS', ref:'EOCN PF RA Guidance 2025 | FATF PF Guidance 2021 | Cabinet Resolution 74/2020', l:5, i:5, mx:['sanctions','high_risk_jurisdiction'] },
+      { flag:'Customer uses international corporate vehicles for gold investment or structuring without clear commercial rationale', ref:'EOCN PF RA Guidance 2025 | FATF Rec.24 | Cabinet Resolution 134/2025', l:4, i:4, mx:['high_risk_jurisdiction'] },
+      { flag:'Inconsistency between proposed gold transactions and customer socio-economic profile or declared business activity', ref:'EOCN PF RA Guidance 2025 | FDL No.10/2025 Art.14 | FATF Rec.10', l:4, i:4, mx:[] },
+      { flag:'Power of attorney holders or authorized signatories not subjected to full CDD and TFS screening', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.8 | FDL No.10/2025 Art.12', l:4, i:5, mx:[] },
+      { flag:'Senior management approval not obtained before onboarding customer posing PF risk', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.14 | FDL No.10/2025 Art.16', l:5, i:5, mx:[] },
+      { flag:'Beneficial ownership threshold not reduced from 25% to 10% for high-risk corporate customers as recommended by EOCN', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.8', l:3, i:4, mx:[] },
+      { flag:'No PF-specific training conducted for employees including customer-facing staff and screening personnel', ref:'EOCN PF RA Guidance 2025 | FDL No.10/2025 Art.21 | Cabinet Resolution 134/2025 Art.20', l:4, i:4, mx:[] },
+      { flag:'New product, service, or delivery channel launched without prior PF vulnerability assessment', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.5 | FDL No.10/2025 Art.22', l:4, i:4, mx:[] },
+      { flag:'Employee screening for PF linkages not conducted before hiring or upon role change', ref:'EOCN PF RA Guidance 2025 | FDL No.10/2025 Art.21 | Cabinet Resolution 134/2025', l:3, i:4, mx:[] },
+      { flag:'Entity has not consulted international PF typology reports or UAE sectoral PF reports in its risk assessment', ref:'EOCN PF RA Guidance 2025 | FATF PF Guidance 2021 | UAE NRA 2024', l:3, i:3, mx:[] },
+      { flag:'Cyber risk to AML/CFT/CPF screening systems not assessed as PF vulnerability', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.5', l:3, i:4, mx:[] },
+      { flag:'Customer linked to illicit networks seeking nuclear, biological, or chemical materials or delivery systems', ref:'EOCN PF RA Guidance 2025 | UNSCR 1540 | FATF Rec.7 | Cabinet Resolution 156/2025', l:5, i:5, mx:['sanctions'] },
     ],
   };
 
@@ -2259,7 +2331,7 @@
           </div>
           <div><span class="lbl">Description *</span><textarea id="rc-desc" style="min-height:80px" placeholder="Describe the regulatory change and its requirements..."></textarea></div>
           <div class="row row-2">
-            <div><span class="lbl">Effective Date</span><input type="date" id="rc-date"/></div>
+            <div><span class="lbl">Effective Date</span><input type="text" id="rc-date" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
             <div><span class="lbl">Impacted Controls/Documents</span><input id="rc-controls" placeholder="e.g. Compliance Manual, EWRA, CDD procedure"/></div>
           </div>
           <div style="display:flex;gap:8px;margin-top:1rem">
@@ -2342,13 +2414,15 @@
 
   function load(key) { try { return JSON.parse(localStorage.getItem(key)||'null'); } catch{return null;} }
   function save(key,val) { try { localStorage.setItem(key,JSON.stringify(val)); } catch(e){} }
-  function today() { return new Date().toISOString().slice(0,10); }
-  function fmtDate(d) { if(!d) return '—'; return new Date(d).toLocaleDateString('en-GB'); }
+  function today() { const n=new Date(); return String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+'/'+n.getFullYear(); }
+  function parseDDMMYYYY(s) { if(!s) return null; const p=s.split('/'); if(p.length!==3) return null; return new Date(p[2],p[1]-1,p[0]); }
+  function fmtDate(d) { if(!d) return '—'; const dt = d.includes&&d.includes('/') ? parseDDMMYYYY(d) : new Date(d); if(!dt||isNaN(dt.getTime())) return d; return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
+  function fmtDateDDMMYYYY(dt) { return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
   function addBusinessDays(date, days) {
-    const d = new Date(date);
+    const d = parseDDMMYYYY(date) || new Date(date);
     let added = 0;
     while (added < days) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6) added++; }
-    return d.toISOString().slice(0,10);
+    return fmtDateDDMMYYYY(d);
   }
   function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function toast(msg,type) { if(global.toast) global.toast(msg,type); }
@@ -2494,7 +2568,7 @@
           <div><span class="lbl">Entity Type *</span>
             <select id="tfs2-entity-type"><option value="Individual">Individual</option><option value="Company">Company</option></select>
           </div>
-          <div><span class="lbl">Date of Birth / Registration</span><input type="date" id="tfs2-dob"/></div>
+          <div><span class="lbl">Date of Birth / Registration</span><input type="text" id="tfs2-dob" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
         </div>
         <div class="row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
           <div><span class="lbl">Screening Event Type *</span>
@@ -2516,7 +2590,7 @@
           </div>
         </div>
         <div class="row row-2" style="margin-top:10px">
-          <div><span class="lbl">Screening Date *</span><input type="date" id="tfs2-date" value="${today()}"/></div>
+          <div><span class="lbl">Screening Date *</span><input type="text" id="tfs2-date" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           <div><span class="lbl">Reviewed By</span><input id="tfs2-reviewer" placeholder="Compliance Officer / MLRO name"/></div>
         </div>
         <div><span class="lbl">Screening Outcome *</span>
@@ -2556,7 +2630,7 @@
               <div><span class="lbl">Transaction Suspended?</span>
                 <select id="tfs2-tx-suspended"><option value="">Select</option><option>Yes – Transaction Suspended</option><option>No Transaction Involved</option></select>
               </div>
-              <div><span class="lbl">PNMR Deadline</span><input type="date" id="tfs2-pnmr-deadline" readonly style="opacity:0.7"/></div>
+              <div><span class="lbl">PNMR Deadline</span><input type="text" id="tfs2-pnmr-deadline" readonly style="opacity:0.7" placeholder="dd/mm/yyyy"/></div>
             </div>
             <div class="row row-2">
               <div><span class="lbl">PNMR Filed to EOCN?</span>
@@ -2588,7 +2662,7 @@
               <div><span class="lbl">CNMR Filed to EOCN? *</span>
                 <select id="tfs2-cnmr-status"><option>Pending</option><option>Filed – Reference Obtained</option></select>
               </div>
-              <div><span class="lbl">CNMR Deadline (5 business days)</span><input type="date" id="tfs2-cnmr-deadline" readonly style="opacity:0.7"/></div>
+              <div><span class="lbl">CNMR Deadline (5 business days)</span><input type="text" id="tfs2-cnmr-deadline" readonly style="opacity:0.7" placeholder="dd/mm/yyyy"/></div>
             </div>
             <div class="row row-2">
               <div><span class="lbl">CNMR Reference</span><input id="tfs2-cnmr-ref" placeholder="EOCN CNMR reference"/></div>
@@ -2624,7 +2698,8 @@
     // Wire date change to calculate CNMR/PNMR deadlines
     setTimeout(() => {
       const d = document.getElementById('tfs2-date');
-      if (d) d.addEventListener('change', function() {
+      if (d) d.addEventListener('input', function() {
+        if (!this.value || this.value.length < 10) return;
         const dl = addBusinessDays(this.value, 5);
         ['tfs2-cnmr-deadline','tfs2-pnmr-deadline'].forEach(id => {
           const el = document.getElementById(id); if(el) el.value = dl;
@@ -3049,7 +3124,7 @@
         </div>
         <div class="row row-2">
           <div><span class="lbl">Transaction Amount (AED) *</span><input type="number" id="dpmsr-amount" placeholder="e.g. 75000" oninput="suite2CalcDPMSRThreshold()"/></div>
-          <div><span class="lbl">Transaction Date *</span><input type="date" id="dpmsr-txdate" value="${today()}"/></div>
+          <div><span class="lbl">Transaction Date *</span><input type="text" id="dpmsr-txdate" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
         </div>
         <div class="row row-2">
           <div><span class="lbl">Payment Method *</span>
@@ -3071,12 +3146,12 @@
 
         <div class="row row-2">
           <div><span class="lbl">ID Document Reference</span><input id="dpmsr-id-ref" placeholder="Emirates ID / Passport number"/></div>
-          <div><span class="lbl">ID Expiry Date</span><input type="date" id="dpmsr-id-expiry"/></div>
+          <div><span class="lbl">ID Expiry Date</span><input type="text" id="dpmsr-id-expiry" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
         </div>
         <div id="dpmsr-entity-fields" style="display:none">
           <div class="row row-2">
             <div><span class="lbl">Trade Licence Number *</span><input id="dpmsr-trade-licence" placeholder="Trade licence number"/></div>
-            <div><span class="lbl">Trade Licence Expiry</span><input type="date" id="dpmsr-trade-expiry"/></div>
+            <div><span class="lbl">Trade Licence Expiry</span><input type="text" id="dpmsr-trade-expiry" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           </div>
           <div><span class="lbl">Company Representative Name</span><input id="dpmsr-rep-name" placeholder="Name of authorized representative"/></div>
         </div>
@@ -3336,7 +3411,7 @@
           </select>
         </div>
         <div class="row row-2">
-          <div><span class="lbl">Record Created Date</span><input type="date" id="ret-date" value="${today()}"/></div>
+          <div><span class="lbl">Record Created Date</span><input type="text" id="ret-date" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           <div><span class="lbl">Retention Period (years)</span><input type="number" id="ret-years" value="5" min="1"/></div>
         </div>
         <div><span class="lbl">Regulatory Basis</span><input id="ret-basis" placeholder="Auto-filled from category"/></div>
@@ -3446,7 +3521,7 @@
         <div><span class="lbl">AI Output Summary *</span><textarea id="ailog-output" style="min-height:80px" placeholder="Summarize what the AI output contained/recommended..."></textarea></div>
         <div class="row row-2">
           <div><span class="lbl">Reviewed By *</span><input id="ailog-reviewer" placeholder="Name and role of reviewer"/></div>
-          <div><span class="lbl">Review Date</span><input type="date" id="ailog-date" value="${today()}"/></div>
+          <div><span class="lbl">Review Date</span><input type="text" id="ailog-date" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
         </div>
         <div><span class="lbl">Human Review Decision *</span>
           <select id="ailog-decision"><option value="">Select</option>

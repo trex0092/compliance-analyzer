@@ -327,7 +327,7 @@ textarea.hs-input{min-height:100px;resize:vertical}
       <div class="hs-form-group"><label class="hs-label">Entity Type *</label>
         <select class="hs-select" id="tfs-entity-type"><option value="Individual">Individual</option><option value="Company">Company</option></select>
       </div>
-      <div class="hs-form-group"><label class="hs-label">Date of Birth / Registration</label><input type="date" class="hs-input" id="tfs-dob"/></div>
+      <div class="hs-form-group"><label class="hs-label">Date of Birth / Registration</label><input type="text" class="hs-input" id="tfs-dob" placeholder="dd/mm/yyyy" oninput="if(window.csFormatDateInput)csFormatDateInput(this);else if(window.maFormatDateInput)maFormatDateInput(this)" maxlength="10"/></div>
     </div>
     <div class="hs-form-grid">
       <div class="hs-form-group"><label class="hs-label">Screening Event Type *</label>
@@ -352,7 +352,7 @@ textarea.hs-input{min-height:100px;resize:vertical}
     </div>
 
     <div class="hs-row-2" style="margin-top:14px">
-      <div class="hs-form-group"><label class="hs-label">Screening Date *</label><input type="date" class="hs-input" id="tfs-date"/></div>
+      <div class="hs-form-group"><label class="hs-label">Screening Date *</label><input type="text" class="hs-input" id="tfs-date" placeholder="dd/mm/yyyy" oninput="if(window.csFormatDateInput)csFormatDateInput(this);else if(window.maFormatDateInput)maFormatDateInput(this)" maxlength="10"/></div>
       <div class="hs-form-group"><label class="hs-label">Reviewed By</label><input class="hs-input" id="tfs-reviewer" placeholder="Compliance Officer / MLRO name"/></div>
     </div>
 
@@ -385,7 +385,7 @@ textarea.hs-input{min-height:100px;resize:vertical}
           <div class="hs-form-group"><label class="hs-label">Transaction Suspended?</label>
             <select class="hs-select" id="tfs-tx-suspended"><option value="">Select</option><option>Yes &ndash; Transaction Suspended</option><option>No Transaction Involved</option></select>
           </div>
-          <div class="hs-form-group"><label class="hs-label">PNMR Deadline</label><input type="date" class="hs-input" id="tfs-pnmr-deadline" readonly style="opacity:0.7"/></div>
+          <div class="hs-form-group"><label class="hs-label">PNMR Deadline</label><input type="text" class="hs-input" id="tfs-pnmr-deadline" readonly style="opacity:0.7" placeholder="dd/mm/yyyy"/></div>
         </div>
         <div class="hs-row-2">
           <div class="hs-form-group"><label class="hs-label">PNMR Filed to EOCN?</label>
@@ -417,7 +417,7 @@ textarea.hs-input{min-height:100px;resize:vertical}
           <div class="hs-form-group"><label class="hs-label">CNMR Filed to EOCN? *</label>
             <select class="hs-select" id="tfs-cnmr-status"><option>Pending</option><option>Filed &ndash; Reference Obtained</option></select>
           </div>
-          <div class="hs-form-group"><label class="hs-label">CNMR Deadline (5 business days)</label><input type="date" class="hs-input" id="tfs-cnmr-deadline" readonly style="opacity:0.7"/></div>
+          <div class="hs-form-group"><label class="hs-label">CNMR Deadline (5 business days)</label><input type="text" class="hs-input" id="tfs-cnmr-deadline" readonly style="opacity:0.7" placeholder="dd/mm/yyyy"/></div>
         </div>
         <div class="hs-row-2">
           <div class="hs-form-group"><label class="hs-label">CNMR Reference</label><input class="hs-input" id="tfs-cnmr-ref" placeholder="EOCN CNMR reference"/></div>

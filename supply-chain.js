@@ -284,7 +284,7 @@ const SupplyChain = (function() {
           <div><span class="lbl">Last Audit Status</span><select id="scAuditStatus"><option value="">Select...</option><option value="completed">Completed</option><option value="under_process">Under Process</option><option value="not_yet">Not Yet</option><option value="na">N/A</option></select></div>
         </div>
         <div class="row row-3" style="margin-bottom:8px">
-          <div><span class="lbl">Last Audit Date</span><input type="date" id="scAuditDate" /></div>
+          <div><span class="lbl">Last Audit Date</span><input type="text" id="scAuditDate" placeholder="dd/mm/yyyy" oninput="if(window.csFormatDateInput)csFormatDateInput(this);else if(window.maFormatDateInput)maFormatDateInput(this)" maxlength="10" /></div>
           <div></div>
           <div></div>
         </div>
