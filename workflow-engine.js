@@ -641,6 +641,42 @@
         { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
         { type: 'browser_notify', title: 'Correspondent Bank Alert', message: 'Correspondent bank has flagged transaction involving {entityName}. Review and respond within required timeframe. Ref: FATF Rec 13, CBUAE Guidance.' }
       ]
+    },
+    // ── EOCN PF RA Guidance 2025 — Additional Workflows ──
+    {
+      id: 'wf_pf_new_product_prelaunch', name: 'New Product/Service PF Pre-Launch Assessment', enabled: true,
+      trigger: 'new_product_launch', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'pf_assessment', priority: 'high' },
+        { type: 'create_asana_task', template: 'compliance_committee', priority: 'high' },
+        { type: 'email_alert', subject: 'PF Pre-Launch Assessment Required: {productName}', message: 'New product/service/delivery channel planned for launch. PF vulnerability assessment must be completed before go-live. Assess whether product can be exploited to raise, move, or disguise PF funds or procure proliferation-sensitive goods. Ref: EOCN PF RA Guidance 2025, Cabinet Resolution 134/2025 Art.5, FDL No.10/2025 Art.22.' }
+      ]
+    },
+    {
+      id: 'wf_pf_annual_institutional_ra', name: 'Annual PF Institutional Risk Assessment', enabled: true,
+      trigger: 'scheduled_pf_ira', condition: { frequency: 'annual' },
+      actions: [
+        { type: 'create_asana_task', template: 'pf_assessment', priority: 'high' },
+        { type: 'create_asana_task', template: 'ewra_review', priority: 'high' },
+        { type: 'email_alert', subject: 'Annual PF Institutional Risk Assessment Due', message: 'EOCN requires annual PF Institutional Risk Assessment. Assess inherent PF risk across 5 categories (Customer, Geography, Product/Service, Delivery Channel, Cyber), evaluate control effectiveness, calculate residual risk. Ref: EOCN PF RA Guidance 2025, Cabinet Resolution 134/2025 Art.5, FDL No.10/2025 Art.6.' }
+      ]
+    },
+    {
+      id: 'wf_pf_employee_screening', name: 'Employee PF Background Screening', enabled: true,
+      trigger: 'new_employee_hire', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'kyc_refresh', priority: 'medium' },
+        { type: 'browser_notify', title: 'Employee PF Screening Required', message: 'New hire {employeeName} requires PF background screening before start date. Check for linkages to proliferation financing activities. Ref: EOCN PF RA Guidance 2025, FDL No.10/2025 Art.21.' }
+      ]
+    },
+    {
+      id: 'wf_pf_customer_dual_use', name: 'Customer Dual-Use Goods Detected -PF Review', enabled: true,
+      trigger: 'dual_use_detected', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'pf_assessment', priority: 'high' },
+        { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
+        { type: 'email_alert', subject: 'PF Alert: Dual-Use Goods Nexus for {customerName}', message: 'Customer trades in or has links to dual-use goods or controlled items. Verify licensing, screen against UAE Strategic Goods Control Lists. Senior management approval required before onboarding. Ref: EOCN PF RA Guidance 2025, Cabinet Resolution 156/2025, UNSCR 1540.' }
+      ]
     }
   ];
 

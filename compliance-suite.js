@@ -245,6 +245,9 @@ window.csFormatDateInput = function (el) {
       sourceOfFunds:  { 'Verified/Documented': 0, 'Partially Verified': 2, 'Unverified': 4 },
       geography:      { 'UAE Only': 0, 'GCC': 1, 'FATF Member Country': 1, 'FATF Grey List Country': 3, 'FATF Black List Country': 4, 'CAHRA Region': 4, 'Other': 2 },
       adverseMedia:   { 'None': 0, 'Possible': 2, 'Confirmed': 4 },
+      pfExposure:     { 'None Identified': 0, 'Low – Indirect Exposure': 1, 'Medium – Dual-Use or PF Jurisdiction': 3, 'High – Direct PF Indicators': 5 },
+      deliveryChannel:{ 'Face-to-Face': 0, 'Established Intermediary': 1, 'Non-Face-to-Face / Online': 2, 'Anonymous / Unverified Channel': 4 },
+      ownershipComplexity: { 'Simple / Transparent': 0, 'Moderate Layers': 1, 'Complex Multi-Jurisdiction': 3, 'Opaque / Nominee Structures': 4 },
     },
     // Score thresholds: what total score = what rating
     thresholds: { 'Very High': 15, 'High': 9, 'Medium': 4, 'Low': 0 },
@@ -276,6 +279,9 @@ window.csFormatDateInput = function (el) {
     sourceOfFunds: 'Source of Funds',
     geography: 'Geographic Exposure',
     adverseMedia: 'Adverse Media',
+    pfExposure: 'PF Exposure (EOCN)',
+    deliveryChannel: 'Delivery Channel',
+    ownershipComplexity: 'Ownership Complexity',
   };
 
   function getRiskModel() {
@@ -443,6 +449,17 @@ window.csFormatDateInput = function (el) {
               <select id="cra-media"><option value="">Select</option>${Object.keys(CRA_RISK_WEIGHTS.adverseMedia).map(v=>`<option>${v}</option>`).join('')}</select>
             </div>
           </div>
+          <div class="row row-3">
+            <div><span class="lbl">PF Exposure (EOCN)</span>
+              <select id="cra-pf"><option value="">Select</option>${Object.keys(CRA_RISK_WEIGHTS.pfExposure).map(v=>`<option>${v}</option>`).join('')}</select>
+            </div>
+            <div><span class="lbl">Delivery Channel</span>
+              <select id="cra-delivery"><option value="">Select</option>${Object.keys(CRA_RISK_WEIGHTS.deliveryChannel).map(v=>`<option>${v}</option>`).join('')}</select>
+            </div>
+            <div><span class="lbl">Ownership Complexity</span>
+              <select id="cra-ownership"><option value="">Select</option>${Object.keys(CRA_RISK_WEIGHTS.ownershipComplexity).map(v=>`<option>${v}</option>`).join('')}</select>
+            </div>
+          </div>
 
           <div id="cra-score-box" style="background:var(--surface2);border-radius:4px;padding:12px;margin:10px 0;display:none">
             <div style="display:flex;justify-content:space-between;align-items:center">
@@ -498,6 +515,9 @@ window.csFormatDateInput = function (el) {
     document.getElementById('cra-sof').value = r.sourceOfFunds || '';
     document.getElementById('cra-geo').value = r.geography || '';
     document.getElementById('cra-media').value = r.adverseMedia || '';
+    document.getElementById('cra-pf').value = r.pfExposure || '';
+    document.getElementById('cra-delivery').value = r.deliveryChannel || '';
+    document.getElementById('cra-ownership').value = r.ownershipComplexity || '';
     document.getElementById('cra-notes').value = r.notes || '';
     document.getElementById('cra-date').value = r.date || today();
     document.getElementById('cra-review').value = r.nextReview || '';
@@ -518,6 +538,9 @@ window.csFormatDateInput = function (el) {
       sourceOfFunds:  document.getElementById('cra-sof').value,
       geography:      document.getElementById('cra-geo').value,
       adverseMedia:   document.getElementById('cra-media').value,
+      pfExposure:     document.getElementById('cra-pf').value,
+      deliveryChannel:document.getElementById('cra-delivery').value,
+      ownershipComplexity: document.getElementById('cra-ownership').value,
     };
     const score = calcCRAScore(form);
     const rating = scoreToRating(score);
