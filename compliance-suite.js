@@ -13,6 +13,15 @@
  *  7. Regulatory Mapping & Jurisdiction Selector
  */
 
+// Global date format helper for dd/mm/yyyy auto-formatting
+window.csFormatDateInput = function (el) {
+  let v = el.value.replace(/[^0-9]/g, '');
+  if (v.length > 8) v = v.slice(0, 8);
+  if (v.length >= 5) v = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+  else if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+  el.value = v;
+};
+
 (function (global) {
   'use strict';
 
@@ -37,8 +46,10 @@
   function uid(prefix) {
     return prefix + '-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-6);
   }
-  function today() { return new Date().toISOString().slice(0, 10); }
-  function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB'); }
+  function today() { const n=new Date(); return String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+'/'+n.getFullYear(); }
+  function parseDDMMYYYY(s) { if(!s) return null; const p=s.split('/'); if(p.length!==3) return null; return new Date(p[2],p[1]-1,p[0]); }
+  function fmtDate(d) { if (!d) return '—'; const dt = d.includes('/') ? parseDDMMYYYY(d) : new Date(d); if(!dt||isNaN(dt.getTime())) return d; return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
+  function fmtDateDDMMYYYY(dt) { return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
   function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function toast(msg, type) {
     if (global.toast) { global.toast(msg, type); return; }
@@ -445,8 +456,8 @@
             <textarea id="cra-notes" placeholder="Document any specific risk observations, mitigating factors, or actions required..." style="min-height:80px"></textarea>
           </div>
           <div class="row row-2" style="margin-top:10px">
-            <div><span class="lbl">Assessment Date</span><input type="date" id="cra-date" value="${today()}"/></div>
-            <div><span class="lbl">Next Review Date</span><input type="date" id="cra-review"/></div>
+            <div><span class="lbl">Assessment Date</span><input type="text" id="cra-date" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
+            <div><span class="lbl">Next Review Date</span><input type="text" id="cra-review" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           </div>
 
           <div style="display:flex;gap:8px;margin-top:1rem">
@@ -949,7 +960,7 @@
           </div>
           <div class="row row-2">
             <div><span class="lbl">Nationality</span><input id="ubo-nationality" placeholder="Country of citizenship"/></div>
-            <div><span class="lbl">Date of Birth</span><input type="date" id="ubo-dob"/></div>
+            <div><span class="lbl">Date of Birth</span><input type="text" id="ubo-dob" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           </div>
           <div class="row row-2">
             <div><span class="lbl">Country of Residence</span><input id="ubo-residence" placeholder="Country"/></div>
@@ -973,11 +984,11 @@
           </div>
           <div class="row row-2">
             <div><span class="lbl">Document Reference / Number</span><input id="ubo-docref" placeholder="Document number"/></div>
-            <div><span class="lbl">Document Expiry Date</span><input type="date" id="ubo-docexpiry"/></div>
+            <div><span class="lbl">Document Expiry Date</span><input type="text" id="ubo-docexpiry" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           </div>
           <div class="row row-2">
-            <div><span class="lbl">Date Verified</span><input type="date" id="ubo-verified" value="${today()}"/></div>
-            <div><span class="lbl">Next Review Date</span><input type="date" id="ubo-review"/></div>
+            <div><span class="lbl">Date Verified</span><input type="text" id="ubo-verified" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
+            <div><span class="lbl">Next Review Date</span><input type="text" id="ubo-review" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           </div>
           <div><span class="lbl">Notes</span><textarea id="ubo-notes" style="min-height:60px" placeholder="Ownership structure notes, supporting documents, escalation notes..."></textarea></div>
           <div style="display:flex;gap:8px;margin-top:1rem">
@@ -1163,8 +1174,8 @@
             </div>
           </div>
           <div class="row row-2">
-            <div><span class="lbl">Date Suspicion Arose *</span><input type="date" id="str-suspicion-date"/></div>
-            <div><span class="lbl">Filing Deadline (auto +30d)</span><input type="date" id="str-deadline" readonly style="opacity:0.7"/></div>
+            <div><span class="lbl">Date Suspicion Arose *</span><input type="text" id="str-suspicion-date" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
+            <div><span class="lbl">Filing Deadline (auto +30d)</span><input type="text" id="str-deadline" readonly style="opacity:0.7" placeholder="dd/mm/yyyy"/></div>
           </div>
           <div><span class="lbl">Red Flags Identified (select all that apply) *</span>
             <div id="str-flags-container" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface2);padding:10px;border-radius:3px;border:1px solid var(--border);max-height:180px;overflow-y:auto;margin-top:4px">
@@ -1197,12 +1208,12 @@
 
     // Wire up auto-deadline
     const sd = document.getElementById('str-suspicion-date');
-    if (sd) sd.addEventListener('change', function() {
-      if (!this.value) return;
-      const d = new Date(this.value);
-      if (isNaN(d.getTime())) return;
+    if (sd) sd.addEventListener('input', function() {
+      if (!this.value || this.value.length < 10) return;
+      const d = parseDDMMYYYY(this.value);
+      if (!d || isNaN(d.getTime())) return;
       d.setDate(d.getDate() + 30);
-      document.getElementById('str-deadline').value = d.toISOString().slice(0,10);
+      document.getElementById('str-deadline').value = fmtDateDDMMYYYY(d);
     });
   }
 
@@ -2320,7 +2331,7 @@
           </div>
           <div><span class="lbl">Description *</span><textarea id="rc-desc" style="min-height:80px" placeholder="Describe the regulatory change and its requirements..."></textarea></div>
           <div class="row row-2">
-            <div><span class="lbl">Effective Date</span><input type="date" id="rc-date"/></div>
+            <div><span class="lbl">Effective Date</span><input type="text" id="rc-date" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
             <div><span class="lbl">Impacted Controls/Documents</span><input id="rc-controls" placeholder="e.g. Compliance Manual, EWRA, CDD procedure"/></div>
           </div>
           <div style="display:flex;gap:8px;margin-top:1rem">
@@ -2403,13 +2414,15 @@
 
   function load(key) { try { return JSON.parse(localStorage.getItem(key)||'null'); } catch{return null;} }
   function save(key,val) { try { localStorage.setItem(key,JSON.stringify(val)); } catch(e){} }
-  function today() { return new Date().toISOString().slice(0,10); }
-  function fmtDate(d) { if(!d) return '—'; return new Date(d).toLocaleDateString('en-GB'); }
+  function today() { const n=new Date(); return String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+'/'+n.getFullYear(); }
+  function parseDDMMYYYY(s) { if(!s) return null; const p=s.split('/'); if(p.length!==3) return null; return new Date(p[2],p[1]-1,p[0]); }
+  function fmtDate(d) { if(!d) return '—'; const dt = d.includes&&d.includes('/') ? parseDDMMYYYY(d) : new Date(d); if(!dt||isNaN(dt.getTime())) return d; return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
+  function fmtDateDDMMYYYY(dt) { return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
   function addBusinessDays(date, days) {
-    const d = new Date(date);
+    const d = parseDDMMYYYY(date) || new Date(date);
     let added = 0;
     while (added < days) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6) added++; }
-    return d.toISOString().slice(0,10);
+    return fmtDateDDMMYYYY(d);
   }
   function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function toast(msg,type) { if(global.toast) global.toast(msg,type); }
@@ -2555,7 +2568,7 @@
           <div><span class="lbl">Entity Type *</span>
             <select id="tfs2-entity-type"><option value="Individual">Individual</option><option value="Company">Company</option></select>
           </div>
-          <div><span class="lbl">Date of Birth / Registration</span><input type="date" id="tfs2-dob"/></div>
+          <div><span class="lbl">Date of Birth / Registration</span><input type="text" id="tfs2-dob" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
         </div>
         <div class="row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
           <div><span class="lbl">Screening Event Type *</span>
@@ -2577,7 +2590,7 @@
           </div>
         </div>
         <div class="row row-2" style="margin-top:10px">
-          <div><span class="lbl">Screening Date *</span><input type="date" id="tfs2-date" value="${today()}"/></div>
+          <div><span class="lbl">Screening Date *</span><input type="text" id="tfs2-date" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           <div><span class="lbl">Reviewed By</span><input id="tfs2-reviewer" placeholder="Compliance Officer / MLRO name"/></div>
         </div>
         <div><span class="lbl">Screening Outcome *</span>
@@ -2617,7 +2630,7 @@
               <div><span class="lbl">Transaction Suspended?</span>
                 <select id="tfs2-tx-suspended"><option value="">Select</option><option>Yes – Transaction Suspended</option><option>No Transaction Involved</option></select>
               </div>
-              <div><span class="lbl">PNMR Deadline</span><input type="date" id="tfs2-pnmr-deadline" readonly style="opacity:0.7"/></div>
+              <div><span class="lbl">PNMR Deadline</span><input type="text" id="tfs2-pnmr-deadline" readonly style="opacity:0.7" placeholder="dd/mm/yyyy"/></div>
             </div>
             <div class="row row-2">
               <div><span class="lbl">PNMR Filed to EOCN?</span>
@@ -2649,7 +2662,7 @@
               <div><span class="lbl">CNMR Filed to EOCN? *</span>
                 <select id="tfs2-cnmr-status"><option>Pending</option><option>Filed – Reference Obtained</option></select>
               </div>
-              <div><span class="lbl">CNMR Deadline (5 business days)</span><input type="date" id="tfs2-cnmr-deadline" readonly style="opacity:0.7"/></div>
+              <div><span class="lbl">CNMR Deadline (5 business days)</span><input type="text" id="tfs2-cnmr-deadline" readonly style="opacity:0.7" placeholder="dd/mm/yyyy"/></div>
             </div>
             <div class="row row-2">
               <div><span class="lbl">CNMR Reference</span><input id="tfs2-cnmr-ref" placeholder="EOCN CNMR reference"/></div>
@@ -2685,7 +2698,8 @@
     // Wire date change to calculate CNMR/PNMR deadlines
     setTimeout(() => {
       const d = document.getElementById('tfs2-date');
-      if (d) d.addEventListener('change', function() {
+      if (d) d.addEventListener('input', function() {
+        if (!this.value || this.value.length < 10) return;
         const dl = addBusinessDays(this.value, 5);
         ['tfs2-cnmr-deadline','tfs2-pnmr-deadline'].forEach(id => {
           const el = document.getElementById(id); if(el) el.value = dl;
@@ -3110,7 +3124,7 @@
         </div>
         <div class="row row-2">
           <div><span class="lbl">Transaction Amount (AED) *</span><input type="number" id="dpmsr-amount" placeholder="e.g. 75000" oninput="suite2CalcDPMSRThreshold()"/></div>
-          <div><span class="lbl">Transaction Date *</span><input type="date" id="dpmsr-txdate" value="${today()}"/></div>
+          <div><span class="lbl">Transaction Date *</span><input type="text" id="dpmsr-txdate" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
         </div>
         <div class="row row-2">
           <div><span class="lbl">Payment Method *</span>
@@ -3132,12 +3146,12 @@
 
         <div class="row row-2">
           <div><span class="lbl">ID Document Reference</span><input id="dpmsr-id-ref" placeholder="Emirates ID / Passport number"/></div>
-          <div><span class="lbl">ID Expiry Date</span><input type="date" id="dpmsr-id-expiry"/></div>
+          <div><span class="lbl">ID Expiry Date</span><input type="text" id="dpmsr-id-expiry" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
         </div>
         <div id="dpmsr-entity-fields" style="display:none">
           <div class="row row-2">
             <div><span class="lbl">Trade Licence Number *</span><input id="dpmsr-trade-licence" placeholder="Trade licence number"/></div>
-            <div><span class="lbl">Trade Licence Expiry</span><input type="date" id="dpmsr-trade-expiry"/></div>
+            <div><span class="lbl">Trade Licence Expiry</span><input type="text" id="dpmsr-trade-expiry" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           </div>
           <div><span class="lbl">Company Representative Name</span><input id="dpmsr-rep-name" placeholder="Name of authorized representative"/></div>
         </div>
@@ -3397,7 +3411,7 @@
           </select>
         </div>
         <div class="row row-2">
-          <div><span class="lbl">Record Created Date</span><input type="date" id="ret-date" value="${today()}"/></div>
+          <div><span class="lbl">Record Created Date</span><input type="text" id="ret-date" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
           <div><span class="lbl">Retention Period (years)</span><input type="number" id="ret-years" value="5" min="1"/></div>
         </div>
         <div><span class="lbl">Regulatory Basis</span><input id="ret-basis" placeholder="Auto-filled from category"/></div>
@@ -3507,7 +3521,7 @@
         <div><span class="lbl">AI Output Summary *</span><textarea id="ailog-output" style="min-height:80px" placeholder="Summarize what the AI output contained/recommended..."></textarea></div>
         <div class="row row-2">
           <div><span class="lbl">Reviewed By *</span><input id="ailog-reviewer" placeholder="Name and role of reviewer"/></div>
-          <div><span class="lbl">Review Date</span><input type="date" id="ailog-date" value="${today()}"/></div>
+          <div><span class="lbl">Review Date</span><input type="text" id="ailog-date" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
         </div>
         <div><span class="lbl">Human Review Decision *</span>
           <select id="ailog-decision"><option value="">Select</option>

@@ -292,13 +292,13 @@ ${(data.attachments || []).map(a => `    <attachment>
         <div class="row row-3" style="margin-bottom:8px">
           <div><span class="lbl">ID Type</span><select id="goamlIdType"><option value="PASSPORT">Passport</option><option value="EMIRATES_ID">Emirates ID</option><option value="TRADE_LICENSE">Trade License</option><option value="OTHER">Other</option></select></div>
           <div><span class="lbl">ID Number</span><input type="text" id="goamlIdNumber" placeholder="Document number" /></div>
-          <div><span class="lbl">Date of Birth</span><input type="date" id="goamlDob" /></div>
+          <div><span class="lbl">Date of Birth</span><input type="text" id="goamlDob" placeholder="dd/mm/yyyy" oninput="if(window.csFormatDateInput)csFormatDateInput(this);else if(window.maFormatDateInput)maFormatDateInput(this)" maxlength="10" /></div>
         </div>
 
         <div class="row row-3" style="margin-bottom:8px">
           <div><span class="lbl">Transaction Amount</span><input type="number" id="goamlAmount" placeholder="Amount" /></div>
           <div><span class="lbl">Currency</span><select id="goamlCurrency"><option value="USD">USD</option><option value="AED">AED</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select></div>
-          <div><span class="lbl">Transaction Date</span><input type="date" id="goamlTxDate" /></div>
+          <div><span class="lbl">Transaction Date</span><input type="text" id="goamlTxDate" placeholder="dd/mm/yyyy" oninput="if(window.csFormatDateInput)csFormatDateInput(this);else if(window.maFormatDateInput)maFormatDateInput(this)" maxlength="10" /></div>
         </div>
 
         <div class="row row-2" style="margin-bottom:8px">

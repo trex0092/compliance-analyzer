@@ -437,7 +437,7 @@
   <div class="row row-3" style="margin-bottom:8px">
     <div><label class="lbl">TITLE</label><input id="regChangeTitle" placeholder="Change title" /></div>
     <div><label class="lbl">FRAMEWORK</label><select id="regChangeFw">${Object.entries(FRAMEWORKS).map(([k, v]) => `<option value="${v.name}">${v.icon} ${v.name}</option>`).join('')}</select></div>
-    <div><label class="lbl">DEADLINE</label><input id="regChangeDeadline" type="date" /></div>
+    <div><label class="lbl">DEADLINE</label><input id="regChangeDeadline" type="text" placeholder="dd/mm/yyyy" oninput="if(window.csFormatDateInput)csFormatDateInput(this);else if(window.maFormatDateInput)maFormatDateInput(this)" maxlength="10" /></div>
   </div>
   <div style="margin-bottom:8px"><label class="lbl">IMPACT</label><textarea id="regChangeImpact" rows="2" placeholder="Describe impact on current compliance program..."></textarea></div>
   <div style="display:flex;gap:6px;margin-top:4px">

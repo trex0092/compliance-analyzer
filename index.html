@@ -6307,7 +6307,7 @@ function openEditAsanaTask(gid, name, dueOn, assigneeName) {
       <input type="hidden" id="eat-gid" value="${escHtml(gid)}">
       <div style="margin-bottom:10px"><span class="lbl">Task Name *</span><input id="eat-name" value="${name.replace(/"/g,'&quot;')}"></div>
       <div class="row row-2" style="margin-bottom:10px">
-        <div><span class="lbl">Due Date</span><input type="date" id="eat-due" value="${dueOn || ''}"></div>
+        <div><span class="lbl">Due Date</span><input type="text" id="eat-due" value="${dueOn || ''}" placeholder="dd/mm/yyyy" oninput="if(window.csFormatDateInput)csFormatDateInput(this);else if(window.maFormatDateInput)maFormatDateInput(this)" maxlength="10"></div>
         <div><span class="lbl">Assignee</span><input id="eat-assignee" value="${(assigneeName || '').replace(/"/g,'&quot;')}" placeholder="Name or email"></div>
       </div>
       <div style="margin-bottom:10px"><span class="lbl">Notes (append)</span><textarea id="eat-notes" placeholder="Add notes to this task..." style="min-height:60px"></textarea></div>
