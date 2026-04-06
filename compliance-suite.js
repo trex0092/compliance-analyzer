@@ -1570,6 +1570,23 @@
       { flag:'Board/Senior Management have not been briefed on compliance findings within the last reporting period', ref:'FDL No.10/2025 Art.20-21 | Cabinet Resolution 134/2025 Art.18-19', l:4, i:4, mx:[] },
       { flag:'Entity operates without valid MoE DPMS registration or goAML portal access', ref:'FDL No.10/2025 Art.53 | MoE Circular 08/AML/2021 | MoE DPMS Registration Requirements', l:5, i:5, mx:[] },
     ],
+    'PF Threats, Vulnerabilities & Consequences (EOCN Guidance)': [
+      { flag:'UBO of customer entity is owned or controlled by UN-sanctioned person (indirect sanctions exposure)', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 74/2020 | FATF Rec.7', l:5, i:5, mx:['sanctions'] },
+      { flag:'Customer uses front or shell company to obscure link to proliferation network or sanctioned entity', ref:'EOCN PF RA Guidance 2025 | FATF Rec.24 | Cabinet Resolution 134/2025', l:5, i:5, mx:['sanctions','high_risk_jurisdiction'] },
+      { flag:'Customer engages in production or trade of proliferation-sensitive goods alongside precious metals trading', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 156/2025 Art.3-5', l:4, i:5, mx:['sanctions'] },
+      { flag:'Gold purchase routed through neighbouring country of DPRK or Iran to circumvent TFS', ref:'EOCN PF RA Guidance 2025 | FATF PF Guidance 2021 | Cabinet Resolution 74/2020', l:5, i:5, mx:['sanctions','high_risk_jurisdiction'] },
+      { flag:'Customer uses international corporate vehicles for gold investment or structuring without clear commercial rationale', ref:'EOCN PF RA Guidance 2025 | FATF Rec.24 | Cabinet Resolution 134/2025', l:4, i:4, mx:['high_risk_jurisdiction'] },
+      { flag:'Inconsistency between proposed gold transactions and customer socio-economic profile or declared business activity', ref:'EOCN PF RA Guidance 2025 | FDL No.10/2025 Art.14 | FATF Rec.10', l:4, i:4, mx:[] },
+      { flag:'Power of attorney holders or authorized signatories not subjected to full CDD and TFS screening', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.8 | FDL No.10/2025 Art.12', l:4, i:5, mx:[] },
+      { flag:'Senior management approval not obtained before onboarding customer posing PF risk', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.14 | FDL No.10/2025 Art.16', l:5, i:5, mx:[] },
+      { flag:'Beneficial ownership threshold not reduced from 25% to 10% for high-risk corporate customers as recommended by EOCN', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.8', l:3, i:4, mx:[] },
+      { flag:'No PF-specific training conducted for employees including customer-facing staff and screening personnel', ref:'EOCN PF RA Guidance 2025 | FDL No.10/2025 Art.21 | Cabinet Resolution 134/2025 Art.20', l:4, i:4, mx:[] },
+      { flag:'New product, service, or delivery channel launched without prior PF vulnerability assessment', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.5 | FDL No.10/2025 Art.22', l:4, i:4, mx:[] },
+      { flag:'Employee screening for PF linkages not conducted before hiring or upon role change', ref:'EOCN PF RA Guidance 2025 | FDL No.10/2025 Art.21 | Cabinet Resolution 134/2025', l:3, i:4, mx:[] },
+      { flag:'Entity has not consulted international PF typology reports or UAE sectoral PF reports in its risk assessment', ref:'EOCN PF RA Guidance 2025 | FATF PF Guidance 2021 | UAE NRA 2024', l:3, i:3, mx:[] },
+      { flag:'Cyber risk to AML/CFT/CPF screening systems not assessed as PF vulnerability', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.5', l:3, i:4, mx:[] },
+      { flag:'Customer linked to illicit networks seeking nuclear, biological, or chemical materials or delivery systems', ref:'EOCN PF RA Guidance 2025 | UNSCR 1540 | FATF Rec.7 | Cabinet Resolution 156/2025', l:5, i:5, mx:['sanctions'] },
+    ],
   };
 
   function renderRedFlags() {
