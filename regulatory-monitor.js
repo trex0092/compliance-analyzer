@@ -5,6 +5,20 @@
 (function () {
   'use strict';
 
+  // Parse date in dd/mm/yyyy or yyyy-mm-dd format
+  function parseAnyDate(d, endOfDay) {
+    if (!d) return new Date(NaN);
+    var dt;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
+      var p = d.split('/');
+      dt = new Date(p[2], p[1] - 1, p[0]);
+    } else {
+      dt = new Date(d);
+    }
+    if (endOfDay && !isNaN(dt.getTime())) dt.setHours(23, 59, 59, 999);
+    return dt;
+  }
+
   const REG_MONITOR_KEY = 'fgl_reg_monitor';
   const REG_ALERTS_KEY = 'fgl_reg_alerts';
   const REG_CHANGES_KEY = 'fgl_reg_changes';
@@ -282,7 +296,7 @@
     // Check overdue regulatory changes
     const changes = getRegChanges();
     const now = new Date();
-    changes.filter(c => c.status !== 'completed' && c.deadline && new Date(c.deadline + 'T23:59:59') < now).forEach(c => {
+    changes.filter(c => c.status !== 'completed' && c.deadline && parseAnyDate(c.deadline, true) < now).forEach(c => {
       newAlerts.push({
         severity: 'High',
         framework: c.framework || 'General',
@@ -451,7 +465,7 @@
 
     if (changes.length) {
       html += changes.map(c => {
-        const overdue = c.status !== 'completed' && new Date(c.deadline) < new Date();
+        const overdue = c.status !== 'completed' && c.deadline && parseAnyDate(c.deadline) < new Date();
         return `
       <div class="asana-item">
         <div>

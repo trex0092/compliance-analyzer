@@ -33,7 +33,13 @@ const GoAMLExport = (function() {
 
   function validateDate(dateStr) {
     if (!dateStr) return '';
-    var d = String(dateStr).slice(0, 10);
+    var d = String(dateStr).trim();
+    // Accept dd/mm/yyyy and convert to yyyy-mm-dd for XML
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
+      var p = d.split('/');
+      d = p[2] + '-' + p[1] + '-' + p[0];
+    }
+    d = d.slice(0, 10);
     return /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d).getTime()) ? d : '';
   }
 

@@ -36,6 +36,16 @@
     el.value = v;
   };
 
+  // Convert yyyy-mm-dd to dd/mm/yyyy for backward compatibility with stored data
+  function normalizeDateValue(v) {
+    if (!v) return v;
+    if (/^\d{4}-\d{2}-\d{2}/.test(v)) {
+      var p = v.slice(0, 10).split('-');
+      return p[2] + '/' + p[1] + '/' + p[0];
+    }
+    return v;
+  }
+
   // ══════════════════════════════════════════════════════════════
   // RENDER MAIN TAB
   // ══════════════════════════════════════════════════════════════
@@ -353,14 +363,14 @@
     if (!data) return;
     const ci = data.customerInfo || {};
     setVal('maCompanyName', ci.companyName); setVal('maCountry', ci.country);
-    setVal('maRegDate', ci.regDate); setVal('maCommRegister', ci.commRegister);
-    setVal('maLicenseExpiry', ci.licenseExpiry); setVal('maGoAML', ci.goAML);
+    setVal('maRegDate', normalizeDateValue(ci.regDate)); setVal('maCommRegister', ci.commRegister);
+    setVal('maLicenseExpiry', normalizeDateValue(ci.licenseExpiry)); setVal('maGoAML', ci.goAML);
     setVal('maFATF', ci.fatf); setVal('maCAHRA', ci.cahra); setVal('maPEP', ci.pep);
 
     const s = data.sanctions || {};
     ['UAE','UN','OFAC','UK','EU','INTERPOL'].forEach(k => {
       const v = s[k] || {};
-      setVal('maS_' + k + '_result', v.result); setVal('maS_' + k + '_date', v.date); setVal('maS_' + k + '_remarks', v.remarks);
+      setVal('maS_' + k + '_result', v.result); setVal('maS_' + k + '_date', normalizeDateValue(v.date)); setVal('maS_' + k + '_remarks', v.remarks);
     });
 
     const a = data.adverse || {};
@@ -378,7 +388,13 @@
     if (a.Political) { setVal('maA_Political_finding', a.Political.finding); setVal('maA_Political_details', a.Political.details); }
     if (a.HR) { setVal('maA_HR_finding', a.HR.finding); setVal('maA_HR_details', a.HR.details); }
 
-    currentIndividuals = (data.individuals && data.individuals.length) ? data.individuals : [emptyIndividual(1)];
+    currentIndividuals = (data.individuals && data.individuals.length) ? data.individuals.map(function(ind) {
+      return Object.assign({}, ind, {
+        passportExpiry: normalizeDateValue(ind.passportExpiry),
+        dob: normalizeDateValue(ind.dob),
+        eidExpiry: normalizeDateValue(ind.eidExpiry)
+      });
+    }) : [emptyIndividual(1)];
     renderIndividuals();
 
     const pf = data.pf || {};
@@ -403,7 +419,7 @@
     const so = data.signOff || {};
     setVal('maApprovedBy', so.approvedBy); setVal('maApprovedTitle', so.approvedTitle);
     setVal('maPreparedBy', so.preparedBy); setVal('maPreparedTitle', so.preparedTitle);
-    setVal('maApprovalDate', so.approvalDate);
+    setVal('maApprovalDate', normalizeDateValue(so.approvalDate));
   }
 
   // ══════════════════════════════════════════════════════════════
