@@ -127,11 +127,82 @@ compliant by default.
 7. **Currency**: AED as primary. When converting, use published CBUAE rates, not hardcoded.
 8. **goAML exports**: Must conform to UAE FIU XML schema. Validate before submission.
 
+## Decision Trees — Follow These Automatically
+
+### When editing ANY file that touches money/amounts:
+```
+Is a threshold value involved?
+├── YES → Is it imported from src/domain/constants.ts?
+│   ├── YES → Safe to proceed
+│   └── NO → STOP. Refactor to use constants.ts. Never hardcode thresholds.
+└── NO → Proceed normally
+```
+
+### When a sanctions match is detected:
+```
+Match confidence >= 0.9 (confirmed)?
+├── YES → FREEZE immediately
+│   ├── Start 24h EOCN countdown (checkEOCNDeadline)
+│   ├── File CNMR within 5 business days (checkDeadline)
+│   └── DO NOT notify the subject (Art.29)
+├── 0.5-0.89 (potential) → Escalate to CO
+│   └── CO decides: confirm → FREEZE path, or false positive → document & dismiss
+└── < 0.5 → Log and dismiss, document reasoning
+```
+
+### When creating/modifying a filing deadline:
+```
+Use src/utils/businessDays.ts — NEVER calculate with calendar days.
+├── STR/SAR → checkDeadline(event, 10)  [10 business days]
+├── CTR/DPMSR → checkDeadline(event, 15)  [15 business days]
+├── CNMR → checkDeadline(event, 5)  [5 business days]
+└── EOCN freeze → checkEOCNDeadline()  [24 clock hours, NOT business days]
+```
+
+### When a new customer is onboarded:
+```
+Run /screen [customer] first
+├── Score < 6 → SDD (Simplified) → standard CDD review at 12 months
+├── Score 6-15 → CDD (Standard) → review at 6 months
+├── Score >= 16 → EDD (Enhanced) → review at 3 months
+│   └── Requires Senior Management approval (Art.14)
+├── PEP detected → EDD + Board approval
+└── Sanctions match → STOP. Run /incident [customer] sanctions-match
+```
+
+### When modifying risk scoring logic:
+```
+BEFORE changing anything:
+1. Run: npx vitest run tests/scoring.test.ts tests/decisions.test.ts tests/constants.test.ts
+2. Note current test results
+AFTER changing:
+3. Run same tests — all must pass
+4. If constants.test.ts fails → you changed a regulatory value. Is the regulation actually changed?
+   ├── YES → Update test + REGULATORY_CONSTANTS_VERSION
+   └── NO → Revert your change immediately
+```
+
+## Constants Architecture
+
+**ALL regulatory values live in `src/domain/constants.ts`.**
+This is the single source of truth. When a regulation changes:
+1. Update the constant in constants.ts
+2. Update the test in tests/constants.test.ts
+3. Update REGULATORY_CONSTANTS_VERSION
+4. Run `/regulatory-update` skill for full impact analysis
+
 ## Custom Skills Available
 
-- `/review-pr` — Risk-scored PR review using code-review-graph
-- `/audit` — Generate compliance audit report against UAE regulations
-- `/screen` — Sanctions & risk screening analysis for an entity
+| Skill | Purpose | When to use |
+|-------|---------|-------------|
+| `/review-pr` | Risk-scored PR review | Before merging any PR |
+| `/audit` | Compliance audit report | Pre-audit preparation, quarterly review |
+| `/screen` | Sanctions & risk screening | Customer onboarding, periodic re-screening |
+| `/goaml` | Generate goAML XML filing | STR/SAR/CTR/DPMSR/CNMR submission |
+| `/onboard` | Customer onboarding workflow | New customer/counterparty setup |
+| `/incident` | Incident response with countdown | Sanctions match, STR trigger, asset freeze |
+| `/deploy-check` | Pre-deployment verification | Before every production push |
+| `/regulatory-update` | Process new regulation | When law/circular/list changes |
 
 ## Hooks
 
