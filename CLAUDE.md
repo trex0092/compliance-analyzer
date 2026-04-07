@@ -1,3 +1,39 @@
+# Compliance Analyzer — Project Instructions
+
+## Token-Efficient Workflow
+
+This project uses **code-review-graph** as an MCP tool. Follow these rules
+to minimize token usage while maintaining quality:
+
+### Rule 1: Graph First, Files Second
+- **ALWAYS** start with `get_minimal_context(task="...")` before reading any file.
+- Use `query_graph` to understand specific functions/dependencies instead of reading entire files.
+- Use `get_impact_radius` to check blast radius before making changes.
+- Use `get_review_context` for PR reviews instead of reading all changed files.
+- **Only read a file when you need to edit it or the graph doesn't have enough detail.**
+
+### Rule 2: Targeted Reads
+- Never read a full file to understand its structure — use the graph.
+- When you must read a file, use `offset` and `limit` to read only the relevant section.
+- `compliance-suite.js` is 4300+ lines — always query the graph for specific functions first.
+
+### Rule 3: Change Reviews
+- Use `detect_changes` for risk-scored analysis before reviewing code.
+- Focus review effort on high-risk changes; low-risk changes need minimal attention.
+- Use `get_affected_flows` to understand downstream impact.
+
+### Rule 4: Keep the Graph Updated
+- Run `build_or_update_graph_tool` after significant code changes.
+- This keeps subsequent queries accurate and avoids stale context.
+
+## Project Structure
+
+- **Root `.js` files**: Core backend modules (compliance-suite, database, workflow-engine, auth, etc.)
+- **`src/`**: React frontend (TSX components organized by domain, risk, services, ui, utils)
+- **Stack**: JavaScript/TypeScript, React
+
+---
+
 # Seguridad
 
 Este proyecto debe seguir las mejores prácticas de seguridad web en todo
