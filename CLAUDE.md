@@ -203,6 +203,11 @@ This is the single source of truth. When a regulation changes:
 | `/incident` | Incident response with countdown | Sanctions match, STR trigger, asset freeze |
 | `/deploy-check` | Pre-deployment verification | Before every production push |
 | `/regulatory-update` | Process new regulation | When law/circular/list changes |
+| `/audit-pack` | Complete audit pack for any entity | MoE inspections, LBMA audits, internal reviews |
+| `/moe-readiness` | 25-item MOE inspection readiness | Pre-inspection preparation |
+| `/traceability` | Regulatory traceability matrix | Map every requirement to code + test + evidence |
+| `/timeline` | Entity compliance history | Reconstruct chronological audit trail |
+| `/filing-compliance` | Filing deadline compliance | Prove all STR/CTR/CNMR filed on time |
 
 ## Hooks
 
