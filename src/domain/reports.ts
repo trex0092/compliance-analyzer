@@ -1,8 +1,8 @@
 export interface SuspicionReport {
   id: string;
   caseId: string;
-  reportType: "STR" | "SAR" | "CTR" | "DPMSR";
-  status: "draft" | "approved" | "exported";
+  reportType: 'STR' | 'SAR' | 'CTR' | 'DPMSR';
+  status: 'draft' | 'approved' | 'exported';
   reasonForSuspicion: string;
   facts: string[];
   redFlags: string[];
@@ -23,7 +23,7 @@ export interface SuspicionReport {
     destinationCountry?: string;
   }>;
   /** goAML severity classification */
-  severity?: "low" | "medium" | "high" | "critical";
+  severity?: 'low' | 'medium' | 'high' | 'critical';
   /** Reporting entity identification */
   reportingEntityId?: string;
   reportingEntityName?: string;
@@ -41,9 +41,9 @@ export interface SuspicionReport {
   approvedAt?: string;
   submissionRef?: string;
   submittedAt?: string;
-  submissionMethod?: "goaml-portal" | "manual" | "api";
+  submissionMethod?: 'goaml-portal' | 'manual' | 'api';
   /** FIU follow-up tracking */
-  followUpStatus?: "pending" | "acknowledged" | "info-requested" | "closed";
+  followUpStatus?: 'pending' | 'acknowledged' | 'info-requested' | 'closed';
   followUpNotes?: string;
   fiuReferenceNo?: string;
   fiuAcknowledgedAt?: string;

@@ -6,9 +6,9 @@
  * we can find the local entity and mark it accordingly.
  */
 
-const LINKS_KEY = "asana_task_links";
+const LINKS_KEY = 'asana_task_links';
 
-export type LinkType = "case" | "alert" | "approval" | "review";
+export type LinkType = 'case' | 'alert' | 'approval' | 'review';
 
 export interface AsanaTaskLink {
   localId: string;
@@ -34,7 +34,7 @@ function writeLinks(links: AsanaTaskLink[]): void {
   try {
     localStorage.setItem(LINKS_KEY, JSON.stringify(links));
   } catch {
-    console.error("Failed to persist Asana task links");
+    console.error('Failed to persist Asana task links');
   }
 }
 
@@ -47,9 +47,7 @@ export function addTaskLink(
 ): void {
   const links = readLinks();
   // Avoid duplicate links for same local entity
-  const existing = links.find(
-    (l) => l.localId === localId && l.localType === localType
-  );
+  const existing = links.find((l) => l.localId === localId && l.localType === localType);
   if (existing) {
     existing.asanaGid = asanaGid;
     existing.projectGid = projectGid;
@@ -87,7 +85,10 @@ export function markLinkCompleted(asanaGid: string): void {
   }
 }
 
-export function getAllLinks(filter?: { type?: LinkType; completedOnly?: boolean }): AsanaTaskLink[] {
+export function getAllLinks(filter?: {
+  type?: LinkType;
+  completedOnly?: boolean;
+}): AsanaTaskLink[] {
   let links = readLinks();
   if (filter?.type) {
     links = links.filter((l) => l.localType === filter.type);

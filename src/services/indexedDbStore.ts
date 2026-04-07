@@ -1,11 +1,11 @@
-import type { AppStore } from "./store";
-import type { ComplianceCase } from "../domain/cases";
-import type { CustomerProfile } from "../domain/customers";
-import type { EvidenceItem } from "../domain/evidence";
-import type { ScreeningRun } from "../domain/screening";
-import type { SuspicionReport } from "../domain/reports";
-import type { ApprovalRequest } from "../domain/approvals";
-import type { Alert } from "../domain/alerts";
+import type { AppStore } from './store';
+import type { ComplianceCase } from '../domain/cases';
+import type { CustomerProfile } from '../domain/customers';
+import type { EvidenceItem } from '../domain/evidence';
+import type { ScreeningRun } from '../domain/screening';
+import type { SuspicionReport } from '../domain/reports';
+import type { ApprovalRequest } from '../domain/approvals';
+import type { Alert } from '../domain/alerts';
 
 const STORAGE_WARN_BYTES = 4 * 1024 * 1024; // 4 MB — warn before hitting 5-10 MB limit
 
@@ -57,51 +57,51 @@ function upsertById<T extends { id: string }>(items: T[], item: T): T[] {
 
 export class LocalAppStore implements AppStore {
   async getCases(): Promise<ComplianceCase[]> {
-    return read<ComplianceCase>("cases");
+    return read<ComplianceCase>('cases');
   }
   async saveCase(item: ComplianceCase): Promise<void> {
-    write("cases", upsertById(read<ComplianceCase>("cases"), item));
+    write('cases', upsertById(read<ComplianceCase>('cases'), item));
   }
 
   async getCustomers(): Promise<CustomerProfile[]> {
-    return read<CustomerProfile>("customers");
+    return read<CustomerProfile>('customers');
   }
   async saveCustomer(item: CustomerProfile): Promise<void> {
-    write("customers", upsertById(read<CustomerProfile>("customers"), item));
+    write('customers', upsertById(read<CustomerProfile>('customers'), item));
   }
 
   async getEvidence(): Promise<EvidenceItem[]> {
-    return read<EvidenceItem>("evidence");
+    return read<EvidenceItem>('evidence');
   }
   async saveEvidence(item: EvidenceItem): Promise<void> {
-    write("evidence", upsertById(read<EvidenceItem>("evidence"), item));
+    write('evidence', upsertById(read<EvidenceItem>('evidence'), item));
   }
 
   async getScreeningRuns(): Promise<ScreeningRun[]> {
-    return read<ScreeningRun>("screeningRuns");
+    return read<ScreeningRun>('screeningRuns');
   }
   async saveScreeningRun(item: ScreeningRun): Promise<void> {
-    write("screeningRuns", upsertById(read<ScreeningRun>("screeningRuns"), item));
+    write('screeningRuns', upsertById(read<ScreeningRun>('screeningRuns'), item));
   }
 
   async getReports(): Promise<SuspicionReport[]> {
-    return read<SuspicionReport>("reports");
+    return read<SuspicionReport>('reports');
   }
   async saveReport(item: SuspicionReport): Promise<void> {
-    write("reports", upsertById(read<SuspicionReport>("reports"), item));
+    write('reports', upsertById(read<SuspicionReport>('reports'), item));
   }
 
   async getApprovals(): Promise<ApprovalRequest[]> {
-    return read<ApprovalRequest>("approvals");
+    return read<ApprovalRequest>('approvals');
   }
   async saveApproval(item: ApprovalRequest): Promise<void> {
-    write("approvals", upsertById(read<ApprovalRequest>("approvals"), item));
+    write('approvals', upsertById(read<ApprovalRequest>('approvals'), item));
   }
 
   async getAlerts(): Promise<Alert[]> {
-    return read<Alert>("alerts");
+    return read<Alert>('alerts');
   }
   async saveAlert(item: Alert): Promise<void> {
-    write("alerts", upsertById(read<Alert>("alerts"), item));
+    write('alerts', upsertById(read<Alert>('alerts'), item));
   }
 }

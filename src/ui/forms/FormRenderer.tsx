@@ -8,9 +8,9 @@
  * - Approval requirements display
  */
 
-import { useState } from "react";
-import type { ComplianceTemplate, FormField } from "../../domain/complianceTemplates";
-import { sanitizeText } from "../../utils/sanitize";
+import { useState } from 'react';
+import type { ComplianceTemplate, FormField } from '../../domain/complianceTemplates';
+import { sanitizeText } from '../../utils/sanitize';
 
 interface FormRendererProps {
   template: ComplianceTemplate;
@@ -46,12 +46,12 @@ export function FormRenderer({
     for (const field of template.fields) {
       if (field.required) {
         const val = values[field.name];
-        if (val === undefined || val === "" || val === false) {
+        if (val === undefined || val === '' || val === false) {
           newErrors[field.name] = `${field.label} is required`;
         }
       }
       // Sanitize text inputs
-      if (typeof values[field.name] === "string") {
+      if (typeof values[field.name] === 'string') {
         values[field.name] = sanitizeText(values[field.name] as string);
       }
     }
@@ -67,23 +67,23 @@ export function FormRenderer({
   }
 
   function renderField(field: FormField) {
-    const value = values[field.name] ?? "";
+    const value = values[field.name] ?? '';
     const error = errors[field.name];
     const baseStyle: React.CSSProperties = {
-      width: "100%",
-      padding: "8px 12px",
-      border: error ? "1px solid #D94F4F" : "1px solid #333",
-      borderRadius: "4px",
-      background: "#1a1a2e",
-      color: "#e0e0e0",
-      fontSize: "13px",
+      width: '100%',
+      padding: '8px 12px',
+      border: error ? '1px solid #D94F4F' : '1px solid #333',
+      borderRadius: '4px',
+      background: '#1a1a2e',
+      color: '#e0e0e0',
+      fontSize: '13px',
       fontFamily: "'Montserrat', sans-serif",
     };
 
     let input: React.ReactNode;
 
     switch (field.type) {
-      case "textarea":
+      case 'textarea':
         input = (
           <textarea
             value={value as string}
@@ -95,7 +95,7 @@ export function FormRenderer({
           />
         );
         break;
-      case "select":
+      case 'select':
         input = (
           <select
             value={value as string}
@@ -105,14 +105,16 @@ export function FormRenderer({
           >
             <option value="">— Select —</option>
             {field.options?.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
             ))}
           </select>
         );
         break;
-      case "checkbox":
+      case 'checkbox':
         input = (
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={!!values[field.name]}
@@ -123,11 +125,11 @@ export function FormRenderer({
           </label>
         );
         break;
-      case "file":
+      case 'file':
         input = (
           <input
             type="file"
-            onChange={(e) => handleChange(field.name, e.target.files?.[0]?.name || "")}
+            onChange={(e) => handleChange(field.name, e.target.files?.[0]?.name || '')}
             disabled={readOnly}
             style={baseStyle}
           />
@@ -147,18 +149,26 @@ export function FormRenderer({
     }
 
     return (
-      <div key={field.name} style={{ marginBottom: "12px" }}>
-        {field.type !== "checkbox" && (
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px", color: "#b0b0b0" }}>
-            {field.label} {field.required && <span style={{ color: "#D94F4F" }}>*</span>}
+      <div key={field.name} style={{ marginBottom: '12px' }}>
+        {field.type !== 'checkbox' && (
+          <label
+            style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: 600,
+              marginBottom: '4px',
+              color: '#b0b0b0',
+            }}
+          >
+            {field.label} {field.required && <span style={{ color: '#D94F4F' }}>*</span>}
           </label>
         )}
         {input}
         {field.helpText && (
-          <div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>{field.helpText}</div>
+          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>{field.helpText}</div>
         )}
         {error && (
-          <div style={{ fontSize: "11px", color: "#D94F4F", marginTop: "2px" }}>{error}</div>
+          <div style={{ fontSize: '11px', color: '#D94F4F', marginTop: '2px' }}>{error}</div>
         )}
       </div>
     );
@@ -166,16 +176,24 @@ export function FormRenderer({
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: "16px", padding: "12px", background: "#0f0f23", borderRadius: "6px", border: "1px solid #2a2a4a" }}>
-        <h3 style={{ margin: "0 0 4px", fontSize: "16px", color: "#e0e0e0" }}>{template.name}</h3>
-        <p style={{ margin: "0 0 8px", fontSize: "12px", color: "#888" }}>{template.description}</p>
-        <div style={{ fontSize: "11px", color: "#666" }}>
+      <div
+        style={{
+          marginBottom: '16px',
+          padding: '12px',
+          background: '#0f0f23',
+          borderRadius: '6px',
+          border: '1px solid #2a2a4a',
+        }}
+      >
+        <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#e0e0e0' }}>{template.name}</h3>
+        <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#888' }}>{template.description}</p>
+        <div style={{ fontSize: '11px', color: '#666' }}>
           <strong>Regulatory Basis:</strong> {template.regulatoryBasis}
         </div>
-        <div style={{ fontSize: "11px", color: "#666" }}>
-          <strong>Approval Required:</strong> {template.approvalRequired.join(", ")}
+        <div style={{ fontSize: '11px', color: '#666' }}>
+          <strong>Approval Required:</strong> {template.approvalRequired.join(', ')}
         </div>
-        <div style={{ fontSize: "11px", color: "#666" }}>
+        <div style={{ fontSize: '11px', color: '#666' }}>
           <strong>Retention:</strong> {template.retentionYears} years (FDL Art.24)
         </div>
       </div>
@@ -183,12 +201,35 @@ export function FormRenderer({
       {template.fields.map(renderField)}
 
       {!readOnly && (
-        <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
-          <button type="submit" style={{ padding: "8px 20px", background: "#3DA876", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "13px" }}>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+          <button
+            type="submit"
+            style={{
+              padding: '8px 20px',
+              background: '#3DA876',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '13px',
+            }}
+          >
             Submit
           </button>
           {onCancel && (
-            <button type="button" onClick={onCancel} style={{ padding: "8px 20px", background: "#444", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "13px" }}>
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                padding: '8px 20px',
+                background: '#444',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '13px',
+              }}
+            >
               Cancel
             </button>
           )}

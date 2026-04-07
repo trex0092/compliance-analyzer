@@ -29,9 +29,17 @@ let lastRequestTime = 0;
 
 function getConfig(): AsanaConfig {
   return {
-    token: (typeof window !== "undefined" && (window as Record<string, unknown>).ASANA_TOKEN as string) || undefined,
-    proxyUrl: (typeof window !== "undefined" && (window as Record<string, unknown>).PROXY_URL as string) || undefined,
-    defaultProjectId: (typeof localStorage !== "undefined" && localStorage.getItem("asanaProjectId")) || "1213759768596515",
+    token:
+      (typeof window !== 'undefined' &&
+        ((window as Record<string, unknown>).ASANA_TOKEN as string)) ||
+      undefined,
+    proxyUrl:
+      (typeof window !== 'undefined' &&
+        ((window as Record<string, unknown>).PROXY_URL as string)) ||
+      undefined,
+    defaultProjectId:
+      (typeof localStorage !== 'undefined' && localStorage.getItem('asanaProjectId')) ||
+      '1213759768596515',
   };
 }
 
@@ -55,13 +63,13 @@ async function asanaRequest<T>(
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
   const cfg = getConfig();
   if (!cfg.token && !cfg.proxyUrl) {
-    return { ok: false, error: "Asana not configured — set Proxy URL or Asana token in Settings" };
+    return { ok: false, error: 'Asana not configured — set Proxy URL or Asana token in Settings' };
   }
 
   await rateLimitedWait();
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     ...(opts.headers as Record<string, string>),
   };
 
@@ -70,7 +78,7 @@ async function asanaRequest<T>(
     url = `${cfg.proxyUrl}/asana${path}`;
   } else {
     url = `https://app.asana.com/api/1.0${path}`;
-    if (cfg.token) headers["Authorization"] = `Bearer ${cfg.token}`;
+    if (cfg.token) headers['Authorization'] = `Bearer ${cfg.token}`;
   }
 
   const controller = new AbortController();
@@ -106,21 +114,21 @@ export async function asanaRequestWithRetry<T>(
     if (result.ok) return result;
 
     // Don't retry config errors
-    if (result.error?.includes("not configured")) return result;
+    if (result.error?.includes('not configured')) return result;
 
     // Retry transient failures with exponential backoff
     if (attempt < MAX_RETRIES) {
       await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
     }
   }
-  return { ok: false, error: "Asana request failed after max retries" };
+  return { ok: false, error: 'Asana request failed after max retries' };
 }
 
 export async function createAsanaTask(
   payload: AsanaTaskPayload
 ): Promise<{ ok: boolean; gid?: string; error?: string }> {
-  const result = await asanaRequestWithRetry<AsanaTaskResponse>("/tasks", {
-    method: "POST",
+  const result = await asanaRequestWithRetry<AsanaTaskResponse>('/tasks', {
+    method: 'POST',
     body: JSON.stringify({ data: payload }),
   });
 
@@ -132,10 +140,10 @@ export async function createAsanaTask(
 
 export async function updateAsanaTask(
   taskGid: string,
-  updates: Partial<Pick<AsanaTaskPayload, "name" | "notes"> & { completed: boolean }>
+  updates: Partial<Pick<AsanaTaskPayload, 'name' | 'notes'> & { completed: boolean }>
 ): Promise<{ ok: boolean; error?: string }> {
   const result = await asanaRequestWithRetry<AsanaTaskResponse>(`/tasks/${taskGid}`, {
-    method: "PUT",
+    method: 'PUT',
     body: JSON.stringify({ data: updates }),
   });
   return { ok: result.ok, error: result.error };
@@ -143,7 +151,7 @@ export async function updateAsanaTask(
 
 export async function listProjectTasks(
   projectId: string,
-  optFields = "name,gid,completed,due_on,notes"
+  optFields = 'name,gid,completed,due_on,notes'
 ): Promise<{ ok: boolean; tasks?: AsanaTaskResponse[]; error?: string }> {
   const result = await asanaRequestWithRetry<AsanaTaskResponse[]>(
     `/projects/${projectId}/tasks?opt_fields=${optFields}&limit=100`

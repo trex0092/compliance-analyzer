@@ -131,42 +131,114 @@ export const SUPPLY_CHAIN_RISK_POINTS = {
 // ─── Sanctions Lists ────────────────────────────────────────────────────────
 
 /** PF high-risk jurisdictions (Cabinet Res 156/2025, UNSC Res 1718/2231) */
-export const PF_HIGH_RISK_JURISDICTIONS = ["KP", "IR", "SY", "MM", "YE"] as const;
+export const PF_HIGH_RISK_JURISDICTIONS = ['KP', 'IR', 'SY', 'MM', 'YE'] as const;
 
 /** FATF Grey List — as of Feb 2026. UPDATE when FATF publishes new list. */
 export const FATF_GREY_LIST = [
-  "DZ", "AO", "BG", "BF", "CM", "HR", "CD", "EG", "HT", "KE",
-  "LB", "MG", "MC", "MZ", "NA", "NG", "PH", "SN", "ZA", "SS",
-  "SY", "VE", "YE",
+  'DZ',
+  'AO',
+  'BG',
+  'BF',
+  'CM',
+  'HR',
+  'CD',
+  'EG',
+  'HT',
+  'KE',
+  'LB',
+  'MG',
+  'MC',
+  'MZ',
+  'NA',
+  'NG',
+  'PH',
+  'SN',
+  'ZA',
+  'SS',
+  'SY',
+  'VE',
+  'YE',
 ] as const;
 
 /** EU High-Risk Third Countries — Delegated Regulation 2026 update */
 export const EU_HIGH_RISK_COUNTRIES = [
-  "AF", "BB", "BF", "MM", "KH", "KY", "CD", "GI", "HT", "JM",
-  "JO", "ML", "MZ", "NG", "PA", "PH", "SN", "ZA", "SS", "SY",
-  "TT",
+  'AF',
+  'BB',
+  'BF',
+  'MM',
+  'KH',
+  'KY',
+  'CD',
+  'GI',
+  'HT',
+  'JM',
+  'JO',
+  'ML',
+  'MZ',
+  'NG',
+  'PA',
+  'PH',
+  'SN',
+  'ZA',
+  'SS',
+  'SY',
+  'TT',
 ] as const;
 
 // ─── Dual-Use Indicators (PF Monitoring) ────────────────────────────────────
 
 export const DUAL_USE_KEYWORDS = [
-  "centrifuge", "uranium", "plutonium", "tritium", "deuterium",
-  "maraging steel", "carbon fiber", "beryllium", "zirconium",
-  "tungsten carbide", "missile", "guidance system", "gyroscope",
-  "accelerometer", "propellant", "rocket motor", "launch vehicle",
-  "reentry vehicle", "telemetry", "high-speed camera",
-  "flash x-ray", "detonator", "explosive lens", "shaped charge",
-  "nuclear", "enrichment", "reactor", "heavy water",
-  "frequency converter", "mass spectrometer", "vacuum pump",
-  "filament winding", "flow-forming", "isostatic press",
-  "electron beam welder", "plasma torch", "rare earth",
-  "palladium catalyst", "rhodium", "iridium", "osmium",
-  "nickel powder", "aluminium alloy", "titanium alloy",
-  "cobalt", "vanadium",
+  'centrifuge',
+  'uranium',
+  'plutonium',
+  'tritium',
+  'deuterium',
+  'maraging steel',
+  'carbon fiber',
+  'beryllium',
+  'zirconium',
+  'tungsten carbide',
+  'missile',
+  'guidance system',
+  'gyroscope',
+  'accelerometer',
+  'propellant',
+  'rocket motor',
+  'launch vehicle',
+  'reentry vehicle',
+  'telemetry',
+  'high-speed camera',
+  'flash x-ray',
+  'detonator',
+  'explosive lens',
+  'shaped charge',
+  'nuclear',
+  'enrichment',
+  'reactor',
+  'heavy water',
+  'frequency converter',
+  'mass spectrometer',
+  'vacuum pump',
+  'filament winding',
+  'flow-forming',
+  'isostatic press',
+  'electron beam welder',
+  'plasma torch',
+  'rare earth',
+  'palladium catalyst',
+  'rhodium',
+  'iridium',
+  'osmium',
+  'nickel powder',
+  'aluminium alloy',
+  'titanium alloy',
+  'cobalt',
+  'vanadium',
 ] as const;
 
 // ─── Version ────────────────────────────────────────────────────────────────
 
 /** Last regulatory update date — update when any constant changes */
-export const REGULATORY_CONSTANTS_VERSION = "2026-04-07";
-export const REGULATORY_CONSTANTS_NOTES = "Initial centralization. FDL No.10/2025, Cabinet Res 134/2025, 74/2020, 156/2025, 71/2024, 109/2023.";
+export const REGULATORY_CONSTANTS_VERSION = '2026-04-07';
+export const REGULATORY_CONSTANTS_NOTES =
+  'Initial centralization. FDL No.10/2025, Cabinet Res 134/2025, 74/2020, 156/2025, 71/2024, 109/2023.';

@@ -11,19 +11,19 @@
 
 /** UAE public holidays — update annually */
 const UAE_PUBLIC_HOLIDAYS_2026: string[] = [
-  "2026-01-01", // New Year's Day
-  "2026-03-19", // Eid Al Fitr (estimated — confirm with Awqaf)
-  "2026-03-20",
-  "2026-03-21",
-  "2026-05-26", // Arafat Day (estimated)
-  "2026-05-27", // Eid Al Adha (estimated)
-  "2026-05-28",
-  "2026-05-29",
-  "2026-06-17", // Islamic New Year (estimated)
-  "2026-08-26", // Prophet's Birthday (estimated)
-  "2026-12-01", // Commemoration Day
-  "2026-12-02", // National Day
-  "2026-12-03", // National Day
+  '2026-01-01', // New Year's Day
+  '2026-03-19', // Eid Al Fitr (estimated — confirm with Awqaf)
+  '2026-03-20',
+  '2026-03-21',
+  '2026-05-26', // Arafat Day (estimated)
+  '2026-05-27', // Eid Al Adha (estimated)
+  '2026-05-28',
+  '2026-05-29',
+  '2026-06-17', // Islamic New Year (estimated)
+  '2026-08-26', // Prophet's Birthday (estimated)
+  '2026-12-01', // Commemoration Day
+  '2026-12-02', // National Day
+  '2026-12-03', // National Day
 ];
 
 function toDateStr(d: Date): string {

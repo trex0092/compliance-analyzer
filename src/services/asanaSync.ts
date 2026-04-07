@@ -6,44 +6,49 @@
  *   - asanaWorkflowProjectGid: for workflow tasks, approvals, reviews
  */
 
-import type { ComplianceCase } from "../domain/cases";
-import type { CustomerProfile } from "../domain/customers";
-import type { ApprovalRequest } from "../domain/approvals";
-import type { Alert } from "../domain/alerts";
-import type { PeriodicReviewSchedule } from "../domain/periodicReview";
-import { COMPANY_REGISTRY } from "../domain/customers";
-import { createAsanaTask, updateAsanaTask, isAsanaConfigured, type AsanaTaskPayload } from "./asanaClient";
-import { enqueueRetry } from "./asanaQueue";
-import { addTaskLink } from "./asanaTaskLinks";
+import type { ComplianceCase } from '../domain/cases';
+import type { CustomerProfile } from '../domain/customers';
+import type { ApprovalRequest } from '../domain/approvals';
+import type { Alert } from '../domain/alerts';
+import type { PeriodicReviewSchedule } from '../domain/periodicReview';
+import { COMPANY_REGISTRY } from '../domain/customers';
+import {
+  createAsanaTask,
+  updateAsanaTask,
+  isAsanaConfigured,
+  type AsanaTaskPayload,
+} from './asanaClient';
+import { enqueueRetry } from './asanaQueue';
+import { addTaskLink } from './asanaTaskLinks';
 
-const DEFAULT_PROJECT = "1213759768596515";
+const DEFAULT_PROJECT = '1213759768596515';
 
 // ─── Project Resolution ─────────────────────────────────────────────────────
 
-function findCustomerByCase(caseObj: ComplianceCase): typeof COMPANY_REGISTRY[number] | undefined {
+function findCustomerByCase(
+  caseObj: ComplianceCase
+): (typeof COMPANY_REGISTRY)[number] | undefined {
   if (caseObj.linkedCustomerId) {
     return COMPANY_REGISTRY.find((c) => c.id === caseObj.linkedCustomerId);
   }
   // Fallback: match by entity name
-  return COMPANY_REGISTRY.find(
-    (c) => c.legalName.toLowerCase() === caseObj.entityId.toLowerCase()
-  );
+  return COMPANY_REGISTRY.find((c) => c.legalName.toLowerCase() === caseObj.entityId.toLowerCase());
 }
 
-function getComplianceProject(customer?: typeof COMPANY_REGISTRY[number]): string {
+function getComplianceProject(customer?: (typeof COMPANY_REGISTRY)[number]): string {
   return customer?.asanaComplianceProjectGid || DEFAULT_PROJECT;
 }
 
-function getWorkflowProject(customer?: typeof COMPANY_REGISTRY[number]): string {
+function getWorkflowProject(customer?: (typeof COMPANY_REGISTRY)[number]): string {
   return customer?.asanaWorkflowProjectGid || DEFAULT_PROJECT;
 }
 
 export function resolveProjectForCustomer(
   customerId: string,
-  projectType: "compliance" | "workflow"
+  projectType: 'compliance' | 'workflow'
 ): string {
   const customer = COMPANY_REGISTRY.find((c) => c.id === customerId);
-  return projectType === "compliance"
+  return projectType === 'compliance'
     ? getComplianceProject(customer)
     : getWorkflowProject(customer);
 }
@@ -56,20 +61,21 @@ function dueInDays(days: number): string {
 
 function riskToDueDays(riskLevel: string): number {
   switch (riskLevel) {
-    case "critical": return 1;
-    case "high": return 3;
-    case "medium": return 7;
-    default: return 14;
+    case 'critical':
+      return 1;
+    case 'high':
+      return 3;
+    case 'medium':
+      return 7;
+    default:
+      return 14;
   }
 }
 
 // ─── Task Builders ───────────────────────────────────────────────────────────
 
-function buildCaseTaskPayload(
-  caseObj: ComplianceCase,
-  projectId: string
-): AsanaTaskPayload {
-  const flags = caseObj.redFlags.join(", ");
+function buildCaseTaskPayload(caseObj: ComplianceCase, projectId: string): AsanaTaskPayload {
+  const flags = caseObj.redFlags.join(', ');
   return {
     name: `[${caseObj.riskLevel.toUpperCase()}] ${caseObj.caseType} — ${caseObj.entityId}`,
     notes: [
@@ -88,7 +94,7 @@ function buildCaseTaskPayload(
       `---`,
       `Auto-created by Hawkeye Sterling V2`,
       `Timestamp: ${new Date().toISOString()}`,
-    ].join("\n"),
+    ].join('\n'),
     projects: [projectId],
     due_on: dueInDays(riskToDueDays(caseObj.riskLevel)),
   };
@@ -112,9 +118,9 @@ function buildAlertTaskPayload(
       `---`,
       `Auto-created by Hawkeye Sterling V2 Alert Engine`,
       `Timestamp: ${alertItem.createdAt}`,
-    ].join("\n"),
+    ].join('\n'),
     projects: [projectId],
-    due_on: dueInDays(alertItem.severity === "critical" ? 1 : 3),
+    due_on: dueInDays(alertItem.severity === 'critical' ? 1 : 3),
   };
 }
 
@@ -136,12 +142,14 @@ function buildApprovalTaskPayload(
       `Case Risk: ${caseObj.riskLevel} (score ${caseObj.riskScore})`,
       `Recommendation: ${caseObj.recommendation}`,
       ``,
-      `Regulatory Basis: ${approval.regulatoryBasis ?? "Cabinet Resolution 134/2025 Art.12-14 | 4-Eyes Principle"}`,
-      approval.urgency === "immediate" ? `URGENCY: IMMEDIATE — requires action within 24 hours` : "",
+      `Regulatory Basis: ${approval.regulatoryBasis ?? 'Cabinet Resolution 134/2025 Art.12-14 | 4-Eyes Principle'}`,
+      approval.urgency === 'immediate'
+        ? `URGENCY: IMMEDIATE — requires action within 24 hours`
+        : '',
       ``,
       `---`,
       `Auto-created by Hawkeye Sterling V2 Approval Workflow`,
-    ].join("\n"),
+    ].join('\n'),
     projects: [projectId],
     due_on: dueInDays(2),
   };
@@ -167,7 +175,7 @@ function buildReviewTaskPayload(
       ``,
       `---`,
       `Auto-created by Hawkeye Sterling V2 Periodic Review`,
-    ].join("\n"),
+    ].join('\n'),
     projects: [projectId],
     due_on: review.nextReviewDate.slice(0, 10),
   };
@@ -179,7 +187,7 @@ export async function syncCaseToAsana(
   caseObj: ComplianceCase
 ): Promise<{ ok: boolean; gid?: string; error?: string }> {
   if (!isAsanaConfigured()) {
-    return { ok: false, error: "Asana not configured" };
+    return { ok: false, error: 'Asana not configured' };
   }
 
   const customer = findCustomerByCase(caseObj);
@@ -188,9 +196,9 @@ export async function syncCaseToAsana(
 
   const result = await createAsanaTask(payload);
   if (result.ok && result.gid) {
-    addTaskLink(caseObj.id, "case", result.gid, projectId, customer?.id);
+    addTaskLink(caseObj.id, 'case', result.gid, projectId, customer?.id);
   } else if (!result.ok) {
-    enqueueRetry(payload, "case-sync", result.error ?? "Unknown", caseObj.id);
+    enqueueRetry(payload, 'case-sync', result.error ?? 'Unknown', caseObj.id);
   }
   return result;
 }
@@ -200,7 +208,7 @@ export async function syncAlertToAsana(
   customers: CustomerProfile[]
 ): Promise<{ ok: boolean; gid?: string; error?: string }> {
   if (!isAsanaConfigured()) {
-    return { ok: false, error: "Asana not configured" };
+    return { ok: false, error: 'Asana not configured' };
   }
 
   const customer = customers.find((c) => c.id === alertItem.subjectId);
@@ -211,9 +219,9 @@ export async function syncAlertToAsana(
 
   const result = await createAsanaTask(payload);
   if (result.ok && result.gid) {
-    addTaskLink(alertItem.id, "alert", result.gid, projectId, registryEntry?.id);
+    addTaskLink(alertItem.id, 'alert', result.gid, projectId, registryEntry?.id);
   } else if (!result.ok) {
-    enqueueRetry(payload, "alert-sync", result.error ?? "Unknown");
+    enqueueRetry(payload, 'alert-sync', result.error ?? 'Unknown');
   }
   return result;
 }
@@ -223,7 +231,7 @@ export async function syncApprovalToAsana(
   caseObj: ComplianceCase
 ): Promise<{ ok: boolean; gid?: string; error?: string }> {
   if (!isAsanaConfigured()) {
-    return { ok: false, error: "Asana not configured" };
+    return { ok: false, error: 'Asana not configured' };
   }
 
   const customer = findCustomerByCase(caseObj);
@@ -232,9 +240,9 @@ export async function syncApprovalToAsana(
 
   const result = await createAsanaTask(payload);
   if (result.ok && result.gid) {
-    addTaskLink(approval.id, "approval", result.gid, projectId, customer?.id);
+    addTaskLink(approval.id, 'approval', result.gid, projectId, customer?.id);
   } else if (!result.ok) {
-    enqueueRetry(payload, "approval-sync", result.error ?? "Unknown", approval.id);
+    enqueueRetry(payload, 'approval-sync', result.error ?? 'Unknown', approval.id);
   }
   return result;
 }
@@ -243,7 +251,7 @@ export async function syncReviewToAsana(
   review: PeriodicReviewSchedule
 ): Promise<{ ok: boolean; gid?: string; error?: string }> {
   if (!isAsanaConfigured()) {
-    return { ok: false, error: "Asana not configured" };
+    return { ok: false, error: 'Asana not configured' };
   }
 
   const registryEntry = COMPANY_REGISTRY.find((c) => c.id === review.customerId);
@@ -252,9 +260,9 @@ export async function syncReviewToAsana(
 
   const result = await createAsanaTask(payload);
   if (result.ok && result.gid) {
-    addTaskLink(review.id, "review", result.gid, projectId, registryEntry?.id);
+    addTaskLink(review.id, 'review', result.gid, projectId, registryEntry?.id);
   } else if (!result.ok) {
-    enqueueRetry(payload, "review-sync", result.error ?? "Unknown", review.id);
+    enqueueRetry(payload, 'review-sync', result.error ?? 'Unknown', review.id);
   }
   return result;
 }
@@ -263,7 +271,7 @@ export async function markAsanaTaskComplete(
   taskGid: string
 ): Promise<{ ok: boolean; error?: string }> {
   if (!isAsanaConfigured()) {
-    return { ok: false, error: "Asana not configured" };
+    return { ok: false, error: 'Asana not configured' };
   }
   return updateAsanaTask(taskGid, { completed: true });
 }
@@ -273,7 +281,7 @@ export async function updateCaseTaskStatus(
   caseObj: ComplianceCase
 ): Promise<{ ok: boolean; error?: string }> {
   if (!isAsanaConfigured()) {
-    return { ok: false, error: "Asana not configured" };
+    return { ok: false, error: 'Asana not configured' };
   }
 
   const name = `[${caseObj.riskLevel.toUpperCase()}] ${caseObj.caseType} — ${caseObj.entityId} [${caseObj.status}]`;

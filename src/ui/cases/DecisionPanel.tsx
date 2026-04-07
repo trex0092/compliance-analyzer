@@ -1,8 +1,8 @@
-import { useMemo } from "react";
-import type { ComplianceCase } from "../../domain/cases";
-import { decideCase } from "../../risk/decisions";
-import { RED_FLAGS } from "../../risk/redFlags";
-import { calcFlagScore } from "../../risk/scoring";
+import { useMemo } from 'react';
+import type { ComplianceCase } from '../../domain/cases';
+import { decideCase } from '../../risk/decisions';
+import { RED_FLAGS } from '../../risk/redFlags';
+import { calcFlagScore } from '../../risk/scoring';
 
 type Props = {
   item: ComplianceCase;
@@ -31,26 +31,30 @@ export default function DecisionPanel({ item }: Props) {
 
     return decideCase({
       sanctionMatch: item.redFlags.some(
-        (f) => f === "RF011" || f.toUpperCase().includes("SANCTION")
+        (f) => f === 'RF011' || f.toUpperCase().includes('SANCTION')
       ),
-      pepMatch: item.redFlags.some(
-        (f) => f.toUpperCase().includes("PEP")
-      ),
+      pepMatch: item.redFlags.some((f) => f.toUpperCase().includes('PEP')),
       redFlagScores: scores,
       highFlagCount,
       criticalFlagCount,
-      missingCDD: item.findings.some((f) => f.toLowerCase().includes("missing cdd")),
-      thirdPartyPayment: item.redFlags.some((f) => f.toLowerCase().includes("third")),
-      sourceOfFundsUnverified: item.redFlags.includes("RF067"),
+      missingCDD: item.findings.some((f) => f.toLowerCase().includes('missing cdd')),
+      thirdPartyPayment: item.redFlags.some((f) => f.toLowerCase().includes('third')),
+      sourceOfFundsUnverified: item.redFlags.includes('RF067'),
     });
   }, [item]);
 
   return (
-    <div style={{ border: "1px solid #ddd", padding: 16, borderRadius: 8 }}>
+    <div style={{ border: '1px solid #ddd', padding: 16, borderRadius: 8 }}>
       <h3>Decision Engine Output</h3>
-      <p><strong>Total Score:</strong> {decision.totalScore}</p>
-      <p><strong>Risk Level:</strong> {decision.riskLevel}</p>
-      <p><strong>Recommended Outcome:</strong> {decision.recommendedOutcome}</p>
+      <p>
+        <strong>Total Score:</strong> {decision.totalScore}
+      </p>
+      <p>
+        <strong>Risk Level:</strong> {decision.riskLevel}
+      </p>
+      <p>
+        <strong>Recommended Outcome:</strong> {decision.recommendedOutcome}
+      </p>
       <div>
         <strong>Mandatory Actions:</strong>
         <ul>

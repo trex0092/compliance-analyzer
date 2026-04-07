@@ -9,19 +9,24 @@
  * so they remain visible for audit and compliance purposes.
  */
 
-import type { ComplianceCase, AuditEvent } from "../domain/cases";
-import { listProjectTasks, isAsanaConfigured } from "./asanaClient";
-import { findLinkByAsanaGid, markLinkCompleted, getAllLinks, type AsanaTaskLink } from "./asanaTaskLinks";
-import { COMPANY_REGISTRY } from "../domain/customers";
-import { createId } from "../utils/id";
-import { nowIso } from "../utils/dates";
+import type { ComplianceCase, AuditEvent } from '../domain/cases';
+import { listProjectTasks, isAsanaConfigured } from './asanaClient';
+import {
+  findLinkByAsanaGid,
+  markLinkCompleted,
+  getAllLinks,
+  type AsanaTaskLink,
+} from './asanaTaskLinks';
+import { COMPANY_REGISTRY } from '../domain/customers';
+import { createId } from '../utils/id';
+import { nowIso } from '../utils/dates';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface AsanaEvent {
   id: string;
   source: string;
-  type: "task_completed" | "task_created" | "task_updated" | "comment_added";
+  type: 'task_completed' | 'task_created' | 'task_updated' | 'comment_added';
   data: {
     gid?: string;
     name?: string;
@@ -34,8 +39,8 @@ export interface AsanaEvent {
 
 export interface ReadbackResult {
   entityId: string;
-  entityType: "case" | "alert" | "approval" | "review";
-  action: "marked-completed" | "comment-added" | "status-updated";
+  entityType: 'case' | 'alert' | 'approval' | 'review';
+  action: 'marked-completed' | 'comment-added' | 'status-updated';
   asanaGid: string;
   detail: string;
   timestamp: string;
@@ -48,7 +53,7 @@ export interface ReadbackResult {
  * Does NOT mutate localStorage directly — returns actions for the caller to apply.
  */
 export function processAsanaEvent(event: AsanaEvent): ReadbackResult | null {
-  if (event.source !== "asana") return null;
+  if (event.source !== 'asana') return null;
 
   const gid = event.data?.gid;
   if (!gid) return null;
@@ -56,34 +61,34 @@ export function processAsanaEvent(event: AsanaEvent): ReadbackResult | null {
   const link = findLinkByAsanaGid(gid);
   if (!link) return null; // Not a task we created
 
-  if (event.type === "task_completed") {
+  if (event.type === 'task_completed') {
     markLinkCompleted(gid);
     return {
       entityId: link.localId,
       entityType: link.localType,
-      action: "marked-completed",
+      action: 'marked-completed',
       asanaGid: gid,
-      detail: `Task "${event.data.name || gid}" completed in Asana${event.data.user ? ` by ${event.data.user}` : ""}`,
+      detail: `Task "${event.data.name || gid}" completed in Asana${event.data.user ? ` by ${event.data.user}` : ''}`,
       timestamp: event.timestamp,
     };
   }
 
-  if (event.type === "comment_added") {
+  if (event.type === 'comment_added') {
     return {
       entityId: link.localId,
       entityType: link.localType,
-      action: "comment-added",
+      action: 'comment-added',
       asanaGid: gid,
-      detail: event.data.text || "Comment added in Asana",
+      detail: event.data.text || 'Comment added in Asana',
       timestamp: event.timestamp,
     };
   }
 
-  if (event.type === "task_updated") {
+  if (event.type === 'task_updated') {
     return {
       entityId: link.localId,
       entityType: link.localType,
-      action: "status-updated",
+      action: 'status-updated',
       asanaGid: gid,
       detail: `Task "${event.data.name || gid}" updated in Asana`,
       timestamp: event.timestamp,
@@ -112,10 +117,10 @@ export function processAsanaEvents(events: AsanaEvent[]): ReadbackResult[] {
  */
 export function buildAuditEventFromReadback(result: ReadbackResult): AuditEvent {
   return {
-    id: createId("audit"),
+    id: createId('audit'),
     at: result.timestamp || nowIso(),
-    by: "asana-sync",
-    action: "status-changed",
+    by: 'asana-sync',
+    action: 'status-changed',
     note: result.detail,
   };
 }
@@ -124,10 +129,7 @@ export function buildAuditEventFromReadback(result: ReadbackResult): AuditEvent 
  * Apply a readback result to a case. Returns an updated copy.
  * The case is NOT deleted — only marked with completion info.
  */
-export function applyCaseReadback(
-  caseObj: ComplianceCase,
-  result: ReadbackResult
-): ComplianceCase {
+export function applyCaseReadback(caseObj: ComplianceCase, result: ReadbackResult): ComplianceCase {
   const auditEvent = buildAuditEventFromReadback(result);
   const updatedCase = {
     ...caseObj,
@@ -137,8 +139,8 @@ export function applyCaseReadback(
 
   // If the task was completed in Asana and the case is still open,
   // mark the case as "under-review" (not closed — user decides final status)
-  if (result.action === "marked-completed" && caseObj.status === "open") {
-    updatedCase.status = "under-review" as ComplianceCase["status"];
+  if (result.action === 'marked-completed' && caseObj.status === 'open') {
+    updatedCase.status = 'under-review' as ComplianceCase['status'];
   }
 
   return updatedCase;
@@ -167,7 +169,7 @@ export async function pollAsanaForCompletions(): Promise<ReadbackResult[]> {
   }
 
   for (const [projectGid, projectLinks] of projectGroups) {
-    const response = await listProjectTasks(projectGid, "gid,name,completed");
+    const response = await listProjectTasks(projectGid, 'gid,name,completed');
     if (!response.ok || !response.tasks) continue;
 
     const taskMap = new Map(response.tasks.map((t) => [t.gid, t]));
@@ -179,7 +181,7 @@ export async function pollAsanaForCompletions(): Promise<ReadbackResult[]> {
         results.push({
           entityId: link.localId,
           entityType: link.localType,
-          action: "marked-completed",
+          action: 'marked-completed',
           asanaGid: link.asanaGid,
           detail: `Task "${task.name}" completed in Asana (detected via polling)`,
           timestamp: nowIso(),

@@ -3,9 +3,9 @@
  * Stores failed tasks in localStorage and retries them with backoff.
  */
 
-import { createAsanaTask, isAsanaConfigured, type AsanaTaskPayload } from "./asanaClient";
+import { createAsanaTask, isAsanaConfigured, type AsanaTaskPayload } from './asanaClient';
 
-const QUEUE_KEY = "asana_retry_queue";
+const QUEUE_KEY = 'asana_retry_queue';
 const MAX_QUEUE_SIZE = 50;
 const MAX_RETRY_ATTEMPTS = 5;
 
@@ -33,7 +33,7 @@ function writeQueue(entries: QueueEntry[]): void {
   try {
     localStorage.setItem(QUEUE_KEY, JSON.stringify(entries.slice(0, MAX_QUEUE_SIZE)));
   } catch {
-    console.error("Failed to persist Asana retry queue");
+    console.error('Failed to persist Asana retry queue');
   }
 }
 
@@ -101,7 +101,7 @@ export async function processRetryQueue(): Promise<{
       succeeded++;
       // Don't keep successful entries
     } else {
-      entry.lastError = result.error ?? "Unknown error";
+      entry.lastError = result.error ?? 'Unknown error';
       remaining.push(entry);
       failed++;
     }

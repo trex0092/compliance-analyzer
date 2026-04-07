@@ -1,4 +1,4 @@
-import type { RedFlagDefinition } from "./redFlags";
+import type { RedFlagDefinition } from './redFlags';
 
 export function calcFlagScore(flag: RedFlagDefinition): number {
   return flag.likelihood * flag.impact;
@@ -23,9 +23,9 @@ export function applyContextMultiplier(
   return Math.round(baseScore * multiplier);
 }
 
-export function scoreToLevel(score: number): "low" | "medium" | "high" | "critical" {
-  if (score >= 16) return "critical";
-  if (score >= 11) return "high";
-  if (score >= 6) return "medium";
-  return "low";
+export function scoreToLevel(score: number): 'low' | 'medium' | 'high' | 'critical' {
+  if (score >= 16) return 'critical';
+  if (score >= 11) return 'high';
+  if (score >= 6) return 'medium';
+  return 'low';
 }

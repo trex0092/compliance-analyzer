@@ -18,7 +18,7 @@ export interface SanctionsEntry {
   aliases: string[];
   listSource: string;
   listDate?: string;
-  type: "individual" | "entity";
+  type: 'individual' | 'entity';
   nationality?: string;
   designationRef?: string;
 }
@@ -36,7 +36,7 @@ export interface SanctionsMatch {
   listSource: string;
   confidence: number;
   entryId: string;
-  type: "individual" | "entity";
+  type: 'individual' | 'entity';
   designationRef?: string;
 }
 
@@ -44,10 +44,8 @@ export interface SanctionsMatch {
  * Fetch the UN Consolidated Sanctions List (XML).
  * This is the definitive global sanctions list — free, public, no auth.
  */
-export async function fetchUNSanctionsList(
-  proxyUrl?: string
-): Promise<SanctionsEntry[]> {
-  const UN_URL = "https://scsanctions.un.org/resources/xml/en/consolidated.xml";
+export async function fetchUNSanctionsList(proxyUrl?: string): Promise<SanctionsEntry[]> {
+  const UN_URL = 'https://scsanctions.un.org/resources/xml/en/consolidated.xml';
   const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(UN_URL)}` : UN_URL;
 
   const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
@@ -65,25 +63,25 @@ function parseUNXml(xml: string): SanctionsEntry[] {
   // Parse INDIVIDUAL entries
   const individualBlocks = xml.match(/<INDIVIDUAL>[\s\S]*?<\/INDIVIDUAL>/g) || [];
   for (const block of individualBlocks) {
-    const id = extractTag(block, "DATAID") || extractTag(block, "REFERENCE_NUMBER") || "";
-    const firstName = extractTag(block, "FIRST_NAME") || "";
-    const secondName = extractTag(block, "SECOND_NAME") || "";
-    const thirdName = extractTag(block, "THIRD_NAME") || "";
-    const name = [firstName, secondName, thirdName].filter(Boolean).join(" ").trim();
-    const aliases = extractAllTags(block, "ALIAS_NAME");
-    const nationality = extractTag(block, "NATIONALITY_VALUE") || undefined;
-    const listed = extractTag(block, "LISTED_ON") || undefined;
+    const id = extractTag(block, 'DATAID') || extractTag(block, 'REFERENCE_NUMBER') || '';
+    const firstName = extractTag(block, 'FIRST_NAME') || '';
+    const secondName = extractTag(block, 'SECOND_NAME') || '';
+    const thirdName = extractTag(block, 'THIRD_NAME') || '';
+    const name = [firstName, secondName, thirdName].filter(Boolean).join(' ').trim();
+    const aliases = extractAllTags(block, 'ALIAS_NAME');
+    const nationality = extractTag(block, 'NATIONALITY_VALUE') || undefined;
+    const listed = extractTag(block, 'LISTED_ON') || undefined;
 
     if (name) {
       entries.push({
         id: `UN-IND-${id}`,
         name,
         aliases,
-        listSource: "UN Consolidated Sanctions",
+        listSource: 'UN Consolidated Sanctions',
         listDate: listed,
-        type: "individual",
+        type: 'individual',
         nationality,
-        designationRef: extractTag(block, "UN_LIST_TYPE") || undefined,
+        designationRef: extractTag(block, 'UN_LIST_TYPE') || undefined,
       });
     }
   }
@@ -91,20 +89,20 @@ function parseUNXml(xml: string): SanctionsEntry[] {
   // Parse ENTITY entries
   const entityBlocks = xml.match(/<ENTITY>[\s\S]*?<\/ENTITY>/g) || [];
   for (const block of entityBlocks) {
-    const id = extractTag(block, "DATAID") || extractTag(block, "REFERENCE_NUMBER") || "";
-    const name = extractTag(block, "FIRST_NAME") || "";
-    const aliases = extractAllTags(block, "ALIAS_NAME");
-    const listed = extractTag(block, "LISTED_ON") || undefined;
+    const id = extractTag(block, 'DATAID') || extractTag(block, 'REFERENCE_NUMBER') || '';
+    const name = extractTag(block, 'FIRST_NAME') || '';
+    const aliases = extractAllTags(block, 'ALIAS_NAME');
+    const listed = extractTag(block, 'LISTED_ON') || undefined;
 
     if (name) {
       entries.push({
         id: `UN-ENT-${id}`,
         name,
         aliases,
-        listSource: "UN Consolidated Sanctions",
+        listSource: 'UN Consolidated Sanctions',
         listDate: listed,
-        type: "entity",
-        designationRef: extractTag(block, "UN_LIST_TYPE") || undefined,
+        type: 'entity',
+        designationRef: extractTag(block, 'UN_LIST_TYPE') || undefined,
       });
     }
   }
@@ -118,20 +116,15 @@ function extractTag(xml: string, tag: string): string | null {
 }
 
 function extractAllTags(xml: string, tag: string): string[] {
-  const matches = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`, "g")) || [];
-  return matches
-    .map((m) => m.replace(new RegExp(`</?${tag}>`, "g"), "").trim())
-    .filter(Boolean);
+  const matches = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`, 'g')) || [];
+  return matches.map((m) => m.replace(new RegExp(`</?${tag}>`, 'g'), '').trim()).filter(Boolean);
 }
 
 /**
  * Screen an entity name against a list of sanctions entries.
  * Uses fuzzy matching (normalized, case-insensitive, alias-checked).
  */
-export function screenAgainstList(
-  entityName: string,
-  entries: SanctionsEntry[]
-): SanctionsMatch[] {
+export function screenAgainstList(entityName: string, entries: SanctionsEntry[]): SanctionsMatch[] {
   const matches: SanctionsMatch[] = [];
   const normalized = normalize(entityName);
 
@@ -176,10 +169,10 @@ export function screenAgainstList(
 function normalize(name: string): string {
   return name
     .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\s]/g, "")
-    .replace(/\s+/g, " ")
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 

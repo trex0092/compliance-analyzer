@@ -19,19 +19,19 @@ export interface ChainedAuditEvent {
   hash: string;
 }
 
-const GENESIS_HASH = "0000000000000000000000000000000000000000000000000000000000000000";
+const GENESIS_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
 async function sha256(message: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(message);
-  const buffer = await crypto.subtle.digest("SHA-256", data);
+  const buffer = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(buffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
-function eventPayload(event: Omit<ChainedAuditEvent, "hash">): string {
-  return `${event.id}|${event.at}|${event.by}|${event.action}|${event.note || ""}|${event.previousHash}`;
+function eventPayload(event: Omit<ChainedAuditEvent, 'hash'>): string {
+  return `${event.id}|${event.at}|${event.by}|${event.action}|${event.note || ''}|${event.previousHash}`;
 }
 
 /**
@@ -70,9 +70,9 @@ export async function verifyChain(
     }
 
     // Verify hash integrity
-    const expectedHash = await sha256(
-      eventPayload({ ...event, hash: undefined } as any)
-    );
+    const { hash: _, ...rest } = event;
+    void _;
+    const expectedHash = await sha256(eventPayload(rest));
     if (event.hash !== expectedHash) {
       return { valid: false, brokenAt: i, checkedCount: i + 1 };
     }

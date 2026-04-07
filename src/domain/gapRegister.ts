@@ -1,8 +1,8 @@
-import { createId } from "../utils/id";
-import { nowIso } from "../utils/dates";
+import { createId } from '../utils/id';
+import { nowIso } from '../utils/dates';
 
-export type GapSeverity = "critical" | "high" | "medium" | "low";
-export type GapStatus = "open" | "in-progress" | "remediated" | "verified" | "closed";
+export type GapSeverity = 'critical' | 'high' | 'medium' | 'low';
+export type GapStatus = 'open' | 'in-progress' | 'remediated' | 'verified' | 'closed';
 
 export interface GapEntry {
   id: string;
@@ -33,12 +33,12 @@ export function createGap(
   targetDate?: string
 ): GapEntry {
   return {
-    id: createId("gap"),
+    id: createId('gap'),
     gapCode,
     title,
     description,
     severity,
-    status: "open",
+    status: 'open',
     regulatoryRef,
     linkedCaseIds: [],
     linkedEvidenceIds: [],
@@ -52,13 +52,13 @@ export function createGap(
 
 export function canCloseGap(gap: GapEntry): { canClose: boolean; reason?: string } {
   if (gap.linkedEvidenceIds.length === 0) {
-    return { canClose: false, reason: "No remediation evidence linked." };
+    return { canClose: false, reason: 'No remediation evidence linked.' };
   }
   if (!gap.remediationNotes) {
-    return { canClose: false, reason: "Remediation notes required." };
+    return { canClose: false, reason: 'Remediation notes required.' };
   }
   if (gap.linkedCaseIds.length === 0) {
-    return { canClose: false, reason: "No case linked to this gap." };
+    return { canClose: false, reason: 'No case linked to this gap.' };
   }
   return { canClose: true };
 }
@@ -68,7 +68,7 @@ export function closeGap(gap: GapEntry): GapEntry {
   if (!check.canClose) throw new Error(check.reason);
   return {
     ...gap,
-    status: "closed",
+    status: 'closed',
     closedAt: nowIso(),
     updatedAt: nowIso(),
   };
