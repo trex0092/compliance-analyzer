@@ -103,6 +103,8 @@ compliant by default.
 | Cabinet Res 71/2024 | Administrative Penalties | AED 10K–100M penalty range |
 | MoE Circular 08/AML/2021 | DPMS Sector Guidance | goAML registration, quarterly DPMS reports, AED 55K threshold |
 | LBMA RGG v9 | Responsible Gold Guidance | 5-step framework, CAHRA due diligence, annual audit |
+| UAE MoE RSG Framework | Responsible Sourcing of Gold | Origin traceability, refiner DD, CAHRA mitigation, ASM compliance, annual disclosure |
+| Dubai Good Delivery (DGD) | Dubai gold standard | Refiner accreditation, hallmark, assay certification |
 | FATF Rec 22/23 | DPMS Sector | CDD, record-keeping, STR obligations for dealers |
 
 ## Critical Thresholds

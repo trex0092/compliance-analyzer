@@ -8,8 +8,17 @@ import {
 } from '../src/domain/kpiFramework';
 
 describe('KPI Definitions', () => {
-  it('has 32 KPI definitions', () => {
-    expect(DPMS_KPI_DEFINITIONS.length).toBe(32);
+  it('has 40 KPI definitions', () => {
+    expect(DPMS_KPI_DEFINITIONS.length).toBe(40);
+  });
+
+  it('includes 8 UAE MoE RSG KPIs', () => {
+    const rsgKPIs = DPMS_KPI_DEFINITIONS.filter((k) => k.id.startsWith('KPI-RSG'));
+    expect(rsgKPIs.length).toBe(8);
+    expect(rsgKPIs.every((k) => k.category === 'supply-chain')).toBe(true);
+    expect(rsgKPIs.some((k) => k.name.includes('Gold Origin Traceability'))).toBe(true);
+    expect(rsgKPIs.some((k) => k.name.includes('ASM'))).toBe(true);
+    expect(rsgKPIs.some((k) => k.name.includes('Recycled/Scrap'))).toBe(true);
   });
 
   it('covers all 8 categories', () => {

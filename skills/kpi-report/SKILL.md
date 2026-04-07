@@ -189,6 +189,66 @@ EXECUTIVE DASHBOARD
   Last audit: [date] | Auditor: [name]
 
 ══════════════════════════════════════════════════════════════════════
+6b. UAE MoE RESPONSIBLE SOURCING OF GOLD (RSG)
+    Regulatory: UAE MoE RSG Framework, LBMA RGG v9, OECD DDG
+    Reporting to: Ministry of Economy
+══════════════════════════════════════════════════════════════════════
+
+  KPI-RSG-001  RSG Policy Implementation
+  Value:    Approved / Pending    Status: [🟢/🔴]
+  Policy aligned with: UAE MoE RSG ☐  LBMA RGG v9 ☐  OECD DDG ☐
+  Approved by senior management: YES / NO
+
+  KPI-RSG-002  Gold Origin Traceability
+  Value:    ___% of shipments    Target: 100%    Status: [🟢/🟡/🔴]
+  Shipments this period: [N]
+  With verified country of origin: [N]
+  With mine/refiner identification: [N]
+  With chain of custody docs: [N]
+
+  KPI-RSG-003  Refiner Due Diligence
+  Value:    ___% verified    Target: 100%    Status: [🟢/🟡/🔴]
+  Active refiners: [N]
+  LBMA Good Delivery: [N]
+  Dubai Good Delivery (DGD): [N]
+  Valid assay certificates: [N]
+  Hallmark compliant: [N]
+
+  KPI-RSG-004  CAHRA Origin Risk Mitigation
+  Value:    ___% with EDD    Target: 100%    Status: [🟢/🟡/🔴]
+  CAHRA-origin shipments: [N]
+  With enhanced due diligence: [N]
+  With risk mitigation plan: [N]
+  CAHRA countries involved: [list]
+
+  KPI-RSG-005  ASM (Artisanal & Small-Scale Mining) Compliance
+  Value:    ___% verified    Target: 100%    Status: [🟢/🟡/🔴]
+  ASM-sourced purchases: [N]
+  Verified legitimate origin: [N]
+  No child labor certification: [N]
+  No armed group financing: [N]
+  Environmental compliance: [N]
+
+  KPI-RSG-006  Recycled/Scrap Gold Verification
+  Value:    ___% documented    Target: 95%    Status: [🟢/🟡/🔴]
+  Recycled/scrap purchases: [N]
+  Seller identity verified: [N]
+  Source documented: [N]
+  Chain of custody complete: [N]
+
+  KPI-RSG-007  RSG Incident Reporting
+  Value:    ___% on time    Target: 100%    Status: [🟢/🟡/🔴]
+  Incidents this period: [N]
+  Types: Origin mismatch: [N] | Conflict suspicion: [N] | Info refusal: [N]
+  Investigated within 5 business days: [N]
+
+  KPI-RSG-008  Annual RSG Public Disclosure
+  Value:    Published / Pending    Status: [🟢/🔴]
+  Report covers: DD activities ☐  Risk assessment ☐  Remediation ☐
+  Submitted to MoE: YES / NO
+  Date: __/__/____
+
+══════════════════════════════════════════════════════════════════════
 7. GOVERNANCE & INTERNAL CONTROLS
 ══════════════════════════════════════════════════════════════════════
 

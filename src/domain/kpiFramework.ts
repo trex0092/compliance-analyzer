@@ -422,6 +422,112 @@ export const DPMS_KPI_DEFINITIONS: KPIDefinition[] = [
     ragThresholds: { green: 100, amber: 0 },
   },
 
+  // ── UAE MoE Responsible Sourcing of Gold (RSG) ─────────────────────
+  {
+    id: 'KPI-RSG-001',
+    name: 'RSG Policy Implementation',
+    category: 'supply-chain',
+    description:
+      'Written Responsible Sourcing of Gold policy approved by senior management, aligned with UAE MoE RSG Framework',
+    regulatoryBasis: 'UAE MoE RSG Framework, LBMA RGG v9, OECD DDG Step 1',
+    reportingBody: 'MoE',
+    frequency: 'annual',
+    targetValue: 100,
+    targetUnit: '%',
+    ragThresholds: { green: 100, amber: 0 },
+  },
+  {
+    id: 'KPI-RSG-002',
+    name: 'Gold Origin Traceability',
+    category: 'supply-chain',
+    description:
+      'All gold shipments with verified country of origin, mine/refiner identification, and chain of custody documentation',
+    regulatoryBasis: 'UAE MoE RSG Framework Step 2, OECD DDG Annex I, LBMA RGG v9',
+    reportingBody: 'MoE',
+    frequency: 'quarterly',
+    targetValue: 100,
+    targetUnit: '%',
+    ragThresholds: { green: 100, amber: 85 },
+  },
+  {
+    id: 'KPI-RSG-003',
+    name: 'Refiner Due Diligence',
+    category: 'supply-chain',
+    description:
+      'All refiners verified as LBMA Good Delivery or equivalent, with valid assay certificates and hallmark compliance',
+    regulatoryBasis: 'UAE MoE RSG Framework, LBMA GDR, Dubai Good Delivery (DGD)',
+    reportingBody: 'MoE',
+    frequency: 'quarterly',
+    targetValue: 100,
+    targetUnit: '%',
+    ragThresholds: { green: 100, amber: 80 },
+  },
+  {
+    id: 'KPI-RSG-004',
+    name: 'CAHRA Origin Risk Mitigation',
+    category: 'supply-chain',
+    description:
+      'Gold from Conflict-Affected and High-Risk Areas with completed enhanced due diligence and risk mitigation plan per UAE MoE RSG',
+    regulatoryBasis: 'UAE MoE RSG Framework Step 3, OECD DDG Annex II, LBMA RGG v9 Step 2',
+    reportingBody: 'MoE',
+    frequency: 'quarterly',
+    targetValue: 100,
+    targetUnit: '%',
+    ragThresholds: { green: 100, amber: 75 },
+  },
+  {
+    id: 'KPI-RSG-005',
+    name: 'ASM (Artisanal & Small-Scale Mining) Compliance',
+    category: 'supply-chain',
+    description:
+      'ASM-sourced gold with verified legitimate origin, no child labor, no armed group financing, and environmental compliance',
+    regulatoryBasis: 'UAE MoE RSG Framework, OECD DDG Supplement on Gold, LBMA RGG v9',
+    reportingBody: 'MoE',
+    frequency: 'quarterly',
+    targetValue: 100,
+    targetUnit: '%',
+    ragThresholds: { green: 100, amber: 80 },
+  },
+  {
+    id: 'KPI-RSG-006',
+    name: 'Recycled/Scrap Gold Verification',
+    category: 'supply-chain',
+    description:
+      'Recycled and scrap gold purchases with verified source, identity of seller, and documented chain of custody',
+    regulatoryBasis: 'UAE MoE RSG Framework, MoE DPMS Guidance, FDL Art.12',
+    reportingBody: 'MoE',
+    frequency: 'quarterly',
+    targetValue: 100,
+    targetUnit: '%',
+    ragThresholds: { green: 95, amber: 80 },
+  },
+  {
+    id: 'KPI-RSG-007',
+    name: 'RSG Incident Reporting',
+    category: 'supply-chain',
+    description:
+      'Supply chain incidents (origin mismatch, conflict gold suspicion, refusal to provide info) reported and investigated within 5 business days',
+    regulatoryBasis: 'UAE MoE RSG Framework Step 3-4, LBMA RGG v9 Step 3',
+    reportingBody: 'MoE',
+    frequency: 'quarterly',
+    targetValue: 100,
+    targetUnit: '%',
+    ragThresholds: { green: 100, amber: 80 },
+  },
+  {
+    id: 'KPI-RSG-008',
+    name: 'Annual RSG Public Disclosure',
+    category: 'supply-chain',
+    description:
+      'Annual responsible sourcing report published or made available to MoE, covering supply chain DD activities, risk assessment, and remediation',
+    regulatoryBasis: 'UAE MoE RSG Framework Step 5, LBMA RGG v9 Step 5, OECD DDG Step 5',
+    reportingBody: 'MoE',
+    frequency: 'annual',
+    targetValue: 100,
+    targetUnit: '%',
+    ragThresholds: { green: 100, amber: 0 },
+  },
+
   // ── Governance ────────────────────────────────────────────────────────
   {
     id: 'KPI-GOV-001',
