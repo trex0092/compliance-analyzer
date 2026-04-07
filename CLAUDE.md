@@ -208,6 +208,7 @@ This is the single source of truth. When a regulation changes:
 | `/traceability` | Regulatory traceability matrix | Map every requirement to code + test + evidence |
 | `/timeline` | Entity compliance history | Reconstruct chronological audit trail |
 | `/filing-compliance` | Filing deadline compliance | Prove all STR/CTR/CNMR filed on time |
+| `/kpi-report` | 30-KPI DPMS compliance report | Quarterly/annual MoE, EOCN, FIU reporting |
 
 ## Hooks
 
