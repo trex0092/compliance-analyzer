@@ -5,6 +5,11 @@ import type { ScreeningRun } from "../domain/screening";
 import type { Alert } from "../domain/alerts";
 import { createId } from "../utils/id";
 import { nowIso, isValidDate } from "../utils/dates";
+import { countBusinessDays } from "../utils/businessDays";
+import {
+  STR_FILING_DEADLINE_BUSINESS_DAYS,
+  CTR_FILING_DEADLINE_BUSINESS_DAYS,
+} from "../domain/constants";
 
 function safeDaysBetween(dateStr: string, now: Date): number | null {
   if (!dateStr || !isValidDate(dateStr)) return null;
@@ -139,7 +144,7 @@ export function generateAlerts(
             type: "task-overdue",
             subjectId: c.id,
             subjectType: "case",
-            message: `Case ${c.id} requires STR filing but no report filed. Deadline: 10 business days per FDL Art.26.`,
+            message: `Case ${c.id} requires STR filing but no report filed. Deadline: ${STR_FILING_DEADLINE_BUSINESS_DAYS} business days per FDL Art.26. Elapsed: ${isValidDate(c.createdAt) ? countBusinessDays(new Date(c.createdAt), now) : "?"} business days.`,
             severity: "critical",
             createdAt: nowIso(),
           },
@@ -153,7 +158,7 @@ export function generateAlerts(
             type: "task-overdue",
             subjectId: c.id,
             subjectType: "case",
-            message: `Case ${c.id} requires SAR filing but no report filed. Deadline: 10 business days per FDL Art.26.`,
+            message: `Case ${c.id} requires SAR filing but no report filed. Deadline: ${STR_FILING_DEADLINE_BUSINESS_DAYS} business days per FDL Art.26. Elapsed: ${isValidDate(c.createdAt) ? countBusinessDays(new Date(c.createdAt), now) : "?"} business days.`,
             severity: "critical",
             createdAt: nowIso(),
           },
@@ -167,7 +172,7 @@ export function generateAlerts(
             type: "task-overdue",
             subjectId: c.id,
             subjectType: "case",
-            message: `Case ${c.id} requires CTR filing (cash >= AED 55,000). Deadline: 15 business days per FDL Art.16.`,
+            message: `Case ${c.id} requires CTR filing (cash >= AED 55,000). Deadline: ${CTR_FILING_DEADLINE_BUSINESS_DAYS} business days per FDL Art.16. Elapsed: ${isValidDate(c.createdAt) ? countBusinessDays(new Date(c.createdAt), now) : "?"} business days.`,
             severity: "high",
             createdAt: nowIso(),
           },
