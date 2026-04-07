@@ -25,10 +25,16 @@ function MetricCard({
   unit?: string;
   inverse?: boolean;
 }) {
-  const isGood = target !== undefined ? (inverse ? value <= target : value >= target) : true;
+  const safeValue = Number.isFinite(value) ? value : 0;
+  const isGood =
+    target !== undefined ? (inverse ? safeValue <= target : safeValue >= target) : true;
 
-  const color = isGood ? '#3DA876' : value === 0 && !inverse ? '#E8A030' : '#D94F4F';
-  const displayValue = unit === '%' ? `${value}%` : String(value);
+  const color = isGood ? '#3DA876' : safeValue === 0 && !inverse ? '#E8A030' : '#D94F4F';
+  const displayValue = Number.isFinite(value)
+    ? unit === '%'
+      ? `${value}%`
+      : String(value)
+    : 'N/A';
 
   return (
     <div
@@ -138,7 +144,7 @@ export function KPIDashboardView({ data }: KPIDashboardProps) {
         >
           <div
             style={{
-              width: `${data.auditReadinessPct}%`,
+              width: `${Math.min(100, Math.max(0, data.auditReadinessPct || 0))}%`,
               height: '100%',
               background:
                 data.auditReadinessPct >= 80

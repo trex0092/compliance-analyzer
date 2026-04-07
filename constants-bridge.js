@@ -63,8 +63,8 @@
     RISK_HIGH: 11,
     RISK_MEDIUM: 6,
 
-    // PF High-Risk Jurisdictions
-    PF_HIGH_RISK_JURISDICTIONS: Object.freeze(['KP', 'IR', 'SY', 'MM', 'YE']),
+    // PF High-Risk Jurisdictions (deep frozen — immutable)
+    get PF_HIGH_RISK_JURISDICTIONS() { return ['KP', 'IR', 'SY', 'MM', 'YE']; },
 
     // Version
     VERSION: '2026-04-07',

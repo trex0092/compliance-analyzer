@@ -27,8 +27,14 @@ export function FormRenderer({
   onCancel,
   readOnly = false,
 }: FormRendererProps) {
-  const [values, setValues] = useState<Record<string, string | boolean>>(initialValues);
+  // Sanitize initialValues on mount to prevent XSS from untrusted sources
+  const sanitizedInitial = Object.fromEntries(
+    Object.entries(initialValues).map(([k, v]) => [k, typeof v === 'string' ? sanitizeText(v) : v])
+  );
+  const [values, setValues] = useState<Record<string, string | boolean>>(sanitizedInitial);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const SAFE_INPUT_TYPES = ['text', 'textarea', 'select', 'date', 'number', 'checkbox', 'file'];
 
   function handleChange(name: string, value: string | boolean) {
     setValues((prev) => ({ ...prev, [name]: value }));
@@ -138,7 +144,7 @@ export function FormRenderer({
       default:
         input = (
           <input
-            type={field.type}
+            type={SAFE_INPUT_TYPES.includes(field.type) ? field.type : 'text'}
             value={value as string}
             onChange={(e) => handleChange(field.name, e.target.value)}
             placeholder={field.placeholder}

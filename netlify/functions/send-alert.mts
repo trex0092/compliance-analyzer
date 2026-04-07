@@ -51,11 +51,14 @@ export default async (req: Request) => {
       return Response.json({ error: "subject and message required" }, { status: 400 });
     }
 
+    // Sanitize: strip newlines/carriage returns to prevent email header injection
+    const sanitize = (s: string) => s.replace(/[\r\n]/g, " ").slice(0, 500);
+
     // Forward to configured email service
     const emailBody = {
       from: emailFrom,
       to: emailTo,
-      subject: `[${payload.priority?.toUpperCase() || "ALERT"}] ${payload.subject}`,
+      subject: sanitize(`[${payload.priority?.toUpperCase() || "ALERT"}] ${payload.subject}`),
       text: [
         payload.message,
         "",
@@ -72,6 +75,7 @@ export default async (req: Request) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(emailBody),
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {

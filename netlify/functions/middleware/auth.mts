@@ -49,7 +49,9 @@ export function authenticate(req: Request): AuthResult {
   }
 
   const token = parts[1];
-  if (token.length < TOKEN_MIN_LENGTH) {
+
+  // Validate token format: must be hex string of sufficient length
+  if (token.length < TOKEN_MIN_LENGTH || !/^[a-f0-9]+$/i.test(token)) {
     return {
       ok: false,
       response: Response.json(
@@ -59,9 +61,8 @@ export function authenticate(req: Request): AuthResult {
     };
   }
 
-  // Extract user ID from URL params (backward compatible)
-  const url = new URL(req.url);
-  const userId = url.searchParams.get("uid") || "authenticated";
+  // User ID derived from token, not URL params (prevents forgery)
+  const userId = token.slice(0, 16);
 
   return { ok: true, userId };
 }

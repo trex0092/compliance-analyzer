@@ -9,8 +9,9 @@
  * per FDL No.10/2025. Using calendar days is a regulatory violation risk.
  */
 
-/** UAE public holidays — update annually */
-const UAE_PUBLIC_HOLIDAYS_2026: string[] = [
+/** UAE public holidays — update annually. Covers 2026-2027. */
+const UAE_PUBLIC_HOLIDAYS: Set<string> = new Set([
+  // 2026
   '2026-01-01', // New Year's Day
   '2026-03-19', // Eid Al Fitr (estimated — confirm with Awqaf)
   '2026-03-20',
@@ -24,7 +25,21 @@ const UAE_PUBLIC_HOLIDAYS_2026: string[] = [
   '2026-12-01', // Commemoration Day
   '2026-12-02', // National Day
   '2026-12-03', // National Day
-];
+  // 2027
+  '2027-01-01', // New Year's Day
+  '2027-03-09', // Eid Al Fitr (estimated)
+  '2027-03-10',
+  '2027-03-11',
+  '2027-05-15', // Arafat Day (estimated)
+  '2027-05-16', // Eid Al Adha (estimated)
+  '2027-05-17',
+  '2027-05-18',
+  '2027-06-06', // Islamic New Year (estimated)
+  '2027-08-16', // Prophet's Birthday (estimated)
+  '2027-12-01', // Commemoration Day
+  '2027-12-02', // National Day
+  '2027-12-03', // National Day
+]);
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -36,7 +51,7 @@ function isWeekend(d: Date): boolean {
 }
 
 function isPublicHoliday(d: Date): boolean {
-  return UAE_PUBLIC_HOLIDAYS_2026.includes(toDateStr(d));
+  return UAE_PUBLIC_HOLIDAYS.has(toDateStr(d));
 }
 
 export function isBusinessDay(d: Date): boolean {

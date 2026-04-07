@@ -1509,17 +1509,28 @@
     for (const c of strCases) {
       if (c.status === 'Filed' || c.status === 'Closed') continue;
       if (!c.createdAt && !c.date) continue;
-      const created = new Date(c.createdAt || c.date).getTime();
-      const elapsed = Math.floor((now - created) / ONE_DAY);
+      const createdStr = c.createdAt || c.date;
+      var createdDate;
+      // Handle dd/mm/yyyy format
+      if (typeof createdStr === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(createdStr)) {
+        var parts = createdStr.split('/');
+        createdDate = new Date(parts[2], parts[1] - 1, parts[0]);
+      } else {
+        createdDate = new Date(createdStr);
+      }
+      if (isNaN(createdDate.getTime())) continue;
+      // Approximate business days: calendar days * 5/7
+      var calendarElapsed = Math.floor((now - createdDate.getTime()) / ONE_DAY);
+      var bizElapsed = Math.round(calendarElapsed * 5 / 7);
       const deadlineDays = CC.STR_FILING_DEADLINE_BUSINESS_DAYS || 10;
-      const remaining = deadlineDays - elapsed;
+      const remaining = deadlineDays - bizElapsed;
 
-      // Create urgent Asana task at 3 days remaining
+      // Create urgent Asana task at 3 business days remaining
       if (remaining <= 3 && remaining > 0) {
         const dedupKey = `deadline_str_${c.id || c.caseRef}_${Math.floor(now / ONE_DAY)}`;
         if (!isDuplicate('deadline_monitor', 'deadline_asana', { id: dedupKey })) {
           processTrigger('deadline_approaching', {
-            title: 'URGENT: STR Filing Deadline — ' + (remaining) + ' days remaining',
+            title: 'URGENT: STR Filing Deadline — ~' + (remaining) + ' business days remaining',
             customer: c.subjectName || c.customerName || 'Unknown',
             severity: 'critical',
             caseRef: c.id || c.caseRef || '',
@@ -1536,16 +1547,25 @@
     for (const c of ctrQueue) {
       if (c.status === 'Filed' || c.status === 'Closed') continue;
       if (!c.timestamp && !c.date) continue;
-      const created = new Date(c.timestamp || c.date).getTime();
-      const elapsed = Math.floor((now - created) / ONE_DAY);
+      var ctrDateStr = c.timestamp || c.date;
+      var ctrDate;
+      if (typeof ctrDateStr === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(ctrDateStr)) {
+        var ctrParts = ctrDateStr.split('/');
+        ctrDate = new Date(ctrParts[2], ctrParts[1] - 1, ctrParts[0]);
+      } else {
+        ctrDate = new Date(ctrDateStr);
+      }
+      if (isNaN(ctrDate.getTime())) continue;
+      var ctrCalElapsed = Math.floor((now - ctrDate.getTime()) / ONE_DAY);
+      var ctrBizElapsed = Math.round(ctrCalElapsed * 5 / 7);
       const deadlineDays = CC.CTR_FILING_DEADLINE_BUSINESS_DAYS || 15;
-      const remaining = deadlineDays - elapsed;
+      const remaining = deadlineDays - ctrBizElapsed;
 
       if (remaining <= 5 && remaining > 0) {
         const dedupKey = `deadline_ctr_${c.id || ''}_${Math.floor(now / ONE_DAY)}`;
         if (!isDuplicate('deadline_monitor', 'deadline_asana', { id: dedupKey })) {
           processTrigger('deadline_approaching', {
-            title: 'CTR Filing Deadline — ' + (remaining) + ' days remaining',
+            title: 'CTR Filing Deadline — ~' + (remaining) + ' business days remaining',
             customer: c.customerName || 'Unknown',
             amount: c.amount || '',
             severity: 'high',

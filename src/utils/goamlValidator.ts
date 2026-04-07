@@ -49,8 +49,8 @@ export function validateSTR(xml: string): ValidationResult {
     }
   }
 
-  // Report ID format
-  if (!xml.match(/RPT-\d+-[a-zA-Z0-9]+/)) {
+  // Report ID format (anchored to prevent partial matches)
+  if (!xml.match(/RPT-\d+-[a-zA-Z0-9]+(?=<)/)) {
     errors.push({
       field: 'reportId',
       message: 'Report ID must follow RPT-[timestamp]-[random] format',
@@ -58,10 +58,10 @@ export function validateSTR(xml: string): ValidationResult {
     });
   }
 
-  // Date format validation (YYYY-MM-DD)
-  const dateMatches = xml.match(/<[^>]*[Dd]ate[^>]*>([^<]+)<\//g) || [];
+  // Date format validation (YYYY-MM-DD) — safe extraction without backtracking
+  const dateMatches = xml.match(/<[^>]*[Dd]ate[^>]*>[^<]+<\//g) || [];
   for (const match of dateMatches) {
-    const value = match.replace(/<[^>]*>/g, '').replace(/<\/.*/, '');
+    const value = match.replace(/<[^>]+>/g, '').replace(/<\/$/, '');
     if (value && !/^\d{4}-\d{2}-\d{2}/.test(value)) {
       errors.push({
         field: 'date',

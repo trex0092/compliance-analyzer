@@ -110,14 +110,22 @@ function parseUNXml(xml: string): SanctionsEntry[] {
   return entries;
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function extractTag(xml: string, tag: string): string | null {
-  const match = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
+  const safeTag = escapeRegex(tag);
+  const match = xml.match(new RegExp(`<${safeTag}>([^<]*)</${safeTag}>`));
   return match ? match[1].trim() : null;
 }
 
 function extractAllTags(xml: string, tag: string): string[] {
-  const matches = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`, 'g')) || [];
-  return matches.map((m) => m.replace(new RegExp(`</?${tag}>`, 'g'), '').trim()).filter(Boolean);
+  const safeTag = escapeRegex(tag);
+  const matches = xml.match(new RegExp(`<${safeTag}>([^<]*)</${safeTag}>`, 'g')) || [];
+  return matches
+    .map((m) => m.replace(new RegExp(`</?${safeTag}>`, 'g'), '').trim())
+    .filter(Boolean);
 }
 
 /**
