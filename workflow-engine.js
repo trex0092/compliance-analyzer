@@ -345,6 +345,16 @@
         { type: 'browser_notify', title: 'Compliance Manual Review Due', message: 'Annual review of Compliance Manual and 42-policy document set. Must reflect FDL No.10/2025, Cabinet Resolution 134/2025, and NRA findings.' }
       ]
     },
+    // ── Deadline Monitoring ──
+    {
+      id: 'wf_deadline_approaching', name: 'Filing Deadline Approaching -Urgent Asana Task', enabled: true,
+      trigger: 'deadline_approaching', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'gap_remediation', priority: 'high' },
+        { type: 'email_alert', subject: 'DEADLINE: {title}', message: '{title}. Customer: {customer}. {regulation}. Days remaining: {daysRemaining}. Immediate action required.' },
+        { type: 'browser_notify', title: 'Filing Deadline', message: '{title}' }
+      ]
+    },
     // ── DPMS-Specific & FATF Rec 22 Workflows ──
     {
       id: 'wf_cash_cumulative_55k', name: 'Cumulative Cash ≥ AED 55K -CDD + DPMSR', enabled: true,
@@ -1481,6 +1491,77 @@
     refresh();
   }
 
+  // ══════════════════════════════════════════════════════════════
+  // DEADLINE MONITOR — Auto-create Asana tasks for approaching deadlines
+  // Uses COMPLIANCE_CONSTANTS from constants-bridge.js
+  // ══════════════════════════════════════════════════════════════
+
+  function checkFilingDeadlines() {
+    const CC = typeof COMPLIANCE_CONSTANTS !== 'undefined' ? COMPLIANCE_CONSTANTS : null;
+    if (!CC) return;
+
+    const log = parse(WF_LOG_KEY, []);
+    const now = Date.now();
+    const ONE_DAY = 86400000;
+
+    // Check STR/CTR queues for approaching deadlines
+    const strCases = parse('fgl_str_cases_v2', []);
+    for (const c of strCases) {
+      if (c.status === 'Filed' || c.status === 'Closed') continue;
+      if (!c.createdAt && !c.date) continue;
+      const created = new Date(c.createdAt || c.date).getTime();
+      const elapsed = Math.floor((now - created) / ONE_DAY);
+      const deadlineDays = CC.STR_FILING_DEADLINE_BUSINESS_DAYS || 10;
+      const remaining = deadlineDays - elapsed;
+
+      // Create urgent Asana task at 3 days remaining
+      if (remaining <= 3 && remaining > 0) {
+        const dedupKey = `deadline_str_${c.id || c.caseRef}_${Math.floor(now / ONE_DAY)}`;
+        if (!isDuplicate('deadline_monitor', 'deadline_asana', { id: dedupKey })) {
+          processTrigger('deadline_approaching', {
+            title: 'URGENT: STR Filing Deadline — ' + (remaining) + ' days remaining',
+            customer: c.subjectName || c.customerName || 'Unknown',
+            severity: 'critical',
+            caseRef: c.id || c.caseRef || '',
+            daysRemaining: remaining,
+            regulation: 'FDL Art.26 — STR must be filed within ' + deadlineDays + ' business days'
+          });
+          markProcessed('deadline_monitor', 'deadline_asana', { id: dedupKey });
+        }
+      }
+    }
+
+    // Check CTR queue
+    const ctrQueue = parse('fgl_threshold_ctr_queue', []);
+    for (const c of ctrQueue) {
+      if (c.status === 'Filed' || c.status === 'Closed') continue;
+      if (!c.timestamp && !c.date) continue;
+      const created = new Date(c.timestamp || c.date).getTime();
+      const elapsed = Math.floor((now - created) / ONE_DAY);
+      const deadlineDays = CC.CTR_FILING_DEADLINE_BUSINESS_DAYS || 15;
+      const remaining = deadlineDays - elapsed;
+
+      if (remaining <= 5 && remaining > 0) {
+        const dedupKey = `deadline_ctr_${c.id || ''}_${Math.floor(now / ONE_DAY)}`;
+        if (!isDuplicate('deadline_monitor', 'deadline_asana', { id: dedupKey })) {
+          processTrigger('deadline_approaching', {
+            title: 'CTR Filing Deadline — ' + (remaining) + ' days remaining',
+            customer: c.customerName || 'Unknown',
+            amount: c.amount || '',
+            severity: 'high',
+            regulation: 'FDL Art.16 — CTR must be filed within ' + deadlineDays + ' business days'
+          });
+          markProcessed('deadline_monitor', 'deadline_asana', { id: dedupKey });
+        }
+      }
+    }
+  }
+
+  // Run deadline check every 30 minutes
+  setInterval(checkFilingDeadlines, 30 * 60 * 1000);
+  // Also run once on load (after 10 seconds to let data load)
+  setTimeout(checkFilingDeadlines, 10000);
+
   window.WorkflowEngine = {
     renderWorkflowsTab,
     refresh,
@@ -1492,6 +1573,7 @@
     runScan,
     runDigest,
     checkEscalations,
+    checkFilingDeadlines,
     exportLog,
     clearLog,
     scheduleAutoScan,
