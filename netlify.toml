@@ -16,7 +16,7 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     X-XSS-Protection = "1; mode=block"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.netlify.app https://app.asana.com https://api.anthropic.com https://api.openai.com https://www.googleapis.com https://generativelanguage.googleapis.com"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.netlify.app https://app.asana.com https://api.anthropic.com https://api.openai.com https://www.googleapis.com https://generativelanguage.googleapis.com"
 
 [[headers]]
   for = "/sw.js"

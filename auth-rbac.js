@@ -10,7 +10,7 @@ const AuthRBAC = (function () {
         authLog: 'fgl_auth_log'
     };
 
-    const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours
+    const SESSION_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
 
     const ROLES = {
         ADMIN: 'Admin',

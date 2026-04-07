@@ -794,12 +794,24 @@
   }
 
   async function executeEmailAlert(action, data) {
+    const subject = interpolate(action.subject, data);
+    const message = interpolate(action.message, data);
     if (typeof sendEmailAlert === 'function') {
-      const subject = interpolate(action.subject, data);
-      const message = interpolate(action.message, data);
       return await sendEmailAlert(subject, message, data);
     }
-    return { skipped: true, reason: 'EmailJS not configured' };
+    // Log the alert for audit trail even when email service is not configured
+    const emailLog = parse('fgl_email_alert_log', []);
+    emailLog.push({
+      timestamp: new Date().toISOString(),
+      subject,
+      message,
+      ruleName: data._ruleName || 'unknown',
+      status: 'pending_email_config'
+    });
+    if (emailLog.length > 500) emailLog.splice(0, emailLog.length - 500);
+    save('fgl_email_alert_log', emailLog);
+    console.warn('[WorkflowEngine] Email alert logged (service not configured):', subject);
+    return { skipped: true, reason: 'Email service not configured — alert logged for audit' };
   }
 
   function executeBrowserNotify(action, data) {
