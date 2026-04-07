@@ -82,3 +82,58 @@ momento. Aplica estas reglas en cada archivo y endpoint que generes:
 - Loguea peticiones que excedan el rate limit.
 - Loguea inputs rechazados por la validación (posibles intentos de inyección).
 - NUNCA loguees datos sensibles (contraseñas, tokens, datos personales).
+
+---
+
+# Regulatory Domain Knowledge
+
+When writing or reviewing code for this project, apply these UAE AML/CFT/CPF
+regulatory requirements automatically. This ensures every feature is
+compliant by default.
+
+## Key Legislation
+
+| Law / Resolution | Scope | Key Articles |
+|---|---|---|
+| FDL No.10/2025 | UAE AML/CFT/CPF Law | Art.12-14 (CDD), Art.15-16 (thresholds), Art.20-21 (CO duties), Art.24 (record retention 5yr), Art.26-27 (STR filing), Art.29 (no tipping off), Art.35 (TFS) |
+| Cabinet Res 134/2025 | Implementing Regulations | Art.5 (risk appetite), Art.7-10 (CDD tiers), Art.14 (PEP/EDD), Art.16 (cross-border cash AED 60K), Art.18 (CO change notification), Art.19 (internal review) |
+| Cabinet Res 74/2020 | TFS / Asset Freeze | Art.4-7 (freeze within 24h, report to EOCN, CNMR within 5 days) |
+| Cabinet Res 156/2025 | PF & Dual-Use Controls | PF risk assessment, strategic goods screening |
+| Cabinet Decision 109/2023 | UBO Register | Beneficial ownership >25%, re-verify within 15 working days |
+| Cabinet Res 71/2024 | Administrative Penalties | AED 10K–100M penalty range |
+| MoE Circular 08/AML/2021 | DPMS Sector Guidance | goAML registration, quarterly DPMS reports, AED 55K threshold |
+| LBMA RGG v9 | Responsible Gold Guidance | 5-step framework, CAHRA due diligence, annual audit |
+| FATF Rec 22/23 | DPMS Sector | CDD, record-keeping, STR obligations for dealers |
+
+## Critical Thresholds
+
+- **AED 55,000**: DPMS cash transaction reporting threshold (CTR via goAML)
+- **AED 60,000**: Cross-border cash/BNI declaration
+- **25%**: Beneficial ownership threshold for UBO register
+- **24 hours**: Asset freeze execution deadline after sanctions confirmation
+- **5 business days**: CNMR filing deadline to EOCN
+- **15 working days**: UBO re-verification deadline after ownership change
+- **5 years**: Minimum record retention period
+- **30 days**: Policy update deadline after new MoE circular
+
+## Coding Rules for Compliance Features
+
+1. **Sanctions screening**: Always check ALL lists (UN, OFAC, EU, UK, UAE, EOCN). Never skip a list.
+2. **STR workflow**: Never expose STR status to the subject. No tipping off (FDL Art.29).
+3. **Audit trail**: Every compliance action MUST be logged with timestamp, user, and action.
+4. **Four-eyes**: High-risk decisions require two independent approvers.
+5. **Risk scoring**: Use likelihood × impact formula. Apply context multipliers for jurisdiction, PEP, cash.
+6. **Date format**: Always dd/mm/yyyy for UAE compliance documents.
+7. **Currency**: AED as primary. When converting, use published CBUAE rates, not hardcoded.
+8. **goAML exports**: Must conform to UAE FIU XML schema. Validate before submission.
+
+## Custom Skills Available
+
+- `/review-pr` — Risk-scored PR review using code-review-graph
+- `/audit` — Generate compliance audit report against UAE regulations
+- `/screen` — Sanctions & risk screening analysis for an entity
+
+## Hooks
+
+- **session-start**: Auto-updates code-review-graph on every new session
+- **pre-commit-security**: Blocks commits with hardcoded secrets, eval(), or unsafe patterns

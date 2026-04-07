@@ -1,0 +1,18 @@
+{
+  "hooks": [
+    {
+      "name": "session-start",
+      "description": "Auto-update code-review-graph on session start",
+      "event": "session_start",
+      "command": "bash hooks/session-start.sh",
+      "timeout_ms": 30000
+    },
+    {
+      "name": "pre-commit-security",
+      "description": "Scan for hardcoded secrets, eval(), and unsafe patterns",
+      "event": "pre_commit",
+      "command": "bash hooks/pre-commit-security.sh",
+      "timeout_ms": 10000
+    }
+  ]
+}
