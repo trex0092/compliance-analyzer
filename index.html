@@ -8028,6 +8028,7 @@ const SANCTIONS_REFRESH_STORAGE = 'fgl_sanctions_refresh';
 async function refreshSanctionsLists() {
   const btn = document.getElementById('btnRefreshSanctions');
   const statusEl = document.getElementById('sanctionsListStatus');
+  if (!statusEl) { toast('Sanctions status element not found','error'); return; }
   if (btn) btn.disabled = true;
   if (btn) btn.textContent = '⏳ Refreshing...';
   statusEl.style.display = 'block';
@@ -11858,7 +11859,7 @@ function initNewFeatures() {
       }
     } catch(_) {}
   }
-  setInterval(refreshReminders, 5 * 60 * 1000);
+  setInterval(function() { try { if (currentUser) refreshReminders(); } catch(_) {} }, 5 * 60 * 1000);
 
   // Safety net: if after boot, no session and no users, ensure setup wizard is shown
   setTimeout(function() {
