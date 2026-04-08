@@ -110,13 +110,27 @@ export function validateSTR(xml: string): ValidationResult {
     });
   }
 
-  // Tipping-off check — STR should not contain subject notification language
+  // Tipping-off check — STR should not contain subject notification language (FDL Art.29)
+  // Use both exact phrases and regex patterns to catch variations
   const tippingOffPhrases = [
     'we have reported',
     'filed a report',
     'notified authorities',
     'suspicious transaction report',
     'str has been filed',
+    'reported to fiu',
+    'reported to authorities',
+    'str submission',
+    'suspicious activity report',
+    'sar has been filed',
+    'under investigation',
+    'compliance referral',
+  ];
+  const tippingOffPatterns = [
+    /\b(reported|filed|submitted)\s+(to|with)\s+(the\s+)?(fiu|authorities|regulator|goaml)/i,
+    /\bstr\b.{0,20}\b(filed|submitted|sent|generated)/i,
+    /\bsar\b.{0,20}\b(filed|submitted|sent|generated)/i,
+    /\b(we|i|the company)\s+(have\s+)?(reported|filed|notified|informed)/i,
   ];
   const lowerXml = xml.toLowerCase();
   for (const phrase of tippingOffPhrases) {
@@ -124,6 +138,15 @@ export function validateSTR(xml: string): ValidationResult {
       errors.push({
         field: 'content',
         message: `Potential tipping-off risk: contains "${phrase}"`,
+        regulatory: 'FDL Art.29 — No Tipping Off',
+      });
+    }
+  }
+  for (const pattern of tippingOffPatterns) {
+    if (pattern.test(xml)) {
+      errors.push({
+        field: 'content',
+        message: `Potential tipping-off risk: matches pattern ${pattern.source}`,
         regulatory: 'FDL Art.29 — No Tipping Off',
       });
     }

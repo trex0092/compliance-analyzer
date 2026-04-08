@@ -5,6 +5,11 @@ import { LocalAppStore } from '../../services/indexedDbStore';
 import { createId } from '../../utils/id';
 import { nowIso } from '../../utils/dates';
 
+// CRITICAL: FDL Art.29 — No Tipping Off
+// This page must ONLY be accessible to Compliance Officers and MLRO.
+// Subject entity names must NEVER be displayed in a context where
+// the subject could see them. Case IDs are used as proxy references.
+
 const store = new LocalAppStore();
 
 function buildSuspicionNarrative(caseObj: ComplianceCase): string {
@@ -73,9 +78,12 @@ export default function STRDraftPage() {
       reasonForSuspicion: buildSuspicionNarrative(selected),
       facts: selected.findings,
       redFlags: selected.redFlags,
+      // Parties are populated on final submission by the CO/MLRO, not in the draft.
+      // Storing the subject entityId in the draft risks tipping-off (FDL Art.29)
+      // if the draft is inadvertently visible outside the compliance team.
       parties: [
         {
-          name: selected.entityId,
+          name: selected.id, // use case ID as reference, not entity name
           role: 'subject',
         },
       ],

@@ -95,19 +95,43 @@ export function createApprovalRequest(
   };
 }
 
+/** Gates that require the four-eyes principle (two independent approvers). */
+const FOUR_EYES_GATES: ReadonlySet<ApprovalGate> = new Set([
+  'pep-onboarding',
+  'high-risk-onboarding',
+  'asset-freeze',
+  'pf-escalation',
+]);
+
 export function canProceedWithoutApproval(
   gates: ApprovalGate[],
   approvals: ApprovalRequest[]
 ): { canProceed: boolean; pendingGates: ApprovalGate[]; rejectedGates: ApprovalGate[] } {
-  const approvedGates = approvals.filter((a) => a.status === 'approved').map((a) => a.requiredFor);
-
   const rejectedGates = gates.filter((g) =>
     approvals.some((a) => a.requiredFor === g && a.status === 'rejected')
   );
 
-  const pendingGates = gates.filter(
-    (g) => !approvedGates.includes(g) && !rejectedGates.includes(g)
-  );
+  const pendingGates: ApprovalGate[] = [];
+
+  for (const gate of gates) {
+    if (rejectedGates.includes(gate)) continue;
+
+    const gateApprovals = approvals.filter(
+      (a) => a.requiredFor === gate && a.status === 'approved'
+    );
+
+    if (FOUR_EYES_GATES.has(gate)) {
+      // Four-eyes: require 2+ independent approvers (Cabinet Res 134/2025 Art.12-14)
+      const uniqueApprovers = new Set(gateApprovals.map((a) => a.decidedBy).filter(Boolean));
+      if (uniqueApprovers.size < 2) {
+        pendingGates.push(gate);
+      }
+    } else {
+      if (gateApprovals.length === 0) {
+        pendingGates.push(gate);
+      }
+    }
+  }
 
   return {
     canProceed: pendingGates.length === 0 && rejectedGates.length === 0,

@@ -146,11 +146,23 @@
 
   function normalizeEvent(raw) {
     var sanitize = function(s) { return typeof s === 'string' ? s.replace(/[<>"'&]/g, '') : ''; };
+    // Sanitize nested data object properties to prevent XSS via webhook payloads
+    var sanitizeData = function(obj) {
+      if (typeof obj !== 'object' || obj === null) return {};
+      var result = {};
+      for (var key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          var val = obj[key];
+          result[sanitize(key)] = typeof val === 'string' ? sanitize(val) : val;
+        }
+      }
+      return result;
+    };
     return {
       id: sanitize(raw.id) || generateId(),
       source: sanitize(raw.source) || 'unknown',
       type: sanitize(raw.type) || 'unknown',
-      data: typeof raw.data === 'object' && raw.data !== null ? raw.data : {},
+      data: sanitizeData(raw.data),
       timestamp: sanitize(raw.timestamp) || new Date().toISOString(),
       read: raw.read === true,
     };

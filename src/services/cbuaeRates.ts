@@ -150,7 +150,12 @@ export function convertToAED(
 
   const rate = rates.rates[fromCurrency.toUpperCase()];
   if (!rate) {
-    // Unknown currency — use USD peg as best guess
+    // Unknown currency — use USD peg as best guess.
+    // WARNING: This is inaccurate for non-USD currencies.
+    // Callers should check source === 'unknown-currency-fallback' and flag for review.
+    console.warn(
+      `[cbuaeRates] Currency "${fromCurrency}" not in CBUAE rates. Using USD peg as fallback — amount may be inaccurate.`
+    );
     return {
       amountAED: amount * USD_TO_AED,
       rate: USD_TO_AED,

@@ -335,9 +335,9 @@ var VaultEncryption = (function() {
                     html += '<tr style="border-bottom:1px solid #eee;">';
                     html += '<td style="padding:8px;font-family:monospace;">' + esc(k) + '</td>';
                     html += '<td style="padding:8px;text-align:right;">';
-                    html += '<button onclick="VaultEncryption._uiViewItem(\'' + esc(k).replace(/'/g, "\\'") + '\')" ';
+                    html += '<button onclick="VaultEncryption._uiViewItem(' + JSON.stringify(k) + ')" ';
                     html += 'style="padding:4px 12px;margin-left:4px;background:#3498db;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">View</button>';
-                    html += '<button onclick="VaultEncryption._uiDeleteItem(\'' + esc(k).replace(/'/g, "\\'") + '\')" ';
+                    html += '<button onclick="VaultEncryption._uiDeleteItem(' + JSON.stringify(k) + ')" ';
                     html += 'style="padding:4px 12px;margin-left:4px;background:#e74c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Delete</button>';
                     html += '</td>';
                     html += '</tr>';
