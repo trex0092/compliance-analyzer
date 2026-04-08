@@ -12,6 +12,8 @@
  * Note: These are fetched via the Netlify proxy to avoid CORS issues.
  */
 
+import { normalize, similarity, FUZZY_MATCH_THRESHOLD } from '../utils/fuzzyMatch';
+
 export interface SanctionsEntry {
   id: string;
   name: string;
@@ -170,6 +172,3 @@ export function screenAgainstList(entityName: string, entries: SanctionsEntry[])
 
   return matches.sort((a, b) => b.confidence - a.confidence);
 }
-
-// Shared fuzzy matching utilities — see src/utils/fuzzyMatch.ts
-import { normalize, similarity, FUZZY_MATCH_THRESHOLD } from '../utils/fuzzyMatch';

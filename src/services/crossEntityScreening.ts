@@ -11,6 +11,7 @@
  */
 
 import type { CustomerProfile, UBORecord } from '../domain/customers';
+import { normalizeEntity as normalize, similarity } from '../utils/fuzzyMatch';
 
 export interface CrossEntityMatch {
   type: 'shared-customer' | 'shared-ubo' | 'counterparty-link';
@@ -31,9 +32,6 @@ export interface CrossEntityReport {
   matches: CrossEntityMatch[];
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
 }
-
-// Shared fuzzy matching utilities — see src/utils/fuzzyMatch.ts
-import { normalizeEntity as normalize, similarity } from '../utils/fuzzyMatch';
 
 /**
  * Scan for shared customers across companies.
