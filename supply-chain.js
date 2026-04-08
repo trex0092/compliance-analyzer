@@ -381,7 +381,7 @@ Format your response as a structured compliance update notification. Be concise 
     try {
       if (typeof callAI !== 'function') { notifEl.innerHTML = '<p style="color:var(--red);font-size:12px;padding:8px 0">AI not available. Configure API key or proxy in Settings.</p>'; return; }
 
-      const data = await callAI({ model: 'claude-sonnet-4-5', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] });
+      const data = await callAI({ model: 'claude-haiku-4-5', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] });
       const text = data?.content?.[0]?.text || data?.error?.message || 'No response received.';
 
       const now = new Date().toLocaleString('en-GB');

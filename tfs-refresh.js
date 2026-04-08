@@ -167,7 +167,7 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
     if (typeof callAI === 'function') {
       try {
         const data = await callAI({
-          model: 'claude-sonnet-4-5',
+          model: 'claude-haiku-4-5',
           max_tokens: 1024,
           temperature: 0,
           system: 'You are a Tier-1 compliance screening engine operating at the standard of Refinitiv World-Check, Dow Jones Risk & Compliance, and LexisNexis Bridger.\n\nRULES:\n1. NEVER fabricate sanctions designations — only report confirmed ones.\n2. Adverse media is SEPARATE from sanctions. Being investigated != being sanctioned.\n3. When adverse media IS found, report it ASSERTIVELY with full detail — sources, dates, jurisdictions, status.\n4. ALWAYS investigate the entity\'s CORPORATE NETWORK: family, business partners, directorships, beneficial ownership.\n5. Categorize adverse media: Financial Crime, Corruption, Terrorism, Organized Crime, Environmental Crime, Human Rights, Regulatory Enforcement, Litigation, Sanctions Evasion.\n\nSources: ICIJ, OCCRP, Reporter Brasil, Mongabay, Global Witness, Turkish Minute, Ahval News, Cumhuriyet, Middle East Eye, Al Jazeera, Bellingcat, BBC, Reuters, Bloomberg, FT, local media. NGOs: Transparency International, BHRRC, Amnesty, HRW. Gold: LBMA, DMCC.\n\nReturn only valid JSON.',
