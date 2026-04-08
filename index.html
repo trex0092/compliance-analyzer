@@ -7253,7 +7253,14 @@ async function callOpenAI(body) {
   if (!r.ok) {
     let errDetail = '';
     try { const ej = await r.json(); errDetail = ej?.error?.message || JSON.stringify(ej); } catch (_) {}
-    throw new Error(`OpenAI API ${r.status}: ${errDetail || r.statusText}`);
+    const err = new Error(`OpenAI API ${r.status}: ${errDetail || r.statusText}`);
+    if (r.status === 402 || r.status === 429) {
+      const lower = (errDetail || '').toLowerCase();
+      if (lower.includes('quota') || lower.includes('billing') || lower.includes('insufficient') || lower.includes('exceeded') || r.status === 402) {
+        err.isBillingError = true;
+      }
+    }
+    throw err;
   }
 
   const data = await r.json();
@@ -7305,7 +7312,14 @@ async function callGemini(body) {
   if (!r.ok) {
     let errDetail = '';
     try { const ej = await r.json(); errDetail = ej?.error?.message || JSON.stringify(ej); } catch (_) {}
-    throw new Error(`Gemini API ${r.status}: ${errDetail || r.statusText}`);
+    const err = new Error(`Gemini API ${r.status}: ${errDetail || r.statusText}`);
+    if (r.status === 402 || r.status === 429) {
+      const lower = (errDetail || '').toLowerCase();
+      if (lower.includes('quota') || lower.includes('billing') || lower.includes('exceeded') || lower.includes('limit') || r.status === 402) {
+        err.isBillingError = true;
+      }
+    }
+    throw err;
   }
 
   const data = await r.json();
