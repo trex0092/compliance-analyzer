@@ -11,13 +11,15 @@ const HawkeyeApp = (function() {
 
   function load(key) { try { return JSON.parse(localStorage.getItem(key)||'null'); } catch{ return null; } }
   function save(key,val) { try { localStorage.setItem(key,JSON.stringify(val)); } catch(e){} }
-  function today() { return new Date().toISOString().slice(0,10); }
-  function fmtDate(d) { if(!d) return '\u2014'; return new Date(d).toLocaleDateString('en-GB'); }
+  function today() { const n=new Date(); return String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+'/'+n.getFullYear(); }
+  function parseDDMMYYYY(s) { if(!s) return null; const p=s.split('/'); if(p.length!==3) return null; return new Date(p[2],p[1]-1,p[0]); }
+  function fmtDate(d) { if(!d) return '\u2014'; const dt = d.includes&&d.includes('/') ? parseDDMMYYYY(d) : new Date(d); if(!dt||isNaN(dt.getTime())) return d; return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
+  function fmtDateDDMMYYYY(dt) { return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
   function addBusinessDays(date, days) {
-    const d = new Date(date);
+    const d = parseDDMMYYYY(date) || new Date(date);
     let added = 0;
     while (added < days) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6) added++; }
-    return d.toISOString().slice(0,10);
+    return fmtDateDDMMYYYY(d);
   }
 
   // Toast notification
