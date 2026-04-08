@@ -205,7 +205,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       } catch (e) {
         if (e.isBillingError) {
           if (typeof toast === 'function') toast('API credits exhausted — TFS screening unavailable. Add credits at console.anthropic.com or screen manually.', 'info', 8000);
-          return {
+          const manualMatch = {
             id: Date.now(),
             entity: name,
             type,
@@ -216,6 +216,11 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
             date: new Date().toISOString(),
             listsChecked: 'Manual verification required',
           };
+          const savedMatches = getMatches();
+          savedMatches.unshift(manualMatch);
+          saveMatches(savedMatches);
+          if (typeof logAudit === 'function') logAudit('tfs', `TFS screening ${name}: MANUAL_REVIEW (API credits exhausted)`);
+          return manualMatch;
         }
         if (typeof toast === 'function') toast(`TFS screening error: ${e.message}`, 'error');
       }
@@ -258,7 +263,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
         <div>
           <span class="badge ${m.result === 'CLEAR' ? 'b-ok' : m.result === 'MATCH' ? 'b-c' : 'b-h'}">${tfsLabel(m.result)}</span>
-          <span style="font-size:12px;margin-left:6px">${m.entity}${m.country ? ' · ' + m.country : ''}${m.adverseMedia && Object.values(m.adverseMedia).some(v => v === 'Found') ? ' · <span style="color:#D94F4F">Adverse</span>' : ''}</span>
+          <span style="font-size:12px;margin-left:6px">${esc(m.entity)}${m.country ? ' · ' + esc(m.country) : ''}${m.adverseMedia && Object.values(m.adverseMedia).some(v => v === 'Found') ? ' · <span style="color:#D94F4F">Adverse</span>' : ''}</span>
         </div>
         <span style="font-size:11px;color:var(--muted)">${new Date(m.date).toLocaleDateString('en-GB')}</span>
       </div>

@@ -7315,7 +7315,7 @@ async function callGemini(body) {
     const err = new Error(`Gemini API ${r.status}: ${errDetail || r.statusText}`);
     if (r.status === 402 || r.status === 429) {
       const lower = (errDetail || '').toLowerCase();
-      if (lower.includes('quota') || lower.includes('billing') || lower.includes('exceeded') || lower.includes('limit') || r.status === 402) {
+      if (lower.includes('quota') || lower.includes('billing') || lower.includes('exceeded') || lower.includes('exhausted') || lower.includes('insufficient') || r.status === 402) {
         err.isBillingError = true;
       }
     }
