@@ -170,7 +170,18 @@ const AuthRBAC = (function () {
         const token = sessionStorage.getItem('fgl_current_token');
         if (!token) return null;
         const sessions = getActiveSessions();
-        return sessions.find(s => s.token === token) || null;
+        const session = sessions.find(s => s.token === token) || null;
+        // Validate session fingerprint to detect session hijacking
+        if (session && session.fingerprint) {
+            const currentFingerprint = btoa(navigator.userAgent + '|' + location.origin);
+            if (session.fingerprint !== currentFingerprint) {
+                writeLog({ event: 'session_fingerprint_mismatch', username: session.username, userId: session.userId });
+                removeSession(token);
+                sessionStorage.removeItem('fgl_current_token');
+                return null;
+            }
+        }
+        return session;
     }
 
     // --------------- Brute Force Protection ---------------
@@ -247,11 +258,14 @@ const AuthRBAC = (function () {
         clearFailedAttempts(username);
 
         const token = generateToken();
+        // Session fingerprint: bind session to origin to detect hijacking
+        const fingerprint = btoa(navigator.userAgent + '|' + location.origin);
         const session = {
             token,
             userId: user.id,
             username: user.username,
             role: user.role,
+            fingerprint,
             createdAt: Date.now(),
             lastActivity: Date.now(),
             expiresAt: Date.now() + SESSION_DURATION_MS
@@ -581,6 +595,12 @@ const AuthRBAC = (function () {
                     color:#f08080;padding:10px 14px;border-radius:3px;margin-bottom:16px;
                     font-size:0.85rem;
                 "></div>
+                <label style="display:block;color:var(--text,#e0e0e0);font-size:0.8rem;margin-bottom:6px;">Current Password</label>
+                <input id="fgl-chpw-current" type="password" style="
+                    width:100%;padding:10px 12px;margin-bottom:16px;border-radius:3px;
+                    border:1px solid var(--border,#2a2a3e);background:var(--surface2,#12121f);
+                    color:var(--text,#e0e0e0);font-size:0.95rem;box-sizing:border-box;outline:none;
+                " />
                 <label style="display:block;color:var(--text,#e0e0e0);font-size:0.8rem;margin-bottom:6px;">New Password</label>
                 <input id="fgl-chpw-new" type="password" style="
                     width:100%;padding:10px 12px;margin-bottom:16px;border-radius:3px;
@@ -603,14 +623,21 @@ const AuthRBAC = (function () {
         target.appendChild(overlay);
 
         const btn = document.getElementById('fgl-chpw-btn');
+        const currentInput = document.getElementById('fgl-chpw-current');
         const newInput = document.getElementById('fgl-chpw-new');
         const confirmInput = document.getElementById('fgl-chpw-confirm');
         const errBox = document.getElementById('fgl-chpw-error');
 
         btn.addEventListener('click', async () => {
             errBox.style.display = 'none';
+            const curp = currentInput.value;
             const np = newInput.value;
             const cp = confirmInput.value;
+            if (!curp) {
+                errBox.textContent = 'Current password is required.';
+                errBox.style.display = 'block';
+                return;
+            }
             const policyErr = validatePasswordPolicy(np);
             if (policyErr) {
                 errBox.textContent = policyErr;
@@ -623,7 +650,7 @@ const AuthRBAC = (function () {
                 return;
             }
             try {
-                await changeOwnPassword('admin123', np);
+                await changeOwnPassword(curp, np);
                 overlay.remove();
                 const user = getCurrentUser();
                 document.dispatchEvent(new CustomEvent('fgl:auth:login', { detail: user }));

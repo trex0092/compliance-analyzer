@@ -15,6 +15,42 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// ─── Rate Limiting ─────────────────────────────────────────────────────────
+// In-memory sliding window rate limiter (no external deps required)
+const rateLimitStore = new Map();
+
+function rateLimit({ windowMs = 15 * 60 * 1000, max = 100, message = 'Too many requests, please try again later.' } = {}) {
+  return (req, res, next) => {
+    const key = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const now = Date.now();
+    let entry = rateLimitStore.get(key);
+
+    if (!entry || now - entry.windowStart > windowMs) {
+      entry = { windowStart: now, count: 0 };
+      rateLimitStore.set(key, entry);
+    }
+
+    entry.count++;
+
+    if (entry.count > max) {
+      console.warn(`[RATE-LIMIT] Blocked ${key} — ${entry.count} requests in window`);
+      return res.status(429).json({ error: message });
+    }
+
+    res.setHeader('X-RateLimit-Limit', max);
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, max - entry.count));
+    next();
+  };
+}
+
+// Periodic cleanup of stale entries (every 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitStore) {
+    if (now - entry.windowStart > 15 * 60 * 1000) rateLimitStore.delete(key);
+  }
+}, 5 * 60 * 1000);
+
 // Initialize Composio
 const composio = new Composio();
 
@@ -56,6 +92,15 @@ function updateOpencodeConfig(mcpUrl, mcpHeaders) {
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Apply rate limiting per CLAUDE.md security requirements
+const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: 'Too many requests. Limit: 100 per 15 minutes.' });
+const chatLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many chat requests. Limit: 10 per 15 minutes.' });
+
+app.use('/api/health', generalLimiter);
+app.use('/api/providers', generalLimiter);
+app.use('/api/chat', chatLimiter);
+app.use('/api/abort', chatLimiter);
 
 // Chat endpoint using provider abstraction
 app.post('/api/chat', async (req, res) => {

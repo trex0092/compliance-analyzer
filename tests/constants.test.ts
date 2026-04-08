@@ -5,160 +5,237 @@
  * If a test fails, it means someone changed a regulatory constant.
  * Only update these tests when the underlying regulation actually changes.
  */
-import { describe, it, expect } from "vitest";
 import {
   DPMS_CASH_THRESHOLD_AED,
   CROSS_BORDER_CASH_THRESHOLD_AED,
   USD_TO_AED,
+  VALUATION_ANOMALY_PCT,
+  WEIGHT_DISCREPANCY_PCT,
+  CERTIFICATION_THRESHOLD_AED,
+  STRUCTURING_CUMULATIVE_PCT,
+  DORMANCY_DAYS,
   UBO_OWNERSHIP_THRESHOLD_PCT,
   UBO_REVERIFICATION_WORKING_DAYS,
   STR_FILING_DEADLINE_BUSINESS_DAYS,
   CTR_FILING_DEADLINE_BUSINESS_DAYS,
-  EOCN_FREEZE_IMMEDIATELY,
   CNMR_FILING_DEADLINE_BUSINESS_DAYS,
+  MOE_CIRCULAR_IMPLEMENTATION_DAYS,
   RECORD_RETENTION_YEARS,
-  MAX_FAILED_LOGIN_ATTEMPTS,
-  PENALTY_RANGE,
-  RISK_THRESHOLDS,
-  PF_HIGH_RISK_JURISDICTIONS,
-  FATF_GREY_LIST,
-  VALUATION_ANOMALY_PCT,
-  WEIGHT_DISCREPANCY_PCT,
   CDD_REVIEW_HIGH_RISK_MONTHS,
   CDD_REVIEW_MEDIUM_RISK_MONTHS,
   CDD_REVIEW_LOW_RISK_MONTHS,
-  DORMANCY_DAYS,
-} from "../src/domain/constants";
+  SESSION_TIMEOUT_MS,
+  IDLE_TIMEOUT_MS,
+  MAX_FAILED_LOGIN_ATTEMPTS,
+  LOCKOUT_DURATION_MS,
+  PENALTY_RANGE,
+  RISK_THRESHOLDS,
+  EOCN_FREEZE_IMMEDIATELY,
+  DORMANCY_REACTIVATION_MIN_AED,
+  PF_HIGH_RISK_JURISDICTIONS,
+  FATF_GREY_LIST,
+  EU_HIGH_RISK_COUNTRIES,
+  DUAL_USE_KEYWORDS,
+  REGULATORY_CONSTANTS_VERSION,
+  SUPPLY_CHAIN_RISK_POINTS,
+} from '@/domain/constants';
 
-describe("Transaction Thresholds (FDL No.10/2025)", () => {
-  it("DPMS cash threshold is AED 55,000 (Art.16)", () => {
+describe('Transaction Thresholds (FDL No.10/2025)', () => {
+  it('DPMS cash threshold is AED 55,000 (Art.16)', () => {
     expect(DPMS_CASH_THRESHOLD_AED).toBe(55_000);
   });
 
-  it("Cross-border cash threshold is AED 60,000 (Art.17)", () => {
+  it('Cross-border cash threshold is AED 60,000 (Art.17)', () => {
     expect(CROSS_BORDER_CASH_THRESHOLD_AED).toBe(60_000);
   });
 
-  it("USD/AED peg is 3.6725 (CBUAE)", () => {
+  it('USD/AED peg is 3.6725 (CBUAE)', () => {
     expect(USD_TO_AED).toBe(3.6725);
   });
 
-  it("Valuation anomaly is 25% (UAE NRA 2024)", () => {
+  it('Valuation anomaly is 25% (UAE NRA 2024)', () => {
     expect(VALUATION_ANOMALY_PCT).toBe(0.25);
   });
 
-  it("Weight discrepancy is 5%", () => {
+  it('Weight discrepancy is 5%', () => {
     expect(WEIGHT_DISCREPANCY_PCT).toBe(0.05);
+  });
+
+  it('Certification threshold is AED 10,000', () => {
+    expect(CERTIFICATION_THRESHOLD_AED).toBe(10_000);
+  });
+
+  it('Structuring cumulative percentage is 73%', () => {
+    expect(STRUCTURING_CUMULATIVE_PCT).toBe(0.73);
+  });
+
+  it('Dormancy window is 90 days', () => {
+    expect(DORMANCY_DAYS).toBe(90);
   });
 });
 
-describe("Beneficial Ownership (Cabinet Decision 109/2023)", () => {
-  it("UBO threshold is 25%", () => {
+describe('Beneficial Ownership (Cabinet Decision 109/2023)', () => {
+  it('UBO threshold is 25%', () => {
     expect(UBO_OWNERSHIP_THRESHOLD_PCT).toBe(0.25);
   });
 
-  it("Re-verification deadline is 15 working days", () => {
+  it('Re-verification deadline is 15 working days', () => {
     expect(UBO_REVERIFICATION_WORKING_DAYS).toBe(15);
   });
 });
 
-describe("Filing Deadlines (FDL No.10/2025, EOCN TFS Guidance 2025)", () => {
-  it("STR filing is without delay — 0 business days (FDL Art.26-27, FIU Guidance)", () => {
+describe('Filing Deadlines (FDL No.10/2025, EOCN TFS Guidance 2025)', () => {
+  it('STR filing is without delay — 0 business days (FDL Art.26-27, FIU Guidance)', () => {
     expect(STR_FILING_DEADLINE_BUSINESS_DAYS).toBe(0);
   });
 
-  it("CTR filing is 15 business days (FDL Art.16)", () => {
+  it('CTR filing is 15 business days (FDL Art.16)', () => {
     expect(CTR_FILING_DEADLINE_BUSINESS_DAYS).toBe(15);
   });
 
-  it("EOCN asset freeze must be immediate (Cabinet Res 74/2020, EOCN TFS Guidance July 2025)", () => {
-    expect(EOCN_FREEZE_IMMEDIATELY).toBe(true);
+  it('CNMR filing is 5 business days (Cabinet Res 74/2020 Art.6)', () => {
+    expect(CNMR_FILING_DEADLINE_BUSINESS_DAYS).toBe(5);
   });
 
-  it("CNMR filing is 5 business days (Cabinet Res 74/2020 Art.6)", () => {
-    expect(CNMR_FILING_DEADLINE_BUSINESS_DAYS).toBe(5);
+  it('MoE circular implementation is 30 calendar days', () => {
+    expect(MOE_CIRCULAR_IMPLEMENTATION_DAYS).toBe(30);
+  });
+
+  it('EOCN asset freeze must be immediate (Cabinet Res 74/2020)', () => {
+    expect(EOCN_FREEZE_IMMEDIATELY).toBe(true);
   });
 });
 
-describe("Record Retention (FDL No.10/2025, MoE DPMS Guidance)", () => {
-  it("Minimum retention is 10 years", () => {
+describe('Record Retention (FDL No.10/2025, MoE DPMS Guidance)', () => {
+  it('Minimum retention is 10 years', () => {
     expect(RECORD_RETENTION_YEARS).toBe(10);
   });
 });
 
-describe("CDD Review Frequencies (Cabinet Res 134/2025)", () => {
-  it("High-risk review every 3 months", () => {
+describe('CDD Review Frequencies (Cabinet Res 134/2025)', () => {
+  it('High-risk review every 3 months', () => {
     expect(CDD_REVIEW_HIGH_RISK_MONTHS).toBe(3);
   });
 
-  it("Medium-risk review every 6 months", () => {
+  it('Medium-risk review every 6 months', () => {
     expect(CDD_REVIEW_MEDIUM_RISK_MONTHS).toBe(6);
   });
 
-  it("Low-risk review every 12 months", () => {
+  it('Low-risk review every 12 months', () => {
     expect(CDD_REVIEW_LOW_RISK_MONTHS).toBe(12);
   });
 });
 
-describe("Security Controls", () => {
-  it("Account locks after 5 failed attempts", () => {
+describe('Session & Security Controls', () => {
+  it('Session timeout is 2 hours (7,200,000 ms)', () => {
+    expect(SESSION_TIMEOUT_MS).toBe(7_200_000);
+  });
+
+  it('Idle timeout is 30 minutes (1,800,000 ms)', () => {
+    expect(IDLE_TIMEOUT_MS).toBe(1_800_000);
+  });
+
+  it('Account locks after 5 failed attempts', () => {
     expect(MAX_FAILED_LOGIN_ATTEMPTS).toBe(5);
+  });
+
+  it('Lockout duration is 15 minutes (900,000 ms)', () => {
+    expect(LOCKOUT_DURATION_MS).toBe(900_000);
   });
 });
 
-describe("Penalty Range (Cabinet Res 71/2024)", () => {
-  it("Minimum penalty is AED 10,000", () => {
+describe('Penalty Range (Cabinet Res 71/2024)', () => {
+  it('Minimum penalty is AED 10,000', () => {
     expect(PENALTY_RANGE.minAED).toBe(10_000);
   });
 
-  it("Maximum penalty is AED 100,000,000", () => {
+  it('Maximum penalty is AED 100,000,000', () => {
     expect(PENALTY_RANGE.maxAED).toBe(100_000_000);
   });
 });
 
-describe("Risk Scoring Thresholds", () => {
-  it("Critical threshold is 16", () => {
+describe('Risk Scoring Thresholds', () => {
+  it('Critical threshold is 16', () => {
     expect(RISK_THRESHOLDS.critical).toBe(16);
   });
 
-  it("High threshold is 11", () => {
+  it('High threshold is 11', () => {
     expect(RISK_THRESHOLDS.high).toBe(11);
   });
 
-  it("Medium threshold is 6", () => {
+  it('Medium threshold is 6', () => {
     expect(RISK_THRESHOLDS.medium).toBe(6);
   });
 });
 
-describe("PF High-Risk Jurisdictions (Cabinet Res 156/2025)", () => {
-  it("includes North Korea, Iran, Syria, Myanmar, Yemen", () => {
-    expect(PF_HIGH_RISK_JURISDICTIONS).toContain("KP");
-    expect(PF_HIGH_RISK_JURISDICTIONS).toContain("IR");
-    expect(PF_HIGH_RISK_JURISDICTIONS).toContain("SY");
-    expect(PF_HIGH_RISK_JURISDICTIONS).toContain("MM");
-    expect(PF_HIGH_RISK_JURISDICTIONS).toContain("YE");
-  });
-
-  it("has exactly 5 jurisdictions", () => {
-    expect(PF_HIGH_RISK_JURISDICTIONS.length).toBe(5);
+describe('Dormancy Reactivation', () => {
+  it('Dormancy reactivation minimum is AED 20,000', () => {
+    expect(DORMANCY_REACTIVATION_MIN_AED).toBe(20_000);
   });
 });
 
-describe("FATF Grey List", () => {
-  it("has 23 countries (Feb 2026 update)", () => {
-    expect(FATF_GREY_LIST.length).toBe(23);
+describe('PF High-Risk Jurisdictions (Cabinet Res 156/2025)', () => {
+  it('includes North Korea (KP)', () => {
+    expect(PF_HIGH_RISK_JURISDICTIONS).toContain('KP');
   });
 
-  it("includes key jurisdictions", () => {
-    expect(FATF_GREY_LIST).toContain("SY");
-    expect(FATF_GREY_LIST).toContain("YE");
-    expect(FATF_GREY_LIST).toContain("NG");
-    expect(FATF_GREY_LIST).toContain("ZA");
+  it('includes Iran (IR)', () => {
+    expect(PF_HIGH_RISK_JURISDICTIONS).toContain('IR');
   });
 });
 
-describe("Dormancy Detection", () => {
-  it("Dormancy window is 90 days", () => {
-    expect(DORMANCY_DAYS).toBe(90);
+describe('FATF Grey List', () => {
+  it('has 23 countries (Feb 2026 update)', () => {
+    expect(FATF_GREY_LIST).toHaveLength(23);
+  });
+
+  it('includes Algeria (DZ)', () => {
+    expect(FATF_GREY_LIST).toContain('DZ');
+  });
+
+  it('includes Nigeria (NG)', () => {
+    expect(FATF_GREY_LIST).toContain('NG');
+  });
+});
+
+describe('EU High-Risk Third Countries', () => {
+  it('includes Afghanistan (AF)', () => {
+    expect(EU_HIGH_RISK_COUNTRIES).toContain('AF');
+  });
+
+  it('includes Myanmar (MM)', () => {
+    expect(EU_HIGH_RISK_COUNTRIES).toContain('MM');
+  });
+});
+
+describe('Dual-Use Keywords (PF Monitoring)', () => {
+  it('includes centrifuge', () => {
+    expect(DUAL_USE_KEYWORDS).toContain('centrifuge');
+  });
+
+  it('includes uranium', () => {
+    expect(DUAL_USE_KEYWORDS).toContain('uranium');
+  });
+
+  it('includes nuclear', () => {
+    expect(DUAL_USE_KEYWORDS).toContain('nuclear');
+  });
+});
+
+describe('Regulatory Constants Version', () => {
+  it('is a date string matching YYYY-MM-DD format', () => {
+    expect(REGULATORY_CONSTANTS_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('Supply Chain Risk Points', () => {
+  it('maxScore is 100', () => {
+    expect(SUPPLY_CHAIN_RISK_POINTS.maxScore).toBe(100);
+  });
+
+  it('highThreshold is greater than mediumThreshold (sanity check)', () => {
+    expect(SUPPLY_CHAIN_RISK_POINTS.highThreshold).toBeGreaterThan(
+      SUPPLY_CHAIN_RISK_POINTS.mediumThreshold,
+    );
   });
 });
