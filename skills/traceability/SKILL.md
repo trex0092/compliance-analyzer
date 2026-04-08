@@ -58,7 +58,7 @@ Cabinet Res 74/2020 — TFS / Asset Freeze
 
 | Art. | Requirement | Implementation | Test | Constant | Evidence | Status |
 |------|-------------|---------------|------|----------|----------|--------|
-| 4 | Freeze within 24h | src/utils/businessDays.ts:checkEOCNDeadline() | businessDays.test.ts:14 | EOCN_FREEZE_DEADLINE_HOURS=24 | Incident log | ✓ |
+| 4 | Freeze IMMEDIATELY | src/utils/businessDays.ts:checkEOCNDeadline() | businessDays.test.ts:14 | EOCN_FREEZE_IMMEDIATELY=true | Incident log | ✓ |
 | 6 | CNMR within 5 biz days | src/utils/businessDays.ts:checkDeadline() | businessDays.test.ts:8 | CNMR_FILING_DEADLINE_BUSINESS_DAYS=5 | CNMR log | ✓ |
 
 [continue for all regulations...]

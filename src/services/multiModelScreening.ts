@@ -361,7 +361,7 @@ function recommendAction(
 ): string {
   if (consensus === 'confirmed-match') {
     if (screeningType === 'sanctions') {
-      return 'FREEZE immediately. Start 24h EOCN countdown. File CNMR within 5 business days. DO NOT notify the subject (Art.29 no tipping off).';
+      return 'FREEZE IMMEDIATELY without delay (EOCN TFS Guidance 2025). File CNMR within 5 business days. Report to EOCN and Supervisory Authority. DO NOT notify the subject (Art.29 no tipping off).';
     }
     if (screeningType === 'pep') {
       return 'Apply EDD. Require Senior Management/Board approval (Cabinet Res 134/2025 Art.14). Set 3-month review cycle.';

@@ -45,16 +45,26 @@ export const UBO_OWNERSHIP_THRESHOLD_PCT = 0.25;
 /** UBO re-verification deadline — working days after ownership change (Cabinet Decision 109/2023) */
 export const UBO_REVERIFICATION_WORKING_DAYS = 15;
 
-// ─── Filing Deadlines (Business Days) ───────────────────────────────────────
+// ─── Filing Deadlines ───────────────────────────────────────────────────────
 
-/** STR/SAR — file without delay, maximum 10 business days (FDL Art.26) */
-export const STR_FILING_DEADLINE_BUSINESS_DAYS = 10;
+/**
+ * STR/SAR — file WITHOUT DELAY upon suspicion confirmation (FDL No.10/2025 Art.26-27).
+ * The UAE FIU interprets "without delay" as absolute immediacy — the moment
+ * suspicion is solidified. This constant represents the outer regulatory
+ * backstop (business days), NOT a grace period to wait before filing.
+ */
+export const STR_FILING_DEADLINE_BUSINESS_DAYS = 0;
 
 /** CTR (DPMSR) — file within 15 business days (FDL Art.16) */
 export const CTR_FILING_DEADLINE_BUSINESS_DAYS = 15;
 
-/** EOCN asset freeze — execute within 24 hours (Cabinet Res 74/2020 Art.4) */
-export const EOCN_FREEZE_DEADLINE_HOURS = 24;
+/**
+ * EOCN asset freeze — execute IMMEDIATELY without delay (Cabinet Res 74/2020 Art.4,
+ * EOCN TFS Guidance July 2025). "Without delay" means freezing within hours of
+ * designation — EOCN guidance states 1-2 hours maximum. Must maintain freeze
+ * capability even during weekends and public holidays.
+ */
+export const EOCN_FREEZE_IMMEDIATELY = true;
 
 /** CNMR filing — within 5 business days of confirmed match (Cabinet Res 74/2020 Art.6) */
 export const CNMR_FILING_DEADLINE_BUSINESS_DAYS = 5;
@@ -64,8 +74,8 @@ export const MOE_CIRCULAR_IMPLEMENTATION_DAYS = 30;
 
 // ─── Record Retention ───────────────────────────────────────────────────────
 
-/** Minimum record retention — 5 years (FDL Art.24) */
-export const RECORD_RETENTION_YEARS = 5;
+/** Minimum record retention — 10 years (FDL No.10/2025, MoE DPMS Guidance) */
+export const RECORD_RETENTION_YEARS = 10;
 
 // ─── CDD Review Frequencies ────────────────────────────────────────────────
 
@@ -239,6 +249,6 @@ export const DUAL_USE_KEYWORDS = [
 // ─── Version ────────────────────────────────────────────────────────────────
 
 /** Last regulatory update date — update when any constant changes */
-export const REGULATORY_CONSTANTS_VERSION = '2026-04-07';
+export const REGULATORY_CONSTANTS_VERSION = '2026-04-08';
 export const REGULATORY_CONSTANTS_NOTES =
-  'Initial centralization. FDL No.10/2025, Cabinet Res 134/2025, 74/2020, 156/2025, 71/2024, 109/2023.';
+  'Updated: record retention 5yr→10yr (MoE DPMS Guidance), STR filing to "without delay" (FIU), asset freeze to immediate (EOCN TFS Guidance July 2025). FDL No.10/2025, Cabinet Res 134/2025, 74/2020, 156/2025, 71/2024, 109/2023.';

@@ -30,7 +30,7 @@ For each filing, use `checkDeadline()` from `src/utils/businessDays.ts`:
 | SAR | 10 | STR_FILING_DEADLINE_BUSINESS_DAYS |
 | CTR | 15 | CTR_FILING_DEADLINE_BUSINESS_DAYS |
 | CNMR | 5 | CNMR_FILING_DEADLINE_BUSINESS_DAYS |
-| EOCN Freeze | 24 hours | EOCN_FREEZE_DEADLINE_HOURS |
+| EOCN Freeze | IMMEDIATE | EOCN_FREEZE_IMMEDIATELY |
 
 ### Step 3: Generate Report
 

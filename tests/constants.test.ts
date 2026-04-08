@@ -14,7 +14,7 @@ import {
   UBO_REVERIFICATION_WORKING_DAYS,
   STR_FILING_DEADLINE_BUSINESS_DAYS,
   CTR_FILING_DEADLINE_BUSINESS_DAYS,
-  EOCN_FREEZE_DEADLINE_HOURS,
+  EOCN_FREEZE_IMMEDIATELY,
   CNMR_FILING_DEADLINE_BUSINESS_DAYS,
   RECORD_RETENTION_YEARS,
   MAX_FAILED_LOGIN_ATTEMPTS,
@@ -62,17 +62,17 @@ describe("Beneficial Ownership (Cabinet Decision 109/2023)", () => {
   });
 });
 
-describe("Filing Deadlines", () => {
-  it("STR filing is 10 business days (FDL Art.26)", () => {
-    expect(STR_FILING_DEADLINE_BUSINESS_DAYS).toBe(10);
+describe("Filing Deadlines (FDL No.10/2025, EOCN TFS Guidance 2025)", () => {
+  it("STR filing is without delay — 0 business days (FDL Art.26-27, FIU Guidance)", () => {
+    expect(STR_FILING_DEADLINE_BUSINESS_DAYS).toBe(0);
   });
 
   it("CTR filing is 15 business days (FDL Art.16)", () => {
     expect(CTR_FILING_DEADLINE_BUSINESS_DAYS).toBe(15);
   });
 
-  it("EOCN asset freeze is 24 hours (Cabinet Res 74/2020 Art.4)", () => {
-    expect(EOCN_FREEZE_DEADLINE_HOURS).toBe(24);
+  it("EOCN asset freeze must be immediate (Cabinet Res 74/2020, EOCN TFS Guidance July 2025)", () => {
+    expect(EOCN_FREEZE_IMMEDIATELY).toBe(true);
   });
 
   it("CNMR filing is 5 business days (Cabinet Res 74/2020 Art.6)", () => {
@@ -80,9 +80,9 @@ describe("Filing Deadlines", () => {
   });
 });
 
-describe("Record Retention (FDL Art.24)", () => {
-  it("Minimum retention is 5 years", () => {
-    expect(RECORD_RETENTION_YEARS).toBe(5);
+describe("Record Retention (FDL No.10/2025, MoE DPMS Guidance)", () => {
+  it("Minimum retention is 10 years", () => {
+    expect(RECORD_RETENTION_YEARS).toBe(10);
   });
 });
 

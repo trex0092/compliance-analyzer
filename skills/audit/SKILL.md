@@ -49,7 +49,7 @@ For each area, verify implementation against UAE regulatory requirements:
 - [ ] All 6 lists checked: UN, OFAC, EU, UK, UAE, EOCN
 - [ ] Re-screening on list updates
 - [ ] Fuzzy matching with threshold >= 0.75 (from `FUZZY_MATCH_THRESHOLD`)
-- [ ] Asset freeze capability within 24h (`EOCN_FREEZE_DEADLINE_HOURS`)
+- [ ] Asset freeze capability IMMEDIATELY (`EOCN_FREEZE_IMMEDIATELY`, EOCN TFS Guidance 2025)
 - [ ] CNMR filing within 5 business days (`CNMR_FILING_DEADLINE_BUSINESS_DAYS`)
 - [ ] EOCN reporting mechanism
 - [ ] Multi-model consensus screening available for high-risk matches
@@ -166,7 +166,7 @@ Constants Version: [REGULATORY_CONSTANTS_VERSION from constants.ts]
 Verify these constants match current law:
 - DPMS_CASH_THRESHOLD_AED: [value] ← MoE Circular 08/AML/2021
 - CROSS_BORDER_CASH_THRESHOLD_AED: [value] ← Cabinet Res 134/2025
-- EOCN_FREEZE_DEADLINE_HOURS: [value] ← Cabinet Res 74/2020
+- EOCN_FREEZE_IMMEDIATELY: [value] ← Cabinet Res 74/2020, EOCN TFS Guidance July 2025
 - UBO_OWNERSHIP_THRESHOLD_PCT: [value] ← Cabinet Decision 109/2023
 - REGULATORY_CONSTANTS_VERSION: [value]
 ```

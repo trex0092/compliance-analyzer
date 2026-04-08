@@ -33,15 +33,15 @@
     UBO_OWNERSHIP_THRESHOLD_PCT: 0.25,
     UBO_REVERIFICATION_WORKING_DAYS: 15,
 
-    // Filing Deadlines (Business Days)
-    STR_FILING_DEADLINE_BUSINESS_DAYS: 10,
+    // Filing Deadlines
+    STR_FILING_DEADLINE_BUSINESS_DAYS: 0, // Without delay (FDL Art.26-27, FIU Guidance)
     CTR_FILING_DEADLINE_BUSINESS_DAYS: 15,
-    EOCN_FREEZE_DEADLINE_HOURS: 24,
+    EOCN_FREEZE_IMMEDIATELY: true, // Immediate freeze (EOCN TFS Guidance July 2025)
     CNMR_FILING_DEADLINE_BUSINESS_DAYS: 5,
     MOE_CIRCULAR_IMPLEMENTATION_DAYS: 30,
 
     // Record Retention
-    RECORD_RETENTION_YEARS: 5,
+    RECORD_RETENTION_YEARS: 10, // 10 years (FDL No.10/2025, MoE DPMS Guidance)
 
     // CDD Review Frequencies (months)
     CDD_REVIEW_HIGH_RISK_MONTHS: 3,
@@ -67,6 +67,6 @@
     get PF_HIGH_RISK_JURISDICTIONS() { return ['KP', 'IR', 'SY', 'MM', 'YE']; },
 
     // Version
-    VERSION: '2026-04-07',
+    VERSION: '2026-04-08',
   });
 })(typeof window !== 'undefined' ? window : globalThis);
