@@ -96,7 +96,9 @@ export default function DecisionPanel({ item }: Props) {
           marginBottom: 12,
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 600, color: outcomeInfo.color }}>{outcomeInfo.label}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: outcomeInfo.color }}>
+          {outcomeInfo.label}
+        </div>
       </div>
 
       {/* Mandatory Actions */}

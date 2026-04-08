@@ -63,7 +63,13 @@ async function seedData() {
         'Customer presented unexplained third-party payment pattern and unresolved source of funds concerns.',
       recommendation: 'str-review',
       auditLog: [
-        { id: createId('audit'), at: nowIso(), by: 'system', action: 'created', note: 'Auto-generated — FG LLC' },
+        {
+          id: createId('audit'),
+          at: nowIso(),
+          by: 'system',
+          action: 'created',
+          note: 'Auto-generated — FG LLC',
+        },
       ],
     },
     {
@@ -84,7 +90,13 @@ async function seedData() {
         'Branch periodic review flagged complex ownership and alternative payment methods requiring EDD.',
       recommendation: 'edd',
       auditLog: [
-        { id: createId('audit'), at: nowIso(), by: 'system', action: 'created', note: 'Auto-generated — FG Branch' },
+        {
+          id: createId('audit'),
+          at: nowIso(),
+          by: 'system',
+          action: 'created',
+          note: 'Auto-generated — FG Branch',
+        },
       ],
     },
     {
@@ -105,7 +117,13 @@ async function seedData() {
         'New onboarding case — unjustified increase in precious metals supply flagged during initial review.',
       recommendation: 'continue',
       auditLog: [
-        { id: createId('audit'), at: nowIso(), by: 'system', action: 'created', note: 'Auto-generated — Madison' },
+        {
+          id: createId('audit'),
+          at: nowIso(),
+          by: 'system',
+          action: 'created',
+          note: 'Auto-generated — Madison',
+        },
       ],
     },
     {
@@ -126,7 +144,13 @@ async function seedData() {
         'Screening hit on certificates of origin — potential manipulation detected alongside alternative payment methods.',
       recommendation: 'str-review',
       auditLog: [
-        { id: createId('audit'), at: nowIso(), by: 'system', action: 'created', note: 'Auto-generated — Naples' },
+        {
+          id: createId('audit'),
+          at: nowIso(),
+          by: 'system',
+          action: 'created',
+          note: 'Auto-generated — Naples',
+        },
       ],
     },
     {
@@ -147,7 +171,13 @@ async function seedData() {
         'Sourcing review triggered for refinery operations — ownership structure and supply volume under assessment.',
       recommendation: 'continue',
       auditLog: [
-        { id: createId('audit'), at: nowIso(), by: 'system', action: 'created', note: 'Auto-generated — Gramaltin' },
+        {
+          id: createId('audit'),
+          at: nowIso(),
+          by: 'system',
+          action: 'created',
+          note: 'Auto-generated — Gramaltin',
+        },
       ],
     },
     {
@@ -168,7 +198,13 @@ async function seedData() {
         'Annual periodic review — source of funds verification requires refresh for continued relationship.',
       recommendation: 'edd',
       auditLog: [
-        { id: createId('audit'), at: nowIso(), by: 'system', action: 'created', note: 'Auto-generated — Zoe FZE' },
+        {
+          id: createId('audit'),
+          at: nowIso(),
+          by: 'system',
+          action: 'created',
+          note: 'Auto-generated — Zoe FZE',
+        },
       ],
     },
     {
@@ -193,7 +229,13 @@ async function seedData() {
         'Adverse media screening flagged potential involvement in illicit gold trade. Source of wealth inconsistent with declared jewellery trading volumes. SAR recommended.',
       recommendation: 'sar-review',
       auditLog: [
-        { id: createId('audit'), at: nowIso(), by: 'system', action: 'created', note: 'Auto-generated — Madison SAR' },
+        {
+          id: createId('audit'),
+          at: nowIso(),
+          by: 'system',
+          action: 'created',
+          note: 'Auto-generated — Madison SAR',
+        },
       ],
     },
     {
@@ -209,12 +251,21 @@ async function seedData() {
       riskLevel: 'medium',
       linkedCustomerId: 'company-2',
       redFlags: ['RF005'],
-      findings: ['Cash payment of AED 62,000 for gold bullion', 'CTR filing required per FDL Art.16'],
+      findings: [
+        'Cash payment of AED 62,000 for gold bullion',
+        'CTR filing required per FDL Art.16',
+      ],
       narrative:
         'Single cash transaction of AED 62,000 exceeds DPMS threshold of AED 55,000. CTR must be filed within 15 business days per MoE Circular 08/AML/2021.',
       recommendation: 'ctr-filing',
       auditLog: [
-        { id: createId('audit'), at: nowIso(), by: 'system', action: 'created', note: 'Auto-generated — Naples CTR' },
+        {
+          id: createId('audit'),
+          at: nowIso(),
+          by: 'system',
+          action: 'created',
+          note: 'Auto-generated — Naples CTR',
+        },
       ],
     },
   ];
@@ -317,7 +368,12 @@ const styles = {
     gap: 12,
   } as React.CSSProperties,
   statusDot: (rating: string) => {
-    const colors: Record<string, string> = { low: '#3DA876', medium: '#E8A030', high: '#D94F4F', critical: '#ff4444' };
+    const colors: Record<string, string> = {
+      low: '#3DA876',
+      medium: '#E8A030',
+      high: '#D94F4F',
+      critical: '#ff4444',
+    };
     return {
       display: 'inline-block',
       width: 8,
@@ -367,23 +423,50 @@ function CustomersPage() {
       <div style={styles.customerGrid}>
         {filtered.map((c) => (
           <div key={c.id} style={styles.customerCard}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 8,
+              }}
+            >
               <strong style={{ fontSize: 14 }}>{c.legalName}</strong>
-              <span style={styles.badge(c.riskRating === 'high' ? '#D94F4F' : c.riskRating === 'medium' ? '#E8A030' : '#3DA876')}>
+              <span
+                style={styles.badge(
+                  c.riskRating === 'high'
+                    ? '#D94F4F'
+                    : c.riskRating === 'medium'
+                      ? '#E8A030'
+                      : '#3DA876'
+                )}
+              >
                 {c.riskRating.toUpperCase()}
               </span>
             </div>
             <div style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.6 }}>
-              <div><span style={styles.statusDot(c.pepStatus === 'clear' ? 'low' : 'high')} />PEP: {c.pepStatus}</div>
-              <div><span style={styles.statusDot(c.sanctionsStatus === 'clear' ? 'low' : 'high')} />Sanctions: {c.sanctionsStatus}</div>
-              <div>Type: {c.type} | {c.activity || 'N/A'}</div>
+              <div>
+                <span style={styles.statusDot(c.pepStatus === 'clear' ? 'low' : 'high')} />
+                PEP: {c.pepStatus}
+              </div>
+              <div>
+                <span style={styles.statusDot(c.sanctionsStatus === 'clear' ? 'low' : 'high')} />
+                Sanctions: {c.sanctionsStatus}
+              </div>
+              <div>
+                Type: {c.type} | {c.activity || 'N/A'}
+              </div>
               <div>Location: {c.location || 'N/A'}</div>
-              {c.nextCDDReviewDate && <div>Next CDD Review: {c.nextCDDReviewDate.slice(0, 10)}</div>}
+              {c.nextCDDReviewDate && (
+                <div>Next CDD Review: {c.nextCDDReviewDate.slice(0, 10)}</div>
+              )}
             </div>
           </div>
         ))}
       </div>
-      {filtered.length === 0 && <div style={styles.emptyState}>No customers match your search.</div>}
+      {filtered.length === 0 && (
+        <div style={styles.emptyState}>No customers match your search.</div>
+      )}
     </div>
   );
 }
@@ -393,7 +476,10 @@ function CustomersPage() {
 function ScreeningPage() {
   const [entityName, setEntityName] = useState('');
   const [screening, setScreening] = useState(false);
-  const [result, setResult] = useState<{ matches: { matchedName: string; listSource: string; confidence: number }[]; listsChecked: string[] } | null>(null);
+  const [result, setResult] = useState<{
+    matches: { matchedName: string; listSource: string; confidence: number }[];
+    listsChecked: string[];
+  } | null>(null);
 
   const runScreening = async () => {
     if (!entityName.trim()) return;
@@ -455,11 +541,18 @@ function ScreeningPage() {
           </div>
           {result.matches.length === 0 ? (
             <div style={{ ...styles.customerCard, borderColor: '#238636' }}>
-              <strong style={{ color: '#3DA876' }}>CLEAR</strong> — No matches found across {result.listsChecked.length} sanctions lists.
+              <strong style={{ color: '#3DA876' }}>CLEAR</strong> — No matches found across{' '}
+              {result.listsChecked.length} sanctions lists.
             </div>
           ) : (
             result.matches.map((m, i) => (
-              <div key={i} style={{ ...styles.customerCard, borderColor: m.confidence >= 0.9 ? '#D94F4F' : '#E8A030' }}>
+              <div
+                key={i}
+                style={{
+                  ...styles.customerCard,
+                  borderColor: m.confidence >= 0.9 ? '#D94F4F' : '#E8A030',
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <strong>{m.matchedName}</strong>
                   <span style={styles.badge(m.confidence >= 0.9 ? '#D94F4F' : '#E8A030')}>
@@ -475,8 +568,12 @@ function ScreeningPage() {
 
       {!result && !screening && (
         <div style={styles.emptyState}>
-          <p style={{ fontSize: 14 }}>Enter a name to screen against UN, OFAC, and EU sanctions lists.</p>
-          <p style={{ fontSize: 12 }}>Results include fuzzy matching for transliterations and aliases.</p>
+          <p style={{ fontSize: 14 }}>
+            Enter a name to screen against UN, OFAC, and EU sanctions lists.
+          </p>
+          <p style={{ fontSize: 12 }}>
+            Results include fuzzy matching for transliterations and aliases.
+          </p>
         </div>
       )}
     </div>
@@ -547,13 +644,24 @@ export default function App() {
         <div style={styles.logo}>HAWKEYE STERLING</div>
         <div style={{ padding: '8px 0', flex: 1 }}>
           {NAV_ITEMS.map((item) => (
-            <button key={item.id} onClick={() => setPage(item.id)} style={styles.navItem(page === item.id)}>
+            <button
+              key={item.id}
+              onClick={() => setPage(item.id)}
+              style={styles.navItem(page === item.id)}
+            >
               <span style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{item.icon}</span>
               {item.label}
             </button>
           ))}
         </div>
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #21262d', fontSize: 11, color: '#484f58' }}>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderTop: '1px solid #21262d',
+            fontSize: 11,
+            color: '#484f58',
+          }}
+        >
           UAE AML/CFT/CPF Compliance
           <br />
           FDL No.10/2025
@@ -565,7 +673,15 @@ export default function App() {
         <div style={styles.header}>
           <h1 style={styles.pageTitle}>{pageTitle[page]}</h1>
           {kpiData && page === 'dashboard' && (
-            <span style={styles.badge(kpiData.auditReadinessPct >= 80 ? '#238636' : kpiData.auditReadinessPct >= 50 ? '#E8A030' : '#D94F4F')}>
+            <span
+              style={styles.badge(
+                kpiData.auditReadinessPct >= 80
+                  ? '#238636'
+                  : kpiData.auditReadinessPct >= 50
+                    ? '#E8A030'
+                    : '#D94F4F'
+              )}
+            >
               Audit Readiness: {kpiData.auditReadinessPct}%
             </span>
           )}

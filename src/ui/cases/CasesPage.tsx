@@ -40,13 +40,10 @@ export default function CasesPage() {
     void loadCases();
   }, [loadCases]);
 
-  const onCaseUpdated = useCallback(
-    (updated: ComplianceCase) => {
-      setCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-      setSelected(updated);
-    },
-    []
-  );
+  const onCaseUpdated = useCallback((updated: ComplianceCase) => {
+    setCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setSelected(updated);
+  }, []);
 
   const filtered = cases.filter((c) => {
     if (statusFilter !== 'all' && c.status !== statusFilter) return false;
@@ -64,7 +61,9 @@ export default function CasesPage() {
   });
 
   const openCount = cases.filter((c) => c.status === 'open' || c.status === 'under-review').length;
-  const criticalCount = cases.filter((c) => c.riskLevel === 'critical' && c.status !== 'closed').length;
+  const criticalCount = cases.filter(
+    (c) => c.riskLevel === 'critical' && c.status !== 'closed'
+  ).length;
   const escalatedCount = cases.filter((c) => c.status === 'escalated').length;
 
   return (
@@ -155,11 +154,15 @@ export default function CasesPage() {
       </div>
 
       {/* Case list + detail */}
-      <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16, alignItems: 'start' }}>
+      <div
+        style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16, alignItems: 'start' }}
+      >
         {/* Case List */}
         <div style={{ maxHeight: 'calc(100vh - 280px)', overflow: 'auto' }}>
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 32, color: '#8b949e', fontSize: 13 }}>No cases match your filters.</div>
+            <div style={{ textAlign: 'center', padding: 32, color: '#8b949e', fontSize: 13 }}>
+              No cases match your filters.
+            </div>
           )}
           {filtered.map((c) => (
             <button
@@ -179,7 +182,14 @@ export default function CasesPage() {
                 transition: 'border-color 0.15s',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 4,
+                }}
+              >
                 <strong style={{ fontSize: 13 }}>{c.entityId}</strong>
                 <span
                   style={{
@@ -208,7 +218,9 @@ export default function CasesPage() {
                     background: STATUS_COLORS[c.status] || '#6B7280',
                   }}
                 />
-                <span style={{ fontSize: 11, color: '#8b949e' }}>{c.status.replace(/-/g, ' ')}</span>
+                <span style={{ fontSize: 11, color: '#8b949e' }}>
+                  {c.status.replace(/-/g, ' ')}
+                </span>
                 <span style={{ fontSize: 11, color: '#484f58', marginLeft: 'auto' }}>
                   {c.redFlags.length} flags
                 </span>
@@ -222,7 +234,9 @@ export default function CasesPage() {
           {selected ? (
             <CaseDetail item={selected} onCaseUpdated={onCaseUpdated} />
           ) : (
-            <div style={{ textAlign: 'center', padding: 60, color: '#8b949e' }}>Select a case to view details.</div>
+            <div style={{ textAlign: 'center', padding: 60, color: '#8b949e' }}>
+              Select a case to view details.
+            </div>
           )}
         </div>
       </div>

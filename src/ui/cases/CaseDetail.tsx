@@ -53,16 +53,10 @@ const TRANSITIONS: Record<string, { status: CaseStatus; label: string; action: A
     { status: 'reported', label: 'File STR/SAR', action: 'str-filed' },
     { status: 'closed', label: 'Close', action: 'status-changed' },
   ],
-  approved: [
-    { status: 'closed', label: 'Close Case', action: 'status-changed' },
-  ],
-  reported: [
-    { status: 'closed', label: 'Close After Filing', action: 'status-changed' },
-  ],
+  approved: [{ status: 'closed', label: 'Close Case', action: 'status-changed' }],
+  reported: [{ status: 'closed', label: 'Close After Filing', action: 'status-changed' }],
   closed: [],
-  rejected: [
-    { status: 'open', label: 'Reopen', action: 'status-changed' },
-  ],
+  rejected: [{ status: 'open', label: 'Reopen', action: 'status-changed' }],
 };
 
 const sectionStyle: React.CSSProperties = {
@@ -125,7 +119,14 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
   return (
     <div style={{ maxHeight: 'calc(100vh - 240px)', overflow: 'auto', paddingRight: 8 }}>
       {/* Header */}
-      <div style={{ ...sectionStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div
+        style={{
+          ...sectionStyle,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+        }}
+      >
         <div>
           <h2 style={{ margin: '0 0 4px', fontSize: 16, color: '#e6edf3' }}>{item.entityId}</h2>
           <div style={{ fontSize: 12, color: '#8b949e' }}>
@@ -162,7 +163,15 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
 
       {/* Workflow Actions */}
       {transitions.length > 0 && (
-        <div style={{ ...sectionStyle, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div
+          style={{
+            ...sectionStyle,
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
           <span style={{ fontSize: 12, color: '#8b949e', marginRight: 4 }}>Actions:</span>
           {transitions.map((t) => (
             <button
@@ -174,7 +183,8 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
                 fontWeight: 500,
                 border: '1px solid #30363d',
                 borderRadius: 6,
-                background: t.status === 'escalated' || t.status === 'rejected' ? '#2d1215' : '#0d1117',
+                background:
+                  t.status === 'escalated' || t.status === 'rejected' ? '#2d1215' : '#0d1117',
                 color:
                   t.status === 'escalated' || t.status === 'rejected'
                     ? '#f85149'
@@ -202,7 +212,9 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
             {item.recommendation.replace(/-/g, ' ').toUpperCase()}
           </div>
           <div style={labelStyle}>Created</div>
-          <div style={valueStyle}>{formatDateDDMMYYYY(item.createdAt) || item.createdAt.slice(0, 10)}</div>
+          <div style={valueStyle}>
+            {formatDateDDMMYYYY(item.createdAt) || item.createdAt.slice(0, 10)}
+          </div>
           {item.assignedTo && (
             <>
               <div style={{ ...labelStyle, marginTop: 8 }}>Assigned To</div>
@@ -215,7 +227,9 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
       {/* Red Flags + Findings */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div style={sectionStyle}>
-          <div style={{ ...labelStyle, marginBottom: 8, fontWeight: 600, color: '#e6edf3' }}>Red Flags ({item.redFlags.length})</div>
+          <div style={{ ...labelStyle, marginBottom: 8, fontWeight: 600, color: '#e6edf3' }}>
+            Red Flags ({item.redFlags.length})
+          </div>
           {item.redFlags.map((flag) => (
             <div
               key={flag}
@@ -235,9 +249,20 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
           ))}
         </div>
         <div style={sectionStyle}>
-          <div style={{ ...labelStyle, marginBottom: 8, fontWeight: 600, color: '#e6edf3' }}>Findings ({item.findings.length})</div>
+          <div style={{ ...labelStyle, marginBottom: 8, fontWeight: 600, color: '#e6edf3' }}>
+            Findings ({item.findings.length})
+          </div>
           {item.findings.map((f, i) => (
-            <div key={i} style={{ fontSize: 12, color: '#e6edf3', marginBottom: 6, paddingLeft: 8, borderLeft: '2px solid #30363d' }}>
+            <div
+              key={i}
+              style={{
+                fontSize: 12,
+                color: '#e6edf3',
+                marginBottom: 6,
+                paddingLeft: 8,
+                borderLeft: '2px solid #30363d',
+              }}
+            >
               {f}
             </div>
           ))}
@@ -249,7 +274,9 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
 
       {/* Add Comment */}
       <div style={{ ...sectionStyle, marginTop: 12 }}>
-        <div style={{ ...labelStyle, marginBottom: 8, fontWeight: 600, color: '#e6edf3' }}>Add Comment</div>
+        <div style={{ ...labelStyle, marginBottom: 8, fontWeight: 600, color: '#e6edf3' }}>
+          Add Comment
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             type="text"

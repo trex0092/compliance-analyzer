@@ -222,7 +222,9 @@ export const TM_RULES: TMRule[] = [
     description: 'Significant transaction following >90 days of inactivity',
     severity: 'medium',
     regulatoryRef: 'FDL No.10/2025 Art.15, MoE DPMS Guidance',
-    detect: (tx) => (tx.daysSinceLastTransaction ?? 0) > DORMANCY_DAYS && tx.amount > DORMANCY_REACTIVATION_MIN_AED,
+    detect: (tx) =>
+      (tx.daysSinceLastTransaction ?? 0) > DORMANCY_DAYS &&
+      tx.amount > DORMANCY_REACTIVATION_MIN_AED,
   },
   {
     id: 'threshold-avoidance',
