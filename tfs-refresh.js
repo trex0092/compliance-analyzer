@@ -98,8 +98,15 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
         list.lastRefreshed = new Date().toISOString();
       }
     } catch (e) {
-      list.status = 'ERROR';
-      list.lastError = e.message;
+      if (e.isBillingError) {
+        // API credits exhausted — mark as NEEDS_CHECK instead of ERROR
+        list.status = 'NEEDS_CHECK';
+        list.lastError = 'API credits exhausted — verify manually';
+        if (typeof toast === 'function') toast('API credits exhausted — sanctions list status requires manual verification', 'info', 6000);
+      } else {
+        list.status = 'ERROR';
+        list.lastError = e.message;
+      }
     }
 
     saveListStatus(lists);
@@ -120,11 +127,33 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
 
   async function refreshAll() {
     if (typeof toast === 'function') toast('Refreshing all sanctions lists...', 'info');
-    const lists = getListStatus();
-    for (const list of lists) {
-      await refreshList(list.id);
+    const listIds = getListStatus().map(l => l.id);
+    let billingError = false;
+    for (const id of listIds) {
+      await refreshList(id);
+      // Re-read from storage since refreshList saves a fresh copy
+      const updated = getListStatus().find(l => l.id === id);
+      if (updated && updated.status === 'NEEDS_CHECK') { billingError = true; break; }
     }
-    if (typeof toast === 'function') toast('All sanctions lists refreshed', 'success');
+    if (billingError) {
+      // Mark remaining lists as NEEDS_CHECK too
+      const allLists = getListStatus();
+      const changed = [];
+      for (const l of allLists) {
+        if (l.status !== 'CURRENT' && l.status !== 'NEEDS_CHECK') {
+          l.status = 'NEEDS_CHECK';
+          l.lastError = 'API credits exhausted — verify manually';
+          changed.push(l.name);
+        }
+      }
+      saveListStatus(allLists);
+      if (changed.length && typeof logAudit === 'function') {
+        logAudit('tfs', `Bulk marked ${changed.length} lists as NEEDS_CHECK (API credits exhausted): ${changed.join(', ')}`);
+      }
+      if (typeof toast === 'function') toast('API credits exhausted — all lists marked for manual verification', 'info', 8000);
+    } else {
+      if (typeof toast === 'function') toast('All sanctions lists refreshed', 'success');
+    }
     refresh();
   }
 
@@ -179,6 +208,25 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
 
         return match;
       } catch (e) {
+        if (e.isBillingError) {
+          if (typeof toast === 'function') toast('API credits exhausted — TFS screening unavailable. Add credits at console.anthropic.com or screen manually.', 'info', 8000);
+          const manualMatch = {
+            id: Date.now(),
+            entity: name,
+            type,
+            country: country || '',
+            result: 'MANUAL_REVIEW',
+            matches: [],
+            recommendation: 'AI screening unavailable (API credits exhausted). Perform manual screening against official sanctions lists: UN Consolidated (scsanctions.un.org), OFAC SDN (ofac.treasury.gov), EU Consolidated (eeas.europa.eu), UK OFSI (gov.uk/ofsi), UAE EOCN.',
+            date: new Date().toISOString(),
+            listsChecked: 'Manual verification required',
+          };
+          const savedMatches = getMatches();
+          savedMatches.unshift(manualMatch);
+          saveMatches(savedMatches);
+          if (typeof logAudit === 'function') logAudit('tfs', `TFS screening ${name}: MANUAL_REVIEW (API credits exhausted)`);
+          return manualMatch;
+        }
         if (typeof toast === 'function') toast(`TFS screening error: ${e.message}`, 'error');
       }
     }
@@ -198,7 +246,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     const staleCount = lists.filter(l => isStale(l)).length;
     const currentCount = lists.filter(l => l.status === 'CURRENT' && !isStale(l)).length;
 
-    const statusIcon = s => s === 'CURRENT' ? '🟢' : s === 'REFRESHING' ? '🔄' : s === 'ERROR' ? '🔴' : '⚪';
+    const statusIcon = s => s === 'CURRENT' ? '🟢' : s === 'REFRESHING' ? '🔄' : s === 'ERROR' ? '🔴' : s === 'NEEDS_CHECK' ? '🟡' : '⚪';
 
     const listsHtml = lists.map(l => `
       <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:3px;margin-bottom:4px;${isStale(l) ? 'border-color:var(--amber)' : ''}">
@@ -215,12 +263,12 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       </div>
     `).join('');
 
-    const tfsLabel = r => r === 'MATCH' ? 'POSITIVE MATCH' : r === 'POTENTIAL_MATCH' ? 'POTENTIAL MATCH' : 'NEGATIVE MATCH';
+    const tfsLabel = r => r === 'MATCH' ? 'POSITIVE MATCH' : r === 'POTENTIAL_MATCH' ? 'POTENTIAL MATCH' : r === 'MANUAL_REVIEW' ? 'MANUAL REVIEW REQUIRED' : 'NEGATIVE MATCH';
     const recentMatches = matches.slice(0, 10).map(m => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
         <div>
-          <span class="badge ${m.result === 'CLEAR' ? 'b-g' : m.result === 'MATCH' ? 'b-r' : 'b-a'}">${tfsLabel(m.result)}</span>
-          <span style="font-size:12px;margin-left:6px">${m.entity}${m.country ? ' · ' + m.country : ''}${m.adverseMedia && Object.values(m.adverseMedia).some(v => v === 'Found') ? ' · <span style="color:#D94F4F">Adverse</span>' : ''}</span>
+          <span class="badge ${m.result === 'CLEAR' ? 'b-ok' : m.result === 'MATCH' ? 'b-c' : 'b-h'}">${tfsLabel(m.result)}</span>
+          <span style="font-size:12px;margin-left:6px">${esc(m.entity)}${m.country ? ' · ' + esc(m.country) : ''}${m.adverseMedia && Object.values(m.adverseMedia).some(v => v === 'Found') ? ' · <span style="color:#D94F4F">Adverse</span>' : ''}</span>
         </div>
         <span style="font-size:11px;color:var(--muted)">${new Date(m.date).toLocaleDateString('en-GB')}</span>
       </div>
@@ -292,11 +340,14 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
 
       const tfsComp = match.result === 'MATCH' ? { label:'POSITIVE MATCH', desc:'The screened entity has been positively identified on one or more sanctions lists. Under UAE Federal Decree-Law No.10/2025 (Art.22) and FATF Recommendation 6, the business relationship must NOT proceed. Immediately freeze any assets, file a Suspicious Transaction Report (STR) via goAML, and escalate to the MLRO and senior management.', color:'#D94F4F', bg:'rgba(217,79,79,0.08)' }
         : match.result === 'POTENTIAL_MATCH' ? { label:'POTENTIAL MATCH', desc:'The screened entity has partial or similar name matches against sanctions lists. Enhanced Due Diligence (EDD) is required. The compliance officer must manually verify identity documents, cross-reference date of birth, nationality, and ID numbers to confirm or dismiss. Do NOT proceed until the match is resolved and documented.', color:'#E8A838', bg:'rgba(232,168,56,0.08)' }
+        : match.result === 'MANUAL_REVIEW' ? { label:'MANUAL REVIEW REQUIRED', desc:'AI-powered screening is currently unavailable (API credits exhausted). The compliance officer must perform manual screening against all mandatory sanctions lists: UAE Local Terrorist List (EOCN), UNSC Consolidated List (Cabinet Decision 74/2020), OFAC SDN, EU Consolidated, and UK OFSI. Do NOT proceed with the business relationship until manual screening is completed and documented.', color:'#E8A838', bg:'rgba(232,168,56,0.08)' }
         : { label:'NEGATIVE MATCH', desc:'No matches found against sanctions lists. The entity is cleared for onboarding or transaction processing under standard CDD. Per FATF Rec 10 and UAE Federal Decree-Law No.10/2025 (Art.16), maintain records for a minimum of 5 years. Re-screen periodically or upon trigger events.', color:'#27AE60', bg:'rgba(39,174,96,0.08)' };
 
+      const borderColor = match.result === 'CLEAR' ? 'var(--green)' : match.result === 'MANUAL_REVIEW' ? 'var(--amber, #E8A838)' : 'var(--red)';
+      const badgeCls = match.result === 'CLEAR' ? 'b-ok' : match.result === 'MANUAL_REVIEW' ? 'b-h' : 'b-c';
       resultEl.innerHTML = `
-        <div style="padding:10px;border:1px solid ${match.result === 'CLEAR' ? 'var(--green)' : 'var(--red)'};border-radius:3px;margin-top:8px">
-          <span class="badge ${match.result === 'CLEAR' ? 'b-g' : 'b-r'}">${tfsComp.label}</span>
+        <div style="padding:10px;border:1px solid ${borderColor};border-radius:3px;margin-top:8px">
+          <span class="badge ${badgeCls}">${tfsComp.label}</span>
           <span style="font-size:13px;margin-left:8px;font-weight:500">${esc(match.entity)}</span>
           ${matchesHtml}
           <p style="font-size:12px;margin-top:8px">${esc(match.recommendation || '')}</p>
@@ -346,10 +397,10 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     let y = 36;
     matches.forEach((m, idx) => {
       if (y > 260) { doc.addPage(); y = 20; }
-      const rc = m.result==='MATCH'?[217,79,79]:m.result==='POTENTIAL_MATCH'?[232,168,56]:[39,174,96];
-      const label = m.result==='MATCH'?'POSITIVE MATCH':m.result==='POTENTIAL_MATCH'?'POTENTIAL MATCH':'NEGATIVE MATCH';
+      const rc = m.result==='MATCH'?[217,79,79]:m.result==='POTENTIAL_MATCH'||m.result==='MANUAL_REVIEW'?[232,168,56]:[39,174,96];
+      const label = m.result==='MATCH'?'POSITIVE MATCH':m.result==='POTENTIAL_MATCH'?'POTENTIAL MATCH':m.result==='MANUAL_REVIEW'?'MANUAL REVIEW':'NEGATIVE MATCH';
       doc.setFillColor(40,40,40); doc.rect(14, y-4, pw-28, 8, 'F');
-      doc.setFontSize(10); doc.setTextColor(180,151,90); doc.text((idx+1)+'. '+(m.name||'Unknown'), 16, y+1);
+      doc.setFontSize(10); doc.setTextColor(180,151,90); doc.text((idx+1)+'. '+(m.entity||m.name||'Unknown'), 16, y+1);
       doc.setTextColor(...rc); doc.text(label, pw-16, y+1, {align:'right'});
       y += 10;
       doc.setFontSize(8); doc.setTextColor(160);
@@ -367,13 +418,13 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
   function exportDOCX() {
     const matches = getMatches();
     if (!matches.length) { toast('No results to export','error'); return; }
-    const colorFor = r => r==='MATCH'?'#D94F4F':r==='POTENTIAL_MATCH'?'#E8A838':'#27AE60';
-    const labelFor = r => r==='MATCH'?'POSITIVE MATCH':r==='POTENTIAL_MATCH'?'POTENTIAL MATCH':'NEGATIVE MATCH';
+    const colorFor = r => r==='MATCH'?'#D94F4F':r==='POTENTIAL_MATCH'||r==='MANUAL_REVIEW'?'#E8A838':'#27AE60';
+    const labelFor = r => r==='MATCH'?'POSITIVE MATCH':r==='POTENTIAL_MATCH'?'POTENTIAL MATCH':r==='MANUAL_REVIEW'?'MANUAL REVIEW':'NEGATIVE MATCH';
     let html = window.wordDocHeader ? window.wordDocHeader('TFS Screening Results Report') : '<html><head><meta charset="utf-8"></head><body>';
     html += '<table><tr><th>#</th><th>Entity</th><th>Type</th><th>Country</th><th>Result</th><th>Date</th><th>Lists Checked</th></tr>';
     matches.forEach((m, idx) => {
       const hits = (m.matches||[]).map(h=>h.list).join(', ')||'—';
-      html += '<tr><td>'+(idx+1)+'</td><td>'+(esc(m.name)||'')+'</td><td>'+(esc(m.type)||'')+'</td><td>'+(esc(m.country)||'')+'</td><td style="color:'+colorFor(m.result)+';font-weight:700">'+labelFor(m.result)+'</td><td>'+new Date(m.timestamp||m.date||0).toLocaleDateString('en-GB')+'</td><td>'+esc(hits)+'</td></tr>';
+      html += '<tr><td>'+(idx+1)+'</td><td>'+(esc(m.entity||m.name)||'')+'</td><td>'+(esc(m.type)||'')+'</td><td>'+(esc(m.country)||'')+'</td><td style="color:'+colorFor(m.result)+';font-weight:700">'+labelFor(m.result)+'</td><td>'+new Date(m.timestamp||m.date||0).toLocaleDateString('en-GB')+'</td><td>'+esc(hits)+'</td></tr>';
     });
     html += '</table>' + (window.wordDocFooter ? window.wordDocFooter() : '</body></html>');
     if (window.downloadWordDoc) { window.downloadWordDoc(html, 'TFS_Screening_'+new Date().toISOString().slice(0,10)+'.doc'); }
@@ -385,8 +436,8 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     const matches = getMatches();
     if (!matches.length) { toast('No results to export','error'); return; }
     const headers = ['Entity','Type','Country','Result','Date','Lists'];
-    const labelFor = r => r==='MATCH'?'POSITIVE MATCH':r==='POTENTIAL_MATCH'?'POTENTIAL MATCH':'NEGATIVE MATCH';
-    const rows = matches.map(m => [m.name, m.type, m.country, labelFor(m.result), new Date(m.timestamp||m.date||0).toLocaleDateString('en-GB'), (m.matches||[]).map(h=>h.list).join('; ')]);
+    const labelFor = r => r==='MATCH'?'POSITIVE MATCH':r==='POTENTIAL_MATCH'?'POTENTIAL MATCH':r==='MANUAL_REVIEW'?'MANUAL REVIEW':'NEGATIVE MATCH';
+    const rows = matches.map(m => [m.entity||m.name, m.type, m.country, labelFor(m.result), new Date(m.timestamp||m.date||0).toLocaleDateString('en-GB'), (m.matches||[]).map(h=>h.list).join('; ')]);
     const csv = [headers,...rows].map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
     const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='TFS_Screening_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
