@@ -98,8 +98,15 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
         list.lastRefreshed = new Date().toISOString();
       }
     } catch (e) {
-      list.status = 'ERROR';
-      list.lastError = e.message;
+      if (e.isBillingError) {
+        // API credits exhausted — mark as NEEDS_CHECK instead of ERROR
+        list.status = 'NEEDS_CHECK';
+        list.lastError = 'API credits exhausted — verify manually';
+        if (typeof toast === 'function') toast('API credits exhausted — sanctions list status requires manual verification', 'info', 6000);
+      } else {
+        list.status = 'ERROR';
+        list.lastError = e.message;
+      }
     }
 
     saveListStatus(lists);
@@ -121,10 +128,26 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
   async function refreshAll() {
     if (typeof toast === 'function') toast('Refreshing all sanctions lists...', 'info');
     const lists = getListStatus();
+    let billingError = false;
     for (const list of lists) {
       await refreshList(list.id);
+      if (list.status === 'NEEDS_CHECK') billingError = true;
+      if (billingError) break; // Stop making API calls if credits are exhausted
     }
-    if (typeof toast === 'function') toast('All sanctions lists refreshed', 'success');
+    if (billingError) {
+      // Mark remaining lists as NEEDS_CHECK too
+      const allLists = getListStatus();
+      for (const l of allLists) {
+        if (l.status !== 'CURRENT' && l.status !== 'NEEDS_CHECK') {
+          l.status = 'NEEDS_CHECK';
+          l.lastError = 'API credits exhausted — verify manually';
+        }
+      }
+      saveListStatus(allLists);
+      if (typeof toast === 'function') toast('API credits exhausted — all lists marked for manual verification', 'info', 8000);
+    } else {
+      if (typeof toast === 'function') toast('All sanctions lists refreshed', 'success');
+    }
     refresh();
   }
 
@@ -179,6 +202,20 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
 
         return match;
       } catch (e) {
+        if (e.isBillingError) {
+          if (typeof toast === 'function') toast('API credits exhausted — TFS screening unavailable. Add credits at console.anthropic.com or screen manually.', 'info', 8000);
+          return {
+            id: Date.now(),
+            entity: name,
+            type,
+            country: country || '',
+            result: 'MANUAL_REVIEW',
+            matches: [],
+            recommendation: 'AI screening unavailable (API credits exhausted). Perform manual screening against official sanctions lists: UN Consolidated (scsanctions.un.org), OFAC SDN (ofac.treasury.gov), EU Consolidated (eeas.europa.eu), UK OFSI (gov.uk/ofsi), UAE EOCN.',
+            date: new Date().toISOString(),
+            listsChecked: 'Manual verification required',
+          };
+        }
         if (typeof toast === 'function') toast(`TFS screening error: ${e.message}`, 'error');
       }
     }
@@ -198,7 +235,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     const staleCount = lists.filter(l => isStale(l)).length;
     const currentCount = lists.filter(l => l.status === 'CURRENT' && !isStale(l)).length;
 
-    const statusIcon = s => s === 'CURRENT' ? '🟢' : s === 'REFRESHING' ? '🔄' : s === 'ERROR' ? '🔴' : '⚪';
+    const statusIcon = s => s === 'CURRENT' ? '🟢' : s === 'REFRESHING' ? '🔄' : s === 'ERROR' ? '🔴' : s === 'NEEDS_CHECK' ? '🟡' : '⚪';
 
     const listsHtml = lists.map(l => `
       <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:3px;margin-bottom:4px;${isStale(l) ? 'border-color:var(--amber)' : ''}">
@@ -215,11 +252,11 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       </div>
     `).join('');
 
-    const tfsLabel = r => r === 'MATCH' ? 'POSITIVE MATCH' : r === 'POTENTIAL_MATCH' ? 'POTENTIAL MATCH' : 'NEGATIVE MATCH';
+    const tfsLabel = r => r === 'MATCH' ? 'POSITIVE MATCH' : r === 'POTENTIAL_MATCH' ? 'POTENTIAL MATCH' : r === 'MANUAL_REVIEW' ? 'MANUAL REVIEW REQUIRED' : 'NEGATIVE MATCH';
     const recentMatches = matches.slice(0, 10).map(m => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
         <div>
-          <span class="badge ${m.result === 'CLEAR' ? 'b-g' : m.result === 'MATCH' ? 'b-r' : 'b-a'}">${tfsLabel(m.result)}</span>
+          <span class="badge ${m.result === 'CLEAR' ? 'b-g' : m.result === 'MATCH' ? 'b-r' : m.result === 'MANUAL_REVIEW' ? 'b-a' : 'b-a'}">${tfsLabel(m.result)}</span>
           <span style="font-size:12px;margin-left:6px">${m.entity}${m.country ? ' · ' + m.country : ''}${m.adverseMedia && Object.values(m.adverseMedia).some(v => v === 'Found') ? ' · <span style="color:#D94F4F">Adverse</span>' : ''}</span>
         </div>
         <span style="font-size:11px;color:var(--muted)">${new Date(m.date).toLocaleDateString('en-GB')}</span>

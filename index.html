@@ -5748,7 +5748,18 @@ async function callAnthropic(body) {
     } catch (_) {
       try { errDetail = await r.text(); } catch (_) {}
     }
-    throw new Error(`Anthropic API ${r.status}: ${errDetail || r.statusText}`);
+    const err = new Error(`Anthropic API ${r.status}: ${errDetail || r.statusText}`);
+    // Tag billing/credit errors so callers can detect and handle gracefully
+    if (r.status === 400 || r.status === 402 || r.status === 429) {
+      const lower = (errDetail || '').toLowerCase();
+      if (lower.includes('credit') || lower.includes('balance') || lower.includes('billing') || lower.includes('payment') || lower.includes('insufficient') || r.status === 402) {
+        err.isBillingError = true;
+      }
+      if (r.status === 429 || lower.includes('rate limit')) {
+        err.isRateLimitError = true;
+      }
+    }
+    throw err;
   }
 
   const data = await r.json();
@@ -7947,7 +7958,29 @@ JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","risk_level":"LOW|MEDIUM|HIGH|CRIT
       // Result rendered successfully, suppress error
       return;
     }
-    toast(`Screening error: ${e.message}`,'error');
+    if (e.isBillingError) {
+      toast('API credits exhausted — AI screening unavailable. Add credits at console.anthropic.com or perform manual screening.','info',8000);
+      const manualResult = {
+        result: 'MANUAL_REVIEW',
+        risk_level: 'UNKNOWN',
+        summary: 'AI screening unavailable (API credits exhausted). Manual screening required against official sanctions lists.',
+        sanctions_hits: [],
+        adverse_media_hits: [],
+        risk_factors: ['AI screening unavailable — manual verification required'],
+        recommended_actions: [
+          'Screen against UN Consolidated List (scsanctions.un.org)',
+          'Screen against OFAC SDN (ofac.treasury.gov)',
+          'Screen against UAE EOCN local terrorist list',
+          'Screen against EU/UK consolidated lists',
+          'Document manual screening results'
+        ]
+      };
+      renderScreeningResult(manualResult, name);
+      loadScreeningHistory();
+      sb.style.display='none';
+    } else {
+      toast(`Screening error: ${e.message}`,'error');
+    }
   }
 }
 
@@ -8004,10 +8037,27 @@ Return JSON array: [{"id":"UAE","lastUpdate":"YYYY-MM-DD","entries":150,"status"
     logAudit('sanctions_refresh', `Refreshed ${lists.length} sanctions lists`);
     toast('Sanctions lists refreshed', 'success');
   } catch(e) {
-    statusEl.style.background = 'var(--red-dim)';
-    statusEl.style.color = 'var(--red)';
-    statusEl.textContent = `❌ Refresh failed: ${e.message}`;
-    toast('Sanctions refresh failed', 'error');
+    if (e.isBillingError) {
+      // API credits exhausted — fall back to local-only status update
+      const fallbackResults = lists.map(l => ({ id: l.id, lastUpdate: 'N/A', entries: 0, status: 'NEEDS_CHECK', notes: 'API unavailable — verify manually' }));
+      const refreshRecord = { timestamp: new Date().toISOString(), results: fallbackResults, offline: true };
+      safeLocalSave(SANCTIONS_REFRESH_STORAGE, refreshRecord);
+
+      statusEl.style.background = 'rgba(232,168,56,0.12)';
+      statusEl.style.color = '#E8A838';
+      statusEl.innerHTML = `⚠ AI API credits exhausted — lists recorded as NEEDS_CHECK. Please verify sanctions lists manually via official sources or add API credits in <a href="https://console.anthropic.com" target="_blank" rel="noopener" style="color:#E8A838;text-decoration:underline">console.anthropic.com</a>.`;
+
+      const lastEl = document.getElementById('sanctionsLastRefresh');
+      if (lastEl) lastEl.innerHTML = fallbackResults.map(r => `<span style="margin-right:12px">${escHtml(r.id)}: 🟡 NEEDS_CHECK</span>`).join('');
+
+      logAudit('sanctions_refresh', 'Sanctions refresh attempted — API credits exhausted, manual verification required');
+      toast('API credits exhausted — verify sanctions lists manually', 'info', 8000);
+    } else {
+      statusEl.style.background = 'var(--red-dim)';
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = `❌ Refresh failed: ${e.message}`;
+      toast('Sanctions refresh failed', 'error');
+    }
   }
   if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Lists'; }
 }
@@ -8032,6 +8082,11 @@ function getComplianceDescription(result) {
   if (result === 'POTENTIAL_MATCH') return {
     label: 'POTENTIAL MATCH',
     desc: 'The screened entity has partial or similar name matches against sanctions lists, PEP databases, or adverse media sources. Under UAE CBUAE Guidance on TFS (2021) and FATF Recommendation 10, Enhanced Due Diligence (EDD) is required. The compliance officer must manually verify identity documents, cross-reference date of birth, nationality, and ID numbers to confirm or dismiss the match. Do NOT proceed with the business relationship until the match is resolved and documented. If confirmed, treat as Positive Match.',
+    color: '#E8A838', bg: 'rgba(232,168,56,0.08)', border: '#E8A838'
+  };
+  if (result === 'MANUAL_REVIEW') return {
+    label: 'MANUAL REVIEW REQUIRED',
+    desc: 'AI-powered screening is currently unavailable (API credits exhausted). The compliance officer must perform manual screening against all mandatory sanctions lists: UAE Local Terrorist List (EOCN), UNSC Consolidated List (Cabinet Decision 74/2020), OFAC SDN, EU Consolidated, and UK OFSI. Document all manual checks with timestamps and sources. Do NOT proceed with onboarding until manual screening is completed and documented. Add API credits at console.anthropic.com to restore AI screening.',
     color: '#E8A838', bg: 'rgba(232,168,56,0.08)', border: '#E8A838'
   };
   return {
@@ -8070,7 +8125,7 @@ function loadScreeningHistory() {
   el.innerHTML = history.slice(0,50).map(h=>{
     const r = h.result||{};
     const comp = getComplianceDescription(r.result);
-    const cls = r.result==='CLEAR'?'b-ok':r.result==='MATCH'?'b-c':'b-h';
+    const cls = r.result==='CLEAR'?'b-ok':r.result==='MATCH'?'b-c':r.result==='MANUAL_REVIEW'?'b-a':'b-h';
     const ageDays = Math.floor((Date.now() - new Date(h.date).getTime()) / 86400000);
     const ageLabel = ageDays <= 30 ? '🟢 ' + ageDays + 'd ago' : ageDays <= _scrCfg.screeningStaleDays ? '🟡 ' + ageDays + 'd ago' : '🔴 ' + ageDays + 'd ago — STALE';
     return `<div class="asana-item"><div><div class="asana-name">${h.name}</div><div class="asana-meta">${h.type} | ${h.country||'—'} | ${new Date(h.date).toLocaleDateString('en-GB')} | <span style="font-size:10px">${ageLabel}</span></div></div><span class="badge ${cls}">${comp.label}</span></div>`;
