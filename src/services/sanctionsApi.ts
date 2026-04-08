@@ -139,7 +139,7 @@ export function screenAgainstList(entityName: string, entries: SanctionsEntry[])
   for (const entry of entries) {
     // Check primary name
     const nameScore = similarity(normalized, normalize(entry.name));
-    if (nameScore >= 0.75) {
+    if (nameScore >= FUZZY_MATCH_THRESHOLD) {
       matches.push({
         matchedName: entry.name,
         listSource: entry.listSource,
@@ -154,7 +154,7 @@ export function screenAgainstList(entityName: string, entries: SanctionsEntry[])
     // Check aliases
     for (const alias of entry.aliases) {
       const aliasScore = similarity(normalized, normalize(alias));
-      if (aliasScore >= 0.75) {
+      if (aliasScore >= FUZZY_MATCH_THRESHOLD) {
         matches.push({
           matchedName: `${entry.name} (alias: ${alias})`,
           listSource: entry.listSource,
@@ -171,33 +171,5 @@ export function screenAgainstList(entityName: string, entries: SanctionsEntry[])
   return matches.sort((a, b) => b.confidence - a.confidence);
 }
 
-/**
- * Normalize a name for comparison — lowercase, remove diacritics, trim.
- */
-function normalize(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
- * Bigram similarity (Dice coefficient) — fast fuzzy matching.
- */
-function similarity(a: string, b: string): number {
-  if (a === b) return 1;
-  if (a.length < 2 || b.length < 2) return 0;
-
-  const bigramsA = new Set<string>();
-  for (let i = 0; i < a.length - 1; i++) bigramsA.add(a.slice(i, i + 2));
-
-  let intersection = 0;
-  for (let i = 0; i < b.length - 1; i++) {
-    if (bigramsA.has(b.slice(i, i + 2))) intersection++;
-  }
-
-  return (2 * intersection) / (a.length - 1 + b.length - 1);
-}
+// Shared fuzzy matching utilities — see src/utils/fuzzyMatch.ts
+import { normalize, similarity, FUZZY_MATCH_THRESHOLD } from '../utils/fuzzyMatch';
