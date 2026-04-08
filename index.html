@@ -11816,8 +11816,35 @@ function initNewFeatures() {
       document.getElementById('loginOverlay').style.display = 'flex';
       await initDefaultUsers();
     }
-  } catch(e) { console.error('[Boot] session check failed:', e); }
+  } catch(e) {
+    console.error('[Boot] session check failed:', e);
+    // Fallback: if boot fails and no session, ensure login is visible
+    try {
+      document.getElementById('mainApp').style.display = 'none';
+      document.getElementById('loginOverlay').style.display = 'flex';
+      var fallbackUsers = getUsers();
+      if (!fallbackUsers || !fallbackUsers.length) {
+        document.getElementById('loginBox').style.display = 'none';
+        document.getElementById('setupWizard').style.display = 'block';
+      }
+    } catch(_) {}
+  }
   setInterval(refreshReminders, 5 * 60 * 1000);
+
+  // Safety net: if after boot, no session and no users, ensure setup wizard is shown
+  setTimeout(function() {
+    if (!currentUser) {
+      var u = getUsers();
+      if (!u || !u.length) {
+        var lb = document.getElementById('loginBox');
+        var sw = document.getElementById('setupWizard');
+        if (lb) lb.style.display = 'none';
+        if (sw) sw.style.display = 'block';
+      }
+      var lo = document.getElementById('loginOverlay');
+      if (lo) lo.style.display = 'flex';
+    }
+  }, 500);
 })();
 </script>
 <script>
