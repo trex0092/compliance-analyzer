@@ -7,7 +7,41 @@
  * - Audit logging of access attempts
  */
 
-import type { RoleName, PermissionAction } from '../domain/rbac';
+/** UI-facing role names (superset of domain Role — includes 'viewer') */
+export type RoleName =
+  | 'analyst'
+  | 'compliance-officer'
+  | 'mlro'
+  | 'senior-management'
+  | 'admin'
+  | 'external-auditor'
+  | 'viewer';
+
+/** UI-facing permission actions (broader than domain Action for UI rendering) */
+export type PermissionAction =
+  | 'view-cases'
+  | 'edit-cases'
+  | 'create-cases'
+  | 'close-cases'
+  | 'view-screening'
+  | 'run-screening'
+  | 'view-alerts'
+  | 'dismiss-alerts'
+  | 'view-evidence'
+  | 'upload-evidence'
+  | 'view-reports'
+  | 'create-reports'
+  | 'approve-str'
+  | 'approve-sar'
+  | 'approve-freeze'
+  | 'approve-high-risk'
+  | 'approve-pep'
+  | 'view-audit-log'
+  | 'export-data'
+  | 'manage-audit-checklist'
+  | 'view-kpi-dashboard'
+  | 'view-regulatory-framework'
+  | '*';
 
 /**
  * Check if a role has a specific permission.

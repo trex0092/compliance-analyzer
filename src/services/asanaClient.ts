@@ -31,11 +31,11 @@ function getConfig(): AsanaConfig {
   return {
     token:
       (typeof window !== 'undefined' &&
-        ((window as Record<string, unknown>).ASANA_TOKEN as string)) ||
+        ((window as unknown as Record<string, unknown>).ASANA_TOKEN as string)) ||
       undefined,
     proxyUrl:
       (typeof window !== 'undefined' &&
-        ((window as Record<string, unknown>).PROXY_URL as string)) ||
+        ((window as unknown as Record<string, unknown>).PROXY_URL as string)) ||
       undefined,
     defaultProjectId:
       (typeof localStorage !== 'undefined' && localStorage.getItem('asanaProjectId')) ||

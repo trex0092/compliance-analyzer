@@ -15,7 +15,16 @@
     "type": "git",
     "url": "git+https://github.com/trex0092/compliance-analyzer.git"
   },
-  "keywords": ["hawkeye-sterling", "compliance", "aml", "cft", "uae", "dpms", "fatf", "screening"],
+  "keywords": [
+    "hawkeye-sterling",
+    "compliance",
+    "aml",
+    "cft",
+    "uae",
+    "dpms",
+    "fatf",
+    "screening"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -27,12 +36,14 @@
     "@netlify/functions": "^5.1.5"
   },
   "devDependencies": {
-    "vitest": "^3.1.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "@vitest/coverage-v8": "^3.1.0",
     "eslint": "^8.57.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
     "prettier": "^3.2.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^3.1.0"
   }
 }
