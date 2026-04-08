@@ -252,14 +252,14 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
       <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:3px;margin-bottom:4px;${isStale(l) ? 'border-color:var(--amber)' : ''}">
         <span style="font-size:14px">${statusIcon(l.status)}</span>
         <div style="flex:1">
-          <div style="font-size:12px;font-weight:500">${l.name}</div>
-          <div style="font-size:10px;color:var(--muted)">${l.source} · ~${(l.entryCount || 0).toLocaleString('en-GB')} entries · ${l.frequency}</div>
+          <div style="font-size:12px;font-weight:500">${esc(l.name)}</div>
+          <div style="font-size:10px;color:var(--muted)">${esc(l.source)} · ~${(l.entryCount || 0).toLocaleString('en-GB')} entries · ${esc(l.frequency)}</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:10px;color:${isStale(l) ? 'var(--amber)' : 'var(--muted)'}">${l.lastRefreshed ? new Date(l.lastRefreshed).toLocaleDateString('en-GB') : 'Never'}</div>
-          ${l.newEntries ? `<div style="font-size:10px;color:var(--amber)">+${l.newEntries} new</div>` : ''}
+          ${l.newEntries ? `<div style="font-size:10px;color:var(--amber)">+${parseInt(l.newEntries)||0} new</div>` : ''}
         </div>
-        <button class="btn btn-sm btn-blue" onclick="TFSRefresh.refreshList('${l.id}').then(()=>TFSRefresh.refresh())" style="min-width:60px">Refresh</button>
+        <button class="btn btn-sm btn-blue" onclick="TFSRefresh.refreshList('${esc(l.id).replace(/'/g,'&#39;')}').then(()=>TFSRefresh.refresh())" style="min-width:60px">Refresh</button>
       </div>
     `).join('');
 

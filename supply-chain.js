@@ -402,7 +402,7 @@ Format your response as a structured compliance update notification. Be concise 
         notifEl.innerHTML = '<p style="color:#E8A838;font-size:12px;padding:8px 0">API credits exhausted — verify list updates manually via official sources. Add credits at console.anthropic.com.</p>';
         toast('API credits exhausted — check list updates manually', 'info', 8000);
       } else {
-        notifEl.innerHTML = '<p style="color:var(--red);font-size:12px;padding:8px 0">Update check failed: ' + errMsg.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
+        notifEl.innerHTML = '<p style="color:var(--red);font-size:12px;padding:8px 0">Update check failed: ' + errMsg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') + '</p>';
       }
     }
   }
