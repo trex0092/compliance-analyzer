@@ -1,0 +1,9 @@
+[submodule "vendor/g0dmod3"]
+	path = vendor/g0dmod3
+	url = https://github.com/elder-plinius/G0DM0D3.git
+[submodule "vendor/hyperliquid-trading-agent"]
+	path = vendor/hyperliquid-trading-agent
+	url = https://github.com/sanketagarwal/hyperliquid-trading-agent.git
+[submodule "vendor/code-review-graph"]
+	path = vendor/code-review-graph
+	url = https://github.com/tirth8205/code-review-graph.git
