@@ -138,13 +138,18 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
     if (billingError) {
       // Mark remaining lists as NEEDS_CHECK too
       const allLists = getListStatus();
+      const changed = [];
       for (const l of allLists) {
         if (l.status !== 'CURRENT' && l.status !== 'NEEDS_CHECK') {
           l.status = 'NEEDS_CHECK';
           l.lastError = 'API credits exhausted — verify manually';
+          changed.push(l.name);
         }
       }
       saveListStatus(allLists);
+      if (changed.length && typeof logAudit === 'function') {
+        logAudit('tfs', `Bulk marked ${changed.length} lists as NEEDS_CHECK (API credits exhausted): ${changed.join(', ')}`);
+      }
       if (typeof toast === 'function') toast('API credits exhausted — all lists marked for manual verification', 'info', 8000);
     } else {
       if (typeof toast === 'function') toast('All sanctions lists refreshed', 'success');
