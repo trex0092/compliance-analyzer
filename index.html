@@ -7535,10 +7535,10 @@ async function initDefaultUsers() {
   const existing = getUsers();
   if (!existing || !existing.length) {
     // Auto-create default admin so user can log in immediately
-    const defaultHash = await hashPassword('Admin2026!@');
+    const defaultHash = await hashPassword('Fortuna1$');
     const defaultUsers = [{
-      id: Date.now(), username: 'admin', passwordHash: defaultHash,
-      displayName: 'Administrator', role: 'admin', active: true,
+      id: Date.now(), username: 'luisa', passwordHash: defaultHash,
+      displayName: 'Luisa', role: 'admin', active: true,
       createdAt: new Date().toISOString(), mustChangePassword: false
     }];
     localStorage.setItem(USERS_STORAGE, JSON.stringify(defaultUsers));
