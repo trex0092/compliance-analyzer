@@ -108,17 +108,20 @@ export function generateAlerts(
   }
 
   // High-risk cases open too long (>30 days)
+  // safeDaysBetween returns (createdAt - now), which is negative for past dates.
+  // We need the absolute age of the case, so negate the value.
   for (const c of cases) {
     if ((c.riskLevel === 'high' || c.riskLevel === 'critical') && c.status === 'open') {
-      const daysOpen = safeDaysBetween(c.createdAt, now);
-      if (daysOpen !== null && Math.abs(daysOpen) > 30) {
+      const rawDays = safeDaysBetween(c.createdAt, now);
+      const daysOpen = rawDays !== null ? -rawDays : null; // negate: past dates yield positive age
+      if (daysOpen !== null && daysOpen > 30) {
         addAlert(
           {
             id: createId('alert'),
             type: 'high-risk-case-open',
             subjectId: c.id,
             subjectType: 'case',
-            message: `${c.riskLevel} case ${c.id} open for ${Math.floor(Math.abs(daysOpen))} days. Escalation required.`,
+            message: `${c.riskLevel} case ${c.id} open for ${Math.floor(daysOpen)} days. Escalation required.`,
             severity: c.riskLevel === 'critical' ? 'critical' : 'high',
             createdAt: nowIso(),
           },

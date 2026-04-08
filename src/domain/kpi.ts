@@ -1,4 +1,5 @@
 import type { ComplianceCase } from './cases';
+import type { CustomerProfile } from './customers';
 import type { SuspicionReport } from './reports';
 import type { ScreeningRun } from './screening';
 import type { EvidenceItem } from './evidence';
@@ -55,7 +56,8 @@ export function calculateKPI(
   screenings: ScreeningRun[],
   evidence: EvidenceItem[],
   alerts: Alert[],
-  approvals?: ApprovalRequest[]
+  approvals?: ApprovalRequest[],
+  customers?: CustomerProfile[]
 ): KPIDashboard {
   const now = Date.now();
 
@@ -76,11 +78,22 @@ export function calculateKPI(
   // ─── Reviews ───────────────────────────────────────────────────────────
   const overdueReviews = alerts.filter((a) => a.type === 'review-overdue' && !a.dismissedAt).length;
 
+  // CDD review on-time %: reviews completed before due date are "on time".
+  // Dismissed overdue alerts do NOT mean the review was completed on time —
+  // they only mean the alert was acknowledged. Correct metric: proportion of
+  // reviews that never triggered an overdue alert (i.e. were completed before
+  // their nextCDDReviewDate).
   const reviewAlerts = alerts.filter((a) => a.type === 'review-overdue');
-  const reviewDismissed = reviewAlerts.filter((a) => a.dismissedAt);
+  const overdueCustomerIds = new Set(reviewAlerts.map((a) => a.subjectId));
+  const customerList = customers ?? [];
+  const totalCustomersWithReviewDate = customerList.filter((c) => c.nextCDDReviewDate).length;
   const cddReviewOnTimePct =
-    reviewAlerts.length > 0
-      ? Math.round((reviewDismissed.length / reviewAlerts.length) * 100)
+    totalCustomersWithReviewDate > 0
+      ? Math.round(
+          ((totalCustomersWithReviewDate - overdueCustomerIds.size) /
+            totalCustomersWithReviewDate) *
+            100
+        )
       : 100;
 
   // ─── Reporting ─────────────────────────────────────────────────────────
@@ -90,13 +103,15 @@ export function calculateKPI(
   const sarCount = reports.filter((r) => r.reportType === 'SAR').length;
   const ctrCount = 0; // CTR tracked separately when implemented
 
-  // STR filing timeliness: filed within 10 business days
+  // STR filing timeliness: FDL Art.26-27 requires "without delay" upon suspicion.
+  // STR_FILING_DEADLINE_BUSINESS_DAYS = 0 means immediate. Any delay is a risk.
+  // We flag STRs filed more than 2 calendar days after generation as potentially late.
   const strFiled = strReports.filter((r) => r.status === 'exported' && r.submittedAt);
   const strOnTime = strFiled.filter((r) => {
     const generated = new Date(r.generatedAt).getTime();
     const submitted = new Date(r.submittedAt!).getTime();
     const daysDiff = (submitted - generated) / 86400000;
-    return daysDiff <= 14; // 10 business days ≈ 14 calendar days
+    return daysDiff <= 2; // "without delay" — allow max 2 calendar days for operational processing
   });
   const strFilingTimelinessPct =
     strFiled.length > 0 ? Math.round((strOnTime.length / strFiled.length) * 100) : 100;
@@ -153,7 +168,7 @@ export function calculateKPI(
   // ─── Audit Readiness (simplified — based on available data) ───────────
   let auditScore = 0;
   const auditTotal = 10;
-  if (strCount > 0 || strPending === 0) auditScore++; // STR program active
+  if (strCount > 0) auditScore++; // STR program active (must have filed at least one)
   if (screenings.length > 0) auditScore++; // Screening active
   if (evidenceCompletionPct >= 80) auditScore++; // Evidence mostly complete
   if (overdueReviews === 0) auditScore++; // No overdue reviews
