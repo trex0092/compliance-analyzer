@@ -39,3 +39,10 @@ coverage/
 
 # Netlify
 .netlify/
+
+# Python (vendor submodules)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/

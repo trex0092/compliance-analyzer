@@ -8,5 +8,10 @@
       "command": "npx",
       "args": ["-y", "claude-mem", "serve"]
     }
+  },
+  "vendorDeps": {
+    "g0dmod3": "vendor/g0dmod3",
+    "hyperliquid-trading-agent": "vendor/hyperliquid-trading-agent",
+    "code-review-graph": "vendor/code-review-graph"
   }
 }
