@@ -42,45 +42,31 @@ export const DEFAULT_PF_HIGH_RISK_COUNTRIES = [
   'YE', // Yemen — UNSC Res 2140
 ];
 
-export const DEFAULT_DUAL_USE_INDICATORS = [
-  // Precious metals — industrial grade
+// Consolidated dual-use keywords — single source of truth in constants.ts.
+// PF-specific additions that aren't in the shared list are appended here.
+import { DUAL_USE_KEYWORDS } from '../domain/constants';
+
+const PF_SPECIFIC_KEYWORDS = [
   'industrial platinum',
   'industrial palladium',
-  'rhodium',
-  'iridium',
-  'osmium',
   'ruthenium',
   'rhenium',
-  // Nuclear program indicators
-  'nuclear',
-  'centrifuge',
-  'enrichment',
-  'uranium',
-  'plutonium',
-  'heavy water',
   'hexafluoride',
   'yellowcake',
-  // Missile/weapons program indicators
   'ballistic',
-  'missile',
   'warhead',
-  'propellant',
-  'guidance system',
-  // Electronics / advanced manufacturing
   'semiconductor',
-  'carbon fiber',
-  'maraging steel',
-  'frequency converter',
-  'high-speed camera',
-  // Chemical precursors
   'fluorine compound',
   'hydrogen fluoride',
   'tributyl phosphate',
-  // Rare earth elements (dual-use)
-  'rare earth',
   'neodymium',
   'samarium',
   'dysprosium',
+] as const;
+
+export const DEFAULT_DUAL_USE_INDICATORS: readonly string[] = [
+  ...DUAL_USE_KEYWORDS,
+  ...PF_SPECIFIC_KEYWORDS,
 ];
 
 export const DEFAULT_PF_CONFIG: PFConfig = {

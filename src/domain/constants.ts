@@ -37,6 +37,18 @@ export const DORMANCY_DAYS = 90;
 /** Dormancy reactivation minimum transaction amount */
 export const DORMANCY_REACTIVATION_MIN_AED = 20_000;
 
+/** Profile mismatch threshold — low-risk customer (Cabinet Res 134/2025) */
+export const LOW_RISK_PROFILE_THRESHOLD_AED = 200_000;
+
+/** Profile mismatch threshold — medium-risk customer (Cabinet Res 134/2025) */
+export const MEDIUM_RISK_PROFILE_THRESHOLD_AED = 500_000;
+
+/** Round-tripping detection threshold — circular payments above this amount (FATF Typologies) */
+export const ROUND_TRIPPING_THRESHOLD_AED = 100_000;
+
+/** Rapid buy-sell detection threshold (UAE NRA 2024 DPMS risk indicators) */
+export const RAPID_BUYSELL_THRESHOLD_AED = 20_000;
+
 // ─── Beneficial Ownership ───────────────────────────────────────────────────
 
 /** UBO threshold — ownership % that triggers beneficial ownership registration (Cabinet Decision 109/2023) */

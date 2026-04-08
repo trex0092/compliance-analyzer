@@ -1,3 +1,13 @@
+import {
+  LOW_RISK_PROFILE_THRESHOLD_AED,
+  MEDIUM_RISK_PROFILE_THRESHOLD_AED,
+  ROUND_TRIPPING_THRESHOLD_AED,
+  RAPID_BUYSELL_THRESHOLD_AED,
+  DORMANCY_REACTIVATION_MIN_AED,
+  DORMANCY_DAYS,
+  CERTIFICATION_THRESHOLD_AED,
+} from '../domain/constants';
+
 export type TMRuleId =
   | 'structuring'
   | 'profile-mismatch'
@@ -107,8 +117,8 @@ export const TM_RULES: TMRule[] = [
     severity: 'high',
     regulatoryRef: 'Cabinet Resolution 134/2025 Art.16, UAE NRA 2024',
     detect: (tx) =>
-      (tx.customerRiskRating === 'low' && tx.amount > 200000) ||
-      (tx.customerRiskRating === 'medium' && tx.amount > 500000),
+      (tx.customerRiskRating === 'low' && tx.amount > LOW_RISK_PROFILE_THRESHOLD_AED) ||
+      (tx.customerRiskRating === 'medium' && tx.amount > MEDIUM_RISK_PROFILE_THRESHOLD_AED),
   },
   {
     id: 'third-party-payment',
@@ -138,7 +148,7 @@ export const TM_RULES: TMRule[] = [
     description: 'Purchase and return/resale within short period',
     severity: 'high',
     regulatoryRef: 'UAE NRA 2024 DPMS risk indicators',
-    detect: (tx) => !!tx.isReturn && tx.amount > 20000,
+    detect: (tx) => !!tx.isReturn && tx.amount > RAPID_BUYSELL_THRESHOLD_AED,
   },
   {
     id: 'cash-threshold',
@@ -161,7 +171,7 @@ export const TM_RULES: TMRule[] = [
       !!tx.originCountry &&
       !!tx.destinationCountry &&
       tx.originCountry === tx.destinationCountry &&
-      tx.amount > 100000 &&
+      tx.amount > ROUND_TRIPPING_THRESHOLD_AED &&
       !tx.payerMatchesCustomer,
   },
   {
@@ -203,7 +213,7 @@ export const TM_RULES: TMRule[] = [
     severity: 'high',
     regulatoryRef: 'MoE DPMS Regulations, LBMA GDR, OECD DDG, UAE Customs',
     detect: (tx) =>
-      tx.amount > 10000 &&
+      tx.amount > CERTIFICATION_THRESHOLD_AED &&
       (!tx.hasHallmark || !tx.hasAssayCertificate || !tx.hasCertificateOfOrigin),
   },
   {
@@ -212,7 +222,7 @@ export const TM_RULES: TMRule[] = [
     description: 'Significant transaction following >90 days of inactivity',
     severity: 'medium',
     regulatoryRef: 'FDL No.10/2025 Art.15, MoE DPMS Guidance',
-    detect: (tx) => (tx.daysSinceLastTransaction ?? 0) > 90 && tx.amount > 20000,
+    detect: (tx) => (tx.daysSinceLastTransaction ?? 0) > DORMANCY_DAYS && tx.amount > DORMANCY_REACTIVATION_MIN_AED,
   },
   {
     id: 'threshold-avoidance',
