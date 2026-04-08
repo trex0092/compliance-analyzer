@@ -458,7 +458,7 @@
     // AI providers — check if key or proxy is configured
     if (window.ANTHROPIC_KEY || getProxy()) {
       try {
-        await proxyFetch('/anthropic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"model":"claude-sonnet-4-5","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}' });
+        await proxyFetch('/anthropic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"model":"claude-haiku-4-5","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}' });
         results.anthropic = true; updateStatus('anthropic', true);
       } catch (_) {
         // If key or proxy exists, mark as connected (API might rate-limit pings)
