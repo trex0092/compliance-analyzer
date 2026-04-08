@@ -138,7 +138,7 @@ async function queryModel(
   model: string,
   systemPrompt: string,
   userPrompt: string,
-  apiKey: string,
+  apiKey: string
 ): Promise<ModelOpinion> {
   const startTime = Date.now();
 
@@ -177,23 +177,20 @@ async function queryModel(
 
 function parseModelResponse(
   content: string,
-  model: string,
+  model: string
 ): Omit<ModelOpinion, 'model' | 'responseTimeMs'> {
   try {
     const json = JSON.parse(content);
     const validVerdicts = ['clear', 'potential-match', 'confirmed-match'] as const;
     const verdict = validVerdicts.includes(json.verdict) ? json.verdict : 'potential-match';
-    const confidence = typeof json.confidence === 'number'
-      ? Math.max(0, Math.min(1, json.confidence))
-      : 0.5;
+    const confidence =
+      typeof json.confidence === 'number' ? Math.max(0, Math.min(1, json.confidence)) : 0.5;
 
     return {
       verdict,
       confidence,
       reasoning: String(json.reasoning || 'No reasoning provided'),
-      riskIndicators: Array.isArray(json.riskIndicators)
-        ? json.riskIndicators.map(String)
-        : [],
+      riskIndicators: Array.isArray(json.riskIndicators) ? json.riskIndicators.map(String) : [],
     };
   } catch {
     return {
@@ -212,7 +209,7 @@ function parseModelResponse(
 async function raceModels(
   request: MultiModelScreeningRequest,
   apiKey: string,
-  models: readonly string[] = SCREENING_MODELS,
+  models: readonly string[] = SCREENING_MODELS
 ): Promise<ModelOpinion[]> {
   const systemPrompt = buildSystemPrompt(request.screeningType);
   const userPrompt = buildUserPrompt(request);
@@ -264,7 +261,7 @@ async function raceModels(
 // ─── Consensus Aggregation ─────────────────────────────────────────────────
 
 const VERDICT_SEVERITY: Record<string, number> = {
-  'clear': 0,
+  clear: 0,
   'potential-match': 1,
   'confirmed-match': 2,
 };
@@ -280,7 +277,7 @@ function aggregateConsensus(opinions: ModelOpinion[]): {
 
   // Count verdicts weighted by confidence
   const verdictScores: Record<string, number> = {
-    'clear': 0,
+    clear: 0,
     'potential-match': 0,
     'confirmed-match': 0,
   };
@@ -291,10 +288,11 @@ function aggregateConsensus(opinions: ModelOpinion[]): {
 
   // Safety-first: if ANY model says confirmed-match with high confidence, escalate
   const confirmedHighConf = opinions.filter(
-    (o) => o.verdict === 'confirmed-match' && o.confidence >= 0.8,
+    (o) => o.verdict === 'confirmed-match' && o.confidence >= 0.8
   );
   if (confirmedHighConf.length > 0) {
-    const avgConf = confirmedHighConf.reduce((s, o) => s + o.confidence, 0) / confirmedHighConf.length;
+    const avgConf =
+      confirmedHighConf.reduce((s, o) => s + o.confidence, 0) / confirmedHighConf.length;
     return {
       consensus: 'confirmed-match',
       consensusConfidence: avgConf,
@@ -314,9 +312,7 @@ function aggregateConsensus(opinions: ModelOpinion[]): {
   const avgConfidence = agreeing.reduce((s, o) => s + o.confidence, 0) / agreeing.length;
 
   // If low agreement, bump up to potential-match for safety
-  const consensus = agreementRatio < 0.5 && topVerdict === 'clear'
-    ? 'potential-match'
-    : topVerdict;
+  const consensus = agreementRatio < 0.5 && topVerdict === 'clear' ? 'potential-match' : topVerdict;
 
   return {
     consensus,
@@ -361,7 +357,7 @@ function getTopRiskIndicators(opinions: ModelOpinion[], limit = 5): string[] {
 function recommendAction(
   consensus: 'clear' | 'potential-match' | 'confirmed-match',
   riskLevel: 'low' | 'medium' | 'high' | 'critical',
-  screeningType: ScreeningType,
+  screeningType: ScreeningType
 ): string {
   if (consensus === 'confirmed-match') {
     if (screeningType === 'sanctions') {
@@ -400,7 +396,7 @@ function recommendAction(
 export async function runMultiModelScreening(
   request: MultiModelScreeningRequest,
   apiKey: string,
-  models?: readonly string[],
+  models?: readonly string[]
 ): Promise<ConsensusResult> {
   const startTime = Date.now();
   const modelsToUse = models ?? SCREENING_MODELS;
@@ -436,7 +432,7 @@ export async function runMultiModelScreening(
 export function consensusToScreeningRun(
   result: ConsensusResult,
   subjectId: string,
-  analyst: string,
+  analyst: string
 ): ScreeningRun {
   return {
     id: `MMS-${Date.now()}`,
@@ -446,9 +442,10 @@ export function consensusToScreeningRun(
     systemUsed: `Multi-Model Screening (${result.modelsResponded}/${result.modelsQueried} models)`,
     listsChecked: result.opinions.map((o) => o.model),
     result: result.consensus,
-    falsePositiveResolution: result.consensus === 'clear'
-      ? `Consensus clear (${result.agreementRatio * 100}% agreement, ${result.consensusConfidence} confidence)`
-      : undefined,
+    falsePositiveResolution:
+      result.consensus === 'clear'
+        ? `Consensus clear (${result.agreementRatio * 100}% agreement, ${result.consensusConfidence} confidence)`
+        : undefined,
     analyst,
   };
 }

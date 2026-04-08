@@ -21,8 +21,6 @@
 import {
   DPMS_CASH_THRESHOLD_AED,
   STRUCTURING_CUMULATIVE_PCT,
-  DORMANCY_DAYS,
-  DORMANCY_REACTIVATION_MIN_AED,
   CROSS_BORDER_CASH_THRESHOLD_AED,
 } from '../domain/constants';
 import type { TMAlert, TransactionInput } from '../risk/transactionMonitoring';
@@ -189,10 +187,7 @@ export class TransactionMonitoringEngine {
    *
    * All checks are hard-enforced — no override possible.
    */
-  processTransaction(
-    tx: TransactionInput,
-    customerId: string,
-  ): EnhancedTMAlert[] {
+  processTransaction(tx: TransactionInput, customerId: string): EnhancedTMAlert[] {
     this.session.transactionsProcessed++;
     this.checkCircuitBreakerReset();
 
@@ -258,14 +253,14 @@ export class TransactionMonitoringEngine {
   private checkVelocity(
     tx: TransactionInput,
     customerId: string,
-    now: string,
+    now: string
   ): EnhancedTMAlert | null {
     const record = this.velocityRecords.get(customerId);
     if (!record) return null;
 
     const windowStart = Date.now() - this.config.velocityWindowHours * 60 * 60 * 1000;
     const recentTxs = record.transactions.filter(
-      (t) => new Date(t.timestamp).getTime() > windowStart,
+      (t) => new Date(t.timestamp).getTime() > windowStart
     );
 
     if (recentTxs.length >= this.config.velocityMaxTransactions) {
@@ -281,7 +276,7 @@ export class TransactionMonitoringEngine {
         customerId,
         now,
         true,
-        Math.min(1, recentTxs.length / (this.config.velocityMaxTransactions * 2)),
+        Math.min(1, recentTxs.length / (this.config.velocityMaxTransactions * 2))
       );
     }
 
@@ -297,7 +292,7 @@ export class TransactionMonitoringEngine {
   private checkBehavioralDeviation(
     tx: TransactionInput,
     customerId: string,
-    now: string,
+    now: string
   ): EnhancedTMAlert | null {
     const profile = this.profiles.get(customerId);
     if (!profile || profile.avgTransactionAmount === 0) return null;
@@ -318,7 +313,7 @@ export class TransactionMonitoringEngine {
         customerId,
         now,
         true,
-        anomalyScore,
+        anomalyScore
       );
     }
 
@@ -339,7 +334,7 @@ export class TransactionMonitoringEngine {
         customerId,
         now,
         true,
-        0.4,
+        0.4
       );
     }
 
@@ -355,15 +350,14 @@ export class TransactionMonitoringEngine {
   private checkCumulativeExposure(
     tx: TransactionInput,
     customerId: string,
-    now: string,
+    now: string
   ): EnhancedTMAlert | null {
     const record = this.velocityRecords.get(customerId);
     if (!record) return null;
 
-    const windowStart =
-      Date.now() - this.config.cumulativeWindowDays * 24 * 60 * 60 * 1000;
+    const windowStart = Date.now() - this.config.cumulativeWindowDays * 24 * 60 * 60 * 1000;
     const recentTxs = record.transactions.filter(
-      (t) => new Date(t.timestamp).getTime() > windowStart,
+      (t) => new Date(t.timestamp).getTime() > windowStart
     );
 
     const cumulative = recentTxs.reduce((sum, t) => sum + t.amount, 0) + tx.amount;
@@ -382,13 +376,12 @@ export class TransactionMonitoringEngine {
           ruleName: 'Cumulative Exposure — Threshold Breach',
           severity: 'critical',
           message: `Cumulative amount AED ${cumulative.toLocaleString()} exceeds AED ${DPMS_CASH_THRESHOLD_AED.toLocaleString()} threshold over ${this.config.cumulativeWindowDays} days across ${recentTxs.length + 1} transactions. Individual amounts below threshold. Customer: ${tx.customerName}. Requires CTR filing.`,
-          regulatoryRef:
-            'FDL No.10/2025 Art.15-16, FATF Rec 22, MoE Circular 08/AML/2021',
+          regulatoryRef: 'FDL No.10/2025 Art.15-16, FATF Rec 22, MoE Circular 08/AML/2021',
         },
         customerId,
         now,
         false,
-        Math.min(1, cumulative / (DPMS_CASH_THRESHOLD_AED * 2)),
+        Math.min(1, cumulative / (DPMS_CASH_THRESHOLD_AED * 2))
       );
     }
 
@@ -409,7 +402,7 @@ export class TransactionMonitoringEngine {
         customerId,
         now,
         false,
-        0.6,
+        0.6
       );
     }
 
@@ -424,7 +417,7 @@ export class TransactionMonitoringEngine {
   private checkCrossBorder(
     tx: TransactionInput,
     customerId: string,
-    now: string,
+    now: string
   ): EnhancedTMAlert | null {
     if (
       tx.originCountry &&
@@ -443,7 +436,7 @@ export class TransactionMonitoringEngine {
         customerId,
         now,
         false,
-        0.8,
+        0.8
       );
     }
 
@@ -477,7 +470,7 @@ export class TransactionMonitoringEngine {
       !this.circuitBreaker.tripped
     ) {
       const resetsAt = new Date(
-        now + this.config.circuitBreakerResetMinutes * 60 * 1000,
+        now + this.config.circuitBreakerResetMinutes * 60 * 1000
       ).toISOString();
       this.circuitBreaker = {
         tripped: true,
@@ -537,10 +530,9 @@ export class TransactionMonitoringEngine {
     });
 
     // Prune old transactions outside the window
-    const windowStart =
-      Date.now() - this.config.cumulativeWindowDays * 24 * 60 * 60 * 1000;
+    const windowStart = Date.now() - this.config.cumulativeWindowDays * 24 * 60 * 60 * 1000;
     record.transactions = record.transactions.filter(
-      (t) => new Date(t.timestamp).getTime() > windowStart,
+      (t) => new Date(t.timestamp).getTime() > windowStart
     );
   }
 
@@ -549,7 +541,7 @@ export class TransactionMonitoringEngine {
     customerId: string,
     now: string,
     isBehavioral: boolean,
-    anomalyScore: number,
+    anomalyScore: number
   ): EnhancedTMAlert {
     this.alertCounter++;
     return {
@@ -575,10 +567,7 @@ export class TransactionMonitoringEngine {
   /**
    * Get recent alerts (most recent first), optionally filtered by severity.
    */
-  getRecentAlerts(
-    limit = 100,
-    severity?: 'medium' | 'high' | 'critical',
-  ): EnhancedTMAlert[] {
+  getRecentAlerts(limit = 100, severity?: 'medium' | 'high' | 'critical'): EnhancedTMAlert[] {
     let alerts = [...this.recentAlerts];
     if (severity) {
       alerts = alerts.filter((a) => a.severity === severity);
@@ -620,11 +609,12 @@ export class TransactionMonitoringEngine {
       criticalAlerts: alerts.filter((a) => a.severity === 'critical').length,
       highAlerts: alerts.filter((a) => a.severity === 'high').length,
       behavioralAlerts: behavioral.length,
-      avgAnomalyScore: behavioral.length > 0
-        ? Math.round(
-            (behavioral.reduce((s, a) => s + a.anomalyScore, 0) / behavioral.length) * 100,
-          ) / 100
-        : 0,
+      avgAnomalyScore:
+        behavioral.length > 0
+          ? Math.round(
+              (behavioral.reduce((s, a) => s + a.anomalyScore, 0) / behavioral.length) * 100
+            ) / 100
+          : 0,
       velocityRecord: record,
       cumulativeAmount30d: cumulative,
     };
