@@ -2506,7 +2506,7 @@ window.csFormatDateInput = function (el) {
         <span class="sec-title">TFS Workflow — Full 4-Outcome Process</span>
         <span style="font-size:11px;color:var(--muted)">Cabinet Decision No.(74) of 2020 | EOCN Executive Office TFS Guidance</span>
         <div style="display:flex;gap:6px">
-          <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function')refreshSanctionsLists();renderTFS2();toast('Refreshed','success')">Refresh</button>
+          <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function'){refreshSanctionsLists().then(function(){renderTFS2()}).catch(function(){})}else{renderTFS2()}">Refresh</button>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
         </div>
       </div>
@@ -2920,8 +2920,14 @@ window.csFormatDateInput = function (el) {
       if (notesEl) notesEl.value = '[AI Screening] ' + report;
 
     } catch(e) {
-      toast('Screening error: ' + e.message, 'error');
-      if (notesEl) notesEl.value = '[AI Screening Error] ' + e.message + '. Manual screening required per FATF Rec 6 and UAE FDL No.10/2025 Art.22.';
+      var billingMsg = (e.message || '').toLowerCase();
+      if (e.isBillingError || billingMsg.indexOf('credit') !== -1 || billingMsg.indexOf('balance') !== -1 || billingMsg.indexOf('billing') !== -1 || billingMsg.indexOf('insufficient') !== -1 || billingMsg.indexOf('quota') !== -1) {
+        toast('API credits exhausted — select screening outcome manually using the buttons above. Add credits at console.anthropic.com.', 'info', 10000);
+        if (notesEl) notesEl.value = '[AI Unavailable] API credits exhausted. Manual screening required per FATF Rec 6 and UAE FDL No.10/2025 Art.22. Screen against: UAE Local Terrorist List (EOCN), UNSC Consolidated, OFAC SDN, EU Consolidated, UK OFSI.';
+      } else {
+        toast('Screening error: ' + e.message, 'error');
+        if (notesEl) notesEl.value = '[AI Screening Error] ' + e.message + '. Manual screening required per FATF Rec 6 and UAE FDL No.10/2025 Art.22.';
+      }
     }
   };
 

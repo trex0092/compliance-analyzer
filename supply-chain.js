@@ -396,8 +396,14 @@ Format your response as a structured compliance update notification. Be concise 
       if (typeof logAudit === 'function') logAudit('list-update', `${listNames[listType]} update check completed`);
       toast('Update check completed', 'success');
     } catch (err) {
-      const errSpan = document.createElement('span'); errSpan.textContent = err.message || 'Unknown error';
-      notifEl.innerHTML = ''; const errP = document.createElement('p'); errP.style.cssText = 'color:var(--red);font-size:12px;padding:8px 0'; errP.textContent = 'Update check failed: ' + errSpan.textContent; notifEl.appendChild(errP);
+      const errMsg = err.message || 'Unknown error';
+      const errLower = errMsg.toLowerCase();
+      if (err.isBillingError || errLower.includes('credit') || errLower.includes('balance') || errLower.includes('billing') || errLower.includes('insufficient') || errLower.includes('quota')) {
+        notifEl.innerHTML = '<p style="color:#E8A838;font-size:12px;padding:8px 0">API credits exhausted — verify list updates manually via official sources. Add credits at console.anthropic.com.</p>';
+        toast('API credits exhausted — check list updates manually', 'info', 8000);
+      } else {
+        notifEl.innerHTML = '<p style="color:var(--red);font-size:12px;padding:8px 0">Update check failed: ' + errMsg.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
+      }
     }
   }
 
