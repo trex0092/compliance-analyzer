@@ -14,7 +14,7 @@ import { COMPANY_REGISTRY } from './domain/customers';
 
 const store = new LocalAppStore();
 
-type Page = 'dashboard' | 'cases' | 'str' | 'customers' | 'screening';
+type Page = 'dashboard' | 'cases' | 'str' | 'customers' | 'screening' | 'templates';
 
 // ─── Sidebar Navigation ──────────────────────────────────────────────────────
 
@@ -24,6 +24,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: 'str', label: 'STR / SAR', icon: '▲' },
   { id: 'customers', label: 'Customers', icon: '●' },
   { id: 'screening', label: 'Screening', icon: '◈' },
+  { id: 'templates', label: 'Templates', icon: '□' },
 ];
 
 // ─── Seed Data ───────────────────────────────────────────────────────────────
@@ -471,6 +472,162 @@ function CustomersPage() {
   );
 }
 
+// ─── Templates Page ─────────────────────────────────────────────────────────
+
+function TemplatesPage() {
+  const [templates, setTemplates] = useState<
+    {
+      id: string;
+      name: string;
+      category: string;
+      regulatoryBasis: string;
+      fields: { name: string; label: string; type: string; required: boolean }[];
+      approvalRequired: string[];
+      retentionYears: number;
+    }[]
+  >([]);
+  const [selectedId, setSelectedId] = useState<string>('');
+
+  useEffect(() => {
+    void import('./domain/complianceTemplates').then((mod) => {
+      const all = mod.ALL_TEMPLATES || [];
+      setTemplates(all);
+      if (all.length > 0) setSelectedId(all[0].id);
+    });
+  }, []);
+
+  const selected = templates.find((t) => t.id === selectedId);
+
+  const categoryColors: Record<string, string> = {
+    'CDD/KYC': '#3B82F6',
+    EDD: '#E8A030',
+    Reporting: '#D94F4F',
+    PEP: '#8B5CF6',
+    TFS: '#f85149',
+    'Periodic Review': '#06B6D4',
+    'Risk Assessment': '#3DA876',
+    Training: '#10B981',
+    'Supply Chain': '#F59E0B',
+  };
+
+  return (
+    <div
+      style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16, alignItems: 'start' }}
+    >
+      <div style={{ maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
+        {templates.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setSelectedId(t.id)}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              marginBottom: 6,
+              padding: '10px 12px',
+              border: `1px solid ${selectedId === t.id ? '#d4a843' : '#21262d'}`,
+              borderRadius: 6,
+              background: selectedId === t.id ? '#161b22' : '#0d1117',
+              cursor: 'pointer',
+              color: '#e6edf3',
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 600 }}>{t.name}</div>
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '1px 6px',
+                borderRadius: 8,
+                fontSize: 10,
+                marginTop: 4,
+                background: categoryColors[t.category] || '#21262d',
+                color: '#fff',
+              }}
+            >
+              {t.category}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {selected ? (
+        <div
+          style={{
+            background: '#161b22',
+            border: '1px solid #21262d',
+            borderRadius: 8,
+            padding: 20,
+          }}
+        >
+          <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#e6edf3' }}>{selected.name}</h3>
+          <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 16 }}>
+            {selected.id} · Retention: {selected.retentionYears} years
+          </div>
+
+          <div
+            style={{
+              padding: '8px 12px',
+              background: '#0d1117',
+              border: '1px solid #21262d',
+              borderRadius: 6,
+              fontSize: 12,
+              color: '#8b949e',
+              marginBottom: 16,
+              lineHeight: 1.6,
+            }}
+          >
+            <strong style={{ color: '#e6edf3' }}>Regulatory Basis:</strong>{' '}
+            {selected.regulatoryBasis}
+            <br />
+            <strong style={{ color: '#e6edf3' }}>Approval Required:</strong>{' '}
+            {selected.approvalRequired.join(', ')}
+          </div>
+
+          <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 8, fontWeight: 600 }}>
+            Fields ({selected.fields.length})
+          </div>
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: 12,
+            }}
+          >
+            <thead>
+              <tr style={{ borderBottom: '1px solid #21262d' }}>
+                <th style={{ textAlign: 'left', padding: '6px 8px', color: '#8b949e' }}>Field</th>
+                <th style={{ textAlign: 'left', padding: '6px 8px', color: '#8b949e' }}>Type</th>
+                <th style={{ textAlign: 'center', padding: '6px 8px', color: '#8b949e' }}>
+                  Required
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {selected.fields.map((f) => (
+                <tr key={f.name} style={{ borderBottom: '1px solid #161b22' }}>
+                  <td style={{ padding: '5px 8px', color: '#e6edf3' }}>{f.label}</td>
+                  <td style={{ padding: '5px 8px', color: '#8b949e' }}>{f.type}</td>
+                  <td style={{ padding: '5px 8px', textAlign: 'center' }}>
+                    {f.required ? (
+                      <span style={{ color: '#D94F4F', fontWeight: 600 }}>Yes</span>
+                    ) : (
+                      <span style={{ color: '#484f58' }}>No</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: 60, color: '#8b949e' }}>
+          Select a template to view its fields.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Screening Page ──────────────────────────────────────────────────────────
 
 function ScreeningPage() {
@@ -489,6 +646,22 @@ function ScreeningPage() {
       const { screenEntityComprehensive } = await import('./services/sanctionsApi');
       const res = await screenEntityComprehensive(entityName.trim());
       setResult({ matches: res.matches, listsChecked: res.listsChecked });
+      // Persist screening run to store
+      await store.saveScreeningRun({
+        id: createId('scr'),
+        subjectType: 'entity',
+        subjectId: entityName.trim(),
+        executedAt: nowIso(),
+        systemUsed: 'sanctions-api',
+        listsChecked: res.listsChecked,
+        result:
+          res.matches.length === 0
+            ? 'clear'
+            : res.matches.some((m) => m.confidence >= 0.9)
+              ? 'confirmed-match'
+              : 'potential-match',
+        analyst: 'compliance-officer',
+      });
     } catch (err) {
       setResult({ matches: [], listsChecked: ['Error: ' + String(err)] });
     }
@@ -622,6 +795,7 @@ export default function App() {
     str: 'STR / SAR Filing',
     customers: 'Customer Registry',
     screening: 'Sanctions Screening',
+    templates: 'Compliance Templates',
   };
 
   if (loading) {
@@ -692,6 +866,7 @@ export default function App() {
         {page === 'str' && <STRDraftPage />}
         {page === 'customers' && <CustomersPage />}
         {page === 'screening' && <ScreeningPage />}
+        {page === 'templates' && <TemplatesPage />}
       </main>
     </div>
   );

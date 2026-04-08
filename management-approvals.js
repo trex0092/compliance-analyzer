@@ -449,7 +449,27 @@
 
   function saveCurrentApproval() {
     const data = collectFormData();
-    if (!data.customerInfo.companyName) { if (typeof toast === 'function') toast('Company name is required', 'error'); return; }
+    // ── Comprehensive validation per FDL Art.12-16, Cabinet Res 134/2025 ──
+    var errors = [];
+    if (!data.customerInfo.companyName) errors.push('Company name is required');
+    if (!data.customerInfo.country) errors.push('Country of registration is required');
+    if (!data.riskClassification) errors.push('Risk classification is required (Section 6)');
+    if (!data.cddLevel) errors.push('CDD level is required (Section 6)');
+    // At least one sanctions screening must be completed (FDL Art.22)
+    var sanctions = data.sanctions || {};
+    var anyScreeningDone = ['UAE','UN','OFAC','UK','EU','INTERPOL'].some(function(k) {
+      return sanctions[k] && sanctions[k].result && sanctions[k].result !== 'Pending' && sanctions[k].result !== '';
+    });
+    if (!anyScreeningDone) errors.push('At least one sanctions screening result required (Section 2)');
+    // Sign-off is mandatory
+    var so = data.signOff || {};
+    if (!so.approvedBy) errors.push('Approved By is required (Section 7)');
+    if (!so.preparedBy) errors.push('Prepared By is required (Section 7)');
+    if (!so.approvalDate) errors.push('Approval date is required (Section 7)');
+    if (errors.length > 0) {
+      if (typeof toast === 'function') toast('Validation errors:\n• ' + errors.join('\n• '), 'error', 8000);
+      return;
+    }
     data.updatedAt = new Date().toISOString();
 
     const approvals = getApprovals();
