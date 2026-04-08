@@ -5862,6 +5862,10 @@ async function runAnalysis(queryOverride, areaOverride) {
   } catch(e) {
     sb.style.display = 'none';
     if (btn) btn.disabled = false;
+    if (isBillingError(e)) {
+      toast('API credits exhausted — AI analysis unavailable. Add credits at console.anthropic.com.', 'info', 8000);
+      return;
+    }
     const raw = String(e && e.message ? e.message : e || 'Unknown error');
     const help = /Failed to fetch|NetworkError/i.test(raw)
       ? PROXY_URL
@@ -9207,7 +9211,7 @@ async function generateSTRDraft() {
     document.getElementById('strDraftResult').style.display='block';
     document.getElementById('strDraftResult').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${escHtml(text)}</div>${strWarning}<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="copySTR()">Copy STR</button></div>`;
     logAudit('str', `STR drafted for ${subject}`);
-  } catch(e) { toast(`STR error: ${e.message}`,'error'); }
+  } catch(e) { if(isBillingError(e)){toast('API credits exhausted — STR generation unavailable. Add credits at console.anthropic.com.','info',8000)}else{toast(`STR error: ${e.message}`,'error')} }
 }
 function copySTR() { const t=document.querySelector('#strDraftResult .summary-box'); if(t){navigator.clipboard.writeText(t.textContent);toast('STR copied','success');} }
 function generateSTR() { switchTab('incidents'); document.getElementById('strSubject').focus(); }
@@ -9257,7 +9261,7 @@ Include: reporter info placeholders, subject details, grounds for suspicion base
       '</div></div>';
     logAudit('str', 'STR draft generated from onboarding for ' + name);
     toast('STR draft generated', 'success');
-  } catch(e) { toast('STR error: ' + e.message, 'error'); }
+  } catch(e) { if(isBillingError(e)){toast('API credits exhausted — STR generation unavailable. Add credits at console.anthropic.com.','info',8000)}else{toast('STR error: ' + e.message, 'error')} }
 }
 
 function copyElText(el) { if(el){navigator.clipboard.writeText(el.textContent);toast('Copied to clipboard','success');} }
@@ -10491,7 +10495,7 @@ async function exportBoardReport() {
     const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     document.getElementById('boardReportPreview').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${escHtml(text)}</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="navigator.clipboard.writeText(document.querySelector('#boardReportPreview .summary-box').textContent);toast('Copied','success')">Copy Report</button></div>`;
     logAudit('board_report', 'Board report generated');
-  } catch(e) { toast(`Report error: ${e.message}`,'error'); }
+  } catch(e) { if(isBillingError(e)){toast('API credits exhausted — report generation unavailable. Add credits at console.anthropic.com.','info',8000)}else{toast(`Report error: ${e.message}`,'error')} }
 }
 
 // ======= REGULATORY CALENDAR =======

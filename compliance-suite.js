@@ -622,7 +622,9 @@ window.csFormatDateInput = function (el) {
       }
       toast('Could not parse updated country risk data', 'error');
     } catch(e) {
-      toast('Country risk update failed: ' + e.message, 'error');
+      var bm = (e.message||'').toLowerCase();
+      if (e.isBillingError || bm.indexOf('credit')!==-1 || bm.indexOf('balance')!==-1 || bm.indexOf('billing')!==-1 || bm.indexOf('quota')!==-1) { toast('API credits exhausted — update unavailable. Add credits at console.anthropic.com.','info',8000); }
+      else { toast('Country risk update failed: ' + e.message, 'error'); }
     }
   };
 
@@ -875,7 +877,9 @@ window.csFormatDateInput = function (el) {
       }
       toast('Could not parse AI response', 'error');
     } catch(e) {
-      toast('Auto-update failed: ' + e.message, 'error');
+      var bm2 = (e.message||'').toLowerCase();
+      if (e.isBillingError || bm2.indexOf('credit')!==-1 || bm2.indexOf('balance')!==-1 || bm2.indexOf('billing')!==-1 || bm2.indexOf('quota')!==-1) { toast('API credits exhausted — auto-update unavailable. Add credits at console.anthropic.com.','info',8000); }
+      else { toast('Auto-update failed: ' + e.message, 'error'); }
     }
   };
 
