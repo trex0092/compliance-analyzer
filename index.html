@@ -2751,6 +2751,12 @@ function requireChart() {
 var ANTHROPIC_KEY = '';
 var ASANA_TOKEN = '';
 var PROXY_URL = '';
+// Detect billing/credit errors from error object or message string
+function isBillingError(e) {
+  if (e && e.isBillingError) return true;
+  var m = (e && (e.message || '')).toLowerCase();
+  return m.includes('credit') || m.includes('balance') || m.includes('billing') || m.includes('insufficient') || m.includes('quota') || m.includes('payment');
+}
 var SCHEDULE_EMAIL = '';
 var OPENAI_KEY = '';
 var NOTION_TOKEN = ''; // removed — use Asana
@@ -5763,7 +5769,14 @@ async function callAnthropic(body) {
   }
 
   const data = await r.json();
-  if (data.error) throw new Error(data.error.message || 'API error');
+  if (data.error) {
+    const err = new Error(data.error.message || 'API error');
+    const lower = (data.error.message || '').toLowerCase();
+    if (lower.includes('credit') || lower.includes('balance') || lower.includes('billing') || lower.includes('payment') || lower.includes('insufficient')) {
+      err.isBillingError = true;
+    }
+    throw err;
+  }
   return data;
 }
 
@@ -7972,7 +7985,7 @@ JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","risk_level":"LOW|MEDIUM|HIGH|CRIT
       // Result rendered successfully, suppress error
       return;
     }
-    if (e.isBillingError) {
+    if (isBillingError(e)) {
       toast('API credits exhausted — AI screening unavailable. Add credits at console.anthropic.com or perform manual screening.','info',8000);
       const manualResult = {
         result: 'MANUAL_REVIEW',
@@ -8055,7 +8068,7 @@ Return JSON array: [{"id":"UAE","lastUpdate":"YYYY-MM-DD","entries":150,"status"
     logAudit('sanctions_refresh', `Refreshed ${lists.length} sanctions lists`);
     toast('Sanctions lists refreshed', 'success');
   } catch(e) {
-    if (e.isBillingError) {
+    if (isBillingError(e)) {
       // API credits exhausted — fall back to local-only status update
       const fallbackResults = lists.map(l => ({ id: l.id, lastUpdate: 'N/A', entries: 0, status: 'NEEDS_CHECK', notes: 'API unavailable — verify manually' }));
       const refreshRecord = { timestamp: new Date().toISOString(), results: fallbackResults, offline: true };

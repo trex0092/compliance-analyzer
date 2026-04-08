@@ -98,7 +98,7 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
         list.lastRefreshed = new Date().toISOString();
       }
     } catch (e) {
-      if (e.isBillingError) {
+      if (e.isBillingError || (typeof isBillingError === 'function' && isBillingError(e))) {
         // API credits exhausted — mark as NEEDS_CHECK instead of ERROR
         list.status = 'NEEDS_CHECK';
         list.lastError = 'API credits exhausted — verify manually';
@@ -208,7 +208,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
 
         return match;
       } catch (e) {
-        if (e.isBillingError) {
+        if (e.isBillingError || (typeof isBillingError === 'function' && isBillingError(e))) {
           if (typeof toast === 'function') toast('API credits exhausted — TFS screening unavailable. Add credits at console.anthropic.com or screen manually.', 'info', 8000);
           const manualMatch = {
             id: Date.now(),
