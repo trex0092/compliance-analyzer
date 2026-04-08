@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ComplianceCase, CaseStatus, AuditAction } from '../../domain/cases';
+import type { SuspicionReport } from '../../domain/reports';
 import { LocalAppStore } from '../../services/indexedDbStore';
 import { createId } from '../../utils/id';
 import { nowIso, formatDateDDMMYYYY } from '../../utils/dates';
@@ -116,6 +117,60 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
 
   const transitions = TRANSITIONS[item.status] || [];
 
+  const needsFiling =
+    item.recommendation === 'str-review' ||
+    item.recommendation === 'sar-review' ||
+    item.recommendation === 'ctr-filing';
+
+  const generateReport = async () => {
+    const reportType: 'STR' | 'SAR' | 'CTR' =
+      item.recommendation === 'sar-review'
+        ? 'SAR'
+        : item.recommendation === 'ctr-filing'
+          ? 'CTR'
+          : 'STR';
+
+    const report: SuspicionReport = {
+      id: createId(reportType.toLowerCase()),
+      caseId: item.id,
+      reportType,
+      status: 'draft',
+      reasonForSuspicion: [
+        `This report is generated from case ${item.id}.`,
+        `Red flags: ${item.redFlags.join(', ')}.`,
+        `Risk score: ${item.riskScore} (${item.riskLevel}).`,
+        `Summary: ${item.narrative}`,
+      ].join(' '),
+      facts: item.findings,
+      redFlags: item.redFlags,
+      parties: [{ name: item.id, role: 'subject' }], // Case ID only — Art.29 tipping-off protection
+      transactions: item.findings.map((f) => ({ date: item.createdAt, summary: f })),
+      generatedAt: nowIso(),
+    };
+
+    await store.saveReport(report);
+
+    const updated: ComplianceCase = {
+      ...item,
+      linkedReportIds: [...(item.linkedReportIds || []), report.id],
+      updatedAt: nowIso(),
+      auditLog: [
+        ...item.auditLog,
+        {
+          id: createId('audit'),
+          at: nowIso(),
+          by: 'compliance-officer',
+          action:
+            reportType === 'STR' ? 'str-filed' : reportType === 'SAR' ? 'sar-filed' : 'ctr-filed',
+          note: `${reportType} draft generated: ${report.id}`,
+        },
+      ],
+    };
+    await store.saveCase(updated);
+    onCaseUpdated?.(updated);
+    alert(`${reportType} draft ${report.id} generated and linked to case.`);
+  };
+
   return (
     <div style={{ maxHeight: 'calc(100vh - 240px)', overflow: 'auto', paddingRight: 8 }}>
       {/* Header */}
@@ -197,6 +252,58 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
               {t.label}
             </button>
           ))}
+          {needsFiling && (
+            <button
+              onClick={generateReport}
+              style={{
+                padding: '5px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+                border: '1px solid #d4a843',
+                borderRadius: 6,
+                background: '#2d2408',
+                color: '#d4a843',
+                cursor: 'pointer',
+                marginLeft: 4,
+              }}
+            >
+              Generate{' '}
+              {item.recommendation === 'sar-review'
+                ? 'SAR'
+                : item.recommendation === 'ctr-filing'
+                  ? 'CTR'
+                  : 'STR'}{' '}
+              Draft
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Filing button when no other transitions exist but filing is needed */}
+      {transitions.length === 0 && needsFiling && (
+        <div style={{ ...sectionStyle, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: '#8b949e', marginRight: 4 }}>Filing:</span>
+          <button
+            onClick={generateReport}
+            style={{
+              padding: '5px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              border: '1px solid #d4a843',
+              borderRadius: 6,
+              background: '#2d2408',
+              color: '#d4a843',
+              cursor: 'pointer',
+            }}
+          >
+            Generate{' '}
+            {item.recommendation === 'sar-review'
+              ? 'SAR'
+              : item.recommendation === 'ctr-filing'
+                ? 'CTR'
+                : 'STR'}{' '}
+            Draft
+          </button>
         </div>
       )}
 
