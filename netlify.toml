@@ -16,6 +16,7 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     X-XSS-Protection = "1; mode=block"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.netlify.app https://app.asana.com https://api.anthropic.com https://api.openai.com https://www.googleapis.com https://accounts.google.com https://generativelanguage.googleapis.com https://api.tavily.com https://api.metals.live https://api.gold-api.com https://api.metalpriceapi.com https://api.allorigins.win https://open.er-api.com https://data-asg.goldprice.org https://fonts.googleapis.com https://fonts.gstatic.com"
 
 [[headers]]
