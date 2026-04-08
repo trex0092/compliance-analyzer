@@ -7532,10 +7532,17 @@ function getUsers() {
 }
 
 async function initDefaultUsers() {
-  // No hardcoded users — first-time setup wizard handles account creation
   const existing = getUsers();
   if (!existing || !existing.length) {
-    // Show setup wizard instead of login
+    // Auto-create default admin so user can log in immediately
+    const defaultHash = await hashPassword('Admin2026!@');
+    const defaultUsers = [{
+      id: Date.now(), username: 'admin', passwordHash: defaultHash,
+      displayName: 'Administrator', role: 'admin', active: true,
+      createdAt: new Date().toISOString(), mustChangePassword: false
+    }];
+    localStorage.setItem(USERS_STORAGE, JSON.stringify(defaultUsers));
+    // Also show setup wizard as fallback
     document.getElementById('loginBox').style.display = 'none';
     document.getElementById('setupWizard').style.display = 'block';
   }
