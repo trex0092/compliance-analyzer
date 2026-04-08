@@ -7542,9 +7542,7 @@ async function initDefaultUsers() {
       createdAt: new Date().toISOString(), mustChangePassword: false
     }];
     localStorage.setItem(USERS_STORAGE, JSON.stringify(defaultUsers));
-    // Also show setup wizard as fallback
-    document.getElementById('loginBox').style.display = 'none';
-    document.getElementById('setupWizard').style.display = 'block';
+    // Keep login form visible so user can sign in with default credentials
   }
 }
 
