@@ -166,7 +166,7 @@
       trigger: 'str_filed', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'transaction_monitoring', priority: 'high' },
-        { type: 'browser_notify', title: 'STR Filed -Enhanced Monitoring Required', message: 'STR filed for {subjectName}. Enhanced monitoring must continue. Do not tip off subject.' }
+        { type: 'browser_notify', title: 'STR Filed -Enhanced Monitoring Required', message: 'STR filed for case {caseRef}. Enhanced monitoring must continue. Comply with Art.29.' }
       ]
     },
     {
@@ -525,8 +525,8 @@
       trigger: 'str_deadline_approaching', condition: { daysRemaining: 3 },
       actions: [
         { type: 'create_asana_task', template: 'str_filing', priority: 'high' },
-        { type: 'email_alert', subject: 'URGENT: STR Filing Deadline Approaching', message: 'STR report for {subjectName} must be submitted to UAE FIU via goAML within {daysRemaining} days. Failure to file timely is a criminal offence. Ref: FDL No.10/2025 Art.26-27.' },
-        { type: 'browser_notify', title: 'STR Deadline Alert', message: 'STR filing deadline in {daysRemaining} days for {subjectName}.' }
+        { type: 'email_alert', subject: 'URGENT: STR Filing Deadline Approaching', message: 'STR report for case {caseRef} must be submitted to UAE FIU via goAML within {daysRemaining} days. Failure to file timely is a criminal offence. Ref: FDL No.10/2025 Art.26-27.' },
+        { type: 'browser_notify', title: 'STR Deadline Alert', message: 'STR filing deadline in {daysRemaining} days for case {caseRef}.' }
       ]
     },
     {
@@ -571,7 +571,7 @@
       actions: [
         { type: 'create_asana_task', template: 'moe_inspection', priority: 'high' },
         { type: 'create_asana_task', template: 'transaction_monitoring', priority: 'high' },
-        { type: 'email_alert', subject: 'FIU Intelligence Received -Immediate Action', message: 'FIU has disseminated intelligence regarding {subjectName}. Implement enhanced monitoring, restrict transactions if necessary, and respond within deadline. Do NOT tip off. Ref: FDL No.10/2025 Art.14 & 29.' }
+        { type: 'email_alert', subject: 'FIU Intelligence Received -Immediate Action', message: 'FIU has disseminated intelligence regarding case {caseRef}. Implement enhanced monitoring, restrict transactions if necessary, and respond within deadline. Art.29 applies. Ref: FDL No.10/2025 Art.14 & 29.' }
       ]
     },
     {
@@ -1558,11 +1558,26 @@
       // Approximate business days: calendar days * 5/7
       var calendarElapsed = Math.floor((now - createdDate.getTime()) / ONE_DAY);
       var bizElapsed = Math.round(calendarElapsed * 5 / 7);
-      const deadlineDays = CC.STR_FILING_DEADLINE_BUSINESS_DAYS || 10;
+      // STR_FILING_DEADLINE_BUSINESS_DAYS = 0 means "without delay" (FDL Art.26-27).
+      // Do NOT use || fallback — 0 is intentional, not falsy/missing.
+      const deadlineDays = CC.STR_FILING_DEADLINE_BUSINESS_DAYS !== undefined ? CC.STR_FILING_DEADLINE_BUSINESS_DAYS : 0;
       const remaining = deadlineDays - bizElapsed;
 
-      // Create urgent Asana task at 3 business days remaining
-      if (remaining <= 3 && remaining > 0) {
+      // If deadline is 0 (immediate), escalate as soon as case is created
+      if (deadlineDays === 0 && bizElapsed >= 0) {
+        const dedupKey = `deadline_str_immediate_${c.id || c.caseRef}`;
+        if (!isDuplicate('deadline_monitor', 'deadline_asana', { id: dedupKey })) {
+          processTrigger('str_immediate_filing_required', {
+            customer: c.entityName || c.id,
+            caseRef: c.id || c.caseRef,
+            daysElapsed: bizElapsed,
+            deadline: 'IMMEDIATE — FDL Art.26-27 requires filing without delay'
+          });
+        }
+      }
+
+      // Create urgent Asana task at 3 business days remaining (for non-zero deadlines)
+      if (deadlineDays > 0 && remaining <= 3 && remaining > 0) {
         const dedupKey = `deadline_str_${c.id || c.caseRef}_${Math.floor(now / ONE_DAY)}`;
         if (!isDuplicate('deadline_monitor', 'deadline_asana', { id: dedupKey })) {
           processTrigger('deadline_approaching', {

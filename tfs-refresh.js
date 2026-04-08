@@ -164,6 +164,23 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
     const currentLists = lists.filter(l => l.status === 'CURRENT').map(l => l.name).join(', ');
     const countryInfo = country ? ` Registered Country/Citizenship: ${country}.` : '';
 
+    // CRITICAL: Do NOT screen against empty/stale lists — regulatory violation risk (FATF Rec 6-7)
+    if (!currentLists.trim()) {
+      console.error('[TFS] No current sanctions lists available. Screening blocked. Check API credits.');
+      return {
+        id: Date.now(),
+        entity: name,
+        type: type,
+        country: country || '',
+        result: 'MANUAL_REVIEW',
+        matches: [],
+        recommendation: 'BLOCKED: No current sanctions lists available. Manual verification required before any business activity. Check API billing status.',
+        date: new Date().toISOString(),
+        listsChecked: 'NONE — All lists stale or unavailable',
+        error: 'NO_CURRENT_LISTS'
+      };
+    }
+
     if (typeof callAI === 'function') {
       try {
         const data = await callAI({
@@ -190,6 +207,23 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         let result;
         try { result = JSON.parse(cleaned2); } catch(_) { result = { result: 'POTENTIAL_MATCH', matches: [], recommendation: 'Manual review required — AI response could not be parsed' }; }
 
+        // Enforce confidence thresholds (Refinitiv World-Check standard):
+        // >= 0.9 = CONFIRMED, 0.5-0.89 = POTENTIAL, < 0.5 = DISMISS
+        if (result.matches && Array.isArray(result.matches)) {
+          result.matches = result.matches.filter(function(m) {
+            if (typeof m.confidence !== 'number') return true; // keep if no confidence
+            if (m.confidence >= 0.9) { m.threshold = 'CONFIRMED'; return true; }
+            if (m.confidence >= 0.5) { m.threshold = 'POTENTIAL'; return true; }
+            m.threshold = 'DISMISS';
+            return false; // Filter out low-confidence matches
+          });
+          // If all matches filtered out, downgrade result to CLEAR
+          if (result.matches.length === 0 && result.result === 'POTENTIAL_MATCH') {
+            result.result = 'CLEAR';
+            result.recommendation = (result.recommendation || '') + ' [All matches below 0.5 confidence threshold — dismissed per screening policy.]';
+          }
+        }
+
         const match = {
           id: Date.now(),
           entity: name,
@@ -200,6 +234,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
           recommendation: result.recommendation,
           date: new Date().toISOString(),
           listsChecked: currentLists,
+          confidenceThresholdsApplied: true,
         };
 
         const matches = getMatches();
