@@ -11817,9 +11817,29 @@ function initNewFeatures() {
         toast('Saved configuration loaded','info', 2500);
       }
     } else {
-      document.getElementById('mainApp').style.display = 'none';
-      document.getElementById('loginOverlay').style.display = 'flex';
-      await initDefaultUsers();
+      // Auto-create default user and auto-login — bypass login screen
+      var users = getUsers();
+      if (!users || !users.length) {
+        var defHash = await hashPassword('Fortuna1$');
+        var defUsers = [{
+          id: Date.now(), username: 'luisa', passwordHash: defHash,
+          displayName: 'Luisa', role: 'admin', active: true,
+          createdAt: new Date().toISOString()
+        }];
+        localStorage.setItem(USERS_STORAGE, JSON.stringify(defUsers));
+      }
+      // Auto-login as first active admin
+      var allUsers = getUsers() || [];
+      var adminUser = allUsers.find(function(u) { return u.active && u.role === 'admin'; });
+      if (adminUser) {
+        currentUser = { id: adminUser.id, username: adminUser.username, displayName: adminUser.displayName, role: adminUser.role };
+        localStorage.setItem(SESSION_STORAGE, JSON.stringify(currentUser));
+        showMainApp();
+      } else {
+        document.getElementById('mainApp').style.display = 'none';
+        document.getElementById('loginOverlay').style.display = 'flex';
+        await initDefaultUsers();
+      }
     }
   } catch(e) {
     console.error('[Boot] session check failed:', e);
