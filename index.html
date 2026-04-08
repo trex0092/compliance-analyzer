@@ -5750,13 +5750,13 @@ async function callAnthropic(body) {
     }
     const err = new Error(`Anthropic API ${r.status}: ${errDetail || r.statusText}`);
     // Tag billing/credit errors so callers can detect and handle gracefully
+    // Rate-limit check first (more specific); billing second (mutually exclusive)
     if (r.status === 400 || r.status === 402 || r.status === 429) {
       const lower = (errDetail || '').toLowerCase();
-      if (lower.includes('credit') || lower.includes('balance') || lower.includes('billing') || lower.includes('payment') || lower.includes('insufficient') || r.status === 402) {
-        err.isBillingError = true;
-      }
-      if (r.status === 429 || lower.includes('rate limit')) {
+      if (r.status === 429 && !lower.includes('credit') && !lower.includes('balance')) {
         err.isRateLimitError = true;
+      } else if (lower.includes('credit') || lower.includes('balance') || lower.includes('billing') || lower.includes('payment') || lower.includes('insufficient') || r.status === 402) {
+        err.isBillingError = true;
       }
     }
     throw err;
@@ -7989,9 +7989,13 @@ JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","risk_level":"LOW|MEDIUM|HIGH|CRIT
           'Document manual screening results'
         ]
       };
+      const record = { id:Date.now(), name, type, country, date:new Date().toISOString(), result: manualResult };
+      const history = safeLocalParse(SCREENING_STORAGE, []);
+      history.unshift(record);
+      safeLocalSave(SCREENING_STORAGE, history.slice(0,200));
+      logAudit('screening', `Screened ${name}: MANUAL_REVIEW (API credits exhausted)`);
       renderScreeningResult(manualResult, name);
       loadScreeningHistory();
-      sb.style.display='none';
     } else {
       toast(`Screening error: ${e.message}`,'error');
     }
@@ -8118,7 +8122,7 @@ function renderScreeningResult(result, name) {
   el.style.display='block';
   el.querySelector('#screeningResultsContent').innerHTML = `
     <div class="finding ${cls}" style="animation:none;opacity:1">
-      <div class="f-head"><div class="f-head-left"><span class="badge ${badge}">${comp.label}</span><span class="f-title">${name}</span></div><span class="badge" style="background:rgba(201,168,76,0.05)">${result.risk_level} RISK</span></div>
+      <div class="f-head"><div class="f-head-left"><span class="badge ${badge}">${comp.label}</span><span class="f-title">${escHtml(name||'')}</span></div><span class="badge" style="background:rgba(201,168,76,0.05)">${escHtml(result.risk_level||'')} RISK</span></div>
       <div class="f-body">${escHtml(result.summary||'')} </div>
       ${(result.sanctions_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Sanctions Hits:</strong> ${result.sanctions_hits.map(h=>`${escHtml(h.list)} (${escHtml(h.match_type)}): ${escHtml(h.details)}`).join('; ')}</div>`:''}
       ${(result.adverse_media_hits||[]).length?`<div class="rec" style="margin-top:8px"><strong>Adverse Media Hits:</strong><ul style="margin:4px 0 0 16px;font-size:12px">${result.adverse_media_hits.map(h=>`<li><strong>${escHtml(h.category)}</strong> — ${escHtml(h.details)}${h.source?' <span style="color:var(--muted)">('+escHtml(h.source)+')</span>':''}${h.date?' <span style="color:var(--muted)">['+escHtml(h.date)+']</span>':''}</li>`).join('')}</ul></div>`:''}
@@ -8139,10 +8143,10 @@ function loadScreeningHistory() {
   el.innerHTML = history.slice(0,50).map(h=>{
     const r = h.result||{};
     const comp = getComplianceDescription(r.result);
-    const cls = r.result==='CLEAR'?'b-ok':r.result==='MATCH'?'b-c':r.result==='MANUAL_REVIEW'?'b-a':'b-h';
+    const cls = r.result==='CLEAR'?'b-ok':r.result==='MATCH'?'b-c':'b-h';
     const ageDays = Math.floor((Date.now() - new Date(h.date).getTime()) / 86400000);
     const ageLabel = ageDays <= 30 ? '🟢 ' + ageDays + 'd ago' : ageDays <= _scrCfg.screeningStaleDays ? '🟡 ' + ageDays + 'd ago' : '🔴 ' + ageDays + 'd ago — STALE';
-    return `<div class="asana-item"><div><div class="asana-name">${h.name}</div><div class="asana-meta">${h.type} | ${h.country||'—'} | ${new Date(h.date).toLocaleDateString('en-GB')} | <span style="font-size:10px">${ageLabel}</span></div></div><span class="badge ${cls}">${comp.label}</span></div>`;
+    return `<div class="asana-item"><div><div class="asana-name">${escHtml(h.name||'')}</div><div class="asana-meta">${escHtml(h.type||'')} | ${escHtml(h.country||'—')} | ${new Date(h.date).toLocaleDateString('en-GB')} | <span style="font-size:10px">${ageLabel}</span></div></div><span class="badge ${cls}">${comp.label}</span></div>`;
   }).join('');
 }
 

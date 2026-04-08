@@ -257,7 +257,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     const recentMatches = matches.slice(0, 10).map(m => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
         <div>
-          <span class="badge ${m.result === 'CLEAR' ? 'b-g' : m.result === 'MATCH' ? 'b-r' : 'b-a'}">${tfsLabel(m.result)}</span>
+          <span class="badge ${m.result === 'CLEAR' ? 'b-ok' : m.result === 'MATCH' ? 'b-c' : 'b-h'}">${tfsLabel(m.result)}</span>
           <span style="font-size:12px;margin-left:6px">${m.entity}${m.country ? ' · ' + m.country : ''}${m.adverseMedia && Object.values(m.adverseMedia).some(v => v === 'Found') ? ' · <span style="color:#D94F4F">Adverse</span>' : ''}</span>
         </div>
         <span style="font-size:11px;color:var(--muted)">${new Date(m.date).toLocaleDateString('en-GB')}</span>
@@ -334,7 +334,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         : { label:'NEGATIVE MATCH', desc:'No matches found against sanctions lists. The entity is cleared for onboarding or transaction processing under standard CDD. Per FATF Rec 10 and UAE Federal Decree-Law No.10/2025 (Art.16), maintain records for a minimum of 5 years. Re-screen periodically or upon trigger events.', color:'#27AE60', bg:'rgba(39,174,96,0.08)' };
 
       const borderColor = match.result === 'CLEAR' ? 'var(--green)' : match.result === 'MANUAL_REVIEW' ? 'var(--amber, #E8A838)' : 'var(--red)';
-      const badgeCls = match.result === 'CLEAR' ? 'b-g' : match.result === 'MANUAL_REVIEW' ? 'b-a' : 'b-r';
+      const badgeCls = match.result === 'CLEAR' ? 'b-ok' : match.result === 'MANUAL_REVIEW' ? 'b-h' : 'b-c';
       resultEl.innerHTML = `
         <div style="padding:10px;border:1px solid ${borderColor};border-radius:3px;margin-top:8px">
           <span class="badge ${badgeCls}">${tfsComp.label}</span>
