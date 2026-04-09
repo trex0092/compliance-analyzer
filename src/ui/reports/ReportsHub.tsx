@@ -169,7 +169,7 @@ function exportReportsCSV(reports: SuspicionReport[]) {
     REPORT_STATUS_LABELS[r.status] || r.status,
     r.entityName || r.caseId,
     r.caseId,
-    r.amount != null ? String(r.amount) : '',
+    r.amount !== null && r.amount !== undefined ? String(r.amount) : '',
     r.currency || '',
     r.severity || '',
     r.generatedAt?.slice(0, 10) || '',
@@ -515,7 +515,7 @@ function ReportDetail({
         <div style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.8 }}>
           <div><strong style={{ color: '#e6edf3' }}>Regulatory Basis:</strong> {report.regulatoryBasis || 'N/A'}</div>
           <div><strong style={{ color: '#e6edf3' }}>Red Flags:</strong> {(report.redFlags || []).join(', ') || 'None'}</div>
-          {report.amount != null && (
+          {report.amount !== null && report.amount !== undefined && (
             <div><strong style={{ color: '#e6edf3' }}>Amount:</strong> {report.currency || 'AED'} {report.amount.toLocaleString('en-GB')}</div>
           )}
           {report.returnReason && (
@@ -921,7 +921,7 @@ export default function ReportsHub() {
                   <td style={S.td}>{r.entityName || '—'}</td>
                   <td style={{ ...S.td, fontSize: 11, color: '#8b949e' }}>{r.caseId}</td>
                   <td style={S.td}>
-                    {r.amount != null
+                    {r.amount !== null && r.amount !== undefined
                       ? `${r.currency || 'AED'} ${r.amount.toLocaleString('en-GB')}`
                       : '—'}
                   </td>
