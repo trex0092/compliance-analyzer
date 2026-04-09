@@ -2383,15 +2383,18 @@ Examples:
       <div class="card">
         <span class="lbl">API Keys & Integrations</span>
         <div class="row row-2" style="margin-bottom:12px">
-          <div><span class="lbl">AI Provider</span><select id="aiProvider2" onchange="document.querySelectorAll('.ai-key-section').forEach(function(s){s.style.display='none'});var v=this.value;if(v==='claude')document.getElementById('claudeKeySection').style.display='block';else if(v==='gemini')document.getElementById('geminiKeySection').style.display='block';else if(v==='openai')document.getElementById('openaiKeySection').style.display='block'">
-            <option value="claude">Anthropic (Claude)</option>
-            <option value="gemini">Google (Gemini)</option>
-            <option value="openai">OpenAI (GPT)</option>
+          <div><span class="lbl">AI Provider</span><select id="aiProvider2" onchange="document.querySelectorAll('.ai-key-section').forEach(function(s){s.style.display='none'});var v=this.value;if(v==='claude')document.getElementById('claudeKeySection').style.display='block';else if(v==='gemini')document.getElementById('geminiKeySection').style.display='block';else if(v==='openai')document.getElementById('openaiKeySection').style.display='block';else if(v==='copilot')document.getElementById('copilotKeySection').style.display='block';else if(v==='mixed'){document.getElementById('copilotKeySection').style.display='block';document.getElementById('geminiKeySection').style.display='block';document.getElementById('claudeKeySection').style.display='block'}">
+            <option value="mixed">Mixed Mode (Copilot + Gemini + Claude)</option>
+            <option value="copilot">GitHub Copilot (FREE)</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="claude">Anthropic Claude</option>
+            <option value="openai">OpenAI GPT</option>
           </select></div>
-          <div style="display:flex;align-items:flex-end;padding-bottom:2px"><span style="font-size:11px;color:var(--muted)">Select your AI provider. Only the selected provider's key is used.</span></div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:2px"><span id="aiProviderHint" style="font-size:11px;color:var(--muted)">Mixed: uses free Copilot first, then Gemini, then Claude as fallback.</span></div>
         </div>
-        <div id="claudeKeySection" class="ai-key-section" style="margin-bottom:12px"><div><span class="lbl">Anthropic API Key</span><input type="password" id="anthropicKey2" placeholder="sk-ant-..." /></div></div>
-        <div id="geminiKeySection" class="ai-key-section" style="display:none;margin-bottom:12px"><div><span class="lbl">Google Gemini API Key <span style="font-size:10px;color:var(--muted)">(Get free key at ai.google.dev)</span></span><input type="password" id="geminiKey2" placeholder="AIza..." /></div></div>
+        <div id="copilotKeySection" class="ai-key-section" style="margin-bottom:12px"><div><span class="lbl">GitHub Token <span style="font-size:10px;color:var(--green)">FREE — github.com/settings/tokens → Fine-grained → Models: read</span></span><input type="password" id="copilotKey2" placeholder="github_pat_..." /></div></div>
+        <div id="geminiKeySection" class="ai-key-section" style="margin-bottom:12px"><div><span class="lbl">Google Gemini API Key <span style="font-size:10px;color:var(--muted)">(Free key at ai.google.dev)</span></span><input type="password" id="geminiKey2" placeholder="AIza..." /></div></div>
+        <div id="claudeKeySection" class="ai-key-section" style="display:none;margin-bottom:12px"><div><span class="lbl">Anthropic API Key</span><input type="password" id="anthropicKey2" placeholder="sk-ant-..." /></div></div>
         <div id="openaiKeySection" class="ai-key-section" style="display:none;margin-bottom:12px"><div><span class="lbl">OpenAI API Key</span><input type="password" id="openaiKey2" placeholder="sk-..." /></div></div>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Asana Personal Access Token</span><input type="password" id="asanaToken2" placeholder="1/xxxxxxxx..." /></div></div>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Tavily API Key <span style="font-size:10px;color:var(--muted)">(FREE — 1,000 searches/month — live web search for screening)</span></span><input type="password" id="tavilyKey2" placeholder="tvly-..." /></div></div>
@@ -2776,11 +2779,16 @@ var NOTION_DB_ID = ''; // removed — use Asana
 var CLICKUP_TOKEN = ''; // removed — use Asana
 var CLICKUP_LIST_ID = ''; // removed — use Asana
 var GEMINI_KEY = '';
+var COPILOT_KEY = ''; // GitHub Copilot / GitHub Models API token
 var TAVILY_KEY = '';
 var GDRIVE_CLIENT_ID = '';
 var GDRIVE_FOLDER_ID = '';
 var gdriveAccessToken = '';
-var AI_PROVIDER = 'claude'; // 'claude', 'openai', or 'gemini'
+var AI_PROVIDER = 'claude'; // 'claude', 'openai', 'gemini', 'copilot', or 'mixed'
+
+// Provider health tracking for mixed mode — skip providers that are failing
+var _providerHealth = { claude: { ok: true, failedAt: 0 }, gemini: { ok: true, failedAt: 0 }, copilot: { ok: true, failedAt: 0 } };
+var PROVIDER_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes before retrying a failed provider
 var lastResult = null;
 var lastQuery = '';
 var lastArea = '';
@@ -3258,6 +3266,7 @@ function persistKeys() {
     anthropicKey: ANTHROPIC_KEY,
     openaiKey: OPENAI_KEY,
     geminiKey: GEMINI_KEY,
+    copilotKey: COPILOT_KEY,
     aiProvider: AI_PROVIDER,
     asanaToken: ASANA_TOKEN,
     scheduleEmail: SCHEDULE_EMAIL,
@@ -3299,6 +3308,7 @@ function hydrateKeys() {
   PROXY_URL = normaliseProxyUrl(saved.proxyUrl || '');
   OPENAI_KEY = (saved.openaiKey || '').trim();
   GEMINI_KEY = (saved.geminiKey || '').trim();
+  COPILOT_KEY = (saved.copilotKey || '').trim();
   TAVILY_KEY = (saved.tavilyKey || '').trim();
   GDRIVE_CLIENT_ID = (saved.gdriveClientId || '').trim();
   GDRIVE_FOLDER_ID = (saved.gdriveFolderId || '').trim();
@@ -3306,7 +3316,7 @@ function hydrateKeys() {
 
   const fieldMap = {
     anthropicKey: ANTHROPIC_KEY, anthropicKey2: ANTHROPIC_KEY,
-    geminiKey2: GEMINI_KEY, openaiKey2: OPENAI_KEY,
+    geminiKey2: GEMINI_KEY, openaiKey2: OPENAI_KEY, copilotKey2: COPILOT_KEY,
     asanaToken: ASANA_TOKEN, asanaToken2: ASANA_TOKEN,
     scheduleEmail: SCHEDULE_EMAIL, schedEmail2: SCHEDULE_EMAIL,
     proxyUrl: PROXY_URL, proxyUrl2: PROXY_URL,
@@ -3323,7 +3333,10 @@ function hydrateKeys() {
   if (providerSelect) {
     providerSelect.value = AI_PROVIDER;
     document.querySelectorAll('.ai-key-section').forEach(function(s) { s.style.display = 'none'; });
-    if (AI_PROVIDER === 'gemini') { var gs = document.getElementById('geminiKeySection'); if (gs) gs.style.display = 'block'; }
+    if (AI_PROVIDER === 'mixed') {
+      ['copilotKeySection','geminiKeySection','claudeKeySection'].forEach(function(id) { var el = document.getElementById(id); if (el) el.style.display = 'block'; });
+    } else if (AI_PROVIDER === 'copilot') { var cps = document.getElementById('copilotKeySection'); if (cps) cps.style.display = 'block'; }
+    else if (AI_PROVIDER === 'gemini') { var gs = document.getElementById('geminiKeySection'); if (gs) gs.style.display = 'block'; }
     else if (AI_PROVIDER === 'openai') { var os = document.getElementById('openaiKeySection'); if (os) os.style.display = 'block'; }
     else { var cs = document.getElementById('claudeKeySection'); if (cs) cs.style.display = 'block'; }
   }
@@ -3362,6 +3375,7 @@ function updateKeys() {
   if (document.getElementById('anthropicKey2').value.trim()) ANTHROPIC_KEY = document.getElementById('anthropicKey2').value.trim();
   if (document.getElementById('geminiKey2')?.value.trim()) GEMINI_KEY = document.getElementById('geminiKey2').value.trim();
   if (document.getElementById('openaiKey2')?.value.trim()) OPENAI_KEY = document.getElementById('openaiKey2').value.trim();
+  if (document.getElementById('copilotKey2')?.value.trim()) COPILOT_KEY = document.getElementById('copilotKey2').value.trim();
   if (document.getElementById('aiProvider2')?.value) AI_PROVIDER = document.getElementById('aiProvider2').value;
   if (document.getElementById('asanaToken2').value.trim()) ASANA_TOKEN = document.getElementById('asanaToken2').value.trim();
   if (document.getElementById('gdriveClientId2')?.value.trim()) GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId2').value.trim();
@@ -3374,7 +3388,7 @@ function updateKeys() {
   const syncMap = {
     anthropicKey: ANTHROPIC_KEY, asanaToken: ASANA_TOKEN, scheduleEmail: SCHEDULE_EMAIL,
     proxyUrl: PROXY_URL, openaiKey: OPENAI_KEY,
-    geminiKey: GEMINI_KEY, tavilyKey: TAVILY_KEY,
+    geminiKey: GEMINI_KEY, copilotKey: COPILOT_KEY, tavilyKey: TAVILY_KEY,
     gdriveClientId: GDRIVE_CLIENT_ID, gdriveFolderId: GDRIVE_FOLDER_ID
   };
   for (const [id, val] of Object.entries(syncMap)) {
@@ -7315,6 +7329,54 @@ async function callOpenAI(body) {
   return { content: [{ type: 'text', text }] };
 }
 
+/**
+ * GitHub Copilot / GitHub Models API (FREE tier)
+ * Uses OpenAI-compatible endpoint at https://models.inference.ai.azure.com
+ * Free tier: GPT-4o-mini, Phi, Mistral, and more — no billing required.
+ * Get token: github.com/settings/tokens → Fine-grained → Models: read
+ */
+async function callCopilot(body) {
+  if (!COPILOT_KEY) throw new Error('GitHub Copilot token not configured');
+  // Map Claude model names to GitHub Models equivalents
+  var copilotModel = 'gpt-4o-mini'; // Free tier default — fast and capable
+  if (body.model) {
+    var m = body.model.toLowerCase();
+    if (m.includes('opus') || m.includes('pro') || m.includes('sonnet')) copilotModel = 'gpt-4o';
+  }
+
+  const copilotBody = {
+    model: copilotModel,
+    messages: [],
+    max_tokens: body.max_tokens || 4096,
+    temperature: body.temperature !== undefined ? body.temperature : 0.2,
+  };
+  if (body.system) copilotBody.messages.push({ role: 'system', content: body.system });
+  if (body.messages) copilotBody.messages.push(...body.messages.map(function(m) {
+    return { role: m.role, content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) };
+  }));
+
+  const r = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${COPILOT_KEY}`
+    },
+    body: JSON.stringify(copilotBody)
+  });
+
+  if (!r.ok) {
+    let errDetail = '';
+    try { const ej = await r.json(); errDetail = ej?.error?.message || JSON.stringify(ej); } catch (_) {}
+    const err = new Error(`Copilot API ${r.status}: ${errDetail || r.statusText}`);
+    if (r.status === 429 || r.status === 402) err.isBillingError = true;
+    throw err;
+  }
+
+  const data = await r.json();
+  const text = data.choices?.[0]?.message?.content || '';
+  return { content: [{ type: 'text', text }] };
+}
+
 async function callGemini(body) {
   // Map Claude model names to Gemini equivalents
   var geminiModel = 'gemini-2.5-flash';
@@ -7410,7 +7472,19 @@ async function callAI(body) {
   return result;
 }
 
+/**
+ * Route AI calls to the configured provider.
+ * In 'mixed' mode: rotates Copilot(free) → Gemini → Claude with auto-fallback.
+ * If one provider fails (rate limit / billing), it's cooled down for 5 minutes
+ * and the next provider in the chain is tried automatically.
+ */
 async function _callAIUncached(body) {
+  if (AI_PROVIDER === 'mixed') {
+    return _callAIMixed(body);
+  }
+  if (AI_PROVIDER === 'copilot' && COPILOT_KEY) {
+    return callCopilot(body);
+  }
   if (AI_PROVIDER === 'gemini' && (GEMINI_KEY || PROXY_URL)) {
     return callGemini(body);
   }
@@ -7418,6 +7492,50 @@ async function _callAIUncached(body) {
     return callOpenAI(body);
   }
   return callAnthropic(body);
+}
+
+/**
+ * Mixed mode: try providers in order of cost (free first).
+ * Order: Copilot (free) → Gemini → Claude
+ * Auto-skips providers that are in cooldown (failed recently).
+ */
+var _mixedCallCount = 0;
+async function _callAIMixed(body) {
+  var now = Date.now();
+  // Build priority list: free providers first
+  var providers = [];
+  if (COPILOT_KEY) providers.push({ name: 'copilot', fn: callCopilot, health: _providerHealth.copilot });
+  if (GEMINI_KEY || PROXY_URL) providers.push({ name: 'gemini', fn: callGemini, health: _providerHealth.gemini });
+  if (ANTHROPIC_KEY || PROXY_URL) providers.push({ name: 'claude', fn: callAnthropic, health: _providerHealth.claude });
+
+  if (providers.length === 0) {
+    throw new Error('No AI providers configured. Add at least one API key in Settings.');
+  }
+
+  // Filter to healthy providers (or all if none are healthy)
+  var healthy = providers.filter(function(p) { return p.health.ok || (now - p.health.failedAt > PROVIDER_COOLDOWN_MS); });
+  if (healthy.length === 0) healthy = providers; // reset all cooldowns
+
+  // Round-robin among healthy providers to spread load
+  var startIdx = _mixedCallCount % healthy.length;
+  _mixedCallCount++;
+
+  for (var attempt = 0; attempt < healthy.length; attempt++) {
+    var idx = (startIdx + attempt) % healthy.length;
+    var provider = healthy[idx];
+    try {
+      var result = await provider.fn(body);
+      // Mark healthy on success
+      provider.health.ok = true;
+      return result;
+    } catch (e) {
+      console.warn('[Mixed] ' + provider.name + ' failed: ' + (e.message || e));
+      // Mark as failed, try next
+      provider.health.ok = false;
+      provider.health.failedAt = Date.now();
+      if (attempt === healthy.length - 1) throw e; // all failed, throw last error
+    }
+  }
 }
 
 // ======= LIVE WEB SEARCH FOR SCREENING (Tavily — free 1,000/month) =======
