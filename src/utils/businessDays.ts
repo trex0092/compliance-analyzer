@@ -58,7 +58,17 @@ function isPublicHoliday(d: Date): boolean {
   return UAE_PUBLIC_HOLIDAYS.has(toDateStr(d));
 }
 
+/** Maximum year covered by UAE_PUBLIC_HOLIDAYS — update when adding new years */
+const MAX_HOLIDAY_YEAR = 2027;
+
 export function isBusinessDay(d: Date): boolean {
+  if (d.getFullYear() > MAX_HOLIDAY_YEAR) {
+    console.warn(
+      `[businessDays] Date ${toDateStr(d)} is beyond holiday calendar coverage (max: ${MAX_HOLIDAY_YEAR}). ` +
+      `Public holidays are NOT being checked — filing deadline calculations may be inaccurate. ` +
+      `Update UAE_PUBLIC_HOLIDAYS in src/utils/businessDays.ts.`
+    );
+  }
   return !isWeekend(d) && !isPublicHoliday(d);
 }
 

@@ -375,6 +375,14 @@ export async function fetchAllSanctionsLists(proxyUrl?: string): Promise<FetchAl
     if (result.status === 'fulfilled') {
       entries.push(...result.value);
       listsChecked.push(listNames[index]);
+      // REGULATORY WARNING: If a list fetch succeeds but returns zero entries,
+      // it may indicate a parsing failure or empty stub (e.g. UK OFSI, UAE/EOCN).
+      // This must NOT be silently reported as "checked" — flag it as a gap.
+      if (result.value.length === 0) {
+        const warnMsg = `WARNING: ${listNames[index]} returned 0 entries — list may not be fully implemented. Screening coverage is incomplete.`;
+        console.warn(warnMsg);
+        errors.push(warnMsg);
+      }
     } else {
       const errorMsg = `Failed to fetch ${listNames[index]}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`;
       console.warn(errorMsg);

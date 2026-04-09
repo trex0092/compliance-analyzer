@@ -9,6 +9,7 @@
 
 import type { Config } from "@netlify/functions";
 import { checkRateLimit } from "./middleware/rate-limit.mts";
+import { authenticate } from "./middleware/auth.mts";
 
 interface AlertPayload {
   subject: string;
@@ -30,6 +31,10 @@ export default async (req: Request) => {
   // Rate limit: 10 requests per IP per 15 minutes (sensitive endpoint)
   const rateLimitResponse = checkRateLimit(req, { max: 10 });
   if (rateLimitResponse) return rateLimitResponse;
+
+  // Authentication required — prevent unauthenticated alert injection
+  const auth = authenticate(req);
+  if (!auth.ok) return auth.response!;
 
   const emailServiceUrl = Netlify.env.get("EMAIL_SERVICE_URL");
   const emailFrom = Netlify.env.get("EMAIL_FROM") || "compliance@hawkeye-sterling.com";
