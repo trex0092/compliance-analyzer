@@ -192,7 +192,7 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
             role: 'user',
             content: `TIER-1 COMPLIANCE SCREENING — REFINITIV/DOW JONES STANDARD:
 
-Entity: "${name}" (type: ${type || 'individual'}).${countryInfo}
+Entity: "${String(name).replace(/["\\\n\r`${}]/g, '')}" (type: ${String(type || 'individual').replace(/["\\\n\r`${}]/g, '')}).${countryInfo}
 
 Check ALL: sanctions (OFAC SDN/SSI/CAPTA, UN, EU, UK OFSI, UAE EOCN, UAE Central Bank, Swiss SECO, Australian DFAT, Canadian SEMA), PEP, corporate network, and do EXHAUSTIVE adverse media investigation. For each adverse media finding provide: allegation, source, date, jurisdiction, status. Investigate corporate connections and family business ties.
 

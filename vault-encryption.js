@@ -12,6 +12,18 @@ var VaultEncryption = (function() {
     var cachedKey = null;
     var cachedPassphrase = null;
     var locked = true;
+    var cacheTimeout = null;
+    var CACHE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes — auto-lock
+
+    function resetCacheTimeout() {
+        if (cacheTimeout) clearTimeout(cacheTimeout);
+        cacheTimeout = setTimeout(function() {
+            cachedKey = null;
+            cachedPassphrase = null;
+            locked = true;
+            console.warn('[Vault] Auto-locked after inactivity');
+        }, CACHE_TIMEOUT_MS);
+    }
 
     // ---- Utility helpers ----
 
@@ -190,6 +202,9 @@ var VaultEncryption = (function() {
             return Promise.resolve();
         }
 
+        // Backup current store for rollback on failure
+        var backup = JSON.stringify(store);
+
         var decryptPromises = keys.map(function(k) {
             return decrypt(store[k], oldPass).then(function(data) {
                 return { key: k, data: data };
@@ -211,6 +226,10 @@ var VaultEncryption = (function() {
             saveVaultStore(newStore);
             cachedPassphrase = newPass;
             cachedKey = null;
+        }).catch(function(err) {
+            // Rollback to original encrypted store on any failure
+            try { localStorage.setItem(STORAGE_KEY, backup); } catch(e) { console.warn('[Vault] Rollback failed:', e); }
+            throw err;
         });
     }
 
@@ -240,12 +259,20 @@ var VaultEncryption = (function() {
     function unlock(passphrase) {
         var keys = listKeys();
         if (keys.length > 0) {
-            // Validate passphrase against first item
-            return retrieveSecure(keys[0], passphrase).then(function() {
-                cachedPassphrase = passphrase;
-                locked = false;
-                return true;
-            });
+            // Validate passphrase against stored items — try first available
+            // If first key is corrupted, try remaining keys before failing
+            var tryKey = function(idx) {
+                if (idx >= keys.length) return Promise.reject(new Error('Invalid passphrase or all vault items corrupted'));
+                return retrieveSecure(keys[idx], passphrase).then(function() {
+                    cachedPassphrase = passphrase;
+                    locked = false;
+                    resetCacheTimeout();
+                    return true;
+                }).catch(function() {
+                    return tryKey(idx + 1);
+                });
+            };
+            return tryKey(0);
         }
         // No items yet -- accept any passphrase
         cachedPassphrase = passphrase;

@@ -20,12 +20,27 @@ const ThresholdMonitor = (function() {
   function getCTRQueue() { try { return JSON.parse(localStorage.getItem(CTR_QUEUE_KEY) || '[]'); } catch(_) { return []; } }
   function saveCTRQueue(arr) { localStorage.setItem(CTR_QUEUE_KEY, JSON.stringify(arr.slice(0, 200))); }
 
+  // Try to use cached CBUAE live rates; fall back to approximate cross-rates
+  function getCachedCBUAERates() {
+    try {
+      var cached = JSON.parse(localStorage.getItem('fgl_cbuae_rates') || 'null');
+      if (cached && cached.rates) return cached.rates;
+    } catch(_) {}
+    return null;
+  }
+
   function toAED(amount, currency) {
     if (!amount) return 0;
     const num = Number(amount);
     if (isNaN(num)) return 0;
     if (currency === 'AED') return num;
     if (currency === 'USD') return num * USD_TO_AED;
+
+    // Use live CBUAE rates when available; approximate fallback otherwise
+    var liveRates = getCachedCBUAERates();
+    if (liveRates && liveRates[currency]) return num * liveRates[currency];
+
+    // Fallback approximate cross-rates (update if CBUAE rates unavailable)
     if (currency === 'EUR') return num * USD_TO_AED * 1.10;
     if (currency === 'GBP') return num * USD_TO_AED * 1.30;
     return num * USD_TO_AED;
