@@ -1580,7 +1580,7 @@
     // Check STR/CTR queues for approaching deadlines
     const strCases = parse('fgl_str_cases_v2', []);
     for (const c of strCases) {
-      if (c.status === 'Filed' || c.status === 'Closed') continue;
+      if (c.status === 'Filed' || c.status === 'FILED' || c.status === 'Closed' || c.status === 'CLOSED') continue;
       if (!c.createdAt && !c.date) continue;
       const createdStr = c.createdAt || c.date;
       var createdDate;
@@ -1636,9 +1636,9 @@
     }
 
     // Check CTR queue
-    const ctrQueue = parse('fgl_threshold_ctr_queue', []);
+    const ctrQueue = parse('fgl_ctr_queue', []);
     for (const c of ctrQueue) {
-      if (c.status === 'Filed' || c.status === 'Closed') continue;
+      if (c.status === 'Filed' || c.status === 'FILED' || c.status === 'Closed' || c.status === 'CLOSED') continue;
       if (!c.timestamp && !c.date) continue;
       var ctrDateStr = c.timestamp || c.date;
       var ctrDate;
