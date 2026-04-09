@@ -346,7 +346,7 @@ window.csFormatDateInput = function (el) {
         const existing = JSON.parse(localStorage.getItem(raKey) || '[]');
         records.forEach(r => {
           if (!existing.find(e => e.id === r.id)) {
-            existing.push({ id: r.id, entityName: r.customerName, totalScore: r.rawScore || 0, determination: r.cddLevel || r.rating, assessDate: r.createdAt?.slice(0,10) || new Date().toISOString().slice(0,10), assessedBy: r.reviewedBy || '—', source: 'CRA' });
+            existing.push({ id: r.id, entityName: r.customerName, totalScore: r.score || 0, determination: r.cddLevel || r.rating, assessDate: r.createdAt?.slice(0,10) || new Date().toISOString().slice(0,10), assessedBy: r.reviewedBy || '—', source: 'CRA' });
           }
         });
         localStorage.setItem(raKey, JSON.stringify(existing));
@@ -919,7 +919,7 @@ window.csFormatDateInput = function (el) {
 
   // ════════════════════════════════════════════════════════════════════════════
   // 2. UBO REGISTER
-  // Reg: UAE Cabinet Decision No.(10) of 2019 | UAE FDL No.(10) of 2025 Art.18
+  // Reg: UAE Cabinet Decision No.(109) of 2023 | UAE FDL No.(10) of 2025 Art.18
   // ════════════════════════════════════════════════════════════════════════════
 
   function renderUBO() {
@@ -931,7 +931,7 @@ window.csFormatDateInput = function (el) {
       <div class="card">
         <div class="top-bar">
           <span class="sec-title">🏛️ UBO Register — Beneficial Ownership</span>
-          <span style="font-size:11px;color:var(--muted)">UAE Cabinet Decision No.(10) of 2019 | FDL No.(10) of 2025 Art.18</span>
+          <span style="font-size:11px;color:var(--muted)">UAE Cabinet Decision No.(109) of 2023 | FDL No.(10) of 2025 Art.18</span>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenUBOForm()">+ Add UBO</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
@@ -979,7 +979,7 @@ window.csFormatDateInput = function (el) {
         <div class="modal" style="max-width:580px;width:95%">
           <button class="modal-close" onclick="document.getElementById('uboModal').classList.remove('open')">✕</button>
           <div class="modal-title">UBO Record</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">UAE Cabinet Decision No.(10) of 2019 | Capture all persons owning ≥25% or exercising ultimate control</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">UAE Cabinet Decision No.(109) of 2023 | Capture all persons owning ≥25% or exercising ultimate control</div>
           <input type="hidden" id="ubo-edit-idx" value="-1">
           <div class="row row-2">
             <div><span class="lbl">Legal Entity Name *</span><input id="ubo-entity" placeholder="Company/Trust/Fund name"/></div>
@@ -1104,7 +1104,7 @@ window.csFormatDateInput = function (el) {
     const r = records[idx];
     if (!r) return;
     toast('Syncing to Asana...', 'info');
-    const notes = `Entity: ${r.entityName}\nUBO: ${r.uboName}\nNationality: ${r.nationality}\nOwnership: ${r.ownershipPct}%\nControl: ${r.controlType}\nPEP: ${r.pepStatus}\nScreening: ${r.screeningStatus}\nDoc: ${r.docType} ${r.docRef}\nVerified: ${fmtDate(r.verifiedDate)}\nNext Review: ${fmtDate(r.nextReview)}\n\nRegulatory: UAE Cabinet Decision No.(10) of 2019 | FDL No.(10) of 2025 Art.18`;
+    const notes = `Entity: ${r.entityName}\nUBO: ${r.uboName}\nNationality: ${r.nationality}\nOwnership: ${r.ownershipPct}%\nControl: ${r.controlType}\nPEP: ${r.pepStatus}\nScreening: ${r.screeningStatus}\nDoc: ${r.docType} ${r.docRef}\nVerified: ${fmtDate(r.verifiedDate)}\nNext Review: ${fmtDate(r.nextReview)}\n\nRegulatory: UAE Cabinet Decision No.(109) of 2023 | FDL No.(10) of 2025 Art.18`;
     const gid = await pushToAsana(`[UBO] ${r.entityName} — ${r.uboName} (${r.ownershipPct}%)`, notes, 'ubo');
     if (gid) { toast('Synced to Asana', 'success'); } else { toast('Asana sync failed — check token in Settings', 'error'); }
   };
@@ -1144,7 +1144,7 @@ window.csFormatDateInput = function (el) {
       <div class="card">
         <div class="top-bar">
           <span class="sec-title">STR Case Management</span>
-          <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 Art.20 | goAML | FATF Rec.20 | File within 30 days of suspicion</span>
+          <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 Art.26-27 | goAML | FATF Rec.20 | File WITHOUT DELAY upon suspicion</span>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenSTRForm()">+ New STR Case</button>
         </div>
         <div style="background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.3);border-radius:4px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:var(--red);font-family:'Montserrat',sans-serif">
@@ -1183,7 +1183,7 @@ window.csFormatDateInput = function (el) {
         <div class="modal" style="max-width:680px;width:95%;max-height:90vh">
           <button class="modal-close" onclick="document.getElementById('strModal').classList.remove('open')">✕</button>
           <div class="modal-title">STR Case File</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">UAE FDL No.(10) of 2025 Art.20 | File to UAE FIU via goAML within 30 days of suspicion arising</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">UAE FDL No.(10) of 2025 Art.26-27 | File to UAE FIU via goAML WITHOUT DELAY upon suspicion arising</div>
           <input type="hidden" id="str-edit-idx" value="-1">
 
           <div class="row row-2">
@@ -1239,7 +1239,8 @@ window.csFormatDateInput = function (el) {
       if (!this.value || this.value.length < 10) return;
       const d = parseDDMMYYYY(this.value);
       if (!d || isNaN(d.getTime())) return;
-      d.setDate(d.getDate() + 30);
+      // STR must be filed WITHOUT DELAY per FDL Art.26-27
+      // Deadline = same day as suspicion date (regulatory backstop is immediate)
       document.getElementById('str-deadline').value = fmtDateDDMMYYYY(d);
     });
   }
@@ -1319,7 +1320,7 @@ window.csFormatDateInput = function (el) {
     const cases = load(SK.STR) || [];
     const c = cases[idx];
     if (!c) return;
-    if (c.status === 'Filed' || c.goamlRef) {
+    if (c.status === 'Filed' || (c.status && c.status.startsWith('Filed')) || c.goamlRef) {
       toast('Filed STR cases cannot be deleted — records must be retained for 10 years per FDL Art.24.', 'error', 5000);
       return;
     }
@@ -1615,7 +1616,7 @@ window.csFormatDateInput = function (el) {
       { flag:'Compliance Officer (CO/MLRO) not appointed or does not meet minimum competency requirements', ref:'FDL No.10/2025 Art.20 | Cabinet Resolution 134/2025 Art.18 | MoE DPMS Guidance', l:5, i:5, mx:[] },
       { flag:'No evidence of AML/CFT/CPF training conducted within the past 12 months for all relevant staff', ref:'FDL No.10/2025 Art.21 | Cabinet Resolution 134/2025 Art.20 | MoE Inspection Checklist', l:4, i:4, mx:[] },
       { flag:'Customer risk assessment (CRA) methodology does not align with NRA 2024 findings or sectoral guidance', ref:'Cabinet Resolution 134/2025 Art.5 | UAE NRA 2024 | MoE DPMS Circular', l:4, i:4, mx:[] },
-      { flag:'Record retention policy missing or records destroyed before the mandatory 5-year retention period', ref:'FDL No.10/2025 Art.24 | Cabinet Resolution 134/2025 Art.21 | MoE Inspection Framework', l:5, i:5, mx:[] },
+      { flag:'Record retention policy missing or records destroyed before the mandatory 10-year retention period', ref:'FDL No.10/2025 Art.24 | Cabinet Resolution 134/2025 Art.21 | MoE DPMS Guidance', l:5, i:5, mx:[] },
       { flag:'Entity has not conducted independent AML/CFT audit as required by Cabinet Resolution 134/2025', ref:'Cabinet Resolution 134/2025 Art.19 | FATF Rec.18 | MoE Inspection Checklist', l:4, i:5, mx:[] },
       { flag:'Board/Senior Management have not been briefed on compliance findings within the last reporting period', ref:'FDL No.10/2025 Art.20-21 | Cabinet Resolution 134/2025 Art.18-19', l:4, i:4, mx:[] },
       { flag:'Entity operates without valid MoE DPMS registration or goAML portal access', ref:'FDL No.10/2025 Art.53 | MoE Circular 08/AML/2021 | MoE DPMS Registration Requirements', l:5, i:5, mx:[] },
@@ -1903,7 +1904,7 @@ window.csFormatDateInput = function (el) {
     { type: 'PNMR Filing to EOCN', sla: 120, desc: 'Partial Name Match Report to EOCN within 5 business days. EOCN TFS Guidance' },
     { type: 'FFR Filing via goAML', sla: 24, desc: 'Funds Freeze Report to UAE FIU via goAML. Cabinet Res 74/2020' },
     { type: 'Sanctions List Update Re-Screen', sla: 24, desc: 'New EOCN/UNSC designations require full customer re-screening. Cabinet Res 74/2020' },
-    { type: 'Asset Freeze Implementation', sla: 2, desc: 'Freeze assets within 24 hours without prior notice. FDL Art.35, Cabinet Res 74/2020' },
+    { type: 'Asset Freeze Implementation', sla: 2, desc: 'Freeze assets IMMEDIATELY (1-2 hours max per EOCN TFS Guidance). FDL Art.35, Cabinet Res 74/2020' },
     // ── FDL Art.25: Record Retention ──
     { type: 'Record Retention Extension', sla: 48, desc: 'Extension beyond 10-year retention period. FDL Art.25, Cabinet Res 134/2025 Art.25' },
     { type: 'Record Destruction Approval', sla: 72, desc: 'Records past retention period require approval before destruction. FDL Art.25' },
@@ -1956,7 +1957,7 @@ window.csFormatDateInput = function (el) {
     // ── UAE FIU (goAML) ──
     { type: 'FIU Dissemination Response', sla: 24, desc: 'Response to UAE FIU dissemination or intelligence request. FDL Art.26, FIU Directive' },
     { type: 'goAML System Issue Escalation', sla: 24, desc: 'goAML technical issue preventing STR/DPMSR filing. UAE FIU Technical Support' },
-    { type: 'Delayed STR Filing Justification', sla: 24, desc: 'STR filed beyond 30-day window requires documented justification. FDL Art.20' },
+    { type: 'Delayed STR Filing Justification', sla: 24, desc: 'STR not filed without delay requires documented justification. FDL Art.26-27 mandates filing without delay upon suspicion.' },
     // ── EOCN (Executive Office) ──
     { type: 'EOCN Designation Notification', sla: 2, desc: 'New EOCN designation received - immediate customer database re-screen. EOCN Directive' },
     { type: 'EOCN De-Listing Response', sla: 48, desc: 'EOCN de-listing notification - review frozen assets/rejected relationships. EOCN Directive' },
@@ -2077,8 +2078,8 @@ window.csFormatDateInput = function (el) {
                   <button class="btn btn-sm btn-red" onclick="suiteDeleteApproval(${i})">Del</button>
                 </div>
               </div>
-              ${r.rationale ? `<div class="rec" style="margin-top:8px">${r.rationale}</div>` : ''}
-              ${r.decision ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">Decision: ${r.decision} | By: ${r.decidedBy} | ${fmtDate(r.decidedAt)}</div>` : ''}
+              ${r.rationale ? `<div class="rec" style="margin-top:8px">${esc(r.rationale)}</div>` : ''}
+              ${r.decision ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">Decision: ${esc(r.decision)} | By: ${esc(r.decidedBy)} | ${fmtDate(r.decidedAt)}</div>` : ''}
             </div>
           `;
         }).join('')}
@@ -2531,7 +2532,7 @@ window.csFormatDateInput = function (el) {
   // TFS2 — FULL UAE TFS WORKFLOW
   // Reg: Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance
   // 4 Outcomes: Confirmed Match, Partial Match, False Positive, Negative
-  // CNMR within 5 business days | Freeze within 24 hours | goAML FFR
+  // CNMR within 5 business days | Freeze IMMEDIATELY (EOCN: 1-2h max) | goAML FFR
   // ════════════════════════════════════════════════════════════════════════════
 
   function renderTFS2() {
@@ -2588,7 +2589,7 @@ window.csFormatDateInput = function (el) {
               <button class="btn btn-sm btn-red" onclick="suite2DeleteTFS(${i})">Delete</button>
             </div>
           </div>
-          ${e.notes?`<div class="rec">${e.notes}</div>`:''}
+          ${e.notes?`<div class="rec">${esc(e.notes)}</div>`:''}
         </div>`;
       }).join('')}
 
@@ -2684,7 +2685,7 @@ window.csFormatDateInput = function (el) {
         <div id="tfs2-confirmed-section" style="display:none;margin-top:10px">
           <div style="background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.4);border-radius:4px;padding:12px">
             <div style="color:var(--red);font-weight:700;font-size:13px;margin-bottom:8px">🔴 CONFIRMED MATCH — IMMEDIATE ACTION REQUIRED</div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-family:'Montserrat',sans-serif">Cabinet Decision 74/2020 | EOCN TFS Guidance | Freeze within 24h | CNMR within 5 business days</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-family:'Montserrat',sans-serif">Cabinet Decision 74/2020 | EOCN TFS Guidance | Freeze IMMEDIATELY (EOCN: 1-2h max) | CNMR within 5 business days</div>
             <div class="row row-2">
               <div><span class="lbl">Assets Frozen Within 24h? *</span>
                 <select id="tfs2-frozen"><option value="">Select</option><option>Yes – Frozen Immediately</option><option>No Assets to Freeze</option><option>Freeze Pending – Escalated</option></select>
@@ -3378,7 +3379,7 @@ window.csFormatDateInput = function (el) {
   };
 
   // ════════════════════════════════════════════════════════════════════════════
-  // RECORD RETENTION — STATUTORY 5-YEAR REQUIREMENT
+  // RECORD RETENTION — STATUTORY 10-YEAR REQUIREMENT (MoE DPMS Guidance, FDL No.10/2025)
   // Reg: Cabinet Resolution 134/2025 Art.25 | UAE FDL No.(10) of 2025
   // ════════════════════════════════════════════════════════════════════════════
 
