@@ -404,7 +404,7 @@ function CustomersPage() {
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    void store.getCustomers().then(setCustomers);
+    void store.getCustomers().then(setCustomers).catch((e) => console.warn('[App] Failed to load customers:', e));
   }, []);
 
   const filtered = customers.filter(
@@ -774,8 +774,8 @@ function HistoryPage() {
   const [tab, setTab] = useState<'screenings' | 'alerts'>('screenings');
 
   useEffect(() => {
-    void store.getScreeningRuns().then((runs) => setScreenings(runs as typeof screenings));
-    void store.getAlerts().then((a) => setAlerts(a as typeof alerts));
+    void store.getScreeningRuns().then((runs) => setScreenings(runs as typeof screenings)).catch((e) => console.warn('[App] Failed to load screenings:', e));
+    void store.getAlerts().then((a) => setAlerts(a as typeof alerts)).catch((e) => console.warn('[App] Failed to load alerts:', e));
   }, []);
 
   return (
@@ -1207,8 +1207,8 @@ export default function App() {
 
   useEffect(() => {
     void seedData().then(() => {
-      refreshKPI().then(() => setLoading(false));
-    });
+      refreshKPI().then(() => setLoading(false)).catch((e) => { console.warn('[App] KPI refresh failed:', e); setLoading(false); });
+    }).catch((e) => { console.warn('[App] Seed data failed:', e); setLoading(false); });
   }, [refreshKPI]);
 
   const pageTitle: Record<Page, string> = {
