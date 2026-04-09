@@ -36,6 +36,13 @@ window._openEditAsanaTaskFromEl = function () {
   // This is handled by the supplementary click delegation below
 };
 
+/** Format date input on typing (adapts oninput handler for data-input delegation) */
+window._formatDateInput = function (e) {
+  var el = e.target;
+  if (typeof window.csFormatDateInput === 'function') window.csFormatDateInput(el);
+  else if (typeof window.maFormatDateInput === 'function') window.maFormatDateInput(el);
+};
+
 /** Change user role from select (onchange with this.value via data-change) */
 window._changeUserRoleFromSelect = function (e) {
   var el = e.target;
@@ -66,6 +73,11 @@ document.addEventListener('click', function (e) {
   var action = target.getAttribute('data-action');
 
   switch (action) {
+    case '_connectGoogleDriveLink':
+      e.preventDefault();
+      if (typeof connectGoogleDrive === 'function') connectGoogleDrive();
+      e.stopImmediatePropagation();
+      break;
     case '_openEditAsanaTaskFromEl':
       if (typeof openEditAsanaTask === 'function') {
         openEditAsanaTask(
@@ -3896,7 +3908,7 @@ function openEditAsanaTask(gid, name, dueOn, assigneeName) {
       <input type="hidden" id="eat-gid" value="${escHtml(gid)}">
       <div style="margin-bottom:10px"><span class="lbl">Task Name *</span><input id="eat-name" value="${name.replace(/"/g,'&quot;')}"></div>
       <div class="row row-2" style="margin-bottom:10px">
-        <div><span class="lbl">Due Date</span><input type="text" id="eat-due" value="${dueOn || ''}" placeholder="dd/mm/yyyy" oninput="if(window.csFormatDateInput)csFormatDateInput(this);else if(window.maFormatDateInput)maFormatDateInput(this)" maxlength="10"></div>
+        <div><span class="lbl">Due Date</span><input type="text" id="eat-due" value="${dueOn || ''}" placeholder="dd/mm/yyyy" data-input="_formatDateInput" maxlength="10"></div>
         <div><span class="lbl">Assignee</span><input id="eat-assignee" value="${(assigneeName || '').replace(/"/g,'&quot;')}" placeholder="Name or email"></div>
       </div>
       <div style="margin-bottom:10px"><span class="lbl">Notes (append)</span><textarea id="eat-notes" placeholder="Add notes to this task..." style="min-height:60px"></textarea></div>
@@ -7051,7 +7063,7 @@ function renderRiskAssessment() {
       </div>`;
     } else if (c.type === 'years') {
       input = `<div style="display:flex;align-items:center;gap:6px">
-        <input type="number" min="0" max="100" id="ra_${c.key}" style="width:50px;text-align:center;padding:3px 6px;font-size:10px" placeholder="0" oninput="updateRiskScores()" />
+        <input type="number" min="0" max="100" id="ra_${c.key}" style="width:50px;text-align:center;padding:3px 6px;font-size:10px" placeholder="0" data-input="updateRiskScores" />
         <span style="font-size:9px;color:var(--muted)">${c.sublabel||''}</span>
       </div>`;
     }
