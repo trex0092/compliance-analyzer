@@ -45,6 +45,7 @@ window.addEventListener('unhandledrejection', function(e) {
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onerror="console.warn('jsPDF CDN failed — PDF export unavailable')"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" onerror="console.warn('EmailJS CDN failed — email features unavailable')"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" onerror="console.warn('Chart.js CDN failed — charts unavailable')"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" onerror="console.warn('JSZip CDN failed — ZIP export will use fallback')"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Montserrat:wght@200;300;400;500;600&family=Cinzel:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
@@ -602,6 +603,8 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="tab" data-action="switchTab" data-arg="regchanges">📋 Reg Changes</div>
       <div class="tab" data-action="switchTab" data-arg="analytics">📈 Analytics</div>
       <div class="tab" data-action="switchTab" data-arg="workflows">⚡ Workflows</div>
+      <div class="tab" data-action="switchTab" data-arg="pipeline">📦 Export Pipeline</div>
+      <div class="tab" data-action="switchTab" data-arg="intelligence">🧠 Intelligence</div>
       <!-- Data Upload removed -->
     </div>
 
@@ -2472,6 +2475,12 @@ Examples:
     <!-- WORKFLOWS TAB -->
     <div id="tab-workflows" class="tab-content"></div>
 
+    <!-- COMPLIANCE EXPORT PIPELINE TAB -->
+    <div id="tab-pipeline" class="tab-content"></div>
+
+    <!-- COMPLIANCE INTELLIGENCE TAB -->
+    <div id="tab-intelligence" class="tab-content"></div>
+
     <!-- RACI MATRIX TAB -->
     <div id="tab-raci" class="tab-content">
       <div class="card">
@@ -2776,6 +2785,8 @@ Examples:
 <script src="workflow-engine.js?v=20260408"></script>
 <script src="management-approvals.js?v=20260408"></script>
 <script src="compliance-suite.js?v=20260408"></script>
+<script src="compliance-pipeline.js?v=20260409"></script>
+<script src="compliance-intelligence.js?v=20260409"></script>
 
 <script src="app-boot.js?v=20260409"></script>
 </body>
