@@ -50,6 +50,26 @@
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
       "computedHash": "0a413bf988d06481f69bb81df2070741c3ba12dd9f1be2706d57f259c905992d"
+    },
+    "claude-seo": {
+      "source": "AgriciDaniel/claude-seo",
+      "sourceType": "github",
+      "computedHash": "4ea43dcecf345aca7834b596f1a6868842f1755e8a0dc479ec8100518a9fbd2b"
+    },
+    "everything-claude-code": {
+      "source": "vedovelli/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "e2a824b1ff9d2e12afdd71e674bf9255fb91490d103c451a61524a056d210df6"
+    },
+    "oh-my-claudecode": {
+      "source": "Yeachan-Heo/oh-my-claudecode",
+      "sourceType": "github",
+      "computedHash": "f7064c841dc85f57d66c25639dc773f6f7e7f63430c942454db1f0a1c6cebf78"
+    },
+    "multi-agent-orchestrator": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "65f386fe962a97823c275d61d301e49dc672d80656e490175089ca4801b721ab"
     }
   }
 }

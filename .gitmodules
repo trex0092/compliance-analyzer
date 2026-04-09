@@ -7,3 +7,48 @@
 [submodule "vendor/code-review-graph"]
 	path = vendor/code-review-graph
 	url = https://github.com/tirth8205/code-review-graph.git
+[submodule "vendor/openai-agents-python"]
+	path = vendor/openai-agents-python
+	url = https://github.com/openai/openai-agents-python.git
+[submodule "vendor/microsoft-agent-framework"]
+	path = vendor/microsoft-agent-framework
+	url = https://github.com/microsoft/agent-framework.git
+[submodule "vendor/open-multi-agent"]
+	path = vendor/open-multi-agent
+	url = https://github.com/JackChen-me/open-multi-agent.git
+[submodule "vendor/agentUniverse"]
+	path = vendor/agentUniverse
+	url = https://github.com/agentuniverse-ai/agentUniverse.git
+[submodule "vendor/ChatDev"]
+	path = vendor/ChatDev
+	url = https://github.com/OpenBMB/ChatDev.git
+[submodule "vendor/OpenMAIC"]
+	path = vendor/OpenMAIC
+	url = https://github.com/THU-MAIC/OpenMAIC.git
+[submodule "vendor/oh-my-claudecode"]
+	path = vendor/oh-my-claudecode
+	url = https://github.com/Yeachan-Heo/oh-my-claudecode.git
+[submodule "vendor/multica"]
+	path = vendor/multica
+	url = https://github.com/multica-ai/multica.git
+[submodule "vendor/multi-agent-shogun"]
+	path = vendor/multi-agent-shogun
+	url = https://github.com/yohey-w/multi-agent-shogun.git
+[submodule "vendor/wshobson-agents"]
+	path = vendor/wshobson-agents
+	url = https://github.com/wshobson/agents.git
+[submodule "vendor/claude-code-system-prompts"]
+	path = vendor/claude-code-system-prompts
+	url = https://github.com/Piebald-AI/claude-code-system-prompts.git
+[submodule "vendor/everything-claude-code"]
+	path = vendor/everything-claude-code
+	url = https://github.com/vedovelli/everything-claude-code.git
+[submodule "vendor/claude-seo"]
+	path = vendor/claude-seo
+	url = https://github.com/AgriciDaniel/claude-seo.git
+[submodule "vendor/quant-trading"]
+	path = vendor/quant-trading
+	url = https://github.com/je-suis-tm/quant-trading.git
+[submodule "vendor/google-automl"]
+	path = vendor/google-automl
+	url = https://github.com/google/automl.git
