@@ -491,13 +491,15 @@
       var approvals = JSON.parse(localStorage.getItem('approvals') || '[]');
       for (var i = 0; i < approvals.length; i++) {
         if (approvals[i].id === approvalId && approvals[i].status === 'pending') {
-          // Task completed in Asana = approved (compliance officer marked it done)
-          approvals[i].status = 'approved';
-          approvals[i].decidedAt = new Date().toISOString();
-          approvals[i].decidedBy = 'asana-sync';
-          approvals[i].note = auditNote;
+          // SECURITY: Do NOT auto-approve from Asana task completion.
+          // Compliance approvals require four-eyes principle (FDL Art.26,
+          // Cabinet Res 134/2025 Art.14). Set to review-required so an
+          // authorized role must confirm in the compliance tool.
+          approvals[i].status = 'review-required';
+          approvals[i].asanaCompletedAt = new Date().toISOString();
+          approvals[i].asanaNote = auditNote;
           localStorage.setItem('approvals', JSON.stringify(approvals));
-          return { type: 'approval', id: approvalId, action: 'marked-completed', newStatus: 'approved', detail: auditNote };
+          return { type: 'approval', id: approvalId, action: 'review-required', newStatus: 'review-required', detail: auditNote };
         }
       }
     } catch(e) { console.warn('[ReadbackSync] Approval update failed:', e); }

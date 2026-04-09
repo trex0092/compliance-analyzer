@@ -40,12 +40,15 @@ export default async (req: Request, context: Context) => {
   }
 
   const contentType = result.metadata?.contentType || 'application/octet-stream'
-  const originalName = result.metadata?.originalName || key.split('/').pop()
+  const rawName = result.metadata?.originalName || key.split('/').pop() || 'download'
+
+  // Sanitize filename to prevent header injection (strip quotes, CR, LF, and non-ASCII)
+  const safeName = rawName.replace(/[\r\n"\\]/g, '_').replace(/[^\x20-\x7E]/g, '_')
 
   return new Response(result.data, {
     headers: {
       'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="${originalName}"`,
+      'Content-Disposition': `attachment; filename="${safeName}"`,
     },
   })
 }
