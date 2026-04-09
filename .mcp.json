@@ -20,7 +20,7 @@
     "ChatDev": "vendor/ChatDev",
     "OpenMAIC": "vendor/OpenMAIC",
     "oh-my-claudecode": "vendor/oh-my-claudecode",
-    "multica": "vendor/multica",
+
     "multi-agent-shogun": "vendor/multi-agent-shogun",
     "wshobson-agents": "vendor/wshobson-agents",
     "claude-code-system-prompts": "vendor/claude-code-system-prompts",

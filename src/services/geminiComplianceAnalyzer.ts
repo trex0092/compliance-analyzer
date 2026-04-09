@@ -139,6 +139,7 @@ function validateInput(request: ComplianceAnalysisRequest): string | null {
 /** Sanitize text to prevent prompt injection via control characters */
 function sanitizeText(text: string): string {
   return text
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // strip control chars (keep \n, \r, \t)
     .trim();
 }
@@ -212,8 +213,8 @@ function logAuditEntry(entry: AuditEntry): void {
     localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(entries));
   } catch {
     // Storage unavailable (e.g., server-side) — log to console
-    console.warn('[GeminiAnalyzer] Audit storage unavailable, logging to console');
-    console.log('[AUDIT]', JSON.stringify(entry));
+    // eslint-disable-next-line no-console
+    console.warn('[GeminiAnalyzer] Audit storage unavailable:', JSON.stringify(entry));
   }
 }
 

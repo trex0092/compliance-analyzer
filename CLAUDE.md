@@ -232,7 +232,7 @@ The following multi-agent frameworks are vendored for reference and integration 
 | ChatDev | `vendor/ChatDev` | DAG + RL orchestrator | Complex multi-stage compliance pipelines |
 | OpenMAIC | `vendor/OpenMAIC` | LangGraph director | Interactive compliance training |
 | oh-my-claudecode | `vendor/oh-my-claudecode` | Staged pipeline + model routing | Development workflow optimization |
-| Multica | `vendor/multica` | Persistent agent teams | Long-running compliance monitoring |
+
 | multi-agent-shogun | `vendor/multi-agent-shogun` | Hierarchical command chain | Parallel task execution via tmux |
 | everything-claude-code | `vendor/everything-claude-code` | AgentShield security pipeline | Red-team/blue-team code review |
 | wshobson agents | `vendor/wshobson-agents` | Plugin marketplace + model tiering | Cost-optimized agent routing |
