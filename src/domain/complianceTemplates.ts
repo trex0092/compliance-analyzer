@@ -1044,21 +1044,175 @@ export const TEMPLATE_KYS: ComplianceTemplate = {
   ],
 };
 
+// ─── 9. PEP Enhanced Review ─────────────────────────────────────────────────
+
+export const TEMPLATE_PEP_REVIEW: ComplianceTemplate = {
+  id: 'TPL-PEP',
+  name: 'PEP Enhanced Review',
+  description:
+    'Enhanced review form for Politically Exposed Persons requiring board-level approval',
+  category: 'PEP',
+  regulatoryBasis: 'FDL No.10/2025 Art.18, Cabinet Res 134/2025 Art.14, FATF Rec 12',
+  approvalRequired: ['compliance-officer', 'senior-management', 'board'],
+  retentionYears: 10,
+  fields: [
+    { name: 'customerRef', label: 'Customer Reference', type: 'text', required: true },
+    { name: 'pepName', label: 'PEP Full Name', type: 'text', required: true },
+    { name: 'pepPosition', label: 'PEP Position / Title', type: 'text', required: true },
+    {
+      name: 'pepCategory',
+      label: 'PEP Category',
+      type: 'select',
+      required: true,
+      options: ['domestic', 'foreign', 'international-org', 'family-member', 'close-associate'],
+    },
+    { name: 'countryOfPEPStatus', label: 'Country of PEP Status', type: 'text', required: true },
+    {
+      name: 'sourceOfWealth',
+      label: 'Source of Wealth',
+      type: 'textarea',
+      required: true,
+    },
+    {
+      name: 'sourceOfFunds',
+      label: 'Source of Funds',
+      type: 'textarea',
+      required: true,
+    },
+    {
+      name: 'adverseMediaCheck',
+      label: 'Adverse Media Check Result',
+      type: 'select',
+      required: true,
+      options: ['clear', 'findings'],
+    },
+    {
+      name: 'adverseMediaDetails',
+      label: 'Adverse Media Details',
+      type: 'textarea',
+      required: false,
+    },
+    {
+      name: 'riskAssessment',
+      label: 'Risk Assessment',
+      type: 'textarea',
+      required: true,
+    },
+    { name: 'boardApprovalDate', label: 'Board Approval Date', type: 'date', required: true },
+    { name: 'boardApproverName', label: 'Board Approver Name', type: 'text', required: true },
+    {
+      name: 'monitoringFrequency',
+      label: 'Monitoring Frequency',
+      type: 'select',
+      required: true,
+      options: ['3months', '6months'],
+    },
+    { name: 'nextReviewDate', label: 'Next Review Date', type: 'date', required: true },
+    {
+      name: 'evidenceAttachments',
+      label: 'Evidence Attachments',
+      type: 'file',
+      required: true,
+    },
+  ],
+};
+
+// ─── 10. UBO Registration ───────────────────────────────────────────────────
+
+export const TEMPLATE_BENEFICIAL_OWNER: ComplianceTemplate = {
+  id: 'TPL-UBO',
+  name: 'Beneficial Owner (UBO) Registration',
+  description:
+    'UBO registration form per Cabinet Decision 109/2023 for entities with >=25% ownership',
+  category: 'CDD/KYC',
+  regulatoryBasis: 'Cabinet Decision 109/2023, FDL No.10/2025 Art.12-14',
+  approvalRequired: ['compliance-officer'],
+  retentionYears: 10,
+  fields: [
+    { name: 'entityName', label: 'Entity Name', type: 'text', required: true },
+    { name: 'entityLicenseNumber', label: 'Entity License Number', type: 'text', required: true },
+    { name: 'uboFullName', label: 'UBO Full Name', type: 'text', required: true },
+    { name: 'uboNationality', label: 'UBO Nationality', type: 'text', required: true },
+    { name: 'uboEmiratesId', label: 'UBO Emirates ID', type: 'text', required: true },
+    { name: 'uboDob', label: 'UBO Date of Birth', type: 'date', required: true },
+    {
+      name: 'ownershipPercentage',
+      label: 'Ownership Percentage',
+      type: 'number',
+      required: true,
+      helpText: 'Must be >=25% per Cabinet Decision 109/2023',
+    },
+    {
+      name: 'ownershipType',
+      label: 'Ownership Type',
+      type: 'select',
+      required: true,
+      options: ['direct', 'indirect', 'control'],
+    },
+    {
+      name: 'verificationMethod',
+      label: 'Verification Method',
+      type: 'select',
+      required: true,
+      options: ['trade-license', 'shareholder-register', 'declaration', 'other'],
+    },
+    { name: 'verificationDate', label: 'Verification Date', type: 'date', required: true },
+    {
+      name: 'uboScreeningResult',
+      label: 'UBO Screening Result',
+      type: 'select',
+      required: true,
+      options: ['clear', 'potential-match', 'confirmed-match'],
+    },
+    {
+      name: 'pepCheck',
+      label: 'PEP Check Result',
+      type: 'select',
+      required: true,
+      options: ['clear', 'pep-identified'],
+    },
+    {
+      name: 'evidenceAttachments',
+      label: 'Evidence Attachments',
+      type: 'file',
+      required: true,
+    },
+    {
+      name: 'reverificationDueDate',
+      label: 'Re-verification Due Date',
+      type: 'date',
+      required: true,
+      helpText: '15 working days after any ownership change',
+    },
+    {
+      name: 'additionalNotes',
+      label: 'Additional Notes',
+      type: 'textarea',
+      required: false,
+    },
+  ],
+};
+
 // ─── Export All Templates ────────────────────────────────────────────────────
 
-export const ALL_COMPLIANCE_TEMPLATES: ComplianceTemplate[] = [
+export const ALL_TEMPLATES: ComplianceTemplate[] = [
   TEMPLATE_CDD_INDIVIDUAL,
   TEMPLATE_CDD_ENTITY,
   TEMPLATE_EDD,
   TEMPLATE_STR,
   TEMPLATE_SAR,
   TEMPLATE_CTR,
+  TEMPLATE_PEP_REVIEW,
+  TEMPLATE_BENEFICIAL_OWNER,
   TEMPLATE_ASSET_FREEZE,
   TEMPLATE_PERIODIC_REVIEW,
   TEMPLATE_EWRA,
   TEMPLATE_TRAINING,
   TEMPLATE_KYS,
 ];
+
+/** @deprecated Use ALL_TEMPLATES instead */
+export const ALL_COMPLIANCE_TEMPLATES: ComplianceTemplate[] = ALL_TEMPLATES;
 
 export function getTemplateById(id: string): ComplianceTemplate | undefined {
   return ALL_COMPLIANCE_TEMPLATES.find((t) => t.id === id);

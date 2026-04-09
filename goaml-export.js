@@ -37,10 +37,22 @@ const GoAMLExport = (function() {
     // Accept dd/mm/yyyy and convert to yyyy-mm-dd for XML
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
       var p = d.split('/');
-      d = p[2] + '-' + p[1] + '-' + p[0];
+      var day = parseInt(p[0], 10), month = parseInt(p[1], 10), year = parseInt(p[2], 10);
+      // Semantic validation: verify the date components form a real date
+      var parsed = new Date(year, month - 1, day);
+      if (parsed.getDate() !== day || parsed.getMonth() !== month - 1 || parsed.getFullYear() !== year) {
+        return ''; // Invalid date (e.g. 31/02/2026)
+      }
+      d = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
     }
     d = d.slice(0, 10);
-    return /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d).getTime()) ? d : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || isNaN(new Date(d).getTime())) return '';
+    // Reject future dates (transactions and events cannot be in the future)
+    if (new Date(d) > new Date()) {
+      console.warn('[goAML] Future date rejected: ' + d);
+      return '';
+    }
+    return d;
   }
 
   function generateReportId() {

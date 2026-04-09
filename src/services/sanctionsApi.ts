@@ -172,3 +172,201 @@ export function screenAgainstList(entityName: string, entries: SanctionsEntry[])
 
   return matches.sort((a, b) => b.confidence - a.confidence);
 }
+
+/**
+ * Fetch the OFAC SDN (Specially Designated Nationals) list (XML).
+ * Maintained by the US Treasury — free, public, no auth.
+ */
+export async function fetchOFACSanctionsList(proxyUrl?: string): Promise<SanctionsEntry[]> {
+  const OFAC_URL =
+    'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML';
+  const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(OFAC_URL)}` : OFAC_URL;
+
+  const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+  if (!response.ok) throw new Error(`OFAC API returned ${response.status}`);
+
+  const xmlText = await response.text();
+  return parseOFACXml(xmlText);
+}
+
+/**
+ * Parse OFAC SDN XML into structured entries.
+ */
+function parseOFACXml(xml: string): SanctionsEntry[] {
+  const entries: SanctionsEntry[] = [];
+  const sdnBlocks = xml.match(/<sdnEntry>[\s\S]*?<\/sdnEntry>/gi) || [];
+
+  for (const block of sdnBlocks) {
+    const uid = extractTag(block, 'uid') || '';
+    const lastName = extractTag(block, 'lastName') || '';
+    const firstName = extractTag(block, 'firstName') || '';
+    const sdnType = extractTag(block, 'sdnType') || '';
+
+    const name = [firstName, lastName].filter(Boolean).join(' ').trim();
+    if (!name) continue;
+
+    // Extract aliases from <akaList><aka><lastName>...</lastName></aka></akaList>
+    const akaListMatch = block.match(/<akaList>[\s\S]*?<\/akaList>/i);
+    const aliases: string[] = [];
+    if (akaListMatch) {
+      const akaBlocks = akaListMatch[0].match(/<aka>[\s\S]*?<\/aka>/gi) || [];
+      for (const aka of akaBlocks) {
+        const akaFirst = extractTag(aka, 'firstName') || '';
+        const akaLast = extractTag(aka, 'lastName') || '';
+        const aliasName = [akaFirst, akaLast].filter(Boolean).join(' ').trim();
+        if (aliasName) aliases.push(aliasName);
+      }
+    }
+
+    const type: 'individual' | 'entity' =
+      sdnType.toLowerCase() === 'individual' ? 'individual' : 'entity';
+
+    entries.push({
+      id: `OFAC-SDN-${uid}`,
+      name,
+      aliases,
+      listSource: 'OFAC SDN',
+      type,
+      designationRef: extractTag(block, 'programList') ? `SDN Program` : undefined,
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Fetch the EU Consolidated Sanctions List (XML).
+ * Maintained by the European Commission — free, public, no auth.
+ */
+export async function fetchEUSanctionsList(proxyUrl?: string): Promise<SanctionsEntry[]> {
+  const EU_URL =
+    'https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw';
+  const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(EU_URL)}` : EU_URL;
+
+  const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+  if (!response.ok) throw new Error(`EU API returned ${response.status}`);
+
+  const xmlText = await response.text();
+  return parseEUXml(xmlText);
+}
+
+/**
+ * Extract an XML attribute value from a tag string.
+ */
+function extractAttribute(tagString: string, attrName: string): string | null {
+  const safeAttr = escapeRegex(attrName);
+  const match = tagString.match(new RegExp(`${safeAttr}="([^"]*)"`));
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * Parse EU Consolidated Sanctions XML into structured entries.
+ */
+function parseEUXml(xml: string): SanctionsEntry[] {
+  const entries: SanctionsEntry[] = [];
+  const entityBlocks = xml.match(/<sanctionEntity[\s\S]*?<\/sanctionEntity>/gi) || [];
+
+  for (const block of entityBlocks) {
+    const logicalId =
+      extractAttribute(block, 'logicalId') || extractAttribute(block, 'designationId') || '';
+
+    // Extract all <nameAlias> elements and their wholeName attribute
+    const nameAliasTags = block.match(/<nameAlias[^>]*\/?>[\s\S]*?(?:<\/nameAlias>|(?=<))/gi) || [];
+    const names: string[] = [];
+    for (const tag of nameAliasTags) {
+      const wholeName = extractAttribute(tag, 'wholeName');
+      if (wholeName) names.push(wholeName);
+    }
+
+    if (names.length === 0) continue;
+
+    const primaryName = names[0];
+    const aliases = names.slice(1);
+
+    // Determine type from subjectType attribute if available
+    const subjectType = extractAttribute(block, 'subjectType') || '';
+    const type: 'individual' | 'entity' =
+      subjectType.toLowerCase().indexOf('person') >= 0 ? 'individual' : 'entity';
+
+    // Extract regulation reference
+    const regulationBlock = block.match(/<regulation[\s\S]*?(?:<\/regulation>|\/>)/i);
+    const designationRef = regulationBlock
+      ? extractAttribute(regulationBlock[0], 'programme') ||
+        extractTag(regulationBlock[0], 'programme') ||
+        undefined
+      : undefined;
+
+    entries.push({
+      id: `EU-${logicalId}`,
+      name: primaryName,
+      aliases,
+      listSource: 'EU Consolidated Sanctions',
+      type,
+      designationRef,
+    });
+  }
+
+  return entries;
+}
+
+export interface FetchAllSanctionsResult {
+  entries: SanctionsEntry[];
+  listsChecked: string[];
+  errors: string[];
+}
+
+/**
+ * Fetch all sanctions lists in parallel (UN, OFAC, EU).
+ * Uses Promise.allSettled so a single list failure doesn't block the rest.
+ */
+export async function fetchAllSanctionsLists(proxyUrl?: string): Promise<FetchAllSanctionsResult> {
+  const listNames = ['UN Consolidated Sanctions', 'OFAC SDN', 'EU Consolidated Sanctions'];
+
+  const results = await Promise.allSettled([
+    fetchUNSanctionsList(proxyUrl),
+    fetchOFACSanctionsList(proxyUrl),
+    fetchEUSanctionsList(proxyUrl),
+  ]);
+
+  const entries: SanctionsEntry[] = [];
+  const listsChecked: string[] = [];
+  const errors: string[] = [];
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      entries.push(...result.value);
+      listsChecked.push(listNames[index]);
+    } else {
+      const errorMsg = `Failed to fetch ${listNames[index]}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`;
+      console.warn(errorMsg);
+      errors.push(errorMsg);
+    }
+  });
+
+  return { entries, listsChecked, errors };
+}
+
+/**
+ * Screen an entity against ALL available sanctions lists (UN, OFAC, EU).
+ * Returns a comprehensive ScreeningResult with all lists checked.
+ */
+export async function screenEntityComprehensive(
+  entityName: string,
+  proxyUrl?: string
+): Promise<ScreeningResult> {
+  const { entries, listsChecked, errors } = await fetchAllSanctionsLists(proxyUrl);
+
+  if (errors.length > 0) {
+    console.warn(`Screening completed with ${errors.length} list error(s): ${errors.join('; ')}`);
+  }
+
+  const matches = screenAgainstList(entityName, entries);
+
+  return {
+    entityName,
+    screenedAt: new Date().toISOString(),
+    listsChecked,
+    matches,
+    totalEntriesChecked: entries.length,
+  };
+}

@@ -185,34 +185,51 @@ const AuthRBAC = (function () {
     }
 
     // --------------- Brute Force Protection ---------------
+    // Persisted to localStorage so lockouts survive page reloads.
     const MAX_FAILED_ATTEMPTS = 5;
     const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-    const failedAttempts = {}; // { username: { count, lockedUntil } }
+    const LOCKOUT_STORAGE_KEY = 'fgl_lockout_state';
+
+    function loadLockoutState() {
+        try {
+            return JSON.parse(localStorage.getItem(LOCKOUT_STORAGE_KEY)) || {};
+        } catch { return {}; }
+    }
+
+    function saveLockoutState(state) {
+        try { localStorage.setItem(LOCKOUT_STORAGE_KEY, JSON.stringify(state)); } catch {}
+    }
 
     function checkLockout(username) {
-        const record = failedAttempts[username];
+        const allState = loadLockoutState();
+        const record = allState[username];
         if (!record) return false;
         if (record.lockedUntil && Date.now() < record.lockedUntil) {
             const minutesLeft = Math.ceil((record.lockedUntil - Date.now()) / 60000);
             throw new Error(`Account locked. Try again in ${minutesLeft} minute(s).`);
         }
         if (record.lockedUntil && Date.now() >= record.lockedUntil) {
-            delete failedAttempts[username];
+            delete allState[username];
+            saveLockoutState(allState);
         }
         return false;
     }
 
     function recordFailedAttempt(username) {
-        if (!failedAttempts[username]) failedAttempts[username] = { count: 0 };
-        failedAttempts[username].count++;
-        if (failedAttempts[username].count >= MAX_FAILED_ATTEMPTS) {
-            failedAttempts[username].lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+        const allState = loadLockoutState();
+        if (!allState[username]) allState[username] = { count: 0 };
+        allState[username].count++;
+        if (allState[username].count >= MAX_FAILED_ATTEMPTS) {
+            allState[username].lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
             writeLog({ event: 'account_locked', username, reason: `${MAX_FAILED_ATTEMPTS} failed attempts` });
         }
+        saveLockoutState(allState);
     }
 
     function clearFailedAttempts(username) {
-        delete failedAttempts[username];
+        const allState = loadLockoutState();
+        delete allState[username];
+        saveLockoutState(allState);
     }
 
     // --------------- Core Auth ---------------
@@ -490,6 +507,35 @@ const AuthRBAC = (function () {
         writeLog({ event: 'password_changed', username: user.username, userId: user.id });
     }
 
+    /**
+     * Force-set a new password without verifying the old one.
+     * ONLY for the mandatory password change flow (mustChangePassword=true).
+     * This is required because the default admin is created with a random
+     * temporary password that is never revealed to the user.
+     */
+    async function forceSetNewPassword(newPassword) {
+        const user = getCurrentUser();
+        if (!user) throw new Error('Not authenticated.');
+        const users = loadData(STORAGE_KEYS.users) || [];
+        const record = users.find(u => u.id === user.id);
+        if (!record) throw new Error('User record not found.');
+        if (!record.mustChangePassword) {
+            throw new Error('Force password set is only allowed during mandatory change.');
+        }
+
+        const policyError = validatePasswordPolicy(newPassword);
+        if (policyError) throw new Error(policyError);
+
+        const { hash, salt } = await hashPassword(newPassword);
+        record.passwordHash = hash;
+        record.passwordSalt = salt;
+        record.mustChangePassword = false;
+        record.passwordChangedAt = new Date().toISOString();
+        saveData(STORAGE_KEYS.users, users);
+
+        writeLog({ event: 'password_force_changed', username: user.username, userId: user.id, reason: 'mandatory_change' });
+    }
+
     // --------------- UI: Login Screen ---------------
     function renderLoginScreen(container) {
         const target = container || document.getElementById('app') || document.body;
@@ -650,7 +696,7 @@ const AuthRBAC = (function () {
                 return;
             }
             try {
-                await changeOwnPassword(curp, np);
+                await forceSetNewPassword(np);
                 overlay.remove();
                 const user = getCurrentUser();
                 document.dispatchEvent(new CustomEvent('fgl:auth:login', { detail: user }));
@@ -1129,6 +1175,7 @@ const AuthRBAC = (function () {
         deleteUser,
         listUsers,
         changeOwnPassword,
+        forceSetNewPassword,
         getLoginHistory,
         getActiveSessionsOverview,
         renderLoginScreen,

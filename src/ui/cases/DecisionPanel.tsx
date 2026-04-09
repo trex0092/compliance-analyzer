@@ -8,9 +8,19 @@ type Props = {
   item: ComplianceCase;
 };
 
+const OUTCOME_LABELS: Record<string, { label: string; color: string }> = {
+  continue: { label: 'Continue — Standard Monitoring', color: '#3DA876' },
+  edd: { label: 'Enhanced Due Diligence Required', color: '#E8A030' },
+  reject: { label: 'Reject Relationship', color: '#D94F4F' },
+  suspend: { label: 'Suspend Activity', color: '#D94F4F' },
+  freeze: { label: 'FREEZE ASSETS — Immediate Action', color: '#FF2D2D' },
+  'str-review': { label: 'STR Filing Required', color: '#f85149' },
+  'sar-review': { label: 'SAR Filing Required', color: '#f85149' },
+  'ctr-filing': { label: 'CTR Filing Required (≥ AED 55,000)', color: '#E8A030' },
+};
+
 export default function DecisionPanel({ item }: Props) {
   const decision = useMemo(() => {
-    // Map each red flag code to its actual definition score, falling back to case riskScore
     const scores = item.redFlags.map((flagCode) => {
       const definition = RED_FLAGS.find((rf) => rf.code === flagCode);
       return definition ? calcFlagScore(definition) : Math.max(item.riskScore, 1);
@@ -43,25 +53,73 @@ export default function DecisionPanel({ item }: Props) {
     });
   }, [item]);
 
+  const outcomeInfo = OUTCOME_LABELS[decision.recommendedOutcome] || {
+    label: decision.recommendedOutcome,
+    color: '#8b949e',
+  };
+
   return (
-    <div style={{ border: '1px solid #ddd', padding: 16, borderRadius: 8 }}>
-      <h3>Decision Engine Output</h3>
-      <p>
-        <strong>Total Score:</strong> {decision.totalScore}
-      </p>
-      <p>
-        <strong>Risk Level:</strong> {decision.riskLevel}
-      </p>
-      <p>
-        <strong>Recommended Outcome:</strong> {decision.recommendedOutcome}
-      </p>
-      <div>
-        <strong>Mandatory Actions:</strong>
-        <ul>
-          {decision.mandatoryActions.map((a) => (
-            <li key={a}>{a}</li>
-          ))}
-        </ul>
+    <div
+      style={{
+        background: '#161b22',
+        border: '1px solid #21262d',
+        borderRadius: 8,
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+        }}
+      >
+        <span style={{ fontSize: 11, color: '#8b949e', fontWeight: 600 }}>DECISION ENGINE</span>
+        <span
+          style={{
+            fontSize: 11,
+            color: '#484f58',
+          }}
+        >
+          Score: {decision.totalScore} · Level: {decision.riskLevel}
+        </span>
+      </div>
+
+      {/* Recommended Outcome */}
+      <div
+        style={{
+          padding: '10px 14px',
+          borderRadius: 6,
+          background: '#0d1117',
+          border: `1px solid ${outcomeInfo.color}40`,
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ fontSize: 13, fontWeight: 600, color: outcomeInfo.color }}>
+          {outcomeInfo.label}
+        </div>
+      </div>
+
+      {/* Mandatory Actions */}
+      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Mandatory Actions:</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {decision.mandatoryActions.map((a) => (
+          <span
+            key={a}
+            style={{
+              display: 'inline-block',
+              padding: '2px 8px',
+              borderRadius: 4,
+              fontSize: 11,
+              background: '#21262d',
+              color: '#e6edf3',
+              border: '1px solid #30363d',
+            }}
+          >
+            {a.replace(/-/g, ' ')}
+          </span>
+        ))}
       </div>
     </div>
   );

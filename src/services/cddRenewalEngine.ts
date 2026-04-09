@@ -121,8 +121,8 @@ export function scanForRenewals(
         severity: customer.riskRating === 'high' ? 'critical' : 'high',
         createdAt: nowIso(),
       });
-    } else if (daysUntilDue <= 0) {
-      // Due today
+    } else if (daysUntilDue === 0) {
+      // Due today (was <= 0 which could never reach here since < 0 is caught above)
       renewalsDue.push(task);
     } else if (nextReviewDate <= thirtyDaysFromNow) {
       // Due within 30 days
