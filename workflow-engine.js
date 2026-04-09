@@ -1593,9 +1593,13 @@
       }
       if (isNaN(createdDate.getTime())) continue;
       // Count actual business days (Sat/Sun excluded) — not the 5/7 approximation
+      // Normalize to midnight to avoid same-day off-by-one when comparing timestamps
       var bizElapsed = 0;
       var cursor = new Date(createdDate);
-      while (cursor < new Date(now)) {
+      cursor.setHours(0, 0, 0, 0);
+      var endDate = new Date(now);
+      endDate.setHours(0, 0, 0, 0);
+      while (cursor < endDate) {
         cursor.setDate(cursor.getDate() + 1);
         var dayOfWeek = cursor.getDay();
         if (dayOfWeek !== 0 && dayOfWeek !== 6) bizElapsed++;

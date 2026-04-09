@@ -265,7 +265,7 @@ const AuthRBAC = (function () {
         if (!passwordValid) {
             recordFailedAttempt(username);
             writeLog({ event: 'login_failed', username, reason: 'Wrong password' });
-            const record = failedAttempts[username];
+            const record = loadLockoutState()[username];
             if (record && record.lockedUntil) {
                 throw new Error('Too many failed attempts. Account locked for 15 minutes.');
             }

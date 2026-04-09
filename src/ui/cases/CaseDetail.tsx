@@ -76,7 +76,7 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
 
   // Get actual authenticated user instead of hardcoding 'compliance-officer'
   const getCurrentUser = (): string => {
-    const win = window as Record<string, unknown>;
+    const win = window as unknown as Record<string, unknown>;
     if (typeof win.AuthRBAC === 'object' && win.AuthRBAC !== null) {
       const auth = win.AuthRBAC as Record<string, unknown>;
       if (typeof auth.getCurrentSession === 'function') {

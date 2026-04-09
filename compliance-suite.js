@@ -47,8 +47,18 @@ window.csFormatDateInput = function (el) {
     return prefix + '-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-6) + '-' + Math.random().toString(36).slice(2, 6);
   }
   function today() { const n=new Date(); return String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+'/'+n.getFullYear(); }
-  function parseDDMMYYYY(s) { if(!s) return null; const p=s.split('/'); if(p.length!==3) return null; return new Date(p[2],p[1]-1,p[0]); }
-  function fmtDate(d) { if (!d) return '—'; const dt = d.includes('/') ? parseDDMMYYYY(d) : new Date(d); if(!dt||isNaN(dt.getTime())) return d; return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
+  function parseDDMMYYYY(s) {
+    if(!s) return null;
+    const p=s.split('/');
+    if(p.length!==3) return null;
+    const dd=parseInt(p[0],10), mm=parseInt(p[1],10), yyyy=parseInt(p[2],10);
+    if(isNaN(dd)||isNaN(mm)||isNaN(yyyy)) return null;
+    if(mm<1||mm>12||dd<1||dd>31||yyyy<1900||yyyy>2100) return null;
+    const dt=new Date(yyyy,mm-1,dd);
+    if(dt.getFullYear()!==yyyy||dt.getMonth()!==mm-1||dt.getDate()!==dd) return null;
+    return dt;
+  }
+  function fmtDate(d) { if (!d) return '—'; const dt = (typeof d==='string'&&d.includes('/')) ? parseDDMMYYYY(d) : new Date(d); if(!dt||isNaN(dt.getTime())) return d; return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
   function fmtDateDDMMYYYY(dt) { return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
   function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function toast(msg, type) {
@@ -350,7 +360,7 @@ window.csFormatDateInput = function (el) {
           }
         });
         localStorage.setItem(raKey, JSON.stringify(existing));
-      } catch {}
+      } catch(e) { console.warn('[CRA] Risk assessment sync error:', e); }
     }
 
     el.innerHTML = `
@@ -593,9 +603,9 @@ window.csFormatDateInput = function (el) {
         var craDays = rating === 'Very High' || rating === 'High' ? 3 : 14;
         autoSyncToAsana(craTitle, craNotes, craDays).then(function(gid) {
           if (gid) { var recs = load(SK.CRA)||[]; if(recs[craIdx]) { recs[craIdx].asanaGid = gid; save(SK.CRA, recs); } toast('CRA synced to Asana','success',2000); }
-        }).catch(function(){});
+        }).catch(function(e){ console.warn('[CRA] Asana sync failed:', e); });
       }
-    } catch(_) {}
+    } catch(e) { console.warn('[CRA] Post-save error:', e); }
   };
 
   global.suiteDeleteCRA = function(idx) {
@@ -617,7 +627,7 @@ window.csFormatDateInput = function (el) {
       try {
         var webResults = await searchWebForScreening('FATF grey list black list 2025 2026', 'regulation', '');
         if (webResults) liveData = '\n\nLIVE WEB SEARCH RESULTS:\n' + webResults;
-      } catch(_) {}
+      } catch(e) { console.warn('[RiskModel] Web search failed:', e); }
     }
 
     try {
@@ -850,7 +860,7 @@ window.csFormatDateInput = function (el) {
         var r2 = await searchWebForScreening('UAE AML CFT regulation 2025 2026 FDL CBUAE update', 'regulation', '');
         if (r1) liveData += '\n\n' + r1;
         if (r2) liveData += '\n\n' + r2;
-      } catch(_) {}
+      } catch(e) { console.warn('[RiskModel] Auto-update web search failed:', e); }
     }
 
     try {
@@ -2176,12 +2186,57 @@ window.csFormatDateInput = function (el) {
     const name = prompt(`Enter your name to confirm ${decision}:`);
     if (!name) return;
     const records = load(SK.APPROVALS) || [];
-    records[idx].status = decision;
-    records[idx].decision = decision;
-    records[idx].decidedBy = name;
-    records[idx].decidedAt = new Date().toISOString();
+    const record = records[idx];
+    if (!record) { toast('Approval record not found', 'error'); return; }
+
+    // Four-eyes enforcement: high-risk approval types require two independent approvers
+    const highRiskTypes = [
+      'STR Filing','EDD Approval','Sanctions Match','TFS Freeze','UBO Override',
+      'PEP Onboarding','High Risk Customer','UNSC Consolidated List Match',
+      'Asset Freeze','Compliance Exception'
+    ];
+    const requiresFourEyes = highRiskTypes.some(t =>
+      (record.approvalType || '').toLowerCase().includes(t.toLowerCase())
+    ) || (record.slaHours && record.slaHours <= 4);
+
+    if (requiresFourEyes && decision === 'Approved') {
+      // Check if this is the first or second approver
+      if (!record.firstApprover) {
+        // First approval — record it but don't finalize
+        record.firstApprover = name;
+        record.firstApprovalAt = new Date().toISOString();
+        record.status = 'Under Review';
+        save(SK.APPROVALS, records);
+        toast(`First approval recorded by ${name}. A second independent approver is required (Four-Eyes Principle).`, 'info');
+        renderApprovals();
+        return;
+      } else if (record.firstApprover.toLowerCase().trim() === name.toLowerCase().trim()) {
+        toast('Four-Eyes Violation: The second approver must be a DIFFERENT person than the first approver (' + record.firstApprover + ').', 'error');
+        return;
+      }
+      // Second independent approver — finalize
+      record.secondApprover = name;
+      record.secondApprovalAt = new Date().toISOString();
+    }
+
+    record.status = decision;
+    record.decision = decision;
+    record.decidedBy = name;
+    record.decidedAt = new Date().toISOString();
+
+    // Audit trail entry
+    if (!record.auditTrail) record.auditTrail = [];
+    record.auditTrail.push({
+      action: decision,
+      actor: name,
+      timestamp: new Date().toISOString(),
+      fourEyes: requiresFourEyes,
+      firstApprover: record.firstApprover || null,
+      secondApprover: record.secondApprover || null
+    });
+
     save(SK.APPROVALS, records);
-    toast(`Decision recorded: ${decision}`, decision==='Approved'?'success':'error');
+    toast(`Decision recorded: ${decision}${requiresFourEyes ? ' (Four-Eyes verified)' : ''}`, decision==='Approved'?'success':'error');
     renderApprovals();
   };
 
@@ -2453,19 +2508,58 @@ window.csFormatDateInput = function (el) {
   'use strict';
 
   function load(key) { try { return JSON.parse(localStorage.getItem(key)||'null'); } catch{return null;} }
-  function save(key,val) { try { localStorage.setItem(key,JSON.stringify(val)); } catch(e){} }
+  function save(key,val) { try { localStorage.setItem(key,JSON.stringify(val)); } catch(e){ console.warn('[Storage] Save failed for', key, e); } }
   function today() { const n=new Date(); return String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+'/'+n.getFullYear(); }
-  function parseDDMMYYYY(s) { if(!s) return null; const p=s.split('/'); if(p.length!==3) return null; return new Date(p[2],p[1]-1,p[0]); }
-  function fmtDate(d) { if(!d) return '—'; const dt = d.includes&&d.includes('/') ? parseDDMMYYYY(d) : new Date(d); if(!dt||isNaN(dt.getTime())) return d; return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
+  function parseDDMMYYYY(s) {
+    if(!s) return null;
+    const p=s.split('/');
+    if(p.length!==3) return null;
+    const dd=parseInt(p[0],10), mm=parseInt(p[1],10), yyyy=parseInt(p[2],10);
+    if(isNaN(dd)||isNaN(mm)||isNaN(yyyy)) return null;
+    if(mm<1||mm>12||dd<1||dd>31||yyyy<1900||yyyy>2100) return null;
+    const dt=new Date(yyyy,mm-1,dd);
+    if(dt.getFullYear()!==yyyy||dt.getMonth()!==mm-1||dt.getDate()!==dd) return null;
+    return dt;
+  }
+  function fmtDate(d) { if(!d) return '—'; const dt = (typeof d==='string'&&d.includes('/')) ? parseDDMMYYYY(d) : new Date(d); if(!dt||isNaN(dt.getTime())) return d; return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
   function fmtDateDDMMYYYY(dt) { return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
+
+  // UAE public holidays (approximate — Islamic dates shift yearly; update annually)
+  const UAE_PUBLIC_HOLIDAYS_2025 = [
+    '01/01/2025','30/03/2025','31/03/2025','01/04/2025', // New Year, Eid Al Fitr
+    '05/06/2025','06/06/2025','07/06/2025','08/06/2025', // Arafat + Eid Al Adha
+    '27/06/2025', // Islamic New Year
+    '05/09/2025', // Prophet's Birthday
+    '01/12/2025','02/12/2025','03/12/2025' // Commemoration + National Day
+  ];
+  const UAE_PUBLIC_HOLIDAYS_2026 = [
+    '01/01/2026','20/03/2026','21/03/2026','22/03/2026', // New Year, Eid Al Fitr
+    '26/05/2026','27/05/2026','28/05/2026','29/05/2026', // Arafat + Eid Al Adha
+    '17/06/2026', // Islamic New Year
+    '26/08/2026', // Prophet's Birthday
+    '01/12/2026','02/12/2026','03/12/2026' // Commemoration + National Day
+  ];
+  const UAE_HOLIDAYS_SET = new Set([...UAE_PUBLIC_HOLIDAYS_2025, ...UAE_PUBLIC_HOLIDAYS_2026]);
+
+  function isUAEHoliday(dt) {
+    return UAE_HOLIDAYS_SET.has(fmtDateDDMMYYYY(dt));
+  }
+
   function addBusinessDays(date, days) {
     const d = parseDDMMYYYY(date) || new Date(date);
     let added = 0;
-    while (added < days) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6) added++; }
+    while (added < days) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6&&!isUAEHoliday(d)) added++; }
     return fmtDateDDMMYYYY(d);
   }
   function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function toast(msg,type) { if(global.toast) global.toast(msg,type); }
+
+  // Regulatory threshold constants — single source of truth
+  const THRESHOLDS = {
+    DPMSR_PRECIOUS_METALS: 55000, // AED — MoE Circular 08/AML/2021
+    CROSS_BORDER_CASH: 60000,     // AED — Cabinet Res 134/2025 Art.16
+    UBO_PERCENTAGE: 25,           // % — Cabinet Decision 109/2023
+  };
 
   const SK2 = {
     TFS2:    'fgl_tfs2_v1',
@@ -2546,7 +2640,7 @@ window.csFormatDateInput = function (el) {
         <span class="sec-title">TFS Workflow — Full 4-Outcome Process</span>
         <span style="font-size:11px;color:var(--muted)">Cabinet Decision No.(74) of 2020 | EOCN Executive Office TFS Guidance</span>
         <div style="display:flex;gap:6px">
-          <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function'){refreshSanctionsLists().then(function(){renderTFS2()}).catch(function(){})}else{renderTFS2()}">Refresh</button>
+          <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function'){refreshSanctionsLists().then(function(){renderTFS2()}).catch(function(e){console.warn('[TFS] Refresh failed:',e);renderTFS2()})}else{renderTFS2()}">Refresh</button>
           <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
         </div>
       </div>
@@ -2976,9 +3070,20 @@ window.csFormatDateInput = function (el) {
     const outcome = document.getElementById('tfs2-outcome').value;
     if (!name) { toast('Screened name is required','error'); return; }
     if (!outcome) { toast('Select a screening outcome','error'); return; }
+
+    // Mandatory list validation: UAE Local Terrorist List and UNSC are legally required
+    const uaeChecked = document.getElementById('tfs2-list-uae')?.checked;
+    const unChecked = document.getElementById('tfs2-list-un')?.checked;
+    if (!uaeChecked || !unChecked) {
+      const missing = [];
+      if (!uaeChecked) missing.push('UAE Local Terrorist List (EOCN)');
+      if (!unChecked) missing.push('UNSC Consolidated Sanctions List');
+      if (!confirm('WARNING: The following mandatory lists are not checked: ' + missing.join(', ') + '.\n\nCabinet Decision No.(74)/2020 REQUIRES screening against these lists.\n\nProceed anyway? (This will be flagged as non-compliant)')) return;
+    }
+
     const lists = [];
-    if (document.getElementById('tfs2-list-uae')?.checked) lists.push('UAE Local Terrorist List (EOCN)');
-    if (document.getElementById('tfs2-list-un')?.checked) lists.push('UNSC Consolidated');
+    if (uaeChecked) lists.push('UAE Local Terrorist List (EOCN)');
+    if (unChecked) lists.push('UNSC Consolidated');
     if (document.getElementById('tfs2-list-ofac')?.checked) lists.push('OFAC SDN');
     if (document.getElementById('tfs2-list-eu')?.checked) lists.push('EU Consolidated');
     if (document.getElementById('tfs2-list-uk')?.checked) lists.push('UK OFSI');
@@ -3021,6 +3126,14 @@ window.csFormatDateInput = function (el) {
       mlroNotified: document.getElementById('tfs2-mlro')?.value||null,
       mgmtNotified: document.getElementById('tfs2-mgmt')?.value||null,
       updatedAt: new Date().toISOString(),
+      // Compliance audit trail
+      auditTrail: (editIdx>=0 && events[editIdx]?.auditTrail) ? [
+        ...events[editIdx].auditTrail,
+        { action: 'UPDATED', actor: document.getElementById('tfs2-reviewer').value || 'unknown', timestamp: new Date().toISOString(), outcome: outcome }
+      ] : [
+        { action: 'CREATED', actor: document.getElementById('tfs2-reviewer').value || 'unknown', timestamp: new Date().toISOString(), outcome: outcome }
+      ],
+      mandatoryListsScreened: uaeChecked && unChecked,
     };
     if (editIdx>=0) { events[editIdx]=record; } else { events.unshift(record); }
     save(SK2.TFS2, events);
@@ -3051,18 +3164,18 @@ window.csFormatDateInput = function (el) {
         if (typeof syncScreeningToAsana === 'function') {
           syncScreeningToAsana(name, syncTitle, syncNotes, daysUrgency).then(function(gid) {
             if (gid) { var ev = load(SK2.TFS2)||[]; if(ev[savedIdx]) { ev[savedIdx].asanaGid = gid; save(SK2.TFS2, ev); } toast('Screening synced to Asana (SCREENING project)','success',2000); }
-          }).catch(function(){});
+          }).catch(function(e){ console.warn('[TFS] Asana screening sync failed:', e); });
         } else if (typeof autoSyncToAsana === 'function') {
           autoSyncToAsana(syncTitle, syncNotes, daysUrgency).then(function(gid) {
             if (gid) { var ev = load(SK2.TFS2)||[]; if(ev[savedIdx]) { ev[savedIdx].asanaGid = gid; save(SK2.TFS2, ev); } toast('Screening synced to Asana','success',2000); }
-          }).catch(function(){});
+          }).catch(function(e){ console.warn('[TFS] Asana sync failed:', e); });
         } else if (typeof asanaPush === 'function') {
           asanaPush(syncTitle, syncNotes).then(function(gid) {
             if (gid) { var ev = load(SK2.TFS2)||[]; if(ev[savedIdx]) { ev[savedIdx].asanaGid = gid; save(SK2.TFS2, ev); } toast('Screening synced to Asana','success',2000); }
-          }).catch(function(){});
+          }).catch(function(e){ console.warn('[TFS] Asana push failed:', e); });
         }
       }
-    } catch(_) {}
+    } catch(e) { console.warn('[TFS] Post-save error:', e); }
   };
 
   global.suite2DeleteTFS = function(idx) {
@@ -3255,7 +3368,7 @@ window.csFormatDateInput = function (el) {
     const amount = parseFloat(document.getElementById('dpmsr-amount').value)||0;
     const alert = document.getElementById('dpmsr-threshold-alert');
     const reporting = document.getElementById('dpmsr-reporting');
-    if (amount >= 55000) {
+    if (amount >= THRESHOLDS.DPMSR_PRECIOUS_METALS) {
       if (alert) alert.style.display='block';
       if (reporting && !reporting.value) reporting.value='Yes – DPMSR Required';
     } else {
@@ -3320,7 +3433,7 @@ window.csFormatDateInput = function (el) {
     const amount = document.getElementById('dpmsr-amount').value;
     if(!name||!type||!amount){toast('Customer name, type, and amount are required','error');return;}
     const cddStatus = document.getElementById('dpmsr-cdd-complete').value;
-    if(cddStatus==='Incomplete'&&parseFloat(amount)>=55000){
+    if(cddStatus==='Incomplete'&&parseFloat(amount)>=THRESHOLDS.DPMSR_PRECIOUS_METALS){
       if(!confirm('⛔ CDD is incomplete. Cabinet Resolution 134/2025 Art.14 prohibits proceeding without CDD. Save record for follow-up?'))return;
     }
     const cases = load(SK2.DPMSR)||[];
@@ -3365,9 +3478,9 @@ window.csFormatDateInput = function (el) {
           + '\n\nRef: Cabinet Resolution 134/2025 Art.14, FATF Rec 22';
         autoSyncToAsana(dpTitle, dpNotes, 3).then(function(gid) {
           if (gid) { var cs = load(SK2.DPMSR)||[]; if(cs[dpIdx]) { cs[dpIdx].asanaGid = gid; save(SK2.DPMSR, cs); } toast('DPMSR synced to Asana','success',2000); }
-        }).catch(function(){});
+        }).catch(function(e){ console.warn('[DPMSR] Asana sync failed:', e); });
       }
-    } catch(_) {}
+    } catch(e) { console.warn('[DPMSR] Post-save error:', e); }
   };
 
   global.suite2DeleteDPMSR = function(idx) {
@@ -3643,7 +3756,7 @@ window.csFormatDateInput = function (el) {
   'use strict';
 
   function load(key) { try { return JSON.parse(localStorage.getItem(key)||'null'); } catch{return null;} }
-  function save(key,val) { try { localStorage.setItem(key,JSON.stringify(val)); } catch(e){} }
+  function save(key,val) { try { localStorage.setItem(key,JSON.stringify(val)); } catch(e){ console.warn('[Storage] Save failed for', key, e); } }
   function fmtDate(d) { if(!d) return '—'; return new Date(d).toLocaleDateString('en-GB'); }
   function toast(msg,type) { if(global.toast) global.toast(msg,type); }
 

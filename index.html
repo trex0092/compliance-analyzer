@@ -11598,8 +11598,8 @@ async function cloudSyncPush() {
     toast('Data uploaded to cloud (' + sizeKB + ' KB)', 'success');
     logAudit('Cloud Sync', 'Pushed ' + keyCount + ' keys (' + sizeKB + ' KB) to cloud');
   } catch (e) {
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">Sync failed: ' + e.message + '</span>';
-    toast('Cloud sync failed: ' + e.message, 'error');
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">Sync failed: ' + escHtml(String(e.message || e)) + '</span>';
+    toast('Cloud sync failed: ' + escHtml(String(e.message || e)), 'error');
   }
 }
 
@@ -11637,8 +11637,8 @@ async function cloudSyncPull() {
     // Reload to apply all data
     setTimeout(function() { location.reload(); }, 1500);
   } catch (e) {
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">Download failed: ' + e.message + '</span>';
-    toast('Cloud download failed: ' + e.message, 'error');
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">Download failed: ' + escHtml(String(e.message || e)) + '</span>';
+    toast('Cloud download failed: ' + escHtml(String(e.message || e)), 'error');
   }
 }
 
