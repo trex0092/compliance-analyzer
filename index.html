@@ -2382,7 +2382,17 @@ Examples:
     <div id="tab-settings" class="tab-content">
       <div class="card">
         <span class="lbl">API Keys & Integrations</span>
-        <div class="row" style="margin-bottom:12px"><div><span class="lbl">Anthropic API Key</span><input type="password" id="anthropicKey2" placeholder="sk-ant-..." /></div></div>
+        <div class="row row-2" style="margin-bottom:12px">
+          <div><span class="lbl">AI Provider</span><select id="aiProvider2" onchange="document.querySelectorAll('.ai-key-section').forEach(function(s){s.style.display='none'});var v=this.value;if(v==='claude')document.getElementById('claudeKeySection').style.display='block';else if(v==='gemini')document.getElementById('geminiKeySection').style.display='block';else if(v==='openai')document.getElementById('openaiKeySection').style.display='block'">
+            <option value="claude">Anthropic (Claude)</option>
+            <option value="gemini">Google (Gemini)</option>
+            <option value="openai">OpenAI (GPT)</option>
+          </select></div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:2px"><span style="font-size:11px;color:var(--muted)">Select your AI provider. Only the selected provider's key is used.</span></div>
+        </div>
+        <div id="claudeKeySection" class="ai-key-section" style="margin-bottom:12px"><div><span class="lbl">Anthropic API Key</span><input type="password" id="anthropicKey2" placeholder="sk-ant-..." /></div></div>
+        <div id="geminiKeySection" class="ai-key-section" style="display:none;margin-bottom:12px"><div><span class="lbl">Google Gemini API Key <span style="font-size:10px;color:var(--muted)">(Get free key at ai.google.dev)</span></span><input type="password" id="geminiKey2" placeholder="AIza..." /></div></div>
+        <div id="openaiKeySection" class="ai-key-section" style="display:none;margin-bottom:12px"><div><span class="lbl">OpenAI API Key</span><input type="password" id="openaiKey2" placeholder="sk-..." /></div></div>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Asana Personal Access Token</span><input type="password" id="asanaToken2" placeholder="1/xxxxxxxx..." /></div></div>
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Tavily API Key <span style="font-size:10px;color:var(--muted)">(FREE — 1,000 searches/month — live web search for screening)</span></span><input type="password" id="tavilyKey2" placeholder="tvly-..." /></div></div>
         <input type="hidden" id="gdriveFolderId2" value="" />
@@ -3246,9 +3256,13 @@ function persistKeys() {
 
   localStorage.setItem(KEYS_STORAGE, JSON.stringify({
     anthropicKey: ANTHROPIC_KEY,
+    openaiKey: OPENAI_KEY,
+    geminiKey: GEMINI_KEY,
+    aiProvider: AI_PROVIDER,
     asanaToken: ASANA_TOKEN,
     scheduleEmail: SCHEDULE_EMAIL,
     proxyUrl: PROXY_URL,
+    tavilyKey: TAVILY_KEY,
     gdriveClientId: GDRIVE_CLIENT_ID,
     gdriveFolderId: GDRIVE_FOLDER_ID,
     rememberKeys: REMEMBER_KEYS
@@ -3292,6 +3306,7 @@ function hydrateKeys() {
 
   const fieldMap = {
     anthropicKey: ANTHROPIC_KEY, anthropicKey2: ANTHROPIC_KEY,
+    geminiKey2: GEMINI_KEY, openaiKey2: OPENAI_KEY,
     asanaToken: ASANA_TOKEN, asanaToken2: ASANA_TOKEN,
     scheduleEmail: SCHEDULE_EMAIL, schedEmail2: SCHEDULE_EMAIL,
     proxyUrl: PROXY_URL, proxyUrl2: PROXY_URL,
@@ -3302,6 +3317,15 @@ function hydrateKeys() {
   for (const [id, val] of Object.entries(fieldMap)) {
     const el = document.getElementById(id);
     if (el) el.value = val;
+  }
+  // Set AI provider dropdown and show correct key section
+  const providerSelect = document.getElementById('aiProvider2');
+  if (providerSelect) {
+    providerSelect.value = AI_PROVIDER;
+    document.querySelectorAll('.ai-key-section').forEach(function(s) { s.style.display = 'none'; });
+    if (AI_PROVIDER === 'gemini') { var gs = document.getElementById('geminiKeySection'); if (gs) gs.style.display = 'block'; }
+    else if (AI_PROVIDER === 'openai') { var os = document.getElementById('openaiKeySection'); if (os) os.style.display = 'block'; }
+    else { var cs = document.getElementById('claudeKeySection'); if (cs) cs.style.display = 'block'; }
   }
   syncRememberCheckboxes();
 }
@@ -3336,6 +3360,9 @@ function saveSetup() {
 }
 function updateKeys() {
   if (document.getElementById('anthropicKey2').value.trim()) ANTHROPIC_KEY = document.getElementById('anthropicKey2').value.trim();
+  if (document.getElementById('geminiKey2')?.value.trim()) GEMINI_KEY = document.getElementById('geminiKey2').value.trim();
+  if (document.getElementById('openaiKey2')?.value.trim()) OPENAI_KEY = document.getElementById('openaiKey2').value.trim();
+  if (document.getElementById('aiProvider2')?.value) AI_PROVIDER = document.getElementById('aiProvider2').value;
   if (document.getElementById('asanaToken2').value.trim()) ASANA_TOKEN = document.getElementById('asanaToken2').value.trim();
   if (document.getElementById('gdriveClientId2')?.value.trim()) GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId2').value.trim();
   if (document.getElementById('gdriveFolderId2')?.value.trim()) GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId2').value.trim();
@@ -7289,10 +7316,19 @@ async function callOpenAI(body) {
 }
 
 async function callGemini(body) {
+  // Map Claude model names to Gemini equivalents
+  var geminiModel = 'gemini-2.5-flash';
+  if (body.model) {
+    var m = body.model.toLowerCase();
+    if (m.includes('haiku') || m.includes('fast') || m.includes('flash')) geminiModel = 'gemini-2.5-flash';
+    else if (m.includes('opus') || m.includes('pro')) geminiModel = 'gemini-2.5-pro';
+    else if (m.includes('sonnet')) geminiModel = 'gemini-2.5-flash';
+  }
+
   const contents = [];
   if (body.messages) {
     for (const m of body.messages) {
-      contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] });
+      contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }] });
     }
   }
   const geminiBody = {
@@ -7304,24 +7340,25 @@ async function callGemini(body) {
   };
   if (body.system) geminiBody.systemInstruction = { parts: [{ text: body.system }] };
 
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${GEMINI_KEY}`;
   let r;
   if (PROXY_URL) {
     try {
       r = await fetch(`${PROXY_URL}/gemini`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiBody)
+        body: JSON.stringify({ ...geminiBody, model: geminiModel })
       });
     } catch (e) {
       if (!GEMINI_KEY) throw e;
-      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+      r = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(geminiBody)
       });
     }
   } else {
-    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+    r = await fetch(geminiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(geminiBody)
