@@ -200,7 +200,8 @@ export async function scanCDDRenewals(
 ): Promise<ToolResult<RenewalScanResult>> {
   const result = scanForRenewals(customers, existingTasks);
 
-  if (auditChain && analyst) {
+  // Log to audit chain when available (both must be present for valid audit entry)
+  if (auditChain && analyst && auditChain.length >= 0) {
     await appendToChain(auditChain, {
       id: crypto.randomUUID(),
       at: new Date().toISOString(),
