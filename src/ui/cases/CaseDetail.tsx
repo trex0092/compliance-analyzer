@@ -74,6 +74,16 @@ const valueStyle: React.CSSProperties = { fontSize: 13, color: '#e6edf3' };
 export default function CaseDetail({ item, onCaseUpdated }: Props) {
   const [comment, setComment] = useState('');
 
+  // Get actual authenticated user instead of hardcoding 'compliance-officer'
+  const getCurrentUser = (): string => {
+    if (typeof window !== 'undefined' && typeof (window as any).AuthRBAC !== 'undefined') {
+      const session = (window as any).AuthRBAC.getCurrentSession?.();
+      if (session?.username) return session.username;
+      if (session?.displayName) return session.displayName;
+    }
+    return 'unknown-user';
+  };
+
   const changeStatus = async (newStatus: CaseStatus, auditAction: AuditAction) => {
     const updated: ComplianceCase = {
       ...item,
@@ -84,7 +94,7 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
         {
           id: createId('audit'),
           at: nowIso(),
-          by: 'compliance-officer',
+          by: getCurrentUser(),
           action: auditAction,
           note: `Status changed: ${item.status} → ${newStatus}`,
         },
@@ -104,7 +114,7 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
         {
           id: createId('audit'),
           at: nowIso(),
-          by: 'compliance-officer',
+          by: getCurrentUser(),
           action: 'comment-added',
           note: comment.trim(),
         },
@@ -159,7 +169,7 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
         {
           id: createId('audit'),
           at: nowIso(),
-          by: 'compliance-officer',
+          by: getCurrentUser(),
           action:
             reportType === 'STR' ? 'str-filed' : reportType === 'SAR' ? 'sar-filed' : 'ctr-filed',
           note: `${reportType} draft generated: ${report.id}`,

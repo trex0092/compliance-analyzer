@@ -79,7 +79,7 @@ function StatusBadge({ status }: { status: 'good' | 'warning' | 'critical' }) {
   );
 }
 
-export function KPIDashboardView({ data }: KPIDashboardProps) {
+export default function KPIDashboardView({ data }: KPIDashboardProps) {
   const overallStatus = useMemo(() => {
     if (data.criticalCases > 0 || data.criticalAlerts > 0 || data.auditReadinessPct < 50)
       return 'critical';
