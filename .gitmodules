@@ -28,9 +28,6 @@
 [submodule "vendor/oh-my-claudecode"]
 	path = vendor/oh-my-claudecode
 	url = https://github.com/Yeachan-Heo/oh-my-claudecode.git
-[submodule "vendor/multica"]
-	path = vendor/multica
-	url = https://github.com/multica-ai/multica.git
 [submodule "vendor/multi-agent-shogun"]
 	path = vendor/multi-agent-shogun
 	url = https://github.com/yohey-w/multi-agent-shogun.git
