@@ -30,7 +30,7 @@ export interface PFAlert {
 
 export interface PFConfig {
   highRiskCountries: string[];
-  dualUseIndicators: string[];
+  dualUseIndicators: readonly string[];
 }
 
 // Default lists — can be overridden at runtime via PFConfig

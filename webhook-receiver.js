@@ -135,12 +135,12 @@
         }
         // Fire callbacks
         for (var c = 0; c < onEventCallbacks.length; c++) {
-          try { onEventCallbacks[c](added); } catch (_) { /* ignore */ }
+          try { onEventCallbacks[c](added); } catch (err) { console.warn('[WebhookReceiver] Callback error:', err); }
         }
         updateBellBadge();
       }
-    } catch (_) {
-      // Silently ignore polling errors — will retry next interval
+    } catch (err) {
+      console.warn('[WebhookReceiver] Polling error (will retry next interval):', err);
     }
   }
 
@@ -413,7 +413,7 @@
       if (typeof toast === 'function') {
         toast(updates.length + ' item(s) synced from Asana', 'success');
       }
-      console.log('[ReadbackSync] Applied ' + updates.length + ' updates from Asana:', updates);
+      console.warn('[ReadbackSync] Applied ' + updates.length + ' updates from Asana');
     }
 
     return updates;
