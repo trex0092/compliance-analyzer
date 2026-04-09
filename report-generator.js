@@ -575,7 +575,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     <div><label class="lbl">FORMAT</label><select id="reportFormat"><option value="PDF">PDF</option><option value="DOCX">Word (DOCX)</option></select></div>
     <div><label class="lbl">COMPANY</label><input id="reportCompany" placeholder="Company name" /></div>
   </div>
-  <button class="btn btn-gold" onclick="ReportGenerator.generateFromUI()" style="margin-top:8px">Generate Report</button>
+  <button class="btn btn-gold" data-action="ReportGenerator.generateFromUI" style="margin-top:8px">Generate Report</button>
 </div>
 
 <div class="card">
@@ -585,7 +585,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     <div><label class="lbl">FREQUENCY</label><select id="schedFreq"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
     <div><label class="lbl">FORMAT</label><select id="schedFormat"><option value="PDF">PDF</option><option value="DOCX">Word</option></select></div>
   </div>
-  <button class="btn btn-sm btn-green" onclick="ReportGenerator.scheduleFromUI()" style="margin-top:8px">Add Schedule</button>
+  <button class="btn btn-sm btn-green" data-action="ReportGenerator.scheduleFromUI" style="margin-top:8px">Add Schedule</button>
   <div id="reportSchedulesList" style="margin-top:12px">
     ${schedules.length ? schedules.map(s => `
       <div class="asana-item">
@@ -594,8 +594,8 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
           <div class="asana-meta">${s.frequency} | Next: ${new Date(s.nextRun).toLocaleDateString('en-GB')} | ${s.enabled ? '✅ Active' : '⏸ Paused'}</div>
         </div>
         <div style="display:flex;gap:4px">
-          <button class="btn-sm" onclick="ReportGenerator.toggleSchedule('${s.id}');switchTab('reports')">${s.enabled ? 'Pause' : 'Resume'}</button>
-          <button class="btn-sm btn-red" onclick="ReportGenerator.deleteSchedule('${s.id}');switchTab('reports')">Delete</button>
+          <button class="btn-sm" data-action="ReportGenerator.toggleScheduleAndRefresh" data-arg="${s.id}">${s.enabled ? 'Pause' : 'Resume'}</button>
+          <button class="btn-sm btn-red" data-action="ReportGenerator.deleteScheduleAndRefresh" data-arg="${s.id}">Delete</button>
         </div>
       </div>
     `).join('') : '<p style="color:var(--muted);font-size:13px">No scheduled reports.</p>'}
@@ -605,7 +605,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
 <div class="card">
   <div class="top-bar" style="margin-bottom:10px">
     <div class="sec-title" style="margin:0;border:none;padding:0">REPORT HISTORY <span style="color:var(--muted);font-size:10px">(${history.length} reports)</span></div>
-    ${history.length ? '<button class="btn btn-sm btn-red" onclick="ReportGenerator.clearHistory()">Clear History</button>' : ''}
+    ${history.length ? '<button class="btn btn-sm btn-red" data-action="ReportGenerator.clearHistory">Clear History</button>' : ''}
   </div>
   <div id="reportHistoryList">
     ${history.length ? history.slice(0, 50).map(h => `
@@ -615,7 +615,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
           <div class="asana-meta">${new Date(h.generatedAt).toLocaleString('en-GB')} | ${h.company} | ${h.filename}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <button class="btn btn-sm btn-green" onclick="ReportGenerator.redownload('${h.template}','${h.format}','${(h.company || '').replace(/'/g, "\\'")}')">⬇ Download</button>
+          <button class="btn btn-sm btn-green" data-action="ReportGenerator.redownload" data-arg="${h.template}" data-arg2="${h.format}" data-arg3="${(h.company || '').replace(/'/g, "\\'")}">⬇ Download</button>
           <span class="asana-status s-ok">${h.format}</span>
         </div>
       </div>
@@ -627,11 +627,11 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
   <div class="top-bar" style="margin-bottom:10px">
     <span class="sec-title" style="margin:0;border:none;padding:0">Circulars</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-blue" onclick="document.getElementById('circFileInput').click()" style="padding:3px 10px;font-size:10px">File</button>
-      <input type="file" id="circFileInput" style="display:none" onchange="ReportGenerator.attachCircularFile(this)" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip">
-      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportCircularsPDF()" style="padding:3px 10px;font-size:10px">PDF</button>
-      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportCircularsDOCX()" style="padding:3px 10px;font-size:10px">Word</button>
-      <button class="btn btn-sm btn-red" onclick="ReportGenerator.clearCirculars()" style="padding:3px 10px;font-size:10px">Clear</button>
+      <button class="btn btn-sm btn-blue" data-action="ReportGenerator.clickCircFileInput" style="padding:3px 10px;font-size:10px">File</button>
+      <input type="file" id="circFileInput" style="display:none" data-change="ReportGenerator.attachCircularFileFromEvent" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip">
+      <button class="btn btn-sm btn-green" data-action="ReportGenerator.exportCircularsPDF" style="padding:3px 10px;font-size:10px">PDF</button>
+      <button class="btn btn-sm btn-green" data-action="ReportGenerator.exportCircularsDOCX" style="padding:3px 10px;font-size:10px">Word</button>
+      <button class="btn btn-sm btn-red" data-action="ReportGenerator.clearCirculars" style="padding:3px 10px;font-size:10px">Clear</button>
     </div>
   </div>
   <div class="row" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:12px">
@@ -640,7 +640,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     <div><span class="lbl">Calendar Month</span><select id="circMonth"><option value="">Select</option><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select></div>
     <div><span class="lbl">Issue / Effective Date</span><input type="text" placeholder="dd/mm/yyyy" id="circDate" /></div>
   </div>
-  <button class="btn btn-gold" onclick="ReportGenerator.addCircular()">Add Circular</button>
+  <button class="btn btn-gold" data-action="ReportGenerator.addCircular">Add Circular</button>
   <div id="circularsList" style="margin-top:12px"></div>
 </div>
 
@@ -648,11 +648,11 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
   <div class="top-bar" style="margin-bottom:10px">
     <span class="sec-title" style="margin:0;border:none;padding:0">Meeting Minutes Report</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-blue" onclick="document.getElementById('meetFileInput').click()" style="padding:3px 10px;font-size:10px">File</button>
-      <input type="file" id="meetFileInput" style="display:none" onchange="ReportGenerator.attachMeetingFile(this)" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip">
-      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportMeetingsPDF()" style="padding:3px 10px;font-size:10px">PDF</button>
-      <button class="btn btn-sm btn-green" onclick="ReportGenerator.exportMeetingsDOCX()" style="padding:3px 10px;font-size:10px">Word</button>
-      <button class="btn btn-sm btn-red" onclick="ReportGenerator.clearMeetings()" style="padding:3px 10px;font-size:10px">Clear</button>
+      <button class="btn btn-sm btn-blue" data-action="ReportGenerator.clickMeetFileInput" style="padding:3px 10px;font-size:10px">File</button>
+      <input type="file" id="meetFileInput" style="display:none" data-change="ReportGenerator.attachMeetingFileFromEvent" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip">
+      <button class="btn btn-sm btn-green" data-action="ReportGenerator.exportMeetingsPDF" style="padding:3px 10px;font-size:10px">PDF</button>
+      <button class="btn btn-sm btn-green" data-action="ReportGenerator.exportMeetingsDOCX" style="padding:3px 10px;font-size:10px">Word</button>
+      <button class="btn btn-sm btn-red" data-action="ReportGenerator.clearMeetings" style="padding:3px 10px;font-size:10px">Clear</button>
     </div>
   </div>
   <div class="row" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:12px">
@@ -660,7 +660,7 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     <div><span class="lbl">Calendar Month</span><select id="meetMonth"><option value="">Select</option><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select></div>
     <div><span class="lbl">Issue / Effective Date</span><input type="text" placeholder="dd/mm/yyyy" id="meetDate" /></div>
   </div>
-  <button class="btn btn-gold" onclick="ReportGenerator.addMeeting()">Add Meeting Minutes</button>
+  <button class="btn btn-gold" data-action="ReportGenerator.addMeeting">Add Meeting Minutes</button>
   <div id="meetingsList" style="margin-top:12px"></div>
 </div>`;
   }
@@ -801,8 +801,8 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     const list = getCirculars();
     if (!list.length) return '<p style="color:var(--muted);font-size:13px">No circulars recorded.</p>';
     return list.map(c => {
-      const attachHtml = c.attachment ? `<span style="color:var(--green);font-size:10px;margin-left:6px" title="${c.attachment.name}">📎 ${c.attachment.name} (${formatFileSize(c.attachment.size)})</span> <button class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.downloadAttachment('circular',${c.id})">Download</button> <button class="btn btn-sm" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.removeAttachment('circular',${c.id})">Remove</button>` : '';
-      return `<div class="asana-item"><div><div class="asana-name">${esc(c.ref)} — ${esc(c.subject)}${attachHtml}</div><div class="asana-meta">${esc(c.month||'—')} | ${esc(c.date||'—')}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-gold" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.editCircular(${c.id})">Edit</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteCircular(${c.id})">Delete</button></div></div>`;
+      const attachHtml = c.attachment ? `<span style="color:var(--green);font-size:10px;margin-left:6px" title="${c.attachment.name}">📎 ${c.attachment.name} (${formatFileSize(c.attachment.size)})</span> <button class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px" data-action="ReportGenerator.downloadAttachment" data-arg="circular" data-arg2="${c.id}">Download</button> <button class="btn btn-sm" style="padding:1px 6px;font-size:9px" data-action="ReportGenerator.removeAttachment" data-arg="circular" data-arg2="${c.id}">Remove</button>` : '';
+      return `<div class="asana-item"><div><div class="asana-name">${esc(c.ref)} — ${esc(c.subject)}${attachHtml}</div><div class="asana-meta">${esc(c.month||'—')} | ${esc(c.date||'—')}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-gold" style="padding:2px 8px;font-size:10px" data-action="ReportGenerator.editCircular" data-arg="${c.id}">Edit</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" data-action="ReportGenerator.deleteCircular" data-arg="${c.id}">Delete</button></div></div>`;
     }).join('');
   }
   function renderCircularsInPlace() { const el=document.getElementById('circularsList'); if(el) el.innerHTML=renderCircularsList(); }
@@ -880,8 +880,8 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     const list = getMeetings();
     if (!list.length) return '<p style="color:var(--muted);font-size:13px">No meeting minutes recorded.</p>';
     return list.map(m => {
-      const attachHtml = m.attachment ? `<span style="color:var(--green);font-size:10px;margin-left:6px" title="${esc(m.attachment.name)}">📎 ${esc(m.attachment.name)} (${formatFileSize(m.attachment.size)})</span> <button class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.downloadAttachment('meeting',${m.id})">Download</button> <button class="btn btn-sm" style="padding:1px 6px;font-size:9px" onclick="ReportGenerator.removeAttachment('meeting',${m.id})">Remove</button>` : '';
-      return `<div class="asana-item"><div><div class="asana-name">${esc(m.ref)}${attachHtml}</div><div class="asana-meta">${esc(m.month||'—')} | ${esc(m.date||'—')}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-gold" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.editMeeting(${m.id})">Edit</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="ReportGenerator.deleteMeeting(${m.id})">Delete</button></div></div>`;
+      const attachHtml = m.attachment ? `<span style="color:var(--green);font-size:10px;margin-left:6px" title="${esc(m.attachment.name)}">📎 ${esc(m.attachment.name)} (${formatFileSize(m.attachment.size)})</span> <button class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px" data-action="ReportGenerator.downloadAttachment" data-arg="meeting" data-arg2="${m.id}">Download</button> <button class="btn btn-sm" style="padding:1px 6px;font-size:9px" data-action="ReportGenerator.removeAttachment" data-arg="meeting" data-arg2="${m.id}">Remove</button>` : '';
+      return `<div class="asana-item"><div><div class="asana-name">${esc(m.ref)}${attachHtml}</div><div class="asana-meta">${esc(m.month||'—')} | ${esc(m.date||'—')}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-gold" style="padding:2px 8px;font-size:10px" data-action="ReportGenerator.editMeeting" data-arg="${m.id}">Edit</button><button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" data-action="ReportGenerator.deleteMeeting" data-arg="${m.id}">Delete</button></div></div>`;
     }).join('');
   }
   function renderMeetingsInPlace() { const el=document.getElementById('meetingsList'); if(el) el.innerHTML=renderMeetingsList(); }
@@ -1002,6 +1002,13 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     } catch(e) { toast('Drive upload failed: ' + e.message,'error'); }
   }
 
+  function toggleScheduleAndRefresh(id) { toggleSchedule(id); switchTab('reports'); }
+  function deleteScheduleAndRefresh(id) { deleteSchedule(id); switchTab('reports'); }
+  function clickCircFileInput() { document.getElementById('circFileInput').click(); }
+  function clickMeetFileInput() { document.getElementById('meetFileInput').click(); }
+  function attachCircularFileFromEvent(e) { attachCircularFile(e.currentTarget); }
+  function attachMeetingFileFromEvent(e) { attachMeetingFile(e.currentTarget); }
+
   window.ReportGenerator = {
     generatePDF,
     generateDOCX,
@@ -1012,6 +1019,12 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     scheduleFromUI,
     deleteSchedule,
     toggleSchedule,
+    toggleScheduleAndRefresh,
+    deleteScheduleAndRefresh,
+    clickCircFileInput,
+    clickMeetFileInput,
+    attachCircularFileFromEvent,
+    attachMeetingFileFromEvent,
     getHistory,
     getSchedules,
     renderReportTab,

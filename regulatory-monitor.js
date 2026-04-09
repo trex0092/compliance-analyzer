@@ -375,7 +375,7 @@
       const barCol = fwScore.score >= 80 ? 'var(--green)' : fwScore.score >= 60 ? 'var(--amber)' : 'var(--red)';
 
       html += `
-    <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${barCol};border-radius:4px;padding:12px;cursor:pointer" onclick="RegulatoryMonitor.expandFramework('${fwId}')">
+    <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${barCol};border-radius:4px;padding:12px;cursor:pointer" data-action="RegulatoryMonitor.expandFramework" data-arg="${fwId}">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:13px;font-weight:500">${fw.icon} ${fw.name}</div>
         <span style="font-size:20px;font-family:'Cinzel',serif;color:${barCol}">${fwScore.score}%</span>
@@ -402,7 +402,7 @@
     html += `
 <div class="card">
   <div class="sec-title">ALERTS <span style="color:var(--muted);font-size:10px">(${unackAlerts.length} unacknowledged)</span></div>
-  <div style="margin-bottom:8px"><button class="btn-sm btn-green" onclick="RegulatoryMonitor.checkAlerts();switchTab('monitor')">Run Alert Check</button></div>`;
+  <div style="margin-bottom:8px"><button class="btn-sm btn-green" data-action="RegulatoryMonitor.checkAlertsAndRefresh">Run Alert Check</button></div>`;
 
     if (alerts.length) {
       html += alerts.slice(0, 20).map(a => {
@@ -413,7 +413,7 @@
           <div class="asana-name"><span class="badge ${sevClass}">${a.severity}</span> ${a.message}</div>
           <div class="asana-meta">${a.framework} | ${new Date(a.createdAt).toLocaleString('en-GB')}</div>
         </div>
-        ${!a.acknowledged ? `<button class="btn-sm" onclick="RegulatoryMonitor.acknowledgeAlert('${a.id}');switchTab('monitor')">Ack</button>` : '<span class="asana-status s-ok">ACK</span>'}
+        ${!a.acknowledged ? `<button class="btn-sm" data-action="RegulatoryMonitor.acknowledgeAlertAndRefresh" data-arg="${a.id}">Ack</button>` : '<span class="asana-status s-ok">ACK</span>'}
       </div>`;
       }).join('');
     } else {
@@ -462,8 +462,8 @@
   </div>
   <div style="margin-bottom:8px"><label class="lbl">IMPACT</label><textarea id="regChangeImpact" rows="2" placeholder="Describe impact on current compliance program..."></textarea></div>
   <div style="display:flex;gap:6px;margin-top:4px">
-    <button class="btn btn-sm btn-green" onclick="RegulatoryMonitor.addChangeFromUI();switchTab('regchanges')">Add Change</button>
-    <button class="btn btn-sm btn-red" onclick="if(confirm('Clear ALL regulatory changes?')){RegulatoryMonitor.clearAllChanges();switchTab('regchanges')}">Clear All</button>
+    <button class="btn btn-sm btn-green" data-action="RegulatoryMonitor.addChangeAndRefresh">Add Change</button>
+    <button class="btn btn-sm btn-red" data-action="RegulatoryMonitor.confirmClearAllChanges">Clear All</button>
   </div>
 </div>
 
@@ -481,7 +481,7 @@
         </div>
         <div style="display:flex;gap:4px">
           <span class="asana-status ${overdue ? 's-overdue' : c.status === 'completed' ? 's-ok' : 's-due'}">${overdue ? 'OVERDUE' : c.status}</span>
-          ${c.status !== 'completed' ? `<button class="btn-sm btn-green" onclick="RegulatoryMonitor.updateRegChange('${c.id}',{status:'completed'});switchTab('regchanges')">✓</button>` : ''}
+          ${c.status !== 'completed' ? `<button class="btn-sm btn-green" data-action="RegulatoryMonitor.completeRegChange" data-arg="${c.id}">✓</button>` : ''}
         </div>
       </div>`;
       }).join('');
@@ -512,7 +512,7 @@
 <div style="margin-bottom:12px">
 ${fw.key_requirements.map((req, i) => {
   const done = completed.includes(i);
-  return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${done ? 'var(--green-dim)' : 'var(--surface2)'};border-radius:3px;margin-bottom:4px;cursor:pointer" onclick="RegulatoryMonitor.toggleRequirement('${fwId}',${i});switchTab('monitor')">
+  return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${done ? 'var(--green-dim)' : 'var(--surface2)'};border-radius:3px;margin-bottom:4px;cursor:pointer" data-action="RegulatoryMonitor.toggleRequirementAndRefresh" data-arg="${fwId}" data-arg2="${i}">
     <span style="font-size:16px">${done ? '✅' : '⬜'}</span>
     <span style="font-size:12px;color:${done ? 'var(--green)' : 'var(--text)'}">${req}</span>
   </div>`;
@@ -521,7 +521,7 @@ ${fw.key_requirements.map((req, i) => {
 <div style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">
   <strong>Risk Areas:</strong> ${fw.risk_areas.join(' | ')}
 </div>
-<button class="btn-sm" onclick="document.getElementById('frameworkDetail').style.display='none'" style="margin-top:8px">Close</button>`;
+<button class="btn-sm" data-action="RegulatoryMonitor.closeFrameworkDetail" style="margin-top:8px">Close</button>`;
     el.scrollIntoView({ behavior: 'smooth' });
   }
 
@@ -540,6 +540,14 @@ ${fw.key_requirements.map((req, i) => {
     if (typeof toast === 'function') toast('All regulatory changes cleared', 'success');
   }
 
+  function checkAlertsAndRefresh() { checkAlerts(); switchTab('monitor'); }
+  function acknowledgeAlertAndRefresh(id) { acknowledgeAlert(id); switchTab('monitor'); }
+  function addChangeAndRefresh() { addChangeFromUI(); switchTab('regchanges'); }
+  function confirmClearAllChanges() { if (confirm('Clear ALL regulatory changes?')) { clearAllChanges(); switchTab('regchanges'); } }
+  function completeRegChange(id) { updateRegChange(id, { status: 'completed' }); switchTab('regchanges'); }
+  function toggleRequirementAndRefresh(fwId, i) { toggleRequirement(fwId, Number(i)); switchTab('monitor'); }
+  function closeFrameworkDetail() { document.getElementById('frameworkDetail').style.display = 'none'; }
+
   window.RegulatoryMonitor = {
     FRAMEWORKS,
     getFrameworks: () => FRAMEWORKS,
@@ -556,5 +564,12 @@ ${fw.key_requirements.map((req, i) => {
     renderChangeTrackerTab,
     expandFramework,
     renderFrameworkDetail: expandFramework,
+    checkAlertsAndRefresh,
+    acknowledgeAlertAndRefresh,
+    addChangeAndRefresh,
+    confirmClearAllChanges,
+    completeRegChange,
+    toggleRequirementAndRefresh,
+    closeFrameworkDetail,
   };
 })();

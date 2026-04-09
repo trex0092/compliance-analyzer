@@ -59,10 +59,10 @@
   <div class="top-bar" style="margin-bottom:10px">
     <span class="sec-title" style="margin:0;border:none;padding:0">Management Approvals — Customer & Counterparty Due Diligence</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-blue" onclick="ManagementApprovals.newApproval()">+ New Assessment</button>
-      <button class="btn btn-sm btn-green" onclick="ManagementApprovals.exportCurrentPDF()">PDF</button>
-      <button class="btn btn-sm btn-green" onclick="ManagementApprovals.exportCurrentDOCX()">Word</button>
-      <button class="btn btn-sm btn-red" onclick="ManagementApprovals.clearAllApprovals()">Clear</button>
+      <button class="btn btn-sm btn-blue" data-action="ManagementApprovals.newApproval">+ New Assessment</button>
+      <button class="btn btn-sm btn-green" data-action="ManagementApprovals.exportCurrentPDF">PDF</button>
+      <button class="btn btn-sm btn-green" data-action="ManagementApprovals.exportCurrentDOCX">Word</button>
+      <button class="btn btn-sm btn-red" data-action="ManagementApprovals.clearAllApprovals">Clear</button>
     </div>
   </div>
   <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
@@ -86,8 +86,8 @@
       <div class="asana-meta">Created: ${new Date(a.createdAt).toLocaleDateString('en-GB')}</div>
     </div>
     <div style="display:flex;gap:4px">
-      <button class="btn-sm btn-green" onclick="ManagementApprovals.editApproval(${idx})">Edit</button>
-      <button class="btn-sm btn-red" onclick="ManagementApprovals.deleteApproval(${idx})">Del</button>
+      <button class="btn-sm btn-green" data-action="ManagementApprovals.editApproval" data-arg="${idx}">Edit</button>
+      <button class="btn-sm btn-red" data-action="ManagementApprovals.deleteApproval" data-arg="${idx}">Del</button>
     </div>
   </div>`;
       }).join('');
@@ -122,11 +122,11 @@
   </div>
   <div class="row row-3" style="margin-bottom:8px">
     <div><span class="lbl">GoAML Registration Status</span><select id="maGoAML"><option value="Registered">Registered</option><option value="Not Registered">Not Registered</option><option value="Pending">Pending</option></select></div>
-    <div><span class="lbl">FATF Grey List Status</span><select id="maFATF" onchange="this.style.color=this.value==='Negative'?'var(--green)':'var(--red)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option></select></div>
-    <div><span class="lbl">CAHRA Status</span><select id="maCAHRA" onchange="this.style.color=this.value==='Negative'?'var(--green)':'var(--red)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option></select></div>
+    <div><span class="lbl">FATF Grey List Status</span><select id="maFATF" data-change="ManagementApprovals.colorNegGreenPosRed" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option></select></div>
+    <div><span class="lbl">CAHRA Status</span><select id="maCAHRA" data-change="ManagementApprovals.colorNegGreenPosRed" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option></select></div>
   </div>
   <div class="row row-2">
-    <div><span class="lbl">PEP Status</span><select id="maPEP" onchange="this.style.color=this.value==='Negative'?'var(--green)':'var(--red)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option></select></div>
+    <div><span class="lbl">PEP Status</span><select id="maPEP" data-change="ManagementApprovals.colorNegGreenPosRed" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option></select></div>
   </div>
 </div>
 
@@ -157,7 +157,7 @@
 <div class="card">
   <span class="sec-title" style="color:var(--gold)">SECTION 4 — IDENTIFICATIONS</span>
   <div id="maIndividualsContainer"></div>
-  <button class="btn btn-sm btn-green" onclick="ManagementApprovals.addIndividual()" style="margin-top:8px">+ Add Individual</button>
+  <button class="btn btn-sm btn-green" data-action="ManagementApprovals.addIndividual" style="margin-top:8px">+ Add Individual</button>
 </div>
 
 <!-- SECTION 5: PROLIFERATION FINANCING (PF) ASSESSMENT -->
@@ -176,11 +176,11 @@
 <div class="card">
   <span class="sec-title" style="color:var(--gold)">SECTION 6 — RISK-BASED ASSESSMENT (RBA) — CUSTOMER RISK SCORING</span>
   <div class="row row-2" style="margin-bottom:8px">
-    <div><span class="lbl">Overall Risk Classification</span><select id="maRiskClass" onchange="this.style.color=this.value==='Low-Risk'?'var(--green)':this.value==='Medium-Risk'?'var(--amber)':'var(--red)'" style="color:var(--green)"><option value="Low-Risk" style="color:var(--green)">Low-Risk</option><option value="Medium-Risk" style="color:var(--amber)">Medium-Risk</option><option value="High-Risk" style="color:var(--red)">High-Risk</option></select></div>
-    <div><span class="lbl">CDD Level Required</span><select id="maCDDLevel" onchange="this.style.color=this.value==='CDD'?'var(--green)':this.value==='SDD'?'var(--amber)':'var(--red)'" style="color:var(--green)"><option value="CDD" style="color:var(--green)">Standard CDD</option><option value="SDD" style="color:var(--amber)">Simplified DD (SDD)</option><option value="EDD" style="color:var(--red)">Enhanced DD (EDD)</option></select></div>
+    <div><span class="lbl">Overall Risk Classification</span><select id="maRiskClass" data-change="ManagementApprovals.colorRiskClass" style="color:var(--green)"><option value="Low-Risk" style="color:var(--green)">Low-Risk</option><option value="Medium-Risk" style="color:var(--amber)">Medium-Risk</option><option value="High-Risk" style="color:var(--red)">High-Risk</option></select></div>
+    <div><span class="lbl">CDD Level Required</span><select id="maCDDLevel" data-change="ManagementApprovals.colorCDDLevel" style="color:var(--green)"><option value="CDD" style="color:var(--green)">Standard CDD</option><option value="SDD" style="color:var(--amber)">Simplified DD (SDD)</option><option value="EDD" style="color:var(--red)">Enhanced DD (EDD)</option></select></div>
   </div>
   <div class="row row-2" style="margin-bottom:8px">
-    <div><span class="lbl">Business Relationship Decision</span><select id="maBusinessDecision" onchange="this.style.color=this.value==='Approved'?'var(--green)':this.value==='Not Approved'?'var(--red)':'#FF69B4'" style="color:var(--green)"><option value="Approved" style="color:var(--green)">Approved</option><option value="Not Approved" style="color:var(--red)">Not Approved</option><option value="Pending" style="color:#FF69B4">Pending Review</option></select></div>
+    <div><span class="lbl">Business Relationship Decision</span><select id="maBusinessDecision" data-change="ManagementApprovals.colorBusinessDecision" style="color:var(--green)"><option value="Approved" style="color:var(--green)">Approved</option><option value="Not Approved" style="color:var(--red)">Not Approved</option><option value="Pending" style="color:#FF69B4">Pending Review</option></select></div>
     <div><span class="lbl">Trigger Events Requiring Immediate Review</span><select id="maTriggerEvents"><option value="No">No</option><option value="Yes">Yes</option></select></div>
   </div>
   <div><span class="lbl">Assessment Notes</span><textarea id="maAssessmentNotes" rows="3" placeholder="Additional risk assessment notes..."></textarea></div>
@@ -203,15 +203,15 @@
 </div>
 
 <div style="display:flex;gap:8px;margin-top:10px">
-  <button class="btn btn-gold" onclick="ManagementApprovals.saveCurrentApproval()" style="flex:1">Save Assessment</button>
-  <button class="btn btn-sm" onclick="ManagementApprovals.cancelEdit()">Cancel</button>
+  <button class="btn btn-gold" data-action="ManagementApprovals.saveCurrentApproval" style="flex:1">Save Assessment</button>
+  <button class="btn btn-sm" data-action="ManagementApprovals.cancelEdit">Cancel</button>
 </div>`;
   }
 
   function renderSanctionsRow(prefix, label) {
     return `<div style="display:grid;grid-template-columns:1fr 100px 120px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
       <span style="font-size:11px;color:var(--text)">${label}</span>
-      <select id="${prefix}_result" onchange="this.style.color=this.value==='Negative'?'var(--green)':this.value==='Positive'?'var(--red)':'var(--amber)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option><option value="Pending" style="color:var(--amber)">Pending</option></select>
+      <select id="${prefix}_result" data-change="ManagementApprovals.colorNegGreenPosPending" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option><option value="Pending" style="color:var(--amber)">Pending</option></select>
       <input type="text" id="${prefix}_date" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" style="font-size:10px" />
       <input type="text" id="${prefix}_remarks" placeholder="Remarks..." style="font-size:10px" />
     </div>`;
@@ -220,7 +220,7 @@
   function renderAdverseRow(prefix, label) {
     return `<div style="display:grid;grid-template-columns:1fr 100px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
       <span style="font-size:11px;color:var(--text)">${label}</span>
-      <select id="${prefix}_finding" onchange="this.style.color=this.value==='Negative'?'var(--green)':this.value==='Positive'?'var(--red)':'var(--amber)'" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option><option value="Pending" style="color:var(--amber)">Pending</option></select>
+      <select id="${prefix}_finding" data-change="ManagementApprovals.colorNegGreenPosPending" style="color:var(--green)"><option value="Negative" style="color:var(--green)">Negative</option><option value="Positive" style="color:var(--red)">Positive</option><option value="Pending" style="color:var(--amber)">Pending</option></select>
       <input type="text" id="${prefix}_details" placeholder="Details / Source..." style="font-size:10px" />
     </div>`;
   }
@@ -228,7 +228,7 @@
   function renderPFRow(prefix, label) {
     return `<div style="display:grid;grid-template-columns:1fr 100px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);align-items:center">
       <span style="font-size:11px;color:var(--text)">${label}</span>
-      <select id="${prefix}_level" onchange="this.style.color=this.value==='Low'?'var(--green)':this.value==='Medium'?'var(--amber)':'var(--red)'" style="color:var(--green)"><option value="Low" style="color:var(--green)">Low</option><option value="Medium" style="color:var(--amber)">Medium</option><option value="High" style="color:var(--red)">High</option></select>
+      <select id="${prefix}_level" data-change="ManagementApprovals.colorRiskLevel" style="color:var(--green)"><option value="Low" style="color:var(--green)">Low</option><option value="Medium" style="color:var(--amber)">Medium</option><option value="High" style="color:var(--red)">High</option></select>
       <input type="text" id="${prefix}_notes" placeholder="Assessment notes..." style="font-size:10px" />
     </div>`;
   }
@@ -248,7 +248,7 @@
       <div style="background:var(--surface2);border-radius:3px;padding:10px;margin-bottom:8px;border-left:3px solid var(--gold)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="font-size:12px;font-weight:600;color:var(--gold)">Individual ${i + 1}</span>
-          ${currentIndividuals.length > 1 ? `<button class="btn-sm btn-red" onclick="ManagementApprovals.removeIndividual(${i})" style="font-size:9px">Remove</button>` : ''}
+          ${currentIndividuals.length > 1 ? `<button class="btn-sm btn-red" data-action="ManagementApprovals.removeIndividual" data-arg="${i}" style="font-size:9px">Remove</button>` : ''}
         </div>
         <div class="row row-3" style="margin-bottom:6px">
           <div><span class="lbl">Designation</span><input type="text" class="maInd_designation" value="${esc(ind.designation)}" placeholder="e.g., Shareholder & Director" /></div>
@@ -271,7 +271,7 @@
           <div><span class="lbl">Proof of Address</span><input type="text" class="maInd_proofAddr" value="${esc(ind.proofAddr)}" placeholder="e.g., Lease Agreement" /></div>
         </div>
         <div class="row row-2">
-          <div><span class="lbl">PEP Status</span><select class="maInd_pep" onchange="this.style.color=this.value==='Negative'?'var(--green)':'var(--red)'" style="color:${ind.pep==='Positive'?'var(--red)':'var(--green)'}"><option value="Negative" style="color:var(--green)" ${ind.pep==='Negative'?'selected':''}>Negative</option><option value="Positive" style="color:var(--red)" ${ind.pep==='Positive'?'selected':''}>Positive</option></select></div>
+          <div><span class="lbl">PEP Status</span><select class="maInd_pep" data-change="ManagementApprovals.colorNegGreenPosRed" style="color:${ind.pep==='Positive'?'var(--red)':'var(--green)'}"><option value="Negative" style="color:var(--green)" ${ind.pep==='Negative'?'selected':''}>Negative</option><option value="Positive" style="color:var(--red)" ${ind.pep==='Positive'?'selected':''}>Positive</option></select></div>
         </div>
       </div>
     `).join('');
@@ -573,6 +573,13 @@
     if (el) el.innerHTML = renderApprovalsTab();
   }
 
+  function colorNegGreenPosRed(e) { var el = e.currentTarget; el.style.color = el.value === 'Negative' ? 'var(--green)' : 'var(--red)'; }
+  function colorRiskClass(e) { var el = e.currentTarget; el.style.color = el.value === 'Low-Risk' ? 'var(--green)' : el.value === 'Medium-Risk' ? 'var(--amber)' : 'var(--red)'; }
+  function colorCDDLevel(e) { var el = e.currentTarget; el.style.color = el.value === 'CDD' ? 'var(--green)' : el.value === 'SDD' ? 'var(--amber)' : 'var(--red)'; }
+  function colorBusinessDecision(e) { var el = e.currentTarget; el.style.color = el.value === 'Approved' ? 'var(--green)' : el.value === 'Not Approved' ? 'var(--red)' : '#FF69B4'; }
+  function colorNegGreenPosPending(e) { var el = e.currentTarget; el.style.color = el.value === 'Negative' ? 'var(--green)' : el.value === 'Positive' ? 'var(--red)' : 'var(--amber)'; }
+  function colorRiskLevel(e) { var el = e.currentTarget; el.style.color = el.value === 'Low' ? 'var(--green)' : el.value === 'Medium' ? 'var(--amber)' : 'var(--red)'; }
+
   window.ManagementApprovals = {
     renderApprovalsTab,
     refresh,
@@ -585,7 +592,13 @@
     removeIndividual,
     exportCurrentPDF,
     exportCurrentDOCX,
-    clearAllApprovals
+    clearAllApprovals,
+    colorNegGreenPosRed,
+    colorRiskClass,
+    colorCDDLevel,
+    colorBusinessDecision,
+    colorNegGreenPosPending,
+    colorRiskLevel
   };
 
 })();

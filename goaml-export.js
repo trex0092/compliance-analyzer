@@ -348,10 +348,10 @@ ${(data.attachments || []).map(a => `    <attachment>
         </div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-gold" onclick="GoAMLExport.generateAndDownload()">Generate goAML XML</button>
-          <button class="btn btn-sm btn-blue" onclick="GoAMLExport.previewXml()">Preview XML</button>
-          <button class="btn btn-sm btn-blue" onclick="GoAMLExport.populateFromSTR()">Import from STR Draft</button>
-          <button class="btn btn-sm btn-red" onclick="GoAMLExport.cancelForm()">Cancel</button>
+          <button class="btn btn-gold" data-action="GoAMLExport.generateAndDownload">Generate goAML XML</button>
+          <button class="btn btn-sm btn-blue" data-action="GoAMLExport.previewXml">Preview XML</button>
+          <button class="btn btn-sm btn-blue" data-action="GoAMLExport.populateFromSTR">Import from STR Draft</button>
+          <button class="btn btn-sm btn-red" data-action="GoAMLExport.cancelForm">Cancel</button>
         </div>
 
         <div id="goamlPreview" style="display:none;margin-top:12px"></div>
@@ -427,7 +427,7 @@ ${(data.attachments || []).map(a => `    <attachment>
     if (el) {
       el.style.display = 'block';
       el.innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:11px;font-family:'Montserrat',sans-serif;max-height:400px;overflow-y:auto">${escapeXml(xml)}</div>
-        <button class="btn btn-sm btn-green" style="margin-top:6px" onclick="navigator.clipboard.writeText(document.querySelector('#goamlPreview .summary-box').textContent);toast('XML copied','success')">Copy XML</button>`;
+        <button class="btn btn-sm btn-green" style="margin-top:6px" data-action="GoAMLExport.copyPreviewXml">Copy XML</button>`;
     }
   }
 
@@ -451,6 +451,11 @@ ${(data.attachments || []).map(a => `    <attachment>
     toast('Form cleared', 'success');
   }
 
+  function copyPreviewXml() {
+    navigator.clipboard.writeText(document.querySelector('#goamlPreview .summary-box').textContent);
+    toast('XML copied', 'success');
+  }
+
   return {
     REPORT_TYPES,
     renderGoAMLPanel,
@@ -461,5 +466,6 @@ ${(data.attachments || []).map(a => `    <attachment>
     exportSTR,
     exportCTR,
     getReports,
+    copyPreviewXml,
   };
 })();

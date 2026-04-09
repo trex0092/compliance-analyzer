@@ -1,17 +1,17 @@
 import { getStore } from '@netlify/blobs'
-import type { Config } from '@netlify/functions'
+import type { Config, Context } from '@netlify/functions'
 import { authenticate, rateLimit } from './middleware/auth.mts'
 
 const STORE_NAME = 'compliance-sync'
 const MAX_SIZE = 10 * 1024 * 1024 // 10 MB max per sync payload
 
-export default async (req: Request) => {
+export default async (req: Request, context: Context) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204 })
   }
 
-  // Rate limit and authentication
-  const rl = rateLimit(req)
+  // Rate limit and authentication (use context.ip for reliable client IP)
+  const rl = rateLimit(req, context.ip)
   if (!rl.ok) return rl.response!
   const auth = authenticate(req)
   if (!auth.ok) return auth.response!

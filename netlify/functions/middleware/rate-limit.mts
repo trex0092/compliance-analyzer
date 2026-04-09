@@ -1,8 +1,10 @@
 /**
- * Serverless Rate Limiter — In-memory sliding window
+ * Serverless Rate Limiter — Persistent via Netlify Blobs
  *
- * Provides rate limiting for Netlify Functions.
- * Uses in-memory store (resets on cold start, which is acceptable for serverless).
+ * Uses Netlify Blobs for rate limiting state, making it persistent
+ * across cold starts and shared across concurrent function instances.
+ *
+ * Falls back to in-memory store if Blobs are unavailable (local dev).
  *
  * Limits per CLAUDE.md security requirements:
  *  - General API: 100 requests per IP per 15 minutes
@@ -10,54 +12,87 @@
  *  - Sensitive endpoints: 10 requests per IP per 15 minutes
  */
 
+import { getStore } from '@netlify/blobs';
+
 interface RateLimitEntry {
   windowStart: number;
   count: number;
 }
 
-const store = new Map<string, RateLimitEntry>();
+// In-memory fallback for local dev / Blobs unavailability
+const memoryStore = new Map<string, RateLimitEntry>();
 
-// Periodic cleanup every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store) {
-    if (now - entry.windowStart > 15 * 60 * 1000) store.delete(key);
-  }
-}, 5 * 60 * 1000);
+const BLOB_STORE_NAME = 'rate-limits';
 
 export interface RateLimitConfig {
   windowMs?: number;
   max?: number;
+  /** Pass context.ip from Netlify Functions for reliable client IP. */
+  clientIp?: string;
 }
 
-export function checkRateLimit(
+/**
+ * Sanitize an IP string into a safe Blob key.
+ * Blob keys must avoid special characters.
+ */
+function ipToKey(ip: string): string {
+  return 'rl:' + ip.replace(/[^a-zA-Z0-9.:_-]/g, '_').slice(0, 64);
+}
+
+async function getEntry(key: string): Promise<RateLimitEntry | null> {
+  try {
+    const store = getStore(BLOB_STORE_NAME);
+    const data = await store.get(key, { type: 'json' });
+    return data as RateLimitEntry | null;
+  } catch {
+    // Blobs unavailable — use memory fallback
+    return memoryStore.get(key) ?? null;
+  }
+}
+
+async function setEntry(key: string, entry: RateLimitEntry): Promise<void> {
+  try {
+    const store = getStore(BLOB_STORE_NAME);
+    await store.setJSON(key, entry);
+  } catch {
+    // Blobs unavailable — use memory fallback
+    memoryStore.set(key, entry);
+  }
+}
+
+export async function checkRateLimit(
   req: Request,
   config: RateLimitConfig = {}
-): Response | null {
+): Promise<Response | null> {
   const { windowMs = 15 * 60 * 1000, max = 100 } = config;
 
-  const forwarded = req.headers.get("x-forwarded-for");
-  const key = forwarded?.split(",")[0]?.trim() || "unknown";
+  // Prefer explicit clientIp (from Netlify context.ip — cannot be spoofed)
+  // over X-Forwarded-For (can be spoofed by attackers).
+  const rawIp =
+    config.clientIp ||
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    'unknown';
+  const key = ipToKey(rawIp);
   const now = Date.now();
 
-  let entry = store.get(key);
+  let entry = await getEntry(key);
   if (!entry || now - entry.windowStart > windowMs) {
     entry = { windowStart: now, count: 0 };
-    store.set(key, entry);
   }
 
   entry.count++;
+  await setEntry(key, entry);
 
   if (entry.count > max) {
-    console.warn(`[RATE-LIMIT] Blocked ${key} — ${entry.count} requests in window`);
+    console.warn(`[RATE-LIMIT] Blocked ${rawIp} — ${entry.count} requests in window`);
     return Response.json(
-      { error: "Too many requests, please try again later." },
+      { error: 'Too many requests, please try again later.' },
       {
         status: 429,
         headers: {
-          "Retry-After": String(Math.ceil(windowMs / 1000)),
-          "X-RateLimit-Limit": String(max),
-          "X-RateLimit-Remaining": "0",
+          'Retry-After': String(Math.ceil(windowMs / 1000)),
+          'X-RateLimit-Limit': String(max),
+          'X-RateLimit-Remaining': '0',
         },
       }
     );

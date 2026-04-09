@@ -89,8 +89,24 @@ function updateOpencodeConfig(mcpUrl, mcpHeaders) {
   fs.writeFileSync(opencodeConfigPath, JSON.stringify(config, null, 2));
 }
 
-// Middleware
-app.use(cors());
+// Middleware — restrict CORS to local origins only (Electron app + local dev)
+const ALLOWED_ORIGINS = [
+  'file://',                        // Electron renderer
+  'http://localhost:3000',          // Local dev frontend
+  `http://localhost:${PORT}`,       // Self
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (Electron file://, curl, same-origin)
+    if (!origin || ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed))) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+}));
 app.use(express.json());
 
 // Apply rate limiting per CLAUDE.md security requirements

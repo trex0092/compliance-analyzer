@@ -186,8 +186,8 @@ const ThresholdMonitor = (function() {
         </div>
         <p style="font-size:12px;margin:0 0 8px 0">${a.message}</p>
         <div style="display:flex;gap:6px">
-          ${a.requiresCTR ? `<button class="btn btn-sm btn-gold" onclick="ThresholdMonitor.queueCTR(${JSON.stringify(a).replace(/"/g, '&quot;')})">Queue CTR Filing</button>` : ''}
-          ${a.requiresSTR ? `<button class="btn btn-sm btn-green" onclick="switchTab('incidents');document.getElementById('strSubject').value=${JSON.stringify(a.customer).replace(/</g, '\\u003c')};document.getElementById('strAmount').value='${Math.round(a.amount)}'">Draft STR</button>` : ''}
+          ${a.requiresCTR ? `<button class="btn btn-sm btn-gold" data-action="ThresholdMonitor.queueCTRFromAlert" data-arg="${a.id}">Queue CTR Filing</button>` : ''}
+          ${a.requiresSTR ? `<button class="btn btn-sm btn-green" data-action="ThresholdMonitor.draftSTRFromAlert" data-arg="${a.id}">Draft STR</button>` : ''}
         </div>
       </div>
     `).join('') || '<p style="color:var(--muted);font-size:13px">No threshold alerts detected. All transactions within AED 55,000 DPMS limit.</p>';
@@ -201,7 +201,7 @@ const ThresholdMonitor = (function() {
         </div>
         <div style="display:flex;gap:6px;align-items:center">
           <span style="font-size:11px;color:var(--muted)">${new Date(c.createdAt).toLocaleDateString('en-GB')}</span>
-          ${c.status === 'QUEUED' ? `<button class="btn btn-sm btn-green" onclick="ThresholdMonitor.fileCTR('${c.id}')">File CTR</button>` : ''}
+          ${c.status === 'QUEUED' ? `<button class="btn btn-sm btn-green" data-action="ThresholdMonitor.fileCTR" data-arg="${c.id}">File CTR</button>` : ''}
         </div>
       </div>
     `).join('') || '<p style="color:var(--muted);font-size:13px">No CTR filings in queue.</p>';
@@ -212,7 +212,7 @@ const ThresholdMonitor = (function() {
           <span class="lbl" style="margin:0">DPMS Threshold Monitor</span>
           <div style="display:flex;gap:6px;align-items:center">
             <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">UAE FDL Art.24 | AED 55,000</span>
-            <button class="btn btn-sm btn-green" onclick="ThresholdMonitor.refresh()">Scan Now</button>
+            <button class="btn btn-sm btn-green" data-action="ThresholdMonitor.refresh">Scan Now</button>
           </div>
         </div>
         <div class="token-note" style="margin-bottom:12px">
@@ -254,10 +254,27 @@ const ThresholdMonitor = (function() {
     if (el) el.innerHTML = renderThresholdPanel();
   }
 
+  function queueCTRFromAlert(alertId) {
+    var a = getAlerts().find(function(x) { return x.id === alertId; });
+    if (a) queueCTR(a);
+  }
+
+  function draftSTRFromAlert(alertId) {
+    var a = getAlerts().find(function(x) { return x.id === alertId; });
+    if (!a) return;
+    switchTab('incidents');
+    var subEl = document.getElementById('strSubject');
+    var amtEl = document.getElementById('strAmount');
+    if (subEl) subEl.value = a.customer || '';
+    if (amtEl) amtEl.value = String(Math.round(a.amount));
+  }
+
   return {
     AED_THRESHOLD,
     scanShipments,
     queueCTR,
+    queueCTRFromAlert,
+    draftSTRFromAlert,
     fileCTR,
     renderThresholdPanel,
     refresh,
