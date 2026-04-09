@@ -139,9 +139,9 @@ export async function verifySignature(
     const encoder = new TextEncoder();
 
     // Convert hex signature back to buffer
-    const sigBytes = new Uint8Array(
-      signedDoc.signature.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
-    );
+    const sigMatches = signedDoc.signature.match(/.{1,2}/g);
+    if (!sigMatches) return { valid: false, reason: 'Empty or invalid signature' };
+    const sigBytes = new Uint8Array(sigMatches.map((byte) => parseInt(byte, 16)));
 
     // Verify
     const isValid = await crypto.subtle.verify(

@@ -6,6 +6,10 @@ import {
   DORMANCY_REACTIVATION_MIN_AED,
   DORMANCY_DAYS,
   CERTIFICATION_THRESHOLD_AED,
+  DPMS_CASH_THRESHOLD_AED,
+  STRUCTURING_CUMULATIVE_PCT,
+  VALUATION_ANOMALY_PCT,
+  WEIGHT_DISCREPANCY_PCT,
 } from '../domain/constants';
 
 export type TMRuleId =
@@ -90,7 +94,7 @@ export const DEFAULT_HIGH_RISK_COUNTRIES = [
 
 export const DEFAULT_TM_CONFIG: TMConfig = {
   highRiskCountries: DEFAULT_HIGH_RISK_COUNTRIES,
-  cashThreshold: 55000,
+  cashThreshold: DPMS_CASH_THRESHOLD_AED,
 };
 
 export const TM_RULES: TMRule[] = [
@@ -106,7 +110,7 @@ export const TM_RULES: TMRule[] = [
         (tx.cumulativeAmountLast30Days ?? 0) >= threshold &&
         (tx.transactionsLast30Days ?? 0) >= 3 &&
         tx.amount < threshold &&
-        tx.amount > threshold * 0.73 // ~40000 for 55000 threshold
+        tx.amount > threshold * STRUCTURING_CUMULATIVE_PCT
       );
     },
   },
@@ -183,7 +187,7 @@ export const TM_RULES: TMRule[] = [
     detect: (tx) => {
       if (!tx.declaredValue || !tx.marketValue || tx.marketValue === 0) return false;
       const deviation = Math.abs(tx.declaredValue - tx.marketValue) / tx.marketValue;
-      return deviation > 0.25;
+      return deviation > VALUATION_ANOMALY_PCT;
     },
   },
   // ─── Precious Metals Specific Rules (MoE/LBMA) ──────────────────────────
@@ -197,11 +201,11 @@ export const TM_RULES: TMRule[] = [
       if (tx.declaredWeightGrams && tx.actualWeightGrams) {
         const deviation =
           Math.abs(tx.declaredWeightGrams - tx.actualWeightGrams) / tx.actualWeightGrams;
-        if (deviation > 0.05) return true;
+        if (deviation > WEIGHT_DISCREPANCY_PCT) return true;
       }
       if (tx.declaredPurity && tx.assayPurity) {
         const purityDev = Math.abs(tx.declaredPurity - tx.assayPurity) / tx.assayPurity;
-        if (purityDev > 0.05) return true;
+        if (purityDev > WEIGHT_DISCREPANCY_PCT) return true;
       }
       return false;
     },

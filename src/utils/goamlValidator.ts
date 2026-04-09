@@ -83,12 +83,12 @@ export function validateSTR(xml: string): ValidationResult {
     }
   }
 
-  // Check for unescaped special characters
+  // Check for unescaped special characters (bare & not part of a valid XML entity)
   const textContent = xml.replace(/<[^>]*>/g, '');
-  if (textContent.includes('&') && !textContent.includes('&amp;')) {
+  if (/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[\da-fA-F]+;)/.test(textContent)) {
     warnings.push({
       field: 'content',
-      message: "Possible unescaped '&' character found. Use &amp; in XML.",
+      message: "Unescaped '&' character found. Use &amp; in XML.",
     });
   }
 

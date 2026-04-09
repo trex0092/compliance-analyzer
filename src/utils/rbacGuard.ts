@@ -191,13 +191,13 @@ export function canApprove(
   }
 
   const approvalMap: Record<string, RoleName[]> = {
-    'str-approval': ['compliance-officer', 'mlro', 'admin'],
+    'str-approval': ['mlro', 'admin'], // FDL Art.26: MLRO must approve STR filing
     'sar-approval': ['mlro', 'admin'],
     'asset-freeze': ['mlro', 'senior-management', 'admin'],
     'high-risk-onboarding': ['compliance-officer', 'mlro', 'senior-management', 'admin'],
     'pep-onboarding': ['senior-management', 'admin'],
     'pf-escalation': ['mlro', 'senior-management', 'admin'],
-    'customer-exit': ['compliance-officer', 'mlro', 'admin'],
+    'customer-exit': ['senior-management', 'compliance-officer', 'mlro', 'admin'],
   };
 
   const allowedRoles = approvalMap[gate];

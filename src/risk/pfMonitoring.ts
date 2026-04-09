@@ -90,12 +90,16 @@ export function runPFScreening(input: PFScreeningInput, config?: PFConfig): PFAl
     });
   }
 
-  // Rule 2: High-risk PF jurisdiction
-  if (pfCountries.includes(input.destinationCountry ?? '')) {
+  // Rule 2: High-risk PF jurisdiction (check both origin and destination)
+  const destMatch = pfCountries.includes(input.destinationCountry ?? '');
+  const originMatch = pfCountries.includes(input.originCountry ?? '');
+  if (destMatch || originMatch) {
+    const flaggedCountry = destMatch ? input.destinationCountry : input.originCountry;
+    const direction = destMatch ? 'destination' : 'origin';
     alerts.push({
       ruleId: 'pf_jurisdiction',
       severity: 'critical',
-      message: `${input.entityName}: Transaction involves PF high-risk jurisdiction (${input.destinationCountry}).`,
+      message: `${input.entityName}: Transaction involves PF high-risk ${direction} jurisdiction (${flaggedCountry}).`,
       regulatoryRef: 'FDL No.10/2025 Art.22-23, FATF Rec 7',
       mandatoryAction: 'Freeze assets. Report to EOCN within 24 hours.',
     });
