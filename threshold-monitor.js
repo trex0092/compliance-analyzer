@@ -66,7 +66,7 @@ const ThresholdMonitor = (function() {
         // Direct threshold breach
         if (amountAED >= AED_THRESHOLD && (s.paymentMethod || '').toLowerCase().includes('cash')) {
           alerts.push({
-            id: 'THR-' + (s.id || Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+            id: 'THR-' + (s.id || Date.now() + '-' + (typeof crypto !== 'undefined' && crypto.getRandomValues ? Array.from(crypto.getRandomValues(new Uint8Array(3))).map(function(b){return b.toString(16).padStart(2,'0')}).join('') : Math.random().toString(36).slice(2,8))),
             type: 'THRESHOLD_BREACH',
             severity: 'CRITICAL',
             customer,
@@ -85,7 +85,8 @@ const ThresholdMonitor = (function() {
       const recentCash = custShipments
         .filter(s => (s.paymentMethod || '').toLowerCase().includes('cash'))
         .filter(s => {
-          const d = new Date(s.date || s.shipmentDate);
+          const d = new Date(s.date || s.shipmentDate || '');
+          if (isNaN(d.getTime())) return false;
           return (now - d) / 86400000 <= STRUCTURING_WINDOW_DAYS;
         });
 

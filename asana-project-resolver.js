@@ -84,7 +84,7 @@
   }
 
   function writeRetryQueue(queue) {
-    try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue.slice(0, MAX_QUEUE))); } catch(e) {}
+    try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue.slice(0, MAX_QUEUE))); } catch(e) { console.warn('[AsanaRetryQueue] Storage write failed:', e); }
   }
 
   /**
