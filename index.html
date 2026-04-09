@@ -2786,6 +2786,94 @@ var GDRIVE_FOLDER_ID = '';
 var gdriveAccessToken = '';
 var AI_PROVIDER = 'gemini'; // 'claude', 'openai', 'gemini', 'copilot', or 'mixed'
 
+// ─── Server-Side Auth Bridge ────────────────────────────────────────────────
+// Wraps calls to the server-side /api/auth/* endpoints. Falls back to
+// client-side auth (AuthRBAC) when server auth is unavailable.
+var ServerAuth = {
+  _token: null,
+  _user: null,
+  isAvailable: function() { return true; }, // server-side auth is always available on Netlify
+
+  login: async function(username, password) {
+    try {
+      var res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+      });
+      var data = await res.json();
+      if (data.success && data.token) {
+        ServerAuth._token = data.token;
+        ServerAuth._user = data.user;
+        sessionStorage.setItem('fgl_server_token', data.token);
+        return data;
+      }
+      throw new Error(data.error || 'Login failed');
+    } catch (e) {
+      // Fall back to client-side auth if server endpoint not deployed yet
+      if (e.message && e.message.includes('Failed to fetch')) {
+        console.warn('[ServerAuth] Server auth unavailable, falling back to client-side');
+        return null;
+      }
+      throw e;
+    }
+  },
+
+  register: async function(username, password, displayName) {
+    var res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password, displayName: displayName })
+    });
+    return res.json();
+  },
+
+  validate: async function() {
+    var token = ServerAuth._token || sessionStorage.getItem('fgl_server_token');
+    if (!token) return null;
+    try {
+      var res = await fetch('/api/auth/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token })
+      });
+      var data = await res.json();
+      if (data.valid) {
+        ServerAuth._token = token;
+        ServerAuth._user = data.user;
+        return data.user;
+      }
+    } catch (e) { /* server auth unavailable */ }
+    ServerAuth._token = null;
+    sessionStorage.removeItem('fgl_server_token');
+    return null;
+  },
+
+  getToken: function() { return ServerAuth._token || sessionStorage.getItem('fgl_server_token') || ''; },
+  getUser: function() { return ServerAuth._user; }
+};
+
+// ─── AI Proxy Bridge ────────────────────────────────────────────────────────
+// Routes AI API calls through the server-side /api/ai-proxy when no local
+// API keys are configured. This keeps keys in server env vars.
+async function aiProxyCall(provider, path, payload, stream) {
+  var token = ServerAuth.getToken();
+  var res = await fetch('/api/ai-proxy', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ provider: provider, path: path, payload: payload, stream: !!stream })
+  });
+  if (!res.ok) {
+    var errData = {};
+    try { errData = await res.json(); } catch(_) {}
+    throw new Error(errData.error || ('AI proxy returned ' + res.status));
+  }
+  return res.json();
+}
+
 // Provider health tracking for mixed mode — skip providers that are failing
 var _providerHealth = { claude: { ok: true, failedAt: 0 }, gemini: { ok: true, failedAt: 0 }, copilot: { ok: true, failedAt: 0 } };
 var PROVIDER_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes before retrying a failed provider
