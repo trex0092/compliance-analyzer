@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import CasesPage from './ui/cases/CasesPage';
 import STRDraftPage from './ui/reports/STRDraftPage';
+import ReportsHub from './ui/reports/ReportsHub';
 import KPIDashboard from './ui/dashboard/KPIDashboard';
 import { LocalAppStore } from './services/indexedDbStore';
 import { calculateKPI } from './domain/kpi';
@@ -9,6 +10,7 @@ import { createId } from './utils/id';
 import { nowIso } from './utils/dates';
 import type { ComplianceCase } from './domain/cases';
 import type { CustomerProfile } from './domain/customers';
+import type { SuspicionReport, ReportType, ReportStatus } from './domain/reports';
 import type { ComplianceTemplate } from './domain/complianceTemplates';
 import type { KPIDashboard as KPIData } from './domain/kpi';
 import { COMPANY_REGISTRY } from './domain/customers';
@@ -18,6 +20,7 @@ const store = new LocalAppStore();
 type Page =
   | 'dashboard'
   | 'cases'
+  | 'reports'
   | 'str'
   | 'customers'
   | 'screening'
@@ -29,6 +32,7 @@ type Page =
 
 const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '◉' },
+  { id: 'reports', label: 'Reports Hub', icon: '▣' },
   { id: 'cases', label: 'Cases', icon: '◆' },
   { id: 'str', label: 'STR / SAR', icon: '▲' },
   { id: 'customers', label: 'Customers', icon: '●' },
@@ -284,6 +288,108 @@ async function seedData() {
 
   for (const c of demoCases) {
     await store.saveCase(c);
+  }
+
+  // Seed demo reports for the Reports Hub
+  const existingReports = await store.getReports();
+  if (existingReports.length === 0) {
+    const demoReports: SuspicionReport[] = [
+      {
+        id: createId('rpt'),
+        caseId: demoCases[0].id,
+        reportType: 'STR' as ReportType,
+        status: 'submitted' as ReportStatus,
+        reasonForSuspicion: 'Unexplained third-party payment pattern and unresolved source of funds concerns flagged during transaction monitoring.',
+        facts: demoCases[0].findings,
+        redFlags: demoCases[0].redFlags,
+        parties: [{ name: demoCases[0].id, role: 'subject', country: 'AE' }],
+        transactions: [{ date: nowIso(), summary: 'Third-party payment — source of funds unverified', amount: 185000, currency: 'AED' }],
+        severity: 'critical',
+        entityName: 'FINE GOLD LLC',
+        amount: 185000,
+        currency: 'AED',
+        generatedAt: nowIso(),
+        submittedAt: nowIso(),
+        submissionMethod: 'goaml-portal',
+        fiuReferenceNo: 'FIU-2026-00412',
+        followUpStatus: 'acknowledged',
+        regulatoryBasis: 'FDL No.10/2025 Art.26-27',
+      },
+      {
+        id: createId('rpt'),
+        caseId: demoCases[3].id,
+        reportType: 'SAR' as ReportType,
+        status: 'draft' as ReportStatus,
+        reasonForSuspicion: 'Adverse media linking entity to gold smuggling allegations. Unexplained wealth relative to declared business size.',
+        facts: demoCases[5].findings,
+        redFlags: demoCases[5].redFlags,
+        parties: [{ name: demoCases[5].id, role: 'subject', country: 'AE' }],
+        transactions: [{ date: nowIso(), summary: 'Adverse media — potential illicit gold trade involvement' }],
+        severity: 'high',
+        entityName: 'MADISON JEWELLERY TRADING L.L.C',
+        generatedAt: nowIso(),
+        regulatoryBasis: 'FDL No.10/2025 Art.26-27',
+      },
+      {
+        id: createId('rpt'),
+        caseId: demoCases[6].id,
+        reportType: 'CTR' as ReportType,
+        status: 'exported' as ReportStatus,
+        reasonForSuspicion: 'Cash transaction of AED 62,000 exceeds DPMS threshold of AED 55,000.',
+        facts: demoCases[6].findings,
+        redFlags: demoCases[6].redFlags,
+        parties: [{ name: demoCases[6].id, role: 'subject', country: 'AE' }],
+        transactions: [{ date: nowIso(), summary: 'Cash payment AED 62,000 for gold bullion', amount: 62000, currency: 'AED' }],
+        severity: 'medium',
+        entityName: 'NAPLES JEWELLERY TRADING L.L.C',
+        amount: 62000,
+        currency: 'AED',
+        generatedAt: nowIso(),
+        approvedAt: nowIso(),
+        approvedBy: 'compliance-officer',
+        regulatoryBasis: 'FDL No.10/2025 Art.16, MoE Circular 08/AML/2021 — AED 55K threshold',
+      },
+      {
+        id: createId('rpt'),
+        caseId: demoCases[2].id,
+        reportType: 'STR' as ReportType,
+        status: 'returned' as ReportStatus,
+        reasonForSuspicion: 'Screening hit on certificates of origin with potential manipulation detected.',
+        facts: demoCases[2].findings,
+        redFlags: demoCases[2].redFlags,
+        parties: [{ name: demoCases[2].id, role: 'subject', country: 'AE' }],
+        transactions: [{ date: nowIso(), summary: 'Certificate of origin under review — PayPal payments flagged' }],
+        severity: 'high',
+        entityName: 'NAPLES JEWELLERY TRADING L.L.C',
+        generatedAt: nowIso(),
+        submittedAt: nowIso(),
+        returnReason: 'FIU requests additional transaction details and supporting documentation for certificates of origin.',
+        returnedAt: nowIso(),
+        returnedBy: 'UAE FIU',
+        regulatoryBasis: 'FDL No.10/2025 Art.26-27',
+      },
+      {
+        id: createId('rpt'),
+        caseId: demoCases[1].id,
+        reportType: 'DPMSR' as ReportType,
+        status: 'approved' as ReportStatus,
+        reasonForSuspicion: 'Complex ownership structure with E-wallet payments detected during periodic review.',
+        facts: demoCases[1].findings,
+        redFlags: demoCases[1].redFlags,
+        parties: [{ name: demoCases[1].id, role: 'subject', country: 'AE' }],
+        transactions: [{ date: nowIso(), summary: 'E-wallet payments flagged — complex ownership' }],
+        severity: 'high',
+        entityName: 'FINE GOLD (BRANCH)',
+        generatedAt: nowIso(),
+        approvedAt: nowIso(),
+        approvedBy: 'mlro',
+        regulatoryBasis: 'MoE Circular 08/AML/2021',
+      },
+    ];
+
+    for (const r of demoReports) {
+      await store.saveReport(r);
+    }
   }
 }
 
@@ -1213,6 +1319,7 @@ export default function App() {
 
   const pageTitle: Record<Page, string> = {
     dashboard: 'Compliance Dashboard',
+    reports: 'Reports Hub',
     cases: 'Case Management',
     str: 'STR / SAR Filing',
     customers: 'Customer Registry',
@@ -1286,6 +1393,7 @@ export default function App() {
         </div>
 
         {page === 'dashboard' && kpiData && <KPIDashboard data={kpiData} />}
+        {page === 'reports' && <ReportsHub />}
         {page === 'cases' && <CasesPage />}
         {page === 'str' && <STRDraftPage />}
         {page === 'customers' && <CustomersPage />}

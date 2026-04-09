@@ -29,6 +29,11 @@ export function addYears(dateIso: string, years: number): string {
  * compliance documents (FDL, goAML filings, MoE reports).
  * Do NOT use toLocaleDateString() which varies by browser locale.
  */
+/** Short format for UI display: dd/mm/yyyy */
+export function formatDate(dateStr: string): string {
+  return formatDateDDMMYYYY(dateStr);
+}
+
 export function formatDateDDMMYYYY(dateStr: string): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return '';
