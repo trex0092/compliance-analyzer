@@ -58,6 +58,10 @@
       var el = document.getElementById('tab-pipeline');
       if (el && typeof CompliancePipeline !== 'undefined') el.innerHTML = CompliancePipeline.renderPipelineTab();
     }
+    if (name === 'intelligence') {
+      var el = document.getElementById('tab-intelligence');
+      if (el && typeof ComplianceIntelligence !== 'undefined') el.innerHTML = ComplianceIntelligence.renderIntelligenceTab();
+    }
   };
 
   // Auto-migrate localStorage to IndexedDB on first load
