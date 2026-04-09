@@ -76,10 +76,14 @@ export default function CaseDetail({ item, onCaseUpdated }: Props) {
 
   // Get actual authenticated user instead of hardcoding 'compliance-officer'
   const getCurrentUser = (): string => {
-    if (typeof window !== 'undefined' && typeof (window as any).AuthRBAC !== 'undefined') {
-      const session = (window as any).AuthRBAC.getCurrentSession?.();
-      if (session?.username) return session.username;
-      if (session?.displayName) return session.displayName;
+    const win = window as Record<string, unknown>;
+    if (typeof win.AuthRBAC === 'object' && win.AuthRBAC !== null) {
+      const auth = win.AuthRBAC as Record<string, unknown>;
+      if (typeof auth.getCurrentSession === 'function') {
+        const session = (auth.getCurrentSession as () => Record<string, string> | null)();
+        if (session?.username) return session.username;
+        if (session?.displayName) return session.displayName;
+      }
     }
     return 'unknown-user';
   };
