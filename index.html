@@ -4714,17 +4714,25 @@ async function processAsanaRetryQueue(silent = true) {
 
 async function pushConnectedAppEvent(eventType, shipment) {
   if (!alertSettings.webhookUrl) return;
-  await fetch(alertSettings.webhookUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      kind: 'shipment-sync',
-      eventType,
-      shipment,
-      source: 'Compliance Tasks Hawkeye Sterling V2',
-      ts: new Date().toISOString()
-    })
-  });
+  try {
+    var webhookUrl = alertSettings.webhookUrl;
+    if (!/^https?:\/\//i.test(webhookUrl)) { console.warn('[Webhook] Invalid URL scheme:', webhookUrl); return; }
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 10000);
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        kind: 'shipment-sync',
+        eventType: eventType,
+        shipment: shipment,
+        source: 'Compliance Tasks Hawkeye Sterling V2',
+        ts: new Date().toISOString()
+      })
+    });
+    clearTimeout(timeout);
+  } catch(e) { console.warn('[Webhook] Push failed:', e); }
 }
 
 function refreshShipmentData() {
@@ -4894,7 +4902,7 @@ function shipmentTableHTML(list, title) {
     html += '</tr>';
   });
   html += '</table>';
-  html += '<p style="margin-top:16px;font-size:9px;color:#888">Total records: ' + list.length + ' | Generated: ' + new Date().toLocaleDateString() + '</p>';
+  html += '<p style="margin-top:16px;font-size:9px;color:#888">Total records: ' + list.length + ' | Generated: ' + new Date().toLocaleDateString('en-GB') + '</p>';
   html += wordDocFooter();
   return html;
 }
@@ -7283,7 +7291,7 @@ function clearComplianceManual() {
 function exportManualPDF() { toast('Manual export — use browser Print (Ctrl+P) for PDF', 'info'); }
 
 // Close modal on overlay click
-document.getElementById('createTaskModal').addEventListener('click', function(e) { if(e.target===this) closeModal(); });
+var _taskModal = document.getElementById('createTaskModal'); if (_taskModal) _taskModal.addEventListener('click', function(e) { if(e.target===this) closeModal(); });
 
 // ======= OPENAI INTEGRATION =======
 async function callOpenAI(body) {
@@ -7717,12 +7725,20 @@ const USERS_STORAGE = 'fgl_users';
 const SESSION_STORAGE = 'fgl_session';
 let currentUser = null;
 
-// Simple hash function for passwords (SHA-256 via SubtleCrypto)
-async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + '_fgl_salt_2026');
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+// PBKDF2 password hashing with per-user random salt (100K iterations)
+async function hashPassword(password, existingSalt) {
+  var salt = existingSalt || crypto.getRandomValues(new Uint8Array(16));
+  var enc = new TextEncoder();
+  var keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  var bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, 256);
+  var hash = Array.from(new Uint8Array(bits)).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+  var saltHex = Array.from(new Uint8Array(salt)).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+  return { hash: hash, salt: saltHex };
+}
+function hexToBytes(hex) {
+  var bytes = new Uint8Array(hex.length / 2);
+  for (var i = 0; i < hex.length; i += 2) bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+  return bytes;
 }
 
 function getUsers() {
@@ -7733,11 +7749,11 @@ async function initDefaultUsers() {
   const existing = getUsers();
   if (!existing || !existing.length) {
     // Auto-create default admin so user can log in immediately
-    const defaultHash = await hashPassword('Fortuna1$');
+    const defaultCred = await hashPassword('Fortuna1$');
     const defaultUsers = [{
-      id: Date.now(), username: 'luisa', passwordHash: defaultHash,
+      id: Date.now(), username: 'luisa', passwordHash: defaultCred.hash, passwordSalt: defaultCred.salt,
       displayName: 'Luisa', role: 'admin', active: true,
-      createdAt: new Date().toISOString(), mustChangePassword: false
+      createdAt: new Date().toISOString(), mustChangePassword: true
     }];
     localStorage.setItem(USERS_STORAGE, JSON.stringify(defaultUsers));
     // Keep login form visible so user can sign in with default credentials
@@ -7758,8 +7774,9 @@ async function completeSetup() {
   if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) { errorEl.textContent = 'Password needs uppercase, lowercase, digit, and special character'; return; }
   if (password !== confirm) { errorEl.textContent = 'Passwords do not match'; return; }
 
+  const cred = await hashPassword(password);
   const users = [{
-    id: Date.now(), username, passwordHash: await hashPassword(password),
+    id: Date.now(), username, passwordHash: cred.hash, passwordSalt: cred.salt,
     displayName, role: 'admin', active: true, createdAt: new Date().toISOString()
   }];
   localStorage.setItem(USERS_STORAGE, JSON.stringify(users));
@@ -7779,9 +7796,12 @@ async function attemptLogin() {
 
   const users = getUsers() || [];
   if (!users.length) { errorEl.textContent = 'No accounts exist. Please complete setup first.'; return; }
-  const hash = await hashPassword(password);
-  const user = users.find(u => u.username === username && u.passwordHash === hash && u.active);
-  if (!user) { errorEl.textContent = 'Invalid credentials or account disabled'; return; }
+  const matchUser = users.find(function(u) { return u.username === username && u.active; });
+  if (!matchUser) { errorEl.textContent = 'Invalid credentials or account disabled'; return; }
+  var userSalt = matchUser.passwordSalt ? hexToBytes(matchUser.passwordSalt) : null;
+  var cred = await hashPassword(password, userSalt);
+  if (cred.hash !== matchUser.passwordHash) { errorEl.textContent = 'Invalid credentials or account disabled'; return; }
+  var user = matchUser;
 
   currentUser = { id: user.id, username: user.username, displayName: user.displayName, role: user.role };
   localStorage.setItem(SESSION_STORAGE, JSON.stringify(currentUser));
@@ -7912,10 +7932,11 @@ async function addNewUser() {
 
   const users = getUsers() || [];
   if (users.find(u => u.username === username.toLowerCase().trim())) { toast('Username already exists','error'); return; }
+  const newCred = await hashPassword(password);
   users.push({
     id: Date.now(), username: username.toLowerCase().trim(),
-    passwordHash: await hashPassword(password),
-    displayName: displayName.trim(), role, active: true,
+    passwordHash: newCred.hash, passwordSalt: newCred.salt,
+    displayName: escHtml(displayName.trim()), role, active: true,
     createdAt: new Date().toISOString()
   });
   localStorage.setItem(USERS_STORAGE, JSON.stringify(users));
@@ -7941,7 +7962,7 @@ async function resetUserPassword(userId) {
   if (!newPw || newPw.length < 4) { toast('Password too short','error'); return; }
   const users = getUsers() || [];
   const u = users.find(x => x.id === userId);
-  if (u) { u.passwordHash = await hashPassword(newPw); localStorage.setItem(USERS_STORAGE, JSON.stringify(users)); toast(`Password reset for ${u.displayName}`,'success'); logAudit('user_mgmt', `Password reset: ${u.displayName}`); }
+  if (u) { var rc = await hashPassword(newPw); u.passwordHash = rc.hash; u.passwordSalt = rc.salt; localStorage.setItem(USERS_STORAGE, JSON.stringify(users)); toast(`Password reset for ${u.displayName}`,'success'); logAudit('user_mgmt', `Password reset: ${u.displayName}`); }
 }
 
 // ======= REMINDERS & NOTIFICATIONS =======
@@ -9276,7 +9297,7 @@ function addObUboRow(name, shares, findings) {
   row.style.cssText = 'margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end';
   row.id = 'obUboRow' + obUboCount;
   row.innerHTML = `
-    <div><span class="lbl">Name ${obUboCount}</span><input type="text" class="ob-ubo-name" placeholder="Full name" value="${escHtml(name||'')} "/></div>
+    <div><span class="lbl">Name ${obUboCount}</span><input type="text" class="ob-ubo-name" placeholder="Full name" value="${escHtml(name||'')}"/></div>
     <div><span class="lbl">Shares %</span><input type="number" class="ob-ubo-shares" placeholder="0" value="${shares||''}"/></div>
     <div><span class="lbl">Findings</span><select class="ob-ubo-findings"><option value="">Select</option><option value="Clear"${findings==='Clear'?' selected':''}>Clear</option><option value="Match"${findings==='Match'?' selected':''}>Match</option><option value="Potential Match"${findings==='Potential Match'?' selected':''}>Potential Match</option><option value="PEP"${findings==='PEP'?' selected':''}>PEP</option><option value="Adverse Media"${findings==='Adverse Media'?' selected':''}>Adverse Media</option></select></div>
     <button class="btn btn-sm btn-red" style="height:36px" onclick="this.parentElement.remove()">X</button>`;
@@ -12019,11 +12040,11 @@ function initNewFeatures() {
       // Auto-create default user and auto-login — bypass login screen
       var users = getUsers();
       if (!users || !users.length) {
-        var defHash = await hashPassword('Fortuna1$');
+        var defCred = await hashPassword('Fortuna1$');
         var defUsers = [{
-          id: Date.now(), username: 'luisa', passwordHash: defHash,
+          id: Date.now(), username: 'luisa', passwordHash: defCred.hash, passwordSalt: defCred.salt,
           displayName: 'Luisa', role: 'admin', active: true,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(), mustChangePassword: true
         }];
         localStorage.setItem(USERS_STORAGE, JSON.stringify(defUsers));
       }
