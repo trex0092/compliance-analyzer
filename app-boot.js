@@ -54,6 +54,10 @@
       var el = document.getElementById('tab-workflows');
       if (el && typeof WorkflowEngine !== 'undefined') el.innerHTML = WorkflowEngine.renderWorkflowsTab();
     }
+    if (name === 'pipeline') {
+      var el = document.getElementById('tab-pipeline');
+      if (el && typeof CompliancePipeline !== 'undefined') el.innerHTML = CompliancePipeline.renderPipelineTab();
+    }
   };
 
   // Auto-migrate localStorage to IndexedDB on first load
