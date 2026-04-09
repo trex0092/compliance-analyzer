@@ -332,7 +332,7 @@
   }
 
   function trendIndicator(current, previous) {
-    if (previous === undefined || previous === null) return '';
+    if (typeof current !== 'number' || typeof previous !== 'number') return '';
     const diff = current - previous;
     if (diff === 0) return '<span style="color:var(--muted)">→ no change</span>';
     const arrow = diff > 0 ? '↑' : '↓';
@@ -395,7 +395,8 @@
 
     try {
       const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
-      const asanaProjectId = resolver ? resolver.resolveProject('compliance') : (localStorage.getItem('asanaProjectId') || '1213759768596515');
+      const asanaProjectId = resolver ? resolver.resolveProject('compliance') : localStorage.getItem('asanaProjectId');
+      if (!asanaProjectId) { if (typeof toast === 'function') toast('Asana project not configured — set project ID first', 'error'); return; }
       const taskBody = JSON.stringify({
         data: {
           name: `📊 Analytics Report — ${new Date().toISOString().slice(0, 10)}`,
