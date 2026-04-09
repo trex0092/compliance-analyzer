@@ -259,8 +259,10 @@ export function calculateZScore(
     };
   }
 
-  const mean = historicalValues.reduce((a, b) => a + b, 0) / historicalValues.length;
-  const variance = historicalValues.reduce((sum, val) => sum + (val - mean) ** 2, 0) / historicalValues.length;
+  const n = historicalValues.length;
+  const mean = historicalValues.reduce((a, b) => a + b, 0) / n;
+  // Use sample variance (Bessel's correction, N-1) for more conservative outlier detection
+  const variance = historicalValues.reduce((sum, val) => sum + (val - mean) ** 2, 0) / Math.max(1, n - 1);
   const stdDev = Math.sqrt(variance);
 
   const zScore = stdDev > 0 ? (currentValue - mean) / stdDev : 0;

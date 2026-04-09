@@ -25,6 +25,16 @@ import { EVIDENCE_VAULT_TOOL_SCHEMAS } from './tools/evidence-vault-tools';
 import { NL_COMMAND_TOOL_SCHEMAS } from './tools/nl-command-tools';
 import { COLLABORATION_TOOL_SCHEMAS } from './tools/multi-agent-protocol-tools';
 import { KNOWLEDGE_GRAPH_TOOL_SCHEMAS } from './tools/knowledge-graph-tools';
+import { GEO_TOOL_SCHEMAS } from './tools/geospatial-risk-tools';
+import { EVASION_TOOL_SCHEMAS } from './tools/sanctions-evasion-tools';
+import { DOCUMENT_TOOL_SCHEMAS } from './tools/document-intelligence-tools';
+import { RADAR_TOOL_SCHEMAS } from './tools/regulatory-radar-tools';
+import { SWIFT_TOOL_SCHEMAS } from './tools/swift-wire-tools';
+import { SUPPLY_CHAIN_TOOL_SCHEMAS } from './tools/supply-chain-tools';
+import { INSIDER_THREAT_TOOL_SCHEMAS } from './tools/insider-threat-tools';
+import { CRYPTO_TOOL_SCHEMAS } from './tools/crypto-asset-tools';
+import { WHISTLEBLOWER_TOOL_SCHEMAS } from './tools/whistleblower-tools';
+import { MOE_REPORT_TOOL_SCHEMAS } from './tools/moe-report-tools';
 
 // Tool handlers
 import {
@@ -70,6 +80,16 @@ import { runAdversarialDetection } from './tools/adversarial-detection-tools';
 import { runPredictiveRiskAnalysis } from './tools/predictive-risk-tools';
 import { explainScreeningDecision, explainRiskDecision } from './tools/explainable-ai-tools';
 import { parseCommand } from './tools/nl-command-tools';
+import { runGeospatialAnalysis, getJurisdictionProfile } from './tools/geospatial-risk-tools';
+import { matchNameAdvanced } from './tools/sanctions-evasion-tools';
+import { analyzeDocument } from './tools/document-intelligence-tools';
+import { assessRegulatoryChange, runRegulatoryRadar } from './tools/regulatory-radar-tools';
+import { parseSwiftMT103, analyzeWireChain } from './tools/swift-wire-tools';
+import { verifySupplyChain, checkLBMACompliance } from './tools/supply-chain-tools';
+import { analyzeUserBehavior } from './tools/insider-threat-tools';
+import { analyzeBlockchainActivity } from './tools/crypto-asset-tools';
+import { submitAnonymousTip } from './tools/whistleblower-tools';
+import { generateMoEReport } from './tools/moe-report-tools';
 
 import type { ChainedAuditEvent } from '../utils/auditChain';
 
@@ -121,6 +141,16 @@ const ALL_TOOL_SCHEMAS = [
   ...NL_COMMAND_TOOL_SCHEMAS,
   ...COLLABORATION_TOOL_SCHEMAS,
   ...KNOWLEDGE_GRAPH_TOOL_SCHEMAS,
+  ...GEO_TOOL_SCHEMAS,
+  ...EVASION_TOOL_SCHEMAS,
+  ...DOCUMENT_TOOL_SCHEMAS,
+  ...RADAR_TOOL_SCHEMAS,
+  ...SWIFT_TOOL_SCHEMAS,
+  ...SUPPLY_CHAIN_TOOL_SCHEMAS,
+  ...INSIDER_THREAT_TOOL_SCHEMAS,
+  ...CRYPTO_TOOL_SCHEMAS,
+  ...WHISTLEBLOWER_TOOL_SCHEMAS,
+  ...MOE_REPORT_TOOL_SCHEMAS,
 ] as const;
 
 export type ToolName = (typeof ALL_TOOL_SCHEMAS)[number]['name'];
@@ -312,6 +342,61 @@ export class ComplianceMCPServer {
             (args as { currentWeights: Record<string, number> }).currentWeights,
           ),
         };
+
+      // ---- Geospatial ----
+      case 'analyze_geospatial_risk':
+        return runGeospatialAnalysis(
+          (args as { routes: never[] }).routes,
+          (args as { entities?: never[] }).entities,
+        );
+      case 'get_jurisdiction_profile':
+        return { ok: true, data: getJurisdictionProfile((args as { countryCode: string }).countryCode) };
+
+      // ---- Sanctions Evasion ----
+      case 'detect_sanctions_evasion':
+        return matchNameAdvanced(
+          (args as { queryName: string }).queryName,
+          (args as { targetNames: string[] }).targetNames,
+        );
+
+      // ---- Document Intelligence ----
+      case 'analyze_document':
+        return analyzeDocument(
+          (args as { text: string }).text,
+          (args as { documentType?: 'invoice' | 'kyc' | 'trade' | 'narrative' }).documentType,
+        );
+
+      // ---- Regulatory Radar ----
+      case 'assess_regulatory_change':
+        return { ok: true, data: assessRegulatoryChange((args as { change: never }).change) };
+
+      // ---- SWIFT Wire ----
+      case 'parse_swift_mt103':
+        return parseSwiftMT103(args as { rawMessage: string });
+      case 'analyze_wire_chain':
+        return analyzeWireChain(args as never);
+
+      // ---- Supply Chain ----
+      case 'verify_supply_chain':
+        return verifySupplyChain(args as never);
+      case 'check_lbma_compliance':
+        return checkLBMACompliance(args as never);
+
+      // ---- Insider Threat ----
+      case 'analyze_user_behavior':
+        return analyzeUserBehavior((args as { logs: never[] }).logs);
+
+      // ---- Crypto/VA ----
+      case 'analyze_crypto_activity':
+        return analyzeBlockchainActivity(args as never);
+
+      // ---- Whistleblower ----
+      case 'submit_anonymous_tip':
+        return submitAnonymousTip(args as never);
+
+      // ---- MoE Reports ----
+      case 'generate_moe_report':
+        return generateMoEReport(args as never);
 
       default:
         return { ok: false, error: `Unknown tool: ${name}` };

@@ -681,10 +681,12 @@ export function runNetworkAnalysis(graph: NetworkGraph): ToolResult<NetworkAnaly
     regulatoryFindings.push(`UBO re-verification required within 15 working days (Cabinet Decision 109/2023)`);
   }
 
-  // Overall risk
+  // Overall risk — use max shell indicator score (not average) + other factors
   let overallRiskScore = 0;
   overallRiskScore += cycles.circularOwnership.length * 3;
-  overallRiskScore += shellIndicators.reduce((s, i) => s + i.riskScore, 0) / Math.max(1, shellIndicators.length);
+  if (shellIndicators.length > 0) {
+    overallRiskScore += Math.max(...shellIndicators.map((i) => i.riskScore));
+  }
   overallRiskScore += hubs.length * 2;
   overallRiskScore += crossBorderLayers.length * 2;
   overallRiskScore += undisclosedUBO.length * 3;
@@ -743,8 +745,10 @@ function findAllOwnershipPaths(
   from: string, to: string, adj: AdjacencyGraph, graph: NetworkGraph, maxDepth = 6,
 ): string[][] {
   const results: string[][] = [];
+  const MAX_PATHS = 100; // guard against path explosion on dense graphs
 
   function dfs(current: string, path: string[], visited: Set<string>): void {
+    if (results.length >= MAX_PATHS) return;
     if (current === to) { results.push([...path]); return; }
     if (path.length >= maxDepth) return;
 
@@ -753,6 +757,7 @@ function findAllOwnershipPaths(
       .map((e) => e.target);
 
     for (const next of ownershipTargets) {
+      if (results.length >= MAX_PATHS) break;
       visited.add(next);
       dfs(next, [...path, next], visited);
       visited.delete(next);
