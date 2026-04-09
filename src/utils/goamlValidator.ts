@@ -5,6 +5,8 @@
  * Checks required fields, date formats, amount formats, entity structure.
  */
 
+import { DPMS_CASH_THRESHOLD_AED } from '../domain/constants';
+
 export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
@@ -183,10 +185,10 @@ export function validateCTR(xml: string): ValidationResult {
   const amountMatch = xml.match(/<cashAmount>([^<]+)<\/cashAmount>/);
   if (amountMatch) {
     const amount = parseFloat(amountMatch[1]);
-    if (!isNaN(amount) && amount < 55000) {
+    if (!isNaN(amount) && amount < DPMS_CASH_THRESHOLD_AED) {
       warnings.push({
         field: 'cashAmount',
-        message: `Amount ${amount} AED is below the AED 55,000 threshold. CTR may not be required.`,
+        message: `Amount ${amount} AED is below the AED ${DPMS_CASH_THRESHOLD_AED.toLocaleString()} threshold. CTR may not be required.`,
       });
     }
   }

@@ -192,7 +192,7 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
             role: 'user',
             content: `TIER-1 COMPLIANCE SCREENING — REFINITIV/DOW JONES STANDARD:
 
-Entity: "${name}" (type: ${type || 'individual'}).${countryInfo}
+Entity: "${String(name).replace(/["\\\n\r`${}]/g, '')}" (type: ${String(type || 'individual').replace(/["\\\n\r`${}]/g, '')}).${countryInfo}
 
 Check ALL: sanctions (OFAC SDN/SSI/CAPTA, UN, EU, UK OFSI, UAE EOCN, UAE Central Bank, Swiss SECO, Australian DFAT, Canadian SEMA), PEP, corporate network, and do EXHAUSTIVE adverse media investigation. For each adverse media finding provide: allegation, source, date, jurisdiction, status. Investigate corporate connections and family business ties.
 
@@ -211,7 +211,10 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         // >= 0.9 = CONFIRMED, 0.5-0.89 = POTENTIAL, < 0.5 = DISMISS
         if (result.matches && Array.isArray(result.matches)) {
           result.matches = result.matches.filter(function(m) {
-            if (typeof m.confidence !== 'number') return true; // keep if no confidence
+            // Normalize confidence to a valid number in 0-1 range
+            var conf = Number(m.confidence);
+            if (!Number.isFinite(conf)) { m.confidence = 0.5; conf = 0.5; } // Default to potential if missing
+            m.confidence = Math.max(0, Math.min(1, conf));
             if (m.confidence >= 0.9) { m.threshold = 'CONFIRMED'; return true; }
             if (m.confidence >= 0.5) { m.threshold = 'POTENTIAL'; return true; }
             m.threshold = 'DISMISS';

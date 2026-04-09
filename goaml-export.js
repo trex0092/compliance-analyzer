@@ -56,7 +56,10 @@ const GoAMLExport = (function() {
   }
 
   function generateReportId() {
-    return 'RPT-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+    var rand = (typeof crypto !== 'undefined' && crypto.getRandomValues)
+      ? Array.from(crypto.getRandomValues(new Uint8Array(3))).map(function(b){return b.toString(16).padStart(2,'0')}).join('').toUpperCase()
+      : Math.random().toString(36).slice(2, 8).toUpperCase();
+    return 'RPT-' + Date.now().toString(36).toUpperCase() + '-' + rand;
   }
 
   function getReporterInfo() {

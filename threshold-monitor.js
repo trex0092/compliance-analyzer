@@ -20,12 +20,27 @@ const ThresholdMonitor = (function() {
   function getCTRQueue() { try { return JSON.parse(localStorage.getItem(CTR_QUEUE_KEY) || '[]'); } catch(_) { return []; } }
   function saveCTRQueue(arr) { localStorage.setItem(CTR_QUEUE_KEY, JSON.stringify(arr.slice(0, 200))); }
 
+  // Try to use cached CBUAE live rates; fall back to approximate cross-rates
+  function getCachedCBUAERates() {
+    try {
+      var cached = JSON.parse(localStorage.getItem('fgl_cbuae_rates') || 'null');
+      if (cached && cached.rates) return cached.rates;
+    } catch(_) {}
+    return null;
+  }
+
   function toAED(amount, currency) {
     if (!amount) return 0;
     const num = Number(amount);
     if (isNaN(num)) return 0;
     if (currency === 'AED') return num;
     if (currency === 'USD') return num * USD_TO_AED;
+
+    // Use live CBUAE rates when available; approximate fallback otherwise
+    var liveRates = getCachedCBUAERates();
+    if (liveRates && liveRates[currency]) return num * liveRates[currency];
+
+    // Fallback approximate cross-rates (update if CBUAE rates unavailable)
     if (currency === 'EUR') return num * USD_TO_AED * 1.10;
     if (currency === 'GBP') return num * USD_TO_AED * 1.30;
     return num * USD_TO_AED;
@@ -51,7 +66,7 @@ const ThresholdMonitor = (function() {
         // Direct threshold breach
         if (amountAED >= AED_THRESHOLD && (s.paymentMethod || '').toLowerCase().includes('cash')) {
           alerts.push({
-            id: 'THR-' + (s.id || Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+            id: 'THR-' + (s.id || Date.now() + '-' + (typeof crypto !== 'undefined' && crypto.getRandomValues ? Array.from(crypto.getRandomValues(new Uint8Array(3))).map(function(b){return b.toString(16).padStart(2,'0')}).join('') : Math.random().toString(36).slice(2,8))),
             type: 'THRESHOLD_BREACH',
             severity: 'CRITICAL',
             customer,
@@ -70,7 +85,8 @@ const ThresholdMonitor = (function() {
       const recentCash = custShipments
         .filter(s => (s.paymentMethod || '').toLowerCase().includes('cash'))
         .filter(s => {
-          const d = new Date(s.date || s.shipmentDate);
+          const d = new Date(s.date || s.shipmentDate || '');
+          if (isNaN(d.getTime())) return false;
           return (now - d) / 86400000 <= STRUCTURING_WINDOW_DAYS;
         });
 

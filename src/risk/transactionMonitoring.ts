@@ -198,12 +198,12 @@ export const TM_RULES: TMRule[] = [
     severity: 'high',
     regulatoryRef: 'LBMA Good Delivery Rules, MoE DPMS Guidance, UAE Standards (ESMA)',
     detect: (tx) => {
-      if (tx.declaredWeightGrams && tx.actualWeightGrams) {
+      if (tx.declaredWeightGrams && tx.actualWeightGrams && tx.actualWeightGrams > 0) {
         const deviation =
           Math.abs(tx.declaredWeightGrams - tx.actualWeightGrams) / tx.actualWeightGrams;
         if (deviation > WEIGHT_DISCREPANCY_PCT) return true;
       }
-      if (tx.declaredPurity && tx.assayPurity) {
+      if (tx.declaredPurity && tx.assayPurity && tx.assayPurity > 0) {
         const purityDev = Math.abs(tx.declaredPurity - tx.assayPurity) / tx.assayPurity;
         if (purityDev > WEIGHT_DISCREPANCY_PCT) return true;
       }

@@ -145,7 +145,10 @@
   }
 
   function normalizeEvent(raw) {
-    var sanitize = function(s) { return typeof s === 'string' ? s.replace(/[<>"'&]/g, '') : ''; };
+    var sanitize = function(s) {
+      if (typeof s !== 'string') return '';
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+    };
     // Sanitize nested data object properties to prevent XSS via webhook payloads
     var sanitizeData = function(obj) {
       if (typeof obj !== 'object' || obj === null) return {};

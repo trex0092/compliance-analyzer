@@ -560,9 +560,16 @@
           store.clear();
 
           var records = Array.isArray(data[storeName]) ? data[storeName] : [];
-          summary[storeName] = records.length;
+          // Validate records: must be objects with an `id` field (keyPath)
+          var validRecords = records.filter(function(record) {
+            return record && typeof record === 'object' && record.id;
+          });
+          summary[storeName] = validRecords.length;
+          if (validRecords.length < records.length) {
+            console.warn('[Database] importAll: skipped ' + (records.length - validRecords.length) + ' invalid records in ' + storeName);
+          }
 
-          records.forEach(function (record) {
+          validRecords.forEach(function (record) {
             store.put(record);
           });
         });
