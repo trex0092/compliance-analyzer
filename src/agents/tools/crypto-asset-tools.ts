@@ -14,6 +14,11 @@
  */
 
 import type { ToolResult } from '../mcp-server';
+import {
+  USD_TO_AED,
+  RECORD_RETENTION_YEARS,
+  DPMS_CASH_THRESHOLD_AED,
+} from '../../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -96,10 +101,9 @@ export interface CryptoAnalysisReport {
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Travel rule threshold: USD 1,000 equivalent ~ AED 3,675 (CBUAE peg 3.6725) */
+/** Travel rule threshold: USD 1,000 equivalent ~ AED 3,675 (CBUAE peg from constants) */
 const TRAVEL_RULE_THRESHOLD_USD = 1_000;
-const USD_AED_PEG = 3.6725;
-const TRAVEL_RULE_THRESHOLD_AED = Math.round(TRAVEL_RULE_THRESHOLD_USD * USD_AED_PEG);
+const TRAVEL_RULE_THRESHOLD_AED = Math.round(TRAVEL_RULE_THRESHOLD_USD * USD_TO_AED);
 
 /** Mixing detection parameters */
 const MIXING_RAPID_HOP_MINUTES = 30;
@@ -268,7 +272,7 @@ function checkTravelRule(
   beneficiaryInfoAvailable: boolean,
 ): TravelRuleResult[] {
   return transactions.map((tx) => {
-    const amountAED = Math.round(tx.amountUSD * USD_AED_PEG);
+    const amountAED = Math.round(tx.amountUSD * USD_TO_AED);
     const requiresTravelRule = amountAED >= TRAVEL_RULE_THRESHOLD_AED;
 
     const missingFields: string[] = [];

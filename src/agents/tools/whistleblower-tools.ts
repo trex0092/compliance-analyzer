@@ -13,6 +13,10 @@
  */
 
 import type { ToolResult } from '../mcp-server';
+import {
+  DPMS_CASH_THRESHOLD_AED,
+  RECORD_RETENTION_YEARS,
+} from '../../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -177,7 +181,7 @@ function classifySeverity(input: AnonymousTipInput): {
 
   // Contextual multipliers
   if (input.isOngoing) score += 15;
-  if (input.estimatedAmountAED != null && input.estimatedAmountAED >= 55_000) score += 10; // DPMS threshold
+  if (input.estimatedAmountAED != null && input.estimatedAmountAED >= DPMS_CASH_THRESHOLD_AED) score += 10; // DPMS threshold
   if (input.estimatedAmountAED != null && input.estimatedAmountAED >= 1_000_000) score += 10;
   if (input.involvedEmployees && input.involvedEmployees.length >= 2) score += 10;
   if (input.evidenceDescriptions && input.evidenceDescriptions.length >= 2) score += 5;
@@ -340,6 +344,147 @@ export async function submitAnonymousTip(
 }
 
 // ---------------------------------------------------------------------------
+// Tool: classifyTip (standalone re-classification)
+// ---------------------------------------------------------------------------
+
+export interface ClassifyTipInput {
+  tipId: string;
+  category: TipCategory;
+  subject: string;
+  description: string;
+  involvedEntities?: string[];
+  involvedEmployees?: string[];
+  estimatedAmountAED?: number;
+  isOngoing?: boolean;
+}
+
+export interface TipClassificationResult {
+  tipId: string;
+  classifiedAt: string;
+  autoCategory: TipCategory;
+  providedCategory: TipCategory;
+  categoryMatch: boolean;
+  severity: SeverityLevel;
+  severityScore: number;
+  confidenceScore: number;
+  regulatoryRelevance: string[];
+  requiredActions: string[];
+  requiresImmediateEscalation: boolean;
+  retaliationRiskFactors: string[];
+  protectionRecommendations: string[];
+}
+
+/**
+ * Classify (or re-classify) a whistleblower tip's category and severity.
+ * Can be run independently of submission for re-evaluation when new
+ * information surfaces. Provides regulatory relevance mapping and
+ * retaliation risk assessment.
+ *
+ * @regulatory Cabinet Res 134/2025 Art.19, FDL No.10/2025 Art.20-21, FATF Rec 18
+ */
+export function classifyTip(
+  input: ClassifyTipInput,
+): ToolResult<TipClassificationResult> {
+  if (!input.tipId) {
+    return { ok: false, error: 'Tip ID is required.' };
+  }
+  if (!input.subject || input.subject.trim().length < 5) {
+    return { ok: false, error: 'Subject must be at least 5 characters.' };
+  }
+  if (!input.description || input.description.trim().length < 20) {
+    return { ok: false, error: 'Description must be at least 20 characters.' };
+  }
+
+  const fakeAnonymousInput: AnonymousTipInput = {
+    reporterSecret: 'classification-only',
+    category: input.category,
+    subject: input.subject,
+    description: input.description,
+    involvedEntities: input.involvedEntities,
+    involvedEmployees: input.involvedEmployees,
+    estimatedAmountAED: input.estimatedAmountAED,
+    isOngoing: input.isOngoing,
+  };
+
+  const { severity, score, autoCategory, confidence } = classifySeverity(fakeAnonymousInput);
+  const categoryMatch = autoCategory === input.category;
+  const requiresImmediateEscalation =
+    severity === 'critical' || CRITICAL_CATEGORIES.includes(autoCategory);
+
+  // Required actions based on category
+  const requiredActions: string[] = [];
+  if (CRITICAL_CATEGORIES.includes(autoCategory)) {
+    requiredActions.push('Immediate escalation to Compliance Officer.');
+    requiredActions.push('Four-eyes review required (two independent approvers).');
+  }
+  if (autoCategory === 'sanctions_evasion' || autoCategory === 'screening_bypass') {
+    requiredActions.push('Re-screen all entities mentioned in the tip per FDL Art.35.');
+    requiredActions.push('Check asset freeze obligations within 24 hours (Cabinet Res 74/2020).');
+  }
+  if (autoCategory === 'money_laundering' || autoCategory === 'terrorist_financing') {
+    requiredActions.push('Evaluate STR filing obligation per FDL Art.26-27.');
+    requiredActions.push('Do NOT disclose STR status to the subject (Art.29).');
+  }
+  if (autoCategory === 'tipping_off') {
+    requiredActions.push('URGENT: Investigate potential Art.29 violation. Preserve all communications.');
+    requiredActions.push('Consider suspending implicated staff access immediately.');
+  }
+  if (input.involvedEmployees && input.involvedEmployees.length > 0) {
+    requiredActions.push('Restrict system access for named employees pending investigation.');
+    requiredActions.push('Initiate insider threat behavioral analysis for named employees.');
+  }
+  requiredActions.push(`Resolve within ${severity === 'critical' ? '1' : severity === 'high' ? '3' : severity === 'medium' ? '5' : '10'} business day(s).`);
+
+  // Retaliation risk factors
+  const retaliationRiskFactors: string[] = [];
+  if (input.involvedEmployees && input.involvedEmployees.length > 0) {
+    retaliationRiskFactors.push('Named employees may attempt to identify the reporter.');
+  }
+  if (autoCategory === 'tipping_off' || autoCategory === 'screening_bypass') {
+    retaliationRiskFactors.push('Implicated individuals have compliance system access — elevated retaliation risk.');
+  }
+  if (input.isOngoing) {
+    retaliationRiskFactors.push('Ongoing violation increases risk of reporter exposure through operational disruption.');
+  }
+  if (severity === 'critical' || severity === 'high') {
+    retaliationRiskFactors.push('High-severity case may trigger organizational scrutiny that could expose reporter.');
+  }
+
+  // Protection recommendations
+  const protectionRecommendations: string[] = [
+    'Ensure tip handling is restricted to minimum necessary personnel.',
+    'Never store or log reporter identity in plaintext — use only SHA-256 hash.',
+    'Route all communications through anonymous tracking code only.',
+  ];
+  if (retaliationRiskFactors.length >= 2) {
+    protectionRecommendations.push('Elevated retaliation risk: assign independent protection officer from outside the implicated department.');
+    protectionRecommendations.push('Schedule retaliation check within 48 hours and weekly thereafter per UAE Federal Decree-Law No.13/2022.');
+  }
+  if (input.involvedEmployees && input.involvedEmployees.some((e) => e.toLowerCase().includes('officer') || e.toLowerCase().includes('manager'))) {
+    protectionRecommendations.push('CRITICAL: Senior staff implicated — escalate protection to Board level.');
+  }
+
+  return {
+    ok: true,
+    data: {
+      tipId: input.tipId,
+      classifiedAt: formatDateUAE(new Date()),
+      autoCategory,
+      providedCategory: input.category,
+      categoryMatch,
+      severity,
+      severityScore: score,
+      confidenceScore: confidence,
+      regulatoryRelevance: REGULATORY_RELEVANCE[autoCategory] ?? [],
+      requiredActions,
+      requiresImmediateEscalation,
+      retaliationRiskFactors,
+      protectionRecommendations,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Tool Schemas
 // ---------------------------------------------------------------------------
 
@@ -379,4 +524,32 @@ export const WHISTLEBLOWER_TOOL_SCHEMAS = [
       required: ['reporterSecret', 'category', 'subject', 'description'],
     },
   },
-];
+  {
+    name: 'classify_tip',
+    description:
+      'Classify or re-classify a whistleblower tip by category and severity. Returns auto-detected category, severity score, regulatory relevance mapping, required actions, retaliation risk factors, and protection recommendations. Can be re-run when new information surfaces. Regulatory: Cabinet Res 134/2025 Art.19, FDL Art.20-21, FATF Rec 18.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tipId: { type: 'string', description: 'Existing tip ID to classify' },
+        category: {
+          type: 'string',
+          enum: [
+            'sanctions_evasion', 'money_laundering', 'terrorist_financing',
+            'fraud', 'bribery_corruption', 'insider_trading',
+            'data_manipulation', 'policy_violation', 'screening_bypass',
+            'tipping_off', 'other',
+          ],
+          description: 'Category of the compliance violation',
+        },
+        subject: { type: 'string', description: 'Tip subject line' },
+        description: { type: 'string', description: 'Tip description narrative' },
+        involvedEntities: { type: 'array', items: { type: 'string' } },
+        involvedEmployees: { type: 'array', items: { type: 'string' } },
+        estimatedAmountAED: { type: 'number' },
+        isOngoing: { type: 'boolean' },
+      },
+      required: ['tipId', 'category', 'subject', 'description'],
+    },
+  },
+] as const;
