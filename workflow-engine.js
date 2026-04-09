@@ -773,8 +773,9 @@
           ruleName: rule.name,
           trigger: rule.trigger,
           actions: rule.actions.map(a => a.type),
-          success: true,
-          details: 'Rule configured and validated',
+          success: null,
+          seeded: true,
+          details: 'Rule configured — awaiting first trigger',
           timestamp: new Date(now.getTime() - (rules.length - idx) * 60000).toISOString()
         });
         seeded = true;
@@ -888,17 +889,32 @@
   // ══════════════════════════════════════════════════════════════
 
   function evaluateCondition(condition, data) {
-    if (!condition || !condition.field) return true;
-    const val = data[condition.field];
-    switch (condition.op) {
-      case 'eq': return val === condition.value;
-      case 'neq': return val !== condition.value;
-      case 'in': return Array.isArray(condition.value) && condition.value.includes(val);
-      case 'gt': return Number(val) > Number(condition.value);
-      case 'lt': return Number(val) < Number(condition.value);
-      case 'contains': return String(val || '').toLowerCase().includes(String(condition.value).toLowerCase());
-      default: return true;
+    if (!condition) return true;
+    // Support structured conditions with field/op/value
+    if (condition.field) {
+      const val = data[condition.field];
+      switch (condition.op) {
+        case 'eq': return val === condition.value;
+        case 'neq': return val !== condition.value;
+        case 'in': return Array.isArray(condition.value) && condition.value.includes(val);
+        case 'gt': return Number(val) > Number(condition.value);
+        case 'lt': return Number(val) < Number(condition.value);
+        case 'gte': return Number(val) >= Number(condition.value);
+        case 'contains': return String(val || '').toLowerCase().includes(String(condition.value).toLowerCase());
+        default: return true;
+      }
     }
+    // Support key-value conditions (e.g., { amount: 55000, riskLevel: 'high' })
+    // Match if all specified keys exist in data and meet/exceed the expected value
+    for (const [key, expected] of Object.entries(condition)) {
+      if (data[key] === undefined) continue;
+      if (typeof expected === 'number') {
+        if (Number(data[key]) < expected) return false;
+      } else if (data[key] !== expected) {
+        return false;
+      }
+    }
+    return true;
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -1436,11 +1452,17 @@
     refresh();
   }
 
+  // Prevent CSV formula injection: prefix dangerous cell values
+  function csvSafe(val) {
+    const s = String(val || '').replace(/"/g, '""');
+    return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
+  }
+
   function exportDocLog() {
     const docs = getDocVersions();
     if (!docs.length) { if (typeof toast === 'function') toast('No entries to export', 'error'); return; }
     const csv = ['Document,Version,Effective Date,Updated By,Changes,Status']
-      .concat(docs.map(d => `"${d.name}","${d.version}","${d.date}","${d.updatedBy}","${(d.changes||'').replace(/"/g,'""')}","${d.status}"`))
+      .concat(docs.map(d => `"${csvSafe(d.name)}","${csvSafe(d.version)}","${csvSafe(d.date)}","${csvSafe(d.updatedBy)}","${csvSafe(d.changes)}","${csvSafe(d.status)}"`))
       .join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');

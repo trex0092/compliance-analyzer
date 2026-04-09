@@ -291,6 +291,15 @@ const AuthRBAC = (function () {
         enforceSessionLimit(user.id);
         sessionStorage.setItem('fgl_current_token', token);
 
+        // Enforce 90-day password rotation policy
+        if (isPasswordExpired({ id: user.id })) {
+            user.mustChangePassword = true;
+            const users2 = loadData(STORAGE_KEYS.users) || [];
+            const userIdx = users2.findIndex(u => u.id === user.id);
+            if (userIdx >= 0) { users2[userIdx].mustChangePassword = true; saveData(STORAGE_KEYS.users, users2); }
+            writeLog({ event: 'password_expired', username, userId: user.id });
+        }
+
         writeLog({ event: 'login_success', username, userId: user.id });
 
         return {
