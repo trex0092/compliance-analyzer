@@ -1,12 +1,28 @@
 import { getStore } from '@netlify/blobs'
 import type { Config, Context } from '@netlify/functions'
+import { authenticate, rateLimit } from './middleware/auth.mts'
 
 export default async (req: Request, context: Context) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204 })
+  }
+
+  // Rate limit and authentication
+  const rl = rateLimit(req)
+  if (!rl.ok) return rl.response!
+  const auth = authenticate(req)
+  if (!auth.ok) return auth.response!
+
   const url = new URL(req.url)
   const key = url.searchParams.get('key')
 
   if (!key) {
     return Response.json({ error: 'Missing key parameter' }, { status: 400 })
+  }
+
+  // Path traversal protection
+  if (key.includes('..') || key.startsWith('/') || !/^[a-zA-Z0-9._\-\/]+$/.test(key)) {
+    return Response.json({ error: 'Invalid key format' }, { status: 400 })
   }
 
   const store = getStore('compliance-uploads')

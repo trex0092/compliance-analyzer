@@ -1,10 +1,23 @@
 import { getStore } from '@netlify/blobs'
 import type { Config } from '@netlify/functions'
+import { authenticate, rateLimit } from './middleware/auth.mts'
+
+// Allowed file types for compliance document uploads
+const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx', '.xlsx', '.xls', '.csv', '.xml', '.txt', '.eml']
+const ALLOWED_MIME_PREFIXES = ['application/pdf', 'image/png', 'image/jpeg', 'application/msword', 'application/vnd.openxmlformats', 'application/vnd.ms-excel', 'text/csv', 'text/xml', 'application/xml', 'text/plain', 'message/rfc822']
 
 export default async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204 })
   }
+
+  // Rate limit: 10 uploads per 15-minute window
+  const rl = rateLimit(req)
+  if (!rl.ok) return rl.response!
+
+  // Authentication required
+  const auth = authenticate(req)
+  if (!auth.ok) return auth.response!
 
   const contentType = req.headers.get('content-type') || ''
 
@@ -25,10 +38,21 @@ export default async (req: Request) => {
     return Response.json({ error: 'File too large. Maximum size is 50 MB.' }, { status: 400 })
   }
 
+  // Validate file type — prevent executable/malicious uploads
+  const fileName = file.name.toLowerCase()
+  const hasAllowedExt = ALLOWED_EXTENSIONS.some(ext => fileName.endsWith(ext))
+  const hasAllowedMime = ALLOWED_MIME_PREFIXES.some(prefix => (file.type || '').startsWith(prefix))
+  if (!hasAllowedExt || !hasAllowedMime) {
+    return Response.json({ error: 'File type not allowed. Accepted: PDF, images, Office documents, CSV, XML.' }, { status: 400 })
+  }
+
+  // Validate category — prevent path traversal
+  const safeCategory = category.replace(/[^a-zA-Z0-9_-]/g, '_')
+
   const store = getStore('compliance-uploads')
   const timestamp = Date.now()
   const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const key = `${category}/${timestamp}-${safeFileName}`
+  const key = `${safeCategory}/${timestamp}-${safeFileName}`
 
   const buffer = await file.arrayBuffer()
   await store.set(key, buffer, {
@@ -36,8 +60,9 @@ export default async (req: Request) => {
       originalName: file.name,
       contentType: file.type || 'application/octet-stream',
       size: String(file.size),
-      category,
+      category: safeCategory,
       uploadedAt: new Date().toISOString(),
+      uploadedBy: auth.userId || 'unknown',
     },
   })
 
@@ -46,7 +71,7 @@ export default async (req: Request) => {
     key,
     name: file.name,
     size: file.size,
-    category,
+    category: safeCategory,
     uploadedAt: new Date().toISOString(),
   })
 }

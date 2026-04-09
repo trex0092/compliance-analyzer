@@ -1,5 +1,6 @@
 import { getStore } from '@netlify/blobs'
 import type { Config } from '@netlify/functions'
+import { authenticate, rateLimit } from './middleware/auth.mts'
 
 const STORE_NAME = 'compliance-sync'
 const MAX_SIZE = 10 * 1024 * 1024 // 10 MB max per sync payload
@@ -9,11 +10,22 @@ export default async (req: Request) => {
     return new Response(null, { status: 204 })
   }
 
+  // Rate limit and authentication
+  const rl = rateLimit(req)
+  if (!rl.ok) return rl.response!
+  const auth = authenticate(req)
+  if (!auth.ok) return auth.response!
+
   const url = new URL(req.url)
   const userId = url.searchParams.get('uid')
 
   if (!userId || userId.length < 8) {
     return Response.json({ error: 'Missing or invalid uid parameter' }, { status: 400 })
+  }
+
+  // IDOR protection: verify the uid matches the authenticated user's token-derived ID
+  if (auth.userId && userId !== auth.userId) {
+    return Response.json({ error: 'Unauthorized: uid does not match authenticated user' }, { status: 403 })
   }
 
   const store = getStore(STORE_NAME)
