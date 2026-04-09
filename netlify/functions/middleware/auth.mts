@@ -70,13 +70,17 @@ export function authenticate(req: Request): AuthResult {
 /**
  * Rate limiting — simple in-memory counter per IP.
  * Resets every 15 minutes. Max 100 requests per window.
+ *
+ * NOTE: In-memory store is best-effort in serverless — not shared across
+ * instances and resets on cold start. Pass context.ip for reliable IP.
  */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 100;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 
-export function rateLimit(req: Request): AuthResult {
-  const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+export function rateLimit(req: Request, clientIp?: string): AuthResult {
+  // Prefer clientIp from Netlify context.ip (cannot be spoofed) over headers
+  const ip = clientIp || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const now = Date.now();
 
   let entry = rateLimitMap.get(ip);

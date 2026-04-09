@@ -7,7 +7,7 @@
  * Requires EMAIL_SERVICE_URL env var (e.g., SendGrid, Resend, or custom endpoint).
  */
 
-import type { Config } from "@netlify/functions";
+import type { Config, Context } from "@netlify/functions";
 import { checkRateLimit } from "./middleware/rate-limit.mts";
 import { authenticate } from "./middleware/auth.mts";
 
@@ -19,7 +19,7 @@ interface AlertPayload {
   entityName?: string;
 }
 
-export default async (req: Request) => {
+export default async (req: Request, context: Context) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204 });
   }
@@ -28,8 +28,8 @@ export default async (req: Request) => {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
-  // Rate limit: 10 requests per IP per 15 minutes (sensitive endpoint)
-  const rateLimitResponse = checkRateLimit(req, { max: 10 });
+  // Rate limit: 10 requests per IP per 15 minutes (use context.ip for reliable IP)
+  const rateLimitResponse = checkRateLimit(req, { max: 10, clientIp: context.ip });
   if (rateLimitResponse) return rateLimitResponse;
 
   // Authentication required — prevent unauthenticated alert injection

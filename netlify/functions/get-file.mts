@@ -7,8 +7,8 @@ export default async (req: Request, context: Context) => {
     return new Response(null, { status: 204 })
   }
 
-  // Rate limit and authentication
-  const rl = rateLimit(req)
+  // Rate limit and authentication (use context.ip for reliable client IP)
+  const rl = rateLimit(req, context.ip)
   if (!rl.ok) return rl.response!
   const auth = authenticate(req)
   if (!auth.ok) return auth.response!

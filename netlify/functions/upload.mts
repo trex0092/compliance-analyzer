@@ -1,18 +1,18 @@
 import { getStore } from '@netlify/blobs'
-import type { Config } from '@netlify/functions'
+import type { Config, Context } from '@netlify/functions'
 import { authenticate, rateLimit } from './middleware/auth.mts'
 
 // Allowed file types for compliance document uploads
 const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx', '.xlsx', '.xls', '.csv', '.xml', '.txt', '.eml']
 const ALLOWED_MIME_PREFIXES = ['application/pdf', 'image/png', 'image/jpeg', 'application/msword', 'application/vnd.openxmlformats', 'application/vnd.ms-excel', 'text/csv', 'text/xml', 'application/xml', 'text/plain', 'message/rfc822']
 
-export default async (req: Request) => {
+export default async (req: Request, context: Context) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204 })
   }
 
-  // Rate limit: 10 uploads per 15-minute window
-  const rl = rateLimit(req)
+  // Rate limit: 10 uploads per 15-minute window (use context.ip for reliable IP)
+  const rl = rateLimit(req, context.ip)
   if (!rl.ok) return rl.response!
 
   // Authentication required

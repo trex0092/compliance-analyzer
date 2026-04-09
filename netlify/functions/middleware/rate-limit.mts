@@ -2,7 +2,11 @@
  * Serverless Rate Limiter — In-memory sliding window
  *
  * Provides rate limiting for Netlify Functions.
- * Uses in-memory store (resets on cold start, which is acceptable for serverless).
+ *
+ * IMPORTANT: This in-memory store resets on cold start and is NOT shared
+ * across concurrent function instances. It provides best-effort protection
+ * but is NOT a reliable defense against determined attackers. For production
+ * hardening, migrate to a persistent store (Netlify Blobs, KV, or Redis).
  *
  * Limits per CLAUDE.md security requirements:
  *  - General API: 100 requests per IP per 15 minutes
@@ -17,17 +21,11 @@ interface RateLimitEntry {
 
 const store = new Map<string, RateLimitEntry>();
 
-// Periodic cleanup every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store) {
-    if (now - entry.windowStart > 15 * 60 * 1000) store.delete(key);
-  }
-}, 5 * 60 * 1000);
-
 export interface RateLimitConfig {
   windowMs?: number;
   max?: number;
+  /** Pass context.ip from Netlify Functions for reliable client IP. */
+  clientIp?: string;
 }
 
 export function checkRateLimit(
@@ -36,8 +34,11 @@ export function checkRateLimit(
 ): Response | null {
   const { windowMs = 15 * 60 * 1000, max = 100 } = config;
 
-  const forwarded = req.headers.get("x-forwarded-for");
-  const key = forwarded?.split(",")[0]?.trim() || "unknown";
+  // Prefer explicit clientIp (from Netlify context.ip — cannot be spoofed)
+  // over X-Forwarded-For (can be spoofed by attackers).
+  const key = config.clientIp
+    || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || "unknown";
   const now = Date.now();
 
   let entry = store.get(key);

@@ -10,15 +10,20 @@ var VaultEncryption = (function() {
     var STORAGE_KEY = 'fgl_vault_encrypted';
     var PBKDF2_ITERATIONS = 100000;
     var cachedKey = null;
+    // SECURITY: cachedPassphrase stores the raw passphrase in memory.
+    // We reduce exposure by auto-locking after 5 minutes (down from 30)
+    // and explicitly overwriting on lock. JavaScript strings are immutable
+    // so we cannot truly zero them, but we minimize the window.
     var cachedPassphrase = null;
     var locked = true;
     var cacheTimeout = null;
-    var CACHE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes — auto-lock
+    var CACHE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes — auto-lock (reduced from 30 for security)
 
     function resetCacheTimeout() {
         if (cacheTimeout) clearTimeout(cacheTimeout);
         cacheTimeout = setTimeout(function() {
             cachedKey = null;
+            cachedPassphrase = '';  // Overwrite before nulling
             cachedPassphrase = null;
             locked = true;
             console.warn('[Vault] Auto-locked after inactivity');
@@ -246,8 +251,10 @@ var VaultEncryption = (function() {
      */
     function lock() {
         cachedKey = null;
+        cachedPassphrase = '';  // Overwrite before nulling to reduce memory exposure
         cachedPassphrase = null;
         locked = true;
+        if (cacheTimeout) { clearTimeout(cacheTimeout); cacheTimeout = null; }
     }
 
     /**
