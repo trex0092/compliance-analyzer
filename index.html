@@ -484,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <button class="btn btn-gold" data-action="attemptLogin" style="width:100%;margin-top:8px">Sign In</button>
     <div style="margin-top:16px;font-size:10px;color:var(--muted)">Contact your administrator for access credentials</div>
     <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-      <button onclick="if(confirm('This will clear all login data and let you create a new account. App data (shipments, evidence, etc.) will be kept. Continue?')){localStorage.removeItem('fgl_users');localStorage.removeItem('fgl_session');localStorage.removeItem('fgl_sessions');localStorage.removeItem('fgl_auth_log');location.reload();}" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;text-decoration:underline">First time? Can't log in? Reset accounts &amp; start fresh</button>
+      <button data-action="_resetAccountsAndReload" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;text-decoration:underline">First time? Can't log in? Reset accounts &amp; start fresh</button>
     </div>
   </div>
   <!-- First-Time Setup Wizard -->
@@ -554,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <input type="hidden" id="gdriveFolderId" value="" />
     <input type="hidden" id="proxyUrl" value="" />
     <input type="hidden" id="gdriveClientId" value="" />
-    <button class="btn btn-gold" onclick="openMainPanel();toast('You can configure API keys in Settings','info',4000)" style="width:100%">Open Analyzer</button>
+    <button class="btn btn-gold" data-action="_openMainPanelWithToast" style="width:100%">Open Analyzer</button>
   </div>
 
   <!-- MAIN PANEL -->
@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     <div class="tabs" id="tabsNav">
       <button class="mobile-menu-close" id="mobileMenuClose" data-action="MobileResponsive.toggleMenu">&times;</button>
-      <div class="tab active" onclick="switchTab('analyse');if(window.MobileResponsive)MobileResponsive.closeMenu()">🔍 Analyze</div>
+      <div class="tab active" data-action="_switchTabAndCloseMenu" data-arg="analyse">🔍 Analyze</div>
       <div class="tab" data-action="switchTab" data-arg="shipments">🚚 IAR Shipments</div>
       <div class="tab" data-action="switchTab" data-arg="localshipments">📦 Local Shipments</div>
       <div class="tab" data-action="switchTab" data-arg="iarreport">📝 IAR Report</div>
@@ -825,7 +825,7 @@ Examples:
           <span class="lbl" style="margin:0">Live Asana Task Status</span>
           <div style="display:flex;gap:8px">
             <button class="btn btn-sm btn-blue" data-action="loadAsanaTasks" data-arg="false">Refresh</button>
-            <button class="btn btn-sm" style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.4)" onclick="fixAsanaEntityTasks && fixAsanaEntityTasks()" title="Fix tasks with {entity} placeholder">Fix Placeholders</button>
+            <button class="btn btn-sm" style="background:rgba(232,160,48,0.15);color:var(--amber);border:1px solid rgba(232,160,48,0.4)" data-action="_fixAsanaEntityTasks" title="Fix tasks with {entity} placeholder">Fix Placeholders</button>
             <button class="btn btn-sm btn-green" data-action="processAsanaRetryQueue" data-arg="false">Retry Failed Writes</button>
           </div>
         </div>
@@ -846,7 +846,7 @@ Examples:
             <button class="btn btn-sm btn-green" data-action="exportShipmentsDOCX">Word</button>
             <button class="btn btn-sm btn-green" data-action="exportShipmentsPDF">PDF</button>
             <button class="btn btn-sm btn-green" data-action="exportShipmentsCSV">CSV</button>
-            <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all shipments?'))clearShipments()">Clear</button>
+            <button class="btn btn-sm btn-red" data-action="_confirmAndClear" data-arg="Are you sure you want to clear all shipments?" data-arg2="clearShipments">Clear</button>
           </div>
         </div>
         <div class="row row-3">
@@ -911,7 +911,7 @@ Examples:
         <div class="row row-3">
           <div><span class="lbl">Last CDD Review Date</span><input type="text" placeholder="dd/mm/yyyy" id="shCddReviewDate" /></div>
           <div style="display:flex;align-items:flex-end"><button class="btn btn-sm btn-green" data-action="setCDDToday">Use Today</button></div>
-          <div><span class="lbl">Risk Rating</span><select id="shRiskRating" onchange="this.style.color=this.value==='Low'?'var(--green)':this.value==='Medium'?'var(--amber)':this.value==='High'?'var(--red)':''" ><option value="">Select</option><option value="High" style="color:var(--red)">High</option><option value="Medium" style="color:var(--amber)">Medium</option><option value="Low" style="color:var(--green)">Low</option></select></div>
+          <div><span class="lbl">Risk Rating</span><select id="shRiskRating" data-change="_riskRatingColor" ><option value="">Select</option><option value="High" style="color:var(--red)">High</option><option value="Medium" style="color:var(--amber)">Medium</option><option value="Low" style="color:var(--green)">Low</option></select></div>
         </div>
       </div>
       <div class="card">
@@ -948,7 +948,7 @@ Examples:
             <button class="btn btn-sm btn-blue" data-action="renderLocalShipments">Refresh</button>
             <button class="btn btn-sm btn-green" data-action="exportLocalShipmentsDOCX">Word</button>
             <button class="btn btn-sm btn-green" data-action="exportLocalShipmentsPDF">PDF</button>
-            <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all local shipments?'))clearLocalShipments()">Clear</button>
+            <button class="btn btn-sm btn-red" data-action="_confirmAndClear" data-arg="Are you sure you want to clear all local shipments?" data-arg2="clearLocalShipments">Clear</button>
           </div>
         </div>
         <div class="row row-3">
@@ -1000,12 +1000,12 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">IAR Compliance Report</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
-            <button class="btn btn-sm btn-blue" onclick="document.getElementById('iarFileInput').click()">File</button>
+            <button class="btn btn-sm btn-blue" data-action="_clickFileInput" data-arg="iarFileInput">File</button>
             <button class="btn btn-sm btn-green" data-action="exportIARReportPDF">PDF</button>
             <button class="btn btn-sm btn-green" data-action="exportIARReportDOCX">Word</button>
             <button class="btn btn-sm btn-green" data-action="exportIARReportCSV">CSV</button>
-            <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to clear all IAR reports?'))clearIARReports()">Clear</button>
-            <input type="file" id="iarFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachIARFile(this)" />
+            <button class="btn btn-sm btn-red" data-action="_confirmAndClear" data-arg="Are you sure you want to clear all IAR reports?" data-arg2="clearIARReports">Clear</button>
+            <input type="file" id="iarFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" data-change="attachIARFile" />
           </div>
         </div>
         <div id="iarAttachments" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px"></div>
@@ -1074,7 +1074,7 @@ Examples:
         <!-- UBO/Manager -->
         <div id="iarUboContainer"></div>
         <div id="iarManagerContainer"></div>
-        <button class="btn btn-sm btn-green" onclick="addIARUboRow();addIARManagerRow()" style="margin-top:6px;margin-bottom:12px">Add UBO/Manager</button>
+        <button class="btn btn-sm btn-green" data-action="_multiAction" data-arg="addIARUboRow" data-arg2="addIARManagerRow" style="margin-top:6px;margin-bottom:12px">Add UBO/Manager</button>
 
         <!-- SOURCE OF FUNDS AND WEALTH -->
         <div class="sec-title" style="margin-top:16px;color:var(--amber)">SOURCE OF FUNDS AND WEALTH</div>
@@ -1291,8 +1291,8 @@ Examples:
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">EWRA - Entity-Wide Risk Assessment</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-sm btn-blue" onclick="document.getElementById('ewraFileInput').click()">File</button>
-              <input type="file" id="ewraFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCProgFile(this,'ewra')" />
+              <button class="btn btn-sm btn-blue" data-action="_clickFileInput" data-arg="ewraFileInput">File</button>
+              <input type="file" id="ewraFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" data-change="_attachCProgFileEwra" />
               <button class="btn btn-sm btn-green" data-action="saveEWRA">Save</button>
               <button class="btn btn-sm btn-red" data-action="clearEWRA">Clear</button>
             </div>
@@ -1367,8 +1367,8 @@ Examples:
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">BWRA - Business-Wide Risk Assessment</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-sm btn-blue" onclick="document.getElementById('bwraFileInput').click()">File</button>
-              <input type="file" id="bwraFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCProgFile(this,'bwra')" />
+              <button class="btn btn-sm btn-blue" data-action="_clickFileInput" data-arg="bwraFileInput">File</button>
+              <input type="file" id="bwraFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" data-change="_attachCProgFileBwra" />
               <button class="btn btn-sm btn-green" data-action="saveBWRA">Save</button>
               <button class="btn btn-sm btn-red" data-action="clearBWRA">Clear</button>
             </div>
@@ -1463,8 +1463,8 @@ Examples:
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Compliance Manual</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-sm btn-blue" onclick="document.getElementById('manualFileInput').click()">File</button>
-              <input type="file" id="manualFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCProgFile(this,'manual')" />
+              <button class="btn btn-sm btn-blue" data-action="_clickFileInput" data-arg="manualFileInput">File</button>
+              <input type="file" id="manualFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" data-change="_attachCProgFileManual" />
               <button class="btn btn-sm btn-green" data-action="saveComplianceManual">Save</button>
               <button class="btn btn-sm btn-green" data-action="exportManualPDF">PDF</button>
               <button class="btn btn-sm btn-red" data-action="clearComplianceManual">Clear</button>
@@ -1513,10 +1513,10 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Critical Gaps - March 2026 Assessment</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-blue" onclick="toast('Gap register refreshed','success')">Refresh</button>
+            <button class="btn btn-sm btn-blue" data-action="toast" data-arg="Gap register refreshed">Refresh</button>
             <button class="btn btn-sm btn-green" data-action="exportGapRegisterPDF">PDF</button>
             <button class="btn btn-sm btn-green" data-action="exportGapRegisterDOCX">Word</button>
-            <button class="btn btn-sm btn-red" onclick="if(confirm('Clear all gap data?')){localStorage.removeItem('fgl_gaps_v2');toast('Gap data cleared','success')}">Delete</button>
+            <button class="btn btn-sm btn-red" data-action="_confirmClearStorage" data-arg="Clear all gap data?" data-arg2="fgl_gaps_v2">Delete</button>
           </div>
         </div>
         <div class="findings">
@@ -1525,28 +1525,28 @@ Examples:
             <div class="f-body">FG/KYC and FG/AML sections contain contradictory review schedules. Must be resolved in v006.</div>
             <div class="f-ref">Cabinet Resolution No.(134) of 2025 | Art.12-13 | CDD and ongoing monitoring obligations for DNFBPs</div>
             <div class="rec">Issue Compliance Manual v006 with single harmonised schedule: High-risk 6 months, Medium 12 months, Low 18 months. Target: 30 April 2026.</div>
-            <div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Resolve CDD Review Frequency Conflict (GAP-001)','GAP-001: FG/KYC and FG/AML sections contain contradictory review schedules. Issue v006 with harmonised schedule. Ref: Cabinet Resolution No.(134) of 2025 Art.12-13 | CDD and ongoing monitoring obligations.')">+ Create Asana Task</button></div>
+            <div class="writeback-row"><button class="btn btn-sm btn-green" data-action="prefillCreateTask" data-arg="CRITICAL: Resolve CDD Review Frequency Conflict (GAP-001)" data-arg2="GAP-001: FG/KYC and FG/AML sections contain contradictory review schedules. Issue v006 with harmonised schedule. Ref: Cabinet Resolution No.(134) of 2025 Art.12-13 | CDD and ongoing monitoring obligations.">+ Create Asana Task</button></div>
           </div>
           <div class="finding f-critical" style="opacity:1;animation:none">
             <div class="f-head"><div class="f-head-left"><span class="badge b-c">GAP-002</span><div class="f-title">No LBMA Independent Third-Party Audit</div></div></div>
             <div class="f-body">LBMA RGG v9 Step 5 requires an independent third-party audit. Not yet commissioned.</div>
             <div class="f-ref">LBMA RGG v9 | Step 5 | Independent audit requirement</div>
             <div class="rec">Issue RFP by 30 April 2026. Execute engagement letter by 31 May 2026.</div>
-            <div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Commission LBMA Independent Third-Party Audit (GAP-002)','GAP-002: LBMA RGG v9 Step 5 audit not commissioned. Issue RFP to qualified firms. Ref: LBMA RGG v9 Step 5.')">+ Create Asana Task</button></div>
+            <div class="writeback-row"><button class="btn btn-sm btn-green" data-action="prefillCreateTask" data-arg="CRITICAL: Commission LBMA Independent Third-Party Audit (GAP-002)" data-arg2="GAP-002: LBMA RGG v9 Step 5 audit not commissioned. Issue RFP to qualified firms. Ref: LBMA RGG v9 Step 5.">+ Create Asana Task</button></div>
           </div>
           <div class="finding f-critical" style="opacity:1;animation:none">
             <div class="f-head"><div class="f-head-left"><span class="badge b-c">GAP-003/004</span><div class="f-title">Missing CRA Form and UBO Register</div></div></div>
             <div class="f-body">Customer Risk Assessment form and UBO Register are both absent.</div>
             <div class="f-ref">Cabinet Resolution No.(134) of 2025 | Art.10 | Cabinet Decision No.(109) of 2023 | Beneficial ownership identification and verification</div>
             <div class="rec">Approve CRA form by 04 May 2026. Populate UBO Register by 31 May 2026.</div>
-            <div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Create Customer Risk Assessment Form (GAP-003)','GAP-003: CRA form absent. Draft and approve template. Ref: Cabinet Resolution No.(134) of 2025 Art.12 | CDD obligations for DNFBPs.')">+ Create CRA Task</button><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Populate UBO Register (GAP-004)','GAP-004: UBO Register absent. Populate for all active customers. Ref: Cabinet Decision 109/2023.')">+ Create UBO Task</button></div>
+            <div class="writeback-row"><button class="btn btn-sm btn-green" data-action="prefillCreateTask" data-arg="CRITICAL: Create Customer Risk Assessment Form (GAP-003)" data-arg2="GAP-003: CRA form absent. Draft and approve template. Ref: Cabinet Resolution No.(134) of 2025 Art.12 | CDD obligations for DNFBPs.">+ Create CRA Task</button><button class="btn btn-sm btn-green" data-action="prefillCreateTask" data-arg="CRITICAL: Populate UBO Register (GAP-004)" data-arg2="GAP-004: UBO Register absent. Populate for all active customers. Ref: Cabinet Decision 109/2023.">+ Create UBO Task</button></div>
           </div>
           <div class="finding f-critical" style="opacity:1;animation:none">
             <div class="f-head"><div class="f-head-left"><span class="badge b-c">GAP-005</span><div class="f-title">Duplicate Document Coding Across 10 Policy Documents</div></div></div>
             <div class="f-body">Duplicate codes across compliance document suite create integrity risk.</div>
             <div class="f-ref">LBMA RGG v9 | Step 1 | Management systems and document integrity</div>
             <div class="rec">Audit all codes by 10 April 2026. Reissue affected documents by 30 April 2026.</div>
-            <div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('CRITICAL: Resolve Duplicate Document Coding (GAP-005)','GAP-005: Duplicate codes across 10 policy documents. Audit and reissue. Ref: LBMA RGG v9 Step 1.')">+ Create Asana Task</button></div>
+            <div class="writeback-row"><button class="btn btn-sm btn-green" data-action="prefillCreateTask" data-arg="CRITICAL: Resolve Duplicate Document Coding (GAP-005)" data-arg2="GAP-005: Duplicate codes across 10 policy documents. Audit and reissue. Ref: LBMA RGG v9 Step 1.">+ Create Asana Task</button></div>
           </div>
         </div>
       </div>
@@ -1624,18 +1624,18 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Company Workspace Manager</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
-            <button class="btn btn-sm btn-blue" onclick="document.getElementById('companyFileInput').click()">File</button>
+            <button class="btn btn-sm btn-blue" data-action="_clickFileInput" data-arg="companyFileInput">File</button>
             <button class="btn btn-sm btn-green" data-action="exportCompanyPDF">PDF</button>
             <button class="btn btn-sm btn-green" data-action="exportCompanyDOCX">Word</button>
             <button class="btn btn-sm btn-gold" data-action="saveCompanyProfileEdits">Save Company Profile</button>
-            <input type="file" id="companyFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachCompanyFile(this)" />
+            <input type="file" id="companyFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" data-change="attachCompanyFile" />
           </div>
         </div>
         <div id="companyAttachments" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px"></div>
         <div class="row row-2">
           <div>
             <span class="lbl">Active Company</span>
-            <select id="companyEditorSelect" onchange="loadCompanyProfileEditor(this.value)" style="width:100%;max-width:100%;text-overflow:ellipsis"></select>
+            <select id="companyEditorSelect" data-change="loadCompanyProfileEditor" style="width:100%;max-width:100%;text-overflow:ellipsis"></select>
           </div>
         </div>
       </div>
@@ -1647,11 +1647,11 @@ Examples:
           <span class="lbl" style="margin:0">Employee Training</span>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif" id="trainingCountMeta">0 employees</span>
-            <button class="btn btn-sm btn-blue" onclick="document.getElementById('trainingFileInput').click()">File</button>
+            <button class="btn btn-sm btn-blue" data-action="_clickFileInput" data-arg="trainingFileInput">File</button>
             <button class="btn btn-sm btn-green" data-action="exportTrainingPDF">PDF</button>
             <button class="btn btn-sm btn-green" data-action="exportTrainingDOCX">Word</button>
             <button class="btn btn-sm btn-red" data-action="clearTraining">Clear</button>
-            <input type="file" id="trainingFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachTrainingFile(this)" />
+            <input type="file" id="trainingFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" data-change="attachTrainingFile" />
           </div>
         </div>
         <div id="trainingAttachments" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
@@ -1763,15 +1763,15 @@ Examples:
           <div><span class="lbl">Date of Joining</span><input type="text" placeholder="dd/mm/yyyy" id="empJoinDate" /></div>
           <div><span class="lbl">Business Unit Involved</span>
             <div id="empBusinessUnit" style="position:relative">
-              <div onclick="document.getElementById('empBizDropdown').style.display=document.getElementById('empBizDropdown').style.display==='none'?'block':'none'" style="min-height:38px;border:1px solid var(--border);border-radius:3px;padding:6px 10px;cursor:pointer;display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:rgba(201,168,76,0.05)">
+              <div data-action="_toggleDropdown" data-arg="empBizDropdown" style="min-height:38px;border:1px solid var(--border);border-radius:3px;padding:6px 10px;cursor:pointer;display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:rgba(201,168,76,0.05)">
                 <span id="empBizPlaceholder" style="color:var(--muted);font-size:13px">Select entities...</span>
               </div>
               <div id="empBizDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:3px;margin-top:4px;padding:6px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.4)">
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="MADISON JEWELLERY TRADING L.L.C" style="width:auto" data-change="updateBizSelection" />MADISON JEWELLERY TRADING L.L.C</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="NAPLES JEWELLERY TRADING L.L.C" style="width:auto" data-change="updateBizSelection" />NAPLES JEWELLERY TRADING L.L.C</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="GRAMALTIN A.S" style="width:auto" data-change="updateBizSelection" />GRAMALTIN A.S</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="ZOE Precious Metals and Jewelery (FZE)" style="width:auto" data-change="updateBizSelection" />ZOE Precious Metals and Jewelery (FZE)</label>
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" class="emp-biz-cb" value="FINE GOLD" style="width:auto" data-change="updateBizSelection" />FINE GOLD</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" data-hover="true" data-hover-style="background:var(--surface2)" data-hover-restore="background:transparent"><input type="checkbox" class="emp-biz-cb" value="MADISON JEWELLERY TRADING L.L.C" style="width:auto" data-change="updateBizSelection" />MADISON JEWELLERY TRADING L.L.C</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" data-hover="true" data-hover-style="background:var(--surface2)" data-hover-restore="background:transparent"><input type="checkbox" class="emp-biz-cb" value="NAPLES JEWELLERY TRADING L.L.C" style="width:auto" data-change="updateBizSelection" />NAPLES JEWELLERY TRADING L.L.C</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" data-hover="true" data-hover-style="background:var(--surface2)" data-hover-restore="background:transparent"><input type="checkbox" class="emp-biz-cb" value="GRAMALTIN A.S" style="width:auto" data-change="updateBizSelection" />GRAMALTIN A.S</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" data-hover="true" data-hover-style="background:var(--surface2)" data-hover-restore="background:transparent"><input type="checkbox" class="emp-biz-cb" value="ZOE Precious Metals and Jewelery (FZE)" style="width:auto" data-change="updateBizSelection" />ZOE Precious Metals and Jewelery (FZE)</label>
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:3px;cursor:pointer;font-size:12px" data-hover="true" data-hover-style="background:var(--surface2)" data-hover-restore="background:transparent"><input type="checkbox" class="emp-biz-cb" value="FINE GOLD" style="width:auto" data-change="updateBizSelection" />FINE GOLD</label>
               </div>
             </div>
           </div>
@@ -1783,12 +1783,12 @@ Examples:
           <span class="sec-title" style="margin:0;border:none;padding:0">Employee Directory</span>
           <input type="text" id="empSearch" placeholder="Search employees..." data-input="renderEmployeeDirectory" style="font-size:11px;padding:4px 10px;width:180px;background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.12);border-radius:2px;color:var(--text);font-family:'Montserrat',sans-serif" />
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-blue" onclick="document.getElementById('empFileInput').click()">File</button>
+            <button class="btn btn-sm btn-blue" data-action="_clickFileInput" data-arg="empFileInput">File</button>
             <button class="btn btn-sm btn-green" data-action="exportEmployeePDF">PDF</button>
             <button class="btn btn-sm btn-green" data-action="exportEmployeeDOCX">Word</button>
             <button class="btn btn-sm btn-green" data-action="exportEmployeeExcel">Excel</button>
             <button class="btn btn-sm btn-red" data-action="clearEmployees">Clear</button>
-            <input type="file" id="empFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachEmployeeFile(this)" />
+            <input type="file" id="empFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" data-change="attachEmployeeFile" />
           </div>
         </div>
         <div id="empAttachments" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
@@ -1877,7 +1877,7 @@ Examples:
             </div>
           </div>
           <div class="row row-2" style="margin-bottom:12px">
-            <div><span class="lbl">Risk Rating Override</span><select id="obRiskOverride" onchange="this.style.color=this.value==='low'?'var(--green)':this.value==='medium'?'var(--amber)':this.value==='high'?'var(--red)':this.value==='prohibited'?'var(--red)':''" ><option value="auto">Auto-calculate</option><option value="low" style="color:var(--green)">Low</option><option value="medium" style="color:var(--amber)">Medium</option><option value="high" style="color:var(--red)">High</option><option value="prohibited" style="color:var(--red)">Prohibited</option></select></div>
+            <div><span class="lbl">Risk Rating Override</span><select id="obRiskOverride" data-change="_riskRatingColor" ><option value="auto">Auto-calculate</option><option value="low" style="color:var(--green)">Low</option><option value="medium" style="color:var(--amber)">Medium</option><option value="high" style="color:var(--red)">High</option><option value="prohibited" style="color:var(--red)">Prohibited</option></select></div>
             <div><span class="lbl">Onboarding Officer</span><input type="text" id="obOfficer" placeholder="Name" /></div>
           </div>
           <div class="row" style="margin-bottom:12px"><div><span class="lbl">Notes</span><textarea id="obNotes" placeholder="Additional due diligence notes..." style="min-height:60px"></textarea></div></div>
@@ -2034,7 +2034,7 @@ Examples:
             </select></div>
           </div>
           <div class="row" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px">
-            <div><span class="lbl">Severity</span><select id="incSeverity" onchange="this.style.color=this.value==='low'?'var(--green)':this.value==='medium'?'var(--amber)':this.value==='high'?'var(--red)':this.value==='critical'?'var(--red)':''" ><option value="critical" style="color:var(--red)">Critical</option><option value="high" style="color:var(--red)">High</option><option value="medium" style="color:var(--amber)">Medium</option><option value="low" style="color:var(--green)">Low</option></select></div>
+            <div><span class="lbl">Severity</span><select id="incSeverity" data-change="_riskRatingColor" ><option value="critical" style="color:var(--red)">Critical</option><option value="high" style="color:var(--red)">High</option><option value="medium" style="color:var(--amber)">Medium</option><option value="low" style="color:var(--green)">Low</option></select></div>
             <div><span class="lbl">Date Discovered</span><input type="text" placeholder="dd/mm/yyyy" id="incDate" /></div>
             <div><span class="lbl">Deadline for Resolution</span><input type="text" placeholder="dd/mm/yyyy" id="incDeadline" /></div>
           </div>
@@ -2126,7 +2126,7 @@ Examples:
     <option value="other">Other</option>
   </optgroup>
 </select></div>
-          <div><span class="lbl">Urgency</span><select id="wbUrgency" onchange="this.style.color=this.value==='low'?'var(--green)':this.value==='medium'?'var(--amber)':'var(--red)'"><option value="high" style="color:var(--red)">High — Immediate attention</option><option value="medium" style="color:var(--amber)">Medium</option><option value="low" style="color:var(--green)">Low — For awareness</option></select></div>
+          <div><span class="lbl">Urgency</span><select id="wbUrgency" data-change="_riskRatingColor"><option value="high" style="color:var(--red)">High — Immediate attention</option><option value="medium" style="color:var(--amber)">Medium</option><option value="low" style="color:var(--green)">Low — For awareness</option></select></div>
         </div>
         <div class="row" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px">
           <div><span class="lbl">Department Involved</span><select id="wbDepartment">
@@ -2222,7 +2222,7 @@ Examples:
         <div class="row" style="margin-bottom:12px"><div><span class="lbl">Suspicious Indicators</span><textarea id="strIndicators" placeholder="Describe what triggered suspicion: unusual patterns, structuring, inconsistent documentation, high-risk jurisdiction, etc..." style="min-height:60px"></textarea></div></div>
         <div class="row row-2" style="margin-bottom:12px">
           <div><span class="lbl">Related Sanctions List (if any)</span><input type="text" id="strSanctionsList" placeholder="e.g. OFAC SDN, UN Consolidated" /></div>
-          <div><span class="lbl">Risk Level</span><select id="strRiskLevel" onchange="this.style.color=this.value==='medium'?'var(--amber)':this.value==='high'?'var(--red)':this.value==='critical'?'var(--red)':''" ><option value="high" style="color:var(--red)">High</option><option value="critical" style="color:var(--red)">Critical</option><option value="medium" style="color:var(--amber)">Medium</option></select></div>
+          <div><span class="lbl">Risk Level</span><select id="strRiskLevel" data-change="_riskRatingColor" ><option value="high" style="color:var(--red)">High</option><option value="critical" style="color:var(--red)">Critical</option><option value="medium" style="color:var(--amber)">Medium</option></select></div>
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-gold" data-action="generateSTRDraft">Generate STR / SAR Draft</button>
@@ -2384,7 +2384,7 @@ Examples:
       <div class="card">
         <span class="lbl">API Keys & Integrations</span>
         <div class="row row-2" style="margin-bottom:12px">
-          <div><span class="lbl">AI Provider</span><select id="aiProvider2" onchange="document.querySelectorAll('.ai-key-section').forEach(function(s){s.style.display='none'});var v=this.value;if(v==='claude')document.getElementById('claudeKeySection').style.display='block';else if(v==='gemini')document.getElementById('geminiKeySection').style.display='block';else if(v==='openai')document.getElementById('openaiKeySection').style.display='block';else if(v==='copilot')document.getElementById('copilotKeySection').style.display='block';else if(v==='mixed'){document.getElementById('copilotKeySection').style.display='block';document.getElementById('geminiKeySection').style.display='block';document.getElementById('claudeKeySection').style.display='block'}">
+          <div><span class="lbl">AI Provider</span><select id="aiProvider2" data-change="_aiProviderChange">
             <option value="mixed">Mixed Mode (Copilot + Gemini + Claude)</option>
             <option value="copilot">GitHub Copilot (FREE)</option>
             <option value="gemini">Google Gemini</option>
@@ -2478,11 +2478,11 @@ Examples:
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">RACI Matrix — Compliance Roles and Responsibilities</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-blue" onclick="document.getElementById('raciFileInput').click()">File</button>
+            <button class="btn btn-sm btn-blue" data-action="_clickFileInput" data-arg="raciFileInput">File</button>
             <button class="btn btn-sm btn-green" data-action="exportRACIPDF">PDF</button>
             <button class="btn btn-sm btn-green" data-action="exportRACIDOCX">Word</button>
           </div>
-          <input type="file" id="raciFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" onchange="attachRACIFile(this)" />
+          <input type="file" id="raciFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" data-change="attachRACIFile" />
         </div>
         <div id="raciAttachments" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
         <div class="row row-2" style="margin-bottom:12px">
@@ -2539,25 +2539,25 @@ Examples:
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px">
             <div>
               <span class="lbl">CM</span>
-              <select id="newRaciCM" style="width:100%;font-weight:700" onchange="raciColorChange(this)">
+              <select id="newRaciCM" style="width:100%;font-weight:700" data-change="raciColorChange">
                 <option value="">Select</option><option value="R">R - Responsible</option><option value="A">A - Accountable</option><option value="C">C - Consulted</option><option value="I">I - Informed</option>
               </select>
             </div>
             <div>
               <span class="lbl">MD</span>
-              <select id="newRaciMD" style="width:100%;font-weight:700" onchange="raciColorChange(this)">
+              <select id="newRaciMD" style="width:100%;font-weight:700" data-change="raciColorChange">
                 <option value="">Select</option><option value="R">R - Responsible</option><option value="A">A - Accountable</option><option value="C">C - Consulted</option><option value="I">I - Informed</option>
               </select>
             </div>
             <div>
               <span class="lbl">FIN</span>
-              <select id="newRaciFIN" style="width:100%;font-weight:700" onchange="raciColorChange(this)">
+              <select id="newRaciFIN" style="width:100%;font-weight:700" data-change="raciColorChange">
                 <option value="">Select</option><option value="R">R - Responsible</option><option value="A">A - Accountable</option><option value="C">C - Consulted</option><option value="I">I - Informed</option>
               </select>
             </div>
             <div>
               <span class="lbl">OPS</span>
-              <select id="newRaciOPS" style="width:100%;font-weight:700" onchange="raciColorChange(this)">
+              <select id="newRaciOPS" style="width:100%;font-weight:700" data-change="raciColorChange">
                 <option value="">Select</option><option value="R">R - Responsible</option><option value="A">A - Accountable</option><option value="C">C - Consulted</option><option value="I">I - Informed</option>
               </select>
             </div>
@@ -2593,7 +2593,7 @@ Examples:
             <button class="btn btn-sm btn-green" data-action="exportDefinitionsDOCX">Word</button>
           </div>
         </div>
-        <input type="text" id="defSearchInput" placeholder="Search definitions..." style="margin-bottom:16px;width:100%" oninput="filterDefinitions(this.value)" />
+        <input type="text" id="defSearchInput" placeholder="Search definitions..." style="margin-bottom:16px;width:100%" data-input="filterDefinitions" />
 
         <!-- Add/Update Definition Form -->
         <div id="defUpdateForm" style="display:none;margin-top:12px;background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:4px;padding:16px">
@@ -2692,13 +2692,13 @@ Examples:
         <!-- Upload Form with Drag & Drop -->
         <div style="background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:20px">
           <span class="lbl" style="color:var(--gold);font-size:12px;margin-bottom:10px;display:block">UPLOAD NEW FILE</span>
-          <div class="upload-dropzone" id="uploadDropzone" onclick="document.getElementById('uploadFileInput').click()">
+          <div class="upload-dropzone" id="uploadDropzone" data-action="_clickFileInput" data-arg="uploadFileInput">
             <div class="drop-icon">📁</div>
             <p><strong style="color:var(--gold)">Tap to select</strong> or drag & drop files here</p>
             <p style="font-size:11px;margin-top:6px">PDF, DOC, XLS, CSV, JPG, PNG, ZIP, JSON, XML — max 50 MB</p>
             <div id="selectedFileName" style="display:none;margin-top:10px;padding:8px 12px;background:var(--surface);border-radius:3px;font-size:12px;color:var(--gold)"></div>
           </div>
-          <input type="file" id="uploadFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip,.json,.xml" multiple style="display:none" onchange="showSelectedFile(this)" />
+          <input type="file" id="uploadFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip,.json,.xml" multiple style="display:none" data-change="showSelectedFile" />
           <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
             <div style="flex:1;min-width:160px">
               <span class="lbl">Category</span>
@@ -2715,7 +2715,7 @@ Examples:
                 <option value="incidents">Incident Reports</option>
               </select>
             </div>
-            <button class="btn btn-gold" id="uploadBtn" onclick="var f=document.getElementById('uploadFileInput');if(f.files&&f.files.length>1){uploadMultipleFiles()}else{uploadFileToServer()}" style="min-height:42px;flex:0 0 auto">📤 Upload File(s)</button>
+            <button class="btn btn-gold" id="uploadBtn" data-action="_uploadFiles" style="min-height:42px;flex:0 0 auto">📤 Upload File(s)</button>
           </div>
           <div id="uploadProgress" style="display:none;margin-top:10px">
             <div style="background:var(--surface);border-radius:4px;height:6px;overflow:hidden">

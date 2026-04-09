@@ -47,6 +47,9 @@
   });
 
   // ─── Change Delegation ──────────────────────────────────────────────
+  // Passes the event to the handler. For handlers that originally used
+  // "this" (e.g., attachIARFile(this)), the function receives e and
+  // should use e.target to get the element.
   document.addEventListener('change', function (e) {
     var target = e.target.closest('[data-change]');
     if (!target) return;
@@ -91,6 +94,111 @@
     var restore = target.getAttribute('data-hover-restore');
     if (restore) target.style.cssText += restore;
   });
+
+  // ─── Complex Handler Helpers ─────────────────────────────────────────
+  // These replace multi-statement inline onclick handlers.
+
+  window._resetAccountsAndReload = function () {
+    if (confirm('This will clear all login data and let you create a new account. App data (shipments, evidence, etc.) will be kept. Continue?')) {
+      localStorage.removeItem('fgl_users');
+      localStorage.removeItem('fgl_session');
+      localStorage.removeItem('fgl_sessions');
+      localStorage.removeItem('fgl_auth_log');
+      location.reload();
+    }
+  };
+
+  window._openMainPanelWithToast = function () {
+    if (typeof openMainPanel === 'function') openMainPanel();
+    if (typeof toast === 'function') toast('You can configure API keys in Settings', 'info', 4000);
+  };
+
+  window._switchTabAndCloseMenu = function (tab) {
+    if (typeof switchTab === 'function') switchTab(tab);
+    if (window.MobileResponsive) MobileResponsive.closeMenu();
+  };
+
+  window._confirmAndClear = function (msg, fn) {
+    if (confirm(msg) && typeof window[fn] === 'function') window[fn]();
+  };
+
+  window._confirmClearStorage = function (msg, key) {
+    if (confirm(msg)) {
+      localStorage.removeItem(key);
+      if (typeof toast === 'function') toast('Data cleared', 'success');
+    }
+  };
+
+  window._clickFileInput = function (inputId) {
+    var el = document.getElementById(inputId);
+    if (el) el.click();
+  };
+
+  window._attachFileHandler = function (inputId, fn, arg) {
+    var el = document.getElementById(inputId);
+    if (!el) return;
+    el.addEventListener('change', function () {
+      if (arg) window[fn](el, arg);
+      else window[fn](el);
+    });
+  };
+
+  window._multiAction = function (/* fn1, fn2, ... */) {
+    for (var i = 0; i < arguments.length; i++) {
+      var fn = resolveFunction(arguments[i]);
+      if (typeof fn === 'function') fn();
+    }
+  };
+
+  window._attachCProgFileEwra = function (e) { if (typeof attachCProgFile === 'function') attachCProgFile(e.target, 'ewra'); };
+  window._attachCProgFileBwra = function (e) { if (typeof attachCProgFile === 'function') attachCProgFile(e.target, 'bwra'); };
+  window._attachCProgFileManual = function (e) { if (typeof attachCProgFile === 'function') attachCProgFile(e.target, 'manual'); };
+
+  // Change handlers that need this/e.target as argument
+  window.attachIARFile = window.attachIARFile || function () {};
+  window.attachCompanyFile = window.attachCompanyFile || function () {};
+  window.attachTrainingFile = window.attachTrainingFile || function () {};
+  window.attachEmployeeFile = window.attachEmployeeFile || function () {};
+  window.attachRACIFile = window.attachRACIFile || function () {};
+  window.showSelectedFile = window.showSelectedFile || function () {};
+  window.loadCompanyProfileEditor = window.loadCompanyProfileEditor || function () {};
+  window.raciColorChange = window.raciColorChange || function () {};
+  window.filterDefinitions = window.filterDefinitions || function () {};
+
+  // Toggle dropdown visibility
+  window._toggleDropdown = function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  };
+
+  // AI provider selector handler
+  window._aiProviderChange = function (e) {
+    document.querySelectorAll('.ai-key-section').forEach(function (s) { s.style.display = 'none'; });
+    var v = e.target.value;
+    if (v === 'claude') { var el = document.getElementById('claudeKeySection'); if (el) el.style.display = 'block'; }
+    else if (v === 'gemini') { var el = document.getElementById('geminiKeySection'); if (el) el.style.display = 'block'; }
+    else if (v === 'openai') { var el = document.getElementById('openaiKeySection'); if (el) el.style.display = 'block'; }
+    else if (v === 'copilot') { var el = document.getElementById('copilotKeySection'); if (el) el.style.display = 'block'; }
+    else if (v === 'mixed') {
+      ['copilotKeySection', 'geminiKeySection', 'claudeKeySection'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'block'; });
+    }
+  };
+
+  // Upload button: multi or single file
+  window._uploadFiles = function () {
+    var f = document.getElementById('uploadFileInput');
+    if (f && f.files && f.files.length > 1) { if (typeof uploadMultipleFiles === 'function') uploadMultipleFiles(); }
+    else { if (typeof uploadFileToServer === 'function') uploadFileToServer(); }
+  };
+
+  window._riskRatingColor = function (e) {
+    var v = e.target.value;
+    e.target.style.color = v === 'Low' ? 'var(--green)' : v === 'Medium' ? 'var(--amber)' : v === 'High' ? 'var(--red)' : '';
+  };
+
+  window._fixAsanaEntityTasks = function () {
+    if (typeof fixAsanaEntityTasks === 'function') fixAsanaEntityTasks();
+  };
 
   // ─── Click Delegation (boolean args) ─────────────────────────────────
   // Support data-arg="true"/"false" as actual booleans

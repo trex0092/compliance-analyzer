@@ -8,23 +8,33 @@ var VaultEncryption = (function() {
     'use strict';
 
     var STORAGE_KEY = 'fgl_vault_encrypted';
+    var VAULT_SALT_KEY = 'fgl_vault_salt'; // Fixed vault-level salt (base64)
     var PBKDF2_ITERATIONS = 100000;
-    var cachedKey = null;
-    // SECURITY: cachedPassphrase stores the raw passphrase in memory.
-    // We reduce exposure by auto-locking after 5 minutes (down from 30)
-    // and explicitly overwriting on lock. JavaScript strings are immutable
-    // so we cannot truly zero them, but we minimize the window.
-    var cachedPassphrase = null;
+    // SECURITY: Only the derived CryptoKey is cached — never the raw passphrase.
+    // The CryptoKey is a non-extractable opaque handle managed by the browser's
+    // crypto subsystem and cannot be read back as a string.
+    var cachedKey = null; // CryptoKey (AES-GCM 256-bit)
     var locked = true;
     var cacheTimeout = null;
-    var CACHE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes — auto-lock (reduced from 30 for security)
+    var CACHE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes — auto-lock
+
+    /**
+     * Get or create the vault-level salt (stored in localStorage).
+     * All items use this salt so a single derived CryptoKey works for everything.
+     * Per-item uniqueness is ensured by random IVs (12 bytes per encrypt).
+     */
+    function getVaultSalt() {
+        var saved = localStorage.getItem(VAULT_SALT_KEY);
+        if (saved) return new Uint8Array(base64ToArrayBuffer(saved));
+        var salt = crypto.getRandomValues(new Uint8Array(16));
+        localStorage.setItem(VAULT_SALT_KEY, arrayBufferToBase64(salt.buffer));
+        return salt;
+    }
 
     function resetCacheTimeout() {
         if (cacheTimeout) clearTimeout(cacheTimeout);
         cacheTimeout = setTimeout(function() {
             cachedKey = null;
-            cachedPassphrase = '';  // Overwrite before nulling
-            cachedPassphrase = null;
             locked = true;
             console.warn('[Vault] Auto-locked after inactivity');
         }, CACHE_TIMEOUT_MS);
@@ -96,18 +106,23 @@ var VaultEncryption = (function() {
     }
 
     /**
-     * Encrypt JSON-serialisable data with a passphrase.
+     * Encrypt JSON-serialisable data.
+     * Accepts either a passphrase (string) or a pre-derived CryptoKey.
      * @param {*} data - Any JSON-serialisable value
-     * @param {string} passphrase
+     * @param {string|CryptoKey} passphraseOrKey
      * @returns {Promise<{iv: string, salt: string, ciphertext: string}>} Base64-encoded strings
      */
-    function encrypt(data, passphrase) {
+    function encrypt(data, passphraseOrKey) {
         var iv = crypto.getRandomValues(new Uint8Array(12));
-        var salt = crypto.getRandomValues(new Uint8Array(16));
+        var salt = getVaultSalt(); // Use vault-level salt
         var enc = new TextEncoder();
         var plaintext = enc.encode(JSON.stringify(data));
 
-        return deriveKey(passphrase, salt).then(function(key) {
+        var keyPromise = (typeof passphraseOrKey === 'string')
+            ? deriveKey(passphraseOrKey, salt)
+            : Promise.resolve(passphraseOrKey);
+
+        return keyPromise.then(function(key) {
             return crypto.subtle.encrypt(
                 { name: 'AES-GCM', iv: iv },
                 key,
@@ -128,12 +143,25 @@ var VaultEncryption = (function() {
      * @param {string} passphrase
      * @returns {Promise<*>} Parsed JSON data
      */
-    function decrypt(encryptedObj, passphrase) {
+    /**
+     * Decrypt an encrypted object. Accepts passphrase or CryptoKey.
+     * Handles both legacy per-item salts and vault-level salt.
+     */
+    function decrypt(encryptedObj, passphraseOrKey) {
         var iv = new Uint8Array(base64ToArrayBuffer(encryptedObj.iv));
         var salt = new Uint8Array(base64ToArrayBuffer(encryptedObj.salt));
         var ciphertext = base64ToArrayBuffer(encryptedObj.ciphertext);
 
-        return deriveKey(passphrase, salt).then(function(key) {
+        var keyPromise;
+        if (typeof passphraseOrKey === 'string') {
+            // Derive from passphrase + item's salt (legacy or migration)
+            keyPromise = deriveKey(passphraseOrKey, salt);
+        } else {
+            // Use pre-derived CryptoKey (vault-level salt)
+            keyPromise = Promise.resolve(passphraseOrKey);
+        }
+
+        return keyPromise.then(function(key) {
             return crypto.subtle.decrypt(
                 { name: 'AES-GCM', iv: iv },
                 key,
@@ -152,8 +180,10 @@ var VaultEncryption = (function() {
      * @param {string} passphrase
      * @returns {Promise<void>}
      */
-    function storeSecure(key, data, passphrase) {
-        return encrypt(data, passphrase).then(function(encObj) {
+    function storeSecure(key, data, passphraseOrKey) {
+        var keyToUse = passphraseOrKey || cachedKey;
+        if (!keyToUse) return Promise.reject(new Error('Vault is locked'));
+        return encrypt(data, keyToUse).then(function(encObj) {
             var store = getVaultStore();
             store[key] = encObj;
             saveVaultStore(store);
@@ -166,12 +196,14 @@ var VaultEncryption = (function() {
      * @param {string} passphrase
      * @returns {Promise<*>}
      */
-    function retrieveSecure(key, passphrase) {
+    function retrieveSecure(key, passphraseOrKey) {
         var store = getVaultStore();
         if (!store[key]) {
             return Promise.reject(new Error('Key not found: ' + key));
         }
-        return decrypt(store[key], passphrase);
+        var keyToUse = passphraseOrKey || cachedKey;
+        if (!keyToUse) return Promise.reject(new Error('Vault is locked'));
+        return decrypt(store[key], keyToUse);
     }
 
     /**
@@ -201,36 +233,44 @@ var VaultEncryption = (function() {
     function changePassphrase(oldPass, newPass) {
         var store = getVaultStore();
         var keys = Object.keys(store);
+        var vaultSalt = getVaultSalt();
         if (keys.length === 0) {
-            cachedPassphrase = newPass;
-            cachedKey = null;
-            return Promise.resolve();
+            // No items — derive and cache new key
+            return deriveKey(newPass, vaultSalt).then(function(newKey) {
+                cachedKey = newKey;
+            });
         }
 
         // Backup current store for rollback on failure
         var backup = JSON.stringify(store);
 
+        // Decrypt all items with old passphrase (or cached key)
+        var oldKeyOrPass = cachedKey || oldPass;
         var decryptPromises = keys.map(function(k) {
-            return decrypt(store[k], oldPass).then(function(data) {
+            return decrypt(store[k], oldKeyOrPass).then(function(data) {
                 return { key: k, data: data };
             });
         });
 
         return Promise.all(decryptPromises).then(function(items) {
-            var reEncryptPromises = items.map(function(item) {
-                return encrypt(item.data, newPass).then(function(encObj) {
-                    return { key: item.key, encObj: encObj };
+            // Derive new vault key, re-encrypt all items with it
+            return deriveKey(newPass, vaultSalt).then(function(newKey) {
+                var reEncryptPromises = items.map(function(item) {
+                    return encrypt(item.data, newKey).then(function(encObj) {
+                        return { key: item.key, encObj: encObj };
+                    });
+                });
+                return Promise.all(reEncryptPromises).then(function(reEncrypted) {
+                    return { reEncrypted: reEncrypted, newKey: newKey };
                 });
             });
-            return Promise.all(reEncryptPromises);
-        }).then(function(reEncrypted) {
+        }).then(function(result) {
             var newStore = {};
-            reEncrypted.forEach(function(item) {
+            result.reEncrypted.forEach(function(item) {
                 newStore[item.key] = item.encObj;
             });
             saveVaultStore(newStore);
-            cachedPassphrase = newPass;
-            cachedKey = null;
+            cachedKey = result.newKey; // Cache only the CryptoKey
         }).catch(function(err) {
             // Rollback to original encrypted store on any failure
             try { localStorage.setItem(STORAGE_KEY, backup); } catch(e) { console.warn('[Vault] Rollback failed:', e); }
@@ -250,9 +290,7 @@ var VaultEncryption = (function() {
      * Clear the derived key from memory, locking the vault.
      */
     function lock() {
-        cachedKey = null;
-        cachedPassphrase = '';  // Overwrite before nulling to reduce memory exposure
-        cachedPassphrase = null;
+        cachedKey = null; // CryptoKey — non-extractable, GC'd by browser
         locked = true;
         if (cacheTimeout) { clearTimeout(cacheTimeout); cacheTimeout = null; }
     }
@@ -264,27 +302,81 @@ var VaultEncryption = (function() {
      * @returns {Promise<boolean>} Resolves true on success
      */
     function unlock(passphrase) {
-        var keys = listKeys();
-        if (keys.length > 0) {
-            // Validate passphrase against stored items — try first available
-            // If first key is corrupted, try remaining keys before failing
-            var tryKey = function(idx) {
-                if (idx >= keys.length) return Promise.reject(new Error('Invalid passphrase or all vault items corrupted'));
-                return retrieveSecure(keys[idx], passphrase).then(function() {
-                    cachedPassphrase = passphrase;
-                    locked = false;
-                    resetCacheTimeout();
-                    return true;
-                }).catch(function() {
-                    return tryKey(idx + 1);
+        var vaultSalt = getVaultSalt();
+        var vaultKeys = listKeys();
+
+        // Derive the vault-level CryptoKey from passphrase + vault salt
+        return deriveKey(passphrase, vaultSalt).then(function(derivedKey) {
+            if (vaultKeys.length > 0) {
+                // Validate by trying to decrypt the first item with the vault key.
+                // If items were encrypted with a legacy per-item salt, fall back
+                // to passphrase-based decryption and re-encrypt with vault key.
+                var tryVaultKey = function(idx) {
+                    if (idx >= vaultKeys.length) {
+                        // All items failed with vault key — try legacy passphrase decryption
+                        return _migrateToVaultKey(passphrase, derivedKey);
+                    }
+                    var store = getVaultStore();
+                    return decrypt(store[vaultKeys[idx]], derivedKey).then(function(data) {
+                        if (data === null) return tryVaultKey(idx + 1);
+                        // Success — cache only the CryptoKey, never the passphrase
+                        cachedKey = derivedKey;
+                        locked = false;
+                        resetCacheTimeout();
+                        return true;
+                    }).catch(function() {
+                        return tryVaultKey(idx + 1);
+                    });
+                };
+                return tryVaultKey(0);
+            }
+            // No items yet — accept any passphrase, cache key
+            cachedKey = derivedKey;
+            locked = false;
+            resetCacheTimeout();
+            return true;
+        });
+    }
+
+    /**
+     * Migrate legacy per-item-salt items to vault-level salt.
+     * Uses passphrase transiently — never cached.
+     */
+    function _migrateToVaultKey(passphrase, vaultKey) {
+        var store = getVaultStore();
+        var keys = Object.keys(store);
+        if (keys.length === 0) return Promise.reject(new Error('Invalid passphrase'));
+
+        // Try to decrypt all items with the raw passphrase (legacy per-item salts)
+        var decryptPromises = keys.map(function(k) {
+            return decrypt(store[k], passphrase).then(function(data) {
+                return { key: k, data: data };
+            });
+        });
+
+        return Promise.all(decryptPromises).then(function(items) {
+            // Re-encrypt all items with the vault-level key
+            var reEncPromises = items.map(function(item) {
+                return encrypt(item.data, vaultKey).then(function(encObj) {
+                    return { key: item.key, encObj: encObj };
                 });
-            };
-            return tryKey(0);
-        }
-        // No items yet -- accept any passphrase
-        cachedPassphrase = passphrase;
-        locked = false;
-        return Promise.resolve(true);
+            });
+            return Promise.all(reEncPromises);
+        }).then(function(reEncrypted) {
+            var newStore = {};
+            reEncrypted.forEach(function(item) {
+                newStore[item.key] = item.encObj;
+            });
+            saveVaultStore(newStore);
+            // passphrase is a local variable — goes out of scope here
+            cachedKey = vaultKey;
+            locked = false;
+            resetCacheTimeout();
+            console.warn('[Vault] Migrated ' + keys.length + ' item(s) to vault-level key');
+            return true;
+        }).catch(function() {
+            return Promise.reject(new Error('Invalid passphrase or vault items corrupted'));
+        });
     }
 
     // ---- UI rendering ----
@@ -460,7 +552,7 @@ var VaultEncryption = (function() {
             data = rawValue;
         }
 
-        storeSecure(itemKey, data, cachedPassphrase).then(function() {
+        storeSecure(itemKey, data, cachedKey).then(function() {
             _refreshVaultTab();
         }).catch(function(err) {
             if (errEl) { errEl.textContent = 'Encryption error: ' + err.message; errEl.style.display = 'block'; }
@@ -474,7 +566,7 @@ var VaultEncryption = (function() {
         display.style.display = 'block';
         display.innerHTML = '<em>Decrypting...</em>';
 
-        retrieveSecure(key, cachedPassphrase).then(function(data) {
+        retrieveSecure(key, cachedKey).then(function(data) {
             var formatted = typeof data === 'string' ? esc(data) : '<pre style="margin:0;white-space:pre-wrap;word-break:break-all;">' + esc(JSON.stringify(data, null, 2)) + '</pre>';
             display.innerHTML = '<strong>' + esc(key) + '</strong><hr style="border:none;border-top:1px solid #ddd;margin:8px 0;">' + formatted;
         }).catch(function(err) {

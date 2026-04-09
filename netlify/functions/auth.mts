@@ -477,7 +477,7 @@ export default async (req: Request, context: Context) => {
   }
 
   // Rate limit: 5 requests per IP per 15 min for auth endpoints
-  const rl = checkRateLimit(req, { max: 5, clientIp: context.ip });
+  const rl = await checkRateLimit(req, { max: 5, clientIp: context.ip });
   if (rl) return rl;
 
   const url = new URL(req.url);

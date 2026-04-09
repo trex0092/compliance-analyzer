@@ -29,7 +29,7 @@ export default async (req: Request, context: Context) => {
   }
 
   // Rate limit: 10 requests per IP per 15 minutes (use context.ip for reliable IP)
-  const rateLimitResponse = checkRateLimit(req, { max: 10, clientIp: context.ip });
+  const rateLimitResponse = await checkRateLimit(req, { max: 10, clientIp: context.ip });
   if (rateLimitResponse) return rateLimitResponse;
 
   // Authentication required — prevent unauthenticated alert injection

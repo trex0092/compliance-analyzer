@@ -86,7 +86,13 @@ export const MOE_CIRCULAR_IMPLEMENTATION_DAYS = 30;
 
 // ─── Record Retention ───────────────────────────────────────────────────────
 
-/** Minimum record retention — 10 years (FDL No.10/2025, MoE DPMS Guidance) */
+/**
+ * Minimum record retention — 10 years.
+ * FDL No.10/2025 Art.24 mandates a 5-year minimum, but MoE DPMS Guidance
+ * (2025) recommends 10 years for precious metals dealers due to the extended
+ * statute of limitations and LBMA responsible gold audit lookback periods.
+ * Using 10 years (the more conservative value) ensures compliance with both.
+ */
 export const RECORD_RETENTION_YEARS = 10;
 
 // ─── CDD Review Frequencies ────────────────────────────────────────────────

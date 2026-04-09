@@ -1796,7 +1796,8 @@ async function fetchGoldApiMetals() {
 }
 
 async function fetchMetalPriceApi() {
-  const r = await fetch(`https://api.metalpriceapi.com/v1/latest?api_key=demo&base=USD&currencies=XAU,XAG&t=${Date.now()}`, { cache: 'no-store' });
+  var metalPriceKey = (typeof METAL_PRICE_API_KEY !== 'undefined' && METAL_PRICE_API_KEY) || 'demo';
+  const r = await fetch(`https://api.metalpriceapi.com/v1/latest?api_key=${encodeURIComponent(metalPriceKey)}&base=USD&currencies=XAU,XAG&t=${Date.now()}`, { cache: 'no-store' });
   if (!r.ok) throw new Error('MetalPriceAPI unavailable');
   const data = await r.json();
   if (!data.success && !data.rates) throw new Error('MetalPriceAPI no data');

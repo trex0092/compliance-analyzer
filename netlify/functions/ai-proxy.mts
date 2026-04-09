@@ -71,7 +71,7 @@ export default async (req: Request, context: Context) => {
   }
 
   // Rate limit: 10 AI requests per 15 min
-  const rl = checkRateLimit(req, { max: 10, clientIp: context.ip });
+  const rl = await checkRateLimit(req, { max: 10, clientIp: context.ip });
   if (rl) return rl;
 
   // Authentication required
