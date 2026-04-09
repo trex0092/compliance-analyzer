@@ -225,8 +225,8 @@
           <div class="asana-meta">SLA ${esc(c.slaHours)}h | Owner ${esc(c.owner)} | ${esc(c.summary)}</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-green" onclick="window.closeCaseById('${esc(c.id)}','ESCALATED')">Escalate</button>
-          <button class="btn btn-sm" onclick="window.closeCaseById('${esc(c.id)}','FALSE_POSITIVE')">False Positive</button>
+          <button class="btn btn-sm btn-green" data-action="closeCaseById" data-arg="${esc(c.id)}" data-arg2="ESCALATED">Escalate</button>
+          <button class="btn btn-sm" data-action="closeCaseById" data-arg="${esc(c.id)}" data-arg2="FALSE_POSITIVE">False Positive</button>
         </div>
       </div>
     `).join('');
@@ -289,8 +289,8 @@
           <div class="asana-meta">Reference ${esc(a.ref)} | Created ${esc(new Date(a.ts).toLocaleString('en-GB'))}</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-green" onclick="window.resolveApproval('${esc(a.id)}',true)">Approve</button>
-          <button class="btn btn-sm btn-red" onclick="window.resolveApproval('${esc(a.id)}',false)">Reject</button>
+          <button class="btn btn-sm btn-green" data-action="resolveApproval" data-arg="${esc(a.id)}" data-arg2="true">Approve</button>
+          <button class="btn btn-sm btn-red" data-action="resolveApproval" data-arg="${esc(a.id)}" data-arg2="false">Reject</button>
         </div>
       </div>
     `).join('');

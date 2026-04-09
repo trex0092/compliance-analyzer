@@ -7,6 +7,172 @@ function requireChart() {
   if (!window.Chart) { toast('Chart library not loaded — check your internet connection and reload.', 'error', 5000); return null; }
   return window.Chart;
 }
+// ======= DELEGATED EVENT HELPERS =======
+// These named functions replace complex multi-statement inline onclick handlers
+// so that data-action delegation can reference them by name.
+
+/** Close the Asana task edit modal */
+window._closeEditAsanaModal = function () {
+  var el = document.getElementById('editAsanaTaskModal');
+  if (el) el.classList.remove('open');
+};
+
+/** Connect Google Drive (prevents default on anchor click) */
+window._connectGoogleDriveLink = function () {
+  if (typeof connectGoogleDrive === 'function') connectGoogleDrive();
+};
+
+/** Copy board report to clipboard */
+window._copyBoardReport = function () {
+  var el = document.querySelector('#boardReportPreview .summary-box');
+  if (el) {
+    navigator.clipboard.writeText(el.textContent);
+    if (typeof toast === 'function') toast('Copied', 'success');
+  }
+};
+
+/** Open edit Asana task modal — reads data attributes for all 4 args */
+window._openEditAsanaTaskFromEl = function () {
+  // This is handled by the supplementary click delegation below
+};
+
+/** Change user role from select (onchange with this.value via data-change) */
+window._changeUserRoleFromSelect = function (e) {
+  var el = e.target;
+  var userId = el.getAttribute('data-user-id');
+  if (typeof changeUserRole === 'function') changeUserRole(Number(userId), el.value);
+};
+
+/** Wrapper for raciColorChange that adapts event to element (data-change passes e) */
+window._raciColorChangeFromEvent = function (e) {
+  if (typeof raciColorChange === 'function') raciColorChange(e.target);
+};
+
+/** Change incident status from select (onchange with this.value via data-change) */
+window._changeIncidentStatusFromSelect = function (e) {
+  var el = e.target;
+  var incidentId = el.getAttribute('data-incident-id');
+  if (typeof changeIncidentStatus === 'function') changeIncidentStatus(Number(incidentId), el.value);
+};
+
+/**
+ * Supplementary click delegation for actions that require element context.
+ * The main app-events.js delegation passes (arg, arg2) strings. These actions
+ * need the actual clicked element, so we handle them here with direct DOM access.
+ */
+document.addEventListener('click', function (e) {
+  var target = e.target.closest('[data-action]');
+  if (!target) return;
+  var action = target.getAttribute('data-action');
+
+  switch (action) {
+    case '_openEditAsanaTaskFromEl':
+      if (typeof openEditAsanaTask === 'function') {
+        openEditAsanaTask(
+          target.getAttribute('data-gid') || '',
+          target.getAttribute('data-task-name') || '',
+          target.getAttribute('data-due') || '',
+          target.getAttribute('data-assignee') || ''
+        );
+      }
+      e.stopImmediatePropagation();
+      break;
+    case '_removeClosestTr':
+      var tr = target.closest('tr');
+      if (tr) tr.remove();
+      e.stopImmediatePropagation();
+      break;
+    case '_removeParentElement':
+      if (target.parentElement) target.parentElement.remove();
+      e.stopImmediatePropagation();
+      break;
+    case '_toggleIncExpand':
+      target.classList.toggle('inc-expand');
+      e.stopImmediatePropagation();
+      break;
+    case '_copyClosestSummaryBox':
+      var card = target.closest('.card');
+      if (card) {
+        var box = card.querySelector('.summary-box');
+        if (box && typeof copyElText === 'function') copyElText(box);
+      }
+      e.stopImmediatePropagation();
+      break;
+    case '_openSafeUrlFromDataUrl':
+      var url = target.getAttribute('data-url');
+      if (url && typeof openSafeUrl === 'function') openSafeUrl(url);
+      e.stopImmediatePropagation();
+      break;
+    case '_stopAndDeleteLocalShipment':
+      e.stopPropagation();
+      var shipId = target.getAttribute('data-arg');
+      if (typeof deleteLocalShipment === 'function') deleteLocalShipment(Number(shipId));
+      e.stopImmediatePropagation();
+      break;
+    case '_stopAndDeleteEmployee':
+      e.stopPropagation();
+      var empId = target.getAttribute('data-arg');
+      if (typeof deleteEmployee === 'function') deleteEmployee(Number(empId));
+      e.stopImmediatePropagation();
+      break;
+    case '_deleteUploadedFile':
+      if (typeof deleteUploadedFile === 'function') {
+        deleteUploadedFile(
+          target.getAttribute('data-file-key') || '',
+          target.getAttribute('data-file-name') || ''
+        );
+      }
+      e.stopImmediatePropagation();
+      break;
+    case '_removeGenericAttachment':
+      if (typeof removeGenericAttachment === 'function') {
+        removeGenericAttachment(
+          target.getAttribute('data-store-key') || '',
+          Number(target.getAttribute('data-attach-id')),
+          target.getAttribute('data-arr-name') || '',
+          target.getAttribute('data-render-fn') || ''
+        );
+      }
+      e.stopImmediatePropagation();
+      break;
+    case '_removeCProgAttachment':
+      if (typeof removeCProgAttachment === 'function') {
+        removeCProgAttachment(
+          target.getAttribute('data-section') || '',
+          Number(target.getAttribute('data-attach-id'))
+        );
+      }
+      e.stopImmediatePropagation();
+      break;
+    case '_addPreloadedDeadline':
+      if (typeof addPreloadedDeadline === 'function') {
+        addPreloadedDeadline(
+          target.getAttribute('data-title') || '',
+          target.getAttribute('data-category') || '',
+          Number(target.getAttribute('data-month') || 0),
+          Number(target.getAttribute('data-day') || 0)
+        );
+      }
+      e.stopImmediatePropagation();
+      break;
+    case '_editDefinition':
+      if (typeof editDefinition === 'function') {
+        editDefinition(
+          target.getAttribute('data-section') || '',
+          target.getAttribute('data-term') || ''
+        );
+      }
+      e.stopImmediatePropagation();
+      break;
+    case '_downloadStrDraft':
+      if (typeof downloadStrDraft === 'function') {
+        downloadStrDraft(target.getAttribute('data-name') || '');
+      }
+      e.stopImmediatePropagation();
+      break;
+  }
+});
+
 // ======= STATE =======
 var ANTHROPIC_KEY = '';
 var ASANA_TOKEN = '';
@@ -857,7 +1023,7 @@ function runAlertScanner() {
 function switchTab(name) {
   if (window.MobileResponsive) MobileResponsive.closeMenu();
   document.querySelectorAll('.tab').forEach(t => {
-    const tabName = t.getAttribute('onclick')?.match(/switchTab\('(\w+)'\)/)?.[1];
+    const tabName = t.getAttribute('data-action') === 'switchTab' ? t.getAttribute('data-arg') : t.getAttribute('onclick')?.match(/switchTab\('(\w+)'\)/)?.[1];
     t.classList.toggle('active', tabName === name);
   });
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -935,7 +1101,7 @@ function renderEmployeeTraining() {
     const completedList = completedSubjects.length
       ? completedSubjects.map((s) => `<li style="margin-bottom:4px">${escHtml(s)}${subjectMeta(s)}</li>`).join('')
       : '<li>No completed trainings yet</li>';
-    return `<div class="card" style="margin-bottom:10px"><div class="top-bar" style="margin-bottom:6px"><div><div class="asana-name">${escHtml(r.employeeName || '')}</div><div class="asana-meta">Department: ${escHtml(r.department || '')} | Completed ${completedCount}/${target} (${progress}%)</div></div><button class="btn btn-sm btn-red" onclick="deleteEmployeeTraining('${escJsStr(r.id)}')">Remove Employee</button></div><div style="height:8px;border:1px solid var(--border);border-radius:999px;overflow:hidden;background:rgba(201,168,76,0.05);margin-bottom:8px"><div style="height:100%;width:${progress}%;background:var(--green)"></div></div><details><summary style="cursor:pointer;color:var(--muted);font-size:12px;font-family:'Montserrat',sans-serif">Completed trainings (${completedSubjects.length})</summary><ul style="margin:8px 0 0 16px;color:var(--muted);font-size:12px">${completedList}</ul></details><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--muted);font-size:12px;font-family:'Montserrat',sans-serif">Pending trainings (${pendingSubjects.length})</summary><ul style="margin:8px 0 0 16px;color:var(--muted);font-size:12px">${pendingList}</ul></details></div>`;
+    return `<div class="card" style="margin-bottom:10px"><div class="top-bar" style="margin-bottom:6px"><div><div class="asana-name">${escHtml(r.employeeName || '')}</div><div class="asana-meta">Department: ${escHtml(r.department || '')} | Completed ${completedCount}/${target} (${progress}%)</div></div><button class="btn btn-sm btn-red" data-action="deleteEmployeeTraining" data-arg="${escJsStr(r.id)}">Remove Employee</button></div><div style="height:8px;border:1px solid var(--border);border-radius:999px;overflow:hidden;background:rgba(201,168,76,0.05);margin-bottom:8px"><div style="height:100%;width:${progress}%;background:var(--green)"></div></div><details><summary style="cursor:pointer;color:var(--muted);font-size:12px;font-family:'Montserrat',sans-serif">Completed trainings (${completedSubjects.length})</summary><ul style="margin:8px 0 0 16px;color:var(--muted);font-size:12px">${completedList}</ul></details><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--muted);font-size:12px;font-family:'Montserrat',sans-serif">Pending trainings (${pendingSubjects.length})</summary><ul style="margin:8px 0 0 16px;color:var(--muted);font-size:12px">${pendingList}</ul></details></div>`;
   }).join('');
 }
 
@@ -1216,7 +1382,7 @@ function renderExternalLinks() {
         (l.desc ? '<div style="color:var(--muted);font-size:10px;margin-top:2px;line-height:1.3">' + escHtml(l.desc) + '</div>' : '') +
         '<div style="color:var(--text);font-size:9px;margin-top:3px;opacity:0.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(l.url) + '</div>' +
       '</div>' +
-      '<button onclick="deleteExtLink(\'' + l.id + '\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0;line-height:1;opacity:0.6" title="Remove">&times;</button>' +
+      '<button data-action="deleteExtLink" data-arg="' + l.id + '" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0;line-height:1;opacity:0.6" title="Remove">&times;</button>' +
     '</div>').join('') +
     '</div></div>'
   ).join('');
@@ -1301,7 +1467,7 @@ function renderCompanyLinksPanelFor(company) {
     { label: 'External Portal', url: links.portal }
   ].filter(x => x.url);
   if (items.length) {
-    html += items.map(item => `<div class="asana-item"><div><div class="asana-name">${escHtml(item.label)}</div><div class="asana-meta">${escHtml(item.url)}</div></div><button class="btn btn-sm" onclick="openSafeUrl('${escJsStr(item.url)}')">Open</button></div>`).join('');
+    html += items.map(item => `<div class="asana-item"><div><div class="asana-name">${escHtml(item.label)}</div><div class="asana-meta">${escHtml(item.url)}</div></div><button class="btn btn-sm" data-action="openSafeUrl" data-arg="${escJsStr(item.url)}">Open</button></div>`).join('');
   }
   if (!html) {
     panel.innerHTML = '<p style="color:var(--muted);font-size:13px">No external links configured for this company.</p>';
@@ -2525,8 +2691,8 @@ function renderShipments() {
       <div style="display:flex;align-items:center;gap:8px">
         <span class="asana-status ${sClass}">${riskLevel} · ${riskScore}</span>
         <span class="sync-status ${syncClass}">${syncStatus}</span>
-        <button class="btn btn-sm btn-gold" onclick="startEditShipment(${s.id})">Edit</button>
-        <button class="btn btn-sm btn-red" onclick="deleteShipment(${s.id})">Delete</button>
+        <button class="btn btn-sm btn-gold" data-action="startEditShipment" data-arg="${s.id}">Edit</button>
+        <button class="btn btn-sm btn-red" data-action="deleteShipment" data-arg="${s.id}">Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -2583,7 +2749,7 @@ function addIARUboRow(name, shares, findings) {
     <div><span class="lbl">Name ${n}</span><input type="text" id="iarUboName${n}" placeholder="Full name" value="${escHtml(name||'')}" /></div>
     <div><span class="lbl">Shares %</span><input type="number" id="iarUboShares${n}" placeholder="0" min="0" max="100" step="0.01" value="${escHtml(shares||'')}" /></div>
     <div><span class="lbl">Findings</span><select id="iarUboFindings${n}"><option value="">Select</option><option value="Clear"${findings==='Clear'?' selected':''}>Clear</option><option value="Match"${findings==='Match'?' selected':''}>Match</option><option value="Potential Match"${findings==='Potential Match'?' selected':''}>Potential Match</option></select></div>
-    <div style="padding-top:20px"><button class="btn btn-sm btn-red" onclick="removeIARUboRow(${n})">✕</button></div>
+    <div style="padding-top:20px"><button class="btn btn-sm btn-red" data-action="removeIARUboRow" data-arg="${n}">✕</button></div>
   `;
   container.appendChild(row);
 }
@@ -2621,7 +2787,7 @@ function addIARManagerRow(name, role, findings) {
     <div><span class="lbl">Name ${n}</span><input type="text" id="iarMgrName${n}" placeholder="Full name" value="${escHtml(name||'')}" /></div>
     <div><span class="lbl">Role / Title</span><input type="text" id="iarMgrRole${n}" placeholder="e.g., Managing Director, Authorized Signatory" value="${escHtml(role||'')}" /></div>
     <div><span class="lbl">Findings</span><select id="iarMgrFindings${n}"><option value="">Select</option><option value="Clear"${findings==='Clear'?' selected':''}>Clear</option><option value="Match"${findings==='Match'?' selected':''}>Match</option><option value="Potential Match"${findings==='Potential Match'?' selected':''}>Potential Match</option></select></div>
-    <div style="padding-top:20px"><button class="btn btn-sm btn-red" onclick="removeIARManagerRow(${n})">✕</button></div>
+    <div style="padding-top:20px"><button class="btn btn-sm btn-red" data-action="removeIARManagerRow" data-arg="${n}">✕</button></div>
   `;
   container.appendChild(row);
 }
@@ -2878,8 +3044,8 @@ function renderIARReports() {
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <span class="asana-status ${riskClass}">${riskLevel}</span>
-        <button class="btn btn-sm btn-gold" onclick="startEditIARReport(${r.id})">Edit</button>
-        <button class="btn btn-sm btn-red" onclick="deleteIARReport(${r.id})">Delete</button>
+        <button class="btn btn-sm btn-gold" data-action="startEditIARReport" data-arg="${r.id}">Edit</button>
+        <button class="btn btn-sm btn-red" data-action="deleteIARReport" data-arg="${r.id}">Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -3308,7 +3474,7 @@ function renderResults(r, query) {
     const impact = escHtml(f.risk_impact || '');
     const impactHtml = impact ? `<div style="font-size:11px;color:var(--amber);margin-top:6px;padding:6px 10px;background:rgba(232,168,56,0.08);border-radius:3px;border-left:2px solid var(--amber)"><strong>Risk Impact:</strong> ${impact}</div>` : '';
     const taskBtn = f.asana_task_name
-      ? `<div class="writeback-row"><button class="btn btn-sm btn-green" onclick="prefillCreateTask('${escJsStr(f.asana_task_name)}','${escJsStr((f.body||'') + (f.regulatory_ref ? ' Ref: ' + f.regulatory_ref : ''))}')">+ Create Asana Task</button></div>`
+      ? `<div class="writeback-row"><button class="btn btn-sm btn-green" data-action="prefillCreateTask" data-arg="${escJsStr(f.asana_task_name)}" data-arg2="${escJsStr((f.body||'') + (f.regulatory_ref ? ' Ref: ' + f.regulatory_ref : ''))}">+ Create Asana Task</button></div>`
       : '';
     el.innerHTML = `<div class="f-head"><div class="f-head-left"><span class="badge ${bc}">${sev}</span><div class="f-title">${title}</div></div></div><div class="f-body">${body}</div>${ref?`<div class="f-ref">${ref}</div>`:''} ${rec?`<div class="rec">${rec}</div>`:''}${impactHtml}${taskBtn}`;
     c.appendChild(el);
@@ -3686,11 +3852,11 @@ async function loadAsanaTasks(silent) {
     </div>`;
     if (overdue.length) {
       html += `<div class="sec-title">Overdue Tasks (${overdue.length})</div>`;
-      overdue.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}${t.assignee ? ' | ' + escHtml(t.assignee.name) : ''}</div></div><div style="display:flex;gap:4px;align-items:center"><button class="btn btn-sm btn-green" style="padding:2px 8px;font-size:9px" onclick="openEditAsanaTask('${escHtml(t.gid)}','${escHtml(t.name).replace(/'/g,"\\'")}','${t.due_on||''}','${t.assignee?escHtml(t.assignee.name).replace(/'/g,"\\'"):''}')">Edit</button><span class="asana-status s-overdue">OVERDUE</span></div></div>`; });
+      overdue.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}${t.assignee ? ' | ' + escHtml(t.assignee.name) : ''}</div></div><div style="display:flex;gap:4px;align-items:center"><button class="btn btn-sm btn-green" style="padding:2px 8px;font-size:9px" data-action="_openEditAsanaTaskFromEl" data-gid="${escHtml(t.gid)}" data-task-name="${escHtml(t.name)}" data-due="${t.due_on||''}" data-assignee="${t.assignee?escHtml(t.assignee.name):''}">Edit</button><span class="asana-status s-overdue">OVERDUE</span></div></div>`; });
     }
     if (dueWeek.length) {
       html += `<div class="sec-title" style="margin-top:1rem">Due This Week (${dueWeek.length})</div>`;
-      dueWeek.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}${t.assignee ? ' | ' + escHtml(t.assignee.name) : ''}</div></div><div style="display:flex;gap:4px;align-items:center"><button class="btn btn-sm btn-green" style="padding:2px 8px;font-size:9px" onclick="openEditAsanaTask('${escHtml(t.gid)}','${escHtml(t.name).replace(/'/g,"\\'")}','${t.due_on||''}','${t.assignee?escHtml(t.assignee.name).replace(/'/g,"\\'"):''}')">Edit</button><span class="asana-status s-due">DUE SOON</span></div></div>`; });
+      dueWeek.forEach(t => { html += `<div class="asana-item"><div><div class="asana-name">${escHtml(t.name)}</div><div class="asana-meta">Due: ${escHtml(t.due_on)}${t.assignee ? ' | ' + escHtml(t.assignee.name) : ''}</div></div><div style="display:flex;gap:4px;align-items:center"><button class="btn btn-sm btn-green" style="padding:2px 8px;font-size:9px" data-action="_openEditAsanaTaskFromEl" data-gid="${escHtml(t.gid)}" data-task-name="${escHtml(t.name)}" data-due="${t.due_on||''}" data-assignee="${t.assignee?escHtml(t.assignee.name):''}">Edit</button><span class="asana-status s-due">DUE SOON</span></div></div>`; });
     }
     if (!overdue.length && !dueWeek.length) html += '<p style="color:var(--green);font-size:13px">No overdue or imminently due tasks.</p>';
     document.getElementById('asanaContent').innerHTML = html;
@@ -3725,7 +3891,7 @@ function openEditAsanaTask(gid, name, dueOn, assigneeName) {
 
   var html = `<div class="modal-overlay" id="editAsanaTaskModal">
     <div class="modal" style="max-width:500px;width:95%">
-      <button class="modal-close" onclick="document.getElementById('editAsanaTaskModal').classList.remove('open')">✕</button>
+      <button class="modal-close" data-action="_closeEditAsanaModal">✕</button>
       <div class="modal-title">Edit Asana Task</div>
       <input type="hidden" id="eat-gid" value="${escHtml(gid)}">
       <div style="margin-bottom:10px"><span class="lbl">Task Name *</span><input id="eat-name" value="${name.replace(/"/g,'&quot;')}"></div>
@@ -3735,9 +3901,9 @@ function openEditAsanaTask(gid, name, dueOn, assigneeName) {
       </div>
       <div style="margin-bottom:10px"><span class="lbl">Notes (append)</span><textarea id="eat-notes" placeholder="Add notes to this task..." style="min-height:60px"></textarea></div>
       <div style="display:flex;gap:8px;margin-top:1rem">
-        <button class="btn btn-green" onclick="saveEditAsanaTask()" style="flex:1;padding:12px;font-weight:600">Save & Update Asana</button>
-        <button class="btn btn-sm btn-gold" onclick="markAsanaTaskComplete()" style="padding:12px 16px">Mark Complete</button>
-        <button class="btn btn-sm" onclick="document.getElementById('editAsanaTaskModal').classList.remove('open')" style="padding:12px 16px">Cancel</button>
+        <button class="btn btn-green" data-action="saveEditAsanaTask" style="flex:1;padding:12px;font-weight:600">Save & Update Asana</button>
+        <button class="btn btn-sm btn-gold" data-action="markAsanaTaskComplete" style="padding:12px 16px">Mark Complete</button>
+        <button class="btn btn-sm" data-action="_closeEditAsanaModal" style="padding:12px 16px">Cancel</button>
       </div>
     </div>
   </div>`;
@@ -3942,8 +4108,8 @@ function renderSchedules() {
         <div class="schedule-next">${isDue ? '⚡ DUE NOW' : 'Next: '+s.nextRun}</div>
       </div>
       <div style="display:flex;gap:6px">
-        ${isDue ? `<button class="btn btn-sm btn-green" onclick="runScheduledAnalysis(${s.id})">Run Now</button>` : ''}
-        <button class="btn btn-sm btn-red" onclick="deleteSchedule(${s.id})">Remove</button>
+        ${isDue ? `<button class="btn btn-sm btn-green" data-action="runScheduledAnalysis" data-arg="${s.id}">Run Now</button>` : ''}
+        <button class="btn btn-sm btn-red" data-action="deleteSchedule" data-arg="${s.id}">Remove</button>
       </div>
     </div>`;
   }).join('');
@@ -4051,9 +4217,9 @@ function renderEvidence(tasks) {
       </div>
       <div class="ev-link-input">
         <input type="text" placeholder="Paste Google Drive folder URL..." value="${escHtml(saved)}" id="ev_${t.id}" />
-        <button class="btn btn-sm btn-green" onclick="saveEvidenceLink('${t.id}')">Save</button>
-        <button class="btn btn-sm" style="background:rgba(74,143,193,0.15);color:#4A8FC1;border:1px solid rgba(74,143,193,0.4)" onclick="markEvidenceNA('${t.id}')">N/A</button>
-        ${hasLink?`<button class="btn btn-sm" data-url="${escHtml(saved)}" onclick="openSafeUrl(this.dataset.url)">Open</button>`:''}
+        <button class="btn btn-sm btn-green" data-action="saveEvidenceLink" data-arg="${t.id}">Save</button>
+        <button class="btn btn-sm" style="background:rgba(74,143,193,0.15);color:#4A8FC1;border:1px solid rgba(74,143,193,0.4)" data-action="markEvidenceNA" data-arg="${t.id}">N/A</button>
+        ${hasLink?`<button class="btn btn-sm" data-action="_openSafeUrlFromDataUrl" data-url="${escHtml(saved)}">Open</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -4141,7 +4307,7 @@ function attachIARFile(input) {
 function renderIARAttachments() {
   const el = document.getElementById('iarAttachments');
   if (!el) return;
-  el.innerHTML = iarAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_iar_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_iar_attachments',${a.id},'iarAttachments','renderIARAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = iarAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" data-action="downloadGenericAttachment" data-arg="fgl_iar_attachments" data-arg2="${a.id}">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" data-action="_removeGenericAttachment" data-store-key="fgl_iar_attachments" data-attach-id="${a.id}" data-arr-name="iarAttachments" data-render-fn="renderIARAttachments">&times;</span></span>`).join('');
 }
 
 // ======= DRIVE STRUCTURE =======
@@ -4386,7 +4552,7 @@ function renderCProgAttachments(section) {
     var sizeKB = a.size ? (a.size / 1024).toFixed(1) + ' KB' : '';
     return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px"><span style="color:var(--green)">📎 ' + escHtml(a.name) + ' (' + sizeKB + ')</span>'
       + '<a href="' + a.data + '" download="' + escHtml(a.name) + '" class="btn btn-sm btn-green" style="padding:1px 6px;font-size:9px">Download</a>'
-      + '<button class="btn btn-sm btn-red" style="padding:1px 6px;font-size:9px" onclick="removeCProgAttachment(\'' + section + '\',' + a.id + ')">Remove</button></div>';
+      + '<button class="btn btn-sm btn-red" style="padding:1px 6px;font-size:9px" data-action="_removeCProgAttachment" data-section="' + section + '" data-attach-id="' + a.id + '">Remove</button></div>';
   }).join('');
 }
 function removeCProgAttachment(section, id) {
@@ -5010,7 +5176,7 @@ async function refreshGDriveFileList() {
   const listEl = document.getElementById('gdriveFileList');
   if (!gdriveAccessToken) {
     if (GDRIVE_CLIENT_ID) {
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--amber)">Configured</span> — <a href="#" onclick="connectGoogleDrive();return false" style="color:var(--gold);text-decoration:underline;cursor:pointer">Click here to authorize</a>';
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--amber)">Configured</span> — <a href="#" data-action="_connectGoogleDriveLink" style="color:var(--gold);text-decoration:underline;cursor:pointer">Click here to authorize</a>';
     } else {
       if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">Not configured.</span> Go to Settings and enter your Google Drive Client ID.';
     }
@@ -5236,13 +5402,13 @@ function renderUserManagement() {
         <div class="asana-meta">@${escHtml(u.username)} · Created: ${new Date(u.createdAt).toLocaleDateString('en-GB')}</div>
       </div>
       <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
-        <select onchange="changeUserRole(${u.id},this.value)" style="width:auto;height:24px;font-size:9px;padding:2px">
+        <select data-change="_changeUserRoleFromSelect" data-user-id="${u.id}" style="width:auto;height:24px;font-size:9px;padding:2px">
           <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
           <option value="co" ${u.role==='co'?'selected':''}>CO</option>
           <option value="viewer" ${u.role==='viewer'?'selected':''}>Viewer</option>
         </select>
-        <button class="btn btn-sm" onclick="toggleUserActive(${u.id})" style="padding:2px 6px;font-size:9px">${u.active?'Disable':'Enable'}</button>
-        <button class="btn btn-sm" onclick="resetUserPassword(${u.id})" style="padding:2px 6px;font-size:9px">Reset PW</button>
+        <button class="btn btn-sm" data-action="toggleUserActive" data-arg="${u.id}" style="padding:2px 6px;font-size:9px">${u.active?'Disable':'Enable'}</button>
+        <button class="btn btn-sm" data-action="resetUserPassword" data-arg="${u.id}" style="padding:2px 6px;font-size:9px">Reset PW</button>
       </div>
     </div>`;
   }).join('');
@@ -5846,14 +6012,14 @@ function renderLocalShipments() {
     const total = 9;
     const pct = Math.round(docs/total*100);
     const color = pct===100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
-    return `<div class="asana-item" style="cursor:pointer" onclick="editLocalShipment(${s.id})">
+    return `<div class="asana-item" style="cursor:pointer" data-action="editLocalShipment" data-arg="${s.id}">
       <div>
         <div class="asana-name">${escHtml(s.invoiceNo)} — ${escHtml(s.supplierCustomer||'—')}</div>
         <div class="asana-meta">${escHtml(s.material||'—')} | Amt: ${escHtml(s.amount||'0')} ${escHtml(s.currency||'')} | Folder: ${escHtml(s.folderNo||'—')} | Docs: ${docs}/${total}</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         <span style="font-size:10px;font-weight:700;color:${color}">${pct}%</span>
-        <button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();deleteLocalShipment(${s.id})">Delete</button>
+        <button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" data-action="_stopAndDeleteLocalShipment" data-arg="${s.id}">Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -6049,7 +6215,7 @@ function renderEmployeeDirectory() {
     if (e.eidExpiry) docBadges += `<span style="display:inline-block;padding:2px 8px;font-size:9px;font-weight:700;background:${eidStatus.bg||'transparent'};color:${eidStatus.color||'var(--muted)'};border:1px solid ${eidStatus.border||'var(--border)'};margin-right:4px">EID: ${eidStatus.label}</span>`;
     if (e.passportExpiry) docBadges += `<span style="display:inline-block;padding:2px 8px;font-size:9px;font-weight:700;background:${ppStatus.bg||'transparent'};color:${ppStatus.color||'var(--muted)'};border:1px solid ${ppStatus.border||'var(--border)'}">PP: ${ppStatus.label}</span>`;
 
-    return `<div class="asana-item" style="cursor:pointer;border-left:3px solid ${hasExpired?'var(--red)':hasAlert?'var(--amber)':'var(--green)'}" onclick="editEmployee(${e.id})">
+    return `<div class="asana-item" style="cursor:pointer;border-left:3px solid ${hasExpired?'var(--red)':hasAlert?'var(--amber)':'var(--green)'}" data-action="editEmployee" data-arg="${e.id}">
       <div>
         <div class="asana-name">${escHtml(e.name)}</div>
         <div class="asana-meta">${escHtml(e.designation||'—')} | ${escHtml(e.businessUnit||'—')} | ${escHtml(e.nationality||'—')} | Joined: ${escHtml(e.joinDate||'—')}</div>
@@ -6057,7 +6223,7 @@ function renderEmployeeDirectory() {
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         ${hasExpired?'<span class="badge b-c" style="font-size:10px;padding:3px 8px">⚠️ RENEW</span>':hasAlert?'<span class="badge" style="font-size:10px;padding:3px 8px;background:rgba(227,179,65,0.12);color:var(--amber);border:1px solid rgba(227,179,65,0.3)">⚠️ EXPIRING</span>':'<span class="badge b-ok" style="font-size:10px;padding:3px 8px">✅ ACTIVE</span>'}
-        <button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();deleteEmployee(${e.id})">Delete</button>
+        <button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" data-action="_stopAndDeleteEmployee" data-arg="${e.id}">Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -6142,7 +6308,7 @@ function attachTrainingFile(input) {
 function renderTrainingAttachments() {
   const el = document.getElementById('trainingAttachments');
   if (!el) return;
-  el.innerHTML = trainingAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_training_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_training_attachments',${a.id},'trainingAttachments','renderTrainingAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = trainingAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" data-action="downloadGenericAttachment" data-arg="fgl_training_attachments" data-arg2="${a.id}">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" data-action="_removeGenericAttachment" data-store-key="fgl_training_attachments" data-attach-id="${a.id}" data-arr-name="trainingAttachments" data-render-fn="renderTrainingAttachments">&times;</span></span>`).join('');
 }
 
 // ======= EMPLOYEE ATTACHMENTS & EXPORTS =======
@@ -6164,7 +6330,7 @@ function attachEmployeeFile(input) {
 function renderEmpAttachments() {
   const el = document.getElementById('empAttachments');
   if (!el) return;
-  el.innerHTML = empAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('fgl_emp_attachments',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('fgl_emp_attachments',${a.id},'empAttachments','renderEmpAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = empAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" data-action="downloadGenericAttachment" data-arg="fgl_emp_attachments" data-arg2="${a.id}">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" data-action="_removeGenericAttachment" data-store-key="fgl_emp_attachments" data-attach-id="${a.id}" data-arr-name="empAttachments" data-render-fn="renderEmpAttachments">&times;</span></span>`).join('');
 }
 function exportEmployeePDF() {
   if (!requireJsPDF()) return;
@@ -6223,7 +6389,7 @@ function renderCompanyAttachments() {
   if (!el) return;
   const key = getCompanyAttachKey();
   const list = getCompanyAttachments();
-  el.innerHTML = list.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" onclick="downloadGenericAttachment('${key}',${a.id})">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeGenericAttachment('${key}',${a.id},'','renderCompanyAttachments')">&times;</span></span>`).join('');
+  el.innerHTML = list.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px"><span style="color:var(--gold);cursor:pointer" data-action="downloadGenericAttachment" data-arg="${key}" data-arg2="${a.id}">📎 ${escHtml(a.name)}</span><span style="color:var(--red);cursor:pointer;font-weight:700" data-action="_removeGenericAttachment" data-store-key="${key}" data-attach-id="${a.id}" data-arr-name="" data-render-fn="renderCompanyAttachments">&times;</span></span>`).join('');
 }
 function exportCompanyPDF() {
   if (!requireJsPDF()) return;
@@ -6362,7 +6528,7 @@ window.raciColorChange = function(el) {
 };
 function raciRowHtml(r, i) {
   const opts = v => ['','R','A','C','I'].map(o => `<option value="${o}"${v===o?' selected':''}>${o}</option>`).join('');
-  const sel = (cls, v) => `<select class="${cls}" style="width:32px;text-align:center;font-weight:700;font-size:10px;padding:1px;border-radius:3px;${raciBgFor(v)}" onchange="raciColorChange(this)">${opts(v)}</select>`;
+  const sel = (cls, v) => `<select class="${cls}" style="width:32px;text-align:center;font-weight:700;font-size:10px;padding:1px;border-radius:3px;${raciBgFor(v)}" data-change="_raciColorChangeFromEvent">${opts(v)}</select>`;
   return `<tr>
     <td style="padding:4px 6px;border-bottom:1px solid var(--border);vertical-align:middle"><input type="text" class="raci-activity" value="${escHtml(r.activity||'')}" style="width:100%;border:none;background:transparent;font-size:10px;font-weight:500" title="${escHtml(r.activity||'')}" /></td>
     <td style="padding:2px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle">${sel('raci-cm',r.cm)}</td>
@@ -6370,7 +6536,7 @@ function raciRowHtml(r, i) {
     <td style="padding:2px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle">${sel('raci-fin',r.fin)}</td>
     <td style="padding:2px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle">${sel('raci-ops',r.ops)}</td>
     <td style="padding:4px 6px;border-bottom:1px solid var(--border);vertical-align:top"><div class="raci-desc" contenteditable="true" style="font-size:9px;color:var(--muted);line-height:1.4;max-height:120px;overflow-y:auto;outline:none;word-break:break-word">${escHtml(r.desc||'')}</div></td>
-    <td style="padding:2px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;width:28px"><button style="background:var(--red);color:#fff;border:none;border-radius:3px;width:20px;height:20px;font-size:10px;cursor:pointer;line-height:1" onclick="this.closest('tr').remove()">X</button></td>
+    <td style="padding:2px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;width:28px"><button style="background:var(--red);color:#fff;border:none;border-radius:3px;width:20px;height:20px;font-size:10px;cursor:pointer;line-height:1" data-action="_removeClosestTr">X</button></td>
   </tr>`;
 }
 
@@ -6421,8 +6587,8 @@ function renderRACIAttachments() {
   if (!el) return;
   if (!raciAttachments.length) { el.innerHTML = ''; return; }
   el.innerHTML = raciAttachments.map(a => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05);border-radius:3px;padding:3px 8px;font-size:10px;margin:2px">
-    <span style="color:var(--gold);cursor:pointer" onclick="downloadRACIAttachment(${a.id})" title="Download">📎 ${escHtml(a.name)}</span>
-    <span style="color:var(--red);cursor:pointer;font-weight:700" onclick="removeRACIAttachment(${a.id})" title="Remove">&times;</span>
+    <span style="color:var(--gold);cursor:pointer" data-action="downloadRACIAttachment" data-arg="${a.id}" title="Download">📎 ${escHtml(a.name)}</span>
+    <span style="color:var(--red);cursor:pointer;font-weight:700" data-action="removeRACIAttachment" data-arg="${a.id}" title="Remove">&times;</span>
   </span>`).join('');
 }
 
@@ -6628,7 +6794,7 @@ function addObUboRow(name, shares, findings) {
     <div><span class="lbl">Name ${obUboCount}</span><input type="text" class="ob-ubo-name" placeholder="Full name" value="${escHtml(name||'')}"/></div>
     <div><span class="lbl">Shares %</span><input type="number" class="ob-ubo-shares" placeholder="0" value="${shares||''}"/></div>
     <div><span class="lbl">Findings</span><select class="ob-ubo-findings"><option value="">Select</option><option value="Clear"${findings==='Clear'?' selected':''}>Clear</option><option value="Match"${findings==='Match'?' selected':''}>Match</option><option value="Potential Match"${findings==='Potential Match'?' selected':''}>Potential Match</option><option value="PEP"${findings==='PEP'?' selected':''}>PEP</option><option value="Adverse Media"${findings==='Adverse Media'?' selected':''}>Adverse Media</option></select></div>
-    <button class="btn btn-sm btn-red" style="height:36px" onclick="this.parentElement.remove()">X</button>`;
+    <button class="btn btn-sm btn-red" style="height:36px" data-action="_removeParentElement">X</button>`;
   document.getElementById('obUboContainer').appendChild(row);
 }
 
@@ -6753,7 +6919,7 @@ async function generateSTRDraft() {
     var strMissing = typeof validateSTRDraft === 'function' ? validateSTRDraft(text) : [];
     var strWarning = strMissing.length ? '<div style="margin-top:8px;padding:10px;border-radius:3px;background:var(--red-dim);border:1px solid rgba(217,79,79,0.3);font-size:11px;color:var(--red)"><strong>Missing mandatory fields:</strong> ' + strMissing.join(', ') + '<br>Review and add these before goAML submission.</div>' : '<div style="margin-top:8px;padding:10px;border-radius:3px;background:var(--green-dim);border:1px solid rgba(61,168,118,0.3);font-size:11px;color:var(--green)">All mandatory STR fields detected.</div>';
     document.getElementById('strDraftResult').style.display='block';
-    document.getElementById('strDraftResult').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${escHtml(text)}</div>${strWarning}<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="copySTR()">Copy STR</button></div>`;
+    document.getElementById('strDraftResult').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${escHtml(text)}</div>${strWarning}<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" data-action="copySTR">Copy STR</button></div>`;
     logAudit('str', `STR drafted for ${subject}`);
   } catch(e) { if(isBillingError(e)){toast('API credits exhausted — STR generation unavailable. Add credits at console.anthropic.com.','info',8000)}else{toast(`STR error: ${e.message}`,'error')} }
 }
@@ -6800,8 +6966,8 @@ Include: reporter info placeholders, subject details, grounds for suspicion base
     resultDiv.innerHTML = '<div style="margin-top:12px"><span class="sec-title" style="color:var(--amber)">STR Draft — ' + escHtml(name) + '</span>' +
       '<div class="summary-box" style="white-space:pre-wrap;font-size:12px;max-height:400px;overflow-y:auto">' + escHtml(text) + '</div>' +
       '<div style="display:flex;gap:8px;margin-top:8px">' +
-      '<button class="btn btn-sm btn-green" onclick="copyElText(this.closest(\'.card\').querySelector(\'.summary-box\'))">Copy STR</button>' +
-      '<button class="btn btn-sm btn-blue" onclick="downloadStrDraft(\'' + escHtml(name).replace(/'/g,"\\'") + '\')">Download</button>' +
+      '<button class="btn btn-sm btn-green" data-action="_copyClosestSummaryBox">Copy STR</button>' +
+      '<button class="btn btn-sm btn-blue" data-action="_downloadStrDraft" data-name="' + escHtml(name) + '">Download</button>' +
       '</div></div>';
     logAudit('str', 'STR draft generated from onboarding for ' + name);
     toast('STR draft generated', 'success');
@@ -6868,18 +7034,18 @@ function renderRiskAssessment() {
   body.innerHTML = RA_CRITERIA.map((c,i) => {
     let input = '';
     if (c.type === 'country') {
-      input = `<select id="ra_${c.key}" style="width:100%;font-size:10px;padding:3px 6px" onchange="updateRiskScores()">
+      input = `<select id="ra_${c.key}" style="width:100%;font-size:10px;padding:3px 6px" data-change="updateRiskScores">
         ${countries.map(co=>`<option value="${co}">${co||'— Select —'}</option>`).join('')}
       </select>`;
     } else if (c.type === 'select') {
       const opts = ["— Select —",...c.opts];
-      input = `<select id="ra_${c.key}" style="width:100%;font-size:10px;padding:3px 6px" onchange="updateRiskScores()">
+      input = `<select id="ra_${c.key}" style="width:100%;font-size:10px;padding:3px 6px" data-change="updateRiskScores">
         ${opts.map(o=>`<option value="${o}">${o}</option>`).join('')}
       </select>`;
     } else if (c.type === 'yesno') {
       input = `<div style="display:flex;gap:4px;align-items:center">
-        <label style="cursor:pointer;padding:2px 10px;border:1px solid var(--border);font-size:10px;transition:all 0.15s" id="ra_${c.key}_yes" onclick="raSetYesNo('${c.key}','Yes')">Yes</label>
-        <label style="cursor:pointer;padding:2px 10px;border:1px solid var(--border);font-size:10px;transition:all 0.15s" id="ra_${c.key}_no" onclick="raSetYesNo('${c.key}','No')">No</label>
+        <label style="cursor:pointer;padding:2px 10px;border:1px solid var(--border);font-size:10px;transition:all 0.15s" id="ra_${c.key}_yes" data-action="raSetYesNo" data-arg="${c.key}" data-arg2="Yes">Yes</label>
+        <label style="cursor:pointer;padding:2px 10px;border:1px solid var(--border);font-size:10px;transition:all 0.15s" id="ra_${c.key}_no" data-action="raSetYesNo" data-arg="${c.key}" data-arg2="No">No</label>
         <input type="hidden" id="ra_${c.key}" value="" />
         ${c.note?`<span style="font-size:9px;color:var(--muted)">${c.note}</span>`:''}
       </div>`;
@@ -7288,7 +7454,7 @@ function renderRAHistory() {
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-weight:700;color:${color};font-size:13px">Score: ${a.totalScore}</span>
         <span style="font-size:10px;padding:3px 8px;border:1px solid ${color};color:${color};font-weight:600">${detType}</span>
-        <button class="btn btn-sm btn-red" style="padding:2px 6px;font-size:9px" onclick="deleteRiskAssessment(${a.id})">Delete</button>
+        <button class="btn btn-sm btn-red" style="padding:2px 6px;font-size:9px" data-action="deleteRiskAssessment" data-arg="${a.id}">Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -7640,19 +7806,19 @@ function renderIncidents() {
           ${isOverdue ? '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--red-dim);color:var(--red)">OVERDUE</span>' : ''}
         </div>
         <div class="asana-meta">${escHtml(typeLabel)} | ${escHtml(i.date||'—')} | ${escHtml(i.reporter||'Unknown')}${i.department ? ' | Dept: '+escHtml(i.department) : ''}${i.rootCause ? ' | Cause: '+escHtml(i.rootCause.replace(/_/g,' ')) : ''}${i.financialImpact ? ' | USD '+Number(i.financialImpact).toLocaleString('en-GB') : ''}</div>
-        ${i.description ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;cursor:pointer" onclick="this.classList.toggle('inc-expand')" class="inc-desc">${escHtml((i.description||'').slice(0,100))}${i.description.length>100?'... <span style=color:var(--gold)>[more]</span>':''}</div>` : ''}
+        ${i.description ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;cursor:pointer" data-action="_toggleIncExpand" class="inc-desc">${escHtml((i.description||'').slice(0,100))}${i.description.length>100?'... <span style=color:var(--gold)>[more]</span>':''}</div>` : ''}
       </div>
       <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;flex-wrap:wrap">
         <span class="badge ${badge}" style="font-size:9px">${(i.severity||'').toUpperCase()}</span>
         <span class="asana-status ${statusBadge}" style="font-size:9px">${i.status}</span>
-        <select onchange="changeIncidentStatus(${i.id},this.value)" style="width:auto;height:24px;font-size:9px;padding:2px 4px">
+        <select data-change="_changeIncidentStatusFromSelect" data-incident-id="${i.id}" style="width:auto;height:24px;font-size:9px;padding:2px 4px">
           <option value="" disabled selected>Action</option>
           <option value="open">Open</option>
           <option value="investigating">Investigate</option>
           <option value="escalated">Escalate</option>
           <option value="closed">Close</option>
         </select>
-        <button class="btn btn-sm btn-red" onclick="deleteIncident(${i.id})" style="padding:2px 6px;font-size:9px">Del</button>
+        <button class="btn btn-sm btn-red" data-action="deleteIncident" data-arg="${i.id}" style="padding:2px 6px;font-size:9px">Del</button>
       </div>
     </div>`;
   }).join('');
@@ -7844,8 +8010,8 @@ function renderWBReports() {
         <div class="asana-meta">${r.category||'—'} | ${r.department||'—'} | ${r.frequency||'—'} | Evidence: ${r.hasEvidence === 'no' ? 'None' : 'Yes'} | ${dt}</div>
       </div>
       <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
-        <button class="btn btn-sm" onclick="updateWBStatus(${r.id},'investigating')" style="padding:3px 6px;font-size:9px">Investigate</button>
-        <button class="btn btn-sm btn-green" onclick="updateWBStatus(${r.id},'resolved')" style="padding:3px 6px;font-size:9px">Resolve</button>
+        <button class="btn btn-sm" data-action="updateWBStatus" data-arg="${r.id}" data-arg2="investigating" style="padding:3px 6px;font-size:9px">Investigate</button>
+        <button class="btn btn-sm btn-green" data-action="updateWBStatus" data-arg="${r.id}" data-arg2="resolved" style="padding:3px 6px;font-size:9px">Resolve</button>
       </div>
     </div>`;
   }).join('');
@@ -8037,7 +8203,7 @@ async function exportBoardReport() {
       messages:[{role:'user',content:`Generate a Board/MLRO Compliance Report based on:\nOpen Gaps: ${gaps.filter(g=>g.status!=='closed').length}\nTotal Incidents: ${incidents.length} (Open: ${incidents.filter(i=>i.status==='open').length})\nScreenings (30d): ${screenings.length}\nCustomers Onboarded: ${customers.length}\nHigh Risk Customers: ${customers.filter(c=>c.risk?.level==='HIGH'||c.risk?.level==='CRITICAL').length}\n\nIncident Summary: ${incidents.slice(0,5).map(i=>`${i.severity}: ${i.title}`).join('; ')}`}]
     });
     const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-    document.getElementById('boardReportPreview').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${escHtml(text)}</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" onclick="navigator.clipboard.writeText(document.querySelector('#boardReportPreview .summary-box').textContent);toast('Copied','success')">Copy Report</button></div>`;
+    document.getElementById('boardReportPreview').innerHTML = `<div class="summary-box" style="white-space:pre-wrap;font-size:12px">${escHtml(text)}</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-green" data-action="_copyBoardReport">Copy Report</button></div>`;
     logAudit('board_report', 'Board report generated');
   } catch(e) { if(isBillingError(e)){toast('API credits exhausted — report generation unavailable. Add credits at console.anthropic.com.','info',8000)}else{toast(`Report error: ${e.message}`,'error')} }
 }
@@ -8152,7 +8318,7 @@ function renderDeadlines() {
     const diff = Math.ceil((due-now)/(1000*60*60*24));
     const status = d.completed?'s-ok':diff<0?'s-overdue':diff<=7?'s-due':'s-ok';
     const label = d.completed?'DONE':diff<0?`${-diff}d OVERDUE`:diff===0?'TODAY':`${diff}d left`;
-    return `<div class="asana-item"><div><div class="asana-name">${d.title}</div><div class="asana-meta">${d.category} | ${d.date} ${d.notes?'| '+d.notes:''}</div></div><div style="display:flex;gap:6px"><span class="asana-status ${status}">${label}</span><button class="btn btn-sm btn-green" onclick="toggleDeadline(${d.id})" style="padding:3px 8px;font-size:10px">${d.completed?'Undo':'Done'}</button></div></div>`;
+    return `<div class="asana-item"><div><div class="asana-name">${d.title}</div><div class="asana-meta">${d.category} | ${d.date} ${d.notes?'| '+d.notes:''}</div></div><div style="display:flex;gap:6px"><span class="asana-status ${status}">${label}</span><button class="btn btn-sm btn-green" data-action="toggleDeadline" data-arg="${d.id}" style="padding:3px 8px;font-size:10px">${d.completed?'Undo':'Done'}</button></div></div>`;
   }).join('');
 }
 
@@ -8164,7 +8330,7 @@ function toggleDeadline(id) {
 
 function renderPreloadedCalendar() {
   document.getElementById('preloadedCalendar').innerHTML = UAE_CALENDAR.map(c=>
-    `<div class="asana-item"><div><div class="asana-name">${c.title}</div><div class="asana-meta">${c.category} ${c.recurring?'| Recurring':''}${c.note?' | '+c.note:''}</div></div><button class="btn btn-sm btn-green" onclick="addPreloadedDeadline('${c.title.replace(/'/g,"\\'")}','${c.category}',${c.month||0},${c.day||0})" style="padding:3px 8px;font-size:10px">+ Add</button></div>`
+    `<div class="asana-item"><div><div class="asana-name">${c.title}</div><div class="asana-meta">${c.category} ${c.recurring?'| Recurring':''}${c.note?' | '+c.note:''}</div></div><button class="btn btn-sm btn-green" data-action="_addPreloadedDeadline" data-title="${c.title.replace(/"/g,'&quot;')}" data-category="${c.category}" data-month="${c.month||0}" data-day="${c.day||0}" style="padding:3px 8px;font-size:10px">+ Add</button></div>`
   ).join('');
 }
 
@@ -8216,7 +8382,7 @@ function renderVaultDocs(filter='') {
     const expired = d.expiry && new Date(d.expiry) < now;
     const status = expired?'s-overdue':expiring?'s-due':'s-ok';
     const label = expired?'EXPIRED':expiring?'EXPIRING SOON':d.expiry?'Valid':'—';
-    return `<div class="asana-item"><div><div class="asana-name">${d.url?`<a href="${escHtml(d.url)}" target="_blank" style="color:var(--gold)">${escHtml(d.name)}</a>`:escHtml(d.name)} <span style="color:var(--muted);font-size:10px">${escHtml(d.version||'')} </span></div><div class="asana-meta">${escHtml(d.category)} ${d.tags.length?'| '+escHtml(d.tags.join(', ')):''}${d.expiry?' | Exp: '+escHtml(d.expiry):''}</div></div><div style="display:flex;gap:6px"><span class="asana-status ${status}">${label}</span><button class="btn btn-sm btn-red" onclick="deleteVaultDoc(${d.id})" style="padding:3px 8px;font-size:10px">Del</button></div></div>`;
+    return `<div class="asana-item"><div><div class="asana-name">${d.url?`<a href="${escHtml(d.url)}" target="_blank" style="color:var(--gold)">${escHtml(d.name)}</a>`:escHtml(d.name)} <span style="color:var(--muted);font-size:10px">${escHtml(d.version||'')} </span></div><div class="asana-meta">${escHtml(d.category)} ${d.tags.length?'| '+escHtml(d.tags.join(', ')):''}${d.expiry?' | Exp: '+escHtml(d.expiry):''}</div></div><div style="display:flex;gap:6px"><span class="asana-status ${status}">${label}</span><button class="btn btn-sm btn-red" data-action="deleteVaultDoc" data-arg="${d.id}" style="padding:3px 8px;font-size:10px">Del</button></div></div>`;
   }).join('');
 }
 
@@ -8363,7 +8529,7 @@ function renderDefinitions() {
       const definition = entry[2] || '';
       const isCustom = cTerms.has(term.toLowerCase());
       const badge = isCustom ? ' <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(91,141,239,0.2);color:#5B8DEF;margin-left:4px">UPDATED</span>' : '';
-      const editBtn = `<button class="btn btn-sm btn-gold" style="padding:1px 6px;font-size:9px;margin-left:4px" onclick="editDefinition('${section}','${term.replace(/'/g,"\\'")}')">Edit</button>`;
+      const editBtn = `<button class="btn btn-sm btn-gold" style="padding:1px 6px;font-size:9px;margin-left:4px" data-action="_editDefinition" data-section="${section}" data-term="${term.replace(/"/g,'&quot;')}">Edit</button>`;
       const termColor = isGold ? 'color:var(--gold)' : 'color:var(--text)';
       return `<tr class="def-row"><td style="${rowStyle};font-weight:700;${termColor};white-space:nowrap">${escHtml(term)}${badge}${editBtn}</td><td style="${rowStyle};line-height:1.5">${escHtml(fullTerm)}</td></tr>`;
     }).join('');
@@ -8534,7 +8700,7 @@ function renderDefChangeLog() {
         <div class="asana-meta">${date}${entry.source ? ' | Source: ' + entry.source : ''}${entry.reason ? ' | Reason: ' + entry.reason : ''}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4;max-height:40px;overflow:hidden">${entry.definition}</div>
       </div>
-      <div><button class="btn btn-sm btn-red" style="padding:2px 6px;font-size:9px" onclick="deleteDefChangeEntry(${entry.id})">Delete</button></div>
+      <div><button class="btn btn-sm btn-red" style="padding:2px 6px;font-size:9px" data-action="deleteDefChangeEntry" data-arg="${entry.id}">Delete</button></div>
     </div>`;
   }).join('');
 }
@@ -8823,7 +8989,7 @@ async function loadUploadedFiles() {
       html += '<td style="padding:6px 8px;color:var(--muted)">' + date + '</td>';
       html += '<td style="padding:6px 8px;text-align:center;white-space:nowrap">';
       html += '<a href="/api/file?key=' + encodeURIComponent(f.key) + '" download style="color:var(--gold);text-decoration:none;margin-right:8px;cursor:pointer" title="Download">⬇️</a>';
-      html += '<span style="color:var(--red);cursor:pointer" onclick="deleteUploadedFile(\'' + escHtml(f.key.replace(/'/g, "\\'")) + '\',\'' + escHtml(f.name.replace(/'/g, "\\'")) + '\')" title="Delete">🗑️</span>';
+      html += '<span style="color:var(--red);cursor:pointer" data-action="_deleteUploadedFile" data-file-key="' + escHtml(f.key) + '" data-file-name="' + escHtml(f.name) + '" title="Delete">🗑️</span>';
       html += '</td></tr>';
     });
 

@@ -483,7 +483,7 @@
     let html = `
 <div class="card">
   <div class="sec-title">INTEGRATION HEALTH MONITOR</div>
-  <button class="btn-sm btn-green" onclick="IntegrationsEnhanced.runHealthCheck()" style="margin-bottom:12px">Run Health Check</button>
+  <button class="btn-sm btn-green" data-action="IntegrationsEnhanced.runHealthCheck" style="margin-bottom:12px">Run Health Check</button>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">`;
 
     services.forEach(svc => {
@@ -533,7 +533,7 @@
     <div style="background:var(--surface2);border-radius:3px;padding:10px;border:1px solid var(--border)">
       <div style="font-size:12px;font-weight:500;color:var(--gold)">${tmpl.name.replace(/:\s*\{.*?\}/, '')}</div>
       <div style="font-size:10px;color:var(--muted);margin-top:4px">${tmpl.tags.join(', ')}</div>
-      <button class="btn btn-sm btn-green" style="margin-top:6px;font-size:10px" onclick="IntegrationsEnhanced.showTemplateDialog('${key}')">Create Task</button>
+      <button class="btn btn-sm btn-green" style="margin-top:6px;font-size:10px" data-action="IntegrationsEnhanced.showTemplateDialog" data-arg="${key}">Create Task</button>
     </div>`;
     });
     html += `</div></div>`;

@@ -416,13 +416,13 @@ var VaultEncryption = (function() {
             html += '<input type="password" id="vault-passphrase" placeholder="Enter passphrase" ';
             html += 'style="flex:1;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;" ';
             html += 'onkeydown="if(event.key===\'Enter\')document.getElementById(\'vault-unlock-btn\').click()">';
-            html += '<button id="vault-unlock-btn" onclick="VaultEncryption._uiUnlock()" ';
+            html += '<button id="vault-unlock-btn" data-action="VaultEncryption._uiUnlock" ';
             html += 'style="padding:8px 18px;background:#3498db;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">Unlock</button>';
             html += '</div>';
             html += '<div id="vault-unlock-error" style="color:#e74c3c;margin-top:8px;display:none;"></div>';
         } else {
             html += '<h3 style="margin-top:0;">Vault Unlocked</h3>';
-            html += '<button onclick="VaultEncryption._uiLock()" ';
+            html += '<button data-action="VaultEncryption._uiLock" ';
             html += 'style="padding:8px 18px;background:#e74c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">Lock Vault</button>';
         }
         html += '</div>';
@@ -440,7 +440,7 @@ var VaultEncryption = (function() {
             html += '<textarea id="vault-new-value" placeholder="Secret value or data (JSON or plain text)" ';
             html += 'rows="3" style="width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;resize:vertical;"></textarea>';
             html += '</div>';
-            html += '<button onclick="VaultEncryption._uiAddItem()" ';
+            html += '<button data-action="VaultEncryption._uiAddItem" ';
             html += 'style="padding:8px 18px;background:#27ae60;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">Encrypt &amp; Store</button>';
             html += '<div id="vault-add-error" style="color:#e74c3c;margin-top:8px;display:none;"></div>';
             html += '<div id="vault-add-success" style="color:#27ae60;margin-top:8px;display:none;"></div>';
@@ -461,9 +461,9 @@ var VaultEncryption = (function() {
                     html += '<tr style="border-bottom:1px solid #eee;">';
                     html += '<td style="padding:8px;font-family:monospace;">' + esc(k) + '</td>';
                     html += '<td style="padding:8px;text-align:right;">';
-                    html += '<button onclick="VaultEncryption._uiViewItem(' + JSON.stringify(k) + ')" ';
+                    html += '<button data-action="VaultEncryption._uiViewItem" data-arg="' + esc(k) + '" ';
                     html += 'style="padding:4px 12px;margin-left:4px;background:#3498db;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">View</button>';
-                    html += '<button onclick="VaultEncryption._uiDeleteItem(' + JSON.stringify(k) + ')" ';
+                    html += '<button data-action="VaultEncryption._uiDeleteItem" data-arg="' + esc(k) + '" ';
                     html += 'style="padding:4px 12px;margin-left:4px;background:#e74c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Delete</button>';
                     html += '</td>';
                     html += '</tr>';
@@ -488,7 +488,7 @@ var VaultEncryption = (function() {
             html += '<input type="password" id="vault-confirm-pass" placeholder="Confirm new passphrase" ';
             html += 'style="width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;">';
             html += '</div>';
-            html += '<button onclick="VaultEncryption._uiChangePass()" ';
+            html += '<button data-action="VaultEncryption._uiChangePass" ';
             html += 'style="padding:8px 18px;background:#f39c12;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">Change Passphrase</button>';
             html += '<div id="vault-pass-error" style="color:#e74c3c;margin-top:8px;display:none;"></div>';
             html += '<div id="vault-pass-success" style="color:#27ae60;margin-top:8px;display:none;"></div>';

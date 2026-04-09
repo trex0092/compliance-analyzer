@@ -478,9 +478,9 @@
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Analytics Dashboard</span>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-blue" onclick="AnalyticsDashboard.refresh()">Refresh</button>
-            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportCSV()">Export CSV</button>
-            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.syncToAsana()" title="Push analytics summary to Asana">Sync to Asana</button>
+            <button class="btn btn-sm btn-blue" data-action="AnalyticsDashboard.refresh">Refresh</button>
+            <button class="btn btn-sm btn-green" data-action="AnalyticsDashboard.exportCSV">Export CSV</button>
+            <button class="btn btn-sm btn-green" data-action="AnalyticsDashboard.syncToAsana" title="Push analytics summary to Asana">Sync to Asana</button>
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Visual compliance analytics with trend tracking. Snapshots are captured daily for historical analysis.</p>
@@ -500,7 +500,7 @@
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Compliance Trend</span>
-          <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('complianceTrend','Compliance_Trend.png')">Export PNG</button>
+          <button class="btn btn-sm btn-green" data-action="AnalyticsDashboard.exportChart" data-arg="complianceTrend" data-arg2="Compliance_Trend.png">Export PNG</button>
         </div>
         <div style="height:300px;position:relative"><canvas id="chartComplianceTrend"></canvas></div>
         ${snaps.length < 2 ? '<p style="font-size:11px;color:var(--muted);margin-top:8px">Trend data will accumulate as daily snapshots are captured. Visit this tab daily to build history.</p>' : ''}
@@ -511,14 +511,14 @@
         <div class="card">
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Customer Risk Distribution</span>
-            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('riskDist','Risk_Distribution.png')">PNG</button>
+            <button class="btn btn-sm btn-green" data-action="AnalyticsDashboard.exportChart" data-arg="riskDist" data-arg2="Risk_Distribution.png">PNG</button>
           </div>
           <div style="height:250px;position:relative"><canvas id="chartRiskDist"></canvas></div>
         </div>
         <div class="card">
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Open Gaps by Severity</span>
-            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('gapSeverity','Gap_Severity.png')">PNG</button>
+            <button class="btn btn-sm btn-green" data-action="AnalyticsDashboard.exportChart" data-arg="gapSeverity" data-arg2="Gap_Severity.png">PNG</button>
           </div>
           <div style="height:250px;position:relative"><canvas id="chartGapSeverity"></canvas></div>
         </div>
@@ -529,14 +529,14 @@
         <div class="card">
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Screening Activity</span>
-            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('screeningActivity','Screening_Activity.png')">PNG</button>
+            <button class="btn btn-sm btn-green" data-action="AnalyticsDashboard.exportChart" data-arg="screeningActivity" data-arg2="Screening_Activity.png">PNG</button>
           </div>
           <div style="height:250px;position:relative"><canvas id="chartScreeningActivity"></canvas></div>
         </div>
         <div class="card">
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Incident Trend</span>
-            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('incidentTrend','Incident_Trend.png')">PNG</button>
+            <button class="btn btn-sm btn-green" data-action="AnalyticsDashboard.exportChart" data-arg="incidentTrend" data-arg2="Incident_Trend.png">PNG</button>
           </div>
           <div style="height:250px;position:relative"><canvas id="chartIncidentTrend"></canvas></div>
         </div>
@@ -547,14 +547,14 @@
         <div class="card">
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Training Completion</span>
-            <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('trainingProgress','Training_Progress.png')">PNG</button>
+            <button class="btn btn-sm btn-green" data-action="AnalyticsDashboard.exportChart" data-arg="trainingProgress" data-arg2="Training_Progress.png">PNG</button>
           </div>
           <div style="height:250px;position:relative"><canvas id="chartTrainingProgress"></canvas></div>
         </div>
         <div class="card">
           <div class="top-bar" style="margin-bottom:10px">
             <span class="sec-title" style="margin:0;border:none;padding:0">Asana Task Overview</span>
-            ${asanaStats ? `<button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('asanaTasks','Asana_Tasks.png')">PNG</button>` : ''}
+            ${asanaStats ? `<button class="btn btn-sm btn-green" data-action="AnalyticsDashboard.exportChart" data-arg="asanaTasks" data-arg2="Asana_Tasks.png">PNG</button>` : ''}
           </div>
           ${asanaStats ? `<div style="height:250px;position:relative"><canvas id="chartAsanaTasks"></canvas></div>` : '<p style="font-size:12px;color:var(--muted);padding:20px 0">No Asana tasks synced yet. Connect Asana in Settings and sync tasks to see analytics here.</p>'}
         </div>
@@ -565,7 +565,7 @@
       <div class="card" style="margin-top:12px">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Asana Tasks by Section</span>
-          <button class="btn btn-sm btn-green" onclick="AnalyticsDashboard.exportChart('asanaSections','Asana_Sections.png')">PNG</button>
+          <button class="btn btn-sm btn-green" data-action="AnalyticsDashboard.exportChart" data-arg="asanaSections" data-arg2="Asana_Sections.png">PNG</button>
         </div>
         <div style="height:${Math.max(200, Object.keys(asanaStats.bySection).length * 40)}px;position:relative"><canvas id="chartAsanaSections"></canvas></div>
         <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px">
@@ -584,7 +584,7 @@
           Snapshots are captured each time you visit the Analytics tab.
         </p>
         <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn btn-sm btn-red" onclick="if(confirm('Clear all analytics history? This cannot be undone.')){localStorage.removeItem('${ANALYTICS_SNAPSHOT_KEY}');AnalyticsDashboard.refresh();}" >Clear History</button>
+          <button class="btn btn-sm btn-red" data-action="AnalyticsDashboard.confirmClearHistory" >Clear History</button>
         </div>
       </div>`;
 
@@ -643,6 +643,13 @@
   // PUBLIC API
   // ══════════════════════════════════════════════════════════════
 
+  function confirmClearHistory() {
+    if (confirm('Clear all analytics history? This cannot be undone.')) {
+      localStorage.removeItem(ANALYTICS_SNAPSHOT_KEY);
+      refresh();
+    }
+  }
+
   window.AnalyticsDashboard = {
     renderAnalyticsTab,
     initCharts,
@@ -652,7 +659,8 @@
     exportCSV: exportAnalyticsCSV,
     exportChart: exportChartPNG,
     syncToAsana: syncAnalyticsSummaryToAsana,
-    getAsanaTaskStats
+    getAsanaTaskStats,
+    confirmClearHistory
   };
 
 })();

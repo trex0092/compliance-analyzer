@@ -1140,9 +1140,9 @@
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Workflow Automation</span>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-green" onclick="WorkflowEngine.runScan()">Run Scan Now</button>
-            <button class="btn btn-sm btn-blue" onclick="WorkflowEngine.runDigest().then(()=>WorkflowEngine.refresh())">Run Digest</button>
-            <button class="btn btn-sm btn-red" onclick="if(confirm('Are you sure you want to reset all rules to defaults?'))WorkflowEngine.resetRules()">Reset to Defaults</button>
+            <button class="btn btn-sm btn-green" data-action="WorkflowEngine.runScan">Run Scan Now</button>
+            <button class="btn btn-sm btn-blue" data-action="WorkflowEngine.runDigestAndRefresh">Run Digest</button>
+            <button class="btn btn-sm btn-red" data-action="WorkflowEngine.confirmResetRules">Reset to Defaults</button>
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
@@ -1172,12 +1172,12 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                   <div style="display:flex;align-items:center;gap:8px">
                     <label style="cursor:pointer;display:flex;align-items:center;gap:6px">
-                      <input type="checkbox" ${rule.enabled ? 'checked' : ''} onchange="WorkflowEngine.toggleRule('${rule.id}');WorkflowEngine.refresh()" style="width:auto;height:auto;accent-color:var(--green)">
+                      <input type="checkbox" ${rule.enabled ? 'checked' : ''} data-change="WorkflowEngine.toggleRuleAndRefresh" data-arg="${rule.id}" style="width:auto;height:auto;accent-color:var(--green)">
                       <span style="font-size:13px;font-weight:500;color:var(--text)">${escHtml(rule.name)}</span>
                     </label>
                   </div>
                   <div style="display:flex;gap:6px;align-items:center">
-                    <button class="btn btn-sm btn-gold" style="padding:2px 8px;font-size:9px" onclick="WorkflowEngine.editRule('${rule.id}')">Edit</button>
+                    <button class="btn btn-sm btn-gold" style="padding:2px 8px;font-size:9px" data-action="WorkflowEngine.editRule" data-arg="${rule.id}">Edit</button>
                     <span style="font-size:10px;padding:3px 8px;border-radius:3px;background:${rule.enabled ? 'var(--green-dim)' : 'var(--surface)'};color:${rule.enabled ? 'var(--green)' : 'var(--muted)'};font-family:'Montserrat',sans-serif">${rule.enabled ? 'ACTIVE' : 'DISABLED'}</span>
                   </div>
                 </div>
@@ -1218,8 +1218,8 @@
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Execution Log</span>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-sm btn-green" onclick="WorkflowEngine.exportLog()">Export Log</button>
-            <button class="btn btn-sm btn-red" onclick="WorkflowEngine.clearLog()">Clear</button>
+            <button class="btn btn-sm btn-green" data-action="WorkflowEngine.exportLog">Export Log</button>
+            <button class="btn btn-sm btn-red" data-action="WorkflowEngine.clearLog">Clear</button>
           </div>
         </div>
         ${log.length ? `
@@ -1249,8 +1249,8 @@
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Compliance Checklists</span>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-sm btn-green" onclick="WorkflowEngine.saveChecklists()">Save Progress</button>
-            <button class="btn btn-sm btn-red" onclick="WorkflowEngine.resetChecklists()">Reset All</button>
+            <button class="btn btn-sm btn-green" data-action="WorkflowEngine.saveChecklists">Save Progress</button>
+            <button class="btn btn-sm btn-red" data-action="WorkflowEngine.resetChecklists">Reset All</button>
           </div>
         </div>
         <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Pre-built compliance workflow checklists. Tick items as you complete them -progress is saved automatically.</p>
@@ -1264,8 +1264,8 @@
         <div class="top-bar" style="margin-bottom:10px">
           <span class="sec-title" style="margin:0;border:none;padding:0">Document Version Control</span>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-sm btn-green" onclick="WorkflowEngine.addDocVersion()">+ Add Entry</button>
-            <button class="btn btn-sm btn-green" onclick="WorkflowEngine.exportDocLog()">Export</button>
+            <button class="btn btn-sm btn-green" data-action="WorkflowEngine.addDocVersion">+ Add Entry</button>
+            <button class="btn btn-sm btn-green" data-action="WorkflowEngine.exportDocLog">Export</button>
           </div>
         </div>
         <p style="font-size:11px;color:var(--muted);margin-bottom:10px">Track policy and manual versions, changes, approvals, and review dates.</p>
@@ -1374,7 +1374,7 @@
       const pct = total > 0 ? Math.round((done/total)*100) : 0;
       const barCol = pct === 100 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--red)';
       return `<div style="padding:12px;background:var(--surface2);border-radius:4px;border-left:3px solid ${pct===100?'var(--green)':'var(--muted)'}">
-        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="this.parentElement.querySelector('.cl-items').style.display=this.parentElement.querySelector('.cl-items').style.display==='none'?'':'none'">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" data-action="WorkflowEngine.toggleChecklistSection">
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:16px">${cl.icon}</span>
             <span style="font-size:13px;font-weight:500">${cl.title}</span>
@@ -1389,7 +1389,7 @@
           ${cl.items.map((item, idx) => {
             const isChecked = checked.includes(idx);
             return `<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:3px 0;${isChecked?'text-decoration:line-through;color:var(--muted)':''}">
-              <input type="checkbox" ${isChecked?'checked':''} onchange="WorkflowEngine.toggleChecklistItem('${cl.id}',${idx})" style="width:auto;height:auto;accent-color:var(--green)">
+              <input type="checkbox" ${isChecked?'checked':''} data-change="WorkflowEngine.toggleChecklistItem" data-arg="${cl.id}" data-arg2="${idx}" style="width:auto;height:auto;accent-color:var(--green)">
               ${escHtml(item)}
             </label>`;
           }).join('')}
@@ -1439,7 +1439,7 @@
         <td style="padding:5px 8px;font-size:10px">${escHtml(d.updatedBy)}</td>
         <td style="padding:5px 8px;font-size:10px;color:var(--muted)">${escHtml(d.changes)}</td>
         <td style="padding:5px 8px;text-align:center"><span style="display:inline-block;padding:2px 8px;font-size:9px;font-weight:700;background:${statusBg};color:${statusCol};border:1px solid ${statusCol}">${escHtml(d.status)}</span></td>
-        <td style="padding:5px 8px;text-align:center"><button class="btn btn-sm btn-red" onclick="WorkflowEngine.removeDocVersion(${i})" style="padding:2px 6px;font-size:9px">✕</button></td>
+        <td style="padding:5px 8px;text-align:center"><button class="btn btn-sm btn-red" data-action="WorkflowEngine.removeDocVersion" data-arg="${i}" style="padding:2px 6px;font-size:9px">✕</button></td>
       </tr>`;
     }).join('');
   }
@@ -1685,6 +1685,15 @@
   // Also run once on load (after 10 seconds to let data load)
   setTimeout(checkFilingDeadlines, 10000);
 
+  function runDigestAndRefresh() { runDigest().then(function() { refresh(); }); }
+  function confirmResetRules() { if (confirm('Are you sure you want to reset all rules to defaults?')) resetRules(); }
+  function toggleRuleAndRefresh(id) { toggleRule(id); refresh(); }
+  function toggleChecklistSection(e) {
+    var parent = e.currentTarget.parentElement;
+    var items = parent.querySelector('.cl-items');
+    items.style.display = items.style.display === 'none' ? '' : 'none';
+  }
+
   window.WorkflowEngine = {
     renderWorkflowsTab,
     refresh,
@@ -1695,6 +1704,10 @@
     processTrigger,
     runScan,
     runDigest,
+    runDigestAndRefresh,
+    confirmResetRules,
+    toggleRuleAndRefresh,
+    toggleChecklistSection,
     checkEscalations,
     checkFilingDeadlines,
     exportLog,

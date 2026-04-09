@@ -297,7 +297,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
           <div style="font-size:10px;color:${isStale(l) ? 'var(--amber)' : 'var(--muted)'}">${l.lastRefreshed ? new Date(l.lastRefreshed).toLocaleDateString('en-GB') : 'Never'}</div>
           ${l.newEntries ? `<div style="font-size:10px;color:var(--amber)">+${parseInt(l.newEntries)||0} new</div>` : ''}
         </div>
-        <button class="btn btn-sm btn-blue" onclick="TFSRefresh.refreshList('${esc(l.id).replace(/'/g,'&#39;')}').then(()=>TFSRefresh.refresh())" style="min-width:60px">Refresh</button>
+        <button class="btn btn-sm btn-blue" data-action="TFSRefresh.refreshListAndRefresh" data-arg="${esc(l.id).replace(/'/g,'&#39;')}" style="min-width:60px">Refresh</button>
       </div>
     `).join('');
 
@@ -317,7 +317,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Targeted Financial Sanctions (TFS) List Manager</span>
           <div style="display:flex;gap:6px">
-            <button class="btn btn-sm btn-gold" onclick="TFSRefresh.refreshAll()">Refresh All Lists</button>
+            <button class="btn btn-sm btn-gold" data-action="TFSRefresh.refreshAll">Refresh All Lists</button>
           </div>
         </div>
         <div class="token-note" style="margin-bottom:12px">
@@ -348,9 +348,9 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         <div class="top-bar" style="margin-bottom:8px">
           <span class="lbl" style="margin:0">Recent TFS Screening Results</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-green" onclick="TFSRefresh.exportPDF()" style="padding:3px 10px;font-size:10px">PDF</button>
-            <button class="btn btn-sm btn-green" onclick="TFSRefresh.exportDOCX()" style="padding:3px 10px;font-size:10px">Word</button>
-            <button class="btn btn-sm btn-red" onclick="TFSRefresh.clearResults()" style="padding:3px 10px;font-size:10px">Clear</button>
+            <button class="btn btn-sm btn-green" data-action="TFSRefresh.exportPDF" style="padding:3px 10px;font-size:10px">PDF</button>
+            <button class="btn btn-sm btn-green" data-action="TFSRefresh.exportDOCX" style="padding:3px 10px;font-size:10px">Word</button>
+            <button class="btn btn-sm btn-red" data-action="TFSRefresh.clearResults" style="padding:3px 10px;font-size:10px">Clear</button>
           </div>
         </div>
         <div id="tfsMatchHistory">${recentMatches}</div>
@@ -482,9 +482,12 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     toast('CSV exported','success');
   }
 
+  function refreshListAndRefresh(id) { refreshList(id).then(function() { refresh(); }); }
+
   return {
     refreshList,
     refreshAll,
+    refreshListAndRefresh,
     screenEntity,
     renderTFSPanel,
     runScreen,

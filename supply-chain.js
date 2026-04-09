@@ -226,7 +226,7 @@ const SupplyChain = (function() {
           <div style="font-size:13px;font-weight:600">${s.title}</div>
           <div style="font-size:10px;color:var(--muted);margin-top:1px">${s.description}</div>
         </div>
-        <select onchange="SupplyChain.updateRGGStep(${s.step}, this.value)" style="width:120px;max-width:120px;flex-shrink:0;padding:4px 6px;border-radius:3px;font-size:10px;font-weight:600;border:2px solid ${statusBorder[s.status]};background:${statusBg[s.status]};color:${statusColors[s.status]};cursor:pointer">
+        <select data-change="SupplyChain.updateRGGStepFromSelect" data-arg="${s.step}" style="width:120px;max-width:120px;flex-shrink:0;padding:4px 6px;border-radius:3px;font-size:10px;font-weight:600;border:2px solid ${statusBorder[s.status]};background:${statusBg[s.status]};color:${statusColors[s.status]};cursor:pointer">
           ${Object.entries(statusLabels).map(([k, v]) => `<option value="${k}" ${s.status === k ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
       </div>
@@ -264,7 +264,7 @@ const SupplyChain = (function() {
       <div class="card">
         <div class="top-bar" style="margin-bottom:10px">
           <span class="lbl" style="margin:0">Supply Chain Due Diligence</span>
-          <button class="btn btn-sm btn-green" onclick="SupplyChain.addEntry()">Add Supplier/Shipment</button>
+          <button class="btn btn-sm btn-green" data-action="SupplyChain.addEntry">Add Supplier/Shipment</button>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Track mine-to-market chain of custody per LBMA RGG Step 2 and OECD DDG. Each entry is auto-scored for CAHRA, ASM, KYC, and audit risk.</p>
 
@@ -306,7 +306,7 @@ const SupplyChain = (function() {
           <span class="lbl" style="margin:0">CAHRA Country List</span>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Conflict-Affected and High-Risk Areas</span>
-            <button class="btn btn-sm btn-green" onclick="SupplyChain.checkListUpdate('cahra')" style="padding:3px 10px;font-size:10px">Update</button>
+            <button class="btn btn-sm btn-green" data-action="SupplyChain.checkListUpdate" data-arg="cahra" style="padding:3px 10px;font-size:10px">Update</button>
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Countries flagged as CAHRA per OECD guidance, LBMA requirements, and sanctions regimes (UN, OFAC, EU). Auto-checked on supplier entry.</p>
@@ -319,7 +319,7 @@ const SupplyChain = (function() {
           <span class="lbl" style="margin:0">FATF Gray List</span>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Jurisdictions Under Increased Monitoring — February 2026</span>
-            <button class="btn btn-sm btn-green" onclick="SupplyChain.checkListUpdate('fatf')" style="padding:3px 10px;font-size:10px">Update</button>
+            <button class="btn btn-sm btn-green" data-action="SupplyChain.checkListUpdate" data-arg="fatf" style="padding:3px 10px;font-size:10px">Update</button>
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Countries identified by FATF as having strategic deficiencies in their AML/CFT/CPF regimes and committed to action plans. Enhanced due diligence required for business relationships involving these jurisdictions. Auto-checked on supplier entry.</p>
@@ -333,7 +333,7 @@ const SupplyChain = (function() {
           <span class="lbl" style="margin:0">EU High-Risk Third Countries</span>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif">Delegated Regulation (EU) 2016/1675 — Latest Update 2026</span>
-            <button class="btn btn-sm btn-green" onclick="SupplyChain.checkListUpdate('eu')" style="padding:3px 10px;font-size:10px">Update</button>
+            <button class="btn btn-sm btn-green" data-action="SupplyChain.checkListUpdate" data-arg="eu" style="padding:3px 10px;font-size:10px">Update</button>
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Third countries identified by the European Commission as having strategic deficiencies in their AML/CFT frameworks. Enhanced due diligence is mandatory under EU AMLD for business relationships and transactions involving these jurisdictions. Auto-checked on supplier entry.</p>
@@ -407,11 +407,14 @@ Format your response as a structured compliance update notification. Be concise 
     }
   }
 
+  function updateRGGStepFromSelect(e, step) { updateRGGStep(Number(step), e.currentTarget.value); }
+
   return {
     checkCAHRA,
     assessSupplierRisk,
     addEntry,
     updateRGGStep,
+    updateRGGStepFromSelect,
     renderSupplyChainTab,
     refresh,
     getEntries,
@@ -419,4 +422,5 @@ Format your response as a structured compliance update notification. Be concise 
     DEFAULT_CAHRA,
     checkListUpdate,
   };
+
 })();
