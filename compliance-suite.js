@@ -44,7 +44,7 @@ window.csFormatDateInput = function (el) {
     try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) { console.warn('Storage error', e); }
   }
   function uid(prefix) {
-    return prefix + '-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-6);
+    return prefix + '-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-6) + '-' + Math.random().toString(36).slice(2, 6);
   }
   function today() { const n=new Date(); return String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+'/'+n.getFullYear(); }
   function parseDDMMYYYY(s) { if(!s) return null; const p=s.split('/'); if(p.length!==3) return null; return new Date(p[2],p[1]-1,p[0]); }
@@ -69,7 +69,7 @@ window.csFormatDateInput = function (el) {
       'Active':'#3DA876','Inactive':'#7A7870',
     };
     const col = map[status] || '#7A7870';
-    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${status}</span>`;
+    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${esc(status)}</span>`;
   }
 
   // ─── ASANA INTEGRATION ───────────────────────────────────────────────────────
@@ -259,7 +259,7 @@ window.csFormatDateInput = function (el) {
       'Low': 'Standard CDD',
     },
     // Review frequency in months per rating
-    reviewFrequency: { 'Very High': 3, 'High': 6, 'Medium': 12, 'Low': 24 },
+    reviewFrequency: { 'Very High': 3, 'High': 3, 'Medium': 6, 'Low': 12 },
     // Regulatory basis
     regulatoryBasis: 'UAE FDL No.(10) of 2025 | Art. 12-16 | FATF Rec. 10 | FATF DPMS Guidance 2020',
     // Last updated
@@ -937,7 +937,7 @@ window.csFormatDateInput = function (el) {
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
           <div class="metric m-ok"><div class="metric-num">${records.length}</div><div class="metric-lbl">Total UBOs</div></div>
           <div class="metric m-c"><div class="metric-num">${records.filter(r=>r.screeningStatus==='Potential Match – Pending').length}</div><div class="metric-lbl">Screening Pending</div></div>
-          <div class="metric m-h"><div class="metric-num">${records.filter(r=>{ const d=new Date(r.nextReview); return d < new Date(Date.now()+30*86400000); }).length}</div><div class="metric-lbl">Review Due ≤30d</div></div>
+          <div class="metric m-h"><div class="metric-num">${records.filter(r=>{ const d=parseDDMMYYYY(r.nextReview)||new Date(r.nextReview); return d < new Date(Date.now()+30*86400000); }).length}</div><div class="metric-lbl">Review Due ≤30d</div></div>
           <div class="metric m-m"><div class="metric-num">${records.filter(r=>r.ownershipPct>=25).length}</div><div class="metric-lbl">≥25% Ownership</div></div>
         </div>
         <div style="overflow-x:auto">
@@ -1314,21 +1314,33 @@ window.csFormatDateInput = function (el) {
   };
 
   global.suiteDeleteSTR = function(idx) {
-    if (!confirm('Delete this STR case? This action cannot be undone.')) return;
+    // STR records are legally required to be retained for 10 years (FDL Art.24/25).
+    // Deletion is prohibited — archive instead.
     const cases = load(SK.STR) || [];
-    cases.splice(idx, 1);
+    const c = cases[idx];
+    if (!c) return;
+    if (c.status === 'Filed' || c.goamlRef) {
+      toast('Filed STR cases cannot be deleted — records must be retained for 10 years per FDL Art.24.', 'error', 5000);
+      return;
+    }
+    if (!confirm('⚠️ Archive this draft STR case?\n\nFiled STR cases cannot be deleted per FDL Art.24.\nThis draft will be marked as Archived but retained in the system.')) return;
+    cases[idx].status = 'Archived';
+    cases[idx].archivedAt = new Date().toISOString();
     save(SK.STR, cases);
     renderSTR();
+    toast('STR case archived (retained per FDL Art.24)', 'info');
   };
 
   global.suiteSyncSTRToAsana = async function(idx) {
     const cases = load(SK.STR) || [];
     const c = cases[idx];
     if (!c) return;
-    toast('Syncing to Asana...', 'info');
-    const notes = `CASE: ${c.id}\nReport Type: ${c.reportType}\nSubject: ${c.subjectName}\nStatus: ${c.status}\nSuspicion Date: ${fmtDate(c.suspicionDate)}\nFiling Deadline: ${fmtDate(c.filingDeadline)}\nPriority: ${c.priority}\nInvestigator: ${c.investigator}\ngoAML Ref: ${c.goamlRef||'Pending'}\n\nRed Flags: ${(c.flags||[]).join('; ')}\n\nNarrative (excerpt): ${(c.narrative||'').slice(0,500)}\n\nRegulatory Basis: UAE FDL No.(10) of 2025 Art.20 | FATF Rec.20\n\n⚠️ CONFIDENTIAL — Do not share with subject`;
-    const gid = await pushToAsana(`[${c.reportType.split('–')[0].trim()}] ${c.subjectName} — ${c.status}`, notes, 'str');
-    if (gid) { toast('Synced to Asana', 'success'); } else { toast('Asana sync failed', 'error'); }
+    // FDL Art.29 — No tipping off: redact subject-identifying information before external sync
+    if (!confirm('⚠️ FDL Art.29 WARNING — No Tipping Off\n\nSTR data will be synced to Asana with subject details REDACTED to prevent unauthorized disclosure.\n\nEnsure Asana access is restricted to authorized compliance personnel only.\n\nProceed?')) return;
+    toast('Syncing to Asana (redacted)...', 'info');
+    const notes = `CASE: ${c.id}\nReport Type: ${c.reportType}\nSubject: [REDACTED — FDL Art.29]\nStatus: ${c.status}\nSuspicion Date: ${fmtDate(c.suspicionDate)}\nFiling Deadline: ${fmtDate(c.filingDeadline)}\nPriority: ${c.priority}\nInvestigator: ${c.investigator}\ngoAML Ref: ${c.goamlRef||'Pending'}\n\nRegulatory Basis: UAE FDL No.(10) of 2025 Art.20 | FATF Rec.20\n\n⚠️ CONFIDENTIAL — Subject details withheld per FDL Art.29 (No Tipping Off)`;
+    const gid = await pushToAsana(`[${c.reportType.split('–')[0].trim()}] Case ${c.id} — ${c.status}`, notes, 'str');
+    if (gid) { toast('Synced to Asana (redacted)', 'success'); } else { toast('Asana sync failed', 'error'); }
   };
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -2026,7 +2038,7 @@ window.csFormatDateInput = function (el) {
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
           <div class="metric m-c"><div class="metric-num">${pending.length}</div><div class="metric-lbl">Pending</div></div>
-          <div class="metric m-h"><div class="metric-num">${records.filter(r=>{ const h=(new Date()-new Date(r.createdAt))/3600000; return r.status==='Pending'&&h>r.slahours; }).length}</div><div class="metric-lbl">SLA Breached</div></div>
+          <div class="metric m-h"><div class="metric-num">${records.filter(r=>{ const h=(new Date()-new Date(r.createdAt))/3600000; return r.status==='Pending'&&h>r.slaHours; }).length}</div><div class="metric-lbl">SLA Breached</div></div>
           <div class="metric m-ok"><div class="metric-num">${records.filter(r=>r.status==='Approved').length}</div><div class="metric-lbl">Approved</div></div>
           <div class="metric m-m"><div class="metric-num">${records.filter(r=>r.status==='Rejected').length}</div><div class="metric-lbl">Rejected</div></div>
         </div>
@@ -2512,7 +2524,7 @@ window.csFormatDateInput = function (el) {
       'Approved':'#3DA876','Rejected':'#D94F4F','Pending':'#E8A030',
     };
     const col = map[status]||'#7A7870';
-    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif">${status}</span>`;
+    return `<span style="background:${col}22;color:${col};border:1px solid ${col}44;border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif">${esc(status)}</span>`;
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -2560,7 +2572,7 @@ window.csFormatDateInput = function (el) {
         const isConfirmed = e.outcome==='Confirmed Match';
         const isPartial = e.outcome==='Partial Match';
         const cnmrDeadline = e.screeningDate ? addBusinessDays(e.screeningDate, 5) : null;
-        const cnmrOverdue = cnmrDeadline && new Date(cnmrDeadline)<new Date() && (e.cnmrStatus==='Pending');
+        const cnmrOverdue = cnmrDeadline && parseDDMMYYYY(cnmrDeadline)<new Date() && (e.cnmrStatus==='Pending');
         return `
         <div class="finding ${isConfirmed?'f-critical':isPartial?'f-high':'f-ok'}" style="margin-bottom:10px">
           <div class="f-head">
@@ -3417,7 +3429,7 @@ window.csFormatDateInput = function (el) {
       <div class="sec-title" style="margin-bottom:10px">Record Inventory</div>
       ${records.length===0?'<p style="color:var(--muted);font-size:13px;text-align:center;padding:1rem">No records logged.</p>':''}
       ${records.map((r,i)=>{
-        const expiry = new Date(r.createdDate);
+        const expiry = parseDDMMYYYY(r.createdDate) || new Date(r.createdDate);
         expiry.setFullYear(expiry.getFullYear()+r.retentionYears);
         const daysLeft = Math.floor((expiry-new Date())/86400000);
         const status = daysLeft<0?'Overdue':daysLeft<90?'Due Soon':'Current';
@@ -3445,7 +3457,7 @@ window.csFormatDateInput = function (el) {
         </div>
         <div class="row row-2">
           <div><span class="lbl">Record Created Date</span><input type="text" id="ret-date" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
-          <div><span class="lbl">Retention Period (years)</span><input type="number" id="ret-years" value="5" min="1"/></div>
+          <div><span class="lbl">Retention Period (years)</span><input type="number" id="ret-years" value="10" min="1"/></div>
         </div>
         <div><span class="lbl">Regulatory Basis</span><input id="ret-basis" placeholder="Auto-filled from category"/></div>
         <div><span class="lbl">Storage Location</span><input id="ret-storage" placeholder="e.g. Google Drive /Compliance/CDD/ | Physical: Filing cabinet A3"/></div>
@@ -4002,11 +4014,11 @@ window.csFormatDateInput = function (el) {
   'use strict';
 
   const ALL_MODULES = [
-    { key:'fgl_cra_v1',            label:'Customer Risk Assessments',   icon: '📋', cols:['id','customerName','customerType','rating','cddLevel','reviewDate','reviewedBy','notes'] },
-    { key:'fgl_ubo_v1',            label:'UBO Register',                icon: '🏛️', cols:['id','entityName','uboName','nationality','dob','ownershipPct','verifiedDate','idType','idNumber','pepStatus','notes'] },
-    { key:'fgl_str_cases_v1',      label:'STR / SAR Cases',             icon: '🚨', cols:['id','reportType','subjectName','subjectType','transactionRef','amount','currency','suspicionDate','status','filedBy','goamlRef','notes'] },
+    { key:'fgl_cra_v2',            label:'Customer Risk Assessments',   icon: '📋', cols:['id','customerName','customerType','rating','cddLevel','reviewDate','reviewedBy','notes'] },
+    { key:'fgl_ubo_v2',            label:'UBO Register',                icon: '🏛️', cols:['id','entityName','uboName','nationality','dob','ownershipPct','verifiedDate','idType','idNumber','pepStatus','notes'] },
+    { key:'fgl_str_cases_v2',      label:'STR / SAR Cases',             icon: '🚨', cols:['id','reportType','subjectName','subjectType','transactionRef','amount','currency','suspicionDate','status','filedBy','goamlRef','notes'] },
     { key:'fgl_tfs2_v1',           label:'TFS Screening Events',        icon:'🇦🇪', cols:['id','screenedName','eventType','listsScreened','screeningDate','outcome','reviewedBy','frozenWithin24h','ffrFiled','cnmrStatus','cnmrRef','notes'] },
-    { key:'fgl_approvals_v1',      label:'Four-Eyes Approvals',         icon: '', cols:['id','approvalType','subject','requestedBy','status','decision','decidedBy','createdAt','notes'] },
+    { key:'fgl_approvals_v2',      label:'Four-Eyes Approvals',         icon: '', cols:['id','approvalType','subject','requestedBy','status','decision','decidedBy','createdAt','notes'] },
     { key:'fgl_mgmt_approvals',    label:'Management CDD Approvals',    icon: '', cols:['id','customerName','customerType','riskRating','status','reviewedBy','createdAt','notes'] },
     { key:'fgl_dpmsr_v1',          label:'DPMSR Threshold Cases',       icon: '', cols:['id','customerName','customerType','amount','txDate','paymentMethod','reportingRequired','dpmsr_filed','cddComplete','linkedFlag','notes'] },
     { key:'fgl_retention_v1',      label:'Record Retention Register',   icon: '', cols:['id','recordName','category','createdDate','retentionYears','basis','storageLocation'] },
