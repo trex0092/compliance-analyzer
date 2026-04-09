@@ -266,7 +266,7 @@
       trigger: 'customer_exit', condition: {},
       actions: [
         { type: 'create_asana_task', template: 'record_retention', priority: 'medium' },
-        { type: 'browser_notify', title: 'Customer Exit', message: 'Relationship termination for {customerName}. Retain records 5 years per FDL Art.24. Consider STR if suspicion triggered exit.' }
+        { type: 'browser_notify', title: 'Customer Exit', message: 'Relationship termination for {customerName}. Retain records 10 years per FDL Art.24 and MoE DPMS Guidance. Consider STR if suspicion triggered exit.' }
       ]
     },
     {
@@ -690,6 +690,20 @@
     }
   ];
 
+  // Patch DEFAULT_RULES with centralized constants (avoid hardcoded thresholds)
+  (function patchRuleConstants() {
+    var CC = typeof COMPLIANCE_CONSTANTS !== 'undefined' ? COMPLIANCE_CONSTANTS : {};
+    var rulePatches = {
+      'wf_dpmsr_threshold': { amount: CC.DPMS_CASH_THRESHOLD_AED || 55000 },
+      'wf_high_value_cash_declaration': { amount: CC.CROSS_BORDER_CASH_THRESHOLD_AED || 60000 },
+    };
+    DEFAULT_RULES.forEach(function(r) {
+      if (rulePatches[r.id] && r.condition) {
+        Object.assign(r.condition, rulePatches[r.id]);
+      }
+    });
+  })();
+
   // ══════════════════════════════════════════════════════════════
   // RULE MANAGEMENT
   // ══════════════════════════════════════════════════════════════
@@ -907,7 +921,8 @@
     // Support key-value conditions (e.g., { amount: 55000, riskLevel: 'high' })
     // Match if all specified keys exist in data and meet/exceed the expected value
     for (const [key, expected] of Object.entries(condition)) {
-      if (data[key] === undefined) continue;
+      // If condition requires a field that's missing from event data, condition fails
+      if (data[key] === undefined) return false;
       if (typeof expected === 'number') {
         if (Number(data[key]) < expected) return false;
       } else if (data[key] !== expected) {
@@ -1339,7 +1354,7 @@
       'Verify UBO register is current',
       'Check RACI matrix and governance documentation',
       'Prepare Gap Register showing remediation progress',
-      'Ensure record retention meets 5-year requirement',
+      'Ensure record retention meets 10-year requirement',
       'Brief all staff on inspection procedures',
       'Designate inspection liaison officer',
       'Prepare document index for inspector access',
@@ -1494,7 +1509,7 @@
     const log = getLog();
     if (!log.length) { if (typeof toast === 'function') toast('No log entries to export', 'error'); return; }
     const csv = ['timestamp,ruleId,ruleName,trigger,actions,success,details']
-      .concat(log.map(l => [l.timestamp, l.ruleId, `"${l.ruleName}"`, l.trigger, `"${l.actions.join(';')}"`, l.success, `"${(l.details || '').replace(/"/g, '""')}"`].join(',')))
+      .concat(log.map(l => [csvSafe(l.timestamp), csvSafe(l.ruleId), csvSafe(l.ruleName), csvSafe(l.trigger), csvSafe(l.actions.join(';')), l.success, csvSafe(l.details || '')].join(',')))
       .join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
@@ -1565,7 +1580,7 @@
     // Check STR/CTR queues for approaching deadlines
     const strCases = parse('fgl_str_cases_v2', []);
     for (const c of strCases) {
-      if (c.status === 'Filed' || c.status === 'Closed') continue;
+      if (c.status === 'Filed' || c.status === 'FILED' || c.status === 'Closed' || c.status === 'CLOSED') continue;
       if (!c.createdAt && !c.date) continue;
       const createdStr = c.createdAt || c.date;
       var createdDate;
@@ -1577,9 +1592,14 @@
         createdDate = new Date(createdStr);
       }
       if (isNaN(createdDate.getTime())) continue;
-      // Approximate business days: calendar days * 5/7
-      var calendarElapsed = Math.floor((now - createdDate.getTime()) / ONE_DAY);
-      var bizElapsed = Math.round(calendarElapsed * 5 / 7);
+      // Count actual business days (Sat/Sun excluded) — not the 5/7 approximation
+      var bizElapsed = 0;
+      var cursor = new Date(createdDate);
+      while (cursor < new Date(now)) {
+        cursor.setDate(cursor.getDate() + 1);
+        var dayOfWeek = cursor.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) bizElapsed++;
+      }
       // STR_FILING_DEADLINE_BUSINESS_DAYS = 0 means "without delay" (FDL Art.26-27).
       // Do NOT use || fallback — 0 is intentional, not falsy/missing.
       const deadlineDays = CC.STR_FILING_DEADLINE_BUSINESS_DAYS !== undefined ? CC.STR_FILING_DEADLINE_BUSINESS_DAYS : 0;
@@ -1616,9 +1636,9 @@
     }
 
     // Check CTR queue
-    const ctrQueue = parse('fgl_threshold_ctr_queue', []);
+    const ctrQueue = parse('fgl_ctr_queue', []);
     for (const c of ctrQueue) {
-      if (c.status === 'Filed' || c.status === 'Closed') continue;
+      if (c.status === 'Filed' || c.status === 'FILED' || c.status === 'Closed' || c.status === 'CLOSED') continue;
       if (!c.timestamp && !c.date) continue;
       var ctrDateStr = c.timestamp || c.date;
       var ctrDate;
@@ -1629,9 +1649,15 @@
         ctrDate = new Date(ctrDateStr);
       }
       if (isNaN(ctrDate.getTime())) continue;
-      var ctrCalElapsed = Math.floor((now - ctrDate.getTime()) / ONE_DAY);
-      var ctrBizElapsed = Math.round(ctrCalElapsed * 5 / 7);
-      const deadlineDays = CC.CTR_FILING_DEADLINE_BUSINESS_DAYS || 15;
+      // Count actual business days (Sat/Sun excluded)
+      var ctrBizElapsed = 0;
+      var ctrCursor = new Date(ctrDate);
+      while (ctrCursor < new Date(now)) {
+        ctrCursor.setDate(ctrCursor.getDate() + 1);
+        var ctrDow = ctrCursor.getDay();
+        if (ctrDow !== 0 && ctrDow !== 6) ctrBizElapsed++;
+      }
+      const deadlineDays = CC.CTR_FILING_DEADLINE_BUSINESS_DAYS !== undefined ? CC.CTR_FILING_DEADLINE_BUSINESS_DAYS : 15;
       const remaining = deadlineDays - ctrBizElapsed;
 
       if (remaining <= 5 && remaining > 0) {

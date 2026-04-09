@@ -39,16 +39,19 @@ export default function DecisionPanel({ item }: Props) {
       return calcFlagScore(def) >= 16;
     }).length;
 
+    // Use explicit RF codes for detection — string matching on codes is unreliable
+    const PEP_CODES = ['RF016', 'RF017', 'RF019'];
+    const SANCTION_CODES = ['RF011', 'RF012', 'RF013'];
+    const THIRD_PARTY_CODES = ['RF007'];
+
     return decideCase({
-      sanctionMatch: item.redFlags.some(
-        (f) => f === 'RF011' || f.toUpperCase().includes('SANCTION')
-      ),
-      pepMatch: item.redFlags.some((f) => f.toUpperCase().includes('PEP')),
+      sanctionMatch: item.redFlags.some((f) => SANCTION_CODES.includes(f)),
+      pepMatch: item.redFlags.some((f) => PEP_CODES.includes(f)),
       redFlagScores: scores,
       highFlagCount,
       criticalFlagCount,
       missingCDD: item.findings.some((f) => f.toLowerCase().includes('missing cdd')),
-      thirdPartyPayment: item.redFlags.some((f) => f.toLowerCase().includes('third')),
+      thirdPartyPayment: item.redFlags.some((f) => THIRD_PARTY_CODES.includes(f)),
       sourceOfFundsUnverified: item.redFlags.includes('RF067'),
     });
   }, [item]);

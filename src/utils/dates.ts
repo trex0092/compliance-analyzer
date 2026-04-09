@@ -10,7 +10,10 @@ export function isValidDate(dateStr: string): boolean {
 export function addMonths(dateIso: string, months: number): string {
   const d = new Date(dateIso);
   if (isNaN(d.getTime())) return new Date().toISOString();
+  const originalDay = d.getDate();
   d.setMonth(d.getMonth() + months);
+  // Clamp to last day of target month if overflow occurred (e.g., Jan 31 + 1 month)
+  if (d.getDate() !== originalDay) d.setDate(0);
   return d.toISOString();
 }
 

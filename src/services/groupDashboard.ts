@@ -184,9 +184,11 @@ export function consolidateGroupKPIs(entityKPIs: Map<string, KPIDashboard>): Gro
       totalScreeningRuns: totalScreenings,
       totalPendingApprovals: totalApprovals,
     },
-    worstPerformers: worstPerformers.sort((a, b) =>
-      a.severity === 'critical' && b.severity !== 'critical' ? -1 : 0
-    ),
+    worstPerformers: worstPerformers.sort((a, b) => {
+      if (a.severity === 'critical' && b.severity !== 'critical') return -1;
+      if (b.severity === 'critical' && a.severity !== 'critical') return 1;
+      return 0;
+    }),
     groupRiskLevel,
   };
 }

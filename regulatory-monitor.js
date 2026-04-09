@@ -34,14 +34,14 @@
         'Customer Due Diligence (CDD) for all transactions',
         'Enhanced Due Diligence (EDD) for high-risk customers',
         'Suspicious Transaction Reporting (STR) to UAE FIU',
-        'Record keeping for minimum 5 years',
+        'Record keeping for minimum 10 years',
         'Compliance Officer appointment',
         'Employee training programs',
         'Risk-based approach implementation',
         'Sanctions screening obligations',
       ],
       risk_areas: ['Customer identification', 'Transaction monitoring', 'Sanctions compliance', 'Record keeping'],
-      penalties: 'Fines up to AED 50M, license revocation, criminal prosecution',
+      penalties: 'Fines up to AED 100M, license revocation, criminal prosecution',
     },
     fatf: {
       id: 'fatf', name: 'FATF Recommendations', jurisdiction: 'International',
@@ -98,7 +98,7 @@
         'Annual MLRO report to board',
         'Staff training and awareness',
         'Reliance and outsourcing controls',
-        'Record keeping (5 years from end of relationship)',
+        'Record keeping (10 years from end of relationship)',
       ],
       risk_areas: ['CDD adequacy', 'Transaction monitoring', 'SAR quality', 'Governance'],
       penalties: 'Unlimited fines, public censure, enforcement actions',
@@ -118,7 +118,7 @@
         'OFAC sanctions screening',
         'Beneficial ownership requirements (CDD Rule)',
         'Section 314(a) information sharing',
-        'Record keeping (5 years)',
+        'Record keeping (10 years)',
       ],
       risk_areas: ['CTR filing', 'SAR quality', 'OFAC compliance', 'Beneficial ownership'],
       penalties: 'Civil penalties up to $1M per violation, criminal prosecution',
@@ -218,9 +218,16 @@
 
     const overall = count > 0 ? Math.round(totalScore / count) : 0;
 
-    // Save to history
+    // Save to history (deduplicate by date — avoid bloating on repeated renders)
     const history = getScoreHistory();
-    history.unshift({ date: new Date().toISOString(), overall, scores });
+    const today = new Date().toISOString().split('T')[0];
+    const todayIdx = history.findIndex(h => h.date && h.date.startsWith(today));
+    if (todayIdx >= 0) {
+      history[todayIdx] = { date: new Date().toISOString(), overall, scores };
+    } else {
+      history.unshift({ date: new Date().toISOString(), overall, scores });
+    }
+    if (history.length > 365) history.length = 365;
     saveScoreHistory(history);
 
     return { overall, status: getStatusFromScore(overall), frameworks: scores };
@@ -420,7 +427,7 @@
   // ── Render Regulatory Change Tracker (own tab) ──
   function renderChangeTrackerTab() {
     const changes = getRegChanges();
-    const overdueCount = changes.filter(c => c.status !== 'completed' && c.deadline && new Date(c.deadline + 'T23:59:59') < new Date()).length;
+    const overdueCount = changes.filter(c => c.status !== 'completed' && c.deadline && parseAnyDate(c.deadline, true) < new Date()).length;
     const pendingCount = changes.filter(c => c.status !== 'completed').length;
     const completedCount = changes.filter(c => c.status === 'completed').length;
 
@@ -465,7 +472,7 @@
 
     if (changes.length) {
       html += changes.map(c => {
-        const overdue = c.status !== 'completed' && c.deadline && parseAnyDate(c.deadline) < new Date();
+        const overdue = c.status !== 'completed' && c.deadline && parseAnyDate(c.deadline, true) < new Date();
         return `
       <div class="asana-item">
         <div>

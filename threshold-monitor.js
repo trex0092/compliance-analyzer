@@ -6,10 +6,12 @@
 const ThresholdMonitor = (function() {
   'use strict';
 
-  const AED_THRESHOLD = 55000;
-  const USD_TO_AED = 3.6725; // Fixed peg
+  // Import thresholds from centralized constants (src/domain/constants.ts)
+  const CC = typeof COMPLIANCE_CONSTANTS !== 'undefined' ? COMPLIANCE_CONSTANTS : {};
+  const AED_THRESHOLD = CC.DPMS_CASH_THRESHOLD_AED || 55000;
+  const USD_TO_AED = CC.USD_TO_AED || 3.6725; // CBUAE official peg
   const STRUCTURING_WINDOW_DAYS = 7;
-  const STRUCTURING_COMBINED_FACTOR = 0.8; // 80% of threshold = suspicious if split
+  const STRUCTURING_COMBINED_FACTOR = CC.STRUCTURING_CUMULATIVE_PCT || 0.73; // 73% per constants.ts
   const ALERTS_KEY = 'fgl_threshold_alerts';
   const CTR_QUEUE_KEY = 'fgl_ctr_queue';
 
@@ -49,7 +51,7 @@ const ThresholdMonitor = (function() {
         // Direct threshold breach
         if (amountAED >= AED_THRESHOLD && (s.paymentMethod || '').toLowerCase().includes('cash')) {
           alerts.push({
-            id: 'THR-' + (s.id || Date.now()),
+            id: 'THR-' + (s.id || Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
             type: 'THRESHOLD_BREACH',
             severity: 'CRITICAL',
             customer,
@@ -103,7 +105,7 @@ const ThresholdMonitor = (function() {
     if (newAlerts.length > 0) {
       saveAlerts([...newAlerts, ...existing]);
       newAlerts.forEach(function(a) {
-        if (typeof WorkflowEngine !== 'undefined') WorkflowEngine.processTrigger('threshold_breach', { type: a.type, severity: a.severity, customer: a.customer, amount: a.amountAED, details: a.description || a.type + ' — ' + a.customer });
+        if (typeof WorkflowEngine !== 'undefined') WorkflowEngine.processTrigger('threshold_breach', { type: a.type, severity: a.severity, customer: a.customer, amount: a.amount, details: a.message || a.type + ' — ' + a.customer });
       });
     }
 
@@ -169,7 +171,7 @@ const ThresholdMonitor = (function() {
         <p style="font-size:12px;margin:0 0 8px 0">${a.message}</p>
         <div style="display:flex;gap:6px">
           ${a.requiresCTR ? `<button class="btn btn-sm btn-gold" onclick="ThresholdMonitor.queueCTR(${JSON.stringify(a).replace(/"/g, '&quot;')})">Queue CTR Filing</button>` : ''}
-          ${a.requiresSTR ? `<button class="btn btn-sm btn-green" onclick="switchTab('incidents');document.getElementById('strSubject').value='${a.customer}';document.getElementById('strAmount').value='${Math.round(a.amount / USD_TO_AED)}'">Draft STR</button>` : ''}
+          ${a.requiresSTR ? `<button class="btn btn-sm btn-green" onclick="switchTab('incidents');document.getElementById('strSubject').value=${JSON.stringify(a.customer).replace(/</g, '\\u003c')};document.getElementById('strAmount').value='${Math.round(a.amount)}'">Draft STR</button>` : ''}
         </div>
       </div>
     `).join('') || '<p style="color:var(--muted);font-size:13px">No threshold alerts detected. All transactions within AED 55,000 DPMS limit.</p>';

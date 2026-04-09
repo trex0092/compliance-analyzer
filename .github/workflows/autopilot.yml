@@ -1,0 +1,53 @@
+name: Hawkeye Autopilot — Daily Compliance Cycle
+
+on:
+  schedule:
+    # Run daily at 06:00 UTC (10:00 UAE time)
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    # Allow manual triggers from GitHub Actions UI
+    inputs:
+      reason:
+        description: 'Reason for manual run'
+        required: false
+        default: 'Manual trigger'
+
+jobs:
+  autopilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Hawkeye Autopilot
+        run: node scripts/autopilot.mjs
+        env:
+          NODE_ENV: production
+          CI: true
+
+      - name: Upload briefing artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autopilot-briefing-${{ github.run_number }}
+          path: history/daily-ops/
+          retention-days: 365
+
+      - name: Upload data snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autopilot-data-${{ github.run_number }}
+          path: data/
+          retention-days: 90

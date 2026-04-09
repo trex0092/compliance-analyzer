@@ -2,6 +2,8 @@
 <html lang="en-GB">
 <head>
 <meta charset="UTF-8">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -7344,7 +7346,34 @@ async function callGemini(body) {
   return { content: [{ type: 'text', text }] };
 }
 
+// AI response cache — avoids duplicate API calls for identical prompts within session
+const _aiCache = new Map();
+const AI_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 async function callAI(body) {
+  // Generate cache key from the user message content (last message)
+  const msgs = body.messages || [];
+  const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1].content : '';
+  const cacheKey = (body.model || '') + '|' + (typeof lastMsg === 'string' ? lastMsg : JSON.stringify(lastMsg));
+  if (cacheKey.length < 5000) { // Only cache reasonably-sized prompts
+    const cached = _aiCache.get(cacheKey);
+    if (cached && (Date.now() - cached.ts) < AI_CACHE_TTL_MS) {
+      return cached.result;
+    }
+  }
+  const result = await _callAIUncached(body);
+  if (cacheKey.length < 5000) {
+    _aiCache.set(cacheKey, { result, ts: Date.now() });
+    // Limit cache size
+    if (_aiCache.size > 100) {
+      const oldest = _aiCache.keys().next().value;
+      _aiCache.delete(oldest);
+    }
+  }
+  return result;
+}
+
+async function _callAIUncached(body) {
   if (AI_PROVIDER === 'gemini' && (GEMINI_KEY || PROXY_URL)) {
     return callGemini(body);
   }

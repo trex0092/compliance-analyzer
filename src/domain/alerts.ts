@@ -2,6 +2,7 @@ export interface Alert {
   id: string;
   type:
     | 'review-overdue'
+    | 'review-upcoming'
     | 'evidence-expiring'
     | 'screening-expired'
     | 'high-risk-case-open'

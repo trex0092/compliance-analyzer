@@ -1,7 +1,18 @@
 import { getStore } from '@netlify/blobs'
 import type { Config } from '@netlify/functions'
+import { authenticate, rateLimit } from './middleware/auth.mts'
 
 export default async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204 })
+  }
+
+  // Rate limit and authentication
+  const rl = rateLimit(req)
+  if (!rl.ok) return rl.response!
+  const auth = authenticate(req)
+  if (!auth.ok) return auth.response!
+
   const url = new URL(req.url)
   const category = url.searchParams.get('category') || ''
 

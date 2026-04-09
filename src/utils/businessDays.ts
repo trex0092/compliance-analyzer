@@ -42,7 +42,11 @@ const UAE_PUBLIC_HOLIDAYS: Set<string> = new Set([
 ]);
 
 function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  // Use local date components, not UTC — avoids off-by-one near midnight in UAE (UTC+4)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function isWeekend(d: Date): boolean {

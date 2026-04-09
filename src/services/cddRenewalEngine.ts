@@ -129,7 +129,7 @@ export function scanForRenewals(
       upcomingIn30Days.push(task);
       alerts.push({
         id: createId('alert'),
-        type: 'review-overdue',
+        type: 'review-upcoming',
         subjectId: customer.id,
         subjectType: 'customer',
         message: `CDD review for ${customer.legalName} due in ${Math.floor(daysUntilDue)} days (${task.dueDate}). Risk: ${customer.riskRating}.`,
