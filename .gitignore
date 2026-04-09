@@ -40,6 +40,10 @@ coverage/
 # Netlify
 .netlify/
 
+# Autopilot runtime data (regenerated on each run)
+data/
+history/
+
 # Python (vendor submodules)
 __pycache__/
 *.pyc

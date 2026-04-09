@@ -9,7 +9,8 @@
     "test:coverage": "vitest run --coverage",
     "lint:ts": "eslint src/ --ext .ts,.tsx",
     "format": "prettier --write 'src/**/*.{ts,tsx}'",
-    "format:check": "prettier --check 'src/**/*.{ts,tsx}'"
+    "format:check": "prettier --check 'src/**/*.{ts,tsx}'",
+    "autopilot": "node scripts/autopilot.mjs"
   },
   "repository": {
     "type": "git",
