@@ -30,6 +30,10 @@ to minimize token usage while maintaining quality:
 
 - **Root `.js` files**: Core backend modules (compliance-suite, database, workflow-engine, auth, etc.)
 - **`src/`**: React frontend (TSX components organized by domain, risk, services, ui, utils)
+- **`vendor/`**: Integrated agent frameworks and reference implementations (14 submodules)
+- **`skills/`**: 17 compliance-specific skills (including 3 new multi-agent skills)
+- **`.agents/skills/`**: External generic skills (SEO, UI/UX, browser, etc.)
+- **`docs/research/`**: Framework research and analysis documents
 - **Stack**: JavaScript/TypeScript, React
 
 ---
@@ -211,6 +215,31 @@ This is the single source of truth. When a regulation changes:
 | `/timeline` | Entity compliance history | Reconstruct chronological audit trail |
 | `/filing-compliance` | Filing deadline compliance | Prove all STR/CTR/CNMR filed on time |
 | `/kpi-report` | 30-KPI DPMS compliance report | Quarterly/annual MoE, EOCN, FIU reporting |
+| `/multi-agent-screen` | Parallel multi-agent sanctions screening | High-volume screening, full-list coverage across all sanctions lists |
+| `/agent-orchestrate` | Multi-agent compliance workflow orchestrator | Complex CDD/EDD/STR workflows using PEER pattern |
+| `/agent-review` | Multi-agent compliance code review | PR review with parallel specialist agents (regulatory, security, audit, architecture) |
+
+## Integrated Agent Frameworks
+
+The following multi-agent frameworks are vendored for reference and integration patterns:
+
+| Framework | Location | Key Pattern | Relevance |
+|-----------|----------|-------------|-----------|
+| OpenAI Agents SDK | `vendor/openai-agents-python` | Handoffs + Guardrails | Four-eyes approval workflows |
+| Microsoft Agent Framework | `vendor/microsoft-agent-framework` | Graph orchestration + time-travel | Audit trail with state replay |
+| open-multi-agent | `vendor/open-multi-agent` | DAG task decomposition | Parallel screening pipelines |
+| agentUniverse | `vendor/agentUniverse` | PEER/DOE patterns | CDD review workflows |
+| ChatDev | `vendor/ChatDev` | DAG + RL orchestrator | Complex multi-stage compliance pipelines |
+| OpenMAIC | `vendor/OpenMAIC` | LangGraph director | Interactive compliance training |
+| oh-my-claudecode | `vendor/oh-my-claudecode` | Staged pipeline + model routing | Development workflow optimization |
+
+| multi-agent-shogun | `vendor/multi-agent-shogun` | Hierarchical command chain | Parallel task execution via tmux |
+| everything-claude-code | `vendor/everything-claude-code` | AgentShield security pipeline | Red-team/blue-team code review |
+| wshobson agents | `vendor/wshobson-agents` | Plugin marketplace + model tiering | Cost-optimized agent routing |
+| claude-code-system-prompts | `vendor/claude-code-system-prompts` | Prompt architecture reference | Sub-agent delegation patterns |
+| claude-seo | `vendor/claude-seo` | Parallel subagent audits | Concurrent multi-domain analysis |
+| quant-trading | `vendor/quant-trading` | Quantitative trading strategies | Transaction pattern analysis, market risk assessment |
+| Google AutoML | `vendor/google-automl` | Automated ML model selection | Risk model optimization, anomaly detection tuning |
 
 ## Hooks
 

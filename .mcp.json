@@ -12,6 +12,21 @@
   "vendorDeps": {
     "g0dmod3": "vendor/g0dmod3",
     "hyperliquid-trading-agent": "vendor/hyperliquid-trading-agent",
-    "code-review-graph": "vendor/code-review-graph"
+    "code-review-graph": "vendor/code-review-graph",
+    "openai-agents-python": "vendor/openai-agents-python",
+    "microsoft-agent-framework": "vendor/microsoft-agent-framework",
+    "open-multi-agent": "vendor/open-multi-agent",
+    "agentUniverse": "vendor/agentUniverse",
+    "ChatDev": "vendor/ChatDev",
+    "OpenMAIC": "vendor/OpenMAIC",
+    "oh-my-claudecode": "vendor/oh-my-claudecode",
+
+    "multi-agent-shogun": "vendor/multi-agent-shogun",
+    "wshobson-agents": "vendor/wshobson-agents",
+    "claude-code-system-prompts": "vendor/claude-code-system-prompts",
+    "everything-claude-code": "vendor/everything-claude-code",
+    "claude-seo": "vendor/claude-seo",
+    "quant-trading": "vendor/quant-trading",
+    "google-automl": "vendor/google-automl"
   }
 }
