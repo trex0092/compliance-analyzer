@@ -16,6 +16,15 @@ import { FILING_TOOL_SCHEMAS } from './tools/filing-tools';
 import { CASE_TOOL_SCHEMAS } from './tools/case-tools';
 import { QUANT_TOOL_SCHEMAS } from './tools/quant-analytics-tools';
 import { AUTOML_TOOL_SCHEMAS } from './tools/automl-risk-tools';
+import { NETWORK_TOOL_SCHEMAS } from './tools/network-analysis-tools';
+import { ADVERSARIAL_TOOL_SCHEMAS } from './tools/adversarial-detection-tools';
+import { PREDICTIVE_TOOL_SCHEMAS } from './tools/predictive-risk-tools';
+import { EXPLAINABLE_TOOL_SCHEMAS } from './tools/explainable-ai-tools';
+import { STREAMING_TOOL_SCHEMAS } from './tools/streaming-pipeline-tools';
+import { EVIDENCE_VAULT_TOOL_SCHEMAS } from './tools/evidence-vault-tools';
+import { NL_COMMAND_TOOL_SCHEMAS } from './tools/nl-command-tools';
+import { COLLABORATION_TOOL_SCHEMAS } from './tools/multi-agent-protocol-tools';
+import { KNOWLEDGE_GRAPH_TOOL_SCHEMAS } from './tools/knowledge-graph-tools';
 
 // Tool handlers
 import {
@@ -56,6 +65,11 @@ import {
   runEnsembleRiskScoring,
   updateModelWeights,
 } from './tools/automl-risk-tools';
+import { runNetworkAnalysis } from './tools/network-analysis-tools';
+import { runAdversarialDetection } from './tools/adversarial-detection-tools';
+import { runPredictiveRiskAnalysis } from './tools/predictive-risk-tools';
+import { explainScreeningDecision, explainRiskDecision } from './tools/explainable-ai-tools';
+import { parseCommand } from './tools/nl-command-tools';
 
 import type { ChainedAuditEvent } from '../utils/auditChain';
 
@@ -98,6 +112,15 @@ const ALL_TOOL_SCHEMAS = [
   ...CASE_TOOL_SCHEMAS,
   ...QUANT_TOOL_SCHEMAS,
   ...AUTOML_TOOL_SCHEMAS,
+  ...NETWORK_TOOL_SCHEMAS,
+  ...ADVERSARIAL_TOOL_SCHEMAS,
+  ...PREDICTIVE_TOOL_SCHEMAS,
+  ...EXPLAINABLE_TOOL_SCHEMAS,
+  ...STREAMING_TOOL_SCHEMAS,
+  ...EVIDENCE_VAULT_TOOL_SCHEMAS,
+  ...NL_COMMAND_TOOL_SCHEMAS,
+  ...COLLABORATION_TOOL_SCHEMAS,
+  ...KNOWLEDGE_GRAPH_TOOL_SCHEMAS,
 ] as const;
 
 export type ToolName = (typeof ALL_TOOL_SCHEMAS)[number]['name'];
@@ -243,6 +266,24 @@ export class ComplianceMCPServer {
             (args as { simulations?: number }).simulations,
           ),
         };
+
+      // ---- Advanced Engines ----
+      case 'analyze_entity_network':
+        return runNetworkAnalysis((args as { graph: never }).graph);
+      case 'detect_adversarial_patterns':
+        return runAdversarialDetection((args as { transactions: never[] }).transactions);
+      case 'predict_risk_trajectory':
+        return runPredictiveRiskAnalysis(
+          (args as { entityName: string }).entityName,
+          (args as { data: never[] }).data,
+          (args as { forecastDays?: number }).forecastDays,
+        );
+      case 'explain_screening_decision':
+        return explainScreeningDecision(args as never);
+      case 'explain_risk_decision':
+        return explainRiskDecision(args as never);
+      case 'parse_nl_command':
+        return parseCommand((args as { command: string }).command);
 
       // ---- AutoML Risk ----
       case 'extract_risk_features':
