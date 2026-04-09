@@ -12,6 +12,7 @@ import {
   REPORT_TYPE_LABELS,
 } from '../../domain/reports';
 import { LocalAppStore } from '../../services/indexedDbStore';
+import { buildGoAMLXml, downloadGoAMLXml } from '../../services/goamlBuilder';
 import { createId } from '../../utils/id';
 import { nowIso, formatDate } from '../../utils/dates';
 
@@ -405,13 +406,25 @@ function NewReportForm({
 
 function ReportDetail({
   report,
+  cases,
+  customers,
   onStatusChange,
   onClose,
 }: {
   report: SuspicionReport;
+  cases: ComplianceCase[];
+  customers: CustomerProfile[];
   onStatusChange: (id: string, newStatus: ReportStatus, notes?: string) => void;
   onClose: () => void;
 }) {
+  const [xmlPreview, setXmlPreview] = useState<string | null>(null);
+  const [copyMsg, setCopyMsg] = useState('');
+
+  const linkedCase = cases.find((c) => c.id === report.caseId);
+  const linkedCustomer = linkedCase
+    ? customers.find((cu) => cu.id === linkedCase.linkedCustomerId)
+    : undefined;
+
   const nextActions: Partial<Record<ReportStatus, { label: string; next: ReportStatus; color: string }[]>> = {
     draft: [
       { label: 'Mark Ready for Review', next: 'ready', color: '#3B82F6' },
@@ -421,7 +434,7 @@ function ReportDetail({
       { label: 'Return to Draft', next: 'draft', color: '#8b949e' },
     ],
     approved: [
-      { label: 'Export XML', next: 'exported', color: '#06B6D4' },
+      { label: 'Mark as Exported', next: 'exported', color: '#06B6D4' },
     ],
     exported: [
       { label: 'Mark as Submitted', next: 'submitted', color: '#8B5CF6' },
@@ -442,6 +455,25 @@ function ReportDetail({
   };
 
   const actions = nextActions[report.status] || [];
+
+  const handleExportXml = () => {
+    downloadGoAMLXml(report, linkedCase, linkedCustomer);
+    onStatusChange(report.id, 'exported');
+  };
+
+  const handlePreviewXml = () => {
+    const xml = buildGoAMLXml(report, linkedCase, linkedCustomer);
+    setXmlPreview(xml);
+  };
+
+  const handleCopyXml = () => {
+    if (xmlPreview) {
+      void navigator.clipboard.writeText(xmlPreview).then(() => {
+        setCopyMsg('Copied!');
+        setTimeout(() => setCopyMsg(''), 2000);
+      });
+    }
+  };
 
   return (
     <div
@@ -508,6 +540,55 @@ function ReportDetail({
         <div style={{ marginTop: 4 }}>{report.reasonForSuspicion}</div>
       </div>
 
+      {/* goAML XML Actions */}
+      <div style={{
+        background: '#0d1117',
+        border: '1px solid #1a3a2a',
+        borderRadius: 6,
+        padding: 12,
+        marginBottom: 16,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <strong style={{ fontSize: 12, color: '#3DA876' }}>goAML XML Export</strong>
+          <span style={{ fontSize: 10, color: '#484f58' }}>UAE FIU compliant XML — auto-generated from report data</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={handleExportXml} style={S.btn('#238636')}>
+            Download goAML XML
+          </button>
+          <button onClick={handlePreviewXml} style={S.btn('#1f6feb')}>
+            {xmlPreview ? 'Refresh Preview' : 'Preview XML'}
+          </button>
+          {xmlPreview && (
+            <button onClick={handleCopyXml} style={S.btn('#21262d')}>
+              {copyMsg || 'Copy XML'}
+            </button>
+          )}
+        </div>
+
+        {xmlPreview && (
+          <div style={{ marginTop: 12 }}>
+            <pre style={{
+              background: '#010409',
+              border: '1px solid #21262d',
+              borderRadius: 6,
+              padding: 12,
+              fontSize: 11,
+              color: '#8b949e',
+              maxHeight: 350,
+              overflow: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+              lineHeight: 1.5,
+            }}>
+              {xmlPreview}
+            </pre>
+          </div>
+        )}
+      </div>
+
+      {/* Status Actions */}
       {actions.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {actions.map((a) => (
@@ -771,6 +852,8 @@ export default function ReportsHub() {
       {selectedReport && (
         <ReportDetail
           report={selectedReport}
+          cases={cases}
+          customers={customers}
           onStatusChange={handleStatusChange}
           onClose={() => setSelectedId(null)}
         />
