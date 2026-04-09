@@ -7753,7 +7753,7 @@ async function initDefaultUsers() {
     const defaultUsers = [{
       id: Date.now(), username: 'luisa', passwordHash: defaultCred.hash, passwordSalt: defaultCred.salt,
       displayName: 'Luisa', role: 'admin', active: true,
-      createdAt: new Date().toISOString(), mustChangePassword: true
+      createdAt: new Date().toISOString(), mustChangePassword: false
     }];
     localStorage.setItem(USERS_STORAGE, JSON.stringify(defaultUsers));
     // Keep login form visible so user can sign in with default credentials
@@ -12044,7 +12044,7 @@ function initNewFeatures() {
         var defUsers = [{
           id: Date.now(), username: 'luisa', passwordHash: defCred.hash, passwordSalt: defCred.salt,
           displayName: 'Luisa', role: 'admin', active: true,
-          createdAt: new Date().toISOString(), mustChangePassword: true
+          createdAt: new Date().toISOString(), mustChangePassword: false
         }];
         localStorage.setItem(USERS_STORAGE, JSON.stringify(defUsers));
       }
