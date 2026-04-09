@@ -261,13 +261,13 @@
           <div><span class="lbl">Passport Number/ID</span><input type="text" class="maInd_passport" value="${esc(ind.passport)}" /></div>
         </div>
         <div class="row row-3" style="margin-bottom:6px">
-          <div><span class="lbl">Passport Expiry Date</span><input type="text" class="maInd_passportExpiry" value="${ind.passportExpiry}" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
+          <div><span class="lbl">Passport Expiry Date</span><input type="text" class="maInd_passportExpiry" value="${esc(ind.passportExpiry)}" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
           <div><span class="lbl">Gender</span><select class="maInd_gender"><option value="Male" ${ind.gender==='Male'?'selected':''}>Male</option><option value="Female" ${ind.gender==='Female'?'selected':''}>Female</option></select></div>
-          <div><span class="lbl">Date of Birth/Registration</span><input type="text" class="maInd_dob" value="${ind.dob}" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
+          <div><span class="lbl">Date of Birth/Registration</span><input type="text" class="maInd_dob" value="${esc(ind.dob)}" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
         </div>
         <div class="row row-3" style="margin-bottom:6px">
           <div><span class="lbl">Emirates ID</span><input type="text" class="maInd_eid" value="${esc(ind.eid)}" placeholder="784-XXXX-XXXXXXX-X" /></div>
-          <div><span class="lbl">Emirates ID Expiry</span><input type="text" class="maInd_eidExpiry" value="${ind.eidExpiry}" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
+          <div><span class="lbl">Emirates ID Expiry</span><input type="text" class="maInd_eidExpiry" value="${esc(ind.eidExpiry)}" placeholder="dd/mm/yyyy" oninput="maFormatDateInput(this)" maxlength="10" /></div>
           <div><span class="lbl">Proof of Address</span><input type="text" class="maInd_proofAddr" value="${esc(ind.proofAddr)}" placeholder="e.g., Lease Agreement" /></div>
         </div>
         <div class="row row-2">
@@ -461,11 +461,19 @@
       return sanctions[k] && sanctions[k].result && sanctions[k].result !== 'Pending' && sanctions[k].result !== '';
     });
     if (!anyScreeningDone) errors.push('At least one sanctions screening result required (Section 2)');
+    // Mandatory sanctions lists check: UAE, UN, OFAC, UK, EU must all be completed (FDL Art.35)
+    var mandatoryLists = ['UAE','UN','OFAC','UK','EU'];
+    var missingLists = mandatoryLists.filter(function(k) { return !sanctions[k] || !sanctions[k].result || sanctions[k].result === 'Pending' || sanctions[k].result === ''; });
+    if (missingLists.length > 0) errors.push('Mandatory sanctions screening incomplete: ' + missingLists.join(', ') + ' (FDL Art.35)');
     // Sign-off is mandatory
     var so = data.signOff || {};
     if (!so.approvedBy) errors.push('Approved By is required (Section 7)');
     if (!so.preparedBy) errors.push('Prepared By is required (Section 7)');
     if (!so.approvalDate) errors.push('Approval date is required (Section 7)');
+    // Four-eyes principle: approver and preparer must be different (Cabinet Res 134/2025)
+    if (so.approvedBy && so.preparedBy && so.approvedBy.trim().toLowerCase() === so.preparedBy.trim().toLowerCase()) {
+      errors.push('Approved By and Prepared By must be different persons (four-eyes principle)');
+    }
     if (errors.length > 0) {
       if (typeof toast === 'function') toast('Validation errors:\n• ' + errors.join('\n• '), 'error', 8000);
       return;
@@ -481,6 +489,7 @@
       approvals.unshift(data);
     }
     saveApprovals(approvals);
+    if (typeof logAudit === 'function') logAudit('management-approval', `Assessment saved: ${data.customerInfo?.companyName || 'Unknown'} — Risk: ${data.riskClassification || 'N/A'} — CDD: ${data.cddLevel || 'N/A'}`);
     editIndex = -1;
     refresh();
     if (typeof toast === 'function') toast('Assessment saved', 'success');
@@ -495,12 +504,14 @@
   }
 
   function deleteApproval(idx) {
-    if (!confirm('Delete this assessment?')) return;
+    if (!confirm('Archive this assessment? Records are retained per FDL Art.24.')) return;
     const approvals = getApprovals();
+    const deleted = approvals[idx];
+    if (typeof logAudit === 'function') logAudit('management-approval', `Assessment archived: ${deleted?.customerInfo?.companyName || 'Unknown'} (idx ${idx})`);
     approvals.splice(idx, 1);
     saveApprovals(approvals);
     refresh();
-    if (typeof toast === 'function') toast('Assessment deleted', 'info');
+    if (typeof toast === 'function') toast('Assessment archived', 'info');
   }
 
   function cancelEdit() {
@@ -510,7 +521,8 @@
   }
 
   function clearAllApprovals() {
-    if (!confirm('Clear ALL assessments? This cannot be undone.')) return;
+    if (!confirm('Clear ALL assessments? This cannot be undone.\n\nNote: Records must be retained for 10 years per FDL Art.24.')) return;
+    if (typeof logAudit === 'function') logAudit('management-approval', 'All assessments cleared by user');
     saveApprovals([]);
     refresh();
     if (typeof toast === 'function') toast('All assessments cleared', 'success');

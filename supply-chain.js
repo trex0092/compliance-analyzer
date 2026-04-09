@@ -7,6 +7,8 @@
 const SupplyChain = (function() {
   'use strict';
 
+  function esc(s) { if (!s && s!==0) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+
   const STORAGE_KEY = 'fgl_supply_chain';
   const CAHRA_KEY = 'fgl_cahra_countries';
   const AUDIT_KEY = 'fgl_sc_audits';
@@ -237,14 +239,14 @@ const SupplyChain = (function() {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <div>
             <span class="badge ${e.riskLevel === 'HIGH' ? 'b-r' : e.riskLevel === 'MEDIUM' ? 'b-a' : 'b-g'}">${e.riskLevel} (${e.riskScore})</span>
-            <span style="font-size:13px;font-weight:500;margin-left:8px">${e.supplierName}</span>
+            <span style="font-size:13px;font-weight:500;margin-left:8px">${esc(e.supplierName)}</span>
           </div>
-          <span style="font-size:11px;color:var(--muted)">${e.originCountry || '??'} · ${e.commodityType}</span>
+          <span style="font-size:11px;color:var(--muted)">${esc(e.originCountry || '??')} · ${esc(e.commodityType)}</span>
         </div>
         <div style="font-size:11px;color:var(--muted)">
-          ${e.invoiceNo ? 'Inv: ' + e.invoiceNo + ' · ' : ''}Mine: ${e.mineOfOrigin || '—'} · Refiner: ${e.refinerName || '—'} ${e.isASM ? '· ASM' : ''} · Audit: ${e.auditStatus === 'completed' ? (e.auditDate || 'Completed') : e.auditStatus === 'under_process' ? 'Under Process' : e.auditStatus === 'na' ? 'N/A' : 'Not Yet'}
+          ${e.invoiceNo ? 'Inv: ' + esc(e.invoiceNo) + ' · ' : ''}Mine: ${esc(e.mineOfOrigin || '—')} · Refiner: ${esc(e.refinerName || '—')} ${e.isASM ? '· ASM' : ''} · Audit: ${e.auditStatus === 'completed' ? (e.auditDate || 'Completed') : e.auditStatus === 'under_process' ? 'Under Process' : e.auditStatus === 'na' ? 'N/A' : 'Not Yet'}
         </div>
-        ${e.riskFlags?.length ? `<div style="margin-top:4px;font-size:11px;color:var(--red)">${e.riskFlags.map(f => '• ' + f).join('<br>')}</div>` : ''}
+        ${e.riskFlags?.length ? `<div style="margin-top:4px;font-size:11px;color:var(--red)">${e.riskFlags.map(f => '• ' + esc(f)).join('<br>')}</div>` : ''}
       </div>
     `).join('') || '<p style="color:var(--muted);font-size:13px">No supply chain entries yet.</p>';
 
