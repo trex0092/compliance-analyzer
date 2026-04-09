@@ -65,8 +65,8 @@ export function isBusinessDay(d: Date): boolean {
   if (d.getFullYear() > MAX_HOLIDAY_YEAR) {
     console.warn(
       `[businessDays] Date ${toDateStr(d)} is beyond holiday calendar coverage (max: ${MAX_HOLIDAY_YEAR}). ` +
-      `Public holidays are NOT being checked — filing deadline calculations may be inaccurate. ` +
-      `Update UAE_PUBLIC_HOLIDAYS in src/utils/businessDays.ts.`
+        `Public holidays are NOT being checked — filing deadline calculations may be inaccurate. ` +
+        `Update UAE_PUBLIC_HOLIDAYS in src/utils/businessDays.ts.`
     );
   }
   return !isWeekend(d) && !isPublicHoliday(d);

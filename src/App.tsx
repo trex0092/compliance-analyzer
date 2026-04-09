@@ -299,11 +299,19 @@ async function seedData() {
         caseId: demoCases[0].id,
         reportType: 'STR' as ReportType,
         status: 'submitted' as ReportStatus,
-        reasonForSuspicion: 'Unexplained third-party payment pattern and unresolved source of funds concerns flagged during transaction monitoring.',
+        reasonForSuspicion:
+          'Unexplained third-party payment pattern and unresolved source of funds concerns flagged during transaction monitoring.',
         facts: demoCases[0].findings,
         redFlags: demoCases[0].redFlags,
         parties: [{ name: demoCases[0].id, role: 'subject', country: 'AE' }],
-        transactions: [{ date: nowIso(), summary: 'Third-party payment — source of funds unverified', amount: 185000, currency: 'AED' }],
+        transactions: [
+          {
+            date: nowIso(),
+            summary: 'Third-party payment — source of funds unverified',
+            amount: 185000,
+            currency: 'AED',
+          },
+        ],
         severity: 'critical',
         entityName: 'FINE GOLD LLC',
         amount: 185000,
@@ -320,11 +328,14 @@ async function seedData() {
         caseId: demoCases[3].id,
         reportType: 'SAR' as ReportType,
         status: 'draft' as ReportStatus,
-        reasonForSuspicion: 'Adverse media linking entity to gold smuggling allegations. Unexplained wealth relative to declared business size.',
+        reasonForSuspicion:
+          'Adverse media linking entity to gold smuggling allegations. Unexplained wealth relative to declared business size.',
         facts: demoCases[5].findings,
         redFlags: demoCases[5].redFlags,
         parties: [{ name: demoCases[5].id, role: 'subject', country: 'AE' }],
-        transactions: [{ date: nowIso(), summary: 'Adverse media — potential illicit gold trade involvement' }],
+        transactions: [
+          { date: nowIso(), summary: 'Adverse media — potential illicit gold trade involvement' },
+        ],
         severity: 'high',
         entityName: 'MADISON JEWELLERY TRADING L.L.C',
         generatedAt: nowIso(),
@@ -339,7 +350,14 @@ async function seedData() {
         facts: demoCases[6].findings,
         redFlags: demoCases[6].redFlags,
         parties: [{ name: demoCases[6].id, role: 'subject', country: 'AE' }],
-        transactions: [{ date: nowIso(), summary: 'Cash payment AED 62,000 for gold bullion', amount: 62000, currency: 'AED' }],
+        transactions: [
+          {
+            date: nowIso(),
+            summary: 'Cash payment AED 62,000 for gold bullion',
+            amount: 62000,
+            currency: 'AED',
+          },
+        ],
         severity: 'medium',
         entityName: 'NAPLES JEWELLERY TRADING L.L.C',
         amount: 62000,
@@ -354,16 +372,23 @@ async function seedData() {
         caseId: demoCases[2].id,
         reportType: 'STR' as ReportType,
         status: 'returned' as ReportStatus,
-        reasonForSuspicion: 'Screening hit on certificates of origin with potential manipulation detected.',
+        reasonForSuspicion:
+          'Screening hit on certificates of origin with potential manipulation detected.',
         facts: demoCases[2].findings,
         redFlags: demoCases[2].redFlags,
         parties: [{ name: demoCases[2].id, role: 'subject', country: 'AE' }],
-        transactions: [{ date: nowIso(), summary: 'Certificate of origin under review — PayPal payments flagged' }],
+        transactions: [
+          {
+            date: nowIso(),
+            summary: 'Certificate of origin under review — PayPal payments flagged',
+          },
+        ],
         severity: 'high',
         entityName: 'NAPLES JEWELLERY TRADING L.L.C',
         generatedAt: nowIso(),
         submittedAt: nowIso(),
-        returnReason: 'FIU requests additional transaction details and supporting documentation for certificates of origin.',
+        returnReason:
+          'FIU requests additional transaction details and supporting documentation for certificates of origin.',
         returnedAt: nowIso(),
         returnedBy: 'UAE FIU',
         regulatoryBasis: 'FDL No.10/2025 Art.26-27',
@@ -373,11 +398,14 @@ async function seedData() {
         caseId: demoCases[1].id,
         reportType: 'DPMSR' as ReportType,
         status: 'approved' as ReportStatus,
-        reasonForSuspicion: 'Complex ownership structure with E-wallet payments detected during periodic review.',
+        reasonForSuspicion:
+          'Complex ownership structure with E-wallet payments detected during periodic review.',
         facts: demoCases[1].findings,
         redFlags: demoCases[1].redFlags,
         parties: [{ name: demoCases[1].id, role: 'subject', country: 'AE' }],
-        transactions: [{ date: nowIso(), summary: 'E-wallet payments flagged — complex ownership' }],
+        transactions: [
+          { date: nowIso(), summary: 'E-wallet payments flagged — complex ownership' },
+        ],
         severity: 'high',
         entityName: 'FINE GOLD (BRANCH)',
         generatedAt: nowIso(),
@@ -510,7 +538,10 @@ function CustomersPage() {
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    void store.getCustomers().then(setCustomers).catch((e) => console.warn('[App] Failed to load customers:', e));
+    void store
+      .getCustomers()
+      .then(setCustomers)
+      .catch((e) => console.warn('[App] Failed to load customers:', e));
   }, []);
 
   const filtered = customers.filter(
@@ -880,8 +911,14 @@ function HistoryPage() {
   const [tab, setTab] = useState<'screenings' | 'alerts'>('screenings');
 
   useEffect(() => {
-    void store.getScreeningRuns().then((runs) => setScreenings(runs as typeof screenings)).catch((e) => console.warn('[App] Failed to load screenings:', e));
-    void store.getAlerts().then((a) => setAlerts(a as typeof alerts)).catch((e) => console.warn('[App] Failed to load alerts:', e));
+    void store
+      .getScreeningRuns()
+      .then((runs) => setScreenings(runs as typeof screenings))
+      .catch((e) => console.warn('[App] Failed to load screenings:', e));
+    void store
+      .getAlerts()
+      .then((a) => setAlerts(a as typeof alerts))
+      .catch((e) => console.warn('[App] Failed to load alerts:', e));
   }, []);
 
   return (
@@ -1312,9 +1349,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    void seedData().then(() => {
-      refreshKPI().then(() => setLoading(false)).catch((e) => { console.warn('[App] KPI refresh failed:', e); setLoading(false); });
-    }).catch((e) => { console.warn('[App] Seed data failed:', e); setLoading(false); });
+    void seedData()
+      .then(() => {
+        refreshKPI()
+          .then(() => setLoading(false))
+          .catch((e) => {
+            console.warn('[App] KPI refresh failed:', e);
+            setLoading(false);
+          });
+      })
+      .catch((e) => {
+        console.warn('[App] Seed data failed:', e);
+        setLoading(false);
+      });
   }, [refreshKPI]);
 
   const pageTitle: Record<Page, string> = {

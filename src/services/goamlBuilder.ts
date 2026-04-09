@@ -77,12 +77,14 @@ export function buildGoAMLXml(
   const dateOnly = today();
 
   // Determine subject info from multiple sources
-  const subjectName = report.entityName || linkedCustomer?.legalName || linkedCase?.entityId || report.caseId;
-  const subjectType = linkedCustomer?.type === 'supplier' || linkedCustomer?.type === 'agent'
-    ? 'LEGAL_ENTITY'
-    : 'LEGAL_ENTITY';
-  const subjectCountry = linkedCustomer?.countryOfRegistration ||
-    (report.parties?.[0]?.country) || 'AE';
+  const subjectName =
+    report.entityName || linkedCustomer?.legalName || linkedCase?.entityId || report.caseId;
+  const subjectType =
+    linkedCustomer?.type === 'supplier' || linkedCustomer?.type === 'agent'
+      ? 'LEGAL_ENTITY'
+      : 'LEGAL_ENTITY';
+  const subjectCountry =
+    linkedCustomer?.countryOfRegistration || report.parties?.[0]?.country || 'AE';
   const subjectIdType = linkedCustomer?.tradeLicenseNo ? 'TRADE_LICENSE' : 'OTHER';
   const subjectIdNumber = linkedCustomer?.tradeLicenseNo || '';
 
@@ -97,7 +99,9 @@ export function buildGoAMLXml(
   const isFFR = report.reportType === 'FFR';
 
   // Build transactions XML
-  const transactionsXml = (report.transactions || []).map((tx, i) => `
+  const transactionsXml = (report.transactions || [])
+    .map(
+      (tx, i) => `
     <transaction seq="${i + 1}">
       <transactionDate>${esc(tx.date?.slice(0, 10) || dateOnly)}</transactionDate>
       <transactionType>${esc(tx.paymentMethod || 'PURCHASE')}</transactionType>
@@ -106,22 +110,26 @@ export function buildGoAMLXml(
       <description>${esc(tx.summary)}</description>
       <originCountry>${esc(tx.originCountry || '')}</originCountry>
       <destinationCountry>${esc(tx.destinationCountry || 'AE')}</destinationCountry>
-    </transaction>`).join('\n');
+    </transaction>`
+    )
+    .join('\n');
 
   // Build red flags XML
-  const redFlagsXml = (report.redFlags || []).map(
-    (f) => `      <flag>${esc(f)}</flag>`
-  ).join('\n');
+  const redFlagsXml = (report.redFlags || []).map((f) => `      <flag>${esc(f)}</flag>`).join('\n');
 
   // Build parties XML
-  const partiesXml = (report.parties || []).map((p) => `
+  const partiesXml = (report.parties || [])
+    .map(
+      (p) => `
     <party>
       <role>${esc(p.role)}</role>
       <name>${esc(p.role === 'subject' ? subjectName : p.name)}</name>
       <country>${esc(p.country || subjectCountry)}</country>
       <idType>${esc(p.idType || subjectIdType)}</idType>
       <idNumber>${esc(p.idNumber || subjectIdNumber)}</idNumber>
-    </party>`).join('\n');
+    </party>`
+    )
+    .join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <goAMLReport>
@@ -171,11 +179,27 @@ ${partiesXml}
       <transactionType>PURCHASE</transactionType>
       <amount>${esc(String(txAmount))}</amount>
       <currency>${esc(txCurrency)}</currency>
-      <currencyLocal>AED</currencyLocal>${isCTR ? `
-      <thresholdBasis>UAE FDL No.10/2025 Art.16 — AED 55,000 DPMS threshold</thresholdBasis>` : ''}${report.commodityType ? `
-      <commodityType>${esc(report.commodityType)}</commodityType>` : ''}${report.weightGrams ? `
-      <weightGrams>${report.weightGrams}</weightGrams>` : ''}${report.purity ? `
-      <purity>${report.purity}</purity>` : ''}
+      <currencyLocal>AED</currencyLocal>${
+        isCTR
+          ? `
+      <thresholdBasis>UAE FDL No.10/2025 Art.16 — AED 55,000 DPMS threshold</thresholdBasis>`
+          : ''
+      }${
+        report.commodityType
+          ? `
+      <commodityType>${esc(report.commodityType)}</commodityType>`
+          : ''
+      }${
+        report.weightGrams
+          ? `
+      <weightGrams>${report.weightGrams}</weightGrams>`
+          : ''
+      }${
+        report.purity
+          ? `
+      <purity>${report.purity}</purity>`
+          : ''
+      }
       <paymentMethod>${esc(firstTx?.paymentMethod || 'CASH')}</paymentMethod>
     </primaryTransaction>
 ${transactionsXml}
@@ -191,15 +215,31 @@ ${redFlagsXml}
 ${(report.facts || []).map((f) => `      <fact>${esc(f)}</fact>`).join('\n')}
     </facts>
     <actionsTaken>Filed ${report.reportType} with UAE FIU via goAML</actionsTaken>
-    <internalCaseRef>${esc(report.caseId)}</internalCaseRef>${isFFR ? `
-    <freezeOrderBasis>Cabinet Resolution 74/2020 Art.4-7</freezeOrderBasis>` : ''}
+    <internalCaseRef>${esc(report.caseId)}</internalCaseRef>${
+      isFFR
+        ? `
+    <freezeOrderBasis>Cabinet Resolution 74/2020 Art.4-7</freezeOrderBasis>`
+        : ''
+    }
   </groundsForSuspicion>
 
   <riskAssessment>
-    <severity>${esc(report.severity || 'medium')}</severity>${report.riskAssessmentSummary ? `
-    <summary>${esc(report.riskAssessmentSummary)}</summary>` : ''}${report.sourceOfProceeds ? `
-    <sourceOfProceeds>${esc(report.sourceOfProceeds)}</sourceOfProceeds>` : ''}${report.useOfProceeds ? `
-    <useOfProceeds>${esc(report.useOfProceeds)}</useOfProceeds>` : ''}
+    <severity>${esc(report.severity || 'medium')}</severity>${
+      report.riskAssessmentSummary
+        ? `
+    <summary>${esc(report.riskAssessmentSummary)}</summary>`
+        : ''
+    }${
+      report.sourceOfProceeds
+        ? `
+    <sourceOfProceeds>${esc(report.sourceOfProceeds)}</sourceOfProceeds>`
+        : ''
+    }${
+      report.useOfProceeds
+        ? `
+    <useOfProceeds>${esc(report.useOfProceeds)}</useOfProceeds>`
+        : ''
+    }
   </riskAssessment>
 
   <reportFooter>

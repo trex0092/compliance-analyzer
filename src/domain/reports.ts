@@ -9,7 +9,18 @@ export type ReportStatus =
   | 'resubmitted'
   | 'closed';
 
-export type ReportType = 'STR' | 'SAR' | 'CTR' | 'DPMSR' | 'FFR' | 'AIF' | 'AIFT' | 'HRC' | 'HRCA' | 'PNMR' | 'CNMR';
+export type ReportType =
+  | 'STR'
+  | 'SAR'
+  | 'CTR'
+  | 'DPMSR'
+  | 'FFR'
+  | 'AIF'
+  | 'AIFT'
+  | 'HRC'
+  | 'HRCA'
+  | 'PNMR'
+  | 'CNMR';
 
 export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   draft: 'Draft',

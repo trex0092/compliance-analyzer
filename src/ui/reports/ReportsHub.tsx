@@ -1,11 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import type { ComplianceCase } from '../../domain/cases';
 import type { CustomerProfile } from '../../domain/customers';
-import type {
-  SuspicionReport,
-  ReportStatus,
-  ReportType,
-} from '../../domain/reports';
+import type { SuspicionReport, ReportStatus, ReportType } from '../../domain/reports';
 import {
   REPORT_STATUS_LABELS,
   REPORT_STATUS_COLORS,
@@ -180,9 +176,7 @@ function exportReportsCSV(reports: SuspicionReport[]) {
 
   const csvContent = [
     headers.join(','),
-    ...rows.map((row) =>
-      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-    ),
+    ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
   ].join('\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -292,7 +286,9 @@ function NewReportForm({
         New Report — Auto-populated from Case
       </h3>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}
+      >
         <div>
           <label style={{ fontSize: 11, color: '#8b949e', display: 'block', marginBottom: 4 }}>
             Source Case
@@ -361,13 +357,16 @@ function NewReportForm({
             <strong style={{ color: '#e6edf3' }}>Entity:</strong> {selectedCase.entityId}
           </div>
           <div style={{ color: '#8b949e' }}>
-            <strong style={{ color: '#e6edf3' }}>Risk:</strong> {selectedCase.riskLevel} ({selectedCase.riskScore})
+            <strong style={{ color: '#e6edf3' }}>Risk:</strong> {selectedCase.riskLevel} (
+            {selectedCase.riskScore})
           </div>
           <div style={{ color: '#8b949e' }}>
-            <strong style={{ color: '#e6edf3' }}>Red Flags:</strong> {selectedCase.redFlags.join(', ')}
+            <strong style={{ color: '#e6edf3' }}>Red Flags:</strong>{' '}
+            {selectedCase.redFlags.join(', ')}
           </div>
           <div style={{ color: '#8b949e' }}>
-            <strong style={{ color: '#e6edf3' }}>Findings:</strong> {selectedCase.findings.join(' | ')}
+            <strong style={{ color: '#e6edf3' }}>Findings:</strong>{' '}
+            {selectedCase.findings.join(' | ')}
           </div>
           {linkedCustomer && (
             <div style={{ color: '#8b949e' }}>
@@ -425,33 +424,23 @@ function ReportDetail({
     ? customers.find((cu) => cu.id === linkedCase.linkedCustomerId)
     : undefined;
 
-  const nextActions: Partial<Record<ReportStatus, { label: string; next: ReportStatus; color: string }[]>> = {
-    draft: [
-      { label: 'Mark Ready for Review', next: 'ready', color: '#3B82F6' },
-    ],
+  const nextActions: Partial<
+    Record<ReportStatus, { label: string; next: ReportStatus; color: string }[]>
+  > = {
+    draft: [{ label: 'Mark Ready for Review', next: 'ready', color: '#3B82F6' }],
     ready: [
       { label: 'Approve', next: 'approved', color: '#238636' },
       { label: 'Return to Draft', next: 'draft', color: '#8b949e' },
     ],
-    approved: [
-      { label: 'Mark as Exported', next: 'exported', color: '#06B6D4' },
-    ],
-    exported: [
-      { label: 'Mark as Submitted', next: 'submitted', color: '#8B5CF6' },
-    ],
+    approved: [{ label: 'Mark as Exported', next: 'exported', color: '#06B6D4' }],
+    exported: [{ label: 'Mark as Submitted', next: 'submitted', color: '#8B5CF6' }],
     submitted: [
       { label: 'FIU Acknowledged', next: 'acknowledged', color: '#238636' },
       { label: 'Returned by FIU', next: 'returned', color: '#D94F4F' },
     ],
-    returned: [
-      { label: 'Resubmit', next: 'resubmitted', color: '#E8A030' },
-    ],
-    resubmitted: [
-      { label: 'FIU Acknowledged', next: 'acknowledged', color: '#238636' },
-    ],
-    acknowledged: [
-      { label: 'Close Report', next: 'closed', color: '#484f58' },
-    ],
+    returned: [{ label: 'Resubmit', next: 'resubmitted', color: '#E8A030' }],
+    resubmitted: [{ label: 'FIU Acknowledged', next: 'acknowledged', color: '#238636' }],
+    acknowledged: [{ label: 'Close Report', next: 'closed', color: '#484f58' }],
   };
 
   const actions = nextActions[report.status] || [];
@@ -485,7 +474,14 @@ function ReportDetail({
         marginBottom: 16,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+        }}
+      >
         <h3 style={{ margin: 0, fontSize: 15, color: '#e6edf3' }}>
           {report.reportType} — {report.id}
         </h3>
@@ -496,27 +492,52 @@ function ReportDetail({
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         <div style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.8 }}>
-          <div><strong style={{ color: '#e6edf3' }}>Status:</strong>{' '}
+          <div>
+            <strong style={{ color: '#e6edf3' }}>Status:</strong>{' '}
             <span style={S.badge(REPORT_STATUS_COLORS[report.status])}>
               {REPORT_STATUS_LABELS[report.status]}
             </span>
           </div>
-          <div><strong style={{ color: '#e6edf3' }}>Entity:</strong> {report.entityName || report.caseId}</div>
-          <div><strong style={{ color: '#e6edf3' }}>Case:</strong> {report.caseId}</div>
-          <div><strong style={{ color: '#e6edf3' }}>Severity:</strong> {report.severity || 'N/A'}</div>
-          <div><strong style={{ color: '#e6edf3' }}>Generated:</strong> {formatDate(report.generatedAt)}</div>
+          <div>
+            <strong style={{ color: '#e6edf3' }}>Entity:</strong>{' '}
+            {report.entityName || report.caseId}
+          </div>
+          <div>
+            <strong style={{ color: '#e6edf3' }}>Case:</strong> {report.caseId}
+          </div>
+          <div>
+            <strong style={{ color: '#e6edf3' }}>Severity:</strong> {report.severity || 'N/A'}
+          </div>
+          <div>
+            <strong style={{ color: '#e6edf3' }}>Generated:</strong>{' '}
+            {formatDate(report.generatedAt)}
+          </div>
           {report.submittedAt && (
-            <div><strong style={{ color: '#e6edf3' }}>Submitted:</strong> {formatDate(report.submittedAt)}</div>
+            <div>
+              <strong style={{ color: '#e6edf3' }}>Submitted:</strong>{' '}
+              {formatDate(report.submittedAt)}
+            </div>
           )}
           {report.fiuReferenceNo && (
-            <div><strong style={{ color: '#e6edf3' }}>FIU Ref:</strong> {report.fiuReferenceNo}</div>
+            <div>
+              <strong style={{ color: '#e6edf3' }}>FIU Ref:</strong> {report.fiuReferenceNo}
+            </div>
           )}
         </div>
         <div style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.8 }}>
-          <div><strong style={{ color: '#e6edf3' }}>Regulatory Basis:</strong> {report.regulatoryBasis || 'N/A'}</div>
-          <div><strong style={{ color: '#e6edf3' }}>Red Flags:</strong> {(report.redFlags || []).join(', ') || 'None'}</div>
+          <div>
+            <strong style={{ color: '#e6edf3' }}>Regulatory Basis:</strong>{' '}
+            {report.regulatoryBasis || 'N/A'}
+          </div>
+          <div>
+            <strong style={{ color: '#e6edf3' }}>Red Flags:</strong>{' '}
+            {(report.redFlags || []).join(', ') || 'None'}
+          </div>
           {report.amount !== null && report.amount !== undefined && (
-            <div><strong style={{ color: '#e6edf3' }}>Amount:</strong> {report.currency || 'AED'} {report.amount.toLocaleString('en-GB')}</div>
+            <div>
+              <strong style={{ color: '#e6edf3' }}>Amount:</strong> {report.currency || 'AED'}{' '}
+              {report.amount.toLocaleString('en-GB')}
+            </div>
           )}
           {report.returnReason && (
             <div style={{ color: '#D94F4F' }}>
@@ -526,31 +547,44 @@ function ReportDetail({
         </div>
       </div>
 
-      <div style={{
-        background: '#0d1117',
-        border: '1px solid #21262d',
-        borderRadius: 6,
-        padding: 12,
-        marginBottom: 16,
-        fontSize: 12,
-        color: '#8b949e',
-        lineHeight: 1.6,
-      }}>
+      <div
+        style={{
+          background: '#0d1117',
+          border: '1px solid #21262d',
+          borderRadius: 6,
+          padding: 12,
+          marginBottom: 16,
+          fontSize: 12,
+          color: '#8b949e',
+          lineHeight: 1.6,
+        }}
+      >
         <strong style={{ color: '#e6edf3' }}>Suspicion Narrative:</strong>
         <div style={{ marginTop: 4 }}>{report.reasonForSuspicion}</div>
       </div>
 
       {/* goAML XML Actions */}
-      <div style={{
-        background: '#0d1117',
-        border: '1px solid #1a3a2a',
-        borderRadius: 6,
-        padding: 12,
-        marginBottom: 16,
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+      <div
+        style={{
+          background: '#0d1117',
+          border: '1px solid #1a3a2a',
+          borderRadius: 6,
+          padding: 12,
+          marginBottom: 16,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 8,
+          }}
+        >
           <strong style={{ fontSize: 12, color: '#3DA876' }}>goAML XML Export</strong>
-          <span style={{ fontSize: 10, color: '#484f58' }}>UAE FIU compliant XML — auto-generated from report data</span>
+          <span style={{ fontSize: 10, color: '#484f58' }}>
+            UAE FIU compliant XML — auto-generated from report data
+          </span>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={handleExportXml} style={S.btn('#238636')}>
@@ -568,20 +602,22 @@ function ReportDetail({
 
         {xmlPreview && (
           <div style={{ marginTop: 12 }}>
-            <pre style={{
-              background: '#010409',
-              border: '1px solid #21262d',
-              borderRadius: 6,
-              padding: 12,
-              fontSize: 11,
-              color: '#8b949e',
-              maxHeight: 350,
-              overflow: 'auto',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
-              lineHeight: 1.5,
-            }}>
+            <pre
+              style={{
+                background: '#010409',
+                border: '1px solid #21262d',
+                borderRadius: 6,
+                padding: 12,
+                fontSize: 11,
+                color: '#8b949e',
+                maxHeight: 350,
+                overflow: 'auto',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+                lineHeight: 1.5,
+              }}
+            >
               {xmlPreview}
             </pre>
           </div>
@@ -625,15 +661,13 @@ export default function ReportsHub() {
   const pageSize = 15;
 
   useEffect(() => {
-    void Promise.all([
-      store.getReports(),
-      store.getCases(),
-      store.getCustomers(),
-    ]).then(([r, c, cu]) => {
-      setReports(r);
-      setCases(c);
-      setCustomers(cu);
-    });
+    void Promise.all([store.getReports(), store.getCases(), store.getCustomers()]).then(
+      ([r, c, cu]) => {
+        setReports(r);
+        setCases(c);
+        setCustomers(cu);
+      }
+    );
   }, []);
 
   // ── Filtering & Sorting ──
@@ -642,7 +676,10 @@ export default function ReportsHub() {
 
     // Tab filter
     if (tab === 'new') list = list.filter((r) => r.status === 'draft' || r.status === 'ready');
-    else if (tab === 'submitted') list = list.filter((r) => ['submitted', 'acknowledged', 'resubmitted', 'closed'].includes(r.status));
+    else if (tab === 'submitted')
+      list = list.filter((r) =>
+        ['submitted', 'acknowledged', 'resubmitted', 'closed'].includes(r.status)
+      );
     else if (tab === 'returned') list = list.filter((r) => r.status === 'returned');
 
     // Type filter
@@ -697,18 +734,25 @@ export default function ReportsHub() {
   const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Reset page on filter change
-  useEffect(() => { setCurrentPage(1); }, [tab, filterType, filterStatus, search]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tab, filterType, filterStatus, search]);
 
   // ── Stats ──
-  const stats = useMemo(() => ({
-    total: reports.length,
-    drafts: reports.filter((r) => r.status === 'draft' || r.status === 'ready').length,
-    submitted: reports.filter((r) => ['submitted', 'acknowledged', 'resubmitted', 'closed'].includes(r.status)).length,
-    returned: reports.filter((r) => r.status === 'returned').length,
-    str: reports.filter((r) => r.reportType === 'STR').length,
-    sar: reports.filter((r) => r.reportType === 'SAR').length,
-    ctr: reports.filter((r) => r.reportType === 'CTR').length,
-  }), [reports]);
+  const stats = useMemo(
+    () => ({
+      total: reports.length,
+      drafts: reports.filter((r) => r.status === 'draft' || r.status === 'ready').length,
+      submitted: reports.filter((r) =>
+        ['submitted', 'acknowledged', 'resubmitted', 'closed'].includes(r.status)
+      ).length,
+      returned: reports.filter((r) => r.status === 'returned').length,
+      str: reports.filter((r) => r.reportType === 'STR').length,
+      sar: reports.filter((r) => r.reportType === 'SAR').length,
+      ctr: reports.filter((r) => r.reportType === 'CTR').length,
+    }),
+    [reports]
+  );
 
   // ── Handlers ──
   const handleSort = (field: SortField) => {
@@ -723,31 +767,34 @@ export default function ReportsHub() {
   const sortIndicator = (field: SortField) =>
     sortField === field ? (sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : '';
 
-  const handleStatusChange = useCallback(async (id: string, newStatus: ReportStatus) => {
-    const report = reports.find((r) => r.id === id);
-    if (!report) return;
+  const handleStatusChange = useCallback(
+    async (id: string, newStatus: ReportStatus) => {
+      const report = reports.find((r) => r.id === id);
+      if (!report) return;
 
-    const updated: SuspicionReport = {
-      ...report,
-      status: newStatus,
-    };
+      const updated: SuspicionReport = {
+        ...report,
+        status: newStatus,
+      };
 
-    if (newStatus === 'submitted') {
-      updated.submittedAt = nowIso();
-      updated.submissionMethod = 'goaml-portal';
-    }
-    if (newStatus === 'acknowledged') {
-      updated.fiuAcknowledgedAt = nowIso();
-      updated.followUpStatus = 'acknowledged';
-    }
-    if (newStatus === 'approved') {
-      updated.approvedAt = nowIso();
-      updated.approvedBy = 'compliance-officer';
-    }
+      if (newStatus === 'submitted') {
+        updated.submittedAt = nowIso();
+        updated.submissionMethod = 'goaml-portal';
+      }
+      if (newStatus === 'acknowledged') {
+        updated.fiuAcknowledgedAt = nowIso();
+        updated.followUpStatus = 'acknowledged';
+      }
+      if (newStatus === 'approved') {
+        updated.approvedAt = nowIso();
+        updated.approvedBy = 'compliance-officer';
+      }
 
-    await store.saveReport(updated);
-    setReports((prev) => prev.map((r) => (r.id === id ? updated : r)));
-  }, [reports]);
+      await store.saveReport(updated);
+      setReports((prev) => prev.map((r) => (r.id === id ? updated : r)));
+    },
+    [reports]
+  );
 
   const handleNewReport = useCallback(async (report: SuspicionReport) => {
     await store.saveReport(report);
@@ -779,12 +826,14 @@ export default function ReportsHub() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        {([
-          ['all', `All Reports (${reports.length})`],
-          ['new', `New / Draft (${stats.drafts})`],
-          ['submitted', `Submitted (${stats.submitted})`],
-          ['returned', `Returned (${stats.returned})`],
-        ] as [Tab, string][]).map(([t, label]) => (
+        {(
+          [
+            ['all', `All Reports (${reports.length})`],
+            ['new', `New / Draft (${stats.drafts})`],
+            ['submitted', `Submitted (${stats.submitted})`],
+            ['returned', `Returned (${stats.returned})`],
+          ] as [Tab, string][]
+        ).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)} style={S.tab(tab === t)}>
             {label}
           </button>
@@ -807,7 +856,9 @@ export default function ReportsHub() {
         >
           <option value="all">All Types</option>
           {(Object.keys(REPORT_TYPE_LABELS) as ReportType[]).map((t) => (
-            <option key={t} value={t}>{t}</option>
+            <option key={t} value={t}>
+              {t}
+            </option>
           ))}
         </select>
         <select
@@ -817,7 +868,9 @@ export default function ReportsHub() {
         >
           <option value="all">All Statuses</option>
           {(Object.keys(REPORT_STATUS_LABELS) as ReportStatus[]).map((s) => (
-            <option key={s} value={s}>{REPORT_STATUS_LABELS[s]}</option>
+            <option key={s} value={s}>
+              {REPORT_STATUS_LABELS[s]}
+            </option>
           ))}
         </select>
         <button onClick={() => setShowNewForm(true)} style={S.btn('#d4a843')}>
@@ -829,7 +882,11 @@ export default function ReportsHub() {
         <button
           onClick={() => {
             void Promise.all([store.getReports(), store.getCases(), store.getCustomers()]).then(
-              ([r, c, cu]) => { setReports(r); setCases(c); setCustomers(cu); }
+              ([r, c, cu]) => {
+                setReports(r);
+                setCases(c);
+                setCustomers(cu);
+              }
             );
           }}
           style={S.btn('#21262d')}
@@ -903,13 +960,19 @@ export default function ReportsHub() {
                 >
                   <td style={S.td}>{formatDate(r.generatedAt)}</td>
                   <td style={S.td}>
-                    <span style={S.badge(
-                      r.reportType === 'STR' ? '#D94F4F'
-                        : r.reportType === 'SAR' ? '#E8A030'
-                        : r.reportType === 'CTR' ? '#06B6D4'
-                        : r.reportType === 'FFR' ? '#f85149'
-                        : '#8B5CF6'
-                    )}>
+                    <span
+                      style={S.badge(
+                        r.reportType === 'STR'
+                          ? '#D94F4F'
+                          : r.reportType === 'SAR'
+                            ? '#E8A030'
+                            : r.reportType === 'CTR'
+                              ? '#06B6D4'
+                              : r.reportType === 'FFR'
+                                ? '#f85149'
+                                : '#8B5CF6'
+                      )}
+                    >
                       {r.reportType}
                     </span>
                   </td>
@@ -929,15 +992,20 @@ export default function ReportsHub() {
                     {r.severity ? (
                       <span
                         style={S.badge(
-                          r.severity === 'critical' ? '#D94F4F'
-                            : r.severity === 'high' ? '#E8A030'
-                            : r.severity === 'medium' ? '#3B82F6'
-                            : '#3DA876'
+                          r.severity === 'critical'
+                            ? '#D94F4F'
+                            : r.severity === 'high'
+                              ? '#E8A030'
+                              : r.severity === 'medium'
+                                ? '#3B82F6'
+                                : '#3DA876'
                         )}
                       >
                         {r.severity}
                       </span>
-                    ) : '—'}
+                    ) : (
+                      '—'
+                    )}
                   </td>
                   <td style={{ ...S.td, fontSize: 11, color: '#8b949e' }}>
                     {r.fiuReferenceNo || '—'}
