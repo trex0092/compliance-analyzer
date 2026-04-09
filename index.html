@@ -2784,7 +2784,7 @@ var TAVILY_KEY = '';
 var GDRIVE_CLIENT_ID = '';
 var GDRIVE_FOLDER_ID = '';
 var gdriveAccessToken = '';
-var AI_PROVIDER = 'claude'; // 'claude', 'openai', 'gemini', 'copilot', or 'mixed'
+var AI_PROVIDER = 'gemini'; // 'claude', 'openai', 'gemini', 'copilot', or 'mixed'
 
 // Provider health tracking for mixed mode — skip providers that are failing
 var _providerHealth = { claude: { ok: true, failedAt: 0 }, gemini: { ok: true, failedAt: 0 }, copilot: { ok: true, failedAt: 0 } };
@@ -3312,7 +3312,17 @@ function hydrateKeys() {
   TAVILY_KEY = (saved.tavilyKey || '').trim();
   GDRIVE_CLIENT_ID = (saved.gdriveClientId || '').trim();
   GDRIVE_FOLDER_ID = (saved.gdriveFolderId || '').trim();
-  AI_PROVIDER = saved.aiProvider || 'claude';
+  AI_PROVIDER = saved.aiProvider || 'gemini';
+  // Auto-detect best provider if none was explicitly saved
+  if (!saved.aiProvider) {
+    if (GEMINI_KEY) AI_PROVIDER = 'gemini';
+    else if (COPILOT_KEY) AI_PROVIDER = 'copilot';
+    else if (ANTHROPIC_KEY) AI_PROVIDER = 'claude';
+    else if (OPENAI_KEY) AI_PROVIDER = 'openai';
+    // If multiple keys exist, prefer mixed mode
+    var keyCount = [GEMINI_KEY, COPILOT_KEY, ANTHROPIC_KEY, OPENAI_KEY].filter(Boolean).length;
+    if (keyCount >= 2) AI_PROVIDER = 'mixed';
+  }
 
   const fieldMap = {
     anthropicKey: ANTHROPIC_KEY, anthropicKey2: ANTHROPIC_KEY,
@@ -5846,7 +5856,7 @@ async function runAnalysis(queryOverride, areaOverride) {
   const query = queryOverride || document.getElementById('queryInput').value.trim();
   const area = areaOverride || document.getElementById('areaSelect').value;
   if (!query) { document.getElementById('queryInput').focus(); return; }
-  if (!ANTHROPIC_KEY && !OPENAI_KEY && !GEMINI_KEY && !PROXY_URL) { toast('An AI API key (Anthropic, OpenAI, or Gemini) or Proxy URL required. Check Settings.','error'); return; }
+  if (!ANTHROPIC_KEY && !OPENAI_KEY && !GEMINI_KEY && !COPILOT_KEY && !PROXY_URL) { toast('An AI API key (Anthropic, OpenAI, or Gemini) or Proxy URL required. Check Settings.','error'); return; }
 
   const btn = document.getElementById('analyseBtn');
   if (btn) btn.disabled = true;
@@ -8095,7 +8105,7 @@ Keep strings under 50 chars. Max 2 items per array. No nested objects.
 
 JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","risk_level":"LOW|MEDIUM|HIGH|CRITICAL","sanctions_hits":[{"list":"name","match_type":"exact|partial","details":"short"}],"adverse_media_hits":[{"category":"cat","source":"src","date":"date","details":"short"}],"risk_factors":["short"],"recommended_actions":["short"],"summary":"one line"}`;
 
-  if (!ANTHROPIC_KEY && !OPENAI_KEY && !GEMINI_KEY && !PROXY_URL) {
+  if (!ANTHROPIC_KEY && !OPENAI_KEY && !GEMINI_KEY && !COPILOT_KEY && !PROXY_URL) {
     sb.style.display='none';
     toast('AI API key required. Configure Anthropic, OpenAI, Gemini key or Proxy URL in Settings.','error',5000);
     return;
