@@ -384,7 +384,7 @@ export class ComplianceMCPServer {
 
       // ---- Insider Threat ----
       case 'analyze_user_behavior':
-        return analyzeUserBehavior((args as { logs: never[] }).logs);
+        return analyzeUserBehavior(args as never);
 
       // ---- Crypto/VA ----
       case 'analyze_crypto_activity':

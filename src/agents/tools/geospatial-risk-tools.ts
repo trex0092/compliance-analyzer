@@ -141,10 +141,12 @@ export function getJurisdictionProfile(code: string): JurisdictionProfile {
   const profile = JURISDICTION_DB[upper];
   if (profile) return { code: upper, ...profile };
 
-  // Dynamic classification for unknown jurisdictions
-  const isFATFGrey = FATF_GREY_LIST.includes(upper);
-  const isPF = PF_HIGH_RISK_JURISDICTIONS.includes(upper);
-  const isEU = EU_HIGH_RISK_COUNTRIES.includes(upper);
+  // Dynamic classification for unknown jurisdictions.
+  // The readonly tuple types narrow the .includes() argument to the
+  // literal union; cast `upper` to the widest string type for lookup.
+  const isFATFGrey = (FATF_GREY_LIST as readonly string[]).includes(upper);
+  const isPF = (PF_HIGH_RISK_JURISDICTIONS as readonly string[]).includes(upper);
+  const isEU = (EU_HIGH_RISK_COUNTRIES as readonly string[]).includes(upper);
 
   return {
     code: upper,

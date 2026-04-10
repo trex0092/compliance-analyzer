@@ -18,7 +18,7 @@ import { screenEntityComprehensive, fetchAllSanctionsLists } from '../../service
 import { runMultiModelScreening, consensusToScreeningRun as _consensusToScreeningRun } from '../../services/multiModelScreening';
 import { runCrossEntityScan } from '../../services/crossEntityScreening';
 import { appendToChain, type ChainedAuditEvent } from '../../utils/auditChain';
-import { sanitizeString } from '../../utils/sanitize';
+import { sanitizeText } from '../../utils/sanitize';
 
 // ---------------------------------------------------------------------------
 // Tool: screen_entity
@@ -35,7 +35,7 @@ export async function screenEntity(
   auditChain: ChainedAuditEvent[],
   analyst: string,
 ): Promise<ToolResult<ScreeningResult>> {
-  const name = sanitizeString(input.entityName);
+  const name = sanitizeText(input.entityName);
   if (!name || name.length < 2) {
     return { ok: false, error: 'Entity name must be at least 2 characters' };
   }
@@ -74,7 +74,7 @@ export async function screenMultiModel(
   auditChain: ChainedAuditEvent[],
   analyst: string,
 ): Promise<ToolResult<ConsensusResult>> {
-  const name = sanitizeString(input.entityName);
+  const name = sanitizeText(input.entityName);
   if (!name || name.length < 2) {
     return { ok: false, error: 'Entity name must be at least 2 characters' };
   }

@@ -94,28 +94,19 @@ export function checkFilingDeadline(
     return { ok: false, error: `Unknown filing type: ${input.filingType}` };
   }
 
-  const deadline = checkDeadline(new Date(input.eventDate), days);
-  const now = new Date();
-  const dueDate = deadline.toISOString().slice(0, 10);
-  const isOverdue = now > deadline;
-
-  // Calculate remaining business days (approximate)
-  let remaining = 0;
-  if (!isOverdue) {
-    const current = new Date(now);
-    while (current < deadline) {
-      current.setDate(current.getDate() + 1);
-      const day = current.getDay();
-      if (day !== 0 && day !== 6) remaining++;
-    }
-  }
+  // checkDeadline returns a structured result, not a Date.
+  const result = checkDeadline(new Date(input.eventDate), days);
+  const deadlineDate = result.deadlineDate;
+  const dueDate = deadlineDate.toISOString().slice(0, 10);
+  const isOverdue = result.breached;
+  const remaining = isOverdue ? -1 : result.businessDaysRemaining;
 
   return {
     ok: true,
     data: {
       dueDate,
       isOverdue,
-      businessDaysRemaining: isOverdue ? -1 : remaining,
+      businessDaysRemaining: remaining,
       filingType: input.filingType,
     },
   };

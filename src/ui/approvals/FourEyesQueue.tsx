@@ -13,7 +13,7 @@
  *
  * Backend: POST /api/approvals/{approve|reject}, GET /api/approvals.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactElement } from 'react';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the backend shape)
@@ -118,7 +118,7 @@ async function apiFetch<T>(
 // Component
 // ---------------------------------------------------------------------------
 
-export function FourEyesQueue(): JSX.Element {
+export function FourEyesQueue(): ReactElement {
   const [items, setItems] = useState<PendingItem[]>([]);
   const [actor, setActor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
