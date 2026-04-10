@@ -268,3 +268,107 @@ The following multi-agent frameworks are vendored for reference and integration 
 
 - **session-start**: Auto-updates code-review-graph on every new session
 - **pre-commit-security**: Blocks commits with hardcoded secrets, eval(), or unsafe patterns
+
+---
+
+# Claude Code Harness Patterns
+
+Workflow rules for operating Claude Code effectively on this project.
+Complements the "Token-Efficient Workflow" section at the top.
+
+## 1. Model Routing: Worker + Advisor
+
+Run a two-tier setup so you only pay Opus rates when you actually need them.
+Both models share the same conversation memory — the advisor reads everything
+the worker has already done, no re-explaining needed.
+
+- **Worker (Sonnet or Haiku)** — runs every step. Handles routine work:
+  targeted file edits, lint/type fixes, test runs, renames, doc updates,
+  single-file refactors, dependency bumps.
+- **Advisor (Opus)** — called only for hard tasks. Escalate to Opus when:
+  - The change touches `src/domain/constants.ts` (regulatory values).
+  - Threshold logic is involved (AED 55K CTR, AED 60K cross-border, 25% UBO, 24h freeze).
+  - Sanctions match confidence or STR/CNMR/EOCN workflow decisions are in play.
+  - The blast radius from `get_impact_radius` spans >5 files or crosses domain boundaries.
+  - You're debugging a subtle bug the worker has already failed on once.
+  - The ask is architectural ("should we use handoffs or a DAG here?").
+
+Rule of thumb: ~80% of runs stay on Sonnet. Opus fires for the tough calls
+only — see `vendor/wshobson-agents` for the model-tiering reference pattern.
+
+## 2. Subagents for Side Tasks
+
+Spawn a subagent via the Task/Agent tool whenever the research would clutter
+the main conversation. The subagent returns a summary — its raw file reads
+and grep output stay out of the parent context.
+
+**Good subagent tasks on this project:**
+- "Find every place a regulatory threshold is hardcoded instead of imported from `src/domain/constants.ts`."
+- "Audit all `netlify/functions/*.mts` for missing rate limiting middleware."
+- "Search the vendored frameworks for handoff + guardrail patterns we could adopt for four-eyes approval."
+- "Check which skills in `skills/` lack an up-to-date `SKILL.md`."
+- "Survey `compliance-suite.js` for functions >100 lines that are candidates for extraction."
+
+Rule of thumb: if the answer needs >10 file reads or >5 grep calls, delegate
+to a subagent. Don't delegate understanding — always write the fix yourself
+once the subagent reports back.
+
+## 3. Agent Teams for Parallel Work
+
+When the work genuinely fans out, launch multiple subagents in a **single
+message** so they run concurrently.
+
+**Parallel layouts that fit this project:**
+- **PR review fan-out**: regulatory-review agent + security-review agent +
+  architecture-review agent, all reading the same diff in parallel
+  (mirrors `/agent-review` skill).
+- **Multi-list sanctions screening**: UN, OFAC, EU, UK, UAE, and EOCN as five
+  parallel screening agents (mirrors `/multi-agent-screen` skill).
+- **Quality gate**: `vitest run`, `tsc --noEmit`, and `eslint` as three
+  independent check agents before a commit.
+
+Never use parallel agents for sequential work where agent B needs agent A's
+output — that produces wrong results. Parallelise only when the tasks are
+truly independent.
+
+## 4. Plan Mode Before Complex Changes
+
+Before editing anything non-trivial, ask Claude to plan first (via the Plan
+agent type or the `/plan` skill). The plan should:
+
+1. Map the full approach — which files, in which order, with which tests.
+2. Report the blast radius via `get_impact_radius`.
+3. List the risks (regulatory, security, migration, downstream).
+4. Get user approval on the plan.
+5. Only then implement.
+
+**Always plan first for:**
+- Anything touching `src/domain/constants.ts` or `tests/constants.test.ts`.
+- New compliance skills, agents, or orchestration workflows.
+- Changes to STR / CNMR / EOCN filing logic or deadlines.
+- Database schema / migration changes.
+- New `netlify/functions/*.mts` endpoints (rate limiting + auth + CSP impact).
+- Multi-file refactors that cross `src/` domain boundaries.
+
+**Skip planning for** single-line fixes, typos, doc updates, dependency
+bumps, and obvious lint/type repairs.
+
+## 5. How the Four Patterns Compose
+
+A well-run session on this repo typically looks like:
+
+```
+1. User asks for a non-trivial change
+2. Claude (Sonnet worker) runs /plan → proposes approach
+3. User approves the plan
+4. Claude fans out subagents for parallel research (impact radius,
+   test coverage, regulatory citations)
+5. Claude (Sonnet) implements the change
+6. If the worker gets stuck on a subtle call, escalate to Opus advisor
+7. Claude fans out a parallel quality gate (tests + types + lint)
+8. Claude commits + pushes on the designated branch
+```
+
+The goal: high-quality regulatory code without burning Opus budget on
+steps Sonnet can handle, and without losing context by delegating
+understanding to subagents.
