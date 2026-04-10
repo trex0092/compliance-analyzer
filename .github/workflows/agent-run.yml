@@ -67,11 +67,18 @@ jobs:
           HAWKEYE_BRAIN_TOKEN: ${{ secrets.HAWKEYE_BRAIN_TOKEN }}
           CACHET_BASE_URL: ${{ secrets.CACHET_BASE_URL }}
           CACHET_API_TOKEN: ${{ secrets.CACHET_API_TOKEN }}
+          # Pass the user-supplied values via env so shell quoting is
+          # not an issue when the kickoff message contains quotes or
+          # apostrophes. Bash variable expansion inside double quotes
+          # handles these correctly; ${{ inputs.message }} interpolated
+          # directly into the command line does NOT.
+          AGENT_SLUG: ${{ inputs.agent }}
+          AGENT_KICKOFF: ${{ inputs.message }}
         run: |
           set -o pipefail
           mkdir -p agent-runs
-          LOG="agent-runs/${{ inputs.agent }}-$(date +%Y%m%dT%H%M%S).log"
-          node scripts/agent-orchestrator.mjs "${{ inputs.agent }}" "${{ inputs.message }}" 2>&1 | tee "$LOG"
+          LOG="agent-runs/${AGENT_SLUG}-$(date +%Y%m%dT%H%M%S).log"
+          node scripts/agent-orchestrator.mjs "$AGENT_SLUG" "$AGENT_KICKOFF" 2>&1 | tee "$LOG"
           echo "log=$LOG" >> "$GITHUB_OUTPUT"
 
       - name: Upload run log
