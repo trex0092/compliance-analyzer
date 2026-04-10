@@ -91,15 +91,35 @@ jobs:
 
       - name: Write step summary
         if: always()
+        env:
+          AGENT_SLUG: ${{ inputs.agent }}
+          AGENT_KICKOFF: ${{ inputs.message }}
+          RUN_OUTCOME: ${{ steps.run.outcome }}
         run: |
           {
             echo "# Hawkeye agent run"
             echo
-            echo "**Agent:** \`${{ inputs.agent }}\`"
+            echo "**Agent:** \`$AGENT_SLUG\`"
+            echo "**Outcome:** \`$RUN_OUTCOME\`"
             echo
             echo "**Kickoff:**"
             echo
-            echo '> ${{ inputs.message }}'
+            printf '> %s\n' "$AGENT_KICKOFF"
             echo
-            echo "The full streaming transcript is uploaded as the \`agent-run-${{ inputs.agent }}-${{ github.run_number }}\` artifact."
+            if [ "$RUN_OUTCOME" = "failure" ]; then
+              echo "## :x: Run failed — inline log"
+              echo
+              LATEST_LOG=$(ls -t agent-runs/*.log 2>/dev/null | head -n1 || true)
+              if [ -n "$LATEST_LOG" ] && [ -f "$LATEST_LOG" ]; then
+                echo '```'
+                # Tail the last 200 lines so the summary doesn't blow
+                # up on long streaming transcripts.
+                tail -n 200 "$LATEST_LOG"
+                echo '```'
+              else
+                echo "_no log file produced_"
+              fi
+              echo
+            fi
+            echo "Full transcript artifact: \`agent-run-$AGENT_SLUG-${{ github.run_number }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
