@@ -137,13 +137,20 @@ jobs:
             if [ "${{ steps.install.outcome }}" = "failure" ]; then
               echo "## :x: Install failed"
               echo
-              echo "Download the \`hawkeye-install\` artifact and open \`install.log\`"
-              echo "to see the exact error from the Anthropic API."
-              echo
+              if [ -f artifacts/install.log ]; then
+                echo "### install.log (inline)"
+                echo
+                echo '```'
+                cat artifacts/install.log
+                echo '```'
+                echo
+              fi
               echo "Common causes:"
               echo "- Account lacks Managed Agents beta access (contact Anthropic support)"
               echo "- \`ANTHROPIC_API_KEY\` secret is wrong or expired"
               echo "- Agent name conflicts with an existing agent in a different state"
+              echo
+              echo "Full log is also in the \`hawkeye-install\` artifact above."
             else
               echo "## :white_check_mark: Install succeeded"
               echo
