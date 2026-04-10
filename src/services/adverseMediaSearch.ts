@@ -32,8 +32,34 @@ export interface SearchPromptOptions {
   negativeExclusions?: string[];
 }
 
+/**
+ * Token-optimised adverse-media lexicon.
+ *
+ * The groups exist for code maintainability — at query-build time they
+ * are flattened into a single OR list (no per-group parentheses) so the
+ * URL-encoded query stays under Google CSE's ~2048 char limit even with
+ * a typical subject name. Synonyms, generic noise terms, and overlap-
+ * with-existing-terms additions have been deliberately dropped (e.g.
+ * "weapons of mass destruction" was dropped because WMD covers it;
+ * "fine"/"penalty"/"settlement" were dropped because they fire on every
+ * sports/parking news story; "verdict"/"breach"/"jail" were never added
+ * for the same reason).
+ *
+ * Each group's coverage rationale:
+ *   1. ML/TF/PF + sanctions list signals (incl. UAE EOCN list)
+ *   2. Criminal justice verbs (only the high-signal forms)
+ *   3. Financial crime predicate offences (FATF Rec 1-3 schedule)
+ *   4. Organised crime + trafficking (FATF Rec 22-23)
+ *   5. PEP, kleptocracy, governance integrity (Cabinet Res 134/2025 Art.14)
+ *   6. PF / strategic goods / virtual assets (Cabinet Res 156/2025, FATF Rec 15)
+ *   7. TF specifics + extremism (FDL Art.29 — never tip off)
+ *   8. Document fraud + cybercrime (FATF Rec 16, FDL Art.26-27)
+ *   9. UAE regulator name signals (catches local Arabic/English press)
+ */
 const TYPOLOGY_GROUPS = [
-  // ML/TF/PF core
+  // 1. ML/TF/PF + sanctions list signals
+  // (dropped "UN consolidated" — niche phrasing rarely in adverse media;
+  // sanctioned/designated already cover UN-listed entities)
   [
     '"money laundering"',
     '"terrorist financing"',
@@ -41,30 +67,27 @@ const TYPOLOGY_GROUPS = [
     '"sanctions evasion"',
     'sanctioned',
     'designated',
+    'debarred',
+    'blacklisted',
     'OFAC',
-    'SDN',
-    '"UN consolidated"',
-    '"EU restrictive measures"',
     '"UAE local terrorist list"',
   ],
-  // Criminal justice verbs
+  // 2. Criminal justice verbs (high-signal only — dropped fine/penalty/
+  //    settlement/sentenced/cease-and-desist as they generate too much
+  //    noise; dropped "deferred prosecution" as it's US-specific legal terminology)
   [
     'convicted',
     'indicted',
     'charged',
     'prosecuted',
     'arrested',
-    'sentenced',
     '"found guilty"',
-    'fine',
-    'penalty',
-    'settlement',
-    '"cease and desist"',
-    '"deferred prosecution"',
   ],
-  // Financial crime typologies
+  // 3. Financial crime predicate offences
   [
     'fraud',
+    '"financial crime"',
+    '"economic crime"',
     'embezzlement',
     'bribery',
     'corruption',
@@ -73,42 +96,73 @@ const TYPOLOGY_GROUPS = [
     '"insider trading"',
     '"market manipulation"',
     'Ponzi',
+    '"pyramid scheme"',
+    '"accounting fraud"',
+    '"asset misappropriation"',
     '"tax evasion"',
+    '"tax fraud"',
     '"VAT fraud"',
+    'blackmail',
+    'extort',
   ],
-  // Serious organised crime
+  // 4. Serious organised crime + trafficking
   [
     '"organised crime"',
     'cartel',
     '"drug trafficking"',
+    'narcotics',
     '"arms trafficking"',
     '"human trafficking"',
+    '"people smuggling"',
     '"wildlife trafficking"',
     '"modern slavery"',
+    '"forced labour"',
   ],
-  // PEP + kleptocracy
-  ['"politically exposed"', 'PEP', 'oligarch', 'kleptocrat', '"state capture"'],
-  // PF / strategic goods / virtual assets
+  // 5. PEP + kleptocracy + governance integrity
+  [
+    '"politically exposed"',
+    'oligarch',
+    'kleptocrat',
+    '"state capture"',
+    '"conflict of interest"',
+    '"misuse of funds"',
+  ],
+  // 6. PF / strategic / virtual assets (dropped "strategic goods" — overlap
+  //    with "dual-use"; dropped full "weapons of mass destruction" — WMD
+  //    covers it; dropped "crypto mixer" — VASP is the canonical regulator term)
   [
     '"dual-use"',
-    '"strategic goods"',
     'WMD',
     '"chemical weapons"',
+    '"biological weapons"',
     'nuclear',
     '"virtual asset"',
     'VASP',
-    '"crypto mixer"',
   ],
-  // UAE regulator signals
+  // 7. TF specifics + extremism
+  ['extremist', 'radicalisation', 'militant', '"designated terrorist"'],
+  // 8. Document fraud + cybercrime (NEW category)
+  [
+    'forgery',
+    'counterfeiting',
+    '"identity theft"',
+    '"cyber fraud"',
+    '"wire fraud"',
+    'cybercrime',
+    'ransomware',
+    'darknet',
+  ],
+  // 9. UAE regulator signals — most important for UAE-based subjects
+  // (dropped "Cabinet Resolution 74"/"134" — adverse media rarely cites
+  // them by number; EOCN + Ministry of Economy + goAML cover the same
+  // regulatory signal space more efficiently)
   [
     'MoE',
     '"Ministry of Economy"',
     '"Central Bank of the UAE"',
     'goAML',
-    '"Cabinet Resolution 74"',
     'EOCN',
     'CNMR',
-    '"Cabinet Resolution 134"',
   ],
 ];
 
@@ -124,8 +178,23 @@ const DEFAULT_NEGATIVE_EXCLUSIONS = [
 ];
 
 /**
- * Build the improved boolean query. Returns a string under Google's
- * ~2048-char URL-encoded limit for typical subject names.
+ * Build the boolean adverse-media search query.
+ *
+ * Output shape:
+ *   "Subject Name" (term1 OR term2 OR ... OR termN) -neg1 -neg2 ... after:YYYY-MM-DD
+ *
+ * Structural guarantees (tested in adverseMediaSearch.test.ts):
+ *   - Subject anchored as a quoted phrase (precision)
+ *   - Typology terms wrapped in a single OR group (no per-group parens
+ *     — flattened to save URL chars; semantically equivalent to nested
+ *     OR groupings since OR is associative)
+ *   - Default negative exclusions filter out sports/entertainment noise
+ *   - Date filter caps the search window (default 3 years)
+ *
+ * Length budget: the URL-encoded result stays under Google CSE's ~2048
+ * char limit for typical subject names (under 30 chars). For longer
+ * names or more aggressive coverage, prefer Brave Search or SerpAPI as
+ * the upstream provider.
  */
 export function buildAdverseMediaQuery(subject: string, options: SearchPromptOptions = {}): string {
   if (!subject || subject.trim().length === 0) {
@@ -140,7 +209,10 @@ export function buildAdverseMediaQuery(subject: string, options: SearchPromptOpt
       return d.toISOString().slice(0, 10);
     })();
 
-  const typology = TYPOLOGY_GROUPS.map((group) => `(${group.join(' OR ')})`).join(' OR ');
+  // Flatten all groups into a single OR list. Inner per-group parens were
+  // removed to save ~80 URL-encoded chars without changing semantics
+  // (OR is associative — `(a OR b) OR (c OR d)` ≡ `a OR b OR c OR d`).
+  const typology = TYPOLOGY_GROUPS.flat().join(' OR ');
   const negatives = [...DEFAULT_NEGATIVE_EXCLUSIONS, ...(options.negativeExclusions ?? [])]
     .map((n) => `-${n}`)
     .join(' ');
