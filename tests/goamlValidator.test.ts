@@ -1,4 +1,16 @@
-import { validateSTR, validateCTR } from '@/utils/goamlValidator';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import {
+  validateSTR,
+  validateCTR,
+  validateSAR,
+  validateDPMSR,
+  validateCNMR,
+  validateByType,
+} from '@/utils/goamlValidator';
+
+const fixture = (name: string) =>
+  readFileSync(resolve(__dirname, 'fixtures/goaml', name), 'utf8');
 
 const validSTR = `
 <report>
@@ -175,5 +187,178 @@ describe('validateCTR', () => {
     const xml = validCTR.replace('<cashAmount>55000.00</cashAmount>', '<cashAmount>55000</cashAmount>');
     const result = validateCTR(xml);
     expect(result.warnings.filter((w) => w.field === 'cashAmount')).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SAR
+// ---------------------------------------------------------------------------
+
+describe('validateSAR', () => {
+  const validSAR = fixture('valid-sar.xml');
+
+  it('valid SAR fixture passes', () => {
+    const result = validateSAR(validSAR);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('missing activityPattern -> error', () => {
+    const xml = validSAR.replace(/<activityPattern>[^<]*<\/activityPattern>/, '');
+    const result = validateSAR(xml);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.field === 'activityPattern')).toBe(true);
+  });
+
+  it('empty activityPattern -> error', () => {
+    const xml = validSAR.replace(
+      /<activityPattern>[^<]*<\/activityPattern>/,
+      '<activityPattern></activityPattern>',
+    );
+    const result = validateSAR(xml);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.field === 'activityPattern' && /empty/i.test(e.message))).toBe(true);
+  });
+
+  it('tipping-off language in grounds -> error (FDL Art.29)', () => {
+    const xml = validSAR.replace(
+      /<groundsForSuspicion>[^<]*<\/groundsForSuspicion>/,
+      '<groundsForSuspicion>We have reported this counterparty to FIU for review</groundsForSuspicion>',
+    );
+    const result = validateSAR(xml);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.regulatory.includes('Art.29'))).toBe(true);
+  });
+
+  it('missing subjectName -> error', () => {
+    const xml = validSAR.replace(/<subjectName>[^<]*<\/subjectName>/, '<subjectName></subjectName>');
+    const result = validateSAR(xml);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.field === 'subjectName')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DPMSR
+// ---------------------------------------------------------------------------
+
+describe('validateDPMSR', () => {
+  const validDPMSR = fixture('valid-dpmsr.xml');
+
+  it('valid DPMSR fixture passes', () => {
+    const result = validateDPMSR(validDPMSR);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('missing dealerLicense -> error', () => {
+    const xml = validDPMSR.replace(/<dealerLicense>[^<]*<\/dealerLicense>/, '');
+    const result = validateDPMSR(xml);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.field === 'dealerLicense')).toBe(true);
+  });
+
+  it('invalid reportingQuarter format -> error', () => {
+    const xml = validDPMSR.replace('Q1-2026', '2026-Q1');
+    const result = validateDPMSR(xml);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.field === 'reportingQuarter')).toBe(true);
+  });
+
+  it('Q5 is out of range -> error', () => {
+    const xml = validDPMSR.replace('Q1-2026', 'Q5-2026');
+    const result = validateDPMSR(xml);
+    expect(result.valid).toBe(false);
+  });
+
+  it('total cash below threshold -> warning (not error)', () => {
+    const xml = validDPMSR.replace('3250000.00', '40000.00');
+    const result = validateDPMSR(xml);
+    expect(result.valid).toBe(true);
+    expect(result.warnings.some((w) => w.field === 'totalCashAmount')).toBe(true);
+  });
+
+  it('DPMSR does not require suspiciousSubject (unlike STR)', () => {
+    // DPMSR is aggregated quarterly — no specific subject required.
+    const result = validateDPMSR(validDPMSR);
+    expect(result.errors.some((e) => e.field === 'suspiciousSubject')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CNMR
+// ---------------------------------------------------------------------------
+
+describe('validateCNMR', () => {
+  const validCNMR = fixture('valid-cnmr.xml');
+
+  it('valid CNMR fixture passes', () => {
+    const result = validateCNMR(validCNMR);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('missing freezeAction -> error', () => {
+    const xml = validCNMR.replace(/<freezeAction>[^<]*<\/freezeAction>/, '');
+    const result = validateCNMR(xml);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.field === 'freezeAction')).toBe(true);
+  });
+
+  it('invalid sanctionsList -> error', () => {
+    const xml = validCNMR.replace('<sanctionsList>OFAC</sanctionsList>', '<sanctionsList>XYZ</sanctionsList>');
+    const result = validateCNMR(xml);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.field === 'sanctionsList')).toBe(true);
+  });
+
+  it('matchConfidence out of range -> error', () => {
+    const xml = validCNMR.replace('<matchConfidence>0.95</matchConfidence>', '<matchConfidence>1.5</matchConfidence>');
+    const result = validateCNMR(xml);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.field === 'matchConfidence')).toBe(true);
+  });
+
+  it('matchConfidence below 0.9 -> warning (premature)', () => {
+    const xml = validCNMR.replace('<matchConfidence>0.95</matchConfidence>', '<matchConfidence>0.7</matchConfidence>');
+    const result = validateCNMR(xml);
+    expect(result.valid).toBe(true);
+    expect(result.warnings.some((w) => w.field === 'matchConfidence')).toBe(true);
+  });
+
+  it('invalid freezeAction verb -> error', () => {
+    const xml = validCNMR.replace('<freezeAction>frozen</freezeAction>', '<freezeAction>notified</freezeAction>');
+    const result = validateCNMR(xml);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.field === 'freezeAction')).toBe(true);
+  });
+
+  it('all six valid sanctions lists accepted', () => {
+    for (const list of ['UN', 'OFAC', 'EU', 'UK', 'UAE', 'EOCN']) {
+      const xml = validCNMR.replace('<sanctionsList>OFAC</sanctionsList>', `<sanctionsList>${list}</sanctionsList>`);
+      const result = validateCNMR(xml);
+      expect(result.valid, `${list} should validate`).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// validateByType dispatcher + fixture coverage
+// ---------------------------------------------------------------------------
+
+describe('validateByType dispatcher', () => {
+  it.each([
+    ['STR',   'valid-str.xml'],
+    ['SAR',   'valid-sar.xml'],
+    ['DPMSR', 'valid-dpmsr.xml'],
+    ['CNMR',  'valid-cnmr.xml'],
+  ] as const)('%s fixture validates via dispatcher', (type, file) => {
+    const result = validateByType(type, fixture(file));
+    expect(result.valid, JSON.stringify(result.errors)).toBe(true);
+  });
+
+  it('throws on unknown type', () => {
+    // @ts-expect-error — intentional bad input
+    expect(() => validateByType('UNKNOWN', '<report/>')).toThrow();
   });
 });

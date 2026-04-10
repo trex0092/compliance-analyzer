@@ -47,5 +47,8 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Validate goAML fixtures (STR/SAR/CTR/DPMSR/CNMR)
+        run: npm run validate:goaml -- --all
+
       - name: Check formatting
         run: npm run format:check

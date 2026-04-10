@@ -1,0 +1,97 @@
+name: Regulatory Watcher — Daily
+
+# Fetches known UAE AML/CFT/CPF regulatory sources, hashes them, and
+# fires a brain event when any of them change. On change, the MLRO
+# agent's 30-day policy update clock starts (FDL Art.34 / MoE 08/2021).
+#
+# Runs daily at 05:30 UTC (09:30 UAE) so the briefing that the
+# autopilot generates at 06:00 UTC already includes any overnight
+# regulatory changes.
+
+on:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual run'
+        required: false
+        default: 'Manual trigger'
+
+permissions:
+  contents: write  # to commit updated hashes back to data/
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run regulatory watcher
+        env:
+          HAWKEYE_BRAIN_URL: ${{ secrets.HAWKEYE_BRAIN_URL || 'https://compliance-analyzer.netlify.app' }}
+          HAWKEYE_BRAIN_TOKEN: ${{ secrets.HAWKEYE_BRAIN_TOKEN }}
+        run: |
+          mkdir -p artifacts
+          npm run regulatory:watch 2>&1 | tee artifacts/regulatory-watcher.log
+
+      - name: Commit updated hashes
+        if: always()
+        run: |
+          if [ -f data/regulatory-hashes.json ]; then
+            git config user.name 'hawkeye-regulatory-watcher[bot]'
+            git config user.email 'hawkeye-regulatory-watcher[bot]@users.noreply.github.com'
+            git add data/regulatory-hashes.json
+            if git diff --cached --quiet; then
+              echo "no changes to commit"
+            else
+              git commit -m "chore(regulatory): update hashes from daily watcher
+
+Automatically committed by regulatory-watcher.yml. Each changed
+entry has already been published to /api/brain as a manual event
+(severity: high) so the MLRO agent can start the 30-day policy
+update clock per FDL Art.34."
+              git push origin main
+            fi
+          fi
+
+      - name: Upload watcher log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regulatory-watcher-${{ github.run_number }}
+          path: artifacts/
+          retention-days: 90
+
+      - name: Write step summary
+        if: always()
+        run: |
+          {
+            echo "# Regulatory Watcher"
+            echo
+            if [ -f artifacts/regulatory-watcher.log ]; then
+              echo '```'
+              tail -n 60 artifacts/regulatory-watcher.log
+              echo '```'
+            fi
+            echo
+            echo "Full log: \`regulatory-watcher-${{ github.run_number }}\` artifact."
+            echo
+            if [ -f data/regulatory-hashes.json ]; then
+              echo "## Current hash state"
+              echo
+              echo '```json'
+              cat data/regulatory-hashes.json
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

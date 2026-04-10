@@ -38,6 +38,7 @@
     "eslint": "^8.57.0",
     "genaiscript": "^2.5.1",
     "prettier": "^3.2.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.4.0",
     "vitest": "^3.2.4"
   },
@@ -51,6 +52,9 @@
     "autopilot": "node scripts/autopilot.mjs",
     "brain": "node scripts/brain.mjs",
     "genai": "genaiscript run",
-    "mem:serve": "claude-mem serve"
+    "mem:serve": "claude-mem serve",
+    "validate:goaml": "tsx scripts/validate-goaml.ts",
+    "regulatory:watch": "tsx scripts/regulatory-watcher.ts",
+    "audit:lbma": "tsx scripts/lbma-audit-pack.ts"
   }
 }

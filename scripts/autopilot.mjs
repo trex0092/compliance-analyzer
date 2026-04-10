@@ -36,7 +36,7 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { think as brainThink } from './brain.mjs';
-import cachet, { IncidentStatus } from './lib/cachet-client.mjs';
+import { publishIncident, isCachetConfigured } from './lib/status-publisher.mjs';
 
 const PROJECT_ROOT = resolve(import.meta.dirname || '.', '..');
 const HISTORY_DIR = resolve(PROJECT_ROOT, 'history', 'daily-ops');
@@ -188,10 +188,12 @@ async function run() {
       escalated: 0,
       cachetPublished: 0,
       cachetErrors: 0,
+      blobPublished: 0,
+      blobErrors: 0,
       httpPublished: 0,
       httpErrors: 0,
     };
-    const cachetConfigured = Boolean(process.env.CACHET_BASE_URL && process.env.CACHET_API_TOKEN);
+    const cachetConfigured = isCachetConfigured();
     const brainHttpConfigured = Boolean(process.env.HAWKEYE_BRAIN_URL && process.env.HAWKEYE_BRAIN_TOKEN);
 
     // Map autopilot alert levels to the brain's event-kind + severity schema.
@@ -252,18 +254,29 @@ async function run() {
         // brain-events blob store see the event. No-op if unconfigured.
         await postToBrainHttp(alert, decision);
 
-        // Escalate critical alerts to the public status page when Cachet is configured.
-        if (alert.level === 'CRITICAL' && cachetConfigured) {
+        // Publish critical alerts via the status publisher (Cachet if
+        // configured + in-repo blob log always). Both backends are
+        // independently tracked.
+        if (alert.level === 'CRITICAL') {
           try {
-            await cachet.createIncident({
+            const publishResult = await publishIncident({
               name: `[CRITICAL] ${alert.msg.slice(0, 80)}`,
               message: `Autopilot critical alert\n\nBrain routed to: ${decision.tool ?? 'unrouted'}\nPurpose: ${decision.purpose}\n\nFull alert: ${alert.msg}`,
-              status: IncidentStatus.IDENTIFIED,
+              severity: 'identified',
             });
-            results.brain.cachetPublished++;
+            if (publishResult.cachet.published) results.brain.cachetPublished++;
+            else if (cachetConfigured) {
+              results.brain.cachetErrors++;
+              console.warn(`  [brain] cachet publish failed: ${publishResult.cachet.reason}`);
+            }
+            if (publishResult.blob.published) results.brain.blobPublished++;
+            else {
+              results.brain.blobErrors++;
+              console.warn(`  [brain] blob publish failed: ${publishResult.blob.reason}`);
+            }
           } catch (err) {
             results.brain.cachetErrors++;
-            console.warn(`  [brain] cachet publish failed: ${err.message}`);
+            console.warn(`  [brain] publishIncident failed: ${err.message}`);
           }
         }
 
@@ -275,7 +288,7 @@ async function run() {
       }
     }
 
-    return `Routed ${results.brain.routed}, escalated ${results.brain.escalated}, http ${results.brain.httpPublished}/${results.brain.httpPublished + results.brain.httpErrors}, cachet ${results.brain.cachetPublished}/${results.brain.cachetPublished + results.brain.cachetErrors}`;
+    return `Routed ${results.brain.routed}, escalated ${results.brain.escalated}, http ${results.brain.httpPublished}/${results.brain.httpPublished + results.brain.httpErrors}, cachet ${results.brain.cachetPublished}/${results.brain.cachetPublished + results.brain.cachetErrors}, blob ${results.brain.blobPublished}/${results.brain.blobPublished + results.brain.blobErrors}`;
   });
 
   // Phase 7: Generate Briefing
