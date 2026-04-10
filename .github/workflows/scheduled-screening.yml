@@ -95,6 +95,15 @@ jobs:
           ASANA_SCREENINGS_PROJECT_GID: ${{ secrets.ASANA_SCREENINGS_PROJECT_GID }}
           ASANA_WORKSPACE_GID: ${{ secrets.ASANA_WORKSPACE_GID }}
           ASANA_DEFAULT_ASSIGNEE_NAME: ${{ secrets.ASANA_DEFAULT_ASSIGNEE_NAME }}
+          # Adverse-media search provider — at least ONE of these must be
+          # set or the script will fall through to dry_run mode and
+          # return 0 hits for every subject (false negatives!). Brave
+          # Search is the recommended default: free 2,000 queries/month,
+          # then $5 per 1,000. SerpAPI and Google CSE are fallbacks.
+          BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          GOOGLE_CSE_KEY: ${{ secrets.GOOGLE_CSE_KEY }}
+          GOOGLE_CSE_CX: ${{ secrets.GOOGLE_CSE_CX }}
           # Dry-run flag (from workflow_dispatch input; ignored on schedule)
           SCHEDULED_SCREENING_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
         run: |

@@ -440,6 +440,35 @@ export async function runScheduledScreening(cfg?: RunConfig): Promise<RunSummary
     `[scheduled-screening] mode: ${runCfg.dryRun ? 'DRY-RUN ' : ''}${runCfg.offline ? 'OFFLINE ' : ''}${!runCfg.dryRun && !runCfg.offline ? 'LIVE' : ''}`.trim()
   );
 
+  // Safety check: warn loudly if no search provider is configured.
+  // Without one, adverseMediaSearch.ts falls through to 'dry_run' mode
+  // and returns 0 hits for every subject — a silent false-negative
+  // failure mode that looks like "all subjects are clean" but is
+  // actually "nothing was searched". Catching this here so it's
+  // impossible to miss in the run log.
+  if (!runCfg.offline) {
+    const hasSearchProvider =
+      !!process.env.BRAVE_SEARCH_API_KEY ||
+      !!process.env.SERPAPI_KEY ||
+      !!(process.env.GOOGLE_CSE_KEY && process.env.GOOGLE_CSE_CX);
+    if (!hasSearchProvider) {
+      console.error(
+        '[scheduled-screening] ⚠️  NO SEARCH PROVIDER CONFIGURED — ' +
+          'every subject will report 0 hits (false negative). ' +
+          'Set BRAVE_SEARCH_API_KEY (recommended) or SERPAPI_KEY or ' +
+          'GOOGLE_CSE_KEY + GOOGLE_CSE_CX as a GitHub Actions secret, ' +
+          'then re-run the workflow.'
+      );
+    } else {
+      const provider = process.env.BRAVE_SEARCH_API_KEY
+        ? 'brave'
+        : process.env.SERPAPI_KEY
+          ? 'serp'
+          : 'google_cse';
+      console.log(`[scheduled-screening] search provider: ${provider}`);
+    }
+  }
+
   // 1. Fetch the current watchlist
   const serialised = await fetchWatchlist(runCfg);
   const wl = deserialiseWatchlist(serialised);
