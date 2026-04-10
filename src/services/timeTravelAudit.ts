@@ -79,11 +79,9 @@ export interface SnapshotDiff {
 export function replayUntil(
   entries: readonly EvidenceEntry[],
   refId: string,
-  asOf: string,
+  asOf: string
 ): CaseSnapshot {
-  const relevant = entries.filter(
-    (e) => e.subject === refId && e.at <= asOf,
-  );
+  const relevant = entries.filter((e) => e.subject === refId && e.at <= asOf);
   // Sort ascending by timestamp
   relevant.sort((a, b) => a.at.localeCompare(b.at));
 
@@ -115,10 +113,7 @@ export function replayUntil(
 }
 
 /** Replay up to "now" — convenience for the current state. */
-export function currentState(
-  entries: readonly EvidenceEntry[],
-  refId: string,
-): CaseSnapshot {
+export function currentState(entries: readonly EvidenceEntry[], refId: string): CaseSnapshot {
   return replayUntil(entries, refId, new Date().toISOString());
 }
 
@@ -128,10 +123,7 @@ export function currentState(
 
 export function diffSnapshots(before: CaseSnapshot, after: CaseSnapshot): SnapshotDiff {
   const diff: SnapshotDiff = { added: {}, removed: {}, changed: [] };
-  const allKeys = new Set([
-    ...Object.keys(before.state),
-    ...Object.keys(after.state),
-  ]);
+  const allKeys = new Set([...Object.keys(before.state), ...Object.keys(after.state)]);
   for (const key of allKeys) {
     const inBefore = key in before.state;
     const inAfter = key in after.state;
@@ -158,26 +150,16 @@ export function diffSnapshots(before: CaseSnapshot, after: CaseSnapshot): Snapsh
  * Return every entry for a ref id in chronological order. Pure filter
  * — no folding. Used for the "audit log" view in the UI.
  */
-export function historyFor(
-  entries: readonly EvidenceEntry[],
-  refId: string,
-): EvidenceEntry[] {
-  return entries
-    .filter((e) => e.subject === refId)
-    .sort((a, b) => a.at.localeCompare(b.at));
+export function historyFor(entries: readonly EvidenceEntry[], refId: string): EvidenceEntry[] {
+  return entries.filter((e) => e.subject === refId).sort((a, b) => a.at.localeCompare(b.at));
 }
 
 /**
  * The critical path — only entries that changed the state. Entries
  * without a `data` payload are filtered out.
  */
-export function criticalPath(
-  entries: readonly EvidenceEntry[],
-  refId: string,
-): EvidenceEntry[] {
-  return historyFor(entries, refId).filter(
-    (e) => e.data && Object.keys(e.data).length > 0,
-  );
+export function criticalPath(entries: readonly EvidenceEntry[], refId: string): EvidenceEntry[] {
+  return historyFor(entries, refId).filter((e) => e.data && Object.keys(e.data).length > 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +169,7 @@ export function criticalPath(
 export function formatAuditReport(
   entries: readonly EvidenceEntry[],
   refId: string,
-  asOf: string,
+  asOf: string
 ): string {
   const snapshot = replayUntil(entries, refId, asOf);
   const history = historyFor(entries, refId).filter((e) => e.at <= asOf);
@@ -213,7 +195,7 @@ export function formatAuditReport(
   }
   lines.push('');
   lines.push(
-    '_This report is a deterministic reconstruction of the evidence chain for the requested date. Every state field maps to an entry in the timeline above._',
+    '_This report is a deterministic reconstruction of the evidence chain for the requested date. Every state field maps to an entry in the timeline above._'
   );
   return lines.join('\n');
 }

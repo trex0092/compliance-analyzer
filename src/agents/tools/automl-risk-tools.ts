@@ -82,9 +82,15 @@ export interface FeedbackEntry {
 
 export function extractFeatures(
   customer: CustomerProfile,
-  transactions: Array<{ amount: number; timestamp: string; paymentMethod?: string; counterparty?: string; country?: string }>,
+  transactions: Array<{
+    amount: number;
+    timestamp: string;
+    paymentMethod?: string;
+    counterparty?: string;
+    country?: string;
+  }>,
   cases: ComplianceCase[],
-  highRiskCountries: string[] = [],
+  highRiskCountries: string[] = []
 ): RiskFeatures {
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400_000);
@@ -97,35 +103,41 @@ export function extractFeatures(
   const counterparties = new Set(recent.map((tx) => tx.counterparty).filter(Boolean));
 
   const customerCases = cases.filter((c) => c.linkedCustomerId === customer.id);
-  const strCases = customerCases.filter((c) =>
-    c.recommendation === 'str-review' || c.caseType === 'screening-hit',
+  const strCases = customerCases.filter(
+    (c) => c.recommendation === 'str-review' || c.caseType === 'screening-hit'
   );
 
-  const onboardDate = customer.lastCDDReviewDate
-    ? new Date(customer.lastCDDReviewDate)
-    : now;
-  const customerAgeMonths = Math.floor(
-    (now.getTime() - onboardDate.getTime()) / (30 * 86400_000),
-  );
+  const onboardDate = customer.lastCDDReviewDate ? new Date(customer.lastCDDReviewDate) : now;
+  const customerAgeMonths = Math.floor((now.getTime() - onboardDate.getTime()) / (30 * 86400_000));
 
   const nextReview = customer.nextCDDReviewDate ? new Date(customer.nextCDDReviewDate) : null;
-  const cddOverdueDays = nextReview && now > nextReview
-    ? Math.floor((now.getTime() - nextReview.getTime()) / 86400_000)
-    : 0;
+  const cddOverdueDays =
+    nextReview && now > nextReview
+      ? Math.floor((now.getTime() - nextReview.getTime()) / 86400_000)
+      : 0;
 
   return {
     customerAge: customerAgeMonths,
     transactionCount30d: recent.length,
-    avgTransactionAmount: amounts.length > 0 ? amounts.reduce((a, b) => a + b, 0) / amounts.length : 0,
+    avgTransactionAmount:
+      amounts.length > 0 ? amounts.reduce((a, b) => a + b, 0) / amounts.length : 0,
     maxTransactionAmount: amounts.length > 0 ? Math.max(...amounts) : 0,
     uniqueCounterparties: counterparties.size,
     cashTransactionRatio: recent.length > 0 ? cashTx.length / recent.length : 0,
     highRiskCountryExposure: recent.length > 0 ? hrCountryTx.length / recent.length : 0,
-    pepProximity: customer.pepStatus === 'match' ? 1 : customer.pepStatus === 'potential-match' ? 0.5 : 0,
-    sanctionsProximity: customer.sanctionsStatus === 'match' ? 1 : customer.sanctionsStatus === 'potential-match' ? 0.5 : 0,
+    pepProximity:
+      customer.pepStatus === 'match' ? 1 : customer.pepStatus === 'potential-match' ? 0.5 : 0,
+    sanctionsProximity:
+      customer.sanctionsStatus === 'match'
+        ? 1
+        : customer.sanctionsStatus === 'potential-match'
+          ? 0.5
+          : 0,
     ownershipComplexity: customer.ownershipComplexity ? 0.8 : 0,
     cddOverdueDays,
-    previousAlertCount: customerCases.filter((c) => c.riskLevel === 'high' || c.riskLevel === 'critical').length,
+    previousAlertCount: customerCases.filter(
+      (c) => c.riskLevel === 'high' || c.riskLevel === 'critical'
+    ).length,
     previousSTRCount: strCases.length,
     sectorRiskScore: getSectorRisk(customer.sector),
   };
@@ -199,11 +211,19 @@ function thresholdModel(features: RiskFeatures): ModelPrediction {
   }
   if (features.previousSTRCount > 0) {
     score += 2 * features.previousSTRCount;
-    topFeatures.push({ feature: 'previousSTRCount', weight: 2, contribution: 2 * features.previousSTRCount });
+    topFeatures.push({
+      feature: 'previousSTRCount',
+      weight: 2,
+      contribution: 2 * features.previousSTRCount,
+    });
   }
   if (features.cddOverdueDays > 0) {
     score += Math.min(3, features.cddOverdueDays * 0.05);
-    topFeatures.push({ feature: 'cddOverdueDays', weight: 0.05, contribution: Math.min(3, features.cddOverdueDays * 0.05) });
+    topFeatures.push({
+      feature: 'cddOverdueDays',
+      weight: 0.05,
+      contribution: Math.min(3, features.cddOverdueDays * 0.05),
+    });
   }
   if (features.ownershipComplexity > 0.5) {
     score += 2;
@@ -267,20 +287,16 @@ function behavioralModel(features: RiskFeatures): ModelPrediction {
 
 export function runEnsembleRiskScoring(
   features: RiskFeatures,
-  adaptiveWeights?: Record<string, number>,
+  adaptiveWeights?: Record<string, number>
 ): EnsembleResult {
   // Run all models
-  const predictions = [
-    linearModel(features),
-    thresholdModel(features),
-    behavioralModel(features),
-  ];
+  const predictions = [linearModel(features), thresholdModel(features), behavioralModel(features)];
 
   // Default weights (can be adapted via feedback)
   const weights = adaptiveWeights ?? {
     'linear-weighted': 0.25,
     'threshold-rules': 0.45, // regulatory rules get highest weight
-    'behavioral-deviation': 0.30,
+    'behavioral-deviation': 0.3,
   };
 
   // Weighted ensemble score
@@ -347,7 +363,7 @@ export function runEnsembleRiskScoring(
 
 export function updateModelWeights(
   feedback: FeedbackEntry[],
-  currentWeights: Record<string, number>,
+  currentWeights: Record<string, number>
 ): { weights: Record<string, number>; performance: ModelPerformance[] } {
   if (feedback.length === 0) {
     return { weights: currentWeights, performance: [] };
@@ -364,13 +380,21 @@ export function updateModelWeights(
     const accuracy = correct / total;
 
     // Approximate precision/recall (simplified)
-    const truePositives = feedback.filter((f) => f.wasCorrect && f.predictedRiskLevel !== 'low').length;
-    const falsePositives = feedback.filter((f) => !f.wasCorrect && f.predictedRiskLevel !== 'low').length;
-    const falseNegatives = feedback.filter((f) => !f.wasCorrect && f.predictedRiskLevel === 'low').length;
+    const truePositives = feedback.filter(
+      (f) => f.wasCorrect && f.predictedRiskLevel !== 'low'
+    ).length;
+    const falsePositives = feedback.filter(
+      (f) => !f.wasCorrect && f.predictedRiskLevel !== 'low'
+    ).length;
+    const falseNegatives = feedback.filter(
+      (f) => !f.wasCorrect && f.predictedRiskLevel === 'low'
+    ).length;
 
-    const precision = truePositives + falsePositives > 0 ? truePositives / (truePositives + falsePositives) : 0;
-    const recall = truePositives + falseNegatives > 0 ? truePositives / (truePositives + falseNegatives) : 0;
-    const f1Score = precision + recall > 0 ? 2 * (precision * recall) / (precision + recall) : 0;
+    const precision =
+      truePositives + falsePositives > 0 ? truePositives / (truePositives + falsePositives) : 0;
+    const recall =
+      truePositives + falseNegatives > 0 ? truePositives / (truePositives + falseNegatives) : 0;
+    const f1Score = precision + recall > 0 ? (2 * (precision * recall)) / (precision + recall) : 0;
 
     performance.push({
       model,
@@ -387,9 +411,8 @@ export function updateModelWeights(
   const totalF1 = performance.reduce((s, p) => s + p.f1Score, 0);
   const newWeights: Record<string, number> = {};
   for (const p of performance) {
-    newWeights[p.model] = totalF1 > 0
-      ? p.f1Score / totalF1
-      : currentWeights[p.model] ?? 1 / modelNames.length;
+    newWeights[p.model] =
+      totalF1 > 0 ? p.f1Score / totalF1 : (currentWeights[p.model] ?? 1 / modelNames.length);
   }
 
   return { weights: newWeights, performance };
@@ -405,11 +428,11 @@ function getSectorRisk(sector?: string): number {
     'precious-stones': 0.85,
     'money-exchange': 0.85,
     'real-estate': 0.7,
-    'construction': 0.5,
-    'trading': 0.6,
-    'manufacturing': 0.3,
-    'technology': 0.2,
-    'retail': 0.2,
+    construction: 0.5,
+    trading: 0.6,
+    manufacturing: 0.3,
+    technology: 0.2,
+    retail: 0.2,
   };
   return riskMap[sector ?? ''] ?? 0.4;
 }

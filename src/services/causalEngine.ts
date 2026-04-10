@@ -142,7 +142,7 @@ function evalFn(fn: CausalFn, assignment: Assignment): 0 | 1 {
 export function simulate(
   graph: CausalGraph,
   inputs: Assignment,
-  interventions: Assignment = {},
+  interventions: Assignment = {}
 ): Assignment {
   const out: Assignment = { ...inputs };
   for (const id of graph.order) {
@@ -181,7 +181,7 @@ export interface CounterfactualResult {
 
 export function runCounterfactual(
   graph: CausalGraph,
-  query: CounterfactualQuery,
+  query: CounterfactualQuery
 ): CounterfactualResult {
   const factual = simulate(graph, query.observation);
   const cf = simulate(graph, query.observation, query.intervention);
@@ -205,7 +205,7 @@ export function averageTreatmentEffect(
   graph: CausalGraph,
   dataset: readonly Assignment[],
   treatmentVar: string,
-  target: string,
+  target: string
 ): number {
   if (dataset.length === 0) return 0;
   let treatedTarget = 0;

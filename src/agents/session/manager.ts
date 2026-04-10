@@ -14,11 +14,7 @@
  */
 
 import { SESSION_CONFIG } from '../config';
-import {
-  appendToChain,
-  verifyChain,
-  type ChainedAuditEvent,
-} from '../../utils/auditChain';
+import { appendToChain, verifyChain, type ChainedAuditEvent } from '../../utils/auditChain';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -122,7 +118,11 @@ export class SessionManager {
     return [...this.auditChain];
   }
 
-  async verifyAuditChain(): Promise<{ valid: boolean; checkedCount: number; brokenAt: number | null }> {
+  async verifyAuditChain(): Promise<{
+    valid: boolean;
+    checkedCount: number;
+    brokenAt: number | null;
+  }> {
     return verifyChain(this.auditChain);
   }
 
@@ -160,7 +160,7 @@ export class SessionManager {
       createdAt: this.createdAt,
       lastActivityAt: this.lastActivityAt,
       expiresAt: new Date(
-        new Date(this.createdAt).getTime() + SESSION_CONFIG.maxDurationMs,
+        new Date(this.createdAt).getTime() + SESSION_CONFIG.maxDurationMs
       ).toISOString(),
     };
   }
@@ -215,8 +215,14 @@ export class SessionManager {
   }
 
   private clearTimers(): void {
-    if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
-    if (this.maxDurationTimer) { clearTimeout(this.maxDurationTimer); this.maxDurationTimer = null; }
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+    if (this.maxDurationTimer) {
+      clearTimeout(this.maxDurationTimer);
+      this.maxDurationTimer = null;
+    }
   }
 
   private assertActive(): void {

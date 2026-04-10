@@ -20,8 +20,14 @@ import type { ToolResult as _ToolResult } from '../mcp-server';
 // ---------------------------------------------------------------------------
 
 export type AgentRole =
-  | 'screening' | 'onboarding' | 'incident' | 'filing'
-  | 'audit' | 'risk-analysis' | 'network-analysis' | 'transaction-monitoring';
+  | 'screening'
+  | 'onboarding'
+  | 'incident'
+  | 'filing'
+  | 'audit'
+  | 'risk-analysis'
+  | 'network-analysis'
+  | 'transaction-monitoring';
 
 export interface AgentIdentity {
   id: string;
@@ -161,7 +167,7 @@ export class AgentCollaborationHub {
   /** Get messages for an agent */
   getMessages(agentId: string, _unreadOnly = false): InterAgentMessage[] {
     return this.messages.filter(
-      (m) => (m.to === agentId || m.to === 'broadcast') && m.from !== agentId,
+      (m) => (m.to === agentId || m.to === 'broadcast') && m.from !== agentId
     );
   }
 
@@ -192,11 +198,14 @@ export class AgentCollaborationHub {
   }
 
   /** Read blackboard entries */
-  readBlackboard(agentId: string, filters?: {
-    category?: BlackboardEntry['category'];
-    tags?: string[];
-    minConfidence?: number;
-  }): BlackboardEntry[] {
+  readBlackboard(
+    agentId: string,
+    filters?: {
+      category?: BlackboardEntry['category'];
+      tags?: string[];
+      minConfidence?: number;
+    }
+  ): BlackboardEntry[] {
     let entries = [...this.blackboard];
 
     if (filters?.category) {
@@ -306,7 +315,8 @@ export class AgentCollaborationHub {
         this.conflictCount++;
         // Build resolution narrative
         const dissenting = proposal.votes.filter((v) => v.decision !== bestDecision);
-        proposal.resolution = `Majority (${(agreementRatio * 100).toFixed(0)}%) voted "${bestDecision}". ` +
+        proposal.resolution =
+          `Majority (${(agreementRatio * 100).toFixed(0)}%) voted "${bestDecision}". ` +
           `${dissenting.length} dissenting vote(s): ${dissenting.map((v) => `${v.agentRole} voted "${v.decision}" (${v.reasoning})`).join('; ')}`;
       }
     }
@@ -366,16 +376,20 @@ export class AgentCollaborationHub {
   generateReport(): CollaborationReport {
     return {
       sessionId: `collab-${Date.now()}`,
-      duration: this.messages.length > 0
-        ? `${Math.round((Date.now() - new Date(this.messages[0].timestamp).getTime()) / 1000)}s`
-        : '0s',
+      duration:
+        this.messages.length > 0
+          ? `${Math.round((Date.now() - new Date(this.messages[0].timestamp).getTime()) / 1000)}s`
+          : '0s',
       activeAgents: Array.from(this.agents.values()),
       messagesExchanged: this.messages.length,
       blackboardEntries: this.blackboard.length,
-      consensusDecisions: Array.from(this.consensusProposals.values()).filter((p) => p.resolved).length,
+      consensusDecisions: Array.from(this.consensusProposals.values()).filter((p) => p.resolved)
+        .length,
       delegatedTasks: this.delegatedTasks.size,
       conflicts: this.conflictCount,
-      findings: this.blackboard.filter((e) => e.category === 'finding' || e.category === 'risk-indicator'),
+      findings: this.blackboard.filter(
+        (e) => e.category === 'finding' || e.category === 'risk-indicator'
+      ),
       decisions: Array.from(this.consensusProposals.values()).filter((p) => p.resolved),
     };
   }
@@ -395,7 +409,10 @@ export const COLLABORATION_TOOL_SCHEMAS = [
       properties: {
         agentId: { type: 'string' },
         agentRole: { type: 'string' },
-        category: { type: 'string', enum: ['finding', 'risk-indicator', 'recommendation', 'evidence', 'decision'] },
+        category: {
+          type: 'string',
+          enum: ['finding', 'risk-indicator', 'recommendation', 'evidence', 'decision'],
+        },
         title: { type: 'string' },
         content: { type: 'object' },
         confidence: { type: 'number' },

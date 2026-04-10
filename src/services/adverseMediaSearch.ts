@@ -127,10 +127,7 @@ const DEFAULT_NEGATIVE_EXCLUSIONS = [
  * Build the improved boolean query. Returns a string under Google's
  * ~2048-char URL-encoded limit for typical subject names.
  */
-export function buildAdverseMediaQuery(
-  subject: string,
-  options: SearchPromptOptions = {},
-): string {
+export function buildAdverseMediaQuery(subject: string, options: SearchPromptOptions = {}): string {
   if (!subject || subject.trim().length === 0) {
     throw new Error('buildAdverseMediaQuery: subject is required');
   }
@@ -263,7 +260,7 @@ async function searchViaGoogleCse(query: string): Promise<AdverseMediaHit[]> {
 
 export async function searchAdverseMedia(
   subject: string,
-  options: SearchPromptOptions = {},
+  options: SearchPromptOptions = {}
 ): Promise<AdverseMediaResult> {
   const query = buildAdverseMediaQuery(subject, options);
   const provider = detectProvider();
@@ -293,7 +290,7 @@ export async function searchAdverseMedia(
  */
 export function resultToBrainEvent(
   result: AdverseMediaResult,
-  refId: string,
+  refId: string
 ): Record<string, unknown> {
   let severity: 'info' | 'medium' | 'high';
   if (result.hits.length === 0) severity = 'info';

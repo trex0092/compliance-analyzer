@@ -124,7 +124,7 @@ export function detectRefinerDrift(
   refinerId: string,
   history: readonly MeltBatch[],
   recentBatch: MeltBatch,
-  zThreshold = 2.5,
+  zThreshold = 2.5
 ): MeltLossAssessment {
   const base = assessMeltBatch(recentBatch);
 
@@ -132,7 +132,7 @@ export function detectRefinerDrift(
     (b) =>
       b.refinerId === refinerId &&
       b.batchId !== recentBatch.batchId &&
-      b.metal === recentBatch.metal,
+      b.metal === recentBatch.metal
   );
 
   if (refinerHistory.length < 5) return base;
@@ -142,8 +142,7 @@ export function detectRefinerDrift(
     return (loss / b.inputPureGrams) * 100;
   });
   const mean = losses.reduce((a, b) => a + b, 0) / losses.length;
-  const variance =
-    losses.reduce((a, b) => a + (b - mean) ** 2, 0) / losses.length;
+  const variance = losses.reduce((a, b) => a + (b - mean) ** 2, 0) / losses.length;
   const stdev = Math.max(Math.sqrt(variance), 0.001);
   const z = (base.lossPct - mean) / stdev;
 
@@ -179,11 +178,9 @@ export interface MeltLossSummary {
 export function summariseRefinerLosses(
   refinerId: string,
   metal: Metal,
-  batches: readonly MeltBatch[],
+  batches: readonly MeltBatch[]
 ): MeltLossSummary {
-  const filtered = batches.filter(
-    (b) => b.refinerId === refinerId && b.metal === metal,
-  );
+  const filtered = batches.filter((b) => b.refinerId === refinerId && b.metal === metal);
   if (filtered.length === 0) {
     return {
       refinerId,

@@ -10,10 +10,7 @@
 // ---------------------------------------------------------------------------
 
 function requireEnv(name: string): string {
-  const value =
-    typeof process !== 'undefined'
-      ? process.env[name]
-      : undefined;
+  const value = typeof process !== 'undefined' ? process.env[name] : undefined;
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }

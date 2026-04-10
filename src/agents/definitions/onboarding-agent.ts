@@ -68,7 +68,7 @@ export interface OnboardingAgentResult {
 export async function runOnboardingAgent(
   config: OnboardingAgentConfig,
   server: ComplianceMCPServer,
-  session: SessionManager,
+  session: SessionManager
 ): Promise<OnboardingAgentResult> {
   const messages: AgentMessage[] = [];
   const log = (role: AgentMessage['role'], content: string) => {
@@ -89,12 +89,15 @@ export async function runOnboardingAgent(
       nationality: config.customer.countryOfRegistration,
     },
     server,
-    session,
+    session
   );
 
   // Check for sanctions block
   if (screeningResult.overallVerdict === 'confirmed-match') {
-    log('assistant', `BLOCKED: Confirmed sanctions match. Cannot proceed with onboarding. Run incident agent.`);
+    log(
+      'assistant',
+      `BLOCKED: Confirmed sanctions match. Cannot proceed with onboarding. Run incident agent.`
+    );
     return {
       customer: config.customer,
       screeningResult,
@@ -152,7 +155,10 @@ export async function runOnboardingAgent(
   const nextReviewDate = new Date();
   nextReviewDate.setMonth(nextReviewDate.getMonth() + reviewFrequencyMonths);
 
-  log('assistant', `Step 3/5: CDD tier determined — ${cddTier} (score: ${adjustedScore}, review: ${reviewFrequencyMonths}mo)`);
+  log(
+    'assistant',
+    `Step 3/5: CDD tier determined — ${cddTier} (score: ${adjustedScore}, review: ${reviewFrequencyMonths}mo)`
+  );
 
   // Step 4: Create compliance case
   log('assistant', `Step 4/5: Creating compliance case...`);
@@ -176,9 +182,7 @@ export async function runOnboardingAgent(
     },
   });
 
-  const complianceCase = caseResult.result.ok
-    ? (caseResult.result.data as ComplianceCase)
-    : null;
+  const complianceCase = caseResult.result.ok ? (caseResult.result.data as ComplianceCase) : null;
 
   // Step 5: Check approval requirements
   let approvalRequired = false;
@@ -211,7 +215,10 @@ export async function runOnboardingAgent(
     log('assistant', `Step 5/5: No additional approvals required. Onboarding can proceed.`);
   }
 
-  log('system', `Onboarding complete — tier: ${cddTier}, next review: ${nextReviewDate.toISOString().slice(0, 10)}`);
+  log(
+    'system',
+    `Onboarding complete — tier: ${cddTier}, next review: ${nextReviewDate.toISOString().slice(0, 10)}`
+  );
 
   return {
     customer: config.customer,

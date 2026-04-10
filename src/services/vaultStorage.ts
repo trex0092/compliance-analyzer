@@ -81,7 +81,7 @@ export function reconcileVault(
   metal: Metal,
   physical: PhysicalInventory,
   allocated: readonly AllocatedHolding[],
-  unallocated: readonly UnallocatedHolding[],
+  unallocated: readonly UnallocatedHolding[]
 ): VaultPosition {
   if (physical.metal !== metal) {
     throw new Error(`reconcileVault: metal mismatch`);
@@ -94,10 +94,7 @@ export function reconcileVault(
     .filter((h) => h.metal === metal)
     .reduce((s, h) => s + h.weightGrams, 0);
 
-  const physicalUnallocatedPool = Math.max(
-    0,
-    physical.totalGrams - physical.allocatedBarsGrams,
-  );
+  const physicalUnallocatedPool = Math.max(0, physical.totalGrams - physical.allocatedBarsGrams);
 
   // Allocated solvency: customer's allocated claims must match the
   // physical bars marked as allocated.
@@ -144,7 +141,7 @@ export function customerExposure(
   customerId: string,
   metal: Metal,
   allocated: readonly AllocatedHolding[],
-  unallocated: readonly UnallocatedHolding[],
+  unallocated: readonly UnallocatedHolding[]
 ): CustomerExposure {
   const allocatedGrams = allocated
     .filter((h) => h.customerId === customerId && h.metal === metal)
@@ -175,9 +172,7 @@ export function customerExposure(
 // Brain event mapping
 // ---------------------------------------------------------------------------
 
-export function positionToBrainEvent(
-  position: VaultPosition,
-): Record<string, unknown> | null {
+export function positionToBrainEvent(position: VaultPosition): Record<string, unknown> | null {
   if (position.isSolvent) return null;
 
   const severity = 'critical' as const;

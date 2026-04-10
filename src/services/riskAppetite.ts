@@ -106,7 +106,7 @@ export interface EvaluationResult {
 
 export function evaluateOnboarding(
   input: OnboardingInput,
-  policy: RiskAppetitePolicy = DEFAULT_POLICY,
+  policy: RiskAppetitePolicy = DEFAULT_POLICY
 ): EvaluationResult {
   const reasons: EvaluationResult['reasons'] = [];
   let decision: Decision = 'accept';
@@ -154,10 +154,7 @@ export function evaluateOnboarding(
   }
 
   // Blocked nationalities
-  if (
-    input.nationality &&
-    policy.customer.blockedNationalities.includes(input.nationality)
-  ) {
+  if (input.nationality && policy.customer.blockedNationalities.includes(input.nationality)) {
     downgrade('reject');
     reasons.push({
       clause: 'customer.blockedNationalities',
@@ -179,10 +176,7 @@ export function evaluateOnboarding(
   }
 
   // Business type
-  if (
-    input.businessType &&
-    policy.customer.blockedBusinessTypes.includes(input.businessType)
-  ) {
+  if (input.businessType && policy.customer.blockedBusinessTypes.includes(input.businessType)) {
     downgrade('reject');
     reasons.push({
       clause: 'customer.blockedBusinessTypes',
@@ -219,7 +213,7 @@ export function evaluateOnboarding(
 
 export function evaluateTransaction(
   input: TransactionInput,
-  policy: RiskAppetitePolicy = DEFAULT_POLICY,
+  policy: RiskAppetitePolicy = DEFAULT_POLICY
 ): EvaluationResult {
   const reasons: EvaluationResult['reasons'] = [];
   let decision: Decision = 'accept';
@@ -264,9 +258,7 @@ export function evaluateTransaction(
   // Blocked counterparty jurisdiction
   if (
     input.counterpartyJurisdiction &&
-    policy.transaction.blockedCounterpartyJurisdictions.includes(
-      input.counterpartyJurisdiction,
-    )
+    policy.transaction.blockedCounterpartyJurisdictions.includes(input.counterpartyJurisdiction)
   ) {
     downgrade('reject');
     reasons.push({

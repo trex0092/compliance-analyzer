@@ -86,7 +86,7 @@ export function plan(problem: PlanningProblem): Plan {
     if (satisfied.has(current)) continue;
 
     const candidates = problem.actions.filter(
-      (a) => a.addEffects.includes(current) && !tried.has(a.name),
+      (a) => a.addEffects.includes(current) && !tried.has(a.name)
     );
     if (candidates.length === 0) {
       notes.push(`no action achieves ${current} — goal unreachable`);
@@ -119,8 +119,8 @@ export function plan(problem: PlanningProblem): Plan {
   // Reverse to get topological order.
   const steps = orderPlan(stepsInReverse.reverse(), problem.initialState);
   const totalHours = steps.reduce((s, a) => s + (a.estimatedHours ?? 0), 0);
-  const satisfiedGoal = problem.goal.every((g) =>
-    steps.some((s) => s.addEffects.includes(g)) || problem.initialState.has(g),
+  const satisfiedGoal = problem.goal.every(
+    (g) => steps.some((s) => s.addEffects.includes(g)) || problem.initialState.has(g)
   );
 
   return {
@@ -131,18 +131,13 @@ export function plan(problem: PlanningProblem): Plan {
   };
 }
 
-function orderPlan(
-  actions: readonly PlanAction[],
-  initial: ReadonlySet<Predicate>,
-): PlanAction[] {
+function orderPlan(actions: readonly PlanAction[], initial: ReadonlySet<Predicate>): PlanAction[] {
   // Topological ordering by precondition dependency.
   const out: PlanAction[] = [];
   const satisfied = new Set<Predicate>(initial);
   const remaining = [...actions];
   while (remaining.length > 0) {
-    const idx = remaining.findIndex((a) =>
-      a.preconditions.every((p) => satisfied.has(p)),
-    );
+    const idx = remaining.findIndex((a) => a.preconditions.every((p) => satisfied.has(p)));
     if (idx < 0) {
       // Cycle or unsatisfiable — append the remaining in current order.
       out.push(...remaining);

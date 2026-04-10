@@ -52,7 +52,12 @@ export interface RadarReport {
   totalChanges: number;
   criticalChanges: number;
   overdueImplementations: number;
-  upcomingDeadlines: Array<{ changeId: string; title: string; deadline: string; daysRemaining: number }>;
+  upcomingDeadlines: Array<{
+    changeId: string;
+    title: string;
+    deadline: string;
+    daysRemaining: number;
+  }>;
   assessments: ImpactAssessment[];
   alerts: string[];
 }
@@ -62,29 +67,66 @@ export interface RadarReport {
 // ---------------------------------------------------------------------------
 
 const AREA_MODULE_MAP: Record<string, string[]> = {
-  'cdd': ['src/domain/customers.ts', 'src/services/cddRenewalEngine.ts', 'src/risk/decisions.ts'],
-  'sanctions': ['src/services/sanctionsApi.ts', 'src/services/multiModelScreening.ts', 'tfs-refresh.js', 'hawkeye-sterling/tfs-engine.js'],
-  'reporting': ['src/services/goamlBuilder.ts', 'src/utils/goamlValidator.ts', 'goaml-export.js'],
-  'thresholds': ['src/domain/constants.ts', 'src/risk/transactionMonitoring.ts', 'threshold-monitor.js'],
+  cdd: ['src/domain/customers.ts', 'src/services/cddRenewalEngine.ts', 'src/risk/decisions.ts'],
+  sanctions: [
+    'src/services/sanctionsApi.ts',
+    'src/services/multiModelScreening.ts',
+    'tfs-refresh.js',
+    'hawkeye-sterling/tfs-engine.js',
+  ],
+  reporting: ['src/services/goamlBuilder.ts', 'src/utils/goamlValidator.ts', 'goaml-export.js'],
+  thresholds: [
+    'src/domain/constants.ts',
+    'src/risk/transactionMonitoring.ts',
+    'threshold-monitor.js',
+  ],
   'risk-scoring': ['src/risk/scoring.ts', 'src/risk/decisions.ts', 'src/risk/redFlags.ts'],
-  'ubo': ['src/services/crossEntityScreening.ts', 'src/domain/customers.ts'],
-  'pf': ['src/risk/pfMonitoring.ts'],
-  'tfs': ['tfs-refresh.js', 'hawkeye-sterling/tfs-engine.js', 'src/agents/definitions/incident-agent.ts'],
+  ubo: ['src/services/crossEntityScreening.ts', 'src/domain/customers.ts'],
+  pf: ['src/risk/pfMonitoring.ts'],
+  tfs: [
+    'tfs-refresh.js',
+    'hawkeye-sterling/tfs-engine.js',
+    'src/agents/definitions/incident-agent.ts',
+  ],
   'record-keeping': ['src/utils/auditChain.ts', 'src/services/indexedDbStore.ts', 'database.js'],
-  'governance': ['src/domain/approvalWorkflow.ts', 'src/domain/rbac.ts', 'auth-rbac.js'],
-  'training': [],
+  governance: ['src/domain/approvalWorkflow.ts', 'src/domain/rbac.ts', 'auth-rbac.js'],
+  training: [],
   'supply-chain': ['supply-chain.js'],
 };
 
 const KEYWORD_IMPACT: Array<{ keywords: string[]; area: string; impactBoost: number }> = [
-  { keywords: ['sanctions', 'designated', 'freeze', 'EOCN', 'TFS'], area: 'sanctions', impactBoost: 3 },
-  { keywords: ['threshold', 'reporting limit', 'AED 55', 'AED 60', 'cash transaction'], area: 'thresholds', impactBoost: 2 },
-  { keywords: ['STR', 'SAR', 'CTR', 'goAML', 'suspicious', 'filing'], area: 'reporting', impactBoost: 2 },
+  {
+    keywords: ['sanctions', 'designated', 'freeze', 'EOCN', 'TFS'],
+    area: 'sanctions',
+    impactBoost: 3,
+  },
+  {
+    keywords: ['threshold', 'reporting limit', 'AED 55', 'AED 60', 'cash transaction'],
+    area: 'thresholds',
+    impactBoost: 2,
+  },
+  {
+    keywords: ['STR', 'SAR', 'CTR', 'goAML', 'suspicious', 'filing'],
+    area: 'reporting',
+    impactBoost: 2,
+  },
   { keywords: ['beneficial owner', 'UBO', 'ownership'], area: 'ubo', impactBoost: 2 },
-  { keywords: ['penalty', 'fine', 'administrative', 'violation'], area: 'governance', impactBoost: 3 },
-  { keywords: ['CDD', 'due diligence', 'KYC', 'verification', 'onboarding'], area: 'cdd', impactBoost: 1 },
+  {
+    keywords: ['penalty', 'fine', 'administrative', 'violation'],
+    area: 'governance',
+    impactBoost: 3,
+  },
+  {
+    keywords: ['CDD', 'due diligence', 'KYC', 'verification', 'onboarding'],
+    area: 'cdd',
+    impactBoost: 1,
+  },
   { keywords: ['proliferation', 'dual-use', 'strategic goods', 'WMD'], area: 'pf', impactBoost: 3 },
-  { keywords: ['risk assessment', 'risk appetite', 'scoring'], area: 'risk-scoring', impactBoost: 1 },
+  {
+    keywords: ['risk assessment', 'risk appetite', 'scoring'],
+    area: 'risk-scoring',
+    impactBoost: 1,
+  },
 ];
 
 export function assessRegulatoryChange(change: RegulatoryChange): ImpactAssessment {
@@ -145,7 +187,9 @@ export function assessRegulatoryChange(change: RegulatoryChange): ImpactAssessme
       priority: 'critical',
       action: 'Update sanctions list sources and screening logic',
       responsible: 'MLRO',
-      deadline: new Date(Math.min(deadline.getTime(), Date.now() + 24 * 3600_000)).toISOString().slice(0, 10),
+      deadline: new Date(Math.min(deadline.getTime(), Date.now() + 24 * 3600_000))
+        .toISOString()
+        .slice(0, 10),
       status: 'pending',
     });
   }
@@ -185,12 +229,16 @@ export function assessRegulatoryChange(change: RegulatoryChange): ImpactAssessme
     daysRemaining,
     isOverdue: daysRemaining < 0,
     actionItems,
-    riskIfNotImplemented: impactLevel === 'critical'
-      ? 'Regulatory non-compliance — potential enforcement action and penalties AED 10K-100M'
-      : impactLevel === 'high'
-      ? 'Significant compliance gap — increased regulatory scrutiny'
-      : 'Minor gap — address during next review cycle',
-    penaltyRange: impactLevel === 'critical' || impactLevel === 'high' ? 'AED 10,000 – AED 100,000,000 (Cabinet Res 71/2024)' : undefined,
+    riskIfNotImplemented:
+      impactLevel === 'critical'
+        ? 'Regulatory non-compliance — potential enforcement action and penalties AED 10K-100M'
+        : impactLevel === 'high'
+          ? 'Significant compliance gap — increased regulatory scrutiny'
+          : 'Minor gap — address during next review cycle',
+    penaltyRange:
+      impactLevel === 'critical' || impactLevel === 'high'
+        ? 'AED 10,000 – AED 100,000,000 (Cabinet Res 71/2024)'
+        : undefined,
   };
 }
 
@@ -202,12 +250,18 @@ export function runRegulatoryRadar(changes: RegulatoryChange[]): ToolResult<Rada
   const overdue = assessments.filter((a) => a.isOverdue);
   const upcoming = assessments
     .filter((a) => !a.isOverdue && a.daysRemaining <= 30)
-    .map((a) => ({ changeId: a.changeId, title: changes.find((c) => c.id === a.changeId)?.title ?? '', deadline: a.implementationDeadline, daysRemaining: a.daysRemaining }))
+    .map((a) => ({
+      changeId: a.changeId,
+      title: changes.find((c) => c.id === a.changeId)?.title ?? '',
+      deadline: a.implementationDeadline,
+      daysRemaining: a.daysRemaining,
+    }))
     .sort((a, b) => a.daysRemaining - b.daysRemaining);
 
   const alerts: string[] = [];
   if (overdue.length > 0) alerts.push(`${overdue.length} regulatory implementation(s) OVERDUE`);
-  if (critical.length > 0) alerts.push(`${critical.length} CRITICAL regulatory change(s) require immediate action`);
+  if (critical.length > 0)
+    alerts.push(`${critical.length} CRITICAL regulatory change(s) require immediate action`);
   if (upcoming.length > 0) alerts.push(`${upcoming.length} deadline(s) within 30 days`);
 
   return {
@@ -227,7 +281,38 @@ export function runRegulatoryRadar(changes: RegulatoryChange[]): ToolResult<Rada
 export const RADAR_TOOL_SCHEMAS = [
   {
     name: 'assess_regulatory_change',
-    description: 'Process a regulatory change: auto-classify impact, map to affected code modules, generate action items with deadlines. Tracks MoE 30-day implementation window.',
-    inputSchema: { type: 'object', properties: { change: { type: 'object', properties: { id: { type: 'string' }, title: { type: 'string' }, source: { type: 'string' }, issuedBy: { type: 'string' }, issuedDate: { type: 'string' }, effectiveDate: { type: 'string' }, category: { type: 'string' }, summary: { type: 'string' }, affectedAreas: { type: 'array', items: { type: 'string' } } }, required: ['id', 'title', 'source', 'issuedBy', 'issuedDate', 'effectiveDate', 'category', 'summary', 'affectedAreas'] } }, required: ['change'] },
+    description:
+      'Process a regulatory change: auto-classify impact, map to affected code modules, generate action items with deadlines. Tracks MoE 30-day implementation window.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        change: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            title: { type: 'string' },
+            source: { type: 'string' },
+            issuedBy: { type: 'string' },
+            issuedDate: { type: 'string' },
+            effectiveDate: { type: 'string' },
+            category: { type: 'string' },
+            summary: { type: 'string' },
+            affectedAreas: { type: 'array', items: { type: 'string' } },
+          },
+          required: [
+            'id',
+            'title',
+            'source',
+            'issuedBy',
+            'issuedDate',
+            'effectiveDate',
+            'category',
+            'summary',
+            'affectedAreas',
+          ],
+        },
+      },
+      required: ['change'],
+    },
   },
 ] as const;

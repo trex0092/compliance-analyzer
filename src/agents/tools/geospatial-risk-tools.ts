@@ -46,9 +46,9 @@ export interface JurisdictionProfile {
 
 export interface TradeRoute {
   id: string;
-  origin: string;       // country code
-  transit?: string[];    // transit country codes
-  destination: string;   // country code
+  origin: string; // country code
+  transit?: string[]; // transit country codes
+  destination: string; // country code
   commodity?: string;
   value: number;
   currency: string;
@@ -96,7 +96,12 @@ export interface GeospatialReport {
   highRiskRoutes: RouteRiskAssessment[];
   clusters: GeoCluster[];
   crossBorderFlows: CrossBorderFlow[];
-  jurisdictionHeatMap: Array<{ code: string; name: string; riskScore: number; entityCount: number }>;
+  jurisdictionHeatMap: Array<{
+    code: string;
+    name: string;
+    riskScore: number;
+    entityCount: number;
+  }>;
   cahraExposedRoutes: number;
   sanctionedCorridorCount: number;
   totalCrossBorderValue: number;
@@ -109,31 +114,306 @@ export interface GeospatialReport {
 // ---------------------------------------------------------------------------
 
 const JURISDICTION_DB: Record<string, Omit<JurisdictionProfile, 'code'>> = {
-  AE: { name: 'United Arab Emirates', riskClassification: 'medium', fatfStatus: 'compliant', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 24.45, lng: 54.65 }, riskScore: 3 },
-  US: { name: 'United States', riskClassification: 'low', fatfStatus: 'compliant', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 38.9, lng: -77.04 }, riskScore: 1 },
-  GB: { name: 'United Kingdom', riskClassification: 'low', fatfStatus: 'compliant', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 51.5, lng: -0.12 }, riskScore: 1 },
-  CH: { name: 'Switzerland', riskClassification: 'low', fatfStatus: 'compliant', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 46.95, lng: 7.45 }, riskScore: 2 },
-  IN: { name: 'India', riskClassification: 'medium', fatfStatus: 'compliant', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 28.61, lng: 77.21 }, riskScore: 4 },
-  CN: { name: 'China', riskClassification: 'medium', fatfStatus: 'compliant', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 39.9, lng: 116.4 }, riskScore: 5 },
-  RU: { name: 'Russia', riskClassification: 'very-high', fatfStatus: 'grey-list', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: true, sanctionsRegimes: ['OFAC', 'EU', 'UK'], coordinate: { lat: 55.75, lng: 37.62 }, riskScore: 16 },
-  IR: { name: 'Iran', riskClassification: 'sanctioned', fatfStatus: 'black-list', isCAHRA: true, isOffshore: false, isPFHighRisk: true, isEUHighRisk: true, sanctionsRegimes: ['UN', 'OFAC', 'EU', 'UK'], coordinate: { lat: 35.69, lng: 51.39 }, riskScore: 20 },
-  KP: { name: 'North Korea', riskClassification: 'sanctioned', fatfStatus: 'black-list', isCAHRA: true, isOffshore: false, isPFHighRisk: true, isEUHighRisk: true, sanctionsRegimes: ['UN', 'OFAC', 'EU', 'UK'], coordinate: { lat: 39.02, lng: 125.75 }, riskScore: 20 },
-  SY: { name: 'Syria', riskClassification: 'sanctioned', fatfStatus: 'grey-list', isCAHRA: true, isOffshore: false, isPFHighRisk: true, isEUHighRisk: true, sanctionsRegimes: ['OFAC', 'EU', 'UK'], coordinate: { lat: 33.51, lng: 36.29 }, riskScore: 19 },
-  MM: { name: 'Myanmar', riskClassification: 'very-high', fatfStatus: 'grey-list', isCAHRA: true, isOffshore: false, isPFHighRisk: true, isEUHighRisk: true, sanctionsRegimes: ['OFAC', 'EU', 'UK'], coordinate: { lat: 19.76, lng: 96.07 }, riskScore: 17 },
-  AF: { name: 'Afghanistan', riskClassification: 'very-high', fatfStatus: 'grey-list', isCAHRA: true, isOffshore: false, isPFHighRisk: false, isEUHighRisk: true, sanctionsRegimes: ['UN', 'OFAC'], coordinate: { lat: 34.53, lng: 69.17 }, riskScore: 18 },
-  YE: { name: 'Yemen', riskClassification: 'very-high', fatfStatus: 'grey-list', isCAHRA: true, isOffshore: false, isPFHighRisk: true, isEUHighRisk: true, sanctionsRegimes: ['UN', 'OFAC'], coordinate: { lat: 15.35, lng: 44.21 }, riskScore: 17 },
-  LY: { name: 'Libya', riskClassification: 'very-high', fatfStatus: 'grey-list', isCAHRA: true, isOffshore: false, isPFHighRisk: false, isEUHighRisk: true, sanctionsRegimes: ['UN', 'EU'], coordinate: { lat: 32.9, lng: 13.18 }, riskScore: 16 },
-  CD: { name: 'DR Congo', riskClassification: 'very-high', fatfStatus: 'grey-list', isCAHRA: true, isOffshore: false, isPFHighRisk: false, isEUHighRisk: true, sanctionsRegimes: ['UN'], coordinate: { lat: -4.32, lng: 15.31 }, riskScore: 16 },
-  CF: { name: 'Central African Republic', riskClassification: 'very-high', fatfStatus: 'grey-list', isCAHRA: true, isOffshore: false, isPFHighRisk: false, isEUHighRisk: true, sanctionsRegimes: ['UN'], coordinate: { lat: 4.39, lng: 18.56 }, riskScore: 16 },
-  SD: { name: 'Sudan', riskClassification: 'very-high', fatfStatus: 'grey-list', isCAHRA: true, isOffshore: false, isPFHighRisk: false, isEUHighRisk: true, sanctionsRegimes: ['OFAC'], coordinate: { lat: 15.59, lng: 32.53 }, riskScore: 16 },
-  VG: { name: 'British Virgin Islands', riskClassification: 'high', fatfStatus: 'not-assessed', isCAHRA: false, isOffshore: true, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 18.43, lng: -64.62 }, riskScore: 12 },
-  KY: { name: 'Cayman Islands', riskClassification: 'high', fatfStatus: 'compliant', isCAHRA: false, isOffshore: true, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 19.29, lng: -81.38 }, riskScore: 11 },
-  PA: { name: 'Panama', riskClassification: 'high', fatfStatus: 'grey-list', isCAHRA: false, isOffshore: true, isPFHighRisk: false, isEUHighRisk: true, sanctionsRegimes: [], coordinate: { lat: 8.98, lng: -79.52 }, riskScore: 13 },
-  GH: { name: 'Ghana', riskClassification: 'medium', fatfStatus: 'compliant', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 5.56, lng: -0.19 }, riskScore: 6 },
-  ZA: { name: 'South Africa', riskClassification: 'medium', fatfStatus: 'grey-list', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: -25.75, lng: 28.19 }, riskScore: 7 },
-  TR: { name: 'Turkey', riskClassification: 'medium', fatfStatus: 'grey-list', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 39.93, lng: 32.86 }, riskScore: 7 },
-  HK: { name: 'Hong Kong', riskClassification: 'medium', fatfStatus: 'compliant', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 22.32, lng: 114.17 }, riskScore: 5 },
-  SG: { name: 'Singapore', riskClassification: 'low', fatfStatus: 'compliant', isCAHRA: false, isOffshore: false, isPFHighRisk: false, isEUHighRisk: false, sanctionsRegimes: [], coordinate: { lat: 1.35, lng: 103.82 }, riskScore: 2 },
+  AE: {
+    name: 'United Arab Emirates',
+    riskClassification: 'medium',
+    fatfStatus: 'compliant',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 24.45, lng: 54.65 },
+    riskScore: 3,
+  },
+  US: {
+    name: 'United States',
+    riskClassification: 'low',
+    fatfStatus: 'compliant',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 38.9, lng: -77.04 },
+    riskScore: 1,
+  },
+  GB: {
+    name: 'United Kingdom',
+    riskClassification: 'low',
+    fatfStatus: 'compliant',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 51.5, lng: -0.12 },
+    riskScore: 1,
+  },
+  CH: {
+    name: 'Switzerland',
+    riskClassification: 'low',
+    fatfStatus: 'compliant',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 46.95, lng: 7.45 },
+    riskScore: 2,
+  },
+  IN: {
+    name: 'India',
+    riskClassification: 'medium',
+    fatfStatus: 'compliant',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 28.61, lng: 77.21 },
+    riskScore: 4,
+  },
+  CN: {
+    name: 'China',
+    riskClassification: 'medium',
+    fatfStatus: 'compliant',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 39.9, lng: 116.4 },
+    riskScore: 5,
+  },
+  RU: {
+    name: 'Russia',
+    riskClassification: 'very-high',
+    fatfStatus: 'grey-list',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['OFAC', 'EU', 'UK'],
+    coordinate: { lat: 55.75, lng: 37.62 },
+    riskScore: 16,
+  },
+  IR: {
+    name: 'Iran',
+    riskClassification: 'sanctioned',
+    fatfStatus: 'black-list',
+    isCAHRA: true,
+    isOffshore: false,
+    isPFHighRisk: true,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['UN', 'OFAC', 'EU', 'UK'],
+    coordinate: { lat: 35.69, lng: 51.39 },
+    riskScore: 20,
+  },
+  KP: {
+    name: 'North Korea',
+    riskClassification: 'sanctioned',
+    fatfStatus: 'black-list',
+    isCAHRA: true,
+    isOffshore: false,
+    isPFHighRisk: true,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['UN', 'OFAC', 'EU', 'UK'],
+    coordinate: { lat: 39.02, lng: 125.75 },
+    riskScore: 20,
+  },
+  SY: {
+    name: 'Syria',
+    riskClassification: 'sanctioned',
+    fatfStatus: 'grey-list',
+    isCAHRA: true,
+    isOffshore: false,
+    isPFHighRisk: true,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['OFAC', 'EU', 'UK'],
+    coordinate: { lat: 33.51, lng: 36.29 },
+    riskScore: 19,
+  },
+  MM: {
+    name: 'Myanmar',
+    riskClassification: 'very-high',
+    fatfStatus: 'grey-list',
+    isCAHRA: true,
+    isOffshore: false,
+    isPFHighRisk: true,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['OFAC', 'EU', 'UK'],
+    coordinate: { lat: 19.76, lng: 96.07 },
+    riskScore: 17,
+  },
+  AF: {
+    name: 'Afghanistan',
+    riskClassification: 'very-high',
+    fatfStatus: 'grey-list',
+    isCAHRA: true,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['UN', 'OFAC'],
+    coordinate: { lat: 34.53, lng: 69.17 },
+    riskScore: 18,
+  },
+  YE: {
+    name: 'Yemen',
+    riskClassification: 'very-high',
+    fatfStatus: 'grey-list',
+    isCAHRA: true,
+    isOffshore: false,
+    isPFHighRisk: true,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['UN', 'OFAC'],
+    coordinate: { lat: 15.35, lng: 44.21 },
+    riskScore: 17,
+  },
+  LY: {
+    name: 'Libya',
+    riskClassification: 'very-high',
+    fatfStatus: 'grey-list',
+    isCAHRA: true,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['UN', 'EU'],
+    coordinate: { lat: 32.9, lng: 13.18 },
+    riskScore: 16,
+  },
+  CD: {
+    name: 'DR Congo',
+    riskClassification: 'very-high',
+    fatfStatus: 'grey-list',
+    isCAHRA: true,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['UN'],
+    coordinate: { lat: -4.32, lng: 15.31 },
+    riskScore: 16,
+  },
+  CF: {
+    name: 'Central African Republic',
+    riskClassification: 'very-high',
+    fatfStatus: 'grey-list',
+    isCAHRA: true,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['UN'],
+    coordinate: { lat: 4.39, lng: 18.56 },
+    riskScore: 16,
+  },
+  SD: {
+    name: 'Sudan',
+    riskClassification: 'very-high',
+    fatfStatus: 'grey-list',
+    isCAHRA: true,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: true,
+    sanctionsRegimes: ['OFAC'],
+    coordinate: { lat: 15.59, lng: 32.53 },
+    riskScore: 16,
+  },
+  VG: {
+    name: 'British Virgin Islands',
+    riskClassification: 'high',
+    fatfStatus: 'not-assessed',
+    isCAHRA: false,
+    isOffshore: true,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 18.43, lng: -64.62 },
+    riskScore: 12,
+  },
+  KY: {
+    name: 'Cayman Islands',
+    riskClassification: 'high',
+    fatfStatus: 'compliant',
+    isCAHRA: false,
+    isOffshore: true,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 19.29, lng: -81.38 },
+    riskScore: 11,
+  },
+  PA: {
+    name: 'Panama',
+    riskClassification: 'high',
+    fatfStatus: 'grey-list',
+    isCAHRA: false,
+    isOffshore: true,
+    isPFHighRisk: false,
+    isEUHighRisk: true,
+    sanctionsRegimes: [],
+    coordinate: { lat: 8.98, lng: -79.52 },
+    riskScore: 13,
+  },
+  GH: {
+    name: 'Ghana',
+    riskClassification: 'medium',
+    fatfStatus: 'compliant',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 5.56, lng: -0.19 },
+    riskScore: 6,
+  },
+  ZA: {
+    name: 'South Africa',
+    riskClassification: 'medium',
+    fatfStatus: 'grey-list',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: -25.75, lng: 28.19 },
+    riskScore: 7,
+  },
+  TR: {
+    name: 'Turkey',
+    riskClassification: 'medium',
+    fatfStatus: 'grey-list',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 39.93, lng: 32.86 },
+    riskScore: 7,
+  },
+  HK: {
+    name: 'Hong Kong',
+    riskClassification: 'medium',
+    fatfStatus: 'compliant',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 22.32, lng: 114.17 },
+    riskScore: 5,
+  },
+  SG: {
+    name: 'Singapore',
+    riskClassification: 'low',
+    fatfStatus: 'compliant',
+    isCAHRA: false,
+    isOffshore: false,
+    isPFHighRisk: false,
+    isEUHighRisk: false,
+    sanctionsRegimes: [],
+    coordinate: { lat: 1.35, lng: 103.82 },
+    riskScore: 2,
+  },
 };
 
 export function getJurisdictionProfile(code: string): JurisdictionProfile {
@@ -204,7 +484,9 @@ export function assessRouteRisk(route: TradeRoute): RouteRiskAssessment {
   // Cross-border declaration
   const crossBorderDeclaration = route.value >= CROSS_BORDER_CASH_THRESHOLD_AED;
   if (crossBorderDeclaration) {
-    flags.push(`Cross-border value AED ${route.value.toLocaleString()} exceeds AED 60,000 threshold`);
+    flags.push(
+      `Cross-border value AED ${route.value.toLocaleString()} exceeds AED 60,000 threshold`
+    );
     regulatoryActions.push('Cross-border cash/BNI declaration required (FDL Art.16)');
   }
 
@@ -215,7 +497,10 @@ export function assessRouteRisk(route: TradeRoute): RouteRiskAssessment {
   const maxJurisdictionRisk = Math.max(...allJurisdictions.map((j) => j.riskScore));
   const avgRisk = allJurisdictions.reduce((s, j) => s + j.riskScore, 0) / allJurisdictions.length;
   const transitPenalty = transitRisks.length * 1.5; // more hops = more risk
-  const totalRouteRisk = Math.min(20, Math.round((maxJurisdictionRisk * 0.5 + avgRisk * 0.3 + transitPenalty) * 10) / 10);
+  const totalRouteRisk = Math.min(
+    20,
+    Math.round((maxJurisdictionRisk * 0.5 + avgRisk * 0.3 + transitPenalty) * 10) / 10
+  );
 
   let riskLevel: RouteRiskAssessment['riskLevel'] = 'low';
   if (totalRouteRisk >= 16) riskLevel = 'critical';
@@ -243,7 +528,7 @@ export function assessRouteRisk(route: TradeRoute): RouteRiskAssessment {
 
 export function runGeospatialAnalysis(
   routes: TradeRoute[],
-  entities?: Array<{ id: string; name: string; jurisdiction: string; riskScore: number }>,
+  entities?: Array<{ id: string; name: string; jurisdiction: string; riskScore: number }>
 ): ToolResult<GeospatialReport> {
   if (routes.length === 0 && (!entities || entities.length === 0)) {
     return { ok: false, error: 'Provide at least one trade route or entity' };
@@ -251,7 +536,9 @@ export function runGeospatialAnalysis(
 
   // Assess all routes
   const assessments = routes.map(assessRouteRisk);
-  const highRiskRoutes = assessments.filter((a) => a.riskLevel === 'high' || a.riskLevel === 'critical');
+  const highRiskRoutes = assessments.filter(
+    (a) => a.riskLevel === 'high' || a.riskLevel === 'critical'
+  );
 
   // Cross-border flows
   const flowMap = new Map<string, CrossBorderFlow>();
@@ -303,7 +590,9 @@ export function runGeospatialAnalysis(
         entities: ents,
         clusterRisk,
         anomaly,
-        anomalyReason: anomaly ? `${ents.length} entities concentrated in high-risk ${profile.name}` : undefined,
+        anomalyReason: anomaly
+          ? `${ents.length} entities concentrated in high-risk ${profile.name}`
+          : undefined,
       });
     }
   }
@@ -314,18 +603,25 @@ export function runGeospatialAnalysis(
     jurisdictionCounts.set(route.origin, (jurisdictionCounts.get(route.origin) ?? 0) + 1);
     jurisdictionCounts.set(route.destination, (jurisdictionCounts.get(route.destination) ?? 0) + 1);
   }
-  const heatMap = Array.from(jurisdictionCounts.entries()).map(([code, count]) => {
-    const profile = getJurisdictionProfile(code);
-    return { code, name: profile.name, riskScore: profile.riskScore, entityCount: count };
-  }).sort((a, b) => b.riskScore - a.riskScore);
+  const heatMap = Array.from(jurisdictionCounts.entries())
+    .map(([code, count]) => {
+      const profile = getJurisdictionProfile(code);
+      return { code, name: profile.name, riskScore: profile.riskScore, entityCount: count };
+    })
+    .sort((a, b) => b.riskScore - a.riskScore);
 
   // Alerts
   const alerts: string[] = [];
   const cahraRoutes = assessments.filter((a) => a.cahraExposure);
-  if (cahraRoutes.length > 0) alerts.push(`${cahraRoutes.length} route(s) with CAHRA exposure — LBMA RGG v9 Step 3 due diligence required`);
+  if (cahraRoutes.length > 0)
+    alerts.push(
+      `${cahraRoutes.length} route(s) with CAHRA exposure — LBMA RGG v9 Step 3 due diligence required`
+    );
   const sanctionedCount = assessments.reduce((s, a) => s + a.sanctionedCorridors.length, 0);
-  if (sanctionedCount > 0) alerts.push(`${sanctionedCount} sanctioned corridor(s) detected — STOP and investigate`);
-  if (highRiskRoutes.length > 0) alerts.push(`${highRiskRoutes.length} high/critical risk route(s) require enhanced review`);
+  if (sanctionedCount > 0)
+    alerts.push(`${sanctionedCount} sanctioned corridor(s) detected — STOP and investigate`);
+  if (highRiskRoutes.length > 0)
+    alerts.push(`${highRiskRoutes.length} high/critical risk route(s) require enhanced review`);
 
   const totalCBValue = Array.from(flowMap.values()).reduce((s, f) => s + f.totalValue, 0);
   const maxRisk = Math.max(0, ...assessments.map((a) => a.totalRouteRisk));
@@ -355,19 +651,52 @@ export function runGeospatialAnalysis(
 export const GEO_TOOL_SCHEMAS = [
   {
     name: 'analyze_geospatial_risk',
-    description: 'Full geospatial risk analysis: trade route scoring, jurisdiction classification (FATF/CAHRA/offshore/PF), geographic clustering, cross-border flow mapping, sanctioned corridor detection. 25+ jurisdictions pre-loaded.',
+    description:
+      'Full geospatial risk analysis: trade route scoring, jurisdiction classification (FATF/CAHRA/offshore/PF), geographic clustering, cross-border flow mapping, sanctioned corridor detection. 25+ jurisdictions pre-loaded.',
     inputSchema: {
       type: 'object',
       properties: {
-        routes: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, origin: { type: 'string' }, transit: { type: 'array', items: { type: 'string' } }, destination: { type: 'string' }, commodity: { type: 'string' }, value: { type: 'number' }, currency: { type: 'string' } }, required: ['id', 'origin', 'destination', 'value', 'currency'] } },
-        entities: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, jurisdiction: { type: 'string' }, riskScore: { type: 'number' } }, required: ['id', 'name', 'jurisdiction', 'riskScore'] } },
+        routes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              origin: { type: 'string' },
+              transit: { type: 'array', items: { type: 'string' } },
+              destination: { type: 'string' },
+              commodity: { type: 'string' },
+              value: { type: 'number' },
+              currency: { type: 'string' },
+            },
+            required: ['id', 'origin', 'destination', 'value', 'currency'],
+          },
+        },
+        entities: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              jurisdiction: { type: 'string' },
+              riskScore: { type: 'number' },
+            },
+            required: ['id', 'name', 'jurisdiction', 'riskScore'],
+          },
+        },
       },
       required: ['routes'],
     },
   },
   {
     name: 'get_jurisdiction_profile',
-    description: 'Get risk profile for any jurisdiction: FATF status, CAHRA, offshore, PF risk, sanctions regimes, risk score. Covers 25+ pre-loaded countries plus dynamic classification.',
-    inputSchema: { type: 'object', properties: { countryCode: { type: 'string', description: 'ISO 3166-1 alpha-2 code' } }, required: ['countryCode'] },
+    description:
+      'Get risk profile for any jurisdiction: FATF status, CAHRA, offshore, PF risk, sanctions regimes, risk score. Covers 25+ pre-loaded countries plus dynamic classification.',
+    inputSchema: {
+      type: 'object',
+      properties: { countryCode: { type: 'string', description: 'ISO 3166-1 alpha-2 code' } },
+      required: ['countryCode'],
+    },
   },
 ] as const;

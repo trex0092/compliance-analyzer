@@ -22,7 +22,12 @@ import type { ComplianceCase } from '../../domain/cases';
 // Agent definition
 // ---------------------------------------------------------------------------
 
-export type IncidentType = 'sanctions-match' | 'str-trigger' | 'asset-freeze' | 'pf-alert' | 'regulatory-breach';
+export type IncidentType =
+  | 'sanctions-match'
+  | 'str-trigger'
+  | 'asset-freeze'
+  | 'pf-alert'
+  | 'regulatory-breach';
 
 export interface IncidentAgentConfig {
   entityId: string;
@@ -60,7 +65,7 @@ export interface IncidentAgentResult {
 export async function runIncidentAgent(
   config: IncidentAgentConfig,
   server: ComplianceMCPServer,
-  session: SessionManager,
+  session: SessionManager
 ): Promise<IncidentAgentResult> {
   const messages: AgentMessage[] = [];
   const actionsPerformed: string[] = [];
@@ -75,7 +80,10 @@ export async function runIncidentAgent(
   };
 
   const _now = new Date().toISOString();
-  log('system', `INCIDENT RESPONSE initiated for "${config.entityName}" — type: ${config.incidentType}`);
+  log(
+    'system',
+    `INCIDENT RESPONSE initiated for "${config.entityName}" — type: ${config.incidentType}`
+  );
 
   // Step 1: Create incident case
   log('assistant', `Creating incident case...`);
@@ -94,34 +102,80 @@ export async function runIncidentAgent(
     },
   });
 
-  const complianceCase = caseResult.result.ok
-    ? (caseResult.result.data as ComplianceCase)
-    : null;
+  const complianceCase = caseResult.result.ok ? (caseResult.result.data as ComplianceCase) : null;
 
   // Step 2: Handle by incident type
   switch (config.incidentType) {
     case 'sanctions-match':
-      await handleSanctionsMatch(config, server, log, actionsPerformed, countdowns, deadlineResults, escalatedTo, complianceCase);
+      await handleSanctionsMatch(
+        config,
+        server,
+        log,
+        actionsPerformed,
+        countdowns,
+        deadlineResults,
+        escalatedTo,
+        complianceCase
+      );
       break;
 
     case 'str-trigger':
-      await handleSTRTrigger(config, server, log, actionsPerformed, countdowns, deadlineResults, escalatedTo, complianceCase);
+      await handleSTRTrigger(
+        config,
+        server,
+        log,
+        actionsPerformed,
+        countdowns,
+        deadlineResults,
+        escalatedTo,
+        complianceCase
+      );
       break;
 
     case 'asset-freeze':
-      await handleAssetFreeze(config, server, log, actionsPerformed, countdowns, deadlineResults, escalatedTo, complianceCase);
+      await handleAssetFreeze(
+        config,
+        server,
+        log,
+        actionsPerformed,
+        countdowns,
+        deadlineResults,
+        escalatedTo,
+        complianceCase
+      );
       break;
 
     case 'pf-alert':
-      await handlePFAlert(config, server, log, actionsPerformed, countdowns, deadlineResults, escalatedTo, complianceCase);
+      await handlePFAlert(
+        config,
+        server,
+        log,
+        actionsPerformed,
+        countdowns,
+        deadlineResults,
+        escalatedTo,
+        complianceCase
+      );
       break;
 
     case 'regulatory-breach':
-      await handleRegulatoryBreach(config, server, log, actionsPerformed, countdowns, deadlineResults, escalatedTo, complianceCase);
+      await handleRegulatoryBreach(
+        config,
+        server,
+        log,
+        actionsPerformed,
+        countdowns,
+        deadlineResults,
+        escalatedTo,
+        complianceCase
+      );
       break;
   }
 
-  log('system', `Incident response complete — ${actionsPerformed.length} actions, ${countdowns.length} active countdowns`);
+  log(
+    'system',
+    `Incident response complete — ${actionsPerformed.length} actions, ${countdowns.length} active countdowns`
+  );
 
   return {
     entityName: config.entityName,
@@ -148,7 +202,7 @@ async function handleSanctionsMatch(
   countdowns: IncidentCountdown[],
   deadlineResults: ToolCallResponse[],
   escalatedTo: string[],
-  caseObj: ComplianceCase | null,
+  caseObj: ComplianceCase | null
 ) {
   const confidence = config.matchConfidence ?? 1.0;
   const now = new Date();
@@ -195,12 +249,17 @@ async function handleSanctionsMatch(
     actions.push('Escalated to MLRO, EOCN, and Senior Management');
 
     // 5. DO NOT notify subject
-    log('assistant', `WARNING: DO NOT notify ${config.entityName} of this action (Art.29 — no tipping off)`);
+    log(
+      'assistant',
+      `WARNING: DO NOT notify ${config.entityName} of this action (Art.29 — no tipping off)`
+    );
     actions.push('No-tipping-off rule enforced (FDL Art.29)');
-
   } else if (confidence >= 0.5) {
     // POTENTIAL — Escalate to CO
-    log('assistant', `POTENTIAL MATCH (confidence: ${confidence}). Escalating to Compliance Officer.`);
+    log(
+      'assistant',
+      `POTENTIAL MATCH (confidence: ${confidence}). Escalating to Compliance Officer.`
+    );
     escalatedTo.push('Compliance Officer');
     actions.push('Escalated to Compliance Officer for manual review');
     actions.push('CO to decide: confirm → FREEZE path, or false positive → document & dismiss');
@@ -224,7 +283,7 @@ async function handleSTRTrigger(
   countdowns: IncidentCountdown[],
   deadlineResults: ToolCallResponse[],
   escalatedTo: string[],
-  caseObj: ComplianceCase | null,
+  caseObj: ComplianceCase | null
 ) {
   log('assistant', `STR trigger detected. Filing deadline: WITHOUT DELAY (FDL Art.26).`);
 
@@ -263,7 +322,7 @@ async function handleAssetFreeze(
   countdowns: IncidentCountdown[],
   deadlineResults: ToolCallResponse[],
   escalatedTo: string[],
-  _caseObj: ComplianceCase | null,
+  _caseObj: ComplianceCase | null
 ) {
   const now = new Date();
   log('assistant', `EOCN asset freeze directive received. Executing within 24 hours.`);
@@ -307,7 +366,7 @@ async function handlePFAlert(
   countdowns: IncidentCountdown[],
   _deadlineResults: ToolCallResponse[],
   escalatedTo: string[],
-  caseObj: ComplianceCase | null,
+  caseObj: ComplianceCase | null
 ) {
   log('assistant', `Proliferation Financing alert. Escalating per Cabinet Res 156/2025.`);
 
@@ -333,9 +392,12 @@ async function handleRegulatoryBreach(
   _countdowns: IncidentCountdown[],
   _deadlineResults: ToolCallResponse[],
   escalatedTo: string[],
-  _caseObj: ComplianceCase | null,
+  _caseObj: ComplianceCase | null
 ) {
-  log('assistant', `Regulatory breach detected. Penalty range: AED 10,000–100,000,000 (Cabinet Res 71/2024).`);
+  log(
+    'assistant',
+    `Regulatory breach detected. Penalty range: AED 10,000–100,000,000 (Cabinet Res 71/2024).`
+  );
 
   escalatedTo.push('Compliance Officer', 'MLRO', 'Senior Management', 'Legal');
   actions.push('Breach documented with evidence');

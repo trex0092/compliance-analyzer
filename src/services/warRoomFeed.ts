@@ -169,38 +169,31 @@ export class WarRoomFeed {
       incidentsBySeverity[inc.severity] += 1;
       const enriched: ActiveIncident = { ...inc };
       if (inc.deadlineIso) {
-        enriched.minutesRemaining = Math.floor(
-          (Date.parse(inc.deadlineIso) - nowMs) / 60_000,
-        );
+        enriched.minutesRemaining = Math.floor((Date.parse(inc.deadlineIso) - nowMs) / 60_000);
       }
       active.push(enriched);
     }
     active.sort(
       (a, b) =>
         SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
-        (a.minutesRemaining ?? Infinity) - (b.minutesRemaining ?? Infinity),
+        (a.minutesRemaining ?? Infinity) - (b.minutesRemaining ?? Infinity)
     );
 
     const upcoming = active
       .filter((i) => i.minutesRemaining !== undefined)
-      .sort(
-        (a, b) => (a.minutesRemaining ?? Infinity) - (b.minutesRemaining ?? Infinity),
-      )
+      .sort((a, b) => (a.minutesRemaining ?? Infinity) - (b.minutesRemaining ?? Infinity))
       .slice(0, 10);
 
     const oneHourAgo = nowMs - 3_600_000;
     const oneDayAgo = nowMs - 86_400_000;
     const screenings = this.events.filter(
       (e) =>
-        (e.kind === 'screening' || e.kind === 'sanctions_match') &&
-        Date.parse(e.at) >= oneHourAgo,
+        (e.kind === 'screening' || e.kind === 'sanctions_match') && Date.parse(e.at) >= oneHourAgo
     );
     const matches = this.events.filter(
-      (e) => e.kind === 'sanctions_match' && Date.parse(e.at) >= oneHourAgo,
+      (e) => e.kind === 'sanctions_match' && Date.parse(e.at) >= oneHourAgo
     );
-    const strs = this.events.filter(
-      (e) => e.kind === 'str_filed' && Date.parse(e.at) >= oneDayAgo,
-    );
+    const strs = this.events.filter((e) => e.kind === 'str_filed' && Date.parse(e.at) >= oneDayAgo);
 
     return {
       asOf,

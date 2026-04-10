@@ -132,7 +132,7 @@ export class TemporalComplianceLog {
   diff(
     entityId: string,
     fromIso: string,
-    toIso: string,
+    toIso: string
   ): Array<{ field: keyof EntityComplianceState; from: unknown; to: unknown }> {
     const before = this.stateAt(entityId, fromIso);
     const after = this.stateAt(entityId, toIso);
@@ -147,9 +147,7 @@ export class TemporalComplianceLog {
 
   /** All events between two timestamps for the entity. */
   eventsBetween(entityId: string, fromIso: string, toIso: string): ComplianceEvent[] {
-    return this.events.filter(
-      (e) => e.entityId === entityId && e.at >= fromIso && e.at <= toIso,
-    );
+    return this.events.filter((e) => e.entityId === entityId && e.at >= fromIso && e.at <= toIso);
   }
 
   size(): number {
@@ -161,10 +159,7 @@ export class TemporalComplianceLog {
 // Event application (pure)
 // ---------------------------------------------------------------------------
 
-function applyEvent(
-  state: EntityComplianceState,
-  event: ComplianceEvent,
-): EntityComplianceState {
+function applyEvent(state: EntityComplianceState, event: ComplianceEvent): EntityComplianceState {
   const next: EntityComplianceState = { ...state, asOfIso: event.at };
   switch (event.kind) {
     case 'onboarding':
@@ -178,8 +173,7 @@ function applyEvent(
       next.lastCddRenewalIso = event.at;
       break;
     case 'risk_rerated':
-      next.riskBand =
-        (event.data?.riskBand as EntityComplianceState['riskBand']) ?? next.riskBand;
+      next.riskBand = (event.data?.riskBand as EntityComplianceState['riskBand']) ?? next.riskBand;
       break;
     case 'pep_flagged':
       next.isPep = true;

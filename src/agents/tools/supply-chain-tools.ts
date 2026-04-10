@@ -114,7 +114,11 @@ function evaluateLBMASteps(chain: ChainNode[], originCountry: string): LBMAStep[
   steps.push({
     step: 2,
     title: 'Risk identification and assessment',
-    status: hasCAHRA ? (cahraNodes.some((n) => classifyCAHRA(n.country) === 'critical') ? 'fail' : 'warning') : 'pass',
+    status: hasCAHRA
+      ? cahraNodes.some((n) => classifyCAHRA(n.country) === 'critical')
+        ? 'fail'
+        : 'warning'
+      : 'pass',
     details: hasCAHRA
       ? `CAHRA exposure detected: ${cahraNodes.map((n) => `${n.name} (${n.country})`).join(', ')}.`
       : 'No CAHRA exposure identified in the supply chain.',
@@ -148,9 +152,10 @@ function evaluateLBMASteps(chain: ChainNode[], originCountry: string): LBMAStep[
     step: 5,
     title: 'Annual reporting and disclosure',
     status: originCAHRA === 'none' ? 'pass' : 'warning',
-    details: originCAHRA === 'none'
-      ? 'Origin country not in CAHRA list. Standard annual disclosure required.'
-      : `Origin country ${originCountry} is CAHRA (${originCAHRA}). Enhanced annual disclosure with mitigation report required.`,
+    details:
+      originCAHRA === 'none'
+        ? 'Origin country not in CAHRA list. Standard annual disclosure required.'
+        : `Origin country ${originCountry} is CAHRA (${originCAHRA}). Enhanced annual disclosure with mitigation report required.`,
   });
 
   return steps;
@@ -177,7 +182,12 @@ export function verifySupplyChain(input: SupplyChainInput): ToolResult<SupplyCha
   const expectedTypes: ChainNodeType[] = ['mine', 'refiner', 'dealer', 'customer'];
   const presentTypes = new Set(input.chain.map((n) => n.type));
   const missingNodeTypes = expectedTypes.filter((t) => !presentTypes.has(t));
-  const chainIntegrity = missingNodeTypes.length === 0 ? 'intact' : missingNodeTypes.length <= 1 ? 'incomplete' : 'broken';
+  const chainIntegrity =
+    missingNodeTypes.length === 0
+      ? 'intact'
+      : missingNodeTypes.length <= 1
+        ? 'incomplete'
+        : 'broken';
 
   // Risk scoring
   const riskBreakdown: Array<{ factor: string; points: number; detail: string }> = [];
@@ -190,53 +200,96 @@ export function verifySupplyChain(input: SupplyChainInput): ToolResult<SupplyCha
     const level = classifyCAHRA(node.country);
     if (level !== 'none') {
       cahraCountries.push(node.country);
-      if (level === 'critical' || (level === 'high' && worstCAHRA !== 'critical') || (level === 'medium' && worstCAHRA === 'none')) {
+      if (
+        level === 'critical' ||
+        (level === 'high' && worstCAHRA !== 'critical') ||
+        (level === 'medium' && worstCAHRA === 'none')
+      ) {
         worstCAHRA = level;
       }
     }
     if (FATF_GREY_JURISDICTIONS.includes(node.country)) {
-      riskBreakdown.push({ factor: 'FATF Grey List', points: SUPPLY_CHAIN_RISK_POINTS.fatfGrey, detail: `${node.name} in FATF Grey List jurisdiction (${node.country}).` });
+      riskBreakdown.push({
+        factor: 'FATF Grey List',
+        points: SUPPLY_CHAIN_RISK_POINTS.fatfGrey,
+        detail: `${node.name} in FATF Grey List jurisdiction (${node.country}).`,
+      });
       totalRisk += SUPPLY_CHAIN_RISK_POINTS.fatfGrey;
     }
     if (EU_HIGH_RISK.includes(node.country)) {
-      riskBreakdown.push({ factor: 'EU High Risk', points: SUPPLY_CHAIN_RISK_POINTS.euHighRisk, detail: `${node.name} in EU High Risk jurisdiction (${node.country}).` });
+      riskBreakdown.push({
+        factor: 'EU High Risk',
+        points: SUPPLY_CHAIN_RISK_POINTS.euHighRisk,
+        detail: `${node.name} in EU High Risk jurisdiction (${node.country}).`,
+      });
       totalRisk += SUPPLY_CHAIN_RISK_POINTS.euHighRisk;
     }
   }
 
   if (worstCAHRA === 'critical') {
-    riskBreakdown.push({ factor: 'CAHRA Critical', points: SUPPLY_CHAIN_RISK_POINTS.cahraCritical, detail: `Critical CAHRA exposure: ${[...new Set(cahraCountries)].join(', ')}.` });
+    riskBreakdown.push({
+      factor: 'CAHRA Critical',
+      points: SUPPLY_CHAIN_RISK_POINTS.cahraCritical,
+      detail: `Critical CAHRA exposure: ${[...new Set(cahraCountries)].join(', ')}.`,
+    });
     totalRisk += SUPPLY_CHAIN_RISK_POINTS.cahraCritical;
   } else if (worstCAHRA === 'high') {
-    riskBreakdown.push({ factor: 'CAHRA High', points: SUPPLY_CHAIN_RISK_POINTS.cahraHigh, detail: `High CAHRA exposure: ${[...new Set(cahraCountries)].join(', ')}.` });
+    riskBreakdown.push({
+      factor: 'CAHRA High',
+      points: SUPPLY_CHAIN_RISK_POINTS.cahraHigh,
+      detail: `High CAHRA exposure: ${[...new Set(cahraCountries)].join(', ')}.`,
+    });
     totalRisk += SUPPLY_CHAIN_RISK_POINTS.cahraHigh;
   } else if (worstCAHRA === 'medium') {
-    riskBreakdown.push({ factor: 'CAHRA Medium', points: SUPPLY_CHAIN_RISK_POINTS.cahraMedium, detail: `Medium CAHRA exposure: ${[...new Set(cahraCountries)].join(', ')}.` });
+    riskBreakdown.push({
+      factor: 'CAHRA Medium',
+      points: SUPPLY_CHAIN_RISK_POINTS.cahraMedium,
+      detail: `Medium CAHRA exposure: ${[...new Set(cahraCountries)].join(', ')}.`,
+    });
     totalRisk += SUPPLY_CHAIN_RISK_POINTS.cahraMedium;
   }
 
   // Mine origin check
   const mine = input.chain.find((n) => n.type === 'mine');
   if (!mine) {
-    riskBreakdown.push({ factor: 'Missing mine origin', points: SUPPLY_CHAIN_RISK_POINTS.missingMineOrigin, detail: 'No mine node in the supply chain. Origin traceability broken.' });
+    riskBreakdown.push({
+      factor: 'Missing mine origin',
+      points: SUPPLY_CHAIN_RISK_POINTS.missingMineOrigin,
+      detail: 'No mine node in the supply chain. Origin traceability broken.',
+    });
     totalRisk += SUPPLY_CHAIN_RISK_POINTS.missingMineOrigin;
   }
 
   // Refiner checks
   const refiner = input.chain.find((n) => n.type === 'refiner');
   if (!refiner) {
-    riskBreakdown.push({ factor: 'No refiner', points: SUPPLY_CHAIN_RISK_POINTS.noRefiner, detail: 'No refiner in the supply chain. DGD compliance cannot be verified.' });
+    riskBreakdown.push({
+      factor: 'No refiner',
+      points: SUPPLY_CHAIN_RISK_POINTS.noRefiner,
+      detail: 'No refiner in the supply chain. DGD compliance cannot be verified.',
+    });
     totalRisk += SUPPLY_CHAIN_RISK_POINTS.noRefiner;
   }
 
   // Audit checks
   for (const node of input.chain) {
     if (node.auditStatus === 'failed' || node.auditStatus === 'not-available') {
-      const pts = node.auditStatus === 'not-available' ? SUPPLY_CHAIN_RISK_POINTS.auditNA : SUPPLY_CHAIN_RISK_POINTS.noAudit;
-      riskBreakdown.push({ factor: `Audit: ${node.auditStatus}`, points: pts, detail: `${node.name} audit status: ${node.auditStatus}.` });
+      const pts =
+        node.auditStatus === 'not-available'
+          ? SUPPLY_CHAIN_RISK_POINTS.auditNA
+          : SUPPLY_CHAIN_RISK_POINTS.noAudit;
+      riskBreakdown.push({
+        factor: `Audit: ${node.auditStatus}`,
+        points: pts,
+        detail: `${node.name} audit status: ${node.auditStatus}.`,
+      });
       totalRisk += pts;
     } else if (node.auditStatus === 'in-progress') {
-      riskBreakdown.push({ factor: 'Audit in progress', points: SUPPLY_CHAIN_RISK_POINTS.auditInProgress, detail: `${node.name} audit in progress.` });
+      riskBreakdown.push({
+        factor: 'Audit in progress',
+        points: SUPPLY_CHAIN_RISK_POINTS.auditInProgress,
+        detail: `${node.name} audit in progress.`,
+      });
       totalRisk += SUPPLY_CHAIN_RISK_POINTS.auditInProgress;
     }
   }
@@ -244,16 +297,29 @@ export function verifySupplyChain(input: SupplyChainInput): ToolResult<SupplyCha
   // ASM checks
   const asmNodes = input.chain.filter((n) => n.asmSource === true);
   const asmDetected = asmNodes.length > 0;
-  const asmCompliant = asmDetected ? asmNodes.every((n) => n.auditStatus === 'passed' && n.kycComplete === true) : true;
+  const asmCompliant = asmDetected
+    ? asmNodes.every((n) => n.auditStatus === 'passed' && n.kycComplete === true)
+    : true;
   if (asmDetected && !asmCompliant) {
-    riskBreakdown.push({ factor: 'ASM non-compliant', points: SUPPLY_CHAIN_RISK_POINTS.asmSource, detail: `ASM source(s) without audit/KYC: ${asmNodes.filter((n) => n.auditStatus !== 'passed' || !n.kycComplete).map((n) => n.name).join(', ')}.` });
+    riskBreakdown.push({
+      factor: 'ASM non-compliant',
+      points: SUPPLY_CHAIN_RISK_POINTS.asmSource,
+      detail: `ASM source(s) without audit/KYC: ${asmNodes
+        .filter((n) => n.auditStatus !== 'passed' || !n.kycComplete)
+        .map((n) => n.name)
+        .join(', ')}.`,
+    });
     totalRisk += SUPPLY_CHAIN_RISK_POINTS.asmSource;
   }
 
   // KYC completeness
   const kycIncomplete = input.chain.filter((n) => n.kycComplete === false);
   if (kycIncomplete.length > 0) {
-    riskBreakdown.push({ factor: 'KYC incomplete', points: SUPPLY_CHAIN_RISK_POINTS.kycIncomplete, detail: `Incomplete KYC: ${kycIncomplete.map((n) => n.name).join(', ')}.` });
+    riskBreakdown.push({
+      factor: 'KYC incomplete',
+      points: SUPPLY_CHAIN_RISK_POINTS.kycIncomplete,
+      detail: `Incomplete KYC: ${kycIncomplete.map((n) => n.name).join(', ')}.`,
+    });
     totalRisk += SUPPLY_CHAIN_RISK_POINTS.kycIncomplete;
   }
 
@@ -277,22 +343,37 @@ export function verifySupplyChain(input: SupplyChainInput): ToolResult<SupplyCha
     ? {
         status: refiner.dgdStatus ?? ('not-applicable' as DGDStatus),
         refinerName: refiner.name,
-        details: refiner.dgdStatus === 'accredited'
-          ? `${refiner.name} holds Dubai Good Delivery accreditation.`
-          : refiner.dgdStatus === 'revoked'
-            ? `${refiner.name} DGD accreditation REVOKED. Do not proceed.`
-            : `${refiner.name} DGD status: ${refiner.dgdStatus ?? 'unknown'}.`,
+        details:
+          refiner.dgdStatus === 'accredited'
+            ? `${refiner.name} holds Dubai Good Delivery accreditation.`
+            : refiner.dgdStatus === 'revoked'
+              ? `${refiner.name} DGD accreditation REVOKED. Do not proceed.`
+              : `${refiner.name} DGD status: ${refiner.dgdStatus ?? 'unknown'}.`,
       }
-    : { status: 'not-applicable' as DGDStatus, refinerName: null, details: 'No refiner in chain to evaluate DGD compliance.' };
+    : {
+        status: 'not-applicable' as DGDStatus,
+        refinerName: null,
+        details: 'No refiner in chain to evaluate DGD compliance.',
+      };
 
   // Recommendations
   const recommendations: string[] = [];
-  if (missingNodeTypes.length > 0) recommendations.push(`Complete chain by adding: ${missingNodeTypes.join(', ')}.`);
-  if (worstCAHRA !== 'none') recommendations.push(`Conduct enhanced due diligence for CAHRA exposure (${worstCAHRA} level).`);
-  if (kycIncomplete.length > 0) recommendations.push(`Complete KYC for: ${kycIncomplete.map((n) => n.name).join(', ')}.`);
-  if (asmDetected && !asmCompliant) recommendations.push('Ensure all ASM sources have passed audit and complete KYC per LBMA RGG v9.');
-  if (refiner && refiner.dgdStatus !== 'accredited') recommendations.push('Obtain or verify DGD accreditation for the refiner.');
-  if (lbmaSteps.some((s) => s.status === 'fail')) recommendations.push('Address failing LBMA RGG v9 steps before proceeding with shipment.');
+  if (missingNodeTypes.length > 0)
+    recommendations.push(`Complete chain by adding: ${missingNodeTypes.join(', ')}.`);
+  if (worstCAHRA !== 'none')
+    recommendations.push(
+      `Conduct enhanced due diligence for CAHRA exposure (${worstCAHRA} level).`
+    );
+  if (kycIncomplete.length > 0)
+    recommendations.push(`Complete KYC for: ${kycIncomplete.map((n) => n.name).join(', ')}.`);
+  if (asmDetected && !asmCompliant)
+    recommendations.push(
+      'Ensure all ASM sources have passed audit and complete KYC per LBMA RGG v9.'
+    );
+  if (refiner && refiner.dgdStatus !== 'accredited')
+    recommendations.push('Obtain or verify DGD accreditation for the refiner.');
+  if (lbmaSteps.some((s) => s.status === 'fail'))
+    recommendations.push('Address failing LBMA RGG v9 steps before proceeding with shipment.');
 
   const report: SupplyChainReport = {
     reportId,
@@ -318,9 +399,10 @@ export function verifySupplyChain(input: SupplyChainInput): ToolResult<SupplyCha
     cahraExposure: {
       level: worstCAHRA,
       countries: [...new Set(cahraCountries)],
-      details: worstCAHRA === 'none'
-        ? 'No CAHRA exposure in supply chain.'
-        : `${worstCAHRA.toUpperCase()} CAHRA exposure. Countries: ${[...new Set(cahraCountries)].join(', ')}.`,
+      details:
+        worstCAHRA === 'none'
+          ? 'No CAHRA exposure in supply chain.'
+          : `${worstCAHRA.toUpperCase()} CAHRA exposure. Countries: ${[...new Set(cahraCountries)].join(', ')}.`,
     },
     recommendations,
   };
@@ -354,9 +436,7 @@ export interface LBMAComplianceReport {
  *
  * @regulatory LBMA RGG v9, OECD Due Diligence Guidance Annex II
  */
-export function checkLBMACompliance(
-  input: LBMAComplianceInput,
-): ToolResult<LBMAComplianceReport> {
+export function checkLBMACompliance(input: LBMAComplianceInput): ToolResult<LBMAComplianceReport> {
   if (!input.chain || input.chain.length === 0) {
     return { ok: false, error: 'Supply chain must contain at least one node for LBMA assessment.' };
   }
@@ -372,25 +452,39 @@ export function checkLBMACompliance(
 
   const recommendations: string[] = [];
   if (failingSteps.includes(1)) {
-    recommendations.push('Step 1: Complete KYC documentation for all chain participants. Establish AML/CFT management systems per LBMA RGG v9 Section 1.');
+    recommendations.push(
+      'Step 1: Complete KYC documentation for all chain participants. Establish AML/CFT management systems per LBMA RGG v9 Section 1.'
+    );
   }
   if (failingSteps.includes(2)) {
-    recommendations.push('Step 2: Conduct full CAHRA risk assessment. Document all conflict-affected area exposures per OECD Annex II.');
+    recommendations.push(
+      'Step 2: Conduct full CAHRA risk assessment. Document all conflict-affected area exposures per OECD Annex II.'
+    );
   }
   if (failingSteps.includes(3)) {
-    recommendations.push('Step 3: Develop and implement a written risk mitigation strategy. For critical CAHRA, consider immediate disengagement or enhanced monitoring.');
+    recommendations.push(
+      'Step 3: Develop and implement a written risk mitigation strategy. For critical CAHRA, consider immediate disengagement or enhanced monitoring.'
+    );
   }
   if (failingSteps.includes(4)) {
-    recommendations.push('Step 4: Engage an independent third-party auditor. Ensure all chain participants undergo annual audit per LBMA requirements.');
+    recommendations.push(
+      'Step 4: Engage an independent third-party auditor. Ensure all chain participants undergo annual audit per LBMA requirements.'
+    );
   }
   if (warningSteps.includes(5)) {
-    recommendations.push('Step 5: Prepare enhanced annual disclosure report addressing CAHRA exposure and mitigation measures.');
+    recommendations.push(
+      'Step 5: Prepare enhanced annual disclosure report addressing CAHRA exposure and mitigation measures.'
+    );
   }
   if (cahraExposure === 'critical') {
-    recommendations.push('CRITICAL: Origin country is in a CAHRA-critical zone. LBMA requires immediate risk mitigation or disengagement.');
+    recommendations.push(
+      'CRITICAL: Origin country is in a CAHRA-critical zone. LBMA requires immediate risk mitigation or disengagement.'
+    );
   }
   if (recommendations.length === 0) {
-    recommendations.push('All LBMA RGG v9 steps are compliant. Maintain current due diligence practices and annual audit schedule.');
+    recommendations.push(
+      'All LBMA RGG v9 steps are compliant. Maintain current due diligence practices and annual audit schedule.'
+    );
   }
 
   return {
@@ -430,8 +524,14 @@ export const SUPPLY_CHAIN_TOOL_SCHEMAS = [
               name: { type: 'string' },
               country: { type: 'string', description: 'ISO 3166-1 alpha-2 country code' },
               licenses: { type: 'array', items: { type: 'string' } },
-              dgdStatus: { type: 'string', enum: ['accredited', 'pending', 'revoked', 'not-applicable'] },
-              auditStatus: { type: 'string', enum: ['passed', 'in-progress', 'failed', 'not-available'] },
+              dgdStatus: {
+                type: 'string',
+                enum: ['accredited', 'pending', 'revoked', 'not-applicable'],
+              },
+              auditStatus: {
+                type: 'string',
+                enum: ['passed', 'in-progress', 'failed', 'not-available'],
+              },
               lastAuditDate: { type: 'string', description: 'dd/mm/yyyy format' },
               kycComplete: { type: 'boolean' },
               asmSource: { type: 'boolean' },
@@ -443,7 +543,10 @@ export const SUPPLY_CHAIN_TOOL_SCHEMAS = [
         },
         goldWeightGrams: { type: 'number', description: 'Gold weight in grams' },
         consignmentId: { type: 'string', description: 'Optional consignment tracking ID' },
-        declaredOriginCountry: { type: 'string', description: 'Declared country of gold origin (ISO alpha-2)' },
+        declaredOriginCountry: {
+          type: 'string',
+          description: 'Declared country of gold origin (ISO alpha-2)',
+        },
       },
       required: ['chain', 'goldWeightGrams', 'declaredOriginCountry'],
     },
@@ -464,7 +567,10 @@ export const SUPPLY_CHAIN_TOOL_SCHEMAS = [
               type: { type: 'string', enum: ['mine', 'refiner', 'dealer', 'customer'] },
               name: { type: 'string' },
               country: { type: 'string', description: 'ISO 3166-1 alpha-2 country code' },
-              auditStatus: { type: 'string', enum: ['passed', 'in-progress', 'failed', 'not-available'] },
+              auditStatus: {
+                type: 'string',
+                enum: ['passed', 'in-progress', 'failed', 'not-available'],
+              },
               kycComplete: { type: 'boolean' },
               asmSource: { type: 'boolean' },
             },
@@ -472,7 +578,10 @@ export const SUPPLY_CHAIN_TOOL_SCHEMAS = [
           },
           description: 'Supply chain nodes to evaluate',
         },
-        declaredOriginCountry: { type: 'string', description: 'Declared country of gold origin (ISO alpha-2)' },
+        declaredOriginCountry: {
+          type: 'string',
+          description: 'Declared country of gold origin (ISO alpha-2)',
+        },
       },
       required: ['chain', 'declaredOriginCountry'],
     },

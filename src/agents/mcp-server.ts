@@ -200,10 +200,7 @@ export class ComplianceMCPServer {
   }
 
   /** Route tool name to handler */
-  private async dispatch(
-    name: string,
-    args: Record<string, unknown>,
-  ): Promise<ToolResult> {
+  private async dispatch(name: string, args: Record<string, unknown>): Promise<ToolResult> {
     const { auditChain, analyst, apiKey } = this.context;
 
     switch (name) {
@@ -250,7 +247,7 @@ export class ComplianceMCPServer {
       case 'check_approvals':
         return checkApprovals(
           (args as { caseObj: never }).caseObj,
-          (args as { existingApprovals: never[] }).existingApprovals,
+          (args as { existingApprovals: never[] }).existingApprovals
         );
       case 'request_approval':
         return requestApproval(args as never, auditChain, analyst);
@@ -259,7 +256,7 @@ export class ComplianceMCPServer {
           (args as { customers: never[] }).customers,
           (args as { existingTasks?: never[] }).existingTasks,
           auditChain,
-          analyst,
+          analyst
         );
 
       // ---- Quant Analytics ----
@@ -267,7 +264,7 @@ export class ComplianceMCPServer {
         return runQuantAnalytics(
           (args as { entityName: string }).entityName,
           (args as { transactions: never[] }).transactions,
-          (args as { historicalAmounts?: number[] }).historicalAmounts,
+          (args as { historicalAmounts?: number[] }).historicalAmounts
         );
       case 'detect_structuring':
         return {
@@ -275,7 +272,7 @@ export class ComplianceMCPServer {
           data: detectStructuring(
             (args as { transactions: never[] }).transactions,
             (args as { threshold?: number }).threshold,
-            (args as { timeWindowHours?: number }).timeWindowHours,
+            (args as { timeWindowHours?: number }).timeWindowHours
           ),
         };
       case 'bollinger_bands_analysis':
@@ -284,7 +281,7 @@ export class ComplianceMCPServer {
           data: calculateBollingerBands(
             (args as { amounts: number[] }).amounts,
             (args as { period?: number }).period,
-            (args as { stdDevMultiplier?: number }).stdDevMultiplier,
+            (args as { stdDevMultiplier?: number }).stdDevMultiplier
           ),
         };
       case 'monte_carlo_risk':
@@ -293,7 +290,7 @@ export class ComplianceMCPServer {
           data: runMonteCarloSimulation(
             (args as { historicalAmounts: number[] }).historicalAmounts,
             (args as { threshold?: number }).threshold,
-            (args as { simulations?: number }).simulations,
+            (args as { simulations?: number }).simulations
           ),
         };
 
@@ -306,7 +303,7 @@ export class ComplianceMCPServer {
         return runPredictiveRiskAnalysis(
           (args as { entityName: string }).entityName,
           (args as { data: never[] }).data,
-          (args as { forecastDays?: number }).forecastDays,
+          (args as { forecastDays?: number }).forecastDays
         );
       case 'explain_screening_decision':
         return explainScreeningDecision(args as never);
@@ -323,7 +320,7 @@ export class ComplianceMCPServer {
             (args as { customer: never }).customer,
             (args as { transactions: never[] }).transactions,
             (args as { cases: never[] }).cases,
-            (args as { highRiskCountries?: string[] }).highRiskCountries,
+            (args as { highRiskCountries?: string[] }).highRiskCountries
           ),
         };
       case 'ensemble_risk_score':
@@ -331,7 +328,7 @@ export class ComplianceMCPServer {
           ok: true,
           data: runEnsembleRiskScoring(
             (args as { features: never }).features,
-            (args as { adaptiveWeights?: Record<string, number> }).adaptiveWeights,
+            (args as { adaptiveWeights?: Record<string, number> }).adaptiveWeights
           ),
         };
       case 'update_risk_model_weights':
@@ -339,7 +336,7 @@ export class ComplianceMCPServer {
           ok: true,
           data: updateModelWeights(
             (args as { feedback: never[] }).feedback,
-            (args as { currentWeights: Record<string, number> }).currentWeights,
+            (args as { currentWeights: Record<string, number> }).currentWeights
           ),
         };
 
@@ -347,23 +344,26 @@ export class ComplianceMCPServer {
       case 'analyze_geospatial_risk':
         return runGeospatialAnalysis(
           (args as { routes: never[] }).routes,
-          (args as { entities?: never[] }).entities,
+          (args as { entities?: never[] }).entities
         );
       case 'get_jurisdiction_profile':
-        return { ok: true, data: getJurisdictionProfile((args as { countryCode: string }).countryCode) };
+        return {
+          ok: true,
+          data: getJurisdictionProfile((args as { countryCode: string }).countryCode),
+        };
 
       // ---- Sanctions Evasion ----
       case 'detect_sanctions_evasion':
         return matchNameAdvanced(
           (args as { queryName: string }).queryName,
-          (args as { targetNames: string[] }).targetNames,
+          (args as { targetNames: string[] }).targetNames
         );
 
       // ---- Document Intelligence ----
       case 'analyze_document':
         return analyzeDocument(
           (args as { text: string }).text,
-          (args as { documentType?: 'invoice' | 'kyc' | 'trade' | 'narrative' }).documentType,
+          (args as { documentType?: 'invoice' | 'kyc' | 'trade' | 'narrative' }).documentType
         );
 
       // ---- Regulatory Radar ----

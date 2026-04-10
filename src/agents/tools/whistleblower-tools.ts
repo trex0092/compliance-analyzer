@@ -36,7 +36,13 @@ export type TipCategory =
   | 'other';
 
 export type SeverityLevel = 'critical' | 'high' | 'medium' | 'low';
-export type CaseStatus = 'new' | 'triaged' | 'investigating' | 'escalated' | 'resolved' | 'dismissed';
+export type CaseStatus =
+  | 'new'
+  | 'triaged'
+  | 'investigating'
+  | 'escalated'
+  | 'resolved'
+  | 'dismissed';
 
 export interface AnonymousTipInput {
   reporterAlias?: string;
@@ -112,10 +118,24 @@ const SEVERITY_WEIGHTS: Record<TipCategory, number> = {
 };
 
 const REGULATORY_RELEVANCE: Record<TipCategory, string[]> = {
-  sanctions_evasion: ['FDL No.10/2025 Art.35 (TFS)', 'Cabinet Res 74/2020 Art.4-7', 'Cabinet Res 71/2024 (penalties)'],
-  terrorist_financing: ['FDL No.10/2025 Art.26-27 (STR)', 'Cabinet Res 134/2025 Art.5 (risk appetite)'],
-  money_laundering: ['FDL No.10/2025 Art.26-27 (STR)', 'FATF Rec 22/23', 'MoE Circular 08/AML/2021'],
-  tipping_off: ['FDL No.10/2025 Art.29 (no tipping off)', 'Cabinet Res 71/2024 (penalties up to AED 100M)'],
+  sanctions_evasion: [
+    'FDL No.10/2025 Art.35 (TFS)',
+    'Cabinet Res 74/2020 Art.4-7',
+    'Cabinet Res 71/2024 (penalties)',
+  ],
+  terrorist_financing: [
+    'FDL No.10/2025 Art.26-27 (STR)',
+    'Cabinet Res 134/2025 Art.5 (risk appetite)',
+  ],
+  money_laundering: [
+    'FDL No.10/2025 Art.26-27 (STR)',
+    'FATF Rec 22/23',
+    'MoE Circular 08/AML/2021',
+  ],
+  tipping_off: [
+    'FDL No.10/2025 Art.29 (no tipping off)',
+    'Cabinet Res 71/2024 (penalties up to AED 100M)',
+  ],
   fraud: ['FDL No.10/2025 Art.12-14 (CDD)', 'Cabinet Res 134/2025 Art.7-10'],
   bribery_corruption: ['FDL No.10/2025 Art.14 (PEP/EDD)', 'Cabinet Res 134/2025 Art.14'],
   insider_trading: ['Cabinet Res 134/2025 Art.19 (internal review)'],
@@ -125,7 +145,11 @@ const REGULATORY_RELEVANCE: Record<TipCategory, string[]> = {
   other: ['FDL No.10/2025 Art.20-21 (CO duties)'],
 };
 
-const CRITICAL_CATEGORIES: TipCategory[] = ['sanctions_evasion', 'terrorist_financing', 'tipping_off'];
+const CRITICAL_CATEGORIES: TipCategory[] = [
+  'sanctions_evasion',
+  'terrorist_financing',
+  'tipping_off',
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -181,18 +205,25 @@ function classifySeverity(input: AnonymousTipInput): {
 
   // Contextual multipliers
   if (input.isOngoing) score += 15;
-  if (input.estimatedAmountAED !== null && input.estimatedAmountAED !== undefined && input.estimatedAmountAED >= DPMS_CASH_THRESHOLD_AED) score += 10; // DPMS threshold
-  if (input.estimatedAmountAED !== null && input.estimatedAmountAED !== undefined && input.estimatedAmountAED >= 1_000_000) score += 10;
+  if (
+    input.estimatedAmountAED !== null &&
+    input.estimatedAmountAED !== undefined &&
+    input.estimatedAmountAED >= DPMS_CASH_THRESHOLD_AED
+  )
+    score += 10; // DPMS threshold
+  if (
+    input.estimatedAmountAED !== null &&
+    input.estimatedAmountAED !== undefined &&
+    input.estimatedAmountAED >= 1_000_000
+  )
+    score += 10;
   if (input.involvedEmployees && input.involvedEmployees.length >= 2) score += 10;
   if (input.evidenceDescriptions && input.evidenceDescriptions.length >= 2) score += 5;
 
   score = Math.min(score, 100);
 
   const severity: SeverityLevel =
-    score >= 70 ? 'critical' :
-    score >= 50 ? 'high' :
-    score >= 30 ? 'medium' :
-    'low';
+    score >= 70 ? 'critical' : score >= 50 ? 'high' : score >= 30 ? 'medium' : 'low';
 
   // Auto-classification: detect keywords to confirm or adjust category
   const text = `${input.subject} ${input.description}`.toLowerCase();
@@ -202,7 +233,10 @@ function classifySeverity(input: AnonymousTipInput): {
   const keywordMap: Array<[TipCategory, string[]]> = [
     ['sanctions_evasion', ['sanction', 'ofac', 'freeze', 'designated', 'eocn', 'blocked']],
     ['terrorist_financing', ['terror', 'financing', 'extremis', 'radicali']],
-    ['money_laundering', ['launder', 'layering', 'placement', 'integration', 'smurfing', 'structuring']],
+    [
+      'money_laundering',
+      ['launder', 'layering', 'placement', 'integration', 'smurfing', 'structuring'],
+    ],
     ['tipping_off', ['tipping', 'warned', 'notified the subject', 'leaked', 'told the customer']],
     ['fraud', ['fraud', 'forged', 'fake', 'falsified', 'counterfeit']],
     ['screening_bypass', ['bypass', 'skipped screening', 'override', 'disabled check']],
@@ -226,10 +260,14 @@ function classifySeverity(input: AnonymousTipInput): {
 // ---------------------------------------------------------------------------
 
 export async function submitAnonymousTip(
-  input: AnonymousTipInput,
+  input: AnonymousTipInput
 ): Promise<ToolResult<TipSubmissionResult>> {
   if (!input.reporterSecret || input.reporterSecret.length < 8) {
-    return { ok: false, error: 'reporterSecret must be at least 8 characters. This is hashed and never stored in plaintext.' };
+    return {
+      ok: false,
+      error:
+        'reporterSecret must be at least 8 characters. This is hashed and never stored in plaintext.',
+    };
   }
   if (!input.category) {
     return { ok: false, error: 'Tip category is required.' };
@@ -238,7 +276,10 @@ export async function submitAnonymousTip(
     return { ok: false, error: 'Subject must be at least 5 characters.' };
   }
   if (!input.description || input.description.trim().length < 20) {
-    return { ok: false, error: 'Description must be at least 20 characters to enable proper classification.' };
+    return {
+      ok: false,
+      error: 'Description must be at least 20 characters to enable proper classification.',
+    };
   }
 
   const now = new Date();
@@ -252,7 +293,8 @@ export async function submitAnonymousTip(
   const { severity, score, autoCategory, confidence } = classifySeverity(input);
 
   // Response deadline based on severity
-  const responseDays = severity === 'critical' ? 1 : severity === 'high' ? 3 : severity === 'medium' ? 5 : 10;
+  const responseDays =
+    severity === 'critical' ? 1 : severity === 'high' ? 3 : severity === 'medium' ? 5 : 10;
   const deadlineDate = addBusinessDays(now, responseDays);
 
   // Determine required actions based on category
@@ -269,12 +311,16 @@ export async function submitAnonymousTip(
     requiredActions.push('Evaluate STR filing obligation (FDL Art.26-27).');
   }
   if (autoCategory === 'tipping_off') {
-    requiredActions.push('URGENT: Investigate potential Art.29 violation. Preserve all communications.');
+    requiredActions.push(
+      'URGENT: Investigate potential Art.29 violation. Preserve all communications.'
+    );
   }
   if (input.involvedEmployees && input.involvedEmployees.length > 0) {
     requiredActions.push('Restrict system access for named employees pending investigation.');
   }
-  requiredActions.push(`Respond to whistleblower within ${responseDays} business day(s) via tracking code.`);
+  requiredActions.push(
+    `Respond to whistleblower within ${responseDays} business day(s) via tracking code.`
+  );
 
   // Build full case record (consumed by persistence layer)
   const tipCase: TipCase = {
@@ -382,9 +428,7 @@ export interface TipClassificationResult {
  *
  * @regulatory Cabinet Res 134/2025 Art.19, FDL No.10/2025 Art.20-21, FATF Rec 18
  */
-export function classifyTip(
-  input: ClassifyTipInput,
-): ToolResult<TipClassificationResult> {
+export function classifyTip(input: ClassifyTipInput): ToolResult<TipClassificationResult> {
   if (!input.tipId) {
     return { ok: false, error: 'Tip ID is required.' };
   }
@@ -426,14 +470,18 @@ export function classifyTip(
     requiredActions.push('Do NOT disclose STR status to the subject (Art.29).');
   }
   if (autoCategory === 'tipping_off') {
-    requiredActions.push('URGENT: Investigate potential Art.29 violation. Preserve all communications.');
+    requiredActions.push(
+      'URGENT: Investigate potential Art.29 violation. Preserve all communications.'
+    );
     requiredActions.push('Consider suspending implicated staff access immediately.');
   }
   if (input.involvedEmployees && input.involvedEmployees.length > 0) {
     requiredActions.push('Restrict system access for named employees pending investigation.');
     requiredActions.push('Initiate insider threat behavioral analysis for named employees.');
   }
-  requiredActions.push(`Resolve within ${severity === 'critical' ? '1' : severity === 'high' ? '3' : severity === 'medium' ? '5' : '10'} business day(s).`);
+  requiredActions.push(
+    `Resolve within ${severity === 'critical' ? '1' : severity === 'high' ? '3' : severity === 'medium' ? '5' : '10'} business day(s).`
+  );
 
   // Retaliation risk factors
   const retaliationRiskFactors: string[] = [];
@@ -441,13 +489,19 @@ export function classifyTip(
     retaliationRiskFactors.push('Named employees may attempt to identify the reporter.');
   }
   if (autoCategory === 'tipping_off' || autoCategory === 'screening_bypass') {
-    retaliationRiskFactors.push('Implicated individuals have compliance system access — elevated retaliation risk.');
+    retaliationRiskFactors.push(
+      'Implicated individuals have compliance system access — elevated retaliation risk.'
+    );
   }
   if (input.isOngoing) {
-    retaliationRiskFactors.push('Ongoing violation increases risk of reporter exposure through operational disruption.');
+    retaliationRiskFactors.push(
+      'Ongoing violation increases risk of reporter exposure through operational disruption.'
+    );
   }
   if (severity === 'critical' || severity === 'high') {
-    retaliationRiskFactors.push('High-severity case may trigger organizational scrutiny that could expose reporter.');
+    retaliationRiskFactors.push(
+      'High-severity case may trigger organizational scrutiny that could expose reporter.'
+    );
   }
 
   // Protection recommendations
@@ -457,11 +511,22 @@ export function classifyTip(
     'Route all communications through anonymous tracking code only.',
   ];
   if (retaliationRiskFactors.length >= 2) {
-    protectionRecommendations.push('Elevated retaliation risk: assign independent protection officer from outside the implicated department.');
-    protectionRecommendations.push('Schedule retaliation check within 48 hours and weekly thereafter per UAE Federal Decree-Law No.13/2022.');
+    protectionRecommendations.push(
+      'Elevated retaliation risk: assign independent protection officer from outside the implicated department.'
+    );
+    protectionRecommendations.push(
+      'Schedule retaliation check within 48 hours and weekly thereafter per UAE Federal Decree-Law No.13/2022.'
+    );
   }
-  if (input.involvedEmployees && input.involvedEmployees.some((e) => e.toLowerCase().includes('officer') || e.toLowerCase().includes('manager'))) {
-    protectionRecommendations.push('CRITICAL: Senior staff implicated — escalate protection to Board level.');
+  if (
+    input.involvedEmployees &&
+    input.involvedEmployees.some(
+      (e) => e.toLowerCase().includes('officer') || e.toLowerCase().includes('manager')
+    )
+  ) {
+    protectionRecommendations.push(
+      'CRITICAL: Senior staff implicated — escalate protection to Board level.'
+    );
   }
 
   return {
@@ -496,29 +561,58 @@ export const WHISTLEBLOWER_TOOL_SCHEMAS = [
     inputSchema: {
       type: 'object',
       properties: {
-        reporterAlias: { type: 'string', description: 'Optional alias for the reporter (anonymous if omitted)' },
+        reporterAlias: {
+          type: 'string',
+          description: 'Optional alias for the reporter (anonymous if omitted)',
+        },
         reporterSecret: {
           type: 'string',
-          description: 'Secret passphrase for anonymous follow-up. SHA-256 hashed, never stored in plaintext. Minimum 8 characters.',
+          description:
+            'Secret passphrase for anonymous follow-up. SHA-256 hashed, never stored in plaintext. Minimum 8 characters.',
         },
         category: {
           type: 'string',
           enum: [
-            'sanctions_evasion', 'money_laundering', 'terrorist_financing',
-            'fraud', 'bribery_corruption', 'insider_trading',
-            'data_manipulation', 'policy_violation', 'screening_bypass',
-            'tipping_off', 'other',
+            'sanctions_evasion',
+            'money_laundering',
+            'terrorist_financing',
+            'fraud',
+            'bribery_corruption',
+            'insider_trading',
+            'data_manipulation',
+            'policy_violation',
+            'screening_bypass',
+            'tipping_off',
+            'other',
           ],
           description: 'Category of the compliance violation',
         },
         subject: { type: 'string', description: 'Brief subject line (min 5 characters)' },
-        description: { type: 'string', description: 'Detailed description of the violation (min 20 characters)' },
-        involvedEntities: { type: 'array', items: { type: 'string' }, description: 'Names of involved entities (companies, customers)' },
-        involvedEmployees: { type: 'array', items: { type: 'string' }, description: 'Names or IDs of involved employees' },
+        description: {
+          type: 'string',
+          description: 'Detailed description of the violation (min 20 characters)',
+        },
+        involvedEntities: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Names of involved entities (companies, customers)',
+        },
+        involvedEmployees: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Names or IDs of involved employees',
+        },
         estimatedAmountAED: { type: 'number', description: 'Estimated financial impact in AED' },
-        evidenceDescriptions: { type: 'array', items: { type: 'string' }, description: 'Descriptions of available evidence' },
+        evidenceDescriptions: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Descriptions of available evidence',
+        },
         dateOfIncident: { type: 'string', description: 'Date of incident in dd/mm/yyyy format' },
-        locationOrDepartment: { type: 'string', description: 'Location or department where the violation occurred' },
+        locationOrDepartment: {
+          type: 'string',
+          description: 'Location or department where the violation occurred',
+        },
         isOngoing: { type: 'boolean', description: 'Whether the violation is currently ongoing' },
       },
       required: ['reporterSecret', 'category', 'subject', 'description'],
@@ -535,10 +629,17 @@ export const WHISTLEBLOWER_TOOL_SCHEMAS = [
         category: {
           type: 'string',
           enum: [
-            'sanctions_evasion', 'money_laundering', 'terrorist_financing',
-            'fraud', 'bribery_corruption', 'insider_trading',
-            'data_manipulation', 'policy_violation', 'screening_bypass',
-            'tipping_off', 'other',
+            'sanctions_evasion',
+            'money_laundering',
+            'terrorist_financing',
+            'fraud',
+            'bribery_corruption',
+            'insider_trading',
+            'data_manipulation',
+            'policy_violation',
+            'screening_bypass',
+            'tipping_off',
+            'other',
           ],
           description: 'Category of the compliance violation',
         },

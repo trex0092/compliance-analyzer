@@ -134,7 +134,7 @@ export const mockExtractor: DocumentExtractor = {
 
 export async function extractDocument(
   buffer: Uint8Array,
-  hint?: DocumentType,
+  hint?: DocumentType
 ): Promise<DocumentExtractionResult> {
   return getExtractor().extract(buffer, hint);
 }
@@ -149,7 +149,7 @@ export async function extractDocument(
  */
 export function runTamperChecks(
   result: DocumentExtractionResult,
-  now = new Date().toISOString(),
+  now = new Date().toISOString()
 ): DocumentExtractionResult {
   const signals: TamperSignal[] = [...result.tamperSignals];
   const nowDate = new Date(now).getTime();
@@ -208,7 +208,7 @@ export function runTamperChecks(
  */
 export function detectDuplicateDocuments(
   currentDocNumber: string,
-  history: readonly string[],
+  history: readonly string[]
 ): TamperSignal | null {
   if (!currentDocNumber) return null;
   const seen = history.filter((h) => h === currentDocNumber);

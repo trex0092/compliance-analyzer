@@ -82,7 +82,7 @@ const STRUCTURING_DEFAULTS: StructuringConfig = {
 
 export function detectStructuring(
   txs: readonly Transaction[],
-  config: Partial<StructuringConfig> = {},
+  config: Partial<StructuringConfig> = {}
 ): AnomalyFinding[] {
   const cfg = { ...STRUCTURING_DEFAULTS, ...config };
   const lowerBound = cfg.threshold * (1 - cfg.bandRatio);
@@ -90,7 +90,7 @@ export function detectStructuring(
 
   // Transactions in the just-below band
   const inBand = txs.filter(
-    (t) => Math.abs(t.amountAED) >= lowerBound && Math.abs(t.amountAED) < upperBound,
+    (t) => Math.abs(t.amountAED) >= lowerBound && Math.abs(t.amountAED) < upperBound
   );
 
   if (inBand.length < cfg.minCount) return [];
@@ -112,10 +112,7 @@ export function detectStructuring(
     let left = 0;
     for (let right = 0; right < list.length; right++) {
       const windowMs = cfg.windowDays * 24 * 60 * 60 * 1000;
-      while (
-        new Date(list[right].at).getTime() - new Date(list[left].at).getTime() >
-        windowMs
-      ) {
+      while (new Date(list[right].at).getTime() - new Date(list[left].at).getTime() > windowMs) {
         left++;
       }
       const windowTxs = list.slice(left, right + 1);
@@ -155,7 +152,7 @@ const FAN_DEFAULTS: FanConfig = { minUniqueCounterparties: 10, windowDays: 7 };
 
 export function detectFanIn(
   txs: readonly Transaction[],
-  config: Partial<FanConfig> = {},
+  config: Partial<FanConfig> = {}
 ): AnomalyFinding[] {
   const cfg = { ...FAN_DEFAULTS, ...config };
   const byCustomer = new Map<string, Transaction[]>();
@@ -173,9 +170,7 @@ export function detectFanIn(
     list.sort((a, b) => a.at.localeCompare(b.at));
     let left = 0;
     for (let right = 0; right < list.length; right++) {
-      while (
-        new Date(list[right].at).getTime() - new Date(list[left].at).getTime() > windowMs
-      ) {
+      while (new Date(list[right].at).getTime() - new Date(list[left].at).getTime() > windowMs) {
         left++;
       }
       const windowTxs = list.slice(left, right + 1);
@@ -206,7 +201,7 @@ export function detectFanIn(
 
 export function detectFanOut(
   txs: readonly Transaction[],
-  config: Partial<FanConfig> = {},
+  config: Partial<FanConfig> = {}
 ): AnomalyFinding[] {
   const cfg = { ...FAN_DEFAULTS, ...config };
   const byCustomer = new Map<string, Transaction[]>();
@@ -224,9 +219,7 @@ export function detectFanOut(
     list.sort((a, b) => a.at.localeCompare(b.at));
     let left = 0;
     for (let right = 0; right < list.length; right++) {
-      while (
-        new Date(list[right].at).getTime() - new Date(list[left].at).getTime() > windowMs
-      ) {
+      while (new Date(list[right].at).getTime() - new Date(list[left].at).getTime() > windowMs) {
         left++;
       }
       const windowTxs = list.slice(left, right + 1);
@@ -266,7 +259,7 @@ const CYCLING_DEFAULTS: CyclingConfig = { maxHours: 72, amountTolerance: 0.15 };
 
 export function detectCycling(
   txs: readonly Transaction[],
-  config: Partial<CyclingConfig> = {},
+  config: Partial<CyclingConfig> = {}
 ): AnomalyFinding[] {
   const cfg = { ...CYCLING_DEFAULTS, ...config };
   const findings: AnomalyFinding[] = [];
@@ -335,7 +328,7 @@ const VELOCITY_DEFAULTS: VelocityConfig = { baselineDays: 30, zThreshold: 3 };
 export function detectVelocityAnomaly(
   txs: readonly Transaction[],
   asOf: string,
-  config: Partial<VelocityConfig> = {},
+  config: Partial<VelocityConfig> = {}
 ): AnomalyFinding[] {
   const cfg = { ...VELOCITY_DEFAULTS, ...config };
   const findings: AnomalyFinding[] = [];
@@ -408,9 +401,7 @@ export function detectVelocityAnomaly(
  * perfectly-round amounts or repeatedly-identical amounts is a weak
  * signal of scripted or automated laundering.
  */
-export function detectAmountEntropy(
-  txs: readonly Transaction[],
-): AnomalyFinding[] {
+export function detectAmountEntropy(txs: readonly Transaction[]): AnomalyFinding[] {
   const byCustomer = new Map<string, Transaction[]>();
   for (const t of txs) {
     const cust = t.customerId ?? 'unknown';
@@ -461,7 +452,7 @@ export interface DetectorSuiteResult {
 
 export function runAllDetectors(
   txs: readonly Transaction[],
-  asOf = new Date().toISOString(),
+  asOf = new Date().toISOString()
 ): DetectorSuiteResult {
   const all: AnomalyFinding[] = [];
   all.push(...detectStructuring(txs));

@@ -82,10 +82,7 @@ function mulberry32(seed: number): () => number {
 // Simulation
 // ---------------------------------------------------------------------------
 
-export function runPenaltyVaR(
-  violations: readonly ViolationType[],
-  config: VaRConfig,
-): VaRReport {
+export function runPenaltyVaR(violations: readonly ViolationType[], config: VaRConfig): VaRReport {
   if (config.trials < 1) throw new Error('trials must be >= 1');
   if (config.confidence <= 0 || config.confidence >= 1)
     throw new Error('confidence must be in (0, 1)');
@@ -113,10 +110,7 @@ export function runPenaltyVaR(
   }
 
   losses.sort((a, b) => a - b);
-  const idx = Math.min(
-    losses.length - 1,
-    Math.floor(config.confidence * losses.length),
-  );
+  const idx = Math.min(losses.length - 1, Math.floor(config.confidence * losses.length));
   const valueAtRisk = losses[idx];
   const tail = losses.slice(idx);
   const expectedShortfall = tail.length === 0 ? 0 : tail.reduce((s, x) => s + x, 0) / tail.length;

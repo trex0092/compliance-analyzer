@@ -66,7 +66,7 @@ export class SandboxRunner {
   async execute<T = unknown>(
     operation: string,
     toolCall: ToolCallRequest,
-    options: SandboxOptions = {},
+    options: SandboxOptions = {}
   ): Promise<SandboxResult<T>> {
     const auditId = crypto.randomUUID();
     const start = Date.now();
@@ -84,7 +84,10 @@ export class SandboxRunner {
     log(`Starting ${operation} — tool: ${toolCall.name}, timeout: ${timeoutMs}ms`);
 
     // Audit trail entry
-    await this.session.logAudit('sandbox-start', `Sandbox ${operation}: ${toolCall.name} (id: ${auditId})`);
+    await this.session.logAudit(
+      'sandbox-start',
+      `Sandbox ${operation}: ${toolCall.name} (id: ${auditId})`
+    );
 
     if (options.dryRun) {
       log(`DRY RUN — skipping execution of ${toolCall.name}`);
@@ -104,7 +107,10 @@ export class SandboxRunner {
 
       if (!result.result.ok) {
         log(`${operation} failed: ${result.result.error}`);
-        await this.session.logAudit('sandbox-error', `Sandbox ${operation} failed: ${result.result.error} (id: ${auditId})`);
+        await this.session.logAudit(
+          'sandbox-error',
+          `Sandbox ${operation} failed: ${result.result.error} (id: ${auditId})`
+        );
 
         return {
           success: false,
@@ -133,7 +139,10 @@ export class SandboxRunner {
       }
 
       log(`${operation} completed successfully (${executionTimeMs}ms)`);
-      await this.session.logAudit('sandbox-complete', `Sandbox ${operation} completed (${executionTimeMs}ms, id: ${auditId})`);
+      await this.session.logAudit(
+        'sandbox-complete',
+        `Sandbox ${operation} completed (${executionTimeMs}ms, id: ${auditId})`
+      );
 
       return {
         success: true,
@@ -143,13 +152,15 @@ export class SandboxRunner {
         operationType: operation,
         auditId,
       };
-
     } catch (err) {
       const executionTimeMs = Date.now() - start;
       const errorMsg = err instanceof Error ? err.message : String(err);
 
       log(`${operation} threw error: ${errorMsg}`);
-      await this.session.logAudit('sandbox-error', `Sandbox ${operation} error: ${errorMsg} (id: ${auditId})`);
+      await this.session.logAudit(
+        'sandbox-error',
+        `Sandbox ${operation} error: ${errorMsg} (id: ${auditId})`
+      );
 
       return {
         success: false,
@@ -169,15 +180,18 @@ export class SandboxRunner {
   async executeBatch<T = unknown>(
     operation: string,
     toolCalls: ToolCallRequest[],
-    options: SandboxOptions = {},
+    options: SandboxOptions = {}
   ): Promise<SandboxResult<T[]>> {
     const auditId = crypto.randomUUID();
     const start = Date.now();
 
-    await this.session.logAudit('sandbox-batch-start', `Batch ${operation}: ${toolCalls.length} calls (id: ${auditId})`);
+    await this.session.logAudit(
+      'sandbox-batch-start',
+      `Batch ${operation}: ${toolCalls.length} calls (id: ${auditId})`
+    );
 
     const results = await Promise.allSettled(
-      toolCalls.map((tc) => this.execute<T>(operation, tc, options)),
+      toolCalls.map((tc) => this.execute<T>(operation, tc, options))
     );
 
     const successful: T[] = [];
@@ -187,9 +201,10 @@ export class SandboxRunner {
       if (result.status === 'fulfilled' && result.value.success) {
         if (result.value.data) successful.push(result.value.data);
       } else {
-        const error = result.status === 'rejected'
-          ? String(result.reason)
-          : result.value.error ?? 'Unknown error';
+        const error =
+          result.status === 'rejected'
+            ? String(result.reason)
+            : (result.value.error ?? 'Unknown error');
         errors.push(error);
       }
     }
@@ -199,7 +214,7 @@ export class SandboxRunner {
 
     await this.session.logAudit(
       'sandbox-batch-complete',
-      `Batch ${operation}: ${successful.length}/${toolCalls.length} succeeded (${executionTimeMs}ms, id: ${auditId})`,
+      `Batch ${operation}: ${successful.length}/${toolCalls.length} succeeded (${executionTimeMs}ms, id: ${auditId})`
     );
 
     return {
@@ -219,29 +234,40 @@ export class SandboxRunner {
    */
   async simulateRiskScore(
     flagCodes: string[],
-    context: Record<string, boolean>,
+    context: Record<string, boolean>
   ): Promise<SandboxResult<{ baseScore: number; adjustedScore: number; riskLevel: string }>> {
-    return this.execute('risk-score-simulation', {
-      name: 'score_risk',
-      arguments: { flagCodes, context },
-    }, { validateResults: false });
+    return this.execute(
+      'risk-score-simulation',
+      {
+        name: 'score_risk',
+        arguments: { flagCodes, context },
+      },
+      { validateResults: false }
+    );
   }
 
   // ---- Internals ----
 
   private async executeWithTimeout(
     toolCall: ToolCallRequest,
-    timeoutMs: number,
+    timeoutMs: number
   ): Promise<ToolCallResponse> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(
         () => reject(new Error(`Sandbox timeout after ${timeoutMs}ms`)),
-        timeoutMs,
+        timeoutMs
       );
 
-      this.server.callTool(toolCall)
-        .then((result) => { clearTimeout(timer); resolve(result); })
-        .catch((err) => { clearTimeout(timer); reject(err); });
+      this.server
+        .callTool(toolCall)
+        .then((result) => {
+          clearTimeout(timer);
+          resolve(result);
+        })
+        .catch((err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
     });
   }
 

@@ -113,10 +113,7 @@ function classifyVariance(weightDeltaPct: number, quantityDelta: number): Varian
 // Reconciliation
 // ---------------------------------------------------------------------------
 
-export function reconcile(
-  book: BookInventory,
-  count: PhysicalCount,
-): ReconciliationReport {
+export function reconcile(book: BookInventory, count: PhysicalCount): ReconciliationReport {
   // Index book by sku+location for O(1) lookup
   const bookMap = new Map<string, InventoryLine>();
   for (const line of book.lines) {
@@ -124,10 +121,7 @@ export function reconcile(
   }
 
   // Index count similarly
-  const countMap = new Map<
-    string,
-    { actualQuantity: number; actualWeightGrams?: number }
-  >();
+  const countMap = new Map<string, { actualQuantity: number; actualWeightGrams?: number }>();
   for (const line of count.lines) {
     countMap.set(`${line.sku}|${line.location}`, {
       actualQuantity: line.actualQuantity,
@@ -151,11 +145,9 @@ export function reconcile(
       continue;
     }
 
-    const actualWeight =
-      counted.actualWeightGrams ?? counted.actualQuantity * line.weightGramsEach;
+    const actualWeight = counted.actualWeightGrams ?? counted.actualQuantity * line.weightGramsEach;
     const weightDeltaGrams = actualWeight - bookWeightGrams;
-    const weightDeltaPct =
-      bookWeightGrams === 0 ? 0 : (weightDeltaGrams / bookWeightGrams) * 100;
+    const weightDeltaPct = bookWeightGrams === 0 ? 0 : (weightDeltaGrams / bookWeightGrams) * 100;
     const quantityDelta = counted.actualQuantity - line.quantity;
 
     const severity = classifyVariance(weightDeltaPct, quantityDelta);
@@ -222,9 +214,7 @@ export function reconcile(
  * Build a brain-event payload from a reconciliation report. Only
  * called when `requiresBrainEvent` is true.
  */
-export function reportToBrainEvent(
-  report: ReconciliationReport,
-): Record<string, unknown> {
+export function reportToBrainEvent(report: ReconciliationReport): Record<string, unknown> {
   const severity: 'info' | 'medium' | 'high' | 'critical' =
     report.criticalCount > 0
       ? 'critical'

@@ -20,9 +20,16 @@ import type { ToolResult as _ToolResult } from '../mcp-server';
 // ---------------------------------------------------------------------------
 
 export type EventType =
-  | 'transaction' | 'screening-result' | 'alert' | 'case-update'
-  | 'approval-decision' | 'filing-submitted' | 'threshold-breach'
-  | 'sanctions-match' | 'cdd-expiry' | 'risk-score-change';
+  | 'transaction'
+  | 'screening-result'
+  | 'alert'
+  | 'case-update'
+  | 'approval-decision'
+  | 'filing-submitted'
+  | 'threshold-breach'
+  | 'sanctions-match'
+  | 'cdd-expiry'
+  | 'risk-score-change';
 
 export type Priority = 'critical' | 'high' | 'medium' | 'low';
 
@@ -166,7 +173,8 @@ export class ComplianceEventBus {
         const duration = Date.now() - start;
         this.processingTimes.push(duration);
         if (this.processingTimes.length > 100) this.processingTimes.shift();
-        this.metrics.avgProcessingTimeMs = this.processingTimes.reduce((a, b) => a + b, 0) / this.processingTimes.length;
+        this.metrics.avgProcessingTimeMs =
+          this.processingTimes.reduce((a, b) => a + b, 0) / this.processingTimes.length;
       } catch (err) {
         this.deadLetterQueue.push({
           event,
@@ -197,7 +205,11 @@ export class ComplianceEventBus {
     this.updateWindow(event);
 
     // 3. Correlate with existing alerts
-    if (event.type === 'alert' || event.type === 'sanctions-match' || event.type === 'threshold-breach') {
+    if (
+      event.type === 'alert' ||
+      event.type === 'sanctions-match' ||
+      event.type === 'threshold-breach'
+    ) {
       this.correlateAlert(event);
     }
   }
@@ -293,7 +305,9 @@ export class ComplianceEventBus {
 
   // ---- Public API ----
 
-  getMetrics(): PipelineMetrics { return { ...this.metrics }; }
+  getMetrics(): PipelineMetrics {
+    return { ...this.metrics };
+  }
 
   getRecentEvents(limit: number = 50): ComplianceEvent[] {
     return this.eventLog.slice(-limit);

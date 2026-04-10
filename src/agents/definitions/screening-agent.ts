@@ -53,7 +53,7 @@ export interface ScreeningAgentResult {
 export async function runScreeningAgent(
   config: ScreeningAgentConfig,
   server: ComplianceMCPServer,
-  session: SessionManager,
+  session: SessionManager
 ): Promise<ScreeningAgentResult> {
   const messages: AgentMessage[] = [];
   const log = (role: AgentMessage['role'], content: string) => {
@@ -84,16 +84,28 @@ export async function runScreeningAgent(
       if (maxConfidence >= 0.9) {
         overallVerdict = 'confirmed-match';
         escalationRequired = true;
-        log('assistant', `CONFIRMED MATCH (confidence: ${maxConfidence}). Initiating freeze protocol.`);
+        log(
+          'assistant',
+          `CONFIRMED MATCH (confidence: ${maxConfidence}). Initiating freeze protocol.`
+        );
       } else if (maxConfidence >= 0.5) {
         overallVerdict = 'potential-match';
         escalationRequired = true;
-        log('assistant', `POTENTIAL MATCH (confidence: ${maxConfidence}). Escalating to Compliance Officer.`);
+        log(
+          'assistant',
+          `POTENTIAL MATCH (confidence: ${maxConfidence}). Escalating to Compliance Officer.`
+        );
       } else {
-        log('assistant', `Low-confidence matches dismissed (max: ${maxConfidence}). Documenting reasoning.`);
+        log(
+          'assistant',
+          `Low-confidence matches dismissed (max: ${maxConfidence}). Documenting reasoning.`
+        );
       }
     } else {
-      log('assistant', `No sanctions matches found across ${(sanctionsResult.result.data as { listsChecked: string[] }).listsChecked.length} lists.`);
+      log(
+        'assistant',
+        `No sanctions matches found across ${(sanctionsResult.result.data as { listsChecked: string[] }).listsChecked.length} lists.`
+      );
     }
   }
 
@@ -113,7 +125,10 @@ export async function runScreeningAgent(
     });
 
     if (multiModelResult.result.ok) {
-      const consensus = multiModelResult.result.data as { consensus: string; consensusConfidence: number };
+      const consensus = multiModelResult.result.data as {
+        consensus: string;
+        consensusConfidence: number;
+      };
       if (consensus.consensus === 'confirmed-match' && consensus.consensusConfidence > confidence) {
         overallVerdict = 'confirmed-match';
         confidence = consensus.consensusConfidence;
@@ -123,7 +138,10 @@ export async function runScreeningAgent(
         confidence = consensus.consensusConfidence;
         escalationRequired = true;
       }
-      log('assistant', `Multi-model consensus: ${consensus.consensus} (confidence: ${consensus.consensusConfidence})`);
+      log(
+        'assistant',
+        `Multi-model consensus: ${consensus.consensus} (confidence: ${consensus.consensusConfidence})`
+      );
     }
   }
 
@@ -151,9 +169,11 @@ export async function runScreeningAgent(
   // Determine recommended action based on decision tree
   let recommendedAction: string;
   if (overallVerdict === 'confirmed-match') {
-    recommendedAction = 'FREEZE immediately. Start 24h EOCN countdown. File CNMR within 5 business days. DO NOT notify subject (Art.29).';
+    recommendedAction =
+      'FREEZE immediately. Start 24h EOCN countdown. File CNMR within 5 business days. DO NOT notify subject (Art.29).';
   } else if (overallVerdict === 'potential-match') {
-    recommendedAction = 'Escalate to Compliance Officer for manual review. CO decides: confirm → FREEZE path, or false positive → document & dismiss.';
+    recommendedAction =
+      'Escalate to Compliance Officer for manual review. CO decides: confirm → FREEZE path, or false positive → document & dismiss.';
   } else {
     recommendedAction = 'Entity cleared. Log screening result and schedule next periodic review.';
   }

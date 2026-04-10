@@ -356,7 +356,7 @@ export function formatExposureReport(exposure: ExposureSummary): string {
   lines.push('|---|---|---|---|');
   for (const [area, data] of Object.entries(exposure.byArea)) {
     lines.push(
-      `| ${area} | ${data.count} | ${data.minAED.toLocaleString()} | ${data.maxAED.toLocaleString()} |`,
+      `| ${area} | ${data.count} | ${data.minAED.toLocaleString()} | ${data.maxAED.toLocaleString()} |`
     );
   }
   lines.push('');
@@ -365,7 +365,7 @@ export function formatExposureReport(exposure: ExposureSummary): string {
   lines.push('|---|---|---|---|---|---|');
   for (const li of exposure.lineItems) {
     lines.push(
-      `| ${li.band.code} | ${li.band.description} | ${li.band.minAED.toLocaleString()} | ${li.band.maxAED.toLocaleString()} | ${li.band.criminal ? 'YES' : 'no'} | ${li.finding.detail} |`,
+      `| ${li.band.code} | ${li.band.description} | ${li.band.minAED.toLocaleString()} | ${li.band.maxAED.toLocaleString()} | ${li.band.criminal ? 'YES' : 'no'} | ${li.finding.detail} |`
     );
   }
   return lines.join('\n');

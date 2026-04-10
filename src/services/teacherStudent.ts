@@ -127,7 +127,7 @@ export function doubleCheck(input: DoubleCheckInput): DoubleCheckResult {
     outcome = 'locked-freeze';
     requiresHumanReview = true;
     notes.push(
-      'SAFETY: student asserted freeze — teacher downgrade blocked. Human freeze-release required (Cabinet Res 74/2020 Art.7).',
+      'SAFETY: student asserted freeze — teacher downgrade blocked. Human freeze-release required (Cabinet Res 74/2020 Art.7).'
     );
   } else if (student.verdict === teacher.verdict) {
     finalVerdict = student.verdict;
@@ -137,7 +137,7 @@ export function doubleCheck(input: DoubleCheckInput): DoubleCheckResult {
     finalVerdict = teacher.verdict;
     outcome = 'corrected-upward';
     notes.push(
-      `Teacher escalated from ${student.verdict} → ${teacher.verdict} (${teacher.rationale}).`,
+      `Teacher escalated from ${student.verdict} → ${teacher.verdict} (${teacher.rationale}).`
     );
     // Upgrades to freeze auto-execute (sanctioned entity must be frozen per FDL Art.22).
     requiresHumanReview = finalVerdict !== 'freeze' || teacher.confidence < 0.8;
@@ -147,7 +147,7 @@ export function doubleCheck(input: DoubleCheckInput): DoubleCheckResult {
     outcome = 'contested';
     requiresHumanReview = true;
     notes.push(
-      `CONTESTED: student said ${student.verdict}, teacher said ${teacher.verdict}. Holding at stronger verdict pending human review.`,
+      `CONTESTED: student said ${student.verdict}, teacher said ${teacher.verdict}. Holding at stronger verdict pending human review.`
     );
   } else {
     // Shouldn't happen — equal verdicts caught above.

@@ -136,9 +136,7 @@ function scoreCdd(input: SelfAuditInput): DimensionScore {
   const uboScore = (Math.max(0, Math.min(100, input.uboCoveragePct)) / 100) * DIMENSION_MAX * 0.6;
   score += uboScore;
   if (input.uboCoveragePct < 95) {
-    gaps.push(
-      `UBO coverage only ${input.uboCoveragePct.toFixed(0)}% (Cabinet Decision 109/2023)`,
-    );
+    gaps.push(`UBO coverage only ${input.uboCoveragePct.toFixed(0)}% (Cabinet Decision 109/2023)`);
   }
   return {
     dimension: 'CDD',
@@ -157,13 +155,9 @@ function scoreScreening(input: SelfAuditInput): DimensionScore {
     score += DIMENSION_MAX * 0.5;
   } else if (input.sanctionsListAgeHours <= 72) {
     score += DIMENSION_MAX * 0.3;
-    gaps.push(
-      `Sanctions list is ${input.sanctionsListAgeHours.toFixed(0)}h old (>24h)`,
-    );
+    gaps.push(`Sanctions list is ${input.sanctionsListAgeHours.toFixed(0)}h old (>24h)`);
   } else {
-    gaps.push(
-      `Sanctions list is ${input.sanctionsListAgeHours.toFixed(0)}h old — STALE (>72h)`,
-    );
+    gaps.push(`Sanctions list is ${input.sanctionsListAgeHours.toFixed(0)}h old — STALE (>72h)`);
   }
   if (input.portfolioReScreenedWithin24h) score += DIMENSION_MAX * 0.5;
   else gaps.push('Portfolio not re-screened in the last 24h (Cabinet Res 74/2020)');
@@ -262,9 +256,7 @@ export function calculateSelfAuditScore(input: SelfAuditInput): SelfAuditResult 
     scoreOperational(input),
   ];
 
-  const totalScore = Math.round(
-    dimensions.reduce((s, d) => s + d.score, 0) * 100,
-  ) / 100;
+  const totalScore = Math.round(dimensions.reduce((s, d) => s + d.score, 0) * 100) / 100;
 
   let grade: SelfAuditResult['grade'];
   if (totalScore >= 90) grade = 'A';

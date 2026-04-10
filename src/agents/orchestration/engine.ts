@@ -108,14 +108,14 @@ export class OrchestrationEngine {
     while (remaining.size > 0) {
       // Find steps whose dependencies are all completed
       const ready = workflow.steps.filter(
-        (step) =>
-          remaining.has(step.id) &&
-          step.dependsOn.every((dep) => completed.has(dep)),
+        (step) => remaining.has(step.id) && step.dependsOn.every((dep) => completed.has(dep))
       );
 
       if (ready.length === 0 && remaining.size > 0) {
         // Deadlock — some steps depend on failed steps
-        log(`Workflow ABORTED — deadlock detected. Failed dependencies block ${remaining.size} remaining step(s).`);
+        log(
+          `Workflow ABORTED — deadlock detected. Failed dependencies block ${remaining.size} remaining step(s).`
+        );
         break;
       }
 
@@ -142,7 +142,7 @@ export class OrchestrationEngine {
       const batch = runnableSteps.slice(0, ORCHESTRATION_CONFIG.maxConcurrentAgents);
 
       const batchResults = await Promise.allSettled(
-        batch.map((step) => this.executeStep(step, stepResults, workflowData, log)),
+        batch.map((step) => this.executeStep(step, stepResults, workflowData, log))
       );
 
       for (let i = 0; i < batch.length; i++) {
@@ -181,7 +181,9 @@ export class OrchestrationEngine {
     const overallStatus = failed.size > 0 ? 'failed' : remaining.size > 0 ? 'aborted' : 'completed';
     const totalDurationMs = Date.now() - startTime;
 
-    log(`Workflow "${workflow.name}" ${overallStatus} — ${completed.size} completed, ${failed.size} failed (${totalDurationMs}ms)`);
+    log(
+      `Workflow "${workflow.name}" ${overallStatus} — ${completed.size} completed, ${failed.size} failed (${totalDurationMs}ms)`
+    );
 
     return {
       workflowId: workflow.id,
@@ -200,7 +202,7 @@ export class OrchestrationEngine {
     step: WorkflowStep,
     previousResults: Map<string, StepResult>,
     workflowData: Record<string, unknown>,
-    log: (msg: string) => void,
+    log: (msg: string) => void
   ): Promise<StepResult> {
     const context: StepContext = {
       server: this.server,
@@ -230,10 +232,7 @@ export class OrchestrationEngine {
 
       const start = Date.now();
       try {
-        const result = await withTimeout(
-          step.execute(context),
-          ORCHESTRATION_CONFIG.stepTimeoutMs,
-        );
+        const result = await withTimeout(step.execute(context), ORCHESTRATION_CONFIG.stepTimeoutMs);
 
         return {
           ...result,
@@ -268,7 +267,13 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Step timed out after ${ms}ms`)), ms);
     promise
-      .then((val) => { clearTimeout(timer); resolve(val); })
-      .catch((err) => { clearTimeout(timer); reject(err); });
+      .then((val) => {
+        clearTimeout(timer);
+        resolve(val);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
   });
 }

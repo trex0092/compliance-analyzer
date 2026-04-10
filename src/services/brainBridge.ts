@@ -37,14 +37,7 @@ export interface BrainEvent {
 }
 
 export interface BrainDecision {
-  tool:
-    | 'screening'
-    | 'workflow'
-    | 'thresholds'
-    | 'tfs'
-    | 'regulatory'
-    | 'reports'
-    | null;
+  tool: 'screening' | 'workflow' | 'thresholds' | 'tfs' | 'regulatory' | 'reports' | null;
   purpose: string;
   autoActions: string[];
   escalate: boolean;
@@ -68,11 +61,13 @@ const CAP_REFID = 64;
 function sanitize(s: string, cap: number): string {
   // Strip newlines, tabs, and C0 control chars to defuse log-injection and
   // blob-key abuse. The control-char range is intentional.
-  return s
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\r\n\t\u0000-\u001f]/g, ' ')
-    .trim()
-    .slice(0, cap);
+  return (
+    s
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\r\n\t\u0000-\u001f]/g, ' ')
+      .trim()
+      .slice(0, cap)
+  );
 }
 
 function clean(event: BrainEvent): BrainEvent {

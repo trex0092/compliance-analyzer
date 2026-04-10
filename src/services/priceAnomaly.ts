@@ -24,7 +24,11 @@ import type { Metal } from './fineness';
 // Types
 // ---------------------------------------------------------------------------
 
-export type MarketSegment = 'retail_jewellery' | 'wholesale_bullion' | 'investment_bar' | 'scrap_buyback';
+export type MarketSegment =
+  | 'retail_jewellery'
+  | 'wholesale_bullion'
+  | 'investment_bar'
+  | 'scrap_buyback';
 
 export interface BenchmarkPrice {
   metal: Metal;
@@ -84,19 +88,15 @@ const PRICE_BANDS: Record<MarketSegment, PriceBand> = {
 // Assessment
 // ---------------------------------------------------------------------------
 
-export function assessPriceAnomaly(
-  tx: PricedTransaction,
-  benchmark: BenchmarkPrice,
-): PriceAnomaly {
+export function assessPriceAnomaly(tx: PricedTransaction, benchmark: BenchmarkPrice): PriceAnomaly {
   if (tx.metal !== benchmark.metal) {
     throw new Error(
-      `assessPriceAnomaly: metal mismatch (tx=${tx.metal}, benchmark=${benchmark.metal})`,
+      `assessPriceAnomaly: metal mismatch (tx=${tx.metal}, benchmark=${benchmark.metal})`
     );
   }
 
   const benchmarkUsd = benchmark.pmPerTroyOzUsd ?? benchmark.amPerTroyOzUsd;
-  const deviationPct =
-    ((tx.pricePerTroyOzUsd - benchmarkUsd) / benchmarkUsd) * 100;
+  const deviationPct = ((tx.pricePerTroyOzUsd - benchmarkUsd) / benchmarkUsd) * 100;
   const band = PRICE_BANDS[tx.segment];
 
   let severity: PriceAnomalySeverity;
@@ -128,7 +128,7 @@ export function assessPriceAnomaly(
 
 export function batchAssess(
   txs: readonly PricedTransaction[],
-  benchmarks: readonly BenchmarkPrice[],
+  benchmarks: readonly BenchmarkPrice[]
 ): PriceAnomaly[] {
   const byDateMetal = new Map<string, BenchmarkPrice>();
   for (const b of benchmarks) {

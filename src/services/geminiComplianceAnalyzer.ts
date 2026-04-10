@@ -138,10 +138,12 @@ function validateInput(request: ComplianceAnalysisRequest): string | null {
 
 /** Sanitize text to prevent prompt injection via control characters */
 function sanitizeText(text: string): string {
-  return text
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // strip control chars (keep \n, \r, \t)
-    .trim();
+  return (
+    text
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // strip control chars (keep \n, \r, \t)
+      .trim()
+  );
 }
 
 // ─── System Prompts ─────────────────────────────────────────────────────────
@@ -193,7 +195,7 @@ function getApiKey(): string {
   if (!key) {
     throw new Error(
       'GOOGLE_AI_API_KEY environment variable is not set. ' +
-      'Configure it in your .env file. See .env.example for reference.'
+        'Configure it in your .env file. See .env.example for reference.'
     );
   }
   return key;
@@ -233,7 +235,12 @@ function generateAnalysisId(): string {
   return `GCA-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function parseAnalysisResponse(content: string): Omit<ComplianceAnalysisResult, 'analysisId' | 'analysisType' | 'executedAt' | 'model' | 'responseTimeMs'> {
+function parseAnalysisResponse(
+  content: string
+): Omit<
+  ComplianceAnalysisResult,
+  'analysisId' | 'analysisType' | 'executedAt' | 'model' | 'responseTimeMs'
+> {
   try {
     // Extract JSON from response (handle markdown code blocks)
     const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/\{[\s\S]*\}/);
@@ -241,15 +248,17 @@ function parseAnalysisResponse(content: string): Omit<ComplianceAnalysisResult, 
     const parsed = JSON.parse(jsonStr);
 
     return {
-      issues: Array.isArray(parsed.issues) ? parsed.issues.map((issue: Record<string, unknown>) => ({
-        severity: ['critical', 'high', 'medium', 'low'].includes(issue.severity as string)
-          ? issue.severity as ComplianceIssue['severity']
-          : 'medium',
-        category: String(issue.category ?? 'General'),
-        description: String(issue.description ?? ''),
-        regulatoryRef: String(issue.regulatoryRef ?? 'Not specified'),
-        recommendation: String(issue.recommendation ?? ''),
-      })) : [],
+      issues: Array.isArray(parsed.issues)
+        ? parsed.issues.map((issue: Record<string, unknown>) => ({
+            severity: ['critical', 'high', 'medium', 'low'].includes(issue.severity as string)
+              ? (issue.severity as ComplianceIssue['severity'])
+              : 'medium',
+            category: String(issue.category ?? 'General'),
+            description: String(issue.description ?? ''),
+            regulatoryRef: String(issue.regulatoryRef ?? 'Not specified'),
+            recommendation: String(issue.recommendation ?? ''),
+          }))
+        : [],
       summary: String(parsed.summary ?? 'Analysis complete — no summary provided.'),
       overallRiskLevel: ['low', 'medium', 'high', 'critical'].includes(parsed.overallRiskLevel)
         ? parsed.overallRiskLevel
@@ -260,13 +269,16 @@ function parseAnalysisResponse(content: string): Omit<ComplianceAnalysisResult, 
     };
   } catch {
     return {
-      issues: [{
-        severity: 'medium',
-        category: 'Parse Error',
-        description: 'AI response could not be parsed as structured JSON. Raw analysis was returned.',
-        regulatoryRef: 'N/A',
-        recommendation: 'Retry the analysis or review the raw output manually.',
-      }],
+      issues: [
+        {
+          severity: 'medium',
+          category: 'Parse Error',
+          description:
+            'AI response could not be parsed as structured JSON. Raw analysis was returned.',
+          regulatoryRef: 'N/A',
+          recommendation: 'Retry the analysis or review the raw output manually.',
+        },
+      ],
       summary: content.slice(0, 500),
       overallRiskLevel: 'medium',
       regulatoryReferences: [],
@@ -297,7 +309,7 @@ export async function analyzeCompliance(
     console.warn(`[GeminiAnalyzer] Rate limit exceeded. Retry after ${retrySeconds}s`);
     throw new Error(
       `Rate limit exceeded (${RATE_LIMIT_MAX} requests per ${RATE_LIMIT_WINDOW_MS / 60000} minutes). ` +
-      `Retry after ${retrySeconds} seconds.`
+        `Retry after ${retrySeconds} seconds.`
     );
   }
 

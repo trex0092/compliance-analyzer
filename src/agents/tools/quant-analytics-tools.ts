@@ -101,7 +101,7 @@ export interface QuantAnalyticsReport {
 export function calculateBollingerBands(
   amounts: number[],
   period: number = 20,
-  stdDevMultiplier: number = 2,
+  stdDevMultiplier: number = 2
 ): BollingerBandResult {
   if (amounts.length < period) {
     // Not enough data — use all available
@@ -155,7 +155,7 @@ export function calculateBollingerBands(
 export function detectStructuring(
   transactions: TransactionDataPoint[],
   threshold: number = DPMS_CASH_THRESHOLD_AED,
-  timeWindowHours: number = 48,
+  timeWindowHours: number = 48
 ): StructuringAlert {
   if (transactions.length === 0) {
     return {
@@ -172,7 +172,7 @@ export function detectStructuring(
 
   // Sort by timestamp
   const sorted = [...transactions].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
   const windowMs = timeWindowHours * 60 * 60 * 1000;
@@ -195,7 +195,7 @@ export function detectStructuring(
     // Structuring indicators:
     // 1. Multiple transactions just below threshold
     const justBelowThreshold = inWindow.filter(
-      (tx) => tx.amount >= threshold * 0.5 && tx.amount < threshold,
+      (tx) => tx.amount >= threshold * 0.5 && tx.amount < threshold
     );
 
     // 2. Cumulative near/above threshold
@@ -204,9 +204,10 @@ export function detectStructuring(
     // 3. Consistent amounts (low variance = suspicious)
     const amounts = inWindow.map((tx) => tx.amount);
     const mean = amounts.reduce((a, b) => a + b, 0) / amounts.length;
-    const cv = amounts.length > 1
-      ? Math.sqrt(amounts.reduce((s, v) => s + (v - mean) ** 2, 0) / amounts.length) / mean
-      : 1;
+    const cv =
+      amounts.length > 1
+        ? Math.sqrt(amounts.reduce((s, v) => s + (v - mean) ** 2, 0) / amounts.length) / mean
+        : 1;
 
     // Score: high when many sub-threshold txns with low variance add up near threshold
     let score = 0;
@@ -244,10 +245,7 @@ export function detectStructuring(
 // Z-Score Analysis
 // ---------------------------------------------------------------------------
 
-export function calculateZScore(
-  currentValue: number,
-  historicalValues: number[],
-): ZScoreResult {
+export function calculateZScore(currentValue: number, historicalValues: number[]): ZScoreResult {
   if (historicalValues.length === 0) {
     return {
       zScore: 0,
@@ -262,7 +260,8 @@ export function calculateZScore(
   const n = historicalValues.length;
   const mean = historicalValues.reduce((a, b) => a + b, 0) / n;
   // Use sample variance (Bessel's correction, N-1) for more conservative outlier detection
-  const variance = historicalValues.reduce((sum, val) => sum + (val - mean) ** 2, 0) / Math.max(1, n - 1);
+  const variance =
+    historicalValues.reduce((sum, val) => sum + (val - mean) ** 2, 0) / Math.max(1, n - 1);
   const stdDev = Math.sqrt(variance);
 
   const zScore = stdDev > 0 ? (currentValue - mean) / stdDev : 0;
@@ -293,7 +292,7 @@ export function calculateZScore(
 export function runMonteCarloSimulation(
   historicalAmounts: number[],
   threshold: number = DPMS_CASH_THRESHOLD_AED,
-  simulations: number = 10_000,
+  simulations: number = 10_000
 ): MonteCarloResult {
   if (historicalAmounts.length === 0) {
     return {
@@ -309,7 +308,7 @@ export function runMonteCarloSimulation(
 
   const mean = historicalAmounts.reduce((a, b) => a + b, 0) / historicalAmounts.length;
   const stdDev = Math.sqrt(
-    historicalAmounts.reduce((sum, val) => sum + (val - mean) ** 2, 0) / historicalAmounts.length,
+    historicalAmounts.reduce((sum, val) => sum + (val - mean) ** 2, 0) / historicalAmounts.length
   );
 
   // Generate simulated values using Box-Muller transform
@@ -349,7 +348,7 @@ export function runMonteCarloSimulation(
 export function detectVelocityBurst(
   transactions: TransactionDataPoint[],
   windowMinutes: number = 60,
-  burstThreshold: number = 5,
+  burstThreshold: number = 5
 ): VelocityBurstResult {
   if (transactions.length < 2) {
     return {
@@ -363,7 +362,7 @@ export function detectVelocityBurst(
   }
 
   const sorted = [...transactions].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
   const windowMs = windowMinutes * 60 * 1000;
@@ -382,7 +381,8 @@ export function detectVelocityBurst(
   // Calculate gaps between consecutive transactions
   const gaps: number[] = [];
   for (let i = 1; i < sorted.length; i++) {
-    const gap = new Date(sorted[i].timestamp).getTime() - new Date(sorted[i - 1].timestamp).getTime();
+    const gap =
+      new Date(sorted[i].timestamp).getTime() - new Date(sorted[i - 1].timestamp).getTime();
     gaps.push(gap / 60_000); // convert to minutes
   }
 
@@ -408,7 +408,7 @@ export function detectVelocityBurst(
 export function runQuantAnalytics(
   entityName: string,
   transactions: TransactionDataPoint[],
-  historicalAmounts?: number[],
+  historicalAmounts?: number[]
 ): ToolResult<QuantAnalyticsReport> {
   if (transactions.length === 0) {
     return { ok: false, error: 'No transactions provided for analysis' };
@@ -435,19 +435,26 @@ export function runQuantAnalytics(
   }
   if (structuring.detected) {
     riskScore += 6;
-    alerts.push(`Structuring detected — ${structuring.pattern} (confidence: ${(structuring.confidence * 100).toFixed(0)}%)`);
+    alerts.push(
+      `Structuring detected — ${structuring.pattern} (confidence: ${(structuring.confidence * 100).toFixed(0)}%)`
+    );
   }
   if (zScore.isOutlier) {
-    riskScore += zScore.outlierSeverity === 'extreme' ? 5 : zScore.outlierSeverity === 'severe' ? 4 : 2;
+    riskScore +=
+      zScore.outlierSeverity === 'extreme' ? 5 : zScore.outlierSeverity === 'severe' ? 4 : 2;
     alerts.push(`Z-Score outlier — ${zScore.outlierSeverity} (z=${zScore.zScore.toFixed(2)})`);
   }
   if (monteCarlo.isAnomalous) {
     riskScore += 3;
-    alerts.push(`Monte Carlo anomaly — ${(monteCarlo.probabilityAboveThreshold * 100).toFixed(1)}% probability above threshold`);
+    alerts.push(
+      `Monte Carlo anomaly — ${(monteCarlo.probabilityAboveThreshold * 100).toFixed(1)}% probability above threshold`
+    );
   }
   if (velocityBurst.detected) {
     riskScore += 3;
-    alerts.push(`Velocity burst — ${velocityBurst.transactionsInWindow} txns in ${velocityBurst.timeWindowMinutes} min`);
+    alerts.push(
+      `Velocity burst — ${velocityBurst.transactionsInWindow} txns in ${velocityBurst.timeWindowMinutes} min`
+    );
   }
 
   let overallRiskLevel: QuantAnalyticsReport['overallRiskLevel'] = 'low';
@@ -489,9 +496,9 @@ function approximatePValue(z: number): number {
   const sign = z < 0 ? -1 : 1;
   const absZ = Math.abs(z);
   const t = 1.0 / (1.0 + p * absZ);
-  const y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-absZ * absZ / 2);
+  const y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp((-absZ * absZ) / 2);
 
-  return 2 * (1 - (0.5 * (1.0 + sign * y)));
+  return 2 * (1 - 0.5 * (1.0 + sign * y));
 }
 
 // ---------------------------------------------------------------------------
@@ -563,7 +570,11 @@ export const QUANT_TOOL_SCHEMAS = [
     inputSchema: {
       type: 'object',
       properties: {
-        amounts: { type: 'array', items: { type: 'number' }, description: 'Historical transaction amounts' },
+        amounts: {
+          type: 'array',
+          items: { type: 'number' },
+          description: 'Historical transaction amounts',
+        },
         period: { type: 'number', description: 'Moving average period (default: 20)' },
         stdDevMultiplier: { type: 'number', description: 'Band width multiplier (default: 2)' },
       },
@@ -578,7 +589,10 @@ export const QUANT_TOOL_SCHEMAS = [
       type: 'object',
       properties: {
         historicalAmounts: { type: 'array', items: { type: 'number' } },
-        threshold: { type: 'number', description: 'Threshold to check against (default: AED 55,000)' },
+        threshold: {
+          type: 'number',
+          description: 'Threshold to check against (default: AED 55,000)',
+        },
         simulations: { type: 'number', description: 'Number of simulations (default: 10,000)' },
       },
       required: ['historicalAmounts'],

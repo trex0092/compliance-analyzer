@@ -120,10 +120,10 @@ export function runDebate(input: DebateInput): DebateVerdict {
   });
 
   const proScore = round4(
-    scored.filter((a) => a.position === 'pro').reduce((s, a) => s + Math.max(0, a.score), 0),
+    scored.filter((a) => a.position === 'pro').reduce((s, a) => s + Math.max(0, a.score), 0)
   );
   const conScore = round4(
-    scored.filter((a) => a.position === 'con').reduce((s, a) => s + Math.max(0, a.score), 0),
+    scored.filter((a) => a.position === 'con').reduce((s, a) => s + Math.max(0, a.score), 0)
   );
 
   // Conservatism bias nudges pro (stronger action) in close calls.
@@ -138,8 +138,7 @@ export function runDebate(input: DebateInput): DebateVerdict {
     winner = 'con';
   }
   // Ties resolved fail-closed.
-  const winningAction =
-    winner === 'pro' || winner === 'tie' ? input.proAction : input.conAction;
+  const winningAction = winner === 'pro' || winner === 'tie' ? input.proAction : input.conAction;
   if (winner === 'tie') {
     notes.push('Tie resolved fail-closed to the stronger action (AML conservatism).');
   }

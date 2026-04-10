@@ -127,11 +127,11 @@ export function assessSaleVat(sale: GoldSale): SaleVatReport {
   // Carousel detection signals (per-sale, stateless)
   // 1. Investment-grade bullion sold with 5% VAT → possible misclassification
   const investmentGradeWithVat = assessments.filter(
-    (a) => a.isInvestmentGold && a.declaredVatRate > 0,
+    (a) => a.isInvestmentGold && a.declaredVatRate > 0
   );
   if (investmentGradeWithVat.length > 0) {
     carouselSignals.push(
-      `${investmentGradeWithVat.length} investment-grade line(s) declared with 5% VAT — zero-rate expected`,
+      `${investmentGradeWithVat.length} investment-grade line(s) declared with 5% VAT — zero-rate expected`
     );
   }
 
@@ -141,18 +141,18 @@ export function assessSaleVat(sale: GoldSale): SaleVatReport {
     const ageDays = ageMs / (24 * 60 * 60 * 1000);
     if (ageDays < 180 && totalValue >= 500_000) {
       carouselSignals.push(
-        `Seller established only ${ageDays.toFixed(0)} days ago with ${totalValue.toLocaleString()} AED transaction — new-entity red flag`,
+        `Seller established only ${ageDays.toFixed(0)} days ago with ${totalValue.toLocaleString()} AED transaction — new-entity red flag`
       );
     }
   }
 
   // 3. Round-number VAT suggests scripted declaration
   const roundVatLines = assessments.filter(
-    (a) => a.declaredVat > 0 && a.declaredVat % 1000 === 0,
+    (a) => a.declaredVat > 0 && a.declaredVat % 1000 === 0
   ).length;
   if (roundVatLines >= 3 && assessments.length >= 3) {
     carouselSignals.push(
-      `${roundVatLines}/${assessments.length} line(s) have round-number VAT amounts — scripted declaration signal`,
+      `${roundVatLines}/${assessments.length} line(s) have round-number VAT amounts — scripted declaration signal`
     );
   }
 
@@ -190,7 +190,7 @@ export interface CircularTrade {
 export function detectCircularTrades(
   sales: readonly GoldSale[],
   windowHours = 48,
-  valueTolerancePct = 0.05,
+  valueTolerancePct = 0.05
 ): CircularTrade[] {
   const out: CircularTrade[] = [];
   const windowMs = windowHours * 60 * 60 * 1000;
@@ -198,10 +198,7 @@ export function detectCircularTrades(
   // Bucket sales by approximate value
   const buckets = new Map<string, GoldSale[]>();
   for (const sale of sales) {
-    const value = sale.lines.reduce(
-      (s, l) => s + l.quantityUnits * l.unitPriceAED,
-      0,
-    );
+    const value = sale.lines.reduce((s, l) => s + l.quantityUnits * l.unitPriceAED, 0);
     const bucket = Math.round(value / (value * valueTolerancePct || 1)).toString();
     const list = buckets.get(bucket) ?? [];
     list.push(sale);

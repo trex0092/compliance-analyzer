@@ -59,7 +59,7 @@ export interface FilingAgentResult {
 export async function runFilingAgent(
   config: FilingAgentConfig,
   server: ComplianceMCPServer,
-  session: SessionManager,
+  session: SessionManager
 ): Promise<FilingAgentResult> {
   const messages: AgentMessage[] = [];
   const log = (role: AgentMessage['role'], content: string) => {
@@ -84,12 +84,22 @@ export async function runFilingAgent(
 
   let deadline: FilingAgentResult['deadline'] = null;
   if (deadlineResult.result.ok) {
-    const d = deadlineResult.result.data as { dueDate: string; isOverdue: boolean; businessDaysRemaining: number };
+    const d = deadlineResult.result.data as {
+      dueDate: string;
+      isOverdue: boolean;
+      businessDaysRemaining: number;
+    };
     deadline = d;
     if (d.isOverdue) {
-      log('assistant', `WARNING: Filing is OVERDUE. Deadline was ${d.dueDate}. Expedite immediately.`);
+      log(
+        'assistant',
+        `WARNING: Filing is OVERDUE. Deadline was ${d.dueDate}. Expedite immediately.`
+      );
     } else {
-      log('assistant', `Deadline: ${d.dueDate} (${d.businessDaysRemaining} business days remaining).`);
+      log(
+        'assistant',
+        `Deadline: ${d.dueDate} (${d.businessDaysRemaining} business days remaining).`
+      );
     }
   }
 
@@ -129,7 +139,10 @@ export async function runFilingAgent(
     if (validationPassed) {
       log('assistant', `XML generated and validated successfully: ${filename}`);
     } else {
-      log('assistant', `XML generated but validation FAILED with ${validationErrors.length} error(s):`);
+      log(
+        'assistant',
+        `XML generated but validation FAILED with ${validationErrors.length} error(s):`
+      );
       for (const err of validationErrors) {
         log('assistant', `  - ${err.field}: ${err.message}`);
       }
@@ -166,10 +179,16 @@ export async function runFilingAgent(
 
   // No tipping off reminder
   if (config.filingType === 'STR' || config.filingType === 'SAR') {
-    log('assistant', `REMINDER: Do NOT disclose this filing to the subject (FDL Art.29 — no tipping off).`);
+    log(
+      'assistant',
+      `REMINDER: Do NOT disclose this filing to the subject (FDL Art.29 — no tipping off).`
+    );
   }
 
-  log('system', `Filing agent complete — ${config.filingType} ${validationPassed ? 'ready' : 'needs fixes'}`);
+  log(
+    'system',
+    `Filing agent complete — ${config.filingType} ${validationPassed ? 'ready' : 'needs fixes'}`
+  );
 
   return {
     filingType: config.filingType,
