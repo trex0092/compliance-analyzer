@@ -45,8 +45,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: claude/install-compliance-analyzer-SVN6Y
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,15 +55,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Download .env.agents from latest install run
+      - name: Download hawkeye-install artifact from latest install run
         uses: dawidd6/action-download-artifact@v6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           workflow: agent-install.yml
           workflow_conclusion: success
-          name: env-agents
-          path: .
+          name: hawkeye-install
+          path: artifacts/
           if_no_artifact_found: fail
+
+      - name: Move .env.agents into repo root
+        run: |
+          if [ -f artifacts/.env.agents ]; then
+            cp artifacts/.env.agents .env.agents
+            echo "copied .env.agents from artifact:"
+            cat .env.agents
+          else
+            echo "::error::artifacts/.env.agents missing from the hawkeye-install artifact — re-run Install Managed Agents."
+            ls -la artifacts/ || true
+            exit 1
+          fi
 
       - name: Verify agent id for requested agent
         id: verify
