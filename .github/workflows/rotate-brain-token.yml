@@ -1,0 +1,75 @@
+name: Rotate Brain Token
+
+# Generates a fresh HAWKEYE_BRAIN_TOKEN and reveals it so you can paste
+# it into GitHub secrets + Netlify env vars.
+#
+# Why a workflow: we deliberately do NOT mask the token here. The token
+# has to be visible to you exactly once so you can copy it to the two
+# places where it's needed. GitHub Actions artifacts are private to
+# repo collaborators, so the exposure is limited to people who already
+# have write access to this repo.
+#
+# After running this workflow you MUST:
+#   1. Update the HAWKEYE_BRAIN_TOKEN secret in
+#      Settings → Secrets → Actions
+#   2. Update the HAWKEYE_BRAIN_TOKEN env var on Netlify and redeploy
+#
+# The OLD token keeps working until you redeploy Netlify, so there is
+# no outage window — just a short period where both tokens are valid.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Generate fresh brain token
+        run: |
+          mkdir -p artifacts
+          NEW_TOKEN=$(openssl rand -hex 24)
+          printf 'HAWKEYE_BRAIN_TOKEN=%s\n' "$NEW_TOKEN" > artifacts/brain-token.txt
+          printf 'NEW_TOKEN=%s\n' "$NEW_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Upload token as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rotated-brain-token
+          path: artifacts/
+          retention-days: 7
+          include-hidden-files: true
+
+      - name: Write step summary
+        run: |
+          {
+            echo "# Rotated HAWKEYE_BRAIN_TOKEN"
+            echo
+            echo "A fresh 48-character hex token was generated. Copy it"
+            echo "from the fenced block below (or download the"
+            echo "\`rotated-brain-token\` artifact)."
+            echo
+            echo '```'
+            echo "HAWKEYE_BRAIN_TOKEN=${NEW_TOKEN}"
+            echo '```'
+            echo
+            echo "## Update both places"
+            echo
+            echo "1. **GitHub secret** —"
+            echo "   https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "   Find \`HAWKEYE_BRAIN_TOKEN\` → click pencil → paste the"
+            echo "   value above → **Update secret**."
+            echo
+            echo "2. **Netlify env var** —"
+            echo "   https://app.netlify.com/sites/compliance-analyzer/configuration/env"
+            echo "   Find \`HAWKEYE_BRAIN_TOKEN\` → click Options → **Edit**"
+            echo "   → paste the value → **Save**. Then go to the Deploys"
+            echo "   tab and click **Trigger deploy → Deploy site** so"
+            echo "   \`/api/brain\` picks up the new value."
+            echo
+            echo "The old token keeps working until the Netlify redeploy"
+            echo "completes, so there is no outage window."
+          } >> "$GITHUB_STEP_SUMMARY"

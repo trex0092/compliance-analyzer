@@ -183,13 +183,74 @@ async function run() {
   console.log('\n═══ PHASE 6: BRAIN ═══\n');
 
   await step('12. Brain routing + escalation', async () => {
-    results.brain = { routed: 0, escalated: 0, cachetPublished: 0, cachetErrors: 0 };
+    results.brain = {
+      routed: 0,
+      escalated: 0,
+      cachetPublished: 0,
+      cachetErrors: 0,
+      httpPublished: 0,
+      httpErrors: 0,
+    };
     const cachetConfigured = Boolean(process.env.CACHET_BASE_URL && process.env.CACHET_API_TOKEN);
+    const brainHttpConfigured = Boolean(process.env.HAWKEYE_BRAIN_URL && process.env.HAWKEYE_BRAIN_TOKEN);
+
+    // Map autopilot alert levels to the brain's event-kind + severity schema.
+    const mapLevel = (level) => {
+      switch (level) {
+        case 'CRITICAL': return 'critical';
+        case 'HIGH':     return 'high';
+        case 'MEDIUM':   return 'medium';
+        case 'INFO':     return 'info';
+        default:         return 'low';
+      }
+    };
+
+    const postToBrainHttp = async (alert, decision) => {
+      if (!brainHttpConfigured) return;
+      const base = process.env.HAWKEYE_BRAIN_URL.replace(/\/+$/, '');
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8_000);
+      try {
+        const res = await fetch(`${base}/api/brain`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.HAWKEYE_BRAIN_TOKEN}`,
+          },
+          body: JSON.stringify({
+            kind: 'manual',
+            severity: mapLevel(alert.level),
+            summary: `autopilot:${alert.level} ${alert.msg}`.slice(0, 500),
+            meta: {
+              source: 'autopilot',
+              routedTool: decision?.tool ?? null,
+              purpose: decision?.purpose ?? null,
+            },
+          }),
+          signal: ctrl.signal,
+        });
+        if (!res.ok) {
+          results.brain.httpErrors++;
+          console.warn(`  [brain] http publish failed: ${res.status}`);
+          return;
+        }
+        results.brain.httpPublished++;
+      } catch (err) {
+        results.brain.httpErrors++;
+        console.warn(`  [brain] http publish error: ${err.message}`);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
 
     for (const alert of alerts) {
       try {
         const decision = await brainThink(alert.msg);
         results.brain.routed++;
+
+        // Publish to the HTTP brain endpoint so managed agents and the
+        // brain-events blob store see the event. No-op if unconfigured.
+        await postToBrainHttp(alert, decision);
 
         // Escalate critical alerts to the public status page when Cachet is configured.
         if (alert.level === 'CRITICAL' && cachetConfigured) {
@@ -214,7 +275,7 @@ async function run() {
       }
     }
 
-    return `Routed ${results.brain.routed}, escalated ${results.brain.escalated}, cachet ${results.brain.cachetPublished}/${results.brain.cachetPublished + results.brain.cachetErrors}`;
+    return `Routed ${results.brain.routed}, escalated ${results.brain.escalated}, http ${results.brain.httpPublished}/${results.brain.httpPublished + results.brain.httpErrors}, cachet ${results.brain.cachetPublished}/${results.brain.cachetPublished + results.brain.cachetErrors}`;
   });
 
   // Phase 7: Generate Briefing
@@ -302,7 +363,7 @@ function generateBriefing() {
   if (results.traceability) lines.push(`  Regulatory coverage: ${results.traceability.implemented}/${results.traceability.total}`);
   if (results.portfolio) lines.push(`  Portfolio: ${results.portfolio.screened} entities screened`);
   if (results.chain) lines.push(`  Evidence chain: ${results.chain.valid ? 'INTACT' : 'BROKEN'} (${results.chain.entries} entries)`);
-  if (results.brain) lines.push(`  Brain: ${results.brain.routed} routed, ${results.brain.escalated} escalated, ${results.brain.cachetPublished} published to Cachet`);
+  if (results.brain) lines.push(`  Brain: ${results.brain.routed} routed, ${results.brain.escalated} escalated, ${results.brain.httpPublished} posted to /api/brain, ${results.brain.cachetPublished} published to Cachet`);
   lines.push('');
 
   // Errors
