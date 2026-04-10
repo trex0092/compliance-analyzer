@@ -256,6 +256,13 @@ The following multi-agent frameworks are vendored for reference and integration 
 | quant-trading | `vendor/quant-trading` | Quantitative trading strategies | Transaction pattern analysis, market risk assessment |
 | Google AutoML | `vendor/google-automl` | Automated ML model selection | Risk model optimization, anomaly detection tuning |
 | friday-tony-stark-demo | `vendor/friday-tony-stark-demo` | FastMCP server + LiveKit voice pipeline (SSE) | Voice-driven compliance officer assistant; MCP tool server pattern for STR/screening queries |
+| fastapi | `vendor/fastapi` | Async Python web framework with OpenAPI | Reference for MCP server patterns + backend microservices (FastMCP is built on FastAPI) |
+| airflow | `vendor/airflow` | DAG-based workflow orchestrator | Scheduled compliance pipeline reference (CDD renewals, sanctions list refresh, KPI rollups) |
+| tooljet | `vendor/tooljet` | Low-code internal tools builder | Reference for rapid MLRO ops dashboards without hand-writing React; component library + query builder patterns |
+| xyflow | `vendor/xyflow` | React node-based flow library (formerly react-flow) | DIRECT VISUALISATION of reasoningChain DAGs in the UI; used by the NORAD war room for interactive decision-path inspection |
+| supersonic | `vendor/supersonic` | AI-native NL→SQL BI engine | Reference for extending nlComplianceQuery DSL to richer analytics; inspiration for entity→metric mapping |
+| bolt | `vendor/bolt` | JavaScript monorepo manager (archived 2019) | Reference only — archived; kept for historical monorepo workflow patterns |
+| dr-claw | `vendor/dr-claw` | OpenLAIR defensive AI tooling | Reference for defensive AI patterns; relevance TBD, added for review |
 
 ## Hooks
 
