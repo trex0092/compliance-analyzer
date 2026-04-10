@@ -2,6 +2,13 @@
   publish = "."
   command = "echo deploy-v3.0-enhancements"
 
+[build.environment]
+  # Exclude vendored third-party reference code from secrets scanning.
+  # The vendor/ tree contains read-only upstream projects (Airflow, etc.)
+  # whose test fixtures and docs include placeholder tokens like "xoxb-***"
+  # that trigger false positives. None of this code is served by the site.
+  SECRETS_SCAN_OMIT_PATHS = "vendor/**,docs/**,graphify-out/**,.agents/**,**/*.md,**/*.rst"
+
 [functions]
   directory = "netlify/functions"
 
