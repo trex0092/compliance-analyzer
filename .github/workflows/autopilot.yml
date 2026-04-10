@@ -26,6 +26,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+
+      - name: Cache autopilot runtime state
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/
+            history/
+          key: autopilot-state-${{ github.run_number }}
+          restore-keys: |
+            autopilot-state-
 
       - name: Install dependencies
         run: npm ci

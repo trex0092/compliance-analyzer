@@ -22,6 +22,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Cache ESLint + Vitest
+        uses: actions/cache@v4
+        with:
+          path: |
+            .eslintcache
+            node_modules/.vitest
+            node_modules/.cache
+          key: ${{ runner.os }}-node${{ matrix.node-version }}-tools-${{ hashFiles('package-lock.json', '.eslintrc.json', 'vitest.config.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-node${{ matrix.node-version }}-tools-
 
       - name: Install dependencies
         run: npm ci

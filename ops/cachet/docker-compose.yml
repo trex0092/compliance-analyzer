@@ -1,0 +1,69 @@
+# Cachet status page for Hawkeye Sterling / compliance-analyzer
+# Source: https://github.com/cachethq/cachet
+#
+# Usage:
+#   cp ops/cachet/.env.cachet.example ops/cachet/.env.cachet
+#   # edit secrets
+#   docker compose -f ops/cachet/docker-compose.yml --env-file ops/cachet/.env.cachet up -d
+#
+# Security notes:
+# - Never commit ops/cachet/.env.cachet. It's in .gitignore.
+# - APP_KEY must be generated: docker compose run --rm cachet php artisan key:generate --show
+# - Expose only behind a reverse proxy with TLS (Caddy/Traefik/Nginx).
+version: "3.8"
+
+services:
+  cachet:
+    image: cachethq/cachet:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_KEY: ${CACHET_APP_KEY}
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: ${CACHET_APP_URL}
+      DB_DRIVER: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: ${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      QUEUE_DRIVER: redis
+      REDIS_HOST: redis
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - cachet-net
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - cachet-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cachet-net
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - cachet-net
+
+volumes:
+  cachet-pgdata:
+
+networks:
+  cachet-net:
