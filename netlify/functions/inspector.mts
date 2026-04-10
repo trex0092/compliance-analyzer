@@ -213,15 +213,19 @@ async function fetchBrainEvents(query: QueryRequest): Promise<StoredBrainEvent[]
 // Handler
 // ---------------------------------------------------------------------------
 
-export default async function handler(req: Request, _ctx: Context): Promise<Response> {
+export default async function handler(req: Request, ctx: Context): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
-  const rate = checkRateLimit(req, 'inspector', { windowMs: 60_000, maxRequests: 20 });
-  if (!rate.ok) {
-    return jsonResponse({ error: 'rate limited' }, { status: 429 });
-  }
+  // Inspector portal — regulator-facing, sensitive. 20 req/min per IP.
+  // checkRateLimit returns a Response on breach, or null otherwise.
+  const rateLimited = await checkRateLimit(req, {
+    windowMs: 60_000,
+    max: 20,
+    clientIp: ctx.ip,
+  });
+  if (rateLimited) return rateLimited;
 
   const auth = authenticate(req);
   if (!auth.ok) return auth.response;
