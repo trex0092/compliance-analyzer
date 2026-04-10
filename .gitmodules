@@ -49,3 +49,6 @@
 [submodule "vendor/google-automl"]
 	path = vendor/google-automl
 	url = https://github.com/google/automl.git
+[submodule "vendor/friday-tony-stark-demo"]
+	path = vendor/friday-tony-stark-demo
+	url = https://github.com/SAGAR-TAMANG/friday-tony-stark-demo.git
