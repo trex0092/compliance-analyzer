@@ -16,7 +16,6 @@
 
 import type { ComplianceMCPServer, ToolCallResponse } from '../mcp-server';
 import type { SessionManager, AgentMessage } from '../session/manager';
-import type { ChainedAuditEvent } from '../../utils/auditChain';
 
 // ---------------------------------------------------------------------------
 // Agent definition

@@ -13,7 +13,7 @@
  * scoring in src/risk/scoring.ts, learning from historical decisions.
  */
 
-import type { ToolResult } from '../mcp-server';
+import type { ToolResult as _ToolResult } from '../mcp-server';
 import type { ComplianceCase } from '../../domain/cases';
 import type { CustomerProfile } from '../../domain/customers';
 import { RISK_THRESHOLDS } from '../../domain/constants';

@@ -13,9 +13,9 @@
 
 import type { ToolResult } from '../mcp-server';
 import {
-  PENALTY_RANGE,
-  RECORD_RETENTION_YEARS,
-  DPMS_CASH_THRESHOLD_AED,
+  PENALTY_RANGE as _PENALTY_RANGE,
+  RECORD_RETENTION_YEARS as _RECORD_RETENTION_YEARS,
+  DPMS_CASH_THRESHOLD_AED as _DPMS_CASH_THRESHOLD_AED,
 } from '../../domain/constants';
 
 // ---------------------------------------------------------------------------
@@ -161,8 +161,8 @@ function scoreItem(
     finding = `Item not assessed. ${def.title} status unknown — requires immediate review.`;
     remediationRequired = true;
   } else if (input.implemented) {
-    const hasEvidence = input.evidence != null && input.evidence.length > 0;
-    const hasRecentReview = input.lastReviewDate != null;
+    const hasEvidence = input.evidence !== null && input.evidence !== undefined && input.evidence.length > 0;
+    const hasRecentReview = input.lastReviewDate !== null && input.lastReviewDate !== undefined;
 
     if (hasEvidence && hasRecentReview) {
       ragStatus = 'green';
@@ -301,10 +301,10 @@ export function generateMoEReport(input: {
   // Calculate total penalty exposure
   const penaltyExposure = {
     minAED: checklist
-      .filter((i) => i.penaltyRiskAED != null)
+      .filter((i) => i.penaltyRiskAED !== null && i.penaltyRiskAED !== undefined)
       .reduce((sum, i) => sum + (i.penaltyRiskAED?.min ?? 0), 0),
     maxAED: checklist
-      .filter((i) => i.penaltyRiskAED != null)
+      .filter((i) => i.penaltyRiskAED !== null && i.penaltyRiskAED !== undefined)
       .reduce((sum, i) => sum + (i.penaltyRiskAED?.max ?? 0), 0),
   };
 

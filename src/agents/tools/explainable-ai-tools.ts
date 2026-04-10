@@ -17,7 +17,7 @@
  */
 
 import type { ToolResult } from '../mcp-server';
-import { RISK_THRESHOLDS, DPMS_CASH_THRESHOLD_AED } from '../../domain/constants';
+import { RISK_THRESHOLDS, DPMS_CASH_THRESHOLD_AED as _DPMS_CASH_THRESHOLD_AED } from '../../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,11 +101,11 @@ export function explainScreeningDecision(input: {
   const ruleEvaluations: RuleEvaluation[] = [];
   const reasoningChain: ReasoningChain[] = [];
   const counterArguments: CounterArgument[] = [];
-  let totalScore = 0;
+  let _totalScore = 0;
 
   // Factor 1: Match confidence
   const matchWeight = input.matchConfidence >= 0.9 ? 10 : input.matchConfidence >= 0.5 ? 5 : 1;
-  totalScore += matchWeight;
+  _totalScore += matchWeight;
   factors.push({
     name: 'Sanctions Match Confidence',
     value: input.matchConfidence,
@@ -118,7 +118,7 @@ export function explainScreeningDecision(input: {
 
   // Factor 2: PEP status
   if (input.pepStatus) {
-    totalScore += 4;
+    _totalScore += 4;
     factors.push({
       name: 'PEP Status',
       value: true,
@@ -132,7 +132,7 @@ export function explainScreeningDecision(input: {
 
   // Factor 3: Adverse media
   if (input.adverseMedia) {
-    totalScore += 3;
+    _totalScore += 3;
     factors.push({
       name: 'Adverse Media',
       value: true,
@@ -147,7 +147,7 @@ export function explainScreeningDecision(input: {
   // Factor 4: Jurisdiction
   const jurisdictionWeight = input.jurisdictionRisk === 'high' ? 3 : input.jurisdictionRisk === 'medium' ? 1 : 0;
   if (jurisdictionWeight > 0) {
-    totalScore += jurisdictionWeight;
+    _totalScore += jurisdictionWeight;
     factors.push({
       name: 'Jurisdiction Risk',
       value: input.jurisdictionRisk,

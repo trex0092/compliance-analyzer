@@ -74,7 +74,7 @@ export async function runIncidentAgent(
     session.addMessage(msg);
   };
 
-  const now = new Date().toISOString();
+  const _now = new Date().toISOString();
   log('system', `INCIDENT RESPONSE initiated for "${config.entityName}" — type: ${config.incidentType}`);
 
   // Step 1: Create incident case
@@ -263,7 +263,7 @@ async function handleAssetFreeze(
   countdowns: IncidentCountdown[],
   deadlineResults: ToolCallResponse[],
   escalatedTo: string[],
-  caseObj: ComplianceCase | null,
+  _caseObj: ComplianceCase | null,
 ) {
   const now = new Date();
   log('assistant', `EOCN asset freeze directive received. Executing within 24 hours.`);

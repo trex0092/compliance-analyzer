@@ -35,8 +35,8 @@ import {
   createPeriodicReviewWorkflow,
   createBatchScreeningWorkflow,
 } from './orchestration/workflows';
-import { runScreeningAgent, type ScreeningAgentConfig, type ScreeningAgentResult } from './definitions/screening-agent';
-import { runOnboardingAgent, type OnboardingAgentConfig, type OnboardingAgentResult } from './definitions/onboarding-agent';
+import { runScreeningAgent, type ScreeningAgentResult } from './definitions/screening-agent';
+import { runOnboardingAgent, type OnboardingAgentResult } from './definitions/onboarding-agent';
 import { runIncidentAgent, type IncidentAgentConfig, type IncidentAgentResult } from './definitions/incident-agent';
 import { runFilingAgent, type FilingAgentConfig, type FilingAgentResult } from './definitions/filing-agent';
 import { runAuditAgent, type AuditAgentConfig, type AuditAgentResult } from './definitions/audit-agent';

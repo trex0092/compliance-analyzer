@@ -10,12 +10,12 @@
 import type { ScreeningResult, SanctionsMatch } from '../../services/sanctionsApi';
 import type { ConsensusResult, MultiModelScreeningRequest } from '../../services/multiModelScreening';
 import type { CrossEntityReport } from '../../services/crossEntityScreening';
-import type { ScreeningRun } from '../../domain/screening';
+import type { ScreeningRun as _ScreeningRun } from '../../domain/screening';
 import type { CustomerProfile } from '../../domain/customers';
 import type { ToolResult } from '../mcp-server';
 
 import { screenEntityComprehensive, fetchAllSanctionsLists } from '../../services/sanctionsApi';
-import { runMultiModelScreening, consensusToScreeningRun } from '../../services/multiModelScreening';
+import { runMultiModelScreening, consensusToScreeningRun as _consensusToScreeningRun } from '../../services/multiModelScreening';
 import { runCrossEntityScan } from '../../services/crossEntityScreening';
 import { appendToChain, type ChainedAuditEvent } from '../../utils/auditChain';
 import { sanitizeString } from '../../utils/sanitize';

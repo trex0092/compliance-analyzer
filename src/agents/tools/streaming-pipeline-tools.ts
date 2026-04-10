@@ -13,7 +13,7 @@
  * alerts, and live dashboard updates.
  */
 
-import type { ToolResult } from '../mcp-server';
+import type { ToolResult as _ToolResult } from '../mcp-server';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -337,7 +337,7 @@ export function createComplianceHandlers(): EventHandler[] {
         const confidence = (event.data.confidence as number) ?? 0;
         if (confidence >= 0.9) {
           // In production: trigger immediate freeze
-          console.log(`[FREEZE] ${event.entityName} — confidence ${confidence}`);
+          console.warn(`[FREEZE] ${event.entityName} — confidence ${confidence}`);
         }
       },
     },
@@ -348,7 +348,7 @@ export function createComplianceHandlers(): EventHandler[] {
       handler: (event) => {
         const amount = (event.data.amount as number) ?? 0;
         if (amount >= 55_000) {
-          console.log(`[CTR REQUIRED] ${event.entityName} — AED ${amount}`);
+          console.warn(`[CTR REQUIRED] ${event.entityName} — AED ${amount}`);
         }
       },
     },
@@ -359,7 +359,7 @@ export function createComplianceHandlers(): EventHandler[] {
       handler: (event) => {
         const newScore = (event.data.newScore as number) ?? 0;
         if (newScore >= 16) {
-          console.log(`[CRITICAL RISK] ${event.entityName} — score ${newScore}`);
+          console.warn(`[CRITICAL RISK] ${event.entityName} — score ${newScore}`);
         }
       },
     },
@@ -368,7 +368,7 @@ export function createComplianceHandlers(): EventHandler[] {
       eventTypes: ['cdd-expiry'],
       priority: 3,
       handler: (event) => {
-        console.log(`[CDD EXPIRED] ${event.entityName} — review required`);
+        console.warn(`[CDD EXPIRED] ${event.entityName} — review required`);
       },
     },
   ];

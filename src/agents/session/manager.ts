@@ -15,7 +15,6 @@
 
 import { SESSION_CONFIG } from '../config';
 import {
-  createChainedEvent,
   appendToChain,
   verifyChain,
   type ChainedAuditEvent,

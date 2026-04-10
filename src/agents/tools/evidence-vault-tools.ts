@@ -15,7 +15,7 @@
  * Cabinet Res 134/2025 Art.19 (internal review)
  */
 
-import type { ToolResult } from '../mcp-server';
+import type { ToolResult as _ToolResult } from '../mcp-server';
 
 // ---------------------------------------------------------------------------
 // Types

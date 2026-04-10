@@ -15,7 +15,7 @@
 import type { ToolResult } from '../mcp-server';
 import {
   DPMS_CASH_THRESHOLD_AED,
-  RECORD_RETENTION_YEARS,
+  RECORD_RETENTION_YEARS as _RECORD_RETENTION_YEARS,
 } from '../../domain/constants';
 
 // ---------------------------------------------------------------------------
@@ -181,8 +181,8 @@ function classifySeverity(input: AnonymousTipInput): {
 
   // Contextual multipliers
   if (input.isOngoing) score += 15;
-  if (input.estimatedAmountAED != null && input.estimatedAmountAED >= DPMS_CASH_THRESHOLD_AED) score += 10; // DPMS threshold
-  if (input.estimatedAmountAED != null && input.estimatedAmountAED >= 1_000_000) score += 10;
+  if (input.estimatedAmountAED !== null && input.estimatedAmountAED !== undefined && input.estimatedAmountAED >= DPMS_CASH_THRESHOLD_AED) score += 10; // DPMS threshold
+  if (input.estimatedAmountAED !== null && input.estimatedAmountAED !== undefined && input.estimatedAmountAED >= 1_000_000) score += 10;
   if (input.involvedEmployees && input.involvedEmployees.length >= 2) score += 10;
   if (input.evidenceDescriptions && input.evidenceDescriptions.length >= 2) score += 5;
 

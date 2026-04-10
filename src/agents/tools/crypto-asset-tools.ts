@@ -16,8 +16,8 @@
 import type { ToolResult } from '../mcp-server';
 import {
   USD_TO_AED,
-  RECORD_RETENTION_YEARS,
-  DPMS_CASH_THRESHOLD_AED,
+  RECORD_RETENTION_YEARS as _RECORD_RETENTION_YEARS,
+  DPMS_CASH_THRESHOLD_AED as _DPMS_CASH_THRESHOLD_AED,
 } from '../../domain/constants';
 
 // ---------------------------------------------------------------------------

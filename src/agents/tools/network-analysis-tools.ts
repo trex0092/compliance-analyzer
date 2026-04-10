@@ -456,8 +456,8 @@ export function detectShellCompanies(graph: NetworkGraph): ShellCompanyIndicator
     if (node.type !== 'company') continue;
 
     const indicators: string[] = [];
-    const neighbors = adj.getUndirectedNeighbors(node.id);
-    const outEdges = adj.getNeighbors(node.id);
+    const _neighbors = adj.getUndirectedNeighbors(node.id);
+    const _outEdges = adj.getNeighbors(node.id);
 
     // Indicator 1: Nominee directors / no real directors
     const directorEdges = graph.edges.filter(

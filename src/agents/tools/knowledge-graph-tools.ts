@@ -17,7 +17,7 @@
  * Cabinet Res 74/2020, FATF 40 Recommendations
  */
 
-import type { ToolResult } from '../mcp-server';
+import type { ToolResult as _ToolResult } from '../mcp-server';
 
 // ---------------------------------------------------------------------------
 // Types

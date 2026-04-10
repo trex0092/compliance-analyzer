@@ -83,7 +83,7 @@ import { parseCommand } from './tools/nl-command-tools';
 import { runGeospatialAnalysis, getJurisdictionProfile } from './tools/geospatial-risk-tools';
 import { matchNameAdvanced } from './tools/sanctions-evasion-tools';
 import { analyzeDocument } from './tools/document-intelligence-tools';
-import { assessRegulatoryChange, runRegulatoryRadar } from './tools/regulatory-radar-tools';
+import { assessRegulatoryChange } from './tools/regulatory-radar-tools';
 import { parseSwiftMT103, analyzeWireChain } from './tools/swift-wire-tools';
 import { verifySupplyChain, checkLBMACompliance } from './tools/supply-chain-tools';
 import { analyzeUserBehavior } from './tools/insider-threat-tools';

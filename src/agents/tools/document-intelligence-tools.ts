@@ -151,8 +151,8 @@ export function extractAmounts(text: string): ExtractedAmount[] {
 
 export function extractDates(text: string): ExtractedDate[] {
   const patterns = [
-    { regex: /(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/g, format: 'dmy' },
-    { regex: /(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/g, format: 'ymd' },
+    { regex: /(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})/g, format: 'dmy' },
+    { regex: /(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})/g, format: 'ymd' },
     { regex: /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})/gi, format: 'dMy' },
   ];
 

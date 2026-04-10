@@ -15,7 +15,7 @@
  *   EOCN freeze → 24 clock hours
  */
 
-import type { ComplianceMCPServer, ToolCallResponse } from '../mcp-server';
+import type { ComplianceMCPServer } from '../mcp-server';
 import type { SessionManager, AgentMessage } from '../session/manager';
 import type { SuspicionReport } from '../../domain/reports';
 import type { ComplianceCase } from '../../domain/cases';

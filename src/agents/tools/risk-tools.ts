@@ -19,7 +19,7 @@ import {
   type TMConfig,
 } from '../../risk/transactionMonitoring';
 import { runPFScreening, type PFScreeningInput, type PFAlert } from '../../risk/pfMonitoring';
-import { TransactionMonitoringEngine } from '../../services/transactionMonitoringEngine';
+import { TransactionMonitoringEngine as _TransactionMonitoringEngine } from '../../services/transactionMonitoringEngine';
 import { appendToChain, type ChainedAuditEvent } from '../../utils/auditChain';
 import { RISK_THRESHOLDS } from '../../domain/constants';
 

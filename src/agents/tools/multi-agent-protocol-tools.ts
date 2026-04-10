@@ -13,7 +13,7 @@
  * can tackle complex compliance investigations together.
  */
 
-import type { ToolResult } from '../mcp-server';
+import type { ToolResult as _ToolResult } from '../mcp-server';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -159,7 +159,7 @@ export class AgentCollaborationHub {
   }
 
   /** Get messages for an agent */
-  getMessages(agentId: string, unreadOnly = false): InterAgentMessage[] {
+  getMessages(agentId: string, _unreadOnly = false): InterAgentMessage[] {
     return this.messages.filter(
       (m) => (m.to === agentId || m.to === 'broadcast') && m.from !== agentId,
     );
