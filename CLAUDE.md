@@ -277,25 +277,71 @@ The following multi-agent frameworks are vendored for reference and integration 
 Workflow rules for operating Claude Code effectively on this project.
 Complements the "Token-Efficient Workflow" section at the top.
 
-## 1. Model Routing: Worker + Advisor
+## 1. Model Routing: Worker + Advisor (Anthropic Advisor Strategy)
 
-Run a two-tier setup so you only pay Opus rates when you actually need them.
-Both models share the same conversation memory — the advisor reads everything
-the worker has already done, no re-explaining needed.
+Pair a fast executor model with a higher-intelligence advisor model.
+This project implements the pattern from Anthropic's engineering post
+[The advisor strategy: Give Sonnet an intelligence boost with Opus](https://claude.com/blog/the-advisor-strategy)
+and the formal API reference at
+[platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool).
 
-- **Worker (Sonnet or Haiku)** — runs every step. Handles routine work:
-  targeted file edits, lint/type fixes, test runs, renames, doc updates,
-  single-file refactors, dependency bumps.
-- **Advisor (Opus)** — called only for hard tasks. Escalate to Opus when:
-  - The change touches `src/domain/constants.ts` (regulatory values).
-  - Threshold logic is involved (AED 55K CTR, AED 60K cross-border, 25% UBO, 24h freeze).
-  - Sanctions match confidence or STR/CNMR/EOCN workflow decisions are in play.
-  - The blast radius from `get_impact_radius` spans >5 files or crosses domain boundaries.
-  - You're debugging a subtle bug the worker has already failed on once.
-  - The ask is architectural ("should we use handoffs or a DAG here?").
+**How it works at the API level (not just prompting):**
+- Beta header: `anthropic-beta: advisor-tool-2026-03-01`
+- Tool type:   `advisor_20260301`
+- Valid pairs: `claude-sonnet-4-6 → claude-opus-4-6`,
+               `claude-haiku-4-5-20251001 → claude-opus-4-6`,
+               `claude-opus-4-6 → claude-opus-4-6`
+- The executor model runs the task. When it calls the advisor tool,
+  Anthropic runs a **server-side sub-inference** on the advisor model
+  with the full transcript, returns ~400-700 text tokens of advice
+  back to the executor, and the executor continues. All in a single
+  `/v1/messages` request — no client round-trips.
 
-Rule of thumb: ~80% of runs stay on Sonnet. Opus fires for the tough calls
-only — see `vendor/wshobson-agents` for the model-tiering reference pattern.
+**Project plumbing (live on `main` as of this commit):**
+- **`src/services/advisorStrategy.ts`** — browser-safe TypeScript
+  module that builds advisor-enabled API request bodies, validates
+  executor/advisor pairs locally (fail-fast before the round trip),
+  and parses the response. Exposes `buildAdvisorRequest()`,
+  `parseAdvisorResponse()`, `callAdvisorAssisted()`.
+- **`netlify/functions/ai-proxy.mts`** — forwards allowlisted betas
+  (currently only `advisor-tool-2026-03-01`) as the `anthropic-beta`
+  header. Anything not in the allowlist is silently dropped.
+- **`COMPLIANCE_ADVISOR_SYSTEM_PROMPT`** — exported from
+  `advisorStrategy.ts`. Adapts Anthropic's suggested timing block
+  verbatim and adds six mandatory compliance escalation triggers.
+
+**Compliance escalation triggers (hard-coded into the system prompt):**
+1. Sanctions match confidence ≥ 0.5 (FDL Art.20, Cabinet Res 74/2020 Art.4-7)
+2. Threshold edge cases (AED 55K CTR, AED 60K cross-border, 25% UBO)
+3. STR / SAR / CTR / DPMSR / CNMR narrative drafting (FDL Art.26-27)
+4. Verdicts of "freeze" or "escalate"
+5. CDD level changes (SDD → CDD → EDD)
+6. Any decision visible to the subject — never tip off (FDL Art.29)
+
+**Who runs what, in practice:**
+- **Executor (Sonnet 4.6 or Haiku 4.5)** — runs every step. Handles
+  targeted file edits, lint/type fixes, test runs, renames, doc
+  updates, single-file refactors, dependency bumps.
+- **Advisor (Opus 4.6)** — called automatically by the executor when
+  one of the six triggers fires, or when the executor is stuck. Never
+  calls tools and never produces user-facing output — it only returns
+  advice text (under 100 words, enumerated steps per the conciseness
+  directive that cuts advisor output by 35-45%).
+
+**Composition with the Weaponized Brain:**
+The compliance decision path layers on top of this:
+`src/services/weaponizedBrain.ts` calls `runMegaBrain()` (13 subsystems)
+and then wires in 6 more (adverse media, UBO + layering + shell
+company, VASP wallets, transaction anomalies, explainable scoring,
+zk-proof audit seal) plus new safety clamps. The *reasoning* about
+edge cases in those subsystems is where the advisor strategy adds the
+most value — the mechanical subsystem calls stay on Sonnet, but the
+MLRO-facing verdict rationale can escalate to Opus when confidence is
+low or a clamp fires.
+
+Rule of thumb: ~80% of runs stay on Sonnet. Opus fires for the tough
+calls only — see `vendor/wshobson-agents` for the model-tiering
+reference pattern.
 
 ## 2. Subagents for Side Tasks
 
