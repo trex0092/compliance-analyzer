@@ -24,7 +24,15 @@
 // ---------------------------------------------------------------------------
 
 export interface SearchPromptOptions {
-  /** ISO date; results before this are excluded. Default: 3 years ago. */
+  /**
+   * ISO date; results before this are excluded. Default: 30 days ago.
+   *
+   * The 30-day default is tuned for ONGOING MONITORING where you're
+   * checking the same subject repeatedly and only care about what's new.
+   * Older adverse media was already seen on prior runs. For a one-shot
+   * historical onboarding screen, pass a longer window explicitly
+   * (e.g. `sinceDate: '2023-01-01'` for a 3-year look).
+   */
   sinceDate?: string;
   /** Language hint for the search engine. */
   language?: 'en' | 'ar' | 'fa' | 'ur' | 'hi' | 'zh';
@@ -189,7 +197,8 @@ const DEFAULT_NEGATIVE_EXCLUSIONS = [
  *     — flattened to save URL chars; semantically equivalent to nested
  *     OR groupings since OR is associative)
  *   - Default negative exclusions filter out sports/entertainment noise
- *   - Date filter caps the search window (default 3 years)
+ *   - Date filter caps the search window (default 30 days — tuned for
+ *     ongoing monitoring; pass `sinceDate` for historical screens)
  *
  * Length budget: the URL-encoded result stays under Google CSE's ~2048
  * char limit for typical subject names (under 30 chars). For longer
@@ -204,8 +213,13 @@ export function buildAdverseMediaQuery(subject: string, options: SearchPromptOpt
   const sinceDate =
     options.sinceDate ??
     (() => {
+      // Default 30-day lookback — tuned for ongoing monitoring where
+      // the same subject is checked repeatedly and only new news matters.
+      // Older hits were already seen on prior runs. Callers doing a
+      // one-shot historical onboarding screen should pass sinceDate
+      // explicitly (e.g. '2023-01-01' for a 3-year look).
       const d = new Date();
-      d.setFullYear(d.getFullYear() - 3);
+      d.setDate(d.getDate() - 30);
       return d.toISOString().slice(0, 10);
     })();
 
