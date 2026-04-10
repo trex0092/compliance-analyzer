@@ -52,3 +52,24 @@
 [submodule "vendor/friday-tony-stark-demo"]
 	path = vendor/friday-tony-stark-demo
 	url = https://github.com/SAGAR-TAMANG/friday-tony-stark-demo.git
+[submodule "vendor/xyflow"]
+	path = vendor/xyflow
+	url = https://github.com/xyflow/xyflow.git
+[submodule "vendor/dr-claw"]
+	path = vendor/dr-claw
+	url = https://github.com/OpenLAIR/dr-claw.git
+[submodule "vendor/bolt"]
+	path = vendor/bolt
+	url = https://github.com/boltpkg/bolt.git
+[submodule "vendor/fastapi"]
+	path = vendor/fastapi
+	url = https://github.com/fastapi/fastapi.git
+[submodule "vendor/supersonic"]
+	path = vendor/supersonic
+	url = https://github.com/tencentmusic/supersonic.git
+[submodule "vendor/tooljet"]
+	path = vendor/tooljet
+	url = https://github.com/ToolJet/ToolJet.git
+[submodule "vendor/airflow"]
+	path = vendor/airflow
+	url = https://github.com/apache/airflow.git
