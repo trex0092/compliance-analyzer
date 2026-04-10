@@ -155,3 +155,87 @@ export async function notifyBrainBlocking(event: BrainEvent): Promise<BrainRespo
 
 /** Exposed for tests and for runtime injection into `global.*` in compliance-suite.js. */
 export const __brain = { clean, sanitize };
+
+// ---------------------------------------------------------------------------
+// MEGA SUPER INTELLIGENCE BRAIN — weaponized runtime bridge
+// ---------------------------------------------------------------------------
+//
+// The mega brain runs ENTIRELY browser-side (it's pure TS with no
+// network calls) and then fires a single summarising event at the
+// serverless brain endpoint for persistence + cachet publishing. This
+// is the "weaponized" entry point that the autopilot, the UI, and the
+// voice brain all call to get a complete multi-subsystem verdict.
+import { runMegaBrain, type MegaBrainRequest, type MegaBrainResponse } from './megaBrain';
+
+export function assessWithMegaBrain(req: MegaBrainRequest): MegaBrainResponse {
+  return runMegaBrain(req);
+}
+
+/**
+ * Run the mega brain AND notify the serverless brain endpoint with a
+ * summarised event reflecting the verdict. Returns the full mega brain
+ * response locally so the caller can render the reasoning chain and
+ * subsystem reports immediately.
+ */
+export async function weaponizeMegaAssessment(
+  req: MegaBrainRequest,
+  options: { blocking?: boolean } = {}
+): Promise<MegaBrainResponse> {
+  const result = runMegaBrain(req);
+
+  const bridgeEvent: BrainEvent = {
+    kind: megaVerdictToBridgeKind(result.verdict),
+    severity: megaVerdictToBridgeSeverity(result.verdict),
+    summary:
+      `MegaBrain: ${req.entity.name} → ${result.verdict} (${result.recommendedAction})`.slice(
+        0,
+        CAP_SUMMARY
+      ),
+    subject: req.entity.name.slice(0, CAP_SUBJECT),
+    refId: req.entity.id.slice(0, CAP_REFID),
+    meta: {
+      confidence: result.confidence,
+      requiresHumanReview: result.requiresHumanReview,
+      strProbability: result.subsystems.strPrediction.probability,
+      reflectionConfidence: result.subsystems.reflection.confidence,
+      chainId: result.chain.id,
+      topic: result.topic,
+    },
+  };
+
+  if (options.blocking) {
+    await notifyBrainBlocking(bridgeEvent);
+  } else {
+    notifyBrain(bridgeEvent);
+  }
+
+  return result;
+}
+
+function megaVerdictToBridgeKind(verdict: MegaBrainResponse['verdict']): BrainEventKind {
+  switch (verdict) {
+    case 'freeze':
+      return 'sanctions_match';
+    case 'escalate':
+      return 'str_saved';
+    case 'flag':
+      return 'manual';
+    case 'pass':
+    default:
+      return 'manual';
+  }
+}
+
+function megaVerdictToBridgeSeverity(verdict: MegaBrainResponse['verdict']): BrainSeverity {
+  switch (verdict) {
+    case 'freeze':
+      return 'critical';
+    case 'escalate':
+      return 'high';
+    case 'flag':
+      return 'medium';
+    case 'pass':
+    default:
+      return 'info';
+  }
+}
