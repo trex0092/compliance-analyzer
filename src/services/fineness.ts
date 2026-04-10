@@ -104,7 +104,9 @@ export function finenessToKarat(fineness: number): KaratLabel | null {
 /** Weight of pure metal in a mixed-fineness piece. */
 export function pureWeight(grossGrams: number, fineness: number): number {
   if (grossGrams < 0 || fineness < 0 || fineness > 1000) {
-    throw new RangeError('pureWeight: gross grams and fineness must be non-negative, fineness ≤ 1000');
+    throw new RangeError(
+      'pureWeight: gross grams and fineness must be non-negative, fineness ≤ 1000'
+    );
   }
   return (grossGrams * fineness) / 1000;
 }
@@ -122,10 +124,34 @@ export interface GoodDeliverySpec {
 }
 
 export const GOOD_DELIVERY_SPECS: Record<Metal, GoodDeliverySpec> = {
-  gold: { metal: 'gold', minFineness: 995, minWeightTroyOz: 350, maxWeightTroyOz: 430, tolerancePpt: 0.5 },
-  silver: { metal: 'silver', minFineness: 999, minWeightTroyOz: 750, maxWeightTroyOz: 1100, tolerancePpt: 0.5 },
-  platinum: { metal: 'platinum', minFineness: 999.5, minWeightTroyOz: 32, maxWeightTroyOz: 192, tolerancePpt: 0.5 },
-  palladium: { metal: 'palladium', minFineness: 999.5, minWeightTroyOz: 32, maxWeightTroyOz: 192, tolerancePpt: 0.5 },
+  gold: {
+    metal: 'gold',
+    minFineness: 995,
+    minWeightTroyOz: 350,
+    maxWeightTroyOz: 430,
+    tolerancePpt: 0.5,
+  },
+  silver: {
+    metal: 'silver',
+    minFineness: 999,
+    minWeightTroyOz: 750,
+    maxWeightTroyOz: 1100,
+    tolerancePpt: 0.5,
+  },
+  platinum: {
+    metal: 'platinum',
+    minFineness: 999.5,
+    minWeightTroyOz: 32,
+    maxWeightTroyOz: 192,
+    tolerancePpt: 0.5,
+  },
+  palladium: {
+    metal: 'palladium',
+    minFineness: 999.5,
+    minWeightTroyOz: 32,
+    maxWeightTroyOz: 192,
+    tolerancePpt: 0.5,
+  },
 };
 
 const GRAMS_PER_TROY_OZ = 31.1034768;
@@ -145,7 +171,7 @@ export function troyOzToGrams(troyOz: number): number {
 export function validateGoodDelivery(
   metal: Metal,
   fineness: number,
-  weightGrams: number,
+  weightGrams: number
 ): FinenessValidation {
   const spec = GOOD_DELIVERY_SPECS[metal];
   const errors: string[] = [];
@@ -153,26 +179,26 @@ export function validateGoodDelivery(
 
   if (fineness < spec.minFineness) {
     errors.push(
-      `Fineness ${fineness} below LBMA Good Delivery minimum ${spec.minFineness} for ${metal}`,
+      `Fineness ${fineness} below LBMA Good Delivery minimum ${spec.minFineness} for ${metal}`
     );
   }
 
   const troyOz = gramsToTroyOz(weightGrams);
   if (troyOz < spec.minWeightTroyOz) {
     errors.push(
-      `Weight ${troyOz.toFixed(2)} troy oz below minimum ${spec.minWeightTroyOz} for ${metal}`,
+      `Weight ${troyOz.toFixed(2)} troy oz below minimum ${spec.minWeightTroyOz} for ${metal}`
     );
   }
   if (troyOz > spec.maxWeightTroyOz) {
     errors.push(
-      `Weight ${troyOz.toFixed(2)} troy oz above maximum ${spec.maxWeightTroyOz} for ${metal}`,
+      `Weight ${troyOz.toFixed(2)} troy oz above maximum ${spec.maxWeightTroyOz} for ${metal}`
     );
   }
 
   // Warning zones — 1 ppt below spec is a rounding boundary
   if (fineness >= spec.minFineness - 1 && fineness < spec.minFineness) {
     warnings.push(
-      `Fineness ${fineness} is within 1 ppt of the Good Delivery floor; verify assay method`,
+      `Fineness ${fineness} is within 1 ppt of the Good Delivery floor; verify assay method`
     );
   }
 
@@ -194,10 +220,7 @@ export function validateGoodDelivery(
  * discrepancies beyond normal measurement tolerance and checks the
  * assayer credentials.
  */
-export function validateAssay(
-  cert: AssayCertificate,
-  metal: Metal = 'gold',
-): FinenessValidation {
+export function validateAssay(cert: AssayCertificate, metal: Metal = 'gold'): FinenessValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -217,11 +240,11 @@ export function validateAssay(
   if (Math.abs(diffPpt) > tolerance) {
     if (diffPpt > 0) {
       errors.push(
-        `Measured fineness is ${diffPpt.toFixed(1)} ppt BELOW declared — possible fraud or impurity`,
+        `Measured fineness is ${diffPpt.toFixed(1)} ppt BELOW declared — possible fraud or impurity`
       );
     } else {
       warnings.push(
-        `Measured fineness is ${Math.abs(diffPpt).toFixed(1)} ppt ABOVE declared — unusual but not adverse`,
+        `Measured fineness is ${Math.abs(diffPpt).toFixed(1)} ppt ABOVE declared — unusual but not adverse`
       );
     }
   }

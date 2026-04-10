@@ -156,11 +156,7 @@ export function generateScenarios(seed: number, count: number): RedTeamScenario[
   return out;
 }
 
-function buildScenario(
-  id: string,
-  kind: ScenarioKind,
-  rand: () => number,
-): RedTeamScenario {
+function buildScenario(id: string, kind: ScenarioKind, rand: () => number): RedTeamScenario {
   switch (kind) {
     case 'name_obfuscation': {
       const base = NAME_POOL[Math.floor(rand() * NAME_POOL.length)];
@@ -178,9 +174,7 @@ function buildScenario(
     }
     case 'structuring': {
       const count = 3 + Math.floor(rand() * 4);
-      const amounts = Array.from({ length: count }, () =>
-        Math.round(40_000 + rand() * 14_000),
-      );
+      const amounts = Array.from({ length: count }, () => Math.round(40_000 + rand() * 14_000));
       return {
         id,
         kind,
@@ -301,7 +295,7 @@ function buildScenario(
 
 export async function runRedTeam(
   scenarios: readonly RedTeamScenario[],
-  detector: Detector,
+  detector: Detector
 ): Promise<RedTeamReport> {
   const runs: ScenarioRun[] = [];
   const chain = createChain('red-team-run');
@@ -376,7 +370,7 @@ export async function runRedTeam(
 
 function verdictMeetsExpectation(
   actual: DetectorResult['verdict'],
-  expected: RedTeamScenario['expected'],
+  expected: RedTeamScenario['expected']
 ): boolean {
   // Detection severity ordering — a stronger verdict than expected still counts.
   const rank = { pass: 0, flag: 1, escalate: 2, freeze: 3 } as const;

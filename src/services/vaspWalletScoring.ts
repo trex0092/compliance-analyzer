@@ -29,14 +29,7 @@
 // Address normalisation
 // ---------------------------------------------------------------------------
 
-export type Chain =
-  | 'BTC'
-  | 'ETH'
-  | 'USDT_ERC20'
-  | 'TRX'
-  | 'USDT_TRC20'
-  | 'BNB'
-  | 'UNKNOWN';
+export type Chain = 'BTC' | 'ETH' | 'USDT_ERC20' | 'TRX' | 'USDT_TRC20' | 'BNB' | 'UNKNOWN';
 
 export function detectChain(address: string): Chain {
   const a = address.trim();
@@ -103,7 +96,7 @@ export function addWallet(db: WalletDatabase, record: WalletRecord): void {
 export function lookupWallet(
   db: WalletDatabase,
   address: string,
-  chain?: Chain,
+  chain?: Chain
 ): WalletRecord | null {
   const c = chain ?? detectChain(address);
   const key = `${c}|${normaliseAddress(address, c)}`;
@@ -140,10 +133,7 @@ const TAG_WEIGHTS: Record<WalletTag, number> = {
   exchange: 10,
 };
 
-export function scoreWallet(
-  db: WalletDatabase,
-  address: string,
-): WalletRiskAssessment {
+export function scoreWallet(db: WalletDatabase, address: string): WalletRiskAssessment {
   const chain = detectChain(address);
   const record = lookupWallet(db, address, chain);
 
@@ -203,7 +193,7 @@ export function scoreWallet(
 
 export function scoreWallets(
   db: WalletDatabase,
-  addresses: readonly string[],
+  addresses: readonly string[]
 ): WalletRiskAssessment[] {
   return addresses.map((a) => scoreWallet(db, a));
 }
@@ -223,7 +213,7 @@ export interface PortfolioWalletRisk {
 
 export function summarisePortfolioWallets(
   db: WalletDatabase,
-  addresses: readonly string[],
+  addresses: readonly string[]
 ): PortfolioWalletRisk {
   const assessments = scoreWallets(db, addresses);
   const summary: PortfolioWalletRisk = {

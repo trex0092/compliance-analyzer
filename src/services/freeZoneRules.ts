@@ -100,8 +100,7 @@ export const FREE_ZONE_RULES: FreeZoneRule[] = [
     freeZone: 'DMCC',
     category: 'kyc',
     title: 'DMCC-specific KYC — supplier SAQ retention',
-    description:
-      'Supplier Self-Assessment Questionnaires must be retained for minimum 5 years.',
+    description: 'Supplier Self-Assessment Questionnaires must be retained for minimum 5 years.',
     severity: 'mandatory',
     source: 'DMCC Member Rules §6.3',
     checker: 'retainsSupplierSaq',

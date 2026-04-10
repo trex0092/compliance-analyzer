@@ -90,7 +90,7 @@ export class InspectorPortal {
     inspectorName: string,
     authority: InspectorSession['authority'],
     scopes: readonly InspectorScope[],
-    ttlMinutes = 120,
+    ttlMinutes = 120
   ): InspectorSession {
     const nowDate = this.now();
     const sessionId = `ins-${nowDate.getTime()}-${Math.random().toString(36).slice(2, 10)}`;

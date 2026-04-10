@@ -104,7 +104,7 @@ function majorityLabel(samples: readonly LabeledSample[]): {
 
 export function learnDecisionTree(
   samples: readonly LabeledSample[],
-  config: InductionConfig = {},
+  config: InductionConfig = {}
 ): TreeNode {
   const maxDepth = config.maxDepth ?? 5;
   const minSamples = config.minSamples ?? 2;
@@ -115,7 +115,7 @@ function build(
   samples: readonly LabeledSample[],
   depth: number,
   maxDepth: number,
-  minSamples: number,
+  minSamples: number
 ): TreeNode {
   const majority = majorityLabel(samples);
   if (
@@ -133,9 +133,7 @@ function build(
   }
 
   // Try each feature; pick the one with the highest information gain.
-  const features = Array.from(
-    new Set(samples.flatMap((s) => Object.keys(s.features))),
-  );
+  const features = Array.from(new Set(samples.flatMap((s) => Object.keys(s.features))));
   const baseEntropy = entropy(samples);
   let bestFeature: string | null = null;
   let bestGain = 0;
@@ -221,8 +219,6 @@ export function formatRule(rule: LearnedRule): string {
   if (rule.conditions.length === 0) {
     return `ALWAYS → ${rule.label} (support=${rule.support}, purity=${(rule.purity * 100).toFixed(0)}%)`;
   }
-  const conds = rule.conditions
-    .map((c) => `${c.feature}=${c.value}`)
-    .join(' AND ');
+  const conds = rule.conditions.map((c) => `${c.feature}=${c.value}`).join(' AND ');
   return `IF ${conds} THEN ${rule.label} (support=${rule.support}, purity=${(rule.purity * 100).toFixed(0)}%)`;
 }

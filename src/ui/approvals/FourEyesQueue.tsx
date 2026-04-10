@@ -77,17 +77,22 @@ function getAuthToken(): string | null {
 
 function severityBadgeClass(sev: BrainEventView['severity']): string {
   switch (sev) {
-    case 'critical': return 'badge badge-critical';
-    case 'high':     return 'badge badge-high';
-    case 'medium':   return 'badge badge-medium';
-    case 'low':      return 'badge badge-low';
-    default:         return 'badge badge-info';
+    case 'critical':
+      return 'badge badge-critical';
+    case 'high':
+      return 'badge badge-high';
+    case 'medium':
+      return 'badge badge-medium';
+    case 'low':
+      return 'badge badge-low';
+    default:
+      return 'badge badge-info';
   }
 }
 
 async function apiFetch<T>(
   path: string,
-  init: RequestInit = {},
+  init: RequestInit = {}
 ): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   const token = getAuthToken();
   if (!token) return { ok: false, error: 'no_auth_token' };
@@ -173,7 +178,7 @@ export function FourEyesQueue(): ReactElement {
         });
       }
     },
-    [actor, load],
+    [actor, load]
   );
 
   return (
@@ -181,8 +186,8 @@ export function FourEyesQueue(): ReactElement {
       <header className="four-eyes-header">
         <h2>Four-Eyes Approval Queue</h2>
         <p className="subtle">
-          Every high / critical / sanctions decision requires two independent
-          approvers. You are signed in as <code>{actor ?? '—'}</code>.
+          Every high / critical / sanctions decision requires two independent approvers. You are
+          signed in as <code>{actor ?? '—'}</code>.
         </p>
         <button type="button" onClick={() => void load()} disabled={loading}>
           {loading ? 'Refreshing…' : 'Refresh'}
@@ -196,9 +201,7 @@ export function FourEyesQueue(): ReactElement {
       )}
 
       {!loading && items.length === 0 && (
-        <p className="empty">
-          No pending approvals. All brain-escalated events are cleared.
-        </p>
+        <p className="empty">No pending approvals. All brain-escalated events are cleared.</p>
       )}
 
       <ul className="queue-list">
@@ -266,9 +269,7 @@ export function FourEyesQueue(): ReactElement {
                   ))
                 )}
                 {approversNeeded > 0 && (
-                  <span className="needed">
-                    &nbsp;— {approversNeeded} more needed
-                  </span>
+                  <span className="needed">&nbsp;— {approversNeeded} more needed</span>
                 )}
               </div>
 
@@ -279,11 +280,7 @@ export function FourEyesQueue(): ReactElement {
                   disabled={busy || selfApproved}
                   aria-disabled={busy || selfApproved}
                   onClick={() => void act(item, 'approve')}
-                  title={
-                    selfApproved
-                      ? 'You have already approved this item'
-                      : 'Approve this item'
-                  }
+                  title={selfApproved ? 'You have already approved this item' : 'Approve this item'}
                 >
                   {selfApproved ? 'Approved by you' : busy ? 'Approving…' : 'Approve'}
                 </button>
@@ -292,9 +289,7 @@ export function FourEyesQueue(): ReactElement {
                   className="reject"
                   disabled={busy}
                   onClick={() => {
-                    const note = window.prompt(
-                      'Reason for rejection (audit log):',
-                    );
+                    const note = window.prompt('Reason for rejection (audit log):');
                     if (note !== null) void act(item, 'reject', note || undefined);
                   }}
                 >

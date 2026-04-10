@@ -9,12 +9,7 @@
  */
 
 import type { ToolResult } from '../mcp-server';
-import type {
-  ComplianceCase,
-  CaseType,
-  CaseStatus,
-  AuditAction,
-} from '../../domain/cases';
+import type { ComplianceCase, CaseType, CaseStatus, AuditAction } from '../../domain/cases';
 import type { CustomerProfile } from '../../domain/customers';
 import type { ApprovalRequest } from '../../domain/approvals';
 import type { RenewalScanResult } from '../../services/cddRenewalEngine';
@@ -49,7 +44,7 @@ export interface CreateCaseInput {
 export async function createCase(
   input: CreateCaseInput,
   auditChain: ChainedAuditEvent[],
-  analyst: string,
+  analyst: string
 ): Promise<ToolResult<ComplianceCase>> {
   const now = new Date().toISOString();
   const caseObj: ComplianceCase = {
@@ -104,7 +99,7 @@ export interface UpdateCaseStatusInput {
 export async function updateCaseStatus(
   input: UpdateCaseStatusInput,
   auditChain: ChainedAuditEvent[],
-  analyst: string,
+  analyst: string
 ): Promise<ToolResult<ComplianceCase>> {
   const now = new Date().toISOString();
   const updated: ComplianceCase = {
@@ -142,7 +137,7 @@ export async function updateCaseStatus(
 
 export function checkApprovals(
   caseObj: ComplianceCase,
-  existingApprovals: ApprovalRequest[],
+  existingApprovals: ApprovalRequest[]
 ): ToolResult<{
   requiredGates: ApprovalGate[];
   canProceed: boolean;
@@ -173,7 +168,7 @@ export interface RequestApprovalInput {
 export async function requestApproval(
   input: RequestApprovalInput,
   auditChain: ChainedAuditEvent[],
-  analyst: string,
+  analyst: string
 ): Promise<ToolResult<ApprovalRequest>> {
   const approval = createApprovalRequest(input.caseId, input.gate, analyst);
 
@@ -196,7 +191,7 @@ export async function scanCDDRenewals(
   customers: CustomerProfile[],
   existingTasks?: RenewalTask[],
   auditChain?: ChainedAuditEvent[],
-  analyst?: string,
+  analyst?: string
 ): Promise<ToolResult<RenewalScanResult>> {
   const result = scanForRenewals(customers, existingTasks);
 
@@ -230,9 +225,18 @@ export const CASE_TOOL_SCHEMAS = [
         caseType: {
           type: 'string',
           enum: [
-            'onboarding', 'transaction-monitoring', 'screening-hit', 'sanctions-hit',
-            'periodic-review', 'sourcing-review', 'incident', 'regulatory-breach',
-            'pf-screening', 'adverse-media', 'third-party-payment', 'customer-exit',
+            'onboarding',
+            'transaction-monitoring',
+            'screening-hit',
+            'sanctions-hit',
+            'periodic-review',
+            'sourcing-review',
+            'incident',
+            'regulatory-breach',
+            'pf-screening',
+            'adverse-media',
+            'third-party-payment',
+            'customer-exit',
           ],
         },
         sourceModule: { type: 'string' },
@@ -245,7 +249,17 @@ export const CASE_TOOL_SCHEMAS = [
         assignedTo: { type: 'string' },
         linkedCustomerId: { type: 'string' },
       },
-      required: ['entityId', 'caseType', 'sourceModule', 'riskScore', 'riskLevel', 'redFlags', 'findings', 'narrative', 'recommendation'],
+      required: [
+        'entityId',
+        'caseType',
+        'sourceModule',
+        'riskScore',
+        'riskLevel',
+        'redFlags',
+        'findings',
+        'narrative',
+        'recommendation',
+      ],
     },
   },
   {
@@ -256,7 +270,19 @@ export const CASE_TOOL_SCHEMAS = [
       type: 'object',
       properties: {
         caseObj: { type: 'object', description: 'Full ComplianceCase object' },
-        newStatus: { type: 'string', enum: ['open', 'under-review', 'pending-info', 'escalated', 'approved', 'reported', 'closed', 'rejected'] },
+        newStatus: {
+          type: 'string',
+          enum: [
+            'open',
+            'under-review',
+            'pending-info',
+            'escalated',
+            'approved',
+            'reported',
+            'closed',
+            'rejected',
+          ],
+        },
         note: { type: 'string' },
       },
       required: ['caseObj', 'newStatus'],
@@ -286,9 +312,16 @@ export const CASE_TOOL_SCHEMAS = [
         gate: {
           type: 'string',
           enum: [
-            'pep-onboarding', 'high-risk-onboarding', 'edd-continuation', 'str-approval',
-            'sar-approval', 'ctr-approval', 'policy-exception', 'asset-freeze',
-            'customer-exit', 'pf-escalation',
+            'pep-onboarding',
+            'high-risk-onboarding',
+            'edd-continuation',
+            'str-approval',
+            'sar-approval',
+            'ctr-approval',
+            'policy-exception',
+            'asset-freeze',
+            'customer-exit',
+            'pf-escalation',
           ],
         },
       },

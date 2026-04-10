@@ -52,7 +52,7 @@ export type EdgeKind = 'owns' | 'controls' | 'directs';
 
 export interface UboEdge {
   from: string; // node id (the parent / shareholder)
-  to: string;   // node id (the subsidiary / owned entity)
+  to: string; // node id (the subsidiary / owned entity)
   kind: EdgeKind;
   /** Percentage for `owns` edges; 0 for `controls` and `directs`. */
   percentage: number;
@@ -124,7 +124,7 @@ export function addEdge(graph: UboGraph, edge: UboEdge): void {
 export function effectiveOwnersOf(
   graph: UboGraph,
   targetId: string,
-  threshold = 25,
+  threshold = 25
 ): EffectiveOwner[] {
   if (!graph.nodes.has(targetId)) {
     throw new Error(`effectiveOwnersOf: unknown target ${targetId}`);
@@ -189,11 +189,7 @@ export function effectiveOwnersOf(
 }
 
 /** Convenience: only natural persons with ≥ threshold% effective ownership. */
-export function ubosOf(
-  graph: UboGraph,
-  targetId: string,
-  threshold = 25,
-): EffectiveOwner[] {
+export function ubosOf(graph: UboGraph, targetId: string, threshold = 25): EffectiveOwner[] {
   return effectiveOwnersOf(graph, targetId, threshold).filter((o) => o.isUBO);
 }
 
@@ -212,7 +208,7 @@ export function ubosOf(
 export function sanctionsProximity(
   graph: UboGraph,
   targetId: string,
-  maxHops = 5,
+  maxHops = 5
 ): SanctionsProximity {
   const target = graph.nodes.get(targetId);
   if (!target) {
@@ -290,7 +286,7 @@ export interface UboRiskSummary {
 export function summariseUboRisk(
   graph: UboGraph,
   targetId: string,
-  threshold = 25,
+  threshold = 25
 ): UboRiskSummary {
   const target = graph.nodes.get(targetId);
   if (!target) {

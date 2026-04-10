@@ -24,7 +24,7 @@ import { runAuditAgent } from '../definitions/audit-agent';
 
 export function createOnboardingWorkflow(
   customer: CustomerProfile,
-  redFlagCodes?: string[],
+  redFlagCodes?: string[]
 ): WorkflowDefinition {
   return {
     id: `wf-onboard-${customer.id}-${Date.now()}`,
@@ -47,7 +47,7 @@ export function createOnboardingWorkflow(
               },
             },
             ctx.server,
-            ctx.session,
+            ctx.session
           );
           ctx.workflowData.onboardingResult = result;
           return {
@@ -77,7 +77,7 @@ export function createOnboardingWorkflow(
               matchConfidence: 1.0,
             },
             ctx.server,
-            ctx.session,
+            ctx.session
           );
           return {
             stepId: 'incident-if-blocked',
@@ -97,15 +97,20 @@ export function createOnboardingWorkflow(
           return r?.blocked !== true;
         },
         execute: async (ctx: StepContext): Promise<StepResult> => {
-          const r = ctx.workflowData.onboardingResult as { nextReviewDate: string; cddTier: string };
+          const r = ctx.workflowData.onboardingResult as {
+            nextReviewDate: string;
+            cddTier: string;
+          };
           const result = await ctx.server.callTool({
             name: 'scan_cdd_renewals',
             arguments: {
-              customers: [{
-                ...customer,
-                nextCDDReviewDate: r.nextReviewDate,
-                riskRating: r.cddTier === 'EDD' ? 'high' : r.cddTier === 'CDD' ? 'medium' : 'low',
-              }],
+              customers: [
+                {
+                  ...customer,
+                  nextCDDReviewDate: r.nextReviewDate,
+                  riskRating: r.cddTier === 'EDD' ? 'high' : r.cddTier === 'CDD' ? 'medium' : 'low',
+                },
+              ],
             },
           });
           return {
@@ -129,7 +134,7 @@ export function createIncidentWithFilingWorkflow(
   entityId: string,
   entityName: string,
   incidentType: 'sanctions-match' | 'str-trigger',
-  report?: SuspicionReport,
+  report?: SuspicionReport
 ): WorkflowDefinition {
   return {
     id: `wf-incident-${entityId}-${Date.now()}`,
@@ -144,7 +149,7 @@ export function createIncidentWithFilingWorkflow(
           const result = await runIncidentAgent(
             { entityId, entityName, incidentType },
             ctx.server,
-            ctx.session,
+            ctx.session
           );
           ctx.workflowData.incidentResult = result;
           return {
@@ -162,7 +167,9 @@ export function createIncidentWithFilingWorkflow(
         dependsOn: ['incident'],
         condition: () => !!report,
         execute: async (ctx: StepContext): Promise<StepResult> => {
-          const incident = ctx.workflowData.incidentResult as { caseCreated: ComplianceCase | null };
+          const incident = ctx.workflowData.incidentResult as {
+            caseCreated: ComplianceCase | null;
+          };
           const filingType = incidentType === 'sanctions-match' ? 'CNMR' : 'STR';
           const result = await runFilingAgent(
             {
@@ -172,7 +179,7 @@ export function createIncidentWithFilingWorkflow(
               eventDate: new Date().toISOString(),
             },
             ctx.server,
-            ctx.session,
+            ctx.session
           );
           return {
             stepId: 'filing',
@@ -197,7 +204,7 @@ export function createPeriodicReviewWorkflow(
   customers: CustomerProfile[],
   cases: ComplianceCase[],
   period: string,
-  analyst: string,
+  analyst: string
 ): WorkflowDefinition {
   return {
     id: `wf-review-${entity}-${Date.now()}`,
@@ -237,7 +244,7 @@ export function createPeriodicReviewWorkflow(
                 depth: 'basic',
               },
               ctx.server,
-              ctx.session,
+              ctx.session
             );
             results.push({ customer: cust.legalName, verdict: r.overallVerdict });
           }
@@ -267,7 +274,7 @@ export function createPeriodicReviewWorkflow(
               auditChain: ctx.server.getAuditChain(),
             },
             ctx.server,
-            ctx.session,
+            ctx.session
           );
           return {
             stepId: 'audit-report',
@@ -287,7 +294,7 @@ export function createPeriodicReviewWorkflow(
 // ---------------------------------------------------------------------------
 
 export function createBatchScreeningWorkflow(
-  entities: Array<{ name: string; type: 'individual' | 'entity' }>,
+  entities: Array<{ name: string; type: 'individual' | 'entity' }>
 ): WorkflowDefinition {
   const steps: WorkflowDefinition['steps'] = entities.map((entity, i) => ({
     id: `screen-${i}`,
@@ -301,7 +308,7 @@ export function createBatchScreeningWorkflow(
           depth: 'enhanced',
         },
         ctx.server,
-        ctx.session,
+        ctx.session
       );
 
       // Store result for aggregation

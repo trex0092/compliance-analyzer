@@ -129,9 +129,7 @@ export function buildStrNarrative(input: StrNarrativeInput): StrNarrative {
 
   const relationship = [
     `Onboarded: ${input.relationship.onboardingDate}.`,
-    input.relationship.accountNumber
-      ? `Account: ${input.relationship.accountNumber}.`
-      : '',
+    input.relationship.accountNumber ? `Account: ${input.relationship.accountNumber}.` : '',
     input.relationship.productType ? `Product: ${input.relationship.productType}.` : '',
   ]
     .filter(Boolean)
@@ -163,7 +161,7 @@ export function buildStrNarrative(input: StrNarrativeInput): StrNarrative {
           .map((e) =>
             e.vaultHash
               ? `${e.refId} — ${e.description} (vault:${e.vaultHash.slice(0, 12)})`
-              : `${e.refId} — ${e.description}`,
+              : `${e.refId} — ${e.description}`
           )
           .join('; ') +
         '.';
@@ -195,9 +193,7 @@ export function buildStrNarrative(input: StrNarrativeInput): StrNarrative {
 
   // Length check
   if (text.length < MIN_NARRATIVE_LENGTH) {
-    warnings.push(
-      `Narrative is ${text.length} chars; EOCN minimum is ${MIN_NARRATIVE_LENGTH}.`,
-    );
+    warnings.push(`Narrative is ${text.length} chars; EOCN minimum is ${MIN_NARRATIVE_LENGTH}.`);
   }
 
   // Tip-off scan

@@ -158,10 +158,7 @@ export interface RegisterBarResult {
  * spec compliance, and opens the event log with the initial `receive`.
  * Duplicate serials within the same refiner are rejected.
  */
-export function registerBar(
-  registry: BarRegistry,
-  input: RegisterBarInput,
-): RegisterBarResult {
+export function registerBar(registry: BarRegistry, input: RegisterBarInput): RegisterBarResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -179,7 +176,7 @@ export function registerBar(
     errors.push(`Unknown refiner: ${input.refinerId}`);
   } else if (!isAccredited(refiner)) {
     warnings.push(
-      `Refiner "${refiner.name}" is not accredited by any recognised body — bar requires enhanced due diligence`,
+      `Refiner "${refiner.name}" is not accredited by any recognised body — bar requires enhanced due diligence`
     );
   }
 
@@ -222,11 +219,7 @@ export function registerBar(
   return { ok: true, bar, errors: [], warnings };
 }
 
-export function lookupBar(
-  registry: BarRegistry,
-  refinerId: string,
-  serial: string,
-): Bar | null {
+export function lookupBar(registry: BarRegistry, refinerId: string, serial: string): Bar | null {
   return registry.bars.get(`${refinerId}|${serial}`) ?? null;
 }
 
@@ -236,13 +229,42 @@ export function lookupBar(
 
 const VALID_TRANSITIONS: Record<BarStatus, BarStatus[]> = {
   received: ['in_vault_allocated', 'in_vault_unallocated', 'in_transit', 'disputed', 'lost'],
-  in_vault_unallocated: ['in_vault_allocated', 'in_transit', 'sold', 'melted_down', 'exported', 'disputed', 'lost'],
-  in_vault_allocated: ['in_vault_unallocated', 'in_transit', 'sold', 'exported', 'disputed', 'lost'],
-  in_transit: ['in_vault_allocated', 'in_vault_unallocated', 'sold', 'exported', 'disputed', 'lost'],
+  in_vault_unallocated: [
+    'in_vault_allocated',
+    'in_transit',
+    'sold',
+    'melted_down',
+    'exported',
+    'disputed',
+    'lost',
+  ],
+  in_vault_allocated: [
+    'in_vault_unallocated',
+    'in_transit',
+    'sold',
+    'exported',
+    'disputed',
+    'lost',
+  ],
+  in_transit: [
+    'in_vault_allocated',
+    'in_vault_unallocated',
+    'sold',
+    'exported',
+    'disputed',
+    'lost',
+  ],
   sold: ['returned' as BarStatus, 'disputed'], // 'returned' pseudo-status, maps to in_vault_*
   melted_down: [], // terminal
   exported: ['disputed'], // terminal unless disputed
-  disputed: ['in_vault_unallocated', 'in_vault_allocated', 'sold', 'melted_down', 'exported', 'lost'],
+  disputed: [
+    'in_vault_unallocated',
+    'in_vault_allocated',
+    'sold',
+    'melted_down',
+    'exported',
+    'lost',
+  ],
   lost: ['disputed'], // found again = disputed until resolved
 };
 
@@ -265,10 +287,7 @@ export interface RecordEventResult {
   errors: string[];
 }
 
-export function recordBarEvent(
-  registry: BarRegistry,
-  input: RecordEventInput,
-): RecordEventResult {
+export function recordBarEvent(registry: BarRegistry, input: RecordEventInput): RecordEventResult {
   const errors: string[] = [];
   const bar = lookupBar(registry, input.refinerId, input.serial);
   if (!bar) {
@@ -280,9 +299,7 @@ export function recordBarEvent(
   if (input.newStatus) {
     const allowed = VALID_TRANSITIONS[bar.status] ?? [];
     if (!allowed.includes(input.newStatus) && input.newStatus !== bar.status) {
-      errors.push(
-        `Invalid state transition: ${bar.status} → ${input.newStatus}`,
-      );
+      errors.push(`Invalid state transition: ${bar.status} → ${input.newStatus}`);
       return { ok: false, errors };
     }
     bar.status = input.newStatus;

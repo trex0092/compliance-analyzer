@@ -106,8 +106,26 @@ const HIGH_RISK_JURISDICTIONS = new Set([
 ]);
 
 const FATF_GREY = new Set([
-  'AL', 'BB', 'BF', 'CM', 'HR', 'CD', 'GI', 'HT', 'JM', 'JO',
-  'ML', 'MZ', 'NG', 'PH', 'SN', 'TZ', 'TR', 'UG', 'UZ', 'VU',
+  'AL',
+  'BB',
+  'BF',
+  'CM',
+  'HR',
+  'CD',
+  'GI',
+  'HT',
+  'JM',
+  'JO',
+  'ML',
+  'MZ',
+  'NG',
+  'PH',
+  'SN',
+  'TZ',
+  'TR',
+  'UG',
+  'UZ',
+  'VU',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -173,7 +191,11 @@ function factorPep(input: ScoringInput): FactorContribution {
   if (input.isPep) {
     contribution = 20;
     rationale = 'Customer is a Politically Exposed Person';
-  } else if (input.pepProximity !== null && input.pepProximity !== undefined && input.pepProximity <= 2) {
+  } else if (
+    input.pepProximity !== null &&
+    input.pepProximity !== undefined &&
+    input.pepProximity <= 2
+  ) {
     contribution = 10;
     rationale = `PEP within ${input.pepProximity} hops via ownership`;
   }
@@ -235,7 +257,11 @@ function factorUbo(input: ScoringInput): FactorContribution {
   if (input.hasUndisclosedUbo) {
     contribution = 18;
     rationale = 'Ownership chain has undisclosed portion (> 0% unaccounted for)';
-  } else if (input.maxUboConcentration !== null && input.maxUboConcentration !== undefined && input.maxUboConcentration < 25) {
+  } else if (
+    input.maxUboConcentration !== null &&
+    input.maxUboConcentration !== undefined &&
+    input.maxUboConcentration < 25
+  ) {
     contribution = 6;
     rationale = 'No single UBO ≥ 25% — fragmented ownership, UBO re-verification required';
   }
@@ -368,9 +394,10 @@ export function formatExplanation(exp: Explanation, customerName: string): strin
   lines.push('| Factor | Value | Contribution | Regulatory basis |');
   lines.push('|---|---|---|---|');
   for (const f of exp.factors) {
-    const valueStr = typeof f.rawValue === 'object' ? JSON.stringify(f.rawValue) : String(f.rawValue);
+    const valueStr =
+      typeof f.rawValue === 'object' ? JSON.stringify(f.rawValue) : String(f.rawValue);
     lines.push(
-      `| ${f.name} | ${valueStr} | **${f.contribution.toFixed(1)}** / ${f.weight} | ${f.regulatory} |`,
+      `| ${f.name} | ${valueStr} | **${f.contribution.toFixed(1)}** / ${f.weight} | ${f.regulatory} |`
     );
   }
   lines.push('');
@@ -381,7 +408,7 @@ export function formatExplanation(exp: Explanation, customerName: string): strin
   }
   lines.push('');
   lines.push(
-    '_Every contribution is additive — score = sum of contributions. This document is the authoritative audit trail for this assessment._',
+    '_Every contribution is additive — score = sum of contributions. This document is the authoritative audit trail for this assessment._'
   );
   return lines.join('\n');
 }

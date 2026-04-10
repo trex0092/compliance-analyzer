@@ -32,40 +32,40 @@ export interface SwiftField {
 
 export interface ParsedMT103 {
   messageType: 'MT103';
-  transactionRef: string;           // :20:
-  senderBIC: string;                // header
-  receiverBIC: string;              // header
-  orderingCustomer: string;         // :50K: or :50F:
-  orderingInstitution?: string;     // :52A:
-  senderCorrespondent?: string;     // :53A:
-  receiverCorrespondent?: string;   // :54A:
+  transactionRef: string; // :20:
+  senderBIC: string; // header
+  receiverBIC: string; // header
+  orderingCustomer: string; // :50K: or :50F:
+  orderingInstitution?: string; // :52A:
+  senderCorrespondent?: string; // :53A:
+  receiverCorrespondent?: string; // :54A:
   intermediaryInstitution?: string; // :56A:
-  accountWithInstitution?: string;  // :57A:
-  beneficiaryCustomer: string;      // :59: or :59A:
-  currency: string;                 // :32A: currency code
-  amount: number;                   // :32A: amount
-  valueDate: string;                // :32A: date (dd/mm/yyyy)
-  detailsOfCharges: string;         // :71A: SHA/BEN/OUR
-  remittanceInfo?: string;          // :70:
-  senderToReceiverInfo?: string;    // :72:
+  accountWithInstitution?: string; // :57A:
+  beneficiaryCustomer: string; // :59: or :59A:
+  currency: string; // :32A: currency code
+  amount: number; // :32A: amount
+  valueDate: string; // :32A: date (dd/mm/yyyy)
+  detailsOfCharges: string; // :71A: SHA/BEN/OUR
+  remittanceInfo?: string; // :70:
+  senderToReceiverInfo?: string; // :72:
   allFields: SwiftField[];
 }
 
 export interface ParsedMT202 {
   messageType: 'MT202';
-  transactionRef: string;           // :20:
-  relatedRef?: string;              // :21:
+  transactionRef: string; // :20:
+  relatedRef?: string; // :21:
   senderBIC: string;
   receiverBIC: string;
-  senderCorrespondent?: string;     // :53A:
-  receiverCorrespondent?: string;   // :54A:
+  senderCorrespondent?: string; // :53A:
+  receiverCorrespondent?: string; // :54A:
   intermediaryInstitution?: string; // :56A:
-  accountWithInstitution?: string;  // :57A:
-  beneficiaryInstitution: string;   // :58A:
+  accountWithInstitution?: string; // :57A:
+  beneficiaryInstitution: string; // :58A:
   currency: string;
   amount: number;
   valueDate: string;
-  senderToReceiverInfo?: string;    // :72:
+  senderToReceiverInfo?: string; // :72:
   allFields: SwiftField[];
 }
 
@@ -107,8 +107,8 @@ export interface WireRiskFlag {
 // ---------------------------------------------------------------------------
 
 const SANCTIONED_BIC_PREFIXES = [
-  'BKSY',   // Syria-related
-  'EDBI',   // Iran-related
+  'BKSY', // Syria-related
+  'EDBI', // Iran-related
   'MELIIR', // Bank Melli Iran
   'SEPBIR', // Bank Sepah Iran
   'BKMTIR', // Bank Mellat Iran
@@ -345,9 +345,9 @@ function toAED(amount: number, currency: string): number {
  *
  * @regulatory FDL No.10/2025 Art.35 (TFS), Cabinet Res 134/2025 Art.16
  */
-export function analyzeWireChain(
-  input: { message: ParsedMT103 | ParsedMT202 },
-): ToolResult<WireChainAnalysis> {
+export function analyzeWireChain(input: {
+  message: ParsedMT103 | ParsedMT202;
+}): ToolResult<WireChainAnalysis> {
   const msg = input.message;
   const chain: WireChainNode[] = [];
   const flags: WireRiskFlag[] = [];
@@ -401,7 +401,9 @@ export function analyzeWireChain(
   }
 
   // 2. Excessive chain depth (>3 intermediaries is suspicious)
-  const intermediaryCount = chain.filter((n) => n.role === 'intermediary' || n.role === 'correspondent').length;
+  const intermediaryCount = chain.filter(
+    (n) => n.role === 'intermediary' || n.role === 'correspondent'
+  ).length;
   if (intermediaryCount >= 3) {
     flags.push({
       code: 'SWIFT-ROUTE-001',
@@ -455,7 +457,8 @@ export function analyzeWireChain(
     flags.push({
       code: 'SWIFT-NEST-001',
       severity: 'warning',
-      description: 'MT202 bank-to-bank transfer: underlying customer identity not visible. Potential nesting risk.',
+      description:
+        'MT202 bank-to-bank transfer: underlying customer identity not visible. Potential nesting risk.',
       regulatoryRef: 'FATF Rec 13, Wolfsberg Correspondent Banking Principles',
     });
   }
@@ -493,10 +496,18 @@ export function analyzeWireChain(
   let riskScore = 0;
   for (const flag of flags) {
     switch (flag.severity) {
-      case 'critical': riskScore += 25; break;
-      case 'alert': riskScore += 15; break;
-      case 'warning': riskScore += 8; break;
-      case 'info': riskScore += 2; break;
+      case 'critical':
+        riskScore += 25;
+        break;
+      case 'alert':
+        riskScore += 15;
+        break;
+      case 'warning':
+        riskScore += 8;
+        break;
+      case 'info':
+        riskScore += 2;
+        break;
     }
   }
 
@@ -517,11 +528,14 @@ export function analyzeWireChain(
   // Recommendation
   let recommendation: string;
   if (riskLevel === 'critical') {
-    recommendation = 'FREEZE wire and escalate to Compliance Officer immediately. Check sanctions match within 24h per Cabinet Res 74/2020. Do NOT notify counterparties (Art.29 no tipping off).';
+    recommendation =
+      'FREEZE wire and escalate to Compliance Officer immediately. Check sanctions match within 24h per Cabinet Res 74/2020. Do NOT notify counterparties (Art.29 no tipping off).';
   } else if (riskLevel === 'high') {
-    recommendation = 'Escalate to Compliance Officer for EDD. Document routing justification. Consider filing STR if suspicion confirmed.';
+    recommendation =
+      'Escalate to Compliance Officer for EDD. Document routing justification. Consider filing STR if suspicion confirmed.';
   } else if (riskLevel === 'medium') {
-    recommendation = 'Enhanced review required. Verify intermediary relationships and routing logic. Document findings.';
+    recommendation =
+      'Enhanced review required. Verify intermediary relationships and routing logic. Document findings.';
   } else {
     recommendation = 'Standard processing. Log for audit trail.';
   }
@@ -562,7 +576,10 @@ export const SWIFT_TOOL_SCHEMAS = [
     inputSchema: {
       type: 'object',
       properties: {
-        rawMessage: { type: 'string', description: 'Raw SWIFT MT103 message text including header blocks' },
+        rawMessage: {
+          type: 'string',
+          description: 'Raw SWIFT MT103 message text including header blocks',
+        },
       },
       required: ['rawMessage'],
     },
@@ -574,7 +591,10 @@ export const SWIFT_TOOL_SCHEMAS = [
     inputSchema: {
       type: 'object',
       properties: {
-        rawMessage: { type: 'string', description: 'Raw SWIFT MT202 message text including header blocks' },
+        rawMessage: {
+          type: 'string',
+          description: 'Raw SWIFT MT202 message text including header blocks',
+        },
       },
       required: ['rawMessage'],
     },
@@ -586,7 +606,10 @@ export const SWIFT_TOOL_SCHEMAS = [
     inputSchema: {
       type: 'object',
       properties: {
-        message: { type: 'object', description: 'Parsed MT103 or MT202 object from parse_swift_mt103/parse_swift_mt202' },
+        message: {
+          type: 'object',
+          description: 'Parsed MT103 or MT202 object from parse_swift_mt103/parse_swift_mt202',
+        },
       },
       required: ['message'],
     },

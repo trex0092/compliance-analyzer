@@ -110,7 +110,7 @@ function sigmoid(z: number): number {
 export function predictStr(
   features: StrFeatures,
   coefficients: Record<keyof StrFeatures, number> = STR_COEFFICIENTS,
-  intercept: number = STR_INTERCEPT,
+  intercept: number = STR_INTERCEPT
 ): StrPrediction {
   const factors: FactorContribution[] = [];
   let logit = intercept;
@@ -187,7 +187,7 @@ export interface RankedEntity<T> {
 }
 
 export function rankEntitiesByStrRisk<T>(
-  entities: Array<{ entity: T; features: StrFeatures }>,
+  entities: Array<{ entity: T; features: StrFeatures }>
 ): Array<RankedEntity<T>> {
   return entities
     .map(({ entity, features }) => ({

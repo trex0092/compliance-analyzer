@@ -51,11 +51,23 @@ export function soundex(name: string): string {
   if (s.length === 0) return '0000';
 
   const map: Record<string, string> = {
-    B: '1', F: '1', P: '1', V: '1',
-    C: '2', G: '2', J: '2', K: '2', Q: '2', S: '2', X: '2', Z: '2',
-    D: '3', T: '3',
+    B: '1',
+    F: '1',
+    P: '1',
+    V: '1',
+    C: '2',
+    G: '2',
+    J: '2',
+    K: '2',
+    Q: '2',
+    S: '2',
+    X: '2',
+    Z: '2',
+    D: '3',
+    T: '3',
     L: '4',
-    M: '5', N: '5',
+    M: '5',
+    N: '5',
     R: '6',
   };
 
@@ -93,51 +105,105 @@ export function metaphone(name: string): string {
     const next = s[i + 1] ?? '';
 
     switch (c) {
-      case 'A': case 'E': case 'I': case 'O': case 'U':
+      case 'A':
+      case 'E':
+      case 'I':
+      case 'O':
+      case 'U':
         if (i === 0) result += c;
         break;
-      case 'B': result += (s[i - 1] !== 'M') ? 'B' : ''; break;
+      case 'B':
+        result += s[i - 1] !== 'M' ? 'B' : '';
+        break;
       case 'C':
-        if (next === 'H') { result += 'X'; i++; }
-        else if ('EIY'.includes(next)) { result += 'S'; }
-        else { result += 'K'; }
+        if (next === 'H') {
+          result += 'X';
+          i++;
+        } else if ('EIY'.includes(next)) {
+          result += 'S';
+        } else {
+          result += 'K';
+        }
         break;
       case 'D':
-        if (next === 'G' && 'EIY'.includes(s[i + 2] ?? '')) { result += 'J'; i++; }
-        else { result += 'T'; }
+        if (next === 'G' && 'EIY'.includes(s[i + 2] ?? '')) {
+          result += 'J';
+          i++;
+        } else {
+          result += 'T';
+        }
         break;
-      case 'F': result += 'F'; break;
+      case 'F':
+        result += 'F';
+        break;
       case 'G':
-        if (next === 'H' && !'AEIOU'.includes(s[i + 2] ?? '')) { i++; }
-        else if (i > 0 && next === 'N') { /* silent */ }
-        else { result += 'K'; }
+        if (next === 'H' && !'AEIOU'.includes(s[i + 2] ?? '')) {
+          i++;
+        } else if (i > 0 && next === 'N') {
+          /* silent */
+        } else {
+          result += 'K';
+        }
         break;
       case 'H':
         if ('AEIOU'.includes(next) && (i === 0 || !'AEIOU'.includes(s[i - 1]))) result += 'H';
         break;
-      case 'J': result += 'J'; break;
-      case 'K': if (i === 0 || s[i - 1] !== 'C') result += 'K'; break;
-      case 'L': result += 'L'; break;
-      case 'M': result += 'M'; break;
-      case 'N': result += 'N'; break;
-      case 'P': result += (next === 'H') ? (i++, 'F') : 'P'; break;
-      case 'Q': result += 'K'; break;
-      case 'R': result += 'R'; break;
+      case 'J':
+        result += 'J';
+        break;
+      case 'K':
+        if (i === 0 || s[i - 1] !== 'C') result += 'K';
+        break;
+      case 'L':
+        result += 'L';
+        break;
+      case 'M':
+        result += 'M';
+        break;
+      case 'N':
+        result += 'N';
+        break;
+      case 'P':
+        result += next === 'H' ? (i++, 'F') : 'P';
+        break;
+      case 'Q':
+        result += 'K';
+        break;
+      case 'R':
+        result += 'R';
+        break;
       case 'S':
-        if (next === 'H') { result += 'X'; i++; }
-        else if (next === 'I' && 'AO'.includes(s[i + 2] ?? '')) { result += 'X'; i++; }
-        else { result += 'S'; }
+        if (next === 'H') {
+          result += 'X';
+          i++;
+        } else if (next === 'I' && 'AO'.includes(s[i + 2] ?? '')) {
+          result += 'X';
+          i++;
+        } else {
+          result += 'S';
+        }
         break;
       case 'T':
-        if (next === 'H') { result += '0'; i++; }
-        else { result += 'T'; }
+        if (next === 'H') {
+          result += '0';
+          i++;
+        } else {
+          result += 'T';
+        }
         break;
-      case 'V': result += 'F'; break;
-      case 'W': case 'Y':
+      case 'V':
+        result += 'F';
+        break;
+      case 'W':
+      case 'Y':
         if ('AEIOU'.includes(next)) result += c;
         break;
-      case 'X': result += 'KS'; break;
-      case 'Z': result += 'S'; break;
+      case 'X':
+        result += 'KS';
+        break;
+      case 'Z':
+        result += 'S';
+        break;
     }
     i++;
   }
@@ -208,8 +274,40 @@ export function generateTransliterations(name: string): NameVariant[] {
 // Alias & Nickname Generation
 // ---------------------------------------------------------------------------
 
-const HONORIFICS = ['Mr', 'Mrs', 'Ms', 'Dr', 'Sheikh', 'Haj', 'Hajj', 'Sayyid', 'Bin', 'Ibn', 'Abu', 'Al', 'El'];
-const COMPANY_SUFFIXES = ['LLC', 'Ltd', 'Limited', 'Inc', 'Corp', 'FZE', 'FZC', 'FZCO', 'DMCC', 'Trading', 'General Trading', 'International', 'Intl', 'Group', 'Holdings', 'Co', 'Company'];
+const HONORIFICS = [
+  'Mr',
+  'Mrs',
+  'Ms',
+  'Dr',
+  'Sheikh',
+  'Haj',
+  'Hajj',
+  'Sayyid',
+  'Bin',
+  'Ibn',
+  'Abu',
+  'Al',
+  'El',
+];
+const COMPANY_SUFFIXES = [
+  'LLC',
+  'Ltd',
+  'Limited',
+  'Inc',
+  'Corp',
+  'FZE',
+  'FZC',
+  'FZCO',
+  'DMCC',
+  'Trading',
+  'General Trading',
+  'International',
+  'Intl',
+  'Group',
+  'Holdings',
+  'Co',
+  'Company',
+];
 
 export function generateAliases(name: string): NameVariant[] {
   const variants: NameVariant[] = [];
@@ -218,7 +316,11 @@ export function generateAliases(name: string): NameVariant[] {
   for (const hon of HONORIFICS) {
     const pattern = new RegExp(`\\b${hon}\\.?\\s+`, 'gi');
     if (pattern.test(name)) {
-      variants.push({ variant: name.replace(pattern, '').trim(), source: 'alias', confidence: 0.9 });
+      variants.push({
+        variant: name.replace(pattern, '').trim(),
+        source: 'alias',
+        confidence: 0.9,
+      });
     }
   }
 
@@ -226,7 +328,11 @@ export function generateAliases(name: string): NameVariant[] {
   for (const suffix of COMPANY_SUFFIXES) {
     const pattern = new RegExp(`\\s+${suffix}\\.?$`, 'gi');
     if (pattern.test(name)) {
-      variants.push({ variant: name.replace(pattern, '').trim(), source: 'alias', confidence: 0.9 });
+      variants.push({
+        variant: name.replace(pattern, '').trim(),
+        source: 'alias',
+        confidence: 0.9,
+      });
     }
   }
 
@@ -244,11 +350,32 @@ export function generateAliases(name: string): NameVariant[] {
   }
 
   // "Al-X" ↔ "Al X" ↔ "AlX"
-  if (name.includes('Al-') || name.includes('Al ') || name.includes('El-') || name.includes('El ')) {
-    variants.push({ variant: name.replace(/\bAl[- ]/gi, 'Al-'), source: 'alias', confidence: 0.95 });
-    variants.push({ variant: name.replace(/\bAl[- ]/gi, 'Al '), source: 'alias', confidence: 0.95 });
-    variants.push({ variant: name.replace(/\bEl[- ]/gi, 'El-'), source: 'alias', confidence: 0.95 });
-    variants.push({ variant: name.replace(/\bEl[- ]/gi, 'El '), source: 'alias', confidence: 0.95 });
+  if (
+    name.includes('Al-') ||
+    name.includes('Al ') ||
+    name.includes('El-') ||
+    name.includes('El ')
+  ) {
+    variants.push({
+      variant: name.replace(/\bAl[- ]/gi, 'Al-'),
+      source: 'alias',
+      confidence: 0.95,
+    });
+    variants.push({
+      variant: name.replace(/\bAl[- ]/gi, 'Al '),
+      source: 'alias',
+      confidence: 0.95,
+    });
+    variants.push({
+      variant: name.replace(/\bEl[- ]/gi, 'El-'),
+      source: 'alias',
+      confidence: 0.95,
+    });
+    variants.push({
+      variant: name.replace(/\bEl[- ]/gi, 'El '),
+      source: 'alias',
+      confidence: 0.95,
+    });
   }
 
   return variants;
@@ -259,12 +386,25 @@ export function generateAliases(name: string): NameVariant[] {
 // ---------------------------------------------------------------------------
 
 const LOOKALIKES: Array<[string, string]> = [
-  ['a', 'а'], ['e', 'е'], ['o', 'о'], ['p', 'р'], ['c', 'с'],
-  ['x', 'х'], ['y', 'у'], ['H', 'Н'], ['B', 'В'], ['T', 'Т'],
-  ['0', 'O'], ['1', 'l'], ['1', 'I'],
+  ['a', 'а'],
+  ['e', 'е'],
+  ['o', 'о'],
+  ['p', 'р'],
+  ['c', 'с'],
+  ['x', 'х'],
+  ['y', 'у'],
+  ['H', 'Н'],
+  ['B', 'В'],
+  ['T', 'Т'],
+  ['0', 'O'],
+  ['1', 'l'],
+  ['1', 'I'],
 ];
 
-export function detectCharacterSubstitution(name1: string, name2: string): { isSubstitution: boolean; substitutions: string[] } {
+export function detectCharacterSubstitution(
+  name1: string,
+  name2: string
+): { isSubstitution: boolean; substitutions: string[] } {
   const subs: string[] = [];
   const n1 = name1.normalize('NFC');
   const n2 = name2.normalize('NFC');
@@ -274,7 +414,7 @@ export function detectCharacterSubstitution(name1: string, name2: string): { isS
   for (let i = 0; i < n1.length; i++) {
     if (n1[i] !== n2[i]) {
       const isLookalike = LOOKALIKES.some(
-        ([a, b]) => (n1[i] === a && n2[i] === b) || (n1[i] === b && n2[i] === a),
+        ([a, b]) => (n1[i] === a && n2[i] === b) || (n1[i] === b && n2[i] === a)
       );
       if (isLookalike) {
         subs.push(`Position ${i}: '${n1[i]}' ↔ '${n2[i]}'`);
@@ -293,7 +433,7 @@ export function detectCharacterSubstitution(name1: string, name2: string): { isS
 
 export function matchNameAdvanced(
   queryName: string,
-  targetNames: string[],
+  targetNames: string[]
 ): ToolResult<EvasionReport> {
   // Generate all variants
   const transliterations = generateTransliterations(queryName);
@@ -322,34 +462,56 @@ export function matchNameAdvanced(
     const algorithms: EvasionMatch['algorithms'] = [];
 
     // 1. Exact match on any variant
-    const exactVariant = uniqueVariants.find((v) => v.variant.toLowerCase() === target.toLowerCase());
+    const exactVariant = uniqueVariants.find(
+      (v) => v.variant.toLowerCase() === target.toLowerCase()
+    );
     if (exactVariant) {
-      algorithms.push({ algorithm: 'variant-match', score: 1.0, details: `Exact match via ${exactVariant.source}` });
+      algorithms.push({
+        algorithm: 'variant-match',
+        score: 1.0,
+        details: `Exact match via ${exactVariant.source}`,
+      });
     }
 
     // 2. Soundex comparison
     const targetSoundex = soundex(target);
     if (querySoundex === targetSoundex) {
-      algorithms.push({ algorithm: 'soundex', score: 0.8, details: `Both produce ${querySoundex}` });
+      algorithms.push({
+        algorithm: 'soundex',
+        score: 0.8,
+        details: `Both produce ${querySoundex}`,
+      });
     }
 
     // 3. Metaphone comparison
     const targetMetaphone = metaphone(target);
     if (queryMetaphone === targetMetaphone) {
-      algorithms.push({ algorithm: 'metaphone', score: 0.85, details: `Both produce ${queryMetaphone}` });
+      algorithms.push({
+        algorithm: 'metaphone',
+        score: 0.85,
+        details: `Both produce ${queryMetaphone}`,
+      });
     }
 
     // 4. Normalized comparison (case, whitespace, punctuation)
     const normQuery = queryName.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, '');
     const normTarget = target.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, '');
     if (normQuery === normTarget) {
-      algorithms.push({ algorithm: 'normalized', score: 0.95, details: 'Match after removing punctuation/spaces' });
+      algorithms.push({
+        algorithm: 'normalized',
+        score: 0.95,
+        details: 'Match after removing punctuation/spaces',
+      });
     }
 
     // 5. Character substitution
     const subResult = detectCharacterSubstitution(queryName, target);
     if (subResult.isSubstitution) {
-      algorithms.push({ algorithm: 'char-substitution', score: 0.9, details: `Lookalike chars: ${subResult.substitutions.join(', ')}` });
+      algorithms.push({
+        algorithm: 'char-substitution',
+        score: 0.9,
+        details: `Lookalike chars: ${subResult.substitutions.join(', ')}`,
+      });
     }
 
     // 6. Check all generated variants against target
@@ -358,18 +520,27 @@ export function matchNameAdvanced(
       const normVariant = variant.variant.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, '');
       const normTgt = target.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, '');
       if (normVariant === normTgt) {
-        algorithms.push({ algorithm: `variant-${variant.source}`, score: variant.confidence, details: `Variant "${variant.variant}" matches` });
+        algorithms.push({
+          algorithm: `variant-${variant.source}`,
+          score: variant.confidence,
+          details: `Variant "${variant.variant}" matches`,
+        });
         break;
       }
     }
 
     if (algorithms.length > 0) {
       const compositeScore = Math.max(...algorithms.map((a) => a.score));
-      const technique = algorithms[0].algorithm.includes('substitution') ? 'Character substitution (Cyrillic/Latin)'
-        : algorithms[0].algorithm.includes('transliteration') ? 'Name transliteration variant'
-        : algorithms[0].algorithm.includes('soundex') || algorithms[0].algorithm.includes('metaphone') ? 'Phonetic similarity'
-        : algorithms[0].algorithm.includes('alias') ? 'Alias/naming convention'
-        : 'Direct variant';
+      const technique = algorithms[0].algorithm.includes('substitution')
+        ? 'Character substitution (Cyrillic/Latin)'
+        : algorithms[0].algorithm.includes('transliteration')
+          ? 'Name transliteration variant'
+          : algorithms[0].algorithm.includes('soundex') ||
+              algorithms[0].algorithm.includes('metaphone')
+            ? 'Phonetic similarity'
+            : algorithms[0].algorithm.includes('alias')
+              ? 'Alias/naming convention'
+              : 'Direct variant';
 
       matches.push({
         queryName,
@@ -389,7 +560,9 @@ export function matchNameAdvanced(
     alerts.push('CHARACTER SUBSTITUTION detected — possible deliberate evasion attempt');
   }
   if (matches.length > 0 && matches[0].compositeScore >= 0.9) {
-    alerts.push(`High-confidence evasion match: "${matches[0].matchedName}" (${(matches[0].compositeScore * 100).toFixed(0)}%)`);
+    alerts.push(
+      `High-confidence evasion match: "${matches[0].matchedName}" (${(matches[0].compositeScore * 100).toFixed(0)}%)`
+    );
   }
 
   let evasionRisk: EvasionReport['evasionRisk'] = 'none';
@@ -406,7 +579,15 @@ export function matchNameAdvanced(
 export const EVASION_TOOL_SCHEMAS = [
   {
     name: 'detect_sanctions_evasion',
-    description: 'Advanced name matching: Soundex, Metaphone, Arabic↔Latin transliteration, alias generation, character substitution (Cyrillic lookalikes). Catches what standard fuzzy match misses.',
-    inputSchema: { type: 'object', properties: { queryName: { type: 'string' }, targetNames: { type: 'array', items: { type: 'string' } } }, required: ['queryName', 'targetNames'] },
+    description:
+      'Advanced name matching: Soundex, Metaphone, Arabic↔Latin transliteration, alias generation, character substitution (Cyrillic lookalikes). Catches what standard fuzzy match misses.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        queryName: { type: 'string' },
+        targetNames: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['queryName', 'targetNames'],
+    },
   },
 ] as const;

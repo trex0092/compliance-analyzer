@@ -37,9 +37,21 @@ import {
 } from './orchestration/workflows';
 import { runScreeningAgent, type ScreeningAgentResult } from './definitions/screening-agent';
 import { runOnboardingAgent, type OnboardingAgentResult } from './definitions/onboarding-agent';
-import { runIncidentAgent, type IncidentAgentConfig, type IncidentAgentResult } from './definitions/incident-agent';
-import { runFilingAgent, type FilingAgentConfig, type FilingAgentResult } from './definitions/filing-agent';
-import { runAuditAgent, type AuditAgentConfig, type AuditAgentResult } from './definitions/audit-agent';
+import {
+  runIncidentAgent,
+  type IncidentAgentConfig,
+  type IncidentAgentResult,
+} from './definitions/incident-agent';
+import {
+  runFilingAgent,
+  type FilingAgentConfig,
+  type FilingAgentResult,
+} from './definitions/filing-agent';
+import {
+  runAuditAgent,
+  type AuditAgentConfig,
+  type AuditAgentResult,
+} from './definitions/audit-agent';
 
 import type { CustomerProfile } from '../domain/customers';
 import type { ComplianceCase } from '../domain/cases';
@@ -92,7 +104,7 @@ export class ComplianceHarness {
   /** Screen an entity against all sanctions lists */
   async screenEntity(
     entityName: string,
-    options?: { depth?: 'basic' | 'enhanced' | 'full'; entityType?: 'individual' | 'entity' },
+    options?: { depth?: 'basic' | 'enhanced' | 'full'; entityType?: 'individual' | 'entity' }
   ): Promise<ScreeningAgentResult> {
     return runScreeningAgent(
       {
@@ -101,40 +113,30 @@ export class ComplianceHarness {
         depth: options?.depth ?? 'enhanced',
       },
       this.server,
-      this.session,
+      this.session
     );
   }
 
   /** Onboard a new customer (screen → score → tier → case → approvals) */
   async onboardCustomer(
     customer: CustomerProfile,
-    redFlagCodes?: string[],
+    redFlagCodes?: string[]
   ): Promise<OnboardingAgentResult> {
-    return runOnboardingAgent(
-      { customer, redFlagCodes },
-      this.server,
-      this.session,
-    );
+    return runOnboardingAgent({ customer, redFlagCodes }, this.server, this.session);
   }
 
   /** Handle a compliance incident with regulatory countdowns */
-  async handleIncident(
-    config: IncidentAgentConfig,
-  ): Promise<IncidentAgentResult> {
+  async handleIncident(config: IncidentAgentConfig): Promise<IncidentAgentResult> {
     return runIncidentAgent(config, this.server, this.session);
   }
 
   /** Generate and validate a compliance filing */
-  async generateFiling(
-    config: FilingAgentConfig,
-  ): Promise<FilingAgentResult> {
+  async generateFiling(config: FilingAgentConfig): Promise<FilingAgentResult> {
     return runFilingAgent(config, this.server, this.session);
   }
 
   /** Run compliance audit */
-  async runAudit(
-    config: AuditAgentConfig,
-  ): Promise<AuditAgentResult> {
+  async runAudit(config: AuditAgentConfig): Promise<AuditAgentResult> {
     return runAuditAgent(config, this.server, this.session);
   }
 
@@ -145,7 +147,7 @@ export class ComplianceHarness {
   /** Full onboarding workflow with incident handling if blocked */
   async runOnboardingWorkflow(
     customer: CustomerProfile,
-    redFlagCodes?: string[],
+    redFlagCodes?: string[]
   ): Promise<WorkflowExecution> {
     const workflow = createOnboardingWorkflow(customer, redFlagCodes);
     return this.orchestrator.executeWorkflow(workflow);
@@ -156,7 +158,7 @@ export class ComplianceHarness {
     entityId: string,
     entityName: string,
     incidentType: 'sanctions-match' | 'str-trigger',
-    report?: SuspicionReport,
+    report?: SuspicionReport
   ): Promise<WorkflowExecution> {
     const workflow = createIncidentWithFilingWorkflow(entityId, entityName, incidentType, report);
     return this.orchestrator.executeWorkflow(workflow);
@@ -167,17 +169,21 @@ export class ComplianceHarness {
     entity: string,
     customers: CustomerProfile[],
     cases: ComplianceCase[],
-    period: string,
+    period: string
   ): Promise<WorkflowExecution> {
     const workflow = createPeriodicReviewWorkflow(
-      entity, customers, cases, period, this.session.getMetadata().analyst,
+      entity,
+      customers,
+      cases,
+      period,
+      this.session.getMetadata().analyst
     );
     return this.orchestrator.executeWorkflow(workflow);
   }
 
   /** Batch screen multiple entities in parallel */
   async runBatchScreening(
-    entities: Array<{ name: string; type: 'individual' | 'entity' }>,
+    entities: Array<{ name: string; type: 'individual' | 'entity' }>
   ): Promise<WorkflowExecution> {
     const workflow = createBatchScreeningWorkflow(entities);
     return this.orchestrator.executeWorkflow(workflow);

@@ -98,7 +98,7 @@ export interface MonitorTransactionInput {
 export async function monitorTransaction(
   input: MonitorTransactionInput,
   auditChain: ChainedAuditEvent[],
-  analyst: string,
+  analyst: string
 ): Promise<ToolResult<{ alerts: TMAlert[]; alertCount: number }>> {
   const alerts = runTransactionMonitoring(input.transaction, input.config);
 
@@ -122,7 +122,7 @@ export async function monitorTransaction(
 export async function screenPF(
   input: PFScreeningInput,
   auditChain: ChainedAuditEvent[],
-  analyst: string,
+  analyst: string
 ): Promise<ToolResult<{ alerts: PFAlert[]; alertCount: number }>> {
   const alerts = runPFScreening(input);
 
@@ -143,9 +143,17 @@ export async function screenPF(
 // Tool: get_red_flags
 // ---------------------------------------------------------------------------
 
-export function getRedFlags(
-  category?: string,
-): ToolResult<{ flags: Array<{ code: string; title: string; category: string; likelihood: number; impact: number; autoTriggersEDD: boolean; autoTriggersSTRReview: boolean }> }> {
+export function getRedFlags(category?: string): ToolResult<{
+  flags: Array<{
+    code: string;
+    title: string;
+    category: string;
+    likelihood: number;
+    impact: number;
+    autoTriggersEDD: boolean;
+    autoTriggersSTRReview: boolean;
+  }>;
+}> {
   let flags = RED_FLAGS;
   if (category) {
     flags = flags.filter((f) => f.category === category);
@@ -215,8 +223,14 @@ export const RISK_TOOL_SCHEMAS = [
         sourceOfFundsUnverified: { type: 'boolean' },
       },
       required: [
-        'sanctionMatch', 'pepMatch', 'redFlagScores', 'highFlagCount',
-        'criticalFlagCount', 'missingCDD', 'thirdPartyPayment', 'sourceOfFundsUnverified',
+        'sanctionMatch',
+        'pepMatch',
+        'redFlagScores',
+        'highFlagCount',
+        'criticalFlagCount',
+        'missingCDD',
+        'thirdPartyPayment',
+        'sourceOfFundsUnverified',
       ],
     },
   },
@@ -267,7 +281,20 @@ export const RISK_TOOL_SCHEMAS = [
       properties: {
         category: {
           type: 'string',
-          enum: ['customer', 'transaction', 'sanctions', 'pf', 'sourcing', 'sof-sow', 'kyc', 'pep', 'geographic', 'documentation', 'behavioral', 'precious-metals'],
+          enum: [
+            'customer',
+            'transaction',
+            'sanctions',
+            'pf',
+            'sourcing',
+            'sof-sow',
+            'kyc',
+            'pep',
+            'geographic',
+            'documentation',
+            'behavioral',
+            'precious-metals',
+          ],
         },
       },
     },

@@ -25,13 +25,7 @@
  *   - FATF Rec 22/23 — DPMS reasoning must be auditable
  */
 
-import {
-  createChain,
-  addNode,
-  addEdge,
-  seal,
-  type ReasoningChain,
-} from './reasoningChain';
+import { createChain, addNode, addEdge, seal, type ReasoningChain } from './reasoningChain';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -111,7 +105,7 @@ export async function runReactBrain(
   topic: string,
   tools: readonly ReactTool[],
   planner: Planner,
-  config: ReactBrainConfig,
+  config: ReactBrainConfig
 ): Promise<ReactRunResult> {
   const clock = config.now ?? (() => new Date().toISOString());
   const chain = createChain(topic);
@@ -287,11 +281,7 @@ function summariseObservation(obs: unknown): string {
   }
 }
 
-function appendStepToChain(
-  chain: ReasoningChain,
-  step: ReactStep,
-  parentId: string,
-): void {
+function appendStepToChain(chain: ReasoningChain, step: ReactStep, parentId: string): void {
   const id = `step-${step.index}`;
   addNode(chain, {
     id,

@@ -18,11 +18,26 @@ import type { ToolResult, ToolCallRequest } from '../mcp-server';
 // ---------------------------------------------------------------------------
 
 export type IntentType =
-  | 'screen' | 'onboard' | 'file-str' | 'file-ctr' | 'file-cnmr'
-  | 'check-risk' | 'check-cdd' | 'create-case' | 'check-deadline'
-  | 'run-audit' | 'check-kpi' | 'freeze-assets' | 'incident'
-  | 'batch-screen' | 'analyze-transactions' | 'network-analysis'
-  | 'predict-risk' | 'explain-decision' | 'help' | 'unknown';
+  | 'screen'
+  | 'onboard'
+  | 'file-str'
+  | 'file-ctr'
+  | 'file-cnmr'
+  | 'check-risk'
+  | 'check-cdd'
+  | 'create-case'
+  | 'check-deadline'
+  | 'run-audit'
+  | 'check-kpi'
+  | 'freeze-assets'
+  | 'incident'
+  | 'batch-screen'
+  | 'analyze-transactions'
+  | 'network-analysis'
+  | 'predict-risk'
+  | 'explain-decision'
+  | 'help'
+  | 'unknown';
 
 export interface ParsedCommand {
   raw: string;
@@ -100,10 +115,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
   },
   {
     intent: 'file-cnmr',
-    patterns: [
-      /file\s+(?:an?\s+)?cnmr/i,
-      /confiscation.*notification/i,
-    ],
+    patterns: [/file\s+(?:an?\s+)?cnmr/i, /confiscation.*notification/i],
     keywords: ['cnmr', 'confiscation', 'notification'],
     weight: 1.0,
   },
@@ -265,9 +277,10 @@ export function parseCommand(input: string): ToolResult<ParsedCommand> {
   const entities = extractEntities(trimmed, bestIntent.match);
   const suggestedToolCall = buildToolCall(bestIntent.intent, entities);
 
-  const explanation = bestIntent.intent === 'unknown'
-    ? `Could not parse command: "${trimmed}". Try: "screen [entity]", "onboard [customer]", "file STR", "check risk for [entity]", or "help".`
-    : `Interpreted as: ${bestIntent.intent} (confidence: ${(bestIntent.confidence * 100).toFixed(0)}%)`;
+  const explanation =
+    bestIntent.intent === 'unknown'
+      ? `Could not parse command: "${trimmed}". Try: "screen [entity]", "onboard [customer]", "file STR", "check risk for [entity]", or "help".`
+      : `Interpreted as: ${bestIntent.intent} (confidence: ${(bestIntent.confidence * 100).toFixed(0)}%)`;
 
   return {
     ok: true,
@@ -331,19 +344,29 @@ function extractEntities(input: string, match?: RegExpMatchArray): ParsedCommand
 // Tool Call Builder
 // ---------------------------------------------------------------------------
 
-function buildToolCall(intent: IntentType, entities: ParsedCommand['entities']): ToolCallRequest | null {
+function buildToolCall(
+  intent: IntentType,
+  entities: ParsedCommand['entities']
+): ToolCallRequest | null {
   switch (intent) {
     case 'screen':
-      return entities.entityName ? {
-        name: 'screen_entity',
-        arguments: { entityName: entities.entityName, entityType: entities.entityType ?? 'entity' },
-      } : null;
+      return entities.entityName
+        ? {
+            name: 'screen_entity',
+            arguments: {
+              entityName: entities.entityName,
+              entityType: entities.entityType ?? 'entity',
+            },
+          }
+        : null;
 
     case 'check-risk':
-      return entities.entityName ? {
-        name: 'score_risk',
-        arguments: { flagCodes: [], context: {} },
-      } : null;
+      return entities.entityName
+        ? {
+            name: 'score_risk',
+            arguments: { flagCodes: [], context: {} },
+          }
+        : null;
 
     case 'check-cdd':
       return { name: 'scan_cdd_renewals', arguments: { customers: [] } };
@@ -351,17 +374,22 @@ function buildToolCall(intent: IntentType, entities: ParsedCommand['entities']):
     case 'check-deadline':
       return {
         name: 'check_filing_deadline',
-        arguments: { eventDate: new Date().toISOString(), filingType: entities.filingType ?? 'STR' },
+        arguments: {
+          eventDate: new Date().toISOString(),
+          filingType: entities.filingType ?? 'STR',
+        },
       };
 
     case 'check-kpi':
       return { name: 'list_kpi_definitions', arguments: {} };
 
     case 'analyze-transactions':
-      return entities.entityName ? {
-        name: 'analyze_transactions_quant',
-        arguments: { entityName: entities.entityName, transactions: [] },
-      } : null;
+      return entities.entityName
+        ? {
+            name: 'analyze_transactions_quant',
+            arguments: { entityName: entities.entityName, transactions: [] },
+          }
+        : null;
 
     default:
       return null;
@@ -380,7 +408,10 @@ export const NL_COMMAND_TOOL_SCHEMAS = [
     inputSchema: {
       type: 'object',
       properties: {
-        command: { type: 'string', description: 'Natural language command (e.g. "Screen Al Farooq Trading")' },
+        command: {
+          type: 'string',
+          description: 'Natural language command (e.g. "Screen Al Farooq Trading")',
+        },
       },
       required: ['command'],
     },

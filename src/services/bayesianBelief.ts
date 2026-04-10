@@ -100,10 +100,7 @@ export function normalise(dist: Record<string, number>): Record<string, number> 
   return out;
 }
 
-export function updateBelief(
-  prior: Record<string, number>,
-  evidence: Evidence,
-): UpdateStep {
+export function updateBelief(prior: Record<string, number>, evidence: Evidence): UpdateStep {
   const unnormalised: Record<string, number> = {};
   for (const [h, p] of Object.entries(prior)) {
     const like = evidence.likelihood[h] ?? 0;
@@ -120,7 +117,7 @@ export function updateBelief(
 export function runBeliefUpdate(
   hypotheses: readonly Hypothesis[],
   prior: Record<string, number>,
-  evidenceStream: readonly Evidence[],
+  evidenceStream: readonly Evidence[]
 ): BeliefReport {
   let current = normalise({ ...prior });
   const steps: UpdateStep[] = [];

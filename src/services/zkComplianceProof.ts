@@ -102,9 +102,7 @@ function canonicalJson(obj: unknown): string {
   return (
     '{' +
     keys
-      .map(
-        (k) => JSON.stringify(k) + ':' + canonicalJson((obj as Record<string, unknown>)[k]),
-      )
+      .map((k) => JSON.stringify(k) + ':' + canonicalJson((obj as Record<string, unknown>)[k]))
       .join(',') +
     '}'
   );
@@ -116,7 +114,7 @@ function canonicalJson(obj: unknown): string {
 
 export async function commitRecord(
   record: ComplianceRecord,
-  blindingFactor?: string,
+  blindingFactor?: string
 ): Promise<Commitment> {
   const blind = blindingFactor ?? randomHex(16);
   const payload = `${record.recordId}|${canonicalJson(record.data)}|${blind}`;
@@ -159,7 +157,7 @@ async function buildMerkleTree(leaves: string[]): Promise<MerkleNode> {
 }
 
 export async function sealComplianceBundle(
-  records: readonly ComplianceRecord[],
+  records: readonly ComplianceRecord[]
 ): Promise<ComplianceProofBundle> {
   const commitments: Commitment[] = [];
   for (const rec of records) {
@@ -180,7 +178,7 @@ export async function sealComplianceBundle(
 
 export async function generateProof(
   bundle: ComplianceProofBundle,
-  recordId: string,
+  recordId: string
 ): Promise<MerkleProof | null> {
   const idx = bundle.commitments.findIndex((c) => c.recordId === recordId);
   if (idx < 0) return null;
@@ -226,7 +224,7 @@ export async function verifyProof(proof: MerkleProof): Promise<boolean> {
  */
 export async function verifyRevealedRecord(
   record: ComplianceRecord,
-  commitment: Commitment,
+  commitment: Commitment
 ): Promise<boolean> {
   if (record.recordId !== commitment.recordId) return false;
   const payload = `${record.recordId}|${canonicalJson(record.data)}|${commitment.blindingFactor}`;

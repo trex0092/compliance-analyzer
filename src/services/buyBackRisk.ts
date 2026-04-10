@@ -94,7 +94,7 @@ const HIGH_RISK_SELLER_JURISDICTIONS = new Set([
 
 export function assessBuyBackRisk(
   tx: BuyBackTransaction,
-  historicalTransactions: readonly BuyBackTransaction[] = [],
+  historicalTransactions: readonly BuyBackTransaction[] = []
 ): BuyBackRiskAssessment {
   const flags: BuyBackRiskAssessment['flags'] = [];
   let score = 0;
@@ -119,7 +119,7 @@ export function assessBuyBackRisk(
     add(
       'CASH_ABOVE_THRESHOLD',
       20,
-      `Cash payout ${tx.cashPayoutAED.toLocaleString()} AED ≥ ${DPMS_CASH_THRESHOLD_AED.toLocaleString()} DPMS threshold`,
+      `Cash payout ${tx.cashPayoutAED.toLocaleString()} AED ≥ ${DPMS_CASH_THRESHOLD_AED.toLocaleString()} DPMS threshold`
     );
   }
 
@@ -131,7 +131,7 @@ export function assessBuyBackRisk(
     add(
       'NEAR_THRESHOLD',
       15,
-      `Cash payout ${tx.cashPayoutAED.toLocaleString()} AED is within 10% of the reporting threshold (structuring signal)`,
+      `Cash payout ${tx.cashPayoutAED.toLocaleString()} AED is within 10% of the reporting threshold (structuring signal)`
     );
   }
 
@@ -145,7 +145,7 @@ export function assessBuyBackRisk(
       add(
         'PURITY_MISMATCH',
         30,
-        `Item "${item.description}": declared ${item.declaredPurity}, measured ${item.measuredPurity} — ${Math.abs(item.declaredPurity - item.measuredPurity).toFixed(0)} ppt off`,
+        `Item "${item.description}": declared ${item.declaredPurity}, measured ${item.measuredPurity} — ${Math.abs(item.declaredPurity - item.measuredPurity).toFixed(0)} ppt off`
       );
       break; // one flag per transaction
     }
@@ -153,13 +153,13 @@ export function assessBuyBackRisk(
 
   // 6. Damaged / melted / unmarked items
   const dodgyCount = tx.items.filter(
-    (i) => i.condition === 'damaged' || i.condition === 'melted' || i.condition === 'unmarked',
+    (i) => i.condition === 'damaged' || i.condition === 'melted' || i.condition === 'unmarked'
   ).length;
   if (dodgyCount > 0) {
     add(
       'UNMARKED_OR_DAMAGED',
       10,
-      `${dodgyCount} item(s) damaged, melted, or unmarked — provenance harder to verify`,
+      `${dodgyCount} item(s) damaged, melted, or unmarked — provenance harder to verify`
     );
   }
 
@@ -169,19 +169,16 @@ export function assessBuyBackRisk(
     add(
       'RELIGIOUS_FAMILY_ITEMS',
       10,
-      'Items identified as likely religious or family heirlooms — interview seller about context',
+      'Items identified as likely religious or family heirlooms — interview seller about context'
     );
   }
 
   // 8. High-risk seller jurisdiction
-  if (
-    tx.sellerNationality &&
-    HIGH_RISK_SELLER_JURISDICTIONS.has(tx.sellerNationality)
-  ) {
+  if (tx.sellerNationality && HIGH_RISK_SELLER_JURISDICTIONS.has(tx.sellerNationality)) {
     add(
       'HIGH_RISK_JURISDICTION',
       20,
-      `Seller nationality ${tx.sellerNationality} is on the high-risk gold-source list`,
+      `Seller nationality ${tx.sellerNationality} is on the high-risk gold-source list`
     );
   }
 
@@ -193,22 +190,22 @@ export function assessBuyBackRisk(
   // 10. Repeat seller within 24h
   const txTime = new Date(tx.at).getTime();
   const sameSellerTxs = historicalTransactions.filter(
-    (h) => h.sellerId === tx.sellerId && h.id !== tx.id,
+    (h) => h.sellerId === tx.sellerId && h.id !== tx.id
   );
   const within24h = sameSellerTxs.filter(
-    (h) => Math.abs(new Date(h.at).getTime() - txTime) < 24 * 60 * 60 * 1000,
+    (h) => Math.abs(new Date(h.at).getTime() - txTime) < 24 * 60 * 60 * 1000
   );
   if (within24h.length > 0) {
     add(
       'REPEAT_24H',
       20,
-      `Seller ${tx.sellerId} has ${within24h.length} other transaction(s) within 24h`,
+      `Seller ${tx.sellerId} has ${within24h.length} other transaction(s) within 24h`
     );
   }
 
   // 11. Repeat seller within the same week with different amounts
   const within7d = sameSellerTxs.filter(
-    (h) => Math.abs(new Date(h.at).getTime() - txTime) < 7 * 24 * 60 * 60 * 1000,
+    (h) => Math.abs(new Date(h.at).getTime() - txTime) < 7 * 24 * 60 * 60 * 1000
   );
   if (within24h.length === 0 && within7d.length >= 2) {
     const amounts = new Set(within7d.map((h) => Math.round(h.cashPayoutAED / 1000)));
@@ -216,7 +213,7 @@ export function assessBuyBackRisk(
       add(
         'REPEAT_WEEK_DIVERSE',
         15,
-        `Seller ${tx.sellerId} has ${within7d.length} transactions this week with varying amounts`,
+        `Seller ${tx.sellerId} has ${within7d.length} transactions this week with varying amounts`
       );
     }
   }

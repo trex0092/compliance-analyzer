@@ -59,7 +59,12 @@ export interface PastCase {
 export interface RetrievalResult {
   case: PastCase;
   similarity: number;
-  contributingFeatures: Array<{ feature: string; queryValue: number; caseValue: number; weight: number }>;
+  contributingFeatures: Array<{
+    feature: string;
+    queryValue: number;
+    caseValue: number;
+    weight: number;
+  }>;
 }
 
 export interface ReuseRecommendation {
@@ -77,7 +82,7 @@ export interface ReuseRecommendation {
 export function cosineSimilarity(
   a: Record<string, number>,
   b: Record<string, number>,
-  weights: Record<string, number> = {},
+  weights: Record<string, number> = {}
 ): number {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   let dot = 0;
@@ -128,7 +133,7 @@ export class CaseMemory {
         .sort(
           (a, b) =>
             Math.abs(b.queryValue * b.caseValue * b.weight) -
-            Math.abs(a.queryValue * a.caseValue * a.weight),
+            Math.abs(a.queryValue * a.caseValue * a.weight)
         )
         .slice(0, 5);
       return { case: c, similarity: sim, contributingFeatures };

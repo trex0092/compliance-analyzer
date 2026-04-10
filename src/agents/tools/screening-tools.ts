@@ -8,14 +8,20 @@
  */
 
 import type { ScreeningResult, SanctionsMatch } from '../../services/sanctionsApi';
-import type { ConsensusResult, MultiModelScreeningRequest } from '../../services/multiModelScreening';
+import type {
+  ConsensusResult,
+  MultiModelScreeningRequest,
+} from '../../services/multiModelScreening';
 import type { CrossEntityReport } from '../../services/crossEntityScreening';
 import type { ScreeningRun as _ScreeningRun } from '../../domain/screening';
 import type { CustomerProfile } from '../../domain/customers';
 import type { ToolResult } from '../mcp-server';
 
 import { screenEntityComprehensive, fetchAllSanctionsLists } from '../../services/sanctionsApi';
-import { runMultiModelScreening, consensusToScreeningRun as _consensusToScreeningRun } from '../../services/multiModelScreening';
+import {
+  runMultiModelScreening,
+  consensusToScreeningRun as _consensusToScreeningRun,
+} from '../../services/multiModelScreening';
 import { runCrossEntityScan } from '../../services/crossEntityScreening';
 import { appendToChain, type ChainedAuditEvent } from '../../utils/auditChain';
 import { sanitizeText } from '../../utils/sanitize';
@@ -33,7 +39,7 @@ export interface ScreenEntityInput {
 export async function screenEntity(
   input: ScreenEntityInput,
   auditChain: ChainedAuditEvent[],
-  analyst: string,
+  analyst: string
 ): Promise<ToolResult<ScreeningResult>> {
   const name = sanitizeText(input.entityName);
   if (!name || name.length < 2) {
@@ -72,7 +78,7 @@ export async function screenMultiModel(
   input: MultiModelScreenInput,
   apiKey: string,
   auditChain: ChainedAuditEvent[],
-  analyst: string,
+  analyst: string
 ): Promise<ToolResult<ConsensusResult>> {
   const name = sanitizeText(input.entityName);
   if (!name || name.length < 2) {
@@ -108,13 +114,26 @@ export async function screenMultiModel(
 
 export interface CrossEntityScreenInput {
   companyCustomerMap: Record<string, { companyName: string; customers: CustomerProfile[] }>;
-  companyUBOMap: Record<string, { companyName: string; ubos: Array<{ id: string; fullName: string; nationality?: string; ownershipPercent?: number; pepStatus: string; sanctionsStatus: string }> }>;
+  companyUBOMap: Record<
+    string,
+    {
+      companyName: string;
+      ubos: Array<{
+        id: string;
+        fullName: string;
+        nationality?: string;
+        ownershipPercent?: number;
+        pepStatus: string;
+        sanctionsStatus: string;
+      }>;
+    }
+  >;
 }
 
 export async function screenCrossEntity(
   input: CrossEntityScreenInput,
   auditChain: ChainedAuditEvent[],
-  analyst: string,
+  analyst: string
 ): Promise<ToolResult<CrossEntityReport>> {
   const customerMap = new Map(Object.entries(input.companyCustomerMap));
   const uboMap = new Map(Object.entries(input.companyUBOMap));
@@ -137,7 +156,7 @@ export async function screenCrossEntity(
 // ---------------------------------------------------------------------------
 
 export async function refreshSanctionsLists(
-  proxyUrl?: string,
+  proxyUrl?: string
 ): Promise<ToolResult<{ listsChecked: string[]; totalEntries: number; errors: string[] }>> {
   const result = await fetchAllSanctionsLists(proxyUrl);
   return {
@@ -178,7 +197,10 @@ export const SCREENING_TOOL_SCHEMAS = [
       properties: {
         entityName: { type: 'string' },
         entityType: { type: 'string', enum: ['individual', 'entity'] },
-        screeningType: { type: 'string', enum: ['sanctions', 'pep', 'risk-assessment', 'adverse-media'] },
+        screeningType: {
+          type: 'string',
+          enum: ['sanctions', 'pep', 'risk-assessment', 'adverse-media'],
+        },
         nationality: { type: 'string' },
         dateOfBirth: { type: 'string' },
         additionalContext: { type: 'string' },
@@ -193,8 +215,14 @@ export const SCREENING_TOOL_SCHEMAS = [
     inputSchema: {
       type: 'object',
       properties: {
-        companyCustomerMap: { type: 'object', description: 'Map of companyId → { companyName, customers[] }' },
-        companyUBOMap: { type: 'object', description: 'Map of companyId → { companyName, ubos[] }' },
+        companyCustomerMap: {
+          type: 'object',
+          description: 'Map of companyId → { companyName, customers[] }',
+        },
+        companyUBOMap: {
+          type: 'object',
+          description: 'Map of companyId → { companyName, ubos[] }',
+        },
       },
       required: ['companyCustomerMap', 'companyUBOMap'],
     },

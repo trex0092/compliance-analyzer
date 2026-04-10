@@ -77,7 +77,7 @@ export function createChain(topic: string, id?: string): ReasoningChain {
 
 export function addNode(
   chain: ReasoningChain,
-  node: Omit<ReasoningNode, 'createdAt'>,
+  node: Omit<ReasoningNode, 'createdAt'>
 ): ReasoningNode {
   if (chain.sealed) {
     throw new Error('addNode: chain is sealed and cannot be modified');

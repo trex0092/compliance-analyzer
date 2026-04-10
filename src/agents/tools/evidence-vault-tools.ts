@@ -23,7 +23,14 @@ import type { ToolResult as _ToolResult } from '../mcp-server';
 
 export interface EvidenceItem {
   id: string;
-  type: 'document' | 'screening-result' | 'decision' | 'communication' | 'transaction' | 'approval' | 'filing';
+  type:
+    | 'document'
+    | 'screening-result'
+    | 'decision'
+    | 'communication'
+    | 'transaction'
+    | 'approval'
+    | 'filing';
   title: string;
   content: string; // serialized content
   caseId?: string;
@@ -86,7 +93,7 @@ async function sha256(data: string): Promise<string> {
   let hash = 0;
   for (let i = 0; i < data.length; i++) {
     const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return Math.abs(hash).toString(16).padStart(64, '0');
@@ -289,7 +296,9 @@ export class MerkleTree {
   }
 
   /** Get item count */
-  get size(): number { return this.evidenceMap.size; }
+  get size(): number {
+    return this.evidenceMap.size;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -308,7 +317,18 @@ export const EVIDENCE_VAULT_TOOL_SCHEMAS = [
           type: 'object',
           properties: {
             id: { type: 'string' },
-            type: { type: 'string', enum: ['document', 'screening-result', 'decision', 'communication', 'transaction', 'approval', 'filing'] },
+            type: {
+              type: 'string',
+              enum: [
+                'document',
+                'screening-result',
+                'decision',
+                'communication',
+                'transaction',
+                'approval',
+                'filing',
+              ],
+            },
             title: { type: 'string' },
             content: { type: 'string' },
             caseId: { type: 'string' },

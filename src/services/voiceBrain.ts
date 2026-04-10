@@ -85,14 +85,16 @@ const INTENT_PATTERNS: IntentPattern[] = [
   },
   {
     intent: 'file_str',
-    pattern: /\b(?:file|submit|raise)\s+(?:an?\s+)?(?:str|sar|suspicious(?:\s+transaction)?)\s+(?:for|on)\s+(.+?)[.?!]*$/i,
+    pattern:
+      /\b(?:file|submit|raise)\s+(?:an?\s+)?(?:str|sar|suspicious(?:\s+transaction)?)\s+(?:for|on)\s+(.+?)[.?!]*$/i,
     extract: (m) => m[1].trim(),
     responseTemplate: (e) =>
       `I've drafted an STR for ${e ?? 'the entity'}. Do you confirm filing? Say "confirm" within 30 seconds.`,
   },
   {
     intent: 'freeze_entity',
-    pattern: /\b(?:freeze|block|suspend|lock)\s+(?:the\s+)?(?:account\s+of\s+|case\s+)?(.+?)[.?!]*$/i,
+    pattern:
+      /\b(?:freeze|block|suspend|lock)\s+(?:the\s+)?(?:account\s+of\s+|case\s+)?(.+?)[.?!]*$/i,
     extract: (m) => m[1].trim(),
     responseTemplate: (e) =>
       `Preparing to freeze ${e ?? 'the account'}. This action triggers the 24-hour EOCN countdown. Say "confirm" to proceed.`,
@@ -106,7 +108,8 @@ const INTENT_PATTERNS: IntentPattern[] = [
   },
   {
     intent: 'show_risk',
-    pattern: /\b(?:what.?s?\s+the\s+risk\s+(?:of|for)|risk\s+score\s+for|how\s+risky\s+is)\s+(.+?)[.?!]*$/i,
+    pattern:
+      /\b(?:what.?s?\s+the\s+risk\s+(?:of|for)|risk\s+score\s+for|how\s+risky\s+is)\s+(.+?)[.?!]*$/i,
     extract: (m) => m[1].trim(),
     responseTemplate: (e) => `Looking up risk score for ${e ?? 'the entity'}.`,
   },
@@ -149,7 +152,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
 
 export function parseVoiceCommand(
   raw: string,
-  config: Partial<VoiceBrainConfig> = {},
+  config: Partial<VoiceBrainConfig> = {}
 ): VoiceCommand {
   const wakeWords = config.wakeWords ?? DEFAULT_WAKE_WORDS;
   const destructive = new Set(config.destructiveIntents ?? DEFAULT_DESTRUCTIVE);
@@ -180,8 +183,7 @@ export function parseVoiceCommand(
     intent: 'unknown',
     confidence: 0,
     requiresConfirmation: false,
-    responseTemplate:
-      `I didn't catch that. Try "Hawkeye, screen Acme Metals" or "show my top risks".`,
+    responseTemplate: `I didn't catch that. Try "Hawkeye, screen Acme Metals" or "show my top risks".`,
   };
 }
 

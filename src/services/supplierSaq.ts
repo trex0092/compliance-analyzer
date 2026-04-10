@@ -30,13 +30,7 @@ export type SaqAnswer = 'yes' | 'no' | 'partial' | 'not_applicable' | 'unknown';
 
 export interface SaqQuestion {
   id: string;
-  category:
-    | 'governance'
-    | 'provenance'
-    | 'human_rights'
-    | 'conflict'
-    | 'environment'
-    | 'audit';
+  category: 'governance' | 'provenance' | 'human_rights' | 'conflict' | 'environment' | 'audit';
   text: string;
   /** The answer considered compliant. If actual != expected, flags a gap. */
   expected: SaqAnswer;
@@ -166,7 +160,7 @@ export interface SaqScore {
 
 export function scoreSaq(
   supplier: SupplierProfile,
-  questions: readonly SaqQuestion[] = STANDARD_SAQ,
+  questions: readonly SaqQuestion[] = STANDARD_SAQ
 ): SaqScore {
   const responseMap = new Map(supplier.saqResponses.map((r) => [r.questionId, r]));
 
@@ -240,11 +234,7 @@ export interface UpstreamReport {
  * Walk upstream from a root supplier, gathering every ancestor within
  * `maxHops`. Reports CAHRA-flagged suppliers anywhere in the chain.
  */
-export function walkUpstream(
-  map: SupplyMap,
-  rootId: string,
-  maxHops = 5,
-): UpstreamReport {
+export function walkUpstream(map: SupplyMap, rootId: string, maxHops = 5): UpstreamReport {
   const root = map.suppliers.get(rootId);
   if (!root) {
     return {

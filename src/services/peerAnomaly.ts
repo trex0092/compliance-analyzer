@@ -84,10 +84,7 @@ export function analysePeerAnomaly(input: PeerAnomalyInput): PeerAnomalyReport {
   const anchors = input.anchors ?? {};
 
   const features = Array.from(
-    new Set([
-      ...Object.keys(input.target),
-      ...input.peers.flatMap((p) => Object.keys(p)),
-    ]),
+    new Set([...Object.keys(input.target), ...input.peers.flatMap((p) => Object.keys(p))])
   );
 
   const anomalies: FeatureAnomaly[] = [];
@@ -158,7 +155,7 @@ function formatExplanation(
   feature: string,
   z: number,
   direction: 'higher' | 'lower',
-  anchor?: string,
+  anchor?: string
 ): string {
   const base = `${feature} is ${Math.abs(z).toFixed(2)}σ ${direction} than peers`;
   return anchor ? `${base}. Regulatory anchor: ${anchor}.` : `${base}.`;
@@ -166,12 +163,15 @@ function formatExplanation(
 
 function composeOverallExplanation(
   overallScore: number,
-  anomalies: readonly FeatureAnomaly[],
+  anomalies: readonly FeatureAnomaly[]
 ): string {
   if (anomalies.length === 0) {
     return `No features exceeded the anomaly threshold. Overall deviation ${overallScore.toFixed(2)}.`;
   }
-  const top = anomalies.slice(0, 3).map((a) => a.feature).join(', ');
+  const top = anomalies
+    .slice(0, 3)
+    .map((a) => a.feature)
+    .join(', ');
   return `Overall deviation ${overallScore.toFixed(2)}. Primary drivers: ${top}.`;
 }
 

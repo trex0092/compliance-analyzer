@@ -17,7 +17,10 @@
  */
 
 import type { ToolResult } from '../mcp-server';
-import { RISK_THRESHOLDS, DPMS_CASH_THRESHOLD_AED as _DPMS_CASH_THRESHOLD_AED } from '../../domain/constants';
+import {
+  RISK_THRESHOLDS,
+  DPMS_CASH_THRESHOLD_AED as _DPMS_CASH_THRESHOLD_AED,
+} from '../../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -125,7 +128,8 @@ export function explainScreeningDecision(input: {
       weight: 4,
       contribution: 0.2,
       direction: 'increases-risk',
-      explanation: 'Entity identified as Politically Exposed Person — requires Enhanced Due Diligence',
+      explanation:
+        'Entity identified as Politically Exposed Person — requires Enhanced Due Diligence',
       regulatoryRef: 'Cabinet Res 134/2025 Art.14',
     });
   }
@@ -145,7 +149,8 @@ export function explainScreeningDecision(input: {
   }
 
   // Factor 4: Jurisdiction
-  const jurisdictionWeight = input.jurisdictionRisk === 'high' ? 3 : input.jurisdictionRisk === 'medium' ? 1 : 0;
+  const jurisdictionWeight =
+    input.jurisdictionRisk === 'high' ? 3 : input.jurisdictionRisk === 'medium' ? 1 : 0;
   if (jurisdictionWeight > 0) {
     _totalScore += jurisdictionWeight;
     factors.push({
@@ -165,7 +170,8 @@ export function explainScreeningDecision(input: {
     ruleName: 'Confirmed Sanctions Match',
     triggered: input.matchConfidence >= 0.9,
     condition: 'Match confidence >= 90%',
-    result: input.matchConfidence >= 0.9 ? 'FREEZE — mandatory asset freeze within 24h' : 'Not triggered',
+    result:
+      input.matchConfidence >= 0.9 ? 'FREEZE — mandatory asset freeze within 24h' : 'Not triggered',
     regulatoryBasis: 'Cabinet Res 74/2020 Art.4-7',
     impact: 'mandatory',
   });
@@ -175,7 +181,10 @@ export function explainScreeningDecision(input: {
     ruleName: 'Potential Match Escalation',
     triggered: input.matchConfidence >= 0.5 && input.matchConfidence < 0.9,
     condition: 'Match confidence 50-89%',
-    result: input.matchConfidence >= 0.5 && input.matchConfidence < 0.9 ? 'ESCALATE to Compliance Officer' : 'Not triggered',
+    result:
+      input.matchConfidence >= 0.5 && input.matchConfidence < 0.9
+        ? 'ESCALATE to Compliance Officer'
+        : 'Not triggered',
     regulatoryBasis: 'FDL No.10/2025 Art.22',
     impact: 'high',
   });
@@ -185,7 +194,9 @@ export function explainScreeningDecision(input: {
     ruleName: 'PEP Enhanced Due Diligence',
     triggered: input.pepStatus,
     condition: 'PEP status confirmed',
-    result: input.pepStatus ? 'EDD required — Senior Management approval mandatory' : 'Not triggered',
+    result: input.pepStatus
+      ? 'EDD required — Senior Management approval mandatory'
+      : 'Not triggered',
     regulatoryBasis: 'Cabinet Res 134/2025 Art.14',
     impact: 'mandatory',
   });
@@ -205,15 +216,22 @@ export function explainScreeningDecision(input: {
     step: 1,
     action: 'Screen entity against all sanctions lists',
     reasoning: `FDL Art.35 requires checking ALL lists: UN, OFAC, EU, UK, UAE/EOCN. ${input.listsChecked.length} lists were checked.`,
-    evidence: [`${input.matchCount} match(es) found`, `Highest confidence: ${(input.matchConfidence * 100).toFixed(0)}%`],
-    conclusion: input.matchCount > 0 ? 'Matches found — further analysis required' : 'No matches — entity clear',
+    evidence: [
+      `${input.matchCount} match(es) found`,
+      `Highest confidence: ${(input.matchConfidence * 100).toFixed(0)}%`,
+    ],
+    conclusion:
+      input.matchCount > 0
+        ? 'Matches found — further analysis required'
+        : 'No matches — entity clear',
   });
 
   if (input.matchConfidence >= 0.9) {
     reasoningChain.push({
       step: 2,
       action: 'Apply confirmed match protocol',
-      reasoning: 'Match confidence exceeds 90% — per CLAUDE.md decision tree, this is a confirmed match requiring immediate freeze.',
+      reasoning:
+        'Match confidence exceeds 90% — per CLAUDE.md decision tree, this is a confirmed match requiring immediate freeze.',
       evidence: [`Confidence: ${(input.matchConfidence * 100).toFixed(0)}%`, 'Threshold: 90%'],
       conclusion: 'FREEZE assets immediately. Start 24h EOCN countdown.',
     });
@@ -221,8 +239,12 @@ export function explainScreeningDecision(input: {
     reasoningChain.push({
       step: 2,
       action: 'Escalate to Compliance Officer',
-      reasoning: 'Match confidence between 50-89% — requires human review. CO decides: confirm (→ freeze) or false positive (→ dismiss with documentation).',
-      evidence: [`Confidence: ${(input.matchConfidence * 100).toFixed(0)}%`, 'Range: 50-89% = potential match'],
+      reasoning:
+        'Match confidence between 50-89% — requires human review. CO decides: confirm (→ freeze) or false positive (→ dismiss with documentation).',
+      evidence: [
+        `Confidence: ${(input.matchConfidence * 100).toFixed(0)}%`,
+        'Range: 50-89% = potential match',
+      ],
       conclusion: 'Escalate for CO review. Do not proceed until resolved.',
     });
   }
@@ -232,14 +254,16 @@ export function explainScreeningDecision(input: {
     counterArguments.push({
       argument: 'Could be a false positive — common names may trigger matches',
       strength: 'moderate',
-      rebuttal: 'Even potential matches require CO review per FDL Art.22. False positives must be documented and dismissed with reasoning.',
+      rebuttal:
+        'Even potential matches require CO review per FDL Art.22. False positives must be documented and dismissed with reasoning.',
     });
   }
   if (input.pepStatus) {
     counterArguments.push({
       argument: 'PEP status alone does not indicate criminal activity',
       strength: 'strong',
-      rebuttal: 'Correct — PEP status triggers EDD, not automatic rejection. The purpose is enhanced scrutiny, not presumption of guilt (Cabinet Res 134/2025 Art.14).',
+      rebuttal:
+        'Correct — PEP status triggers EDD, not automatic rejection. The purpose is enhanced scrutiny, not presumption of guilt (Cabinet Res 134/2025 Art.14).',
     });
   }
 
@@ -255,10 +279,19 @@ export function explainScreeningDecision(input: {
     finalVerdict = 'CLEAR — No significant risk indicators';
   }
 
-  const confidenceScore = Math.min(0.99, 0.5 + factors.reduce((s, f) => s + Math.abs(f.contribution), 0) * 0.3);
+  const confidenceScore = Math.min(
+    0.99,
+    0.5 + factors.reduce((s, f) => s + Math.abs(f.contribution), 0) * 0.3
+  );
 
   // Build audit narrative
-  const auditNarrative = buildAuditNarrative(input.entityName, finalVerdict, factors, ruleEvaluations, reasoningChain);
+  const auditNarrative = buildAuditNarrative(
+    input.entityName,
+    finalVerdict,
+    factors,
+    ruleEvaluations,
+    reasoningChain
+  );
   const regulatorySummary = buildRegulatorySummary(ruleEvaluations);
 
   return {
@@ -270,7 +303,14 @@ export function explainScreeningDecision(input: {
       decisionType: 'screening',
       finalVerdict,
       confidenceScore: Math.round(confidenceScore * 100) / 100,
-      confidenceLevel: confidenceScore >= 0.9 ? 'very-high' : confidenceScore >= 0.7 ? 'high' : confidenceScore >= 0.5 ? 'medium' : 'low',
+      confidenceLevel:
+        confidenceScore >= 0.9
+          ? 'very-high'
+          : confidenceScore >= 0.7
+            ? 'high'
+            : confidenceScore >= 0.5
+              ? 'medium'
+              : 'low',
       factors,
       ruleEvaluations,
       reasoningChain,
@@ -312,7 +352,9 @@ export function explainRiskDecision(input: {
   if (input.sanctionMatch) {
     factors.push({
       name: 'Sanctions Match',
-      value: true, weight: 10, contribution: 0.5,
+      value: true,
+      weight: 10,
+      contribution: 0.5,
       direction: 'increases-risk',
       explanation: 'Active sanctions match — mandatory freeze and STR',
       regulatoryRef: 'FDL No.10/2025 Art.35, Cabinet Res 74/2020',
@@ -322,7 +364,9 @@ export function explainRiskDecision(input: {
   if (input.pepMatch) {
     factors.push({
       name: 'PEP Match',
-      value: true, weight: 5, contribution: 0.25,
+      value: true,
+      weight: 5,
+      contribution: 0.25,
       direction: 'increases-risk',
       explanation: 'PEP identified — EDD with Senior Management/Board approval required',
       regulatoryRef: 'Cabinet Res 134/2025 Art.14',
@@ -332,9 +376,12 @@ export function explainRiskDecision(input: {
   if (input.missingCDD) {
     factors.push({
       name: 'Missing CDD Documentation',
-      value: true, weight: 4, contribution: 0.2,
+      value: true,
+      weight: 4,
+      contribution: 0.2,
       direction: 'increases-risk',
-      explanation: 'Customer Due Diligence documentation incomplete — cannot verify identity/source of funds',
+      explanation:
+        'Customer Due Diligence documentation incomplete — cannot verify identity/source of funds',
       regulatoryRef: 'FDL No.10/2025 Art.12-14',
     });
   }
@@ -351,7 +398,8 @@ export function explainRiskDecision(input: {
   reasoningChain.push({
     step: 1,
     action: 'Calculate base risk score from red flags',
-    reasoning: 'Each red flag scored using likelihood × impact formula per CLAUDE.md specifications',
+    reasoning:
+      'Each red flag scored using likelihood × impact formula per CLAUDE.md specifications',
     evidence: [`${input.flagCodes.length} flags evaluated`, `Composite score: ${input.riskScore}`],
     conclusion: `Base risk score: ${input.riskScore}`,
   });
@@ -359,7 +407,8 @@ export function explainRiskDecision(input: {
   reasoningChain.push({
     step: 2,
     action: 'Apply context multipliers',
-    reasoning: 'Sanctions proximity, PEP status, cash handling, and jurisdiction risk add multipliers to the base score',
+    reasoning:
+      'Sanctions proximity, PEP status, cash handling, and jurisdiction risk add multipliers to the base score',
     evidence: [
       `Sanctions: ${input.sanctionMatch ? 'YES' : 'no'}`,
       `PEP: ${input.pepMatch ? 'YES' : 'no'}`,
@@ -376,7 +425,8 @@ export function explainRiskDecision(input: {
     conclusion: input.recommendedOutcome,
   });
 
-  const auditNarrative = `Risk assessment for ${input.entityName} completed on ${new Date().toLocaleDateString('en-GB')}. ` +
+  const auditNarrative =
+    `Risk assessment for ${input.entityName} completed on ${new Date().toLocaleDateString('en-GB')}. ` +
     `Composite risk score: ${input.riskScore}/20. ` +
     `${input.flagCodes.length} red flag(s) identified. ` +
     `Sanctions match: ${input.sanctionMatch ? 'YES' : 'No'}. PEP: ${input.pepMatch ? 'YES' : 'No'}. ` +
@@ -398,7 +448,10 @@ export function explainRiskDecision(input: {
       reasoningChain,
       counterArguments: [],
       auditNarrative,
-      regulatorySummary: factors.filter((f) => f.regulatoryRef).map((f) => `${f.name}: ${f.regulatoryRef}`).join('; '),
+      regulatorySummary: factors
+        .filter((f) => f.regulatoryRef)
+        .map((f) => `${f.name}: ${f.regulatoryRef}`)
+        .join('; '),
       alternativeOutcomes: [],
     },
   };
@@ -409,19 +462,24 @@ export function explainRiskDecision(input: {
 // ---------------------------------------------------------------------------
 
 function buildAuditNarrative(
-  entityName: string, verdict: string,
-  factors: DecisionFactor[], rules: RuleEvaluation[], chain: ReasoningChain[],
+  entityName: string,
+  verdict: string,
+  factors: DecisionFactor[],
+  rules: RuleEvaluation[],
+  chain: ReasoningChain[]
 ): string {
   const date = new Date().toLocaleDateString('en-GB');
   const triggeredRules = rules.filter((r) => r.triggered);
   const riskFactors = factors.filter((f) => f.direction === 'increases-risk');
 
-  return `Screening decision for "${entityName}" completed on ${date}. ` +
+  return (
+    `Screening decision for "${entityName}" completed on ${date}. ` +
     `Verdict: ${verdict}. ` +
     `${riskFactors.length} risk-increasing factor(s) identified. ` +
     `${triggeredRules.length} regulatory rule(s) triggered: ${triggeredRules.map((r) => r.ruleId).join(', ') || 'none'}. ` +
     `Decision reached through ${chain.length}-step reasoning chain with full factor analysis. ` +
-    `All applicable regulations evaluated. Decision is audit-ready and regulator-presentable.`;
+    `All applicable regulations evaluated. Decision is audit-ready and regulator-presentable.`
+  );
 }
 
 function buildRegulatorySummary(rules: RuleEvaluation[]): string {
@@ -431,24 +489,30 @@ function buildRegulatorySummary(rules: RuleEvaluation[]): string {
     .join('\n');
 }
 
-function generateAlternatives(chosenVerdict: string, confidence: number): ExplainableDecision['alternativeOutcomes'] {
+function generateAlternatives(
+  chosenVerdict: string,
+  confidence: number
+): ExplainableDecision['alternativeOutcomes'] {
   const alternatives = [];
   if (chosenVerdict.includes('FREEZE')) {
     alternatives.push({
       outcome: 'ESCALATE instead of FREEZE',
       probability: 1 - confidence,
-      whyNotChosen: 'Confidence exceeds 90% threshold — regulatory requirement mandates immediate freeze (Cabinet Res 74/2020 Art.4)',
+      whyNotChosen:
+        'Confidence exceeds 90% threshold — regulatory requirement mandates immediate freeze (Cabinet Res 74/2020 Art.4)',
     });
   } else if (chosenVerdict.includes('ESCALATE')) {
     alternatives.push({
       outcome: 'CLEAR with documentation',
       probability: 0.3,
-      whyNotChosen: 'Match confidence in 50-89% range requires CO review — cannot dismiss without human analysis',
+      whyNotChosen:
+        'Match confidence in 50-89% range requires CO review — cannot dismiss without human analysis',
     });
     alternatives.push({
       outcome: 'FREEZE immediately',
       probability: 0.1,
-      whyNotChosen: 'Confidence below 90% — freeze requires confirmed match per Cabinet Res 74/2020',
+      whyNotChosen:
+        'Confidence below 90% — freeze requires confirmed match per Cabinet Res 74/2020',
     });
   }
   return alternatives;
@@ -474,7 +538,15 @@ export const EXPLAINABLE_TOOL_SCHEMAS = [
         adverseMedia: { type: 'boolean' },
         jurisdictionRisk: { type: 'string', enum: ['low', 'medium', 'high'] },
       },
-      required: ['entityName', 'matchConfidence', 'listsChecked', 'matchCount', 'pepStatus', 'adverseMedia', 'jurisdictionRisk'],
+      required: [
+        'entityName',
+        'matchConfidence',
+        'listsChecked',
+        'matchCount',
+        'pepStatus',
+        'adverseMedia',
+        'jurisdictionRisk',
+      ],
     },
   },
   {
@@ -492,7 +564,15 @@ export const EXPLAINABLE_TOOL_SCHEMAS = [
         missingCDD: { type: 'boolean' },
         recommendedOutcome: { type: 'string' },
       },
-      required: ['entityName', 'riskScore', 'flagCodes', 'sanctionMatch', 'pepMatch', 'missingCDD', 'recommendedOutcome'],
+      required: [
+        'entityName',
+        'riskScore',
+        'flagCodes',
+        'sanctionMatch',
+        'pepMatch',
+        'missingCDD',
+        'recommendedOutcome',
+      ],
     },
   },
 ] as const;

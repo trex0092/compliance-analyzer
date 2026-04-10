@@ -38,15 +38,7 @@ export type Entity =
   | 'bar'
   | 'invoice';
 
-export type FilterOp =
-  | 'eq'
-  | 'neq'
-  | 'gt'
-  | 'gte'
-  | 'lt'
-  | 'lte'
-  | 'contains'
-  | 'between';
+export type FilterOp = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'contains' | 'between';
 
 export interface Filter {
   field: string;
@@ -248,7 +240,7 @@ function parseLimit(q: string): number | undefined {
 
 export function executeQuery<T extends Record<string, unknown>>(
   ast: QueryAst,
-  dataset: readonly T[],
+  dataset: readonly T[]
 ): T[] {
   let rows = dataset.filter((row) => matchesAllFilters(row, ast.filters));
 
@@ -305,7 +297,9 @@ function matchFilter(row: Record<string, unknown>, f: Filter): boolean {
     case 'lte':
       return typeof value === 'number' && typeof f.value === 'number' && value <= f.value;
     case 'contains':
-      return typeof value === 'string' && value.toLowerCase().includes(String(f.value).toLowerCase());
+      return (
+        typeof value === 'string' && value.toLowerCase().includes(String(f.value).toLowerCase())
+      );
     case 'between':
       if (Array.isArray(f.value) && typeof value === 'number') {
         const [lo, hi] = f.value as [number, number];

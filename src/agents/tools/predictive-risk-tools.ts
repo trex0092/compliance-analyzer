@@ -21,8 +21,8 @@ import { RISK_THRESHOLDS } from '../../domain/constants';
 // ---------------------------------------------------------------------------
 
 export interface RiskDataPoint {
-  date: string;        // ISO date
-  riskScore: number;   // 0-20
+  date: string; // ISO date
+  riskScore: number; // 0-20
   alertCount: number;
   transactionVolume: number;
   flagCount: number;
@@ -109,11 +109,18 @@ function calculateEMA(values: number[], period: number): number {
 // Linear Regression
 // ---------------------------------------------------------------------------
 
-function linearRegression(values: number[]): { slope: number; intercept: number; rSquared: number } {
+function linearRegression(values: number[]): {
+  slope: number;
+  intercept: number;
+  rSquared: number;
+} {
   const n = values.length;
   if (n < 2) return { slope: 0, intercept: values[0] ?? 0, rSquared: 0 };
 
-  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  let sumX = 0,
+    sumY = 0,
+    sumXY = 0,
+    sumXX = 0;
   for (let i = 0; i < n; i++) {
     sumX += i;
     sumY += values[i];
@@ -126,7 +133,8 @@ function linearRegression(values: number[]): { slope: number; intercept: number;
 
   // R²
   const mean = sumY / n;
-  let ssRes = 0, ssTot = 0;
+  let ssRes = 0,
+    ssTot = 0;
   for (let i = 0; i < n; i++) {
     const predicted = slope * i + intercept;
     ssRes += (values[i] - predicted) ** 2;
@@ -159,18 +167,13 @@ function calculateRiskVelocity(scores: number[], dates: string[]): RiskVelocity 
   const weekly = weekChange / Math.max(1, Math.min(4, totalDays / 7));
 
   // Monthly velocity
-  const monthly = totalDays >= 30
-    ? (scores[n - 1] - scores[0]) / (totalDays / 30)
-    : daily * 30;
+  const monthly = totalDays >= 30 ? (scores[n - 1] - scores[0]) / (totalDays / 30) : daily * 30;
 
   // Acceleration (change in velocity)
   const halfPoint = Math.floor(n / 2);
-  const firstHalfVelocity = halfPoint > 0
-    ? (scores[halfPoint] - scores[0]) / halfPoint
-    : 0;
-  const secondHalfVelocity = n - halfPoint > 0
-    ? (scores[n - 1] - scores[halfPoint]) / (n - halfPoint)
-    : 0;
+  const firstHalfVelocity = halfPoint > 0 ? (scores[halfPoint] - scores[0]) / halfPoint : 0;
+  const secondHalfVelocity =
+    n - halfPoint > 0 ? (scores[n - 1] - scores[halfPoint]) / (n - halfPoint) : 0;
   const acceleration = secondHalfVelocity - firstHalfVelocity;
 
   return {
@@ -187,7 +190,8 @@ function calculateRiskVelocity(scores: number[], dates: string[]): RiskVelocity 
 // ---------------------------------------------------------------------------
 
 function detectSeasonality(data: RiskDataPoint[]): SeasonalPattern {
-  if (data.length < 60) { // need ~2 months minimum
+  if (data.length < 60) {
+    // need ~2 months minimum
     return { detected: false, periodDays: null, peakMonths: [], troughMonths: [], amplitudeAvg: 0 };
   }
 
@@ -234,7 +238,7 @@ function detectSeasonality(data: RiskDataPoint[]): SeasonalPattern {
 export function runPredictiveRiskAnalysis(
   entityName: string,
   data: RiskDataPoint[],
-  forecastDays: number = 90,
+  forecastDays: number = 90
 ): ToolResult<PredictiveRiskReport> {
   if (data.length < 5) {
     return { ok: false, error: 'Need at least 5 data points for meaningful prediction' };
@@ -252,7 +256,8 @@ export function runPredictiveRiskAnalysis(
   const momentum = ema7 - ema30;
 
   const trend: TrendAnalysis = {
-    direction: regression.slope > 0.05 ? 'increasing' : regression.slope < -0.05 ? 'decreasing' : 'stable',
+    direction:
+      regression.slope > 0.05 ? 'increasing' : regression.slope < -0.05 ? 'decreasing' : 'stable',
     slope: Math.round(regression.slope * 1000) / 1000,
     rSquared: Math.round(regression.rSquared * 1000) / 1000,
     ema7: Math.round(ema7 * 100) / 100,
@@ -265,14 +270,18 @@ export function runPredictiveRiskAnalysis(
 
   // Forecasts
   const forecasts: RiskForecast[] = [];
-  const stdDev = Math.sqrt(scores.reduce((s, v) => s + (v - (scores.reduce((a, b) => a + b, 0) / scores.length)) ** 2, 0) / scores.length);
+  const stdDev = Math.sqrt(
+    scores.reduce((s, v) => s + (v - scores.reduce((a, b) => a + b, 0) / scores.length) ** 2, 0) /
+      scores.length
+  );
   const lastDate = new Date(dates[dates.length - 1]);
 
   for (let d = 1; d <= forecastDays; d += Math.max(1, Math.floor(forecastDays / 30))) {
     const futureDate = new Date(lastDate.getTime() + d * 86400_000);
-    const predicted = Math.max(0, Math.min(20,
-      regression.slope * (scores.length + d) + regression.intercept,
-    ));
+    const predicted = Math.max(
+      0,
+      Math.min(20, regression.slope * (scores.length + d) + regression.intercept)
+    );
     const uncertainty = stdDev * Math.sqrt(d / scores.length) * 1.96;
 
     let predictedLevel: RiskForecast['predictedLevel'] = 'low';
@@ -291,7 +300,9 @@ export function runPredictiveRiskAnalysis(
 
   // Threshold breach predictions
   const thresholdPredictions: ThresholdBreachPrediction[] = [];
-  for (const [level, value] of Object.entries(RISK_THRESHOLDS) as Array<['medium' | 'high' | 'critical', number]>) {
+  for (const [level, value] of Object.entries(RISK_THRESHOLDS) as Array<
+    ['medium' | 'high' | 'critical', number]
+  >) {
     if (currentScore >= value) {
       thresholdPredictions.push({
         threshold: level,
@@ -351,26 +362,43 @@ export function runPredictiveRiskAnalysis(
   const recommendedActions: string[] = [];
 
   if (trend.direction === 'increasing' && regression.rSquared > 0.3) {
-    earlyWarnings.push(`Risk score trending upward (slope: ${trend.slope}/day, R²: ${trend.rSquared})`);
+    earlyWarnings.push(
+      `Risk score trending upward (slope: ${trend.slope}/day, R²: ${trend.rSquared})`
+    );
   }
   if (velocity.isAccelerating) {
-    earlyWarnings.push(`Risk acceleration detected — velocity increasing at ${velocity.acceleration}/day²`);
+    earlyWarnings.push(
+      `Risk acceleration detected — velocity increasing at ${velocity.acceleration}/day²`
+    );
     recommendedActions.push('Increase monitoring frequency — risk is accelerating');
   }
   if (momentum > 2) {
-    earlyWarnings.push(`Strong upward momentum — 7-day EMA ${momentum.toFixed(1)} points above 30-day EMA`);
+    earlyWarnings.push(
+      `Strong upward momentum — 7-day EMA ${momentum.toFixed(1)} points above 30-day EMA`
+    );
   }
 
-  const imminentBreaches = thresholdPredictions.filter((t) => t.daysUntilBreach !== null && t.daysUntilBreach <= 30 && t.daysUntilBreach > 0);
+  const imminentBreaches = thresholdPredictions.filter(
+    (t) => t.daysUntilBreach !== null && t.daysUntilBreach <= 30 && t.daysUntilBreach > 0
+  );
   for (const breach of imminentBreaches) {
-    earlyWarnings.push(`${breach.threshold.toUpperCase()} threshold breach predicted in ${breach.daysUntilBreach} days (probability: ${(breach.probability * 100).toFixed(0)}%)`);
-    recommendedActions.push(`Preemptive action required — entity approaching ${breach.threshold} risk level`);
+    earlyWarnings.push(
+      `${breach.threshold.toUpperCase()} threshold breach predicted in ${breach.daysUntilBreach} days (probability: ${(breach.probability * 100).toFixed(0)}%)`
+    );
+    recommendedActions.push(
+      `Preemptive action required — entity approaching ${breach.threshold} risk level`
+    );
   }
 
   if (seasonality.detected && seasonality.peakMonths.length > 0) {
     const currentMonth = new Date().getMonth() + 1;
-    if (seasonality.peakMonths.includes(currentMonth) || seasonality.peakMonths.includes(currentMonth + 1)) {
-      earlyWarnings.push(`Entering seasonal risk peak period (months: ${seasonality.peakMonths.join(', ')})`);
+    if (
+      seasonality.peakMonths.includes(currentMonth) ||
+      seasonality.peakMonths.includes(currentMonth + 1)
+    ) {
+      earlyWarnings.push(
+        `Entering seasonal risk peak period (months: ${seasonality.peakMonths.join(', ')})`
+      );
     }
   }
 

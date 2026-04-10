@@ -32,7 +32,7 @@ export interface GenerateGoAMLInput {
 export async function generateGoAMLXml(
   input: GenerateGoAMLInput,
   auditChain: ChainedAuditEvent[],
-  analyst: string,
+  analyst: string
 ): Promise<ToolResult<{ xml: string; filename: string; validation: ValidationResult }>> {
   const xml = buildGoAMLXml(input.report, input.linkedCase, input.linkedCustomer);
 
@@ -60,12 +60,11 @@ export async function generateGoAMLXml(
 // Tool: validate_goaml_xml
 // ---------------------------------------------------------------------------
 
-export function validateGoAMLXml(
-  input: { xml: string; reportType: 'STR' | 'CTR' },
-): ToolResult<ValidationResult> {
-  const validation = input.reportType === 'CTR'
-    ? validateCTR(input.xml)
-    : validateSTR(input.xml);
+export function validateGoAMLXml(input: {
+  xml: string;
+  reportType: 'STR' | 'CTR';
+}): ToolResult<ValidationResult> {
+  const validation = input.reportType === 'CTR' ? validateCTR(input.xml) : validateSTR(input.xml);
 
   return { ok: true, data: validation };
 }
@@ -79,13 +78,16 @@ export interface CheckDeadlineInput {
   filingType: 'STR' | 'CTR' | 'CNMR' | 'DPMSR';
 }
 
-export function checkFilingDeadline(
-  input: CheckDeadlineInput,
-): ToolResult<{ dueDate: string; isOverdue: boolean; businessDaysRemaining: number; filingType: string }> {
+export function checkFilingDeadline(input: CheckDeadlineInput): ToolResult<{
+  dueDate: string;
+  isOverdue: boolean;
+  businessDaysRemaining: number;
+  filingType: string;
+}> {
   const deadlineMap: Record<string, number> = {
-    STR: 0,   // without delay — FDL Art.26
-    CTR: 15,  // 15 business days
-    CNMR: 5,  // 5 business days — Cabinet Res 74/2020 Art.6
+    STR: 0, // without delay — FDL Art.26
+    CTR: 15, // 15 business days
+    CNMR: 5, // 5 business days — Cabinet Res 74/2020 Art.6
     DPMSR: 15, // 15 business days
   };
 
@@ -126,13 +128,13 @@ export interface GenerateKPIInput {
 export async function generateKPIReportTool(
   input: GenerateKPIInput,
   auditChain: ChainedAuditEvent[],
-  analyst: string,
+  analyst: string
 ): Promise<ToolResult<KPIReport>> {
   const report = generateKPIReport(
     input.measurements,
     input.entity,
     input.period,
-    input.generatedBy,
+    input.generatedBy
   );
 
   await appendToChain(auditChain, {
@@ -150,9 +152,16 @@ export async function generateKPIReportTool(
 // Tool: list_kpi_definitions
 // ---------------------------------------------------------------------------
 
-export function listKPIDefinitions(
-  category?: string,
-): ToolResult<{ definitions: Array<{ id: string; name: string; category: string; frequency: string; targetValue: number; targetUnit: string }> }> {
+export function listKPIDefinitions(category?: string): ToolResult<{
+  definitions: Array<{
+    id: string;
+    name: string;
+    category: string;
+    frequency: string;
+    targetValue: number;
+    targetUnit: string;
+  }>;
+}> {
   let defs = DPMS_KPI_DEFINITIONS;
   if (category) {
     defs = defs.filter((d) => d.category === category);
@@ -242,7 +251,16 @@ export const FILING_TOOL_SCHEMAS = [
       properties: {
         category: {
           type: 'string',
-          enum: ['cdd-kyc', 'screening-tfs', 'reporting-fiu', 'risk-assessment', 'training', 'supply-chain', 'governance', 'record-keeping'],
+          enum: [
+            'cdd-kyc',
+            'screening-tfs',
+            'reporting-fiu',
+            'risk-assessment',
+            'training',
+            'supply-chain',
+            'governance',
+            'record-keeping',
+          ],
         },
       },
     },

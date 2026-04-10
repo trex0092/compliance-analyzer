@@ -66,12 +66,7 @@ function fnv1a(str: string): number {
 }
 
 /** Double-hashing scheme: hash_i(x) = h1(x) + i * h2(x). */
-function hashIndices(
-  key: string,
-  salt: string,
-  numHashes: number,
-  numBits: number,
-): number[] {
+function hashIndices(key: string, salt: string, numHashes: number, numBits: number): number[] {
   const h1 = fnv1a(salt + ':a:' + key);
   const h2 = fnv1a(salt + ':b:' + key) || 1;
   const out: number[] = [];
@@ -95,7 +90,7 @@ export function createBloomFilter(config: BloomConfig): BloomFilter {
   // m = -n ln p / (ln 2)^2
   const numBits = Math.max(
     8,
-    Math.ceil((-expectedItems * Math.log(falsePositiveRate)) / Math.LN2 ** 2),
+    Math.ceil((-expectedItems * Math.log(falsePositiveRate)) / Math.LN2 ** 2)
   );
   // k = (m/n) ln 2
   const numHashes = Math.max(1, Math.round((numBits / expectedItems) * Math.LN2));
@@ -187,7 +182,7 @@ export interface IntelFilterConfig {
 
 export function buildCustomerIntelFilter(
   names: readonly string[],
-  config: IntelFilterConfig,
+  config: IntelFilterConfig
 ): BloomFilter {
   const filter = createBloomFilter({
     expectedItems: Math.max(1, names.length),
@@ -208,7 +203,7 @@ export interface IntelMatchResult {
 
 export function probeCustomerIntel(
   filter: BloomFilter,
-  candidates: readonly string[],
+  candidates: readonly string[]
 ): IntelMatchResult[] {
   return candidates.map((query) => {
     const normalised = normaliseForIntel(query);

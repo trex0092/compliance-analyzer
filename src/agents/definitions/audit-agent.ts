@@ -25,7 +25,12 @@ import { verifyChain, type ChainedAuditEvent } from '../../utils/auditChain';
 // Agent definition
 // ---------------------------------------------------------------------------
 
-export type AuditScope = 'full' | 'kpi-only' | 'cdd-renewals' | 'filing-compliance' | 'moe-readiness';
+export type AuditScope =
+  | 'full'
+  | 'kpi-only'
+  | 'cdd-renewals'
+  | 'filing-compliance'
+  | 'moe-readiness';
 
 export interface AuditAgentConfig {
   scope: AuditScope;
@@ -71,7 +76,7 @@ export interface AuditAgentResult {
 export async function runAuditAgent(
   config: AuditAgentConfig,
   server: ComplianceMCPServer,
-  session: SessionManager,
+  session: SessionManager
 ): Promise<AuditAgentResult> {
   const messages: AgentMessage[] = [];
   const findings: string[] = [];
@@ -110,7 +115,10 @@ export async function runAuditAgent(
 
       if (kpiResult.result.ok) {
         kpiReport = kpiResult.result.data as KPIReport;
-        log('assistant', `KPI report: overall ${kpiReport.overallRAG} (score: ${kpiReport.overallScore})`);
+        log(
+          'assistant',
+          `KPI report: overall ${kpiReport.overallRAG} (score: ${kpiReport.overallScore})`
+        );
 
         if (kpiReport.summary.redCount > 0) {
           findings.push(`${kpiReport.summary.redCount} KPI(s) in RED status`);
@@ -130,14 +138,20 @@ export async function runAuditAgent(
       });
       if (defsResult.result.ok) {
         const defs = defsResult.result.data as { definitions: Array<{ id: string; name: string }> };
-        findings.push(`${defs.definitions.length} KPI definitions available but no measurements recorded`);
+        findings.push(
+          `${defs.definitions.length} KPI definitions available but no measurements recorded`
+        );
         recommendations.push('Populate KPI measurements before audit');
       }
     }
   }
 
   // ---- CDD Renewals ----
-  if (config.scope === 'full' || config.scope === 'cdd-renewals' || config.scope === 'moe-readiness') {
+  if (
+    config.scope === 'full' ||
+    config.scope === 'cdd-renewals' ||
+    config.scope === 'moe-readiness'
+  ) {
     log('assistant', `Scanning CDD renewal status...`);
 
     if (config.customers && config.customers.length > 0) {
@@ -158,11 +172,16 @@ export async function runAuditAgent(
           upcoming: data.upcomingIn30Days.length,
         };
 
-        log('assistant', `CDD renewals: ${cddRenewalSummary.overdue} overdue, ${cddRenewalSummary.due} due, ${cddRenewalSummary.upcoming} upcoming (30d)`);
+        log(
+          'assistant',
+          `CDD renewals: ${cddRenewalSummary.overdue} overdue, ${cddRenewalSummary.due} due, ${cddRenewalSummary.upcoming} upcoming (30d)`
+        );
 
         if (cddRenewalSummary.overdue > 0) {
           findings.push(`${cddRenewalSummary.overdue} customer(s) with OVERDUE CDD review`);
-          recommendations.push('Complete overdue CDD reviews immediately (Cabinet Res 134/2025 Art.7-10)');
+          recommendations.push(
+            'Complete overdue CDD reviews immediately (Cabinet Res 134/2025 Art.7-10)'
+          );
         }
       }
     } else {
@@ -181,9 +200,14 @@ export async function runAuditAgent(
       if (auditChainIntegrity.valid) {
         log('assistant', `Audit chain VALID — ${auditChainIntegrity.checkedCount} events verified`);
       } else {
-        log('assistant', `AUDIT CHAIN BROKEN at event #${auditChainIntegrity.brokenAt}. Investigate immediately.`);
+        log(
+          'assistant',
+          `AUDIT CHAIN BROKEN at event #${auditChainIntegrity.brokenAt}. Investigate immediately.`
+        );
         findings.push(`Audit chain integrity broken at event #${auditChainIntegrity.brokenAt}`);
-        recommendations.push('Investigate audit chain tampering — this is a critical compliance failure');
+        recommendations.push(
+          'Investigate audit chain tampering — this is a critical compliance failure'
+        );
       }
     } else {
       findings.push('No audit chain provided for integrity verification');
@@ -194,7 +218,7 @@ export async function runAuditAgent(
   let overallReadiness: AuditAgentResult['overallReadiness'] = 'ready';
 
   const criticalIssues = findings.filter(
-    (f) => f.includes('OVERDUE') || f.includes('BROKEN') || f.includes('RED'),
+    (f) => f.includes('OVERDUE') || f.includes('BROKEN') || f.includes('RED')
   );
 
   if (criticalIssues.length > 0) {
@@ -203,7 +227,10 @@ export async function runAuditAgent(
     overallReadiness = 'needs-attention';
   }
 
-  log('system', `Audit complete — readiness: ${overallReadiness}, ${findings.length} findings, ${recommendations.length} recommendations`);
+  log(
+    'system',
+    `Audit complete — readiness: ${overallReadiness}, ${findings.length} findings, ${recommendations.length} recommendations`
+  );
 
   return {
     scope: config.scope,

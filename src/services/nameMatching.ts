@@ -103,10 +103,7 @@ export function stripLegalSuffix(name: string): string {
   const lower = out.toLowerCase();
   for (const sfx of LEGAL_SUFFIXES) {
     // Match only at the END, as a whole word
-    const pattern = new RegExp(
-      `\\s+${sfx.replace(/[.]/g, '\\.')}\\s*$`,
-      'i',
-    );
+    const pattern = new RegExp(`\\s+${sfx.replace(/[.]/g, '\\.')}\\s*$`, 'i');
     if (pattern.test(lower)) {
       out = out.replace(pattern, '').trim();
       break;
@@ -233,14 +230,22 @@ export function metaphone(raw: string): string {
 
     switch (c) {
       case 'c':
-        if (transformed[i + 1] === 'i' || transformed[i + 1] === 'e' || transformed[i + 1] === 'y') {
+        if (
+          transformed[i + 1] === 'i' ||
+          transformed[i + 1] === 'e' ||
+          transformed[i + 1] === 'y'
+        ) {
           out += 's';
         } else {
           out += 'k';
         }
         break;
       case 'g':
-        if (transformed[i + 1] === 'e' || transformed[i + 1] === 'i' || transformed[i + 1] === 'y') {
+        if (
+          transformed[i + 1] === 'e' ||
+          transformed[i + 1] === 'i' ||
+          transformed[i + 1] === 'y'
+        ) {
           out += 'j';
         } else {
           out += 'k';
@@ -346,8 +351,7 @@ export function tokenSetSimilarity(a: string, b: string): number {
   const tokensB = tokenise(b);
   if (tokensA.length === 0 || tokensB.length === 0) return 0;
 
-  const [short, long] =
-    tokensA.length <= tokensB.length ? [tokensA, tokensB] : [tokensB, tokensA];
+  const [short, long] = tokensA.length <= tokensB.length ? [tokensA, tokensB] : [tokensB, tokensA];
 
   let total = 0;
   for (const s of short) {
@@ -446,7 +450,10 @@ export function isLikelyMatch(a: string, b: string, threshold = 0.7): boolean {
 /** Classify a match per the CLAUDE.md decision tree. */
 export type MatchClassification = 'confirmed' | 'potential' | 'weak' | 'none';
 
-export function classifyMatch(a: string, b: string): {
+export function classifyMatch(
+  a: string,
+  b: string
+): {
   classification: MatchClassification;
   breakdown: MatchBreakdown;
 } {
@@ -466,7 +473,7 @@ export function classifyMatch(a: string, b: string): {
 export function findBestMatch(
   query: string,
   candidates: readonly string[],
-  threshold = 0.7,
+  threshold = 0.7
 ): { candidate: string; breakdown: MatchBreakdown } | null {
   let best: { candidate: string; breakdown: MatchBreakdown } | null = null;
   for (const c of candidates) {

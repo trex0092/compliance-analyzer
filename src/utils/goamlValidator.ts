@@ -213,7 +213,7 @@ export function validateCTR(xml: string): ValidationResult {
 function checkRequired(
   xml: string,
   required: Array<{ tag: string; reg: string }>,
-  errors: ValidationError[],
+  errors: ValidationError[]
 ): void {
   for (const el of required) {
     if (!xml.includes(`<${el.tag}`) && !xml.includes(`<${el.tag}/`)) {
@@ -348,7 +348,7 @@ export function validateSAR(xml: string): ValidationResult {
       { tag: 'groundsForSuspicion', reg: 'FDL Art.26' },
       { tag: 'reportFooter', reg: 'FIU goAML Schema' },
     ],
-    errors,
+    errors
   );
 
   checkReportId(xml, errors);
@@ -412,7 +412,7 @@ export function validateDPMSR(xml: string): ValidationResult {
       { tag: 'totalCashAmount', reg: 'MoE 08/AML/2021' },
       { tag: 'reportFooter', reg: 'FIU goAML Schema' },
     ],
-    errors,
+    errors
   );
 
   checkReportId(xml, errors);
@@ -484,7 +484,7 @@ export function validateCNMR(xml: string): ValidationResult {
       { tag: 'freezeTimestamp', reg: 'Cabinet Res 74/2020 Art.4' },
       { tag: 'reportFooter', reg: 'FIU goAML Schema' },
     ],
-    errors,
+    errors
   );
 
   checkReportId(xml, errors);
@@ -556,11 +556,16 @@ export type ReportType = 'STR' | 'SAR' | 'CTR' | 'DPMSR' | 'CNMR';
  */
 export function validateByType(type: ReportType, xml: string): ValidationResult {
   switch (type) {
-    case 'STR':   return validateSTR(xml);
-    case 'SAR':   return validateSAR(xml);
-    case 'CTR':   return validateCTR(xml);
-    case 'DPMSR': return validateDPMSR(xml);
-    case 'CNMR':  return validateCNMR(xml);
+    case 'STR':
+      return validateSTR(xml);
+    case 'SAR':
+      return validateSAR(xml);
+    case 'CTR':
+      return validateCTR(xml);
+    case 'DPMSR':
+      return validateDPMSR(xml);
+    case 'CNMR':
+      return validateCNMR(xml);
     default: {
       const _exhaustive: never = type;
       throw new Error(`unknown report type: ${_exhaustive}`);

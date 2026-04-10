@@ -22,8 +22,22 @@ import { UBO_OWNERSHIP_THRESHOLD_PCT } from '../../domain/constants';
 // Types
 // ---------------------------------------------------------------------------
 
-export type EntityNodeType = 'company' | 'individual' | 'trust' | 'foundation' | 'nominee' | 'unknown';
-export type EdgeType = 'ownership' | 'directorship' | 'transaction' | 'family' | 'agent' | 'counterparty' | 'shared-address' | 'shared-phone';
+export type EntityNodeType =
+  | 'company'
+  | 'individual'
+  | 'trust'
+  | 'foundation'
+  | 'nominee'
+  | 'unknown';
+export type EdgeType =
+  | 'ownership'
+  | 'directorship'
+  | 'transaction'
+  | 'family'
+  | 'agent'
+  | 'counterparty'
+  | 'shared-address'
+  | 'shared-phone';
 
 export interface EntityNode {
   id: string;
@@ -65,10 +79,10 @@ export interface CycleDetection {
 export interface CentralityScore {
   nodeId: string;
   nodeName: string;
-  degreeCentrality: number;     // how many connections
+  degreeCentrality: number; // how many connections
   betweennessCentrality: number; // how often on shortest paths
-  closenessCentrality: number;   // average distance to all others
-  hubScore: number;              // composite hub score
+  closenessCentrality: number; // average distance to all others
+  hubScore: number; // composite hub score
   isHub: boolean;
 }
 
@@ -145,8 +159,12 @@ class AdjacencyGraph {
     }
   }
 
-  getNode(id: string): EntityNode | undefined { return this.nodeMap.get(id); }
-  getNodes(): EntityNode[] { return Array.from(this.nodeMap.values()); }
+  getNode(id: string): EntityNode | undefined {
+    return this.nodeMap.get(id);
+  }
+  getNodes(): EntityNode[] {
+    return Array.from(this.nodeMap.values());
+  }
   getNeighbors(id: string): string[] {
     return Array.from(this.adjacency.get(id)?.keys() ?? []);
   }
@@ -162,7 +180,9 @@ class AdjacencyGraph {
     }
     return edges;
   }
-  nodeCount(): number { return this.nodeMap.size; }
+  nodeCount(): number {
+    return this.nodeMap.size;
+  }
 
   /** Get all neighbors (both directions for undirected analysis) */
   getUndirectedNeighbors(id: string): string[] {
@@ -233,9 +253,10 @@ export function detectCycles(graph: NetworkGraph): CycleDetection {
       return {
         path: cycle,
         totalOwnership,
-        riskImplication: totalOwnership > 0.1
-          ? 'Significant circular ownership — potential shell company structure'
-          : 'Minor circular ownership — monitor',
+        riskImplication:
+          totalOwnership > 0.1
+            ? 'Significant circular ownership — potential shell company structure'
+            : 'Minor circular ownership — monitor',
       };
     });
 
@@ -297,7 +318,7 @@ export function calculateCentrality(graph: NetworkGraph): CentralityScore[] {
 
     while (stack.length > 0) {
       const w = stack.pop()!;
-      for (const v of (pred.get(w) ?? [])) {
+      for (const v of pred.get(w) ?? []) {
         const d = ((paths.get(v) ?? 1) / (paths.get(w) ?? 1)) * (1 + (delta.get(w) ?? 0));
         delta.set(v, (delta.get(v) ?? 0) + d);
       }
@@ -324,14 +345,20 @@ export function calculateCentrality(graph: NetworkGraph): CentralityScore[] {
     visited.add(node.id);
     while (bfsQueue.length > 0) {
       const { id, dist } = bfsQueue.shift()!;
-      if (id !== node.id) { totalDist += dist; reachable++; }
+      if (id !== node.id) {
+        totalDist += dist;
+        reachable++;
+      }
       for (const nb of adj.getUndirectedNeighbors(id)) {
-        if (!visited.has(nb)) { visited.add(nb); bfsQueue.push({ id: nb, dist: dist + 1 }); }
+        if (!visited.has(nb)) {
+          visited.add(nb);
+          bfsQueue.push({ id: nb, dist: dist + 1 });
+        }
       }
     }
     const closenessCentrality = reachable > 0 ? reachable / totalDist : 0;
 
-    const hubScore = (degreeCentrality * 0.3 + betweennessNorm * 0.5 + closenessCentrality * 0.2);
+    const hubScore = degreeCentrality * 0.3 + betweennessNorm * 0.5 + closenessCentrality * 0.2;
 
     scores.push({
       nodeId: node.id,
@@ -378,7 +405,10 @@ export function detectCommunities(graph: NetworkGraph): CommunityCluster[] {
       let maxCount = 0;
       let bestLabel = labels.get(node.id) ?? 0;
       for (const [label, count] of labelCounts) {
-        if (count > maxCount) { maxCount = count; bestLabel = label; }
+        if (count > maxCount) {
+          maxCount = count;
+          bestLabel = label;
+        }
       }
 
       if (bestLabel !== labels.get(node.id)) {
@@ -405,10 +435,13 @@ export function detectCommunities(graph: NetworkGraph): CommunityCluster[] {
     if (members.length < 2) continue; // skip singletons
 
     const memberSet = new Set(members);
-    const internal = allEdges.filter((e) => memberSet.has(e.source) && memberSet.has(e.target)).length;
-    const external = allEdges.filter((e) =>
-      (memberSet.has(e.source) && !memberSet.has(e.target)) ||
-      (!memberSet.has(e.source) && memberSet.has(e.target)),
+    const internal = allEdges.filter(
+      (e) => memberSet.has(e.source) && memberSet.has(e.target)
+    ).length;
+    const external = allEdges.filter(
+      (e) =>
+        (memberSet.has(e.source) && !memberSet.has(e.target)) ||
+        (!memberSet.has(e.source) && memberSet.has(e.target))
     ).length;
 
     const maxEdges = members.length * (members.length - 1);
@@ -461,7 +494,7 @@ export function detectShellCompanies(graph: NetworkGraph): ShellCompanyIndicator
 
     // Indicator 1: Nominee directors / no real directors
     const directorEdges = graph.edges.filter(
-      (e) => e.target === node.id && e.type === 'directorship',
+      (e) => e.target === node.id && e.type === 'directorship'
     );
     const nomineeDirectors = directorEdges.filter((e) => {
       const source = adj.getNode(e.source);
@@ -481,7 +514,7 @@ export function detectShellCompanies(graph: NetworkGraph): ShellCompanyIndicator
 
     // Indicator 4: Shared registered address with other entities
     const sharedAddressEdges = graph.edges.filter(
-      (e) => (e.source === node.id || e.target === node.id) && e.type === 'shared-address',
+      (e) => (e.source === node.id || e.target === node.id) && e.type === 'shared-address'
     );
     if (sharedAddressEdges.length >= 2) {
       indicators.push(`Shares address with ${sharedAddressEdges.length} other entities`);
@@ -491,17 +524,23 @@ export function detectShellCompanies(graph: NetworkGraph): ShellCompanyIndicator
     if (node.registrationDate) {
       const age = (Date.now() - new Date(node.registrationDate).getTime()) / (365.25 * 86400_000);
       const txEdges = graph.edges.filter(
-        (e) => (e.source === node.id || e.target === node.id) && e.type === 'transaction',
+        (e) => (e.source === node.id || e.target === node.id) && e.type === 'transaction'
       );
       if (age < 1 && txEdges.length > 5) {
-        indicators.push(`Young entity (${Math.round(age * 12)}mo) with ${txEdges.length} transaction links`);
+        indicators.push(
+          `Young entity (${Math.round(age * 12)}mo) with ${txEdges.length} transaction links`
+        );
       }
     }
 
     // Indicator 6: Circular ownership
     const hasCircular = graph.edges.some(
-      (e) => e.source === node.id && e.type === 'ownership' &&
-        graph.edges.some((e2) => e2.source === e.target && e2.target === node.id && e2.type === 'ownership'),
+      (e) =>
+        e.source === node.id &&
+        e.type === 'ownership' &&
+        graph.edges.some(
+          (e2) => e2.source === e.target && e2.target === node.id && e2.type === 'ownership'
+        )
     );
     if (hasCircular) indicators.push('Circular ownership structure detected');
 
@@ -526,7 +565,7 @@ export function detectShellCompanies(graph: NetworkGraph): ShellCompanyIndicator
 
 export function detectHiddenOwnership(
   graph: NetworkGraph,
-  threshold: number = UBO_OWNERSHIP_THRESHOLD_PCT,
+  threshold: number = UBO_OWNERSHIP_THRESHOLD_PCT
 ): NetworkAnalysisReport['hiddenOwnership'] {
   const adj = new AdjacencyGraph(graph);
   const results: NetworkAnalysisReport['hiddenOwnership'] = [];
@@ -655,13 +694,19 @@ export function runNetworkAnalysis(graph: NetworkGraph): ToolResult<NetworkAnaly
     alerts.push(`${cycles.cycles.length} cycle(s) detected in entity network`);
   }
   if (cycles.circularOwnership.length > 0) {
-    alerts.push(`${cycles.circularOwnership.length} circular ownership structure(s) — potential shell company network`);
-    regulatoryFindings.push('Circular ownership violates transparency requirements (Cabinet Decision 109/2023)');
+    alerts.push(
+      `${cycles.circularOwnership.length} circular ownership structure(s) — potential shell company network`
+    );
+    regulatoryFindings.push(
+      'Circular ownership violates transparency requirements (Cabinet Decision 109/2023)'
+    );
   }
 
   const hubs = centralityScores.filter((s) => s.isHub);
   if (hubs.length > 0) {
-    alerts.push(`${hubs.length} hub entity(ies) connecting multiple risk nodes: ${hubs.map((h) => h.nodeName).join(', ')}`);
+    alerts.push(
+      `${hubs.length} hub entity(ies) connecting multiple risk nodes: ${hubs.map((h) => h.nodeName).join(', ')}`
+    );
   }
 
   if (shellIndicators.length > 0) {
@@ -671,14 +716,22 @@ export function runNetworkAnalysis(graph: NetworkGraph): ToolResult<NetworkAnaly
 
   const crossBorderLayers = layeringPaths.filter((p) => p.crossBorder);
   if (crossBorderLayers.length > 0) {
-    alerts.push(`${crossBorderLayers.length} cross-border layering path(s) detected — potential ML typology`);
-    regulatoryFindings.push('Multi-jurisdictional layering requires STR consideration (FDL Art.26-27)');
+    alerts.push(
+      `${crossBorderLayers.length} cross-border layering path(s) detected — potential ML typology`
+    );
+    regulatoryFindings.push(
+      'Multi-jurisdictional layering requires STR consideration (FDL Art.26-27)'
+    );
   }
 
   const undisclosedUBO = hiddenOwnership.filter((h) => h.exceedsThreshold);
   if (undisclosedUBO.length > 0) {
-    alerts.push(`${undisclosedUBO.length} hidden beneficial ownership chain(s) exceeding 25% threshold`);
-    regulatoryFindings.push(`UBO re-verification required within 15 working days (Cabinet Decision 109/2023)`);
+    alerts.push(
+      `${undisclosedUBO.length} hidden beneficial ownership chain(s) exceeding 25% threshold`
+    );
+    regulatoryFindings.push(
+      `UBO re-verification required within 15 working days (Cabinet Decision 109/2023)`
+    );
   }
 
   // Overall risk — use max shell indicator score (not average) + other factors
@@ -730,7 +783,7 @@ function getOwnershipDepth(nodeId: string, adj: AdjacencyGraph, graph: NetworkGr
     visited.add(current);
     maxDepth = Math.max(maxDepth, depth);
     const ownerEdges = graph.edges.filter(
-      (e) => e.target === current && e.type === 'ownership' && !visited.has(e.source),
+      (e) => e.target === current && e.type === 'ownership' && !visited.has(e.source)
     );
     for (const edge of ownerEdges) {
       dfs(edge.source, depth + 1);
@@ -742,14 +795,21 @@ function getOwnershipDepth(nodeId: string, adj: AdjacencyGraph, graph: NetworkGr
 }
 
 function findAllOwnershipPaths(
-  from: string, to: string, adj: AdjacencyGraph, graph: NetworkGraph, maxDepth = 6,
+  from: string,
+  to: string,
+  adj: AdjacencyGraph,
+  graph: NetworkGraph,
+  maxDepth = 6
 ): string[][] {
   const results: string[][] = [];
   const MAX_PATHS = 100; // guard against path explosion on dense graphs
 
   function dfs(current: string, path: string[], visited: Set<string>): void {
     if (results.length >= MAX_PATHS) return;
-    if (current === to) { results.push([...path]); return; }
+    if (current === to) {
+      results.push([...path]);
+      return;
+    }
     if (path.length >= maxDepth) return;
 
     const ownershipTargets = graph.edges
@@ -770,8 +830,26 @@ function findAllOwnershipPaths(
 
 function isOffshoreJurisdiction(jurisdiction: string): boolean {
   const offshore = new Set([
-    'VG', 'KY', 'BM', 'JE', 'GG', 'IM', 'PA', 'BZ', 'SC', 'MU',
-    'VU', 'WS', 'MH', 'TC', 'AI', 'GI', 'LI', 'MC', 'SM', 'AD',
+    'VG',
+    'KY',
+    'BM',
+    'JE',
+    'GG',
+    'IM',
+    'PA',
+    'BZ',
+    'SC',
+    'MU',
+    'VU',
+    'WS',
+    'MH',
+    'TC',
+    'AI',
+    'GI',
+    'LI',
+    'MC',
+    'SM',
+    'AD',
   ]);
   return offshore.has(jurisdiction.toUpperCase());
 }
@@ -798,7 +876,10 @@ export const NETWORK_TOOL_SCHEMAS = [
                 properties: {
                   id: { type: 'string' },
                   name: { type: 'string' },
-                  type: { type: 'string', enum: ['company', 'individual', 'trust', 'foundation', 'nominee', 'unknown'] },
+                  type: {
+                    type: 'string',
+                    enum: ['company', 'individual', 'trust', 'foundation', 'nominee', 'unknown'],
+                  },
                   jurisdiction: { type: 'string' },
                   riskRating: { type: 'string' },
                   pepStatus: { type: 'boolean' },
@@ -814,7 +895,19 @@ export const NETWORK_TOOL_SCHEMAS = [
                 properties: {
                   source: { type: 'string' },
                   target: { type: 'string' },
-                  type: { type: 'string', enum: ['ownership', 'directorship', 'transaction', 'family', 'agent', 'counterparty', 'shared-address', 'shared-phone'] },
+                  type: {
+                    type: 'string',
+                    enum: [
+                      'ownership',
+                      'directorship',
+                      'transaction',
+                      'family',
+                      'agent',
+                      'counterparty',
+                      'shared-address',
+                      'shared-phone',
+                    ],
+                  },
                   weight: { type: 'number' },
                 },
                 required: ['source', 'target', 'type', 'weight'],

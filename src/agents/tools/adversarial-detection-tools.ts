@@ -39,13 +39,20 @@ export interface TransactionRecord {
   country?: string;
   description?: string;
   invoiceAmount?: number; // for trade-based detection
-  marketValue?: number;   // for valuation anomaly
+  marketValue?: number; // for valuation anomaly
 }
 
 export type TechniqueId =
-  | 'smurfing' | 'cuckoo-smurfing' | 'layering' | 'mirroring'
-  | 'round-tripping' | 'trade-based-ml' | 'threshold-avoidance'
-  | 'funnel-account' | 'rapid-movement' | 'dormant-burst';
+  | 'smurfing'
+  | 'cuckoo-smurfing'
+  | 'layering'
+  | 'mirroring'
+  | 'round-tripping'
+  | 'trade-based-ml'
+  | 'threshold-avoidance'
+  | 'funnel-account'
+  | 'rapid-movement'
+  | 'dormant-burst';
 
 export interface AdversarialAlert {
   techniqueId: TechniqueId;
@@ -69,7 +76,12 @@ export interface AdversarialReport {
   alerts: AdversarialAlert[];
   alertsByTechnique: Record<string, number>;
   overallThreatLevel: 'low' | 'medium' | 'high' | 'critical';
-  topRiskyEntities: Array<{ entityId: string; entityName: string; alertCount: number; techniques: string[] }>;
+  topRiskyEntities: Array<{
+    entityId: string;
+    entityName: string;
+    alertCount: number;
+    techniques: string[];
+  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -85,13 +97,16 @@ function detectSmurfing(transactions: TransactionRecord[]): AdversarialAlert[] {
   const byReceiver = groupBy(deposits, (tx) => tx.receiverId);
 
   for (const [receiverId, txs] of byReceiver) {
-    const sorted = txs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const sorted = txs.sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
 
     for (let i = 0; i < sorted.length; i++) {
       const windowEnd = new Date(sorted[i].timestamp).getTime() + 48 * 3600_000;
       const inWindow = sorted.filter(
-        (tx) => new Date(tx.timestamp).getTime() >= new Date(sorted[i].timestamp).getTime() &&
-          new Date(tx.timestamp).getTime() <= windowEnd,
+        (tx) =>
+          new Date(tx.timestamp).getTime() >= new Date(sorted[i].timestamp).getTime() &&
+          new Date(tx.timestamp).getTime() <= windowEnd
       );
 
       if (inWindow.length < 3) continue;
@@ -114,7 +129,7 @@ function detectSmurfing(transactions: TransactionRecord[]): AdversarialAlert[] {
           indicators: [
             `${uniqueSenders.size} unique depositors`,
             `All deposits below AED ${threshold.toLocaleString()}`,
-            `Cumulative: AED ${total.toLocaleString()} (${Math.round(total / threshold * 100)}% of threshold)`,
+            `Cumulative: AED ${total.toLocaleString()} (${Math.round((total / threshold) * 100)}% of threshold)`,
           ],
           regulatoryRef: 'FDL No.10/2025 Art.15-16, FATF ML Typologies §3.2',
           recommendedAction: 'File STR immediately. Freeze account pending investigation.',
@@ -153,7 +168,9 @@ function detectMirroring(transactions: TransactionRecord[]): AdversarialAlert[] 
         const outTime = new Date(outTx.timestamp).getTime();
         const timeDiff = Math.abs(outTime - inTime);
         const amountDiff = Math.abs(outTx.amount - inTx.amount) / inTx.amount;
-        return timeDiff <= 24 * 3600_000 && amountDiff <= 0.05 && outTx.receiverId !== inTx.senderId;
+        return (
+          timeDiff <= 24 * 3600_000 && amountDiff <= 0.05 && outTx.receiverId !== inTx.senderId
+        );
       });
 
       if (mirrors.length > 0) {
@@ -197,10 +214,11 @@ function detectRoundTripping(transactions: TransactionRecord[]): AdversarialAler
     for (const tx1 of outgoing) {
       // Find transactions that eventually return to sourceId
       const returnTxs = transactions.filter(
-        (tx) => tx.receiverId === sourceId &&
+        (tx) =>
+          tx.receiverId === sourceId &&
           tx.senderId !== sourceId &&
           new Date(tx.timestamp).getTime() > new Date(tx1.timestamp).getTime() &&
-          new Date(tx.timestamp).getTime() - new Date(tx1.timestamp).getTime() <= 30 * 86400_000,
+          new Date(tx.timestamp).getTime() - new Date(tx1.timestamp).getTime() <= 30 * 86400_000
       );
 
       for (const returnTx of returnTxs) {
@@ -222,7 +240,8 @@ function detectRoundTripping(transactions: TransactionRecord[]): AdversarialAler
               tx1.receiverId !== returnTx.senderId ? 'Intermediary entity used' : 'Direct return',
             ],
             regulatoryRef: 'FDL No.10/2025 Art.15, FATF ML Typologies §5',
-            recommendedAction: 'Investigate source of returned funds. File STR if no legitimate explanation.',
+            recommendedAction:
+              'Investigate source of returned funds. File STR if no legitimate explanation.',
           });
         }
       }
@@ -282,7 +301,8 @@ function detectTradeBasedML(transactions: TransactionRecord[]): AdversarialAlert
           'Potential reverse value transfer',
         ],
         regulatoryRef: 'FATF Rec 22/23, LBMA RGG v9 Step 3, FDL Art.15',
-        recommendedAction: 'Verify pricing with independent sources. Investigate relationship between parties.',
+        recommendedAction:
+          'Verify pricing with independent sources. Investigate relationship between parties.',
       });
     }
   }
@@ -317,8 +337,12 @@ function detectFunnelAccounts(transactions: TransactionRecord[]): AdversarialAle
 
     const ratio = senders.size / Math.max(1, receivers.size);
     if (senders.size >= 5 && ratio >= 3) {
-      const entityTxs = transactions.filter((tx) => tx.receiverId === entityId || tx.senderId === entityId);
-      const totalIn = transactions.filter((tx) => tx.receiverId === entityId).reduce((s, tx) => s + tx.amount, 0);
+      const entityTxs = transactions.filter(
+        (tx) => tx.receiverId === entityId || tx.senderId === entityId
+      );
+      const totalIn = transactions
+        .filter((tx) => tx.receiverId === entityId)
+        .reduce((s, tx) => s + tx.amount, 0);
 
       alerts.push({
         techniqueId: 'funnel-account',
@@ -330,7 +354,8 @@ function detectFunnelAccounts(transactions: TransactionRecord[]): AdversarialAle
         involvedEntities: [entityId, ...Array.from(senders), ...Array.from(receivers)],
         totalValue: totalIn,
         timespan: {
-          from: entityTxs.sort((a, b) => a.timestamp.localeCompare(b.timestamp))[0]?.timestamp ?? '',
+          from:
+            entityTxs.sort((a, b) => a.timestamp.localeCompare(b.timestamp))[0]?.timestamp ?? '',
           to: entityTxs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0]?.timestamp ?? '',
         },
         indicators: [
@@ -340,7 +365,8 @@ function detectFunnelAccounts(transactions: TransactionRecord[]): AdversarialAle
           `Total funneled: AED ${totalIn.toLocaleString()}`,
         ],
         regulatoryRef: 'FDL No.10/2025 Art.15, FATF ML Typologies §6',
-        recommendedAction: 'Full account review. Verify business justification for consolidation pattern.',
+        recommendedAction:
+          'Full account review. Verify business justification for consolidation pattern.',
       });
     }
   }
@@ -366,10 +392,11 @@ function detectRapidMovement(transactions: TransactionRecord[]): AdversarialAler
     for (const inTx of incoming) {
       const inTime = new Date(inTx.timestamp).getTime();
       const quickOut = transactions.filter(
-        (tx) => tx.senderId === entityId &&
+        (tx) =>
+          tx.senderId === entityId &&
           new Date(tx.timestamp).getTime() > inTime &&
           new Date(tx.timestamp).getTime() - inTime <= 4 * 3600_000 &&
-          tx.amount >= inTx.amount * 0.8,
+          tx.amount >= inTx.amount * 0.8
       );
 
       if (quickOut.length > 0) {
@@ -391,7 +418,8 @@ function detectRapidMovement(transactions: TransactionRecord[]): AdversarialAler
             `Amount preserved: ${((out.amount / inTx.amount) * 100).toFixed(0)}%`,
           ],
           regulatoryRef: 'FDL No.10/2025 Art.15, FATF ML Typologies §3',
-          recommendedAction: 'Investigate passthrough purpose. Request explanation from account holder.',
+          recommendedAction:
+            'Investigate passthrough purpose. Request explanation from account holder.',
         });
       }
     }
@@ -405,7 +433,7 @@ function detectRapidMovement(transactions: TransactionRecord[]): AdversarialAler
 // ---------------------------------------------------------------------------
 
 export function runAdversarialDetection(
-  transactions: TransactionRecord[],
+  transactions: TransactionRecord[]
 ): ToolResult<AdversarialReport> {
   if (transactions.length === 0) {
     return { ok: false, error: 'No transactions provided' };
@@ -457,7 +485,10 @@ export function runAdversarialDetection(
   else if (highCount >= 1 || allAlerts.length >= 3) overallThreatLevel = 'medium';
 
   const allEntities = new Set<string>();
-  for (const tx of transactions) { allEntities.add(tx.senderId); allEntities.add(tx.receiverId); }
+  for (const tx of transactions) {
+    allEntities.add(tx.senderId);
+    allEntities.add(tx.receiverId);
+  }
 
   return {
     ok: true,
@@ -522,12 +553,29 @@ export const ADVERSARIAL_TOOL_SCHEMAS = [
               senderName: { type: 'string' },
               receiverId: { type: 'string' },
               receiverName: { type: 'string' },
-              type: { type: 'string', enum: ['deposit', 'withdrawal', 'transfer', 'trade', 'exchange'] },
-              method: { type: 'string', enum: ['cash', 'wire', 'check', 'crypto', 'trade-settlement'] },
+              type: {
+                type: 'string',
+                enum: ['deposit', 'withdrawal', 'transfer', 'trade', 'exchange'],
+              },
+              method: {
+                type: 'string',
+                enum: ['cash', 'wire', 'check', 'crypto', 'trade-settlement'],
+              },
               invoiceAmount: { type: 'number' },
               marketValue: { type: 'number' },
             },
-            required: ['id', 'amount', 'currency', 'timestamp', 'senderId', 'senderName', 'receiverId', 'receiverName', 'type', 'method'],
+            required: [
+              'id',
+              'amount',
+              'currency',
+              'timestamp',
+              'senderId',
+              'senderName',
+              'receiverId',
+              'receiverName',
+              'type',
+              'method',
+            ],
           },
         },
       },

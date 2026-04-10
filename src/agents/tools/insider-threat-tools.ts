@@ -15,10 +15,7 @@
  */
 
 import type { ToolResult } from '../mcp-server';
-import {
-  RECORD_RETENTION_YEARS,
-  MAX_FAILED_LOGIN_ATTEMPTS,
-} from '../../domain/constants';
+import { RECORD_RETENTION_YEARS, MAX_FAILED_LOGIN_ATTEMPTS } from '../../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,13 +36,13 @@ export interface UserActivityRecord {
   userId: string;
   userName: string;
   role: 'compliance-officer' | 'analyst' | 'admin' | 'manager' | 'viewer';
-  timestamp: string;              // ISO 8601
-  action: string;                 // e.g. 'screening-completed', 'alert-dismissed', 'export-data'
-  resource?: string;              // entity or record accessed
+  timestamp: string; // ISO 8601
+  action: string; // e.g. 'screening-completed', 'alert-dismissed', 'export-data'
+  resource?: string; // entity or record accessed
   ipAddress?: string;
   userAgent?: string;
-  afterHours?: boolean;           // true if outside 08:00-18:00 local time
-  weekend?: boolean;              // true if Sat/Sun
+  afterHours?: boolean; // true if outside 08:00-18:00 local time
+  weekend?: boolean; // true if Sat/Sun
   outcome?: 'success' | 'failure' | 'denied';
   metadata?: Record<string, unknown>;
 }
@@ -62,19 +59,19 @@ export interface ThreatIndicator {
 
 export interface UserBehaviorAnalysis {
   id: string;
-  analyzedAt: string;             // dd/mm/yyyy
+  analyzedAt: string; // dd/mm/yyyy
   userId: string;
   userName: string;
   role: string;
-  periodStart: string;            // dd/mm/yyyy
-  periodEnd: string;              // dd/mm/yyyy
+  periodStart: string; // dd/mm/yyyy
+  periodEnd: string; // dd/mm/yyyy
   activityCount: number;
-  threatScore: number;            // 0-100
+  threatScore: number; // 0-100
   threatLevel: 'low' | 'medium' | 'high' | 'critical';
   indicators: ThreatIndicator[];
   behaviorSummary: BehaviorSummary;
   recommendation: string;
-  retentionExpiry: string;        // dd/mm/yyyy
+  retentionExpiry: string; // dd/mm/yyyy
 }
 
 export interface BehaviorSummary {
@@ -85,9 +82,9 @@ export interface BehaviorSummary {
   screeningsPerformed: number;
   alertsDismissed: number;
   alertsEscalated: number;
-  dismissalRate: number;          // ratio dismissed / total alerts handled
+  dismissalRate: number; // ratio dismissed / total alerts handled
   dataExports: number;
-  bulkExports: number;            // exports > 100 records
+  bulkExports: number; // exports > 100 records
   failedAccessAttempts: number;
   privilegeEscalations: number;
   uniqueIPAddresses: number;
@@ -100,10 +97,15 @@ export interface SelectiveScreeningResult {
   userId: string;
   totalEntitiesAssigned: number;
   totalEntitiesScreened: number;
-  screeningCoverage: number;      // 0-1
+  screeningCoverage: number; // 0-1
   skippedEntities: SkippedEntity[];
   patternDetected: boolean;
-  patternType: 'none' | 'jurisdiction-bias' | 'entity-type-bias' | 'risk-level-bias' | 'relationship-bias';
+  patternType:
+    | 'none'
+    | 'jurisdiction-bias'
+    | 'entity-type-bias'
+    | 'risk-level-bias'
+    | 'relationship-bias';
   severity: Severity;
   findings: string[];
   regulatoryRef: string;
@@ -114,7 +116,7 @@ export interface SkippedEntity {
   entityType: 'individual' | 'entity';
   country?: string;
   riskLevel?: string;
-  assignedDate: string;           // dd/mm/yyyy
+  assignedDate: string; // dd/mm/yyyy
   reason?: string;
 }
 
@@ -157,13 +159,11 @@ function isWeekend(timestamp: string): boolean {
  *
  * @regulatory FDL No.10/2025 Art.20-21 (CO duties), Cabinet Res 134/2025 Art.19 (internal review)
  */
-export function analyzeUserBehavior(
-  input: {
-    activities: UserActivityRecord[];
-    periodStartISO: string;
-    periodEndISO: string;
-  },
-): ToolResult<UserBehaviorAnalysis> {
+export function analyzeUserBehavior(input: {
+  activities: UserActivityRecord[];
+  periodStartISO: string;
+  periodEndISO: string;
+}): ToolResult<UserBehaviorAnalysis> {
   const { activities, periodStartISO, periodEndISO } = input;
 
   if (!activities || activities.length === 0) {
@@ -181,7 +181,9 @@ export function analyzeUserBehavior(
   const afterHoursActions = activities.filter((a) => a.afterHours ?? isAfterHours(a.timestamp));
   const weekendActions = activities.filter((a) => a.weekend ?? isWeekend(a.timestamp));
   const screenings = activities.filter((a) => a.action.includes('screening'));
-  const dismissals = activities.filter((a) => a.action === 'alert-dismissed' || a.action === 'alert-override');
+  const dismissals = activities.filter(
+    (a) => a.action === 'alert-dismissed' || a.action === 'alert-override'
+  );
   const escalations = activities.filter((a) => a.action === 'alert-escalated');
   const dataExports = activities.filter((a) => a.action.includes('export'));
   const bulkExports = dataExports.filter((a) => {
@@ -189,7 +191,9 @@ export function analyzeUserBehavior(
     return count > 100;
   });
   const failedAccess = activities.filter((a) => a.outcome === 'failure' || a.outcome === 'denied');
-  const privEscalation = activities.filter((a) => a.action.includes('privilege') || a.action.includes('role-change'));
+  const privEscalation = activities.filter(
+    (a) => a.action.includes('privilege') || a.action.includes('role-change')
+  );
   const uniqueIPs = new Set(activities.map((a) => a.ipAddress).filter(Boolean));
   const uniqueEntitySearches = new Set(activities.filter((a) => a.resource).map((a) => a.resource));
 
@@ -221,9 +225,12 @@ export function analyzeUserBehavior(
       category: 'access-pattern',
       severity: 'alert',
       description: `${(afterHoursPct * 100).toFixed(1)}% of activity occurs after hours (${afterHoursActions.length} actions). Potential unauthorized access pattern.`,
-      evidence: afterHoursActions.slice(0, 5).map((a) => `${a.timestamp}: ${a.action} on ${a.resource ?? 'N/A'}`),
+      evidence: afterHoursActions
+        .slice(0, 5)
+        .map((a) => `${a.timestamp}: ${a.action} on ${a.resource ?? 'N/A'}`),
       regulatoryRef: 'Cabinet Res 134/2025 Art.19 (internal review)',
-      mitigationAction: 'Review after-hours access justification. Consider restricting system access outside business hours.',
+      mitigationAction:
+        'Review after-hours access justification. Consider restricting system access outside business hours.',
     });
     threatScore += 15;
   } else if (afterHoursPct > 0.3 && afterHoursActions.length >= 5) {
@@ -260,9 +267,12 @@ export function analyzeUserBehavior(
       category: 'override-abuse',
       severity: 'critical',
       description: `Alert dismissal rate is ${(dismissalRate * 100).toFixed(1)}% (${dismissals.length}/${totalAlertsHandled}). User dismisses nearly all compliance alerts — potential obstruction or facilitation.`,
-      evidence: dismissals.slice(0, 5).map((a) => `${a.timestamp}: dismissed ${a.resource ?? 'unknown alert'}`),
+      evidence: dismissals
+        .slice(0, 5)
+        .map((a) => `${a.timestamp}: dismissed ${a.resource ?? 'unknown alert'}`),
       regulatoryRef: 'FDL No.10/2025 Art.20-21 (CO duties), Cabinet Res 71/2024 (penalties)',
-      mitigationAction: 'Immediately escalate to Senior Management. Conduct four-eyes review of all dismissed alerts. Consider temporary suspension of override privileges.',
+      mitigationAction:
+        'Immediately escalate to Senior Management. Conduct four-eyes review of all dismissed alerts. Consider temporary suspension of override privileges.',
     });
     threatScore += 25;
   } else if (dismissalRate > 0.7 && totalAlertsHandled >= 5) {
@@ -271,9 +281,12 @@ export function analyzeUserBehavior(
       category: 'override-abuse',
       severity: 'alert',
       description: `Alert dismissal rate is ${(dismissalRate * 100).toFixed(1)}%. Higher than expected — review reasoning.`,
-      evidence: dismissals.slice(0, 3).map((a) => `${a.timestamp}: dismissed ${a.resource ?? 'unknown alert'}`),
+      evidence: dismissals
+        .slice(0, 3)
+        .map((a) => `${a.timestamp}: dismissed ${a.resource ?? 'unknown alert'}`),
       regulatoryRef: 'FDL No.10/2025 Art.20-21',
-      mitigationAction: 'Conduct sample review of dismissed alerts. Require documented justification for each dismissal.',
+      mitigationAction:
+        'Conduct sample review of dismissed alerts. Require documented justification for each dismissal.',
     });
     threatScore += 15;
   }
@@ -285,9 +298,15 @@ export function analyzeUserBehavior(
       category: 'data-exfiltration',
       severity: 'critical',
       description: `${bulkExports.length} bulk data exports (>100 records each). Potential data exfiltration.`,
-      evidence: bulkExports.slice(0, 5).map((a) => `${a.timestamp}: exported ${(a.metadata?.recordCount ?? 'unknown')} records from ${a.resource ?? 'unknown'}`),
+      evidence: bulkExports
+        .slice(0, 5)
+        .map(
+          (a) =>
+            `${a.timestamp}: exported ${a.metadata?.recordCount ?? 'unknown'} records from ${a.resource ?? 'unknown'}`
+        ),
       regulatoryRef: 'FDL No.10/2025 Art.24 (record protection), FATF Rec 18',
-      mitigationAction: 'Immediately restrict export privileges. Investigate business justification for each bulk export. Check for data transfers to external systems.',
+      mitigationAction:
+        'Immediately restrict export privileges. Investigate business justification for each bulk export. Check for data transfers to external systems.',
     });
     threatScore += 25;
   } else if (dataExports.length >= 10) {
@@ -296,9 +315,12 @@ export function analyzeUserBehavior(
       category: 'data-exfiltration',
       severity: 'alert',
       description: `${dataExports.length} data export actions in period. Review for legitimate business need.`,
-      evidence: dataExports.slice(0, 3).map((a) => `${a.timestamp}: export from ${a.resource ?? 'unknown'}`),
+      evidence: dataExports
+        .slice(0, 3)
+        .map((a) => `${a.timestamp}: export from ${a.resource ?? 'unknown'}`),
       regulatoryRef: 'FDL No.10/2025 Art.24',
-      mitigationAction: 'Verify export activity is within job responsibilities. Add export logging alerts.',
+      mitigationAction:
+        'Verify export activity is within job responsibilities. Add export logging alerts.',
     });
     threatScore += 12;
   }
@@ -312,7 +334,8 @@ export function analyzeUserBehavior(
       description: `${privEscalation.length} privilege escalation or role change events detected.`,
       evidence: privEscalation.slice(0, 3).map((a) => `${a.timestamp}: ${a.action}`),
       regulatoryRef: 'FATF Rec 18, Cabinet Res 134/2025 Art.18 (CO change notification)',
-      mitigationAction: 'Audit all privilege changes. Ensure dual-approval for role modifications per four-eyes principle.',
+      mitigationAction:
+        'Audit all privilege changes. Ensure dual-approval for role modifications per four-eyes principle.',
     });
     threatScore += 15;
   }
@@ -324,9 +347,12 @@ export function analyzeUserBehavior(
       category: 'access-pattern',
       severity: failedAccess.length >= MAX_FAILED_LOGIN_ATTEMPTS * 3 ? 'critical' : 'alert',
       description: `${failedAccess.length} failed access/denied attempts — potential unauthorized access probing.`,
-      evidence: failedAccess.slice(0, 5).map((a) => `${a.timestamp}: ${a.action} → ${a.outcome} (${a.resource ?? 'N/A'})`),
+      evidence: failedAccess
+        .slice(0, 5)
+        .map((a) => `${a.timestamp}: ${a.action} → ${a.outcome} (${a.resource ?? 'N/A'})`),
       regulatoryRef: 'FATF Rec 18 (internal controls)',
-      mitigationAction: 'Review failed access targets. Check for credential compromise. Consider account lockout.',
+      mitigationAction:
+        'Review failed access targets. Check for credential compromise. Consider account lockout.',
     });
     threatScore += failedAccess.length >= MAX_FAILED_LOGIN_ATTEMPTS * 3 ? 20 : 10;
   }
@@ -346,8 +372,12 @@ export function analyzeUserBehavior(
   }
 
   // --- 8. Potential tipping off (accessing STR/SAR records + contacting subject) ---
-  const strAccesses = activities.filter((a) => a.resource?.includes('STR') || a.resource?.includes('SAR'));
-  const communicationActions = activities.filter((a) => a.action.includes('email') || a.action.includes('call') || a.action.includes('message'));
+  const strAccesses = activities.filter(
+    (a) => a.resource?.includes('STR') || a.resource?.includes('SAR')
+  );
+  const communicationActions = activities.filter(
+    (a) => a.action.includes('email') || a.action.includes('call') || a.action.includes('message')
+  );
   if (strAccesses.length > 0 && communicationActions.length > 0) {
     // Check for temporal proximity: STR access followed by communication within 1 hour
     for (const strAccess of strAccesses) {
@@ -361,13 +391,19 @@ export function analyzeUserBehavior(
           code: 'IT-TIPOFF-001',
           category: 'tipping-off',
           severity: 'critical',
-          description: 'STR/SAR record accessed followed by outbound communication within 1 hour. Potential tipping off violation (FDL Art.29).',
+          description:
+            'STR/SAR record accessed followed by outbound communication within 1 hour. Potential tipping off violation (FDL Art.29).',
           evidence: [
             `STR access: ${strAccess.timestamp} — ${strAccess.resource}`,
-            ...proxCommActions.slice(0, 2).map((c) => `Communication: ${c.timestamp} — ${c.action} to ${c.resource ?? 'unknown'}`),
+            ...proxCommActions
+              .slice(0, 2)
+              .map(
+                (c) => `Communication: ${c.timestamp} — ${c.action} to ${c.resource ?? 'unknown'}`
+              ),
           ],
           regulatoryRef: 'FDL No.10/2025 Art.29 (no tipping off)',
-          mitigationAction: 'CRITICAL: Escalate to MLRO immediately. Investigate communication content. Consider suspending access pending investigation.',
+          mitigationAction:
+            'CRITICAL: Escalate to MLRO immediately. Investigate communication content. Consider suspending access pending investigation.',
         });
         threatScore += 30;
         break; // One tipping-off indicator is enough to flag
@@ -386,11 +422,14 @@ export function analyzeUserBehavior(
 
   let recommendation: string;
   if (threatLevel === 'critical') {
-    recommendation = 'IMMEDIATE ACTION REQUIRED: Suspend user access pending investigation. Notify Senior Management and MLRO. Conduct forensic review of all user actions. Document per Cabinet Res 134/2025 Art.19.';
+    recommendation =
+      'IMMEDIATE ACTION REQUIRED: Suspend user access pending investigation. Notify Senior Management and MLRO. Conduct forensic review of all user actions. Document per Cabinet Res 134/2025 Art.19.';
   } else if (threatLevel === 'high') {
-    recommendation = 'Escalate to Compliance Officer for enhanced monitoring. Restrict sensitive data access. Schedule formal behavioral review within 5 business days.';
+    recommendation =
+      'Escalate to Compliance Officer for enhanced monitoring. Restrict sensitive data access. Schedule formal behavioral review within 5 business days.';
   } else if (threatLevel === 'medium') {
-    recommendation = 'Add user to enhanced monitoring watchlist. Review override and export patterns monthly. Ensure four-eyes principle on high-risk decisions.';
+    recommendation =
+      'Add user to enhanced monitoring watchlist. Review override and export patterns monthly. Ensure four-eyes principle on high-risk decisions.';
   } else {
     recommendation = 'No significant threat indicators detected. Continue standard monitoring.';
   }
@@ -431,19 +470,17 @@ export function analyzeUserBehavior(
  *
  * @regulatory FDL No.10/2025 Art.20-21 (CO duties), Art.35 (TFS — must screen ALL)
  */
-export function detectSelectiveScreening(
-  input: {
-    userId: string;
-    assignedEntities: Array<{
-      entityName: string;
-      entityType: 'individual' | 'entity';
-      country?: string;
-      riskLevel?: string;
-      assignedDate: string;         // ISO date
-    }>;
-    screenedEntities: string[];     // entity names that were actually screened
-  },
-): ToolResult<SelectiveScreeningResult> {
+export function detectSelectiveScreening(input: {
+  userId: string;
+  assignedEntities: Array<{
+    entityName: string;
+    entityType: 'individual' | 'entity';
+    country?: string;
+    riskLevel?: string;
+    assignedDate: string; // ISO date
+  }>;
+  screenedEntities: string[]; // entity names that were actually screened
+}): ToolResult<SelectiveScreeningResult> {
   const { userId, assignedEntities, screenedEntities } = input;
 
   if (!assignedEntities || assignedEntities.length === 0) {
@@ -452,7 +489,9 @@ export function detectSelectiveScreening(
 
   const screenedSet = new Set(screenedEntities.map((n) => n.toLowerCase()));
   const totalAssigned = assignedEntities.length;
-  const totalScreened = assignedEntities.filter((e) => screenedSet.has(e.entityName.toLowerCase())).length;
+  const totalScreened = assignedEntities.filter((e) =>
+    screenedSet.has(e.entityName.toLowerCase())
+  ).length;
   const coverage = totalAssigned > 0 ? totalScreened / totalAssigned : 0;
 
   const skippedEntities: SkippedEntity[] = assignedEntities
@@ -482,7 +521,9 @@ export function detectSelectiveScreening(
       const topCountry = Object.entries(countryFreq).sort((a, b) => b[1] - a[1])[0];
       if (topCountry && topCountry[1] / skippedCountries.length > 0.6 && topCountry[1] >= 3) {
         patternType = 'jurisdiction-bias';
-        findings.push(`Jurisdiction bias detected: ${topCountry[1]}/${skippedCountries.length} skipped entities are from ${topCountry[0]}. User may be intentionally avoiding screening entities from this jurisdiction.`);
+        findings.push(
+          `Jurisdiction bias detected: ${topCountry[1]}/${skippedCountries.length} skipped entities are from ${topCountry[0]}. User may be intentionally avoiding screening entities from this jurisdiction.`
+        );
       }
     }
 
@@ -492,10 +533,14 @@ export function detectSelectiveScreening(
     if (skippedEntities.length >= 3) {
       if (skippedIndividuals / skippedEntities.length > 0.8) {
         patternType = patternType === 'none' ? 'entity-type-bias' : patternType;
-        findings.push(`Entity type bias: ${skippedIndividuals}/${skippedEntities.length} skipped entities are individuals.`);
+        findings.push(
+          `Entity type bias: ${skippedIndividuals}/${skippedEntities.length} skipped entities are individuals.`
+        );
       } else if (skippedEntitiesCount / skippedEntities.length > 0.8) {
         patternType = patternType === 'none' ? 'entity-type-bias' : patternType;
-        findings.push(`Entity type bias: ${skippedEntitiesCount}/${skippedEntities.length} skipped entities are corporate entities.`);
+        findings.push(
+          `Entity type bias: ${skippedEntitiesCount}/${skippedEntities.length} skipped entities are corporate entities.`
+        );
       }
     }
 
@@ -503,11 +548,15 @@ export function detectSelectiveScreening(
     const skippedHighRisk = skippedEntities.filter((e) => e.riskLevel === 'high').length;
     if (skippedHighRisk >= 2 && skippedHighRisk / skippedEntities.length > 0.5) {
       patternType = patternType === 'none' ? 'risk-level-bias' : patternType;
-      findings.push(`Risk-level bias: ${skippedHighRisk}/${skippedEntities.length} skipped entities are high-risk. This is a serious compliance gap — high-risk entities MUST be screened per FDL Art.35.`);
+      findings.push(
+        `Risk-level bias: ${skippedHighRisk}/${skippedEntities.length} skipped entities are high-risk. This is a serious compliance gap — high-risk entities MUST be screened per FDL Art.35.`
+      );
     }
 
     if (patternType === 'none' && skippedEntities.length >= 2) {
-      findings.push(`${skippedEntities.length} entities not screened. No clear pattern detected but coverage is below 100%.`);
+      findings.push(
+        `${skippedEntities.length} entities not screened. No clear pattern detected but coverage is below 100%.`
+      );
     }
   }
 
@@ -545,7 +594,7 @@ export const INSIDER_THREAT_TOOL_SCHEMAS = [
   {
     name: 'analyze_user_behavior',
     description:
-      'Analyze a compliance staff member\'s activity history for insider threat indicators. Scores behavior across: after-hours access, alert dismissal patterns, data exfiltration, privilege escalation, tipping-off proximity. Returns threat score 0-100 with categorized indicators. Regulatory: FDL Art.20-21 (CO duties), Art.29 (no tipping off), Cabinet Res 134/2025 Art.19 (internal review).',
+      "Analyze a compliance staff member's activity history for insider threat indicators. Scores behavior across: after-hours access, alert dismissal patterns, data exfiltration, privilege escalation, tipping-off proximity. Returns threat score 0-100 with categorized indicators. Regulatory: FDL Art.20-21 (CO duties), Art.29 (no tipping off), Cabinet Res 134/2025 Art.19 (internal review).",
     inputSchema: {
       type: 'object',
       properties: {
@@ -556,9 +605,16 @@ export const INSIDER_THREAT_TOOL_SCHEMAS = [
             properties: {
               userId: { type: 'string' },
               userName: { type: 'string' },
-              role: { type: 'string', enum: ['compliance-officer', 'analyst', 'admin', 'manager', 'viewer'] },
+              role: {
+                type: 'string',
+                enum: ['compliance-officer', 'analyst', 'admin', 'manager', 'viewer'],
+              },
               timestamp: { type: 'string', description: 'ISO 8601 datetime' },
-              action: { type: 'string', description: 'Action performed (e.g. screening-completed, alert-dismissed, export-data)' },
+              action: {
+                type: 'string',
+                description:
+                  'Action performed (e.g. screening-completed, alert-dismissed, export-data)',
+              },
               resource: { type: 'string', description: 'Entity or record accessed' },
               ipAddress: { type: 'string' },
               afterHours: { type: 'boolean' },

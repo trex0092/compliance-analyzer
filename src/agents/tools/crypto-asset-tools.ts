@@ -24,8 +24,24 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type BlockchainNetwork = 'bitcoin' | 'ethereum' | 'tron' | 'polygon' | 'bsc' | 'solana' | 'other';
-export type AddressRiskCategory = 'sanctioned' | 'darknet' | 'mixer' | 'fraud' | 'gambling' | 'ransomware' | 'pep' | 'clean' | 'unknown';
+export type BlockchainNetwork =
+  | 'bitcoin'
+  | 'ethereum'
+  | 'tron'
+  | 'polygon'
+  | 'bsc'
+  | 'solana'
+  | 'other';
+export type AddressRiskCategory =
+  | 'sanctioned'
+  | 'darknet'
+  | 'mixer'
+  | 'fraud'
+  | 'gambling'
+  | 'ransomware'
+  | 'pep'
+  | 'clean'
+  | 'unknown';
 export type TravelRuleStatus = 'compliant' | 'non_compliant' | 'exempt' | 'pending';
 
 export interface CryptoTransaction {
@@ -139,7 +155,7 @@ function timeDiffMinutes(a: string, b: string): number {
 
 function clusterAddresses(
   transactions: CryptoTransaction[],
-  profiles: AddressProfile[],
+  profiles: AddressProfile[]
 ): ClusterResult[] {
   const addressMap = new Map<string, Set<string>>();
 
@@ -198,7 +214,10 @@ function clusterAddresses(
 // Analysis: Mixing detection
 // ---------------------------------------------------------------------------
 
-function detectMixing(transactions: CryptoTransaction[], profiles: AddressProfile[]): MixingIndicator {
+function detectMixing(
+  transactions: CryptoTransaction[],
+  profiles: AddressProfile[]
+): MixingIndicator {
   const indicators: string[] = [];
   const suspiciousTxHashes: string[] = [];
 
@@ -206,7 +225,8 @@ function detectMixing(transactions: CryptoTransaction[], profiles: AddressProfil
   const mixerAddresses = profiles.filter(
     (p) =>
       p.riskCategories.includes('mixer') ||
-      (p.clusterLabel && KNOWN_MIXER_LABELS.some((ml) => p.clusterLabel!.toLowerCase().includes(ml))),
+      (p.clusterLabel &&
+        KNOWN_MIXER_LABELS.some((ml) => p.clusterLabel!.toLowerCase().includes(ml)))
   );
   if (mixerAddresses.length > 0) {
     indicators.push(`${mixerAddresses.length} address(es) associated with known mixing services.`);
@@ -240,7 +260,9 @@ function detectMixing(transactions: CryptoTransaction[], profiles: AddressProfil
     }
   }
   if (rapidHops >= 3) {
-    indicators.push(`Rapid multi-hop chain: ${rapidHops} consecutive hops within ${MIXING_RAPID_HOP_MINUTES} minutes each.`);
+    indicators.push(
+      `Rapid multi-hop chain: ${rapidHops} consecutive hops within ${MIXING_RAPID_HOP_MINUTES} minutes each.`
+    );
   }
 
   // Indicator 4: Round-trip transactions
@@ -248,7 +270,9 @@ function detectMixing(transactions: CryptoTransaction[], profiles: AddressProfil
   const receivers = new Set(transactions.map((t) => t.toAddress));
   const roundTrips = [...senders].filter((s) => receivers.has(s));
   if (roundTrips.length > 0) {
-    indicators.push(`Round-trip detected: ${roundTrips.length} address(es) appear as both sender and receiver.`);
+    indicators.push(
+      `Round-trip detected: ${roundTrips.length} address(es) appear as both sender and receiver.`
+    );
   }
 
   const detected = indicators.length >= MIXING_MIN_INDICATORS;
@@ -269,7 +293,7 @@ function detectMixing(transactions: CryptoTransaction[], profiles: AddressProfil
 function checkTravelRule(
   transactions: CryptoTransaction[],
   originatorInfoAvailable: boolean,
-  beneficiaryInfoAvailable: boolean,
+  beneficiaryInfoAvailable: boolean
 ): TravelRuleResult[] {
   return transactions.map((tx) => {
     const amountAED = Math.round(tx.amountUSD * USD_TO_AED);
@@ -277,7 +301,8 @@ function checkTravelRule(
 
     const missingFields: string[] = [];
     if (requiresTravelRule) {
-      if (!originatorInfoAvailable) missingFields.push('originator_name', 'originator_account', 'originator_address');
+      if (!originatorInfoAvailable)
+        missingFields.push('originator_name', 'originator_account', 'originator_address');
       if (!beneficiaryInfoAvailable) missingFields.push('beneficiary_name', 'beneficiary_account');
     }
 
@@ -328,12 +353,14 @@ export function analyzeBlockchainActivity(input: {
   const travelRuleResults = checkTravelRule(
     input.transactions,
     input.originatorInfoAvailable ?? false,
-    input.beneficiaryInfoAvailable ?? false,
+    input.beneficiaryInfoAvailable ?? false
   );
 
   // Identify high-risk addresses
   const highRiskAddresses = profiles.filter((p) =>
-    p.riskCategories.some((c) => ['sanctioned', 'darknet', 'ransomware', 'mixer', 'fraud'].includes(c)),
+    p.riskCategories.some((c) =>
+      ['sanctioned', 'darknet', 'ransomware', 'mixer', 'fraud'].includes(c)
+    )
   );
 
   // Build flags
@@ -342,11 +369,15 @@ export function analyzeBlockchainActivity(input: {
     flags.push(`${highRiskAddresses.length} high-risk address(es) detected.`);
   }
   if (mixingAnalysis.detected) {
-    flags.push(`Mixing/tumbling activity detected (confidence: ${(mixingAnalysis.confidence * 100).toFixed(0)}%).`);
+    flags.push(
+      `Mixing/tumbling activity detected (confidence: ${(mixingAnalysis.confidence * 100).toFixed(0)}%).`
+    );
   }
   const nonCompliantTR = travelRuleResults.filter((r) => r.status === 'non_compliant');
   if (nonCompliantTR.length > 0) {
-    flags.push(`${nonCompliantTR.length} transaction(s) non-compliant with travel rule (threshold AED ${TRAVEL_RULE_THRESHOLD_AED}).`);
+    flags.push(
+      `${nonCompliantTR.length} transaction(s) non-compliant with travel rule (threshold AED ${TRAVEL_RULE_THRESHOLD_AED}).`
+    );
   }
   if (clusters.some((c) => c.riskCategories.includes('sanctioned'))) {
     flags.push('Cluster linked to sanctioned address detected.');
@@ -362,31 +393,34 @@ export function analyzeBlockchainActivity(input: {
   riskScore = Math.min(riskScore, 100);
 
   const riskLevel: 'low' | 'medium' | 'high' | 'critical' =
-    riskScore >= 75 ? 'critical' :
-    riskScore >= 50 ? 'high' :
-    riskScore >= 25 ? 'medium' :
-    'low';
+    riskScore >= 75 ? 'critical' : riskScore >= 50 ? 'high' : riskScore >= 25 ? 'medium' : 'low';
 
   // Recommendations
   const recommendations: string[] = [];
   if (highRiskAddresses.some((a) => a.riskCategories.includes('sanctioned'))) {
     recommendations.push(
-      'URGENT: Sanctioned address interaction detected. Freeze assets within 24 hours (Cabinet Res 74/2020). File CNMR within 5 business days.',
+      'URGENT: Sanctioned address interaction detected. Freeze assets within 24 hours (Cabinet Res 74/2020). File CNMR within 5 business days.'
     );
   }
   if (mixingAnalysis.detected) {
-    recommendations.push('File STR for mixing/tumbling activity. Mixing is a strong indicator of layering (FATF Typologies).');
+    recommendations.push(
+      'File STR for mixing/tumbling activity. Mixing is a strong indicator of layering (FATF Typologies).'
+    );
   }
   if (nonCompliantTR.length > 0) {
     recommendations.push(
-      `Obtain missing travel rule data for ${nonCompliantTR.length} transaction(s) or suspend relationship (FATF Rec 15 / VARA).`,
+      `Obtain missing travel rule data for ${nonCompliantTR.length} transaction(s) or suspend relationship (FATF Rec 15 / VARA).`
     );
   }
   if (clusters.some((c) => c.addresses.length >= 5)) {
-    recommendations.push('Large address cluster detected. Conduct enhanced due diligence on counterparties.');
+    recommendations.push(
+      'Large address cluster detected. Conduct enhanced due diligence on counterparties.'
+    );
   }
   if (riskLevel === 'critical' || riskLevel === 'high') {
-    recommendations.push('Escalate to Compliance Officer for review and potential STR filing (FDL Art.26-27).');
+    recommendations.push(
+      'Escalate to Compliance Officer for review and potential STR filing (FDL Art.26-27).'
+    );
   }
 
   const uniqueAddresses = new Set([
@@ -451,7 +485,7 @@ export function analyzeBlockchainAddress(input: {
   const relevantTxs = input.transactions.filter(
     (tx) =>
       tx.fromAddress.toLowerCase() === input.address.toLowerCase() ||
-      tx.toAddress.toLowerCase() === input.address.toLowerCase(),
+      tx.toAddress.toLowerCase() === input.address.toLowerCase()
   );
   if (relevantTxs.length === 0) {
     return { ok: false, error: 'No transactions found involving the specified address.' };
@@ -482,9 +516,13 @@ export interface TravelRuleInput {
  *
  * @regulatory FATF Rec 15/16, CBUAE VA Regulation 2024
  */
-export function checkTravelRuleCompliance(
-  input: TravelRuleInput,
-): ToolResult<{ results: TravelRuleResult[]; compliantCount: number; nonCompliantCount: number; exemptCount: number; summary: string }> {
+export function checkTravelRuleCompliance(input: TravelRuleInput): ToolResult<{
+  results: TravelRuleResult[];
+  compliantCount: number;
+  nonCompliantCount: number;
+  exemptCount: number;
+  summary: string;
+}> {
   if (!input.transactions || input.transactions.length === 0) {
     return { ok: false, error: 'At least one transaction is required for travel rule check.' };
   }
@@ -492,7 +530,7 @@ export function checkTravelRuleCompliance(
   const results = checkTravelRule(
     input.transactions,
     input.originatorInfoAvailable,
-    input.beneficiaryInfoAvailable,
+    input.beneficiaryInfoAvailable
   );
 
   const compliantCount = results.filter((r) => r.status === 'compliant').length;
@@ -531,7 +569,10 @@ export const CRYPTO_TOOL_SCHEMAS = [
             type: 'object',
             properties: {
               txHash: { type: 'string' },
-              network: { type: 'string', enum: ['bitcoin', 'ethereum', 'tron', 'polygon', 'bsc', 'solana', 'other'] },
+              network: {
+                type: 'string',
+                enum: ['bitcoin', 'ethereum', 'tron', 'polygon', 'bsc', 'solana', 'other'],
+              },
               fromAddress: { type: 'string' },
               toAddress: { type: 'string' },
               amountUSD: { type: 'number', description: 'Transaction value in USD' },
@@ -541,7 +582,16 @@ export const CRYPTO_TOOL_SCHEMAS = [
               blockNumber: { type: 'number' },
               fee: { type: 'number' },
             },
-            required: ['txHash', 'network', 'fromAddress', 'toAddress', 'amountUSD', 'amountNative', 'nativeAsset', 'timestamp'],
+            required: [
+              'txHash',
+              'network',
+              'fromAddress',
+              'toAddress',
+              'amountUSD',
+              'amountNative',
+              'nativeAsset',
+              'timestamp',
+            ],
           },
           description: 'Transaction history involving the address',
         },
@@ -554,7 +604,20 @@ export const CRYPTO_TOOL_SCHEMAS = [
               network: { type: 'string' },
               riskCategories: {
                 type: 'array',
-                items: { type: 'string', enum: ['sanctioned', 'darknet', 'mixer', 'fraud', 'gambling', 'ransomware', 'pep', 'clean', 'unknown'] },
+                items: {
+                  type: 'string',
+                  enum: [
+                    'sanctioned',
+                    'darknet',
+                    'mixer',
+                    'fraud',
+                    'gambling',
+                    'ransomware',
+                    'pep',
+                    'clean',
+                    'unknown',
+                  ],
+                },
               },
               clusterLabel: { type: 'string' },
               totalTxCount: { type: 'number' },
@@ -594,12 +657,27 @@ export const CRYPTO_TOOL_SCHEMAS = [
               nativeAsset: { type: 'string' },
               timestamp: { type: 'string' },
             },
-            required: ['txHash', 'network', 'fromAddress', 'toAddress', 'amountUSD', 'amountNative', 'nativeAsset', 'timestamp'],
+            required: [
+              'txHash',
+              'network',
+              'fromAddress',
+              'toAddress',
+              'amountUSD',
+              'amountNative',
+              'nativeAsset',
+              'timestamp',
+            ],
           },
           description: 'Transactions to check for travel rule compliance',
         },
-        originatorInfoAvailable: { type: 'boolean', description: 'Whether originator identifying info is available' },
-        beneficiaryInfoAvailable: { type: 'boolean', description: 'Whether beneficiary identifying info is available' },
+        originatorInfoAvailable: {
+          type: 'boolean',
+          description: 'Whether originator identifying info is available',
+        },
+        beneficiaryInfoAvailable: {
+          type: 'boolean',
+          description: 'Whether beneficiary identifying info is available',
+        },
       },
       required: ['transactions', 'originatorInfoAvailable', 'beneficiaryInfoAvailable'],
     },

@@ -76,7 +76,7 @@ const DEFAULT_REQUIRED_TYPES: NodeType[] = ['event', 'evidence', 'action', 'deci
 
 export function reviewReasoningChain(
   chain: ReasoningChain,
-  config: CriticConfig = {},
+  config: CriticConfig = {}
 ): ReflectionReport {
   const required = config.requiredNodeTypes ?? DEFAULT_REQUIRED_TYPES;
   const issues: ReflectionIssue[] = [];
@@ -105,7 +105,7 @@ export function reviewReasoningChain(
 
   // Contradictions: nodes linked by "contradicts" / "refutes" edges.
   const contradictoryEdges = chain.edges.filter(
-    (e) => e.relation === 'contradicts' || e.relation === 'refutes',
+    (e) => e.relation === 'contradicts' || e.relation === 'refutes'
   );
   if (contradictoryEdges.length > 0) {
     for (const e of contradictoryEdges) {
@@ -169,7 +169,8 @@ export function reviewReasoningChain(
 
   // Recommendations.
   const recommendations: string[] = [];
-  if (!hasCitation) recommendations.push('Add at least one regulatory citation to the decision path.');
+  if (!hasCitation)
+    recommendations.push('Add at least one regulatory citation to the decision path.');
   if (errorCount > 0) recommendations.push('Resolve error-level issues before sealing the chain.');
   if (shouldEscalateToHuman)
     recommendations.push('Escalate to human review — confidence below threshold.');

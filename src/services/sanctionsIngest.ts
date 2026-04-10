@@ -149,8 +149,20 @@ export function parseOfacSdnCsv(csv: string): NormalisedSanction[] {
   for (const line of lines) {
     const fields = parseOfacCsvLine(line);
     if (fields.length < 12) continue;
-    const [ent_num, name, sdn_type, program, /*title*/, /*call*/, /*vess_type*/, /*tonnage*/, /*grt*/, /*flag*/, /*owner*/, remarks] =
-      fields;
+    const [
+      ent_num,
+      name,
+      sdn_type,
+      program /*title*/ /*call*/ /*vess_type*/ /*tonnage*/ /*grt*/ /*flag*/ /*owner*/,
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+      remarks,
+    ] = fields;
     if (!ent_num || !name) continue;
 
     const typeLower = (sdn_type ?? '').toLowerCase();
@@ -172,7 +184,7 @@ export function parseOfacSdnCsv(csv: string): NormalisedSanction[] {
           .map((p) => p.trim())
           .filter((p) => p && p !== '-0-'),
         remarks: remarks && remarks !== '-0-' ? remarks.trim() : undefined,
-      }),
+      })
     );
   }
   return out;
@@ -238,7 +250,8 @@ export function parseUnConsolidatedXml(xml: string): NormalisedSanction[] {
       const secondName = tagContent(block, 'SECOND_NAME') ?? '';
       const thirdName = tagContent(block, 'THIRD_NAME') ?? '';
       const fourthName = tagContent(block, 'FOURTH_NAME') ?? '';
-      const entityName = tagContent(block, 'FIRST_NAME') ?? tagContent(block, 'NAME_ORIGINAL_SCRIPT') ?? '';
+      const entityName =
+        tagContent(block, 'FIRST_NAME') ?? tagContent(block, 'NAME_ORIGINAL_SCRIPT') ?? '';
       const listType = tagContent(block, 'UN_LIST_TYPE') ?? '';
       const nationality = tagContent(block, 'NATIONALITY') ?? undefined;
 
@@ -264,7 +277,7 @@ export function parseUnConsolidatedXml(xml: string): NormalisedSanction[] {
           type: tag === 'INDIVIDUAL' ? 'individual' : 'entity',
           nationality: nationality?.trim(),
           programmes: listType ? [listType.trim()] : [],
-        }),
+        })
       );
     }
   };
@@ -291,7 +304,7 @@ function tagContent(xml: string, tag: string): string | null {
  */
 export function computeDelta(
   previous: readonly NormalisedSanction[],
-  current: readonly NormalisedSanction[],
+  current: readonly NormalisedSanction[]
 ): SanctionsDelta {
   const keyOf = (s: NormalisedSanction) => `${s.source}|${s.sourceId}`;
 
@@ -327,7 +340,7 @@ export function computeDelta(
 export function screenCustomer(
   customer: string,
   sanctions: readonly NormalisedSanction[],
-  threshold = 0.7,
+  threshold = 0.7
 ): SanctionsScreeningHit[] {
   const hits: SanctionsScreeningHit[] = [];
   for (const s of sanctions) {
@@ -351,8 +364,7 @@ export function screenCustomer(
           customer,
           match: s,
           breakdown: a,
-          classification:
-            a.score >= 0.9 ? 'confirmed' : a.score >= 0.7 ? 'potential' : 'weak',
+          classification: a.score >= 0.9 ? 'confirmed' : a.score >= 0.7 ? 'potential' : 'weak',
         });
         break;
       }
@@ -370,7 +382,7 @@ export function screenCustomer(
 export function screenDeltaAgainstPortfolio(
   customers: readonly string[],
   delta: SanctionsDelta,
-  threshold = 0.7,
+  threshold = 0.7
 ): SanctionsScreeningHit[] {
   const allHits: SanctionsScreeningHit[] = [];
   for (const customer of customers) {
