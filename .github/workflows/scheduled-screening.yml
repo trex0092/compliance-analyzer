@@ -1,0 +1,125 @@
+name: Scheduled Screening — Twice Daily
+
+# Ongoing adverse-media monitoring for subjects on the compliance watchlist.
+# Runs at 06:00 and 14:00 UTC (10:00 and 18:00 Dubai time — matches UAE
+# business hours so Luisa sees alerts in her morning and evening Asana queue).
+#
+# What it does, at a high level:
+#   1. Fetches the watchlist via GET /api/watchlist
+#   2. For each subject, runs a delta adverse-media search (30-day window
+#      or since lastScreenedAt, whichever is shorter)
+#   3. For each NEW hit (not previously seen), creates an Asana task in
+#      the SCREENINGS project, auto-assigned to Luisa Fernanda
+#   4. Creates ONE heartbeat summary task per run (even on zero-alert days)
+#   5. Saves the updated watchlist state back via POST /api/watchlist
+#   6. Emits a brain event for the NORAD dashboard
+#
+# Triggering it manually:
+#   - GitHub UI → Actions → "Scheduled Screening — Twice Daily" → Run workflow
+#   - Or via gh CLI: gh workflow run scheduled-screening.yml
+#
+# Required secrets (set in GitHub repo → Settings → Secrets → Actions):
+#   HAWKEYE_BRAIN_TOKEN    — bearer for /api/watchlist and /api/brain
+#   ASANA_TOKEN            — Asana Personal Access Token
+#
+# Required env vars (set as GitHub Actions vars, not secrets, since they're
+# not sensitive):
+#   ASANA_SCREENINGS_PROJECT_GID  = 1213924883251269
+#   ASANA_WORKSPACE_GID           = 1213645083721316
+#   ASANA_DEFAULT_ASSIGNEE_NAME   = Luisa Fernanda
+#
+# Set these in repo → Settings → Secrets and variables → Actions → Variables.
+#
+# Regulatory basis:
+#   - FATF Rec 10 (ongoing customer due diligence)
+#   - Cabinet Res 134/2025 Art.19 (periodic internal review)
+#   - FDL No.10/2025 Art.26-27 (STR obligation when new adverse media
+#     triggers suspicion)
+
+on:
+  schedule:
+    # 06:00 UTC = 10:00 Dubai (morning briefing before work)
+    - cron: '0 6 * * *'
+    # 14:00 UTC = 18:00 Dubai (evening close-out)
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — skip Asana and brain dispatches'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+      reason:
+        description: 'Reason for manual run'
+        required: false
+        default: 'Manual trigger'
+
+permissions:
+  contents: read
+
+concurrency:
+  # Only one screening run at a time — prevents overlapping schedules
+  # from racing on the watchlist state.
+  group: scheduled-screening
+  cancel-in-progress: false
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run scheduled screening
+        env:
+          # Endpoint URL (defaults to compliance-analyzer.netlify.app if unset)
+          HAWKEYE_BRAIN_URL: ${{ vars.HAWKEYE_BRAIN_URL || 'https://compliance-analyzer.netlify.app' }}
+          # Auth tokens (repo secrets)
+          HAWKEYE_BRAIN_TOKEN: ${{ secrets.HAWKEYE_BRAIN_TOKEN }}
+          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
+          # Asana non-secret config (repo variables)
+          ASANA_SCREENINGS_PROJECT_GID: ${{ vars.ASANA_SCREENINGS_PROJECT_GID }}
+          ASANA_WORKSPACE_GID: ${{ vars.ASANA_WORKSPACE_GID }}
+          ASANA_DEFAULT_ASSIGNEE_NAME: ${{ vars.ASANA_DEFAULT_ASSIGNEE_NAME }}
+          # Dry-run flag (from workflow_dispatch input; ignored on schedule)
+          SCHEDULED_SCREENING_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          npx tsx scripts/scheduled-screening.ts 2>&1 | tee artifacts/scheduled-screening.log
+
+      - name: Upload run artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheduled-screening-${{ github.run_number }}
+          path: artifacts/
+          retention-days: 90
+
+      - name: Write step summary
+        if: always()
+        run: |
+          {
+            echo "# Scheduled Screening — run ${{ github.run_number }}"
+            echo
+            echo "- Triggered: ${{ github.event_name }}"
+            echo "- Started: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            echo
+            if [ -f artifacts/scheduled-screening.log ]; then
+              echo '```'
+              tail -n 100 artifacts/scheduled-screening.log
+              echo '```'
+            else
+              echo "_no log produced_"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
