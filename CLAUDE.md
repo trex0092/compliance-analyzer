@@ -263,6 +263,7 @@ The following multi-agent frameworks are vendored for reference and integration 
 | supersonic | `vendor/supersonic` | AI-native NL→SQL BI engine | Reference for extending nlComplianceQuery DSL to richer analytics; inspiration for entity→metric mapping |
 | bolt | `vendor/bolt` | JavaScript monorepo manager (archived 2019) | Reference only — archived; kept for historical monorepo workflow patterns |
 | dr-claw | `vendor/dr-claw` | OpenLAIR defensive AI tooling | Reference for defensive AI patterns; relevance TBD, added for review |
+| skill-vault | `vendor/skill-vault` | Zero-dep skill organizer + 13-point security analyzer | Reference for skill curation, security rubric, and Vault Master agent pattern; informs how we audit future additions to `skills/` and `.agents/skills/` for supply-chain risk |
 
 ## Hooks
 
