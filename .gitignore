@@ -15,6 +15,9 @@ out/
 # Code review graph (local database)
 .code-review-graph/
 
+# Graphify knowledge graph output (regenerated incrementally)
+graphify-out/
+
 # Claude Code
 .claude/
 
