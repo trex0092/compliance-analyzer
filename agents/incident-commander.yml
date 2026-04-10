@@ -135,6 +135,12 @@ tools:
     default_config:
       enabled: true
 
+  # Expose the github MCP server declared in mcp_servers above.
+  # If you declare an mcp_server, the API requires a matching mcp_toolset
+  # that references it by name — otherwise the agent can't reach it.
+  - type: mcp_toolset
+    mcp_server_name: github
+
   # Client-side custom tool — orchestrator forwards to /api/brain.
   - type: custom
     name: brain_event

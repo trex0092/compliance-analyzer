@@ -108,6 +108,40 @@ describe.each(AGENT_FILES)('agent config: %s', (file) => {
     expect(names.size).toBe(servers.length);
   });
 
+  it('every mcp_server is exposed via a matching mcp_toolset tool', () => {
+    // The API rejects configs that declare an mcp_server without a
+    // matching mcp_toolset in tools[]. Mirror that check here.
+    const toolsetNames = new Set(
+      agent.tools
+        .filter((t): t is ToolBase & { type: 'mcp_toolset'; mcp_server_name: string } =>
+          t.type === 'mcp_toolset',
+        )
+        .map((t) => t.mcp_server_name),
+    );
+    for (const srv of agent.mcp_servers ?? []) {
+      expect(
+        toolsetNames.has(srv.name),
+        `mcp_server "${srv.name}" must be exposed via a mcp_toolset tool`,
+      ).toBe(true);
+    }
+  });
+
+  it('every mcp_toolset references a declared mcp_server', () => {
+    const serverNames = new Set((agent.mcp_servers ?? []).map((s) => s.name));
+    for (const tool of agent.tools) {
+      if (tool.type === 'mcp_toolset') {
+        const name = (tool as unknown as { mcp_server_name?: string }).mcp_server_name;
+        expect(name, 'mcp_toolset missing mcp_server_name').toBeTruthy();
+        if (name) {
+          expect(
+            serverNames.has(name),
+            `mcp_toolset references unknown mcp_server "${name}"`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
   it('declares the agent_toolset_20260401 base toolset', () => {
     const base = agent.tools.find((t) => t.type === 'agent_toolset_20260401');
     expect(base).toBeDefined();

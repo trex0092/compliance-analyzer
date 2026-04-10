@@ -101,6 +101,37 @@ function validateAgent(doc, path) {
         if (seen.has(srv.name)) errors.push(`duplicate mcp_server name: ${srv.name}`);
         seen.add(srv.name);
       }
+
+      // Every mcp_server MUST be exposed to the agent via a matching
+      // mcp_toolset entry in tools[]. The API rejects mismatches with
+      // "mcp_servers [X] declared but no mcp_toolset in tools references them".
+      const toolsetNames = new Set(
+        (doc.tools ?? [])
+          .filter((t) => t.type === 'mcp_toolset')
+          .map((t) => t.mcp_server_name),
+      );
+      for (const srv of doc.mcp_servers) {
+        if (!toolsetNames.has(srv.name)) {
+          errors.push(
+            `mcp_server "${srv.name}" is declared but not exposed via a matching ` +
+              `tool entry. Add: { type: mcp_toolset, mcp_server_name: ${srv.name} }`,
+          );
+        }
+      }
+    }
+  }
+
+  // Reverse check: every mcp_toolset must reference a real mcp_server.
+  const serverNames = new Set((doc.mcp_servers ?? []).map((s) => s.name));
+  for (const tool of doc.tools ?? []) {
+    if (tool.type === 'mcp_toolset') {
+      if (!tool.mcp_server_name) {
+        errors.push('mcp_toolset tool missing mcp_server_name');
+      } else if (!serverNames.has(tool.mcp_server_name)) {
+        errors.push(
+          `mcp_toolset references unknown mcp_server "${tool.mcp_server_name}"`,
+        );
+      }
     }
   }
 

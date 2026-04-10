@@ -116,6 +116,11 @@ tools:
     default_config:
       enabled: true
 
+  # Must match the mcp_servers entry above — API rejects an mcp_server
+  # that isn't exposed to the agent via a mcp_toolset tool.
+  - type: mcp_toolset
+    mcp_server_name: github
+
   - type: custom
     name: brain_event
     description: >
