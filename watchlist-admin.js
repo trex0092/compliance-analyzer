@@ -42,12 +42,125 @@
   tokenInput.addEventListener('blur', function () {
     try {
       if (tokenInput.value) {
-        localStorage.setItem(TOKEN_KEY, tokenInput.value);
+        localStorage.setItem(TOKEN_KEY, tokenInput.value.trim());
       } else {
         localStorage.removeItem(TOKEN_KEY);
       }
     } catch (_err) { /* ignore */ }
+    // Auto-verify token format + server acceptance on blur
+    validateToken();
   });
+
+  tokenInput.addEventListener('input', function () {
+    // Clear any previous status while the user is still typing
+    updateTokenStatus('pending', '');
+  });
+
+  // ─── Token validation (client-side format + server round trip) ───
+
+  const TOKEN_MIN = 32;
+  const TOKEN_HEX_RE = /^[a-f0-9]+$/i;
+
+  function updateTokenStatus(state, message) {
+    let statusEl = document.getElementById('tokenStatus');
+    if (!statusEl) {
+      statusEl = document.createElement('div');
+      statusEl.id = 'tokenStatus';
+      statusEl.style.marginTop = '8px';
+      statusEl.style.fontSize = '13px';
+      statusEl.style.padding = '8px 12px';
+      statusEl.style.borderRadius = '3px';
+      statusEl.style.display = 'none';
+      tokenInput.parentNode.insertBefore(statusEl, tokenInput.nextSibling);
+    }
+    if (!message) {
+      statusEl.style.display = 'none';
+      return;
+    }
+    statusEl.style.display = 'block';
+    if (state === 'ok') {
+      statusEl.style.background = 'rgba(61,168,118,0.12)';
+      statusEl.style.border = '1px solid var(--green)';
+      statusEl.style.color = 'var(--green)';
+      statusEl.textContent = '✓ ' + message;
+    } else if (state === 'error') {
+      statusEl.style.background = 'rgba(217,79,79,0.12)';
+      statusEl.style.border = '1px solid var(--red)';
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = '✗ ' + message;
+    } else {
+      statusEl.style.background = 'rgba(201,168,76,0.08)';
+      statusEl.style.border = '1px solid var(--border)';
+      statusEl.style.color = 'var(--muted)';
+      statusEl.textContent = '… ' + message;
+    }
+  }
+
+  async function validateToken() {
+    const token = tokenInput.value.trim();
+    if (!token) {
+      updateTokenStatus('pending', '');
+      return false;
+    }
+    // Client-side format check (matches the server's auth middleware)
+    if (token.length < TOKEN_MIN) {
+      updateTokenStatus(
+        'error',
+        'Token too short (' + token.length + ' chars; server requires at least ' + TOKEN_MIN + '). Did you truncate it when copying?'
+      );
+      return false;
+    }
+    if (!TOKEN_HEX_RE.test(token)) {
+      const badChars = [];
+      for (let i = 0; i < token.length; i++) {
+        if (!/[a-f0-9]/i.test(token.charAt(i))) {
+          badChars.push(token.charAt(i));
+        }
+      }
+      updateTokenStatus(
+        'error',
+        'Token has non-hex characters. The server only accepts 0-9 and a-f. ' +
+          'You may have pasted the wrong token (e.g. the Asana token, which has other characters). ' +
+          (badChars.length > 0 && badChars.length <= 10 ? 'Bad chars: ' + badChars.join(' ') : '')
+      );
+      return false;
+    }
+    // Round-trip check: GET /api/watchlist with this token
+    updateTokenStatus('pending', 'Verifying token with server…');
+    try {
+      const res = await fetch(API_BASE, {
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      if (res.status === 401) {
+        updateTokenStatus(
+          'error',
+          'Server rejected the token. Format is OK, but it does not match HAWKEYE_BRAIN_TOKEN in Netlify. Double-check you copied the right env var value (not ASANA_TOKEN, not ANTHROPIC_API_KEY).'
+        );
+        return false;
+      }
+      if (res.status === 503) {
+        updateTokenStatus(
+          'error',
+          'Server says HAWKEYE_BRAIN_TOKEN is not configured. Set it in Netlify → Environment variables → Add variable, then redeploy.'
+        );
+        return false;
+      }
+      if (!res.ok) {
+        updateTokenStatus('error', 'Unexpected server response: HTTP ' + res.status);
+        return false;
+      }
+      // Success — parse the response and refresh the list while we're at it
+      const json = await res.json();
+      const count = (json && json.count) || 0;
+      updateTokenStatus('ok', 'Token verified. Server is monitoring ' + count + ' subject' + (count === 1 ? '' : 's') + '.');
+      return true;
+    } catch (err) {
+      const msg = (err && err.message) ? err.message : 'unknown';
+      updateTokenStatus('error', 'Network error while verifying: ' + msg);
+      return false;
+    }
+  }
 
   // ─── UI helpers ───────────────────────────────────────────────────
 
@@ -78,6 +191,19 @@
     if (!token) {
       return { ok: false, error: 'Token required — paste it in the Authentication box above.' };
     }
+    // Client-side format check first (fail fast without a network call)
+    if (token.length < TOKEN_MIN) {
+      return {
+        ok: false,
+        error: 'Token too short (' + token.length + ' chars). The server requires at least ' + TOKEN_MIN + ' hex characters. Double-check you copied the full HAWKEYE_BRAIN_TOKEN value.',
+      };
+    }
+    if (!TOKEN_HEX_RE.test(token)) {
+      return {
+        ok: false,
+        error: 'Token has non-hex characters. The server only accepts 0-9 and a-f. You may have pasted the wrong token — check that you copied HAWKEYE_BRAIN_TOKEN (not ASANA_TOKEN or ANTHROPIC_API_KEY).',
+      };
+    }
     try {
       const init = {
         method: method,
@@ -96,6 +222,25 @@
         /* response was not JSON — let the status speak for itself */
       }
       if (!res.ok) {
+        // Translate common status codes into actionable messages
+        if (res.status === 401) {
+          return {
+            ok: false,
+            error: 'Server rejected the token (401). Format is OK but it does not match HAWKEYE_BRAIN_TOKEN in Netlify. Double-check you copied the right env var value from Netlify → Environment variables.',
+          };
+        }
+        if (res.status === 503) {
+          return {
+            ok: false,
+            error: 'Server says HAWKEYE_BRAIN_TOKEN is not configured. Set it in Netlify → Environment variables, then redeploy.',
+          };
+        }
+        if (res.status === 429) {
+          return {
+            ok: false,
+            error: 'Rate limited (429). Wait a minute and try again.',
+          };
+        }
         const errMsg = (json && json.error) || ('HTTP ' + res.status);
         return { ok: false, error: errMsg };
       }
@@ -262,6 +407,15 @@
     });
   });
 
-  // Initial load so the user sees the current count right away
-  refreshList();
+  // On initial load: if a token is already saved from a previous session,
+  // auto-validate it so the user immediately sees whether it still works.
+  // Otherwise just refresh the list (which will show the "token required"
+  // message if no token is set).
+  if (tokenInput.value.trim()) {
+    validateToken().then(function (ok) {
+      if (ok) refreshList();
+    });
+  } else {
+    refreshList();
+  }
 })();
