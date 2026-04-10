@@ -18,6 +18,11 @@ import { validateSTR, validateCTR, type ValidationResult } from '../../utils/goa
 import { generateKPIReport, DPMS_KPI_DEFINITIONS } from '../../domain/kpiFramework';
 import { appendToChain, type ChainedAuditEvent } from '../../utils/auditChain';
 import { checkDeadline } from '../../utils/businessDays';
+import {
+  STR_FILING_DEADLINE_BUSINESS_DAYS,
+  CTR_FILING_DEADLINE_BUSINESS_DAYS,
+  CNMR_FILING_DEADLINE_BUSINESS_DAYS,
+} from '../../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Tool: generate_goaml_xml
@@ -84,11 +89,15 @@ export function checkFilingDeadline(input: CheckDeadlineInput): ToolResult<{
   businessDaysRemaining: number;
   filingType: string;
 }> {
+  // Deadlines come from src/domain/constants.ts (single source of truth).
+  // DPMSR shares the CTR filing deadline — both are 15 business days under
+  // FDL Art.16 + MoE Circular 08/AML/2021. If a regulation changes, update
+  // constants.ts, NOT this map.
   const deadlineMap: Record<string, number> = {
-    STR: 0, // without delay — FDL Art.26
-    CTR: 15, // 15 business days
-    CNMR: 5, // 5 business days — Cabinet Res 74/2020 Art.6
-    DPMSR: 15, // 15 business days
+    STR: STR_FILING_DEADLINE_BUSINESS_DAYS, // without delay — FDL Art.26-27
+    CTR: CTR_FILING_DEADLINE_BUSINESS_DAYS, // 15 business days — FDL Art.16
+    CNMR: CNMR_FILING_DEADLINE_BUSINESS_DAYS, // 5 business days — Cabinet Res 74/2020 Art.6
+    DPMSR: CTR_FILING_DEADLINE_BUSINESS_DAYS, // 15 business days — MoE Circular 08/AML/2021
   };
 
   const days = deadlineMap[input.filingType];

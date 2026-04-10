@@ -358,9 +358,15 @@ export async function callAdvisorAssisted(
 ): Promise<AdvisorCallResult> {
   const body = buildAdvisorRequest(input);
 
-  const token = deps.authToken ?? defaultAuthToken();
+  // Use || (not ??) so an explicit empty string falls through to the
+  // localStorage fallback. An empty bearer token would always be rejected
+  // upstream, so treating '' as "no token provided" is safer than sending
+  // an empty Authorization header and getting a confusing 401.
+  const token = deps.authToken || defaultAuthToken();
   if (!token) {
-    throw new Error('callAdvisorAssisted: no auth token (set deps.authToken or localStorage["auth.token"])');
+    throw new Error(
+      'callAdvisorAssisted: no auth token (set deps.authToken or localStorage["auth.token"])'
+    );
   }
 
   const endpoint = deps.endpoint ?? '/api/ai-proxy';
