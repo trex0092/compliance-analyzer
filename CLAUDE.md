@@ -26,6 +26,21 @@ to minimize token usage while maintaining quality:
 - Run `build_or_update_graph_tool` after significant code changes.
 - This keeps subsequent queries accurate and avoids stale context.
 
+## Context Navigation
+
+When you need to understand the codebase, docs, or any files in this project:
+
+1. **ALWAYS** query the knowledge graph first: `/graphify query "your question"`
+2. Only read raw files if the user explicitly says "read the file" or "look at the raw file"
+3. Use `graphify-out/wiki/index.md` as your navigation entrypoint for browsing structure
+4. Keep the graph fresh by re-running `/graphify .` after significant code changes
+
+Graphify complements the existing `code-review-graph` MCP tool:
+- Use **Graphify** for natural-language questions across all project files, docs, and skills.
+- Use **code-review-graph** for structural queries (impact radius, call graphs, change review).
+
+Setup instructions live in `docs/graphify-obsidian-setup.md`.
+
 ## Project Structure
 
 - **Root `.js` files**: Core backend modules (compliance-suite, database, workflow-engine, auth, etc.)
