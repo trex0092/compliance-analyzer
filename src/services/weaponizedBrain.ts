@@ -306,6 +306,14 @@ export async function runWeaponizedBrain(
   extensions.explanation = explainableScore(explainInput);
 
   // 7. Subsystem 19: zk-proof audit seal (default on, opt-out via sealProofBundle: false)
+  //
+  // The zk-seal uses Web Crypto SubtleDigest. If the runtime lacks
+  // crypto.subtle (very old browsers, some Node ESM contexts) or the digest
+  // call fails, we must NOT lose the compliance verdict — the decision is
+  // more important than the audit seal. Log the failure and continue with
+  // proofBundle undefined, then force human review so an MLRO manually
+  // anchors the decision. FDL Art.24 requires the decision record to be
+  // retained even if the cryptographic attestation is unavailable.
   if (req.sealProofBundle !== false) {
     const record: ComplianceRecord = {
       recordId: mega.chain.id,
@@ -319,7 +327,17 @@ export async function runWeaponizedBrain(
         sealedAt: new Date().toISOString(),
       },
     };
-    extensions.proofBundle = await sealComplianceBundle([record]);
+    try {
+      extensions.proofBundle = await sealComplianceBundle([record]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      clampReasons.push(
+        `CLAMP: zk-proof audit seal failed (${message}) — manual audit anchor required (FDL Art.24)`
+      );
+      // Degrade gracefully: leave extensions.proofBundle undefined. The
+      // augmented human-review flag below will flip to true because
+      // clampReasons is non-empty, so an MLRO will see this case.
+    }
   }
 
   // 8. Augmented confidence — take MIN across MegaBrain + new signals.
