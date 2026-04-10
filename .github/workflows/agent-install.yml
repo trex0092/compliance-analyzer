@@ -97,11 +97,15 @@ jobs:
         if: always()
         run: |
           mkdir -p artifacts
+          # Stage as env-agents.txt (NO dot prefix) so:
+          # (a) actions/upload-artifact@v4 doesn't silently skip it
+          #     (hidden files are excluded by default)
+          # (b) Windows Explorer shows it to the user
           if [ -f .env.agents ]; then
-            cp .env.agents artifacts/.env.agents
+            cp .env.agents artifacts/env-agents.txt
           else
             echo "# install-agent.mjs did not produce .env.agents — see install.log" \
-              > artifacts/.env.agents
+              > artifacts/env-agents.txt
           fi
 
       - name: Upload install artifacts
@@ -112,6 +116,7 @@ jobs:
           path: artifacts/
           retention-days: 30
           if-no-files-found: warn
+          include-hidden-files: true
 
       - name: Write step summary
         if: always()

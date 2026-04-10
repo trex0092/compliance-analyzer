@@ -59,6 +59,23 @@ function agentSlugToEnvKey(slug) {
   return `AGENT_${slug.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_ID`;
 }
 
+/**
+ * Look up an agent id by name via the Anthropic API. Paginates through
+ * the user's agents and returns the first match. Used as a fallback when
+ * .env.agents is missing (e.g. in a fresh CI run).
+ */
+const SLUG_TO_AGENT_NAME = {
+  'incident-commander': 'hawkeye-incident-commander',
+  'hawkeye-mlro': 'hawkeye-mlro',
+};
+
+async function findAgentIdByName(client, name) {
+  for await (const agent of client.beta.agents.list()) {
+    if (agent.name === name) return agent.id;
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Environment provisioning — idempotent.
 // ---------------------------------------------------------------------------
@@ -237,15 +254,30 @@ async function main() {
     process.exit(1);
   }
 
+  const client = new Anthropic();
+
+  // Agent id resolution:
+  //  1. .env.agents (fast path — written by install-agent.mjs)
+  //  2. Anthropic API lookup by name (fallback — for CI without artifact)
   const envAgents = await loadEnvAgents();
   const key = agentSlugToEnvKey(slug);
-  const agentId = envAgents[key];
-  if (!agentId) {
-    console.error(`error: ${key} not found in .env.agents. Run install-agent.mjs first.`);
-    process.exit(1);
+  let agentId = envAgents[key];
+  if (agentId) {
+    console.log(`\x1b[36mresolved agent from .env.agents:\x1b[0m ${agentId}`);
+  } else {
+    const name = SLUG_TO_AGENT_NAME[slug];
+    if (!name) {
+      console.error(`error: unknown agent slug "${slug}". Valid slugs: ${Object.keys(SLUG_TO_AGENT_NAME).join(', ')}`);
+      process.exit(1);
+    }
+    console.log(`\x1b[36mlooking up agent by name:\x1b[0m ${name}`);
+    agentId = await findAgentIdByName(client, name);
+    if (!agentId) {
+      console.error(`error: no agent named "${name}" in your Anthropic workspace. Run the Install Managed Agents workflow first.`);
+      process.exit(1);
+    }
+    console.log(`  found agent: ${agentId}`);
   }
-
-  const client = new Anthropic();
 
   console.log(`\x1b[36mresolving environment\x1b[0m`);
   const env = await ensureEnvironment(client);

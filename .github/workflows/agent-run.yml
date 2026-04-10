@@ -55,39 +55,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Download hawkeye-install artifact from latest install run
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: agent-install.yml
-          workflow_conclusion: success
-          name: hawkeye-install
-          path: artifacts/
-          if_no_artifact_found: fail
-
-      - name: Move .env.agents into repo root
-        run: |
-          if [ -f artifacts/.env.agents ]; then
-            cp artifacts/.env.agents .env.agents
-            echo "copied .env.agents from artifact:"
-            cat .env.agents
-          else
-            echo "::error::artifacts/.env.agents missing from the hawkeye-install artifact — re-run Install Managed Agents."
-            ls -la artifacts/ || true
-            exit 1
-          fi
-
-      - name: Verify agent id for requested agent
-        id: verify
-        run: |
-          AGENT_KEY="AGENT_$(echo '${{ inputs.agent }}' | tr '[:lower:]-' '[:upper:]_')_ID"
-          if grep -q "^${AGENT_KEY}=" .env.agents; then
-            echo "found ${AGENT_KEY}"
-          else
-            echo "::error::${AGENT_KEY} not found in .env.agents. Run the Install Managed Agents workflow first with inputs.which=${{ inputs.agent }} (or both)."
-            cat .env.agents
-            exit 1
-          fi
+      # No artifact download — the orchestrator now looks up agent ids
+      # by NAME via the Anthropic API when .env.agents is missing, so
+      # we don't have to ferry the file between workflows.
 
       - name: Run agent orchestrator
         id: run
