@@ -55,6 +55,7 @@
     "mem:serve": "claude-mem serve",
     "validate:goaml": "tsx scripts/validate-goaml.ts",
     "regulatory:watch": "tsx scripts/regulatory-watcher.ts",
-    "audit:lbma": "tsx scripts/lbma-audit-pack.ts"
+    "audit:lbma": "tsx scripts/lbma-audit-pack.ts",
+    "redteam": "tsx scripts/redteam.ts"
   }
 }
