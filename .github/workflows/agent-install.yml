@@ -7,10 +7,11 @@ name: Install Managed Agents
 # Required secrets (Settings → Secrets and variables → Actions):
 #   ANTHROPIC_API_KEY — console.anthropic.com → Settings → Keys
 #
-# Optional (for the "generate token" convenience path):
+# Optional:
 #   HAWKEYE_BRAIN_TOKEN — if set, the workflow reuses it. If unset,
-#                         the workflow generates a new one and prints it
-#                         in the step summary for you to save elsewhere.
+#                         the workflow generates a fresh token and
+#                         writes it to the `brain-token` artifact for
+#                         the user to download.
 
 on:
   workflow_dispatch:
@@ -34,8 +35,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: claude/install-compliance-analyzer-SVN6Y
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,42 +48,70 @@ jobs:
       - name: Resolve or generate brain token
         id: token
         run: |
+          mkdir -p artifacts
           if [ -n "${{ secrets.HAWKEYE_BRAIN_TOKEN }}" ]; then
             echo "using existing HAWKEYE_BRAIN_TOKEN secret"
             echo "generated=false" >> "$GITHUB_OUTPUT"
+            printf 'reused_existing_secret\n' > artifacts/brain-token.txt
           else
             NEW_TOKEN=$(openssl rand -hex 24)
-            echo "::add-mask::$NEW_TOKEN"
-            echo "NEW_TOKEN=$NEW_TOKEN" >> "$GITHUB_ENV"
+            # IMPORTANT: we deliberately do NOT ::add-mask:: this token.
+            # Masking would also scrub it from the artifact file contents
+            # and the user would have no way to retrieve it. The token
+            # lives only in the private artifact, not in the step log.
+            printf 'HAWKEYE_BRAIN_TOKEN=%s\n' "$NEW_TOKEN" > artifacts/brain-token.txt
             echo "generated=true" >> "$GITHUB_OUTPUT"
-            echo "generated a new token (masked in logs, revealed in step summary)"
+            echo "generated a new token — see the brain-token artifact"
           fi
 
-      - name: Install agent(s)
+      - name: Install agent(s) (with log capture)
+        id: install
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          set -e
+          # Capture stdout+stderr so failures are downloadable even when
+          # the step log isn't accessible to the caller.
+          mkdir -p artifacts
+          LOG=artifacts/install.log
+          set -o pipefail
+
+          run() {
+            echo "==> $*" | tee -a "$LOG"
+            "$@" 2>&1 | tee -a "$LOG"
+          }
+
           case "${{ inputs.which }}" in
             both)
-              node scripts/install-agent.mjs agents/incident-commander.yml
-              node scripts/install-agent.mjs agents/hawkeye-mlro.yml
+              run node scripts/install-agent.mjs agents/incident-commander.yml
+              run node scripts/install-agent.mjs agents/hawkeye-mlro.yml
               ;;
             incident-commander)
-              node scripts/install-agent.mjs agents/incident-commander.yml
+              run node scripts/install-agent.mjs agents/incident-commander.yml
               ;;
             hawkeye-mlro)
-              node scripts/install-agent.mjs agents/hawkeye-mlro.yml
+              run node scripts/install-agent.mjs agents/hawkeye-mlro.yml
               ;;
           esac
 
-      - name: Upload .env.agents as artifact
+      - name: Stage .env.agents for artifact
+        if: always()
+        run: |
+          mkdir -p artifacts
+          if [ -f .env.agents ]; then
+            cp .env.agents artifacts/.env.agents
+          else
+            echo "# install-agent.mjs did not produce .env.agents — see install.log" \
+              > artifacts/.env.agents
+          fi
+
+      - name: Upload install artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: env-agents
-          path: .env.agents
+          name: hawkeye-install
+          path: artifacts/
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Write step summary
         if: always()
@@ -93,44 +120,53 @@ jobs:
             echo "# Hawkeye Managed Agent install"
             echo
             echo "**Which:** \`${{ inputs.which }}\`"
+            echo "**Install step outcome:** \`${{ steps.install.outcome }}\`"
             echo
-            if [ -f .env.agents ]; then
-              echo "## Agent IDs (from .env.agents)"
-              echo
-              echo '```'
-              cat .env.agents
-              echo '```'
-              echo
-              echo "The .env.agents file is also uploaded as an artifact."
-            fi
+            echo "## Where to find your values"
             echo
-            echo "## Next steps"
+            echo "Scroll to the top of this run page and download the"
+            echo "**\`hawkeye-install\`** artifact (next to the run title)."
+            echo "It contains three files:"
             echo
-            if [ "${{ steps.token.outputs.generated }}" = "true" ]; then
-              echo "### Save your new brain token"
+            echo "| File | Contents |"
+            echo "|---|---|"
+            echo "| \`brain-token.txt\` | Your \`HAWKEYE_BRAIN_TOKEN\` (fresh or reused) |"
+            echo "| \`.env.agents\` | Agent IDs and versions |"
+            echo "| \`install.log\` | Full install-agent.mjs stdout+stderr |"
+            echo
+            if [ "${{ steps.install.outcome }}" = "failure" ]; then
+              echo "## :x: Install failed"
               echo
-              echo "A new \`HAWKEYE_BRAIN_TOKEN\` was generated for this run."
-              echo "You need to save it in TWO places before the agent can reach the brain endpoint."
+              echo "Download the \`hawkeye-install\` artifact and open \`install.log\`"
+              echo "to see the exact error from the Anthropic API."
               echo
-              echo '```'
-              echo "HAWKEYE_BRAIN_TOKEN=${NEW_TOKEN}"
-              echo '```'
-              echo
-              echo "1. **GitHub** → Settings → Secrets and variables → Actions →"
-              echo "   New repository secret. Name: \`HAWKEYE_BRAIN_TOKEN\`,"
-              echo "   Value: (paste above)."
-              echo
-              echo "2. **Netlify** → site settings → Environment variables →"
-              echo "   Add a variable. Key: \`HAWKEYE_BRAIN_TOKEN\`,"
-              echo "   Value: (paste above). Then **Trigger deploy** so the"
-              echo "   new value reaches the /api/brain function."
+              echo "Common causes:"
+              echo "- Account lacks Managed Agents beta access (contact Anthropic support)"
+              echo "- \`ANTHROPIC_API_KEY\` secret is wrong or expired"
+              echo "- Agent name conflicts with an existing agent in a different state"
             else
-              echo "Your existing \`HAWKEYE_BRAIN_TOKEN\` secret was reused."
-              echo "Make sure the SAME value is also set in Netlify site env vars."
+              echo "## :white_check_mark: Install succeeded"
+              echo
+              if [ "${{ steps.token.outputs.generated }}" = "true" ]; then
+                echo "### Save your new brain token"
+                echo
+                echo "Download the artifact above and open \`brain-token.txt\`."
+                echo "Paste the \`HAWKEYE_BRAIN_TOKEN\` value into **both**:"
+                echo
+                echo "1. **GitHub** → Settings → Secrets and variables → Actions →"
+                echo "   New repository secret. Name: \`HAWKEYE_BRAIN_TOKEN\`."
+                echo
+                echo "2. **Netlify** → site settings → Environment variables →"
+                echo "   Add variable. Key: \`HAWKEYE_BRAIN_TOKEN\`. Then"
+                echo "   **Trigger deploy** so \`/api/brain\` picks up the new value."
+              else
+                echo "Your existing \`HAWKEYE_BRAIN_TOKEN\` secret was reused."
+                echo "Make sure the SAME value is also set in Netlify site env vars."
+              fi
+              echo
+              echo "### Run a session"
+              echo
+              echo "Once the token is in both places, trigger the"
+              echo "**Run Managed Agent** workflow from the Actions tab."
             fi
-            echo
-            echo "### Run a session"
-            echo
-            echo "Once the token is in both places, trigger the"
-            echo "**Run Managed Agent** workflow from the Actions tab."
           } >> "$GITHUB_STEP_SUMMARY"

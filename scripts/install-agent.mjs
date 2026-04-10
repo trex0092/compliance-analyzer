@@ -231,14 +231,39 @@ async function main() {
 
   const client = new Anthropic();
 
+  // Sanity check: the beta.agents namespace must exist in this SDK
+  // version. If it doesn't, the SDK is too old for Managed Agents.
+  if (!client.beta || !client.beta.agents || typeof client.beta.agents.create !== 'function') {
+    die(
+      'this @anthropic-ai/sdk version does not expose client.beta.agents. ' +
+        'Managed Agents requires SDK >= 0.87.0. Run `npm ls @anthropic-ai/sdk` to check.',
+    );
+  }
+
   let agent;
   try {
     agent = await upsert(client, doc);
   } catch (err) {
+    // Dump everything we can about the error — this runs in CI artifacts.
+    console.error('\x1b[31m─── install-agent failure ───\x1b[0m');
+    console.error(`agent: ${doc.name}`);
+    console.error(`yaml:  ${ymlPath}`);
     if (err instanceof Anthropic.APIError) {
-      die(`Anthropic API error ${err.status}: ${err.message}`);
+      console.error(`status:     ${err.status}`);
+      console.error(`type:       ${err.name}`);
+      console.error(`message:    ${err.message}`);
+      if (err.error) console.error(`error body: ${JSON.stringify(err.error, null, 2)}`);
+      if (err.headers) {
+        const requestId = err.headers.get?.('request-id') ?? err.headers['request-id'];
+        if (requestId) console.error(`request-id: ${requestId}`);
+      }
+    } else {
+      console.error(`type:    ${err?.constructor?.name ?? typeof err}`);
+      console.error(`message: ${err?.message ?? String(err)}`);
+      if (err?.stack) console.error(`stack:\n${err.stack}`);
     }
-    throw err;
+    console.error('\x1b[31m──────────────────────────────\x1b[0m');
+    process.exit(1);
   }
 
   console.log(`\x1b[32m✓ agent installed:\x1b[0m ${agent.id} (version ${agent.version ?? '?'})`);
