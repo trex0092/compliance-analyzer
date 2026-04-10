@@ -3,15 +3,6 @@
   "version": "2.0.0",
   "description": "Hawkeye Sterling V2 — Where Vision Meets Vigilance | UAE AML/CFT/CPF Compliance Suite",
   "main": "index.html",
-  "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "lint:ts": "eslint src/ --ext .ts,.tsx",
-    "format": "prettier --write 'src/**/*.{ts,tsx}'",
-    "format:check": "prettier --check 'src/**/*.{ts,tsx}'",
-    "autopilot": "node scripts/autopilot.mjs"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/trex0092/compliance-analyzer.git"
@@ -42,9 +33,23 @@
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "@vitest/coverage-v8": "^3.1.0",
+    "claude-mem": "12.1.0",
     "eslint": "^8.57.0",
+    "genaiscript": "^2.5.1",
     "prettier": "^3.2.0",
     "typescript": "^5.4.0",
     "vitest": "^3.2.4"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint:ts": "eslint src/ --ext .ts,.tsx",
+    "format": "prettier --write 'src/**/*.{ts,tsx}'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx}'",
+    "autopilot": "node scripts/autopilot.mjs",
+    "brain": "node scripts/brain.mjs",
+    "genai": "genaiscript run",
+    "mem:serve": "claude-mem serve"
   }
 }

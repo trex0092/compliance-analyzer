@@ -6,7 +6,7 @@
     },
     "claude-mem": {
       "command": "npx",
-      "args": ["-y", "claude-mem", "serve"]
+      "args": ["-y", "claude-mem@12.1.0", "serve"]
     }
   },
   "vendorDeps": {
