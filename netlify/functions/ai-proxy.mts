@@ -59,6 +59,21 @@ const PROVIDERS: Record<string, ProviderConfig> = {
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1 MB max request body
 
+/**
+ * Allowlist of Anthropic beta features we forward from the caller into the
+ * `anthropic-beta` header. Anything not in this list is silently dropped so
+ * the proxy can't be tricked into enabling unintended betas.
+ *
+ * Advisor Strategy (claude.com/blog/the-advisor-strategy): the advisor tool
+ * is in beta and requires `advisor-tool-2026-03-01` to be sent as a beta
+ * header. Without this forwarding, compliance-critical calls that want a
+ * Sonnet-executor + Opus-advisor pairing cannot invoke the tool through the
+ * proxy.
+ */
+const ALLOWED_ANTHROPIC_BETAS = new Set<string>([
+  'advisor-tool-2026-03-01',
+]);
+
 // ─── Handler ────────────────────────────────────────────────────────────────
 
 export default async (req: Request, context: Context) => {
@@ -84,6 +99,9 @@ export default async (req: Request, context: Context) => {
     path: string;
     payload: Record<string, unknown>;
     stream?: boolean;
+    /** Optional beta features to enable via `anthropic-beta` header.
+     *  Values are validated against ALLOWED_ANTHROPIC_BETAS. */
+    betas?: string[];
   };
 
   try {
@@ -96,7 +114,7 @@ export default async (req: Request, context: Context) => {
     return Response.json({ error: 'Invalid JSON body.' }, { status: 400 });
   }
 
-  const { provider: providerName, path, payload, stream } = body;
+  const { provider: providerName, path, payload, stream, betas } = body;
 
   // Validate provider
   const config = PROVIDERS[providerName?.toLowerCase()];
@@ -139,6 +157,15 @@ export default async (req: Request, context: Context) => {
       'Content-Type': 'application/json',
       ...config.authHeader(apiKey),
     };
+
+    // Forward allowlisted Anthropic beta flags as `anthropic-beta` header.
+    // Only applies to the Anthropic provider; silently dropped for others.
+    if (providerName.toLowerCase() === 'anthropic' && Array.isArray(betas) && betas.length > 0) {
+      const allowed = betas.filter((b): b is string => typeof b === 'string' && ALLOWED_ANTHROPIC_BETAS.has(b));
+      if (allowed.length > 0) {
+        headers['anthropic-beta'] = allowed.join(',');
+      }
+    }
 
     const upstreamRes = await fetch(targetUrl, {
       method: 'POST',
