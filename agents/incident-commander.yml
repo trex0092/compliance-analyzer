@@ -1,18 +1,21 @@
 # ==========================================================================
 # Incident Commander — Hawkeye Sterling compliance agent
 # ==========================================================================
-# Managed agent config for platform.claude.com.
+# Managed agent config for the Anthropic Managed Agents API
+# (POST /v1/agents, beta header: managed-agents-2026-04-01).
 #
-# Paste the contents of this file into the "Create agent" dialog on
-# https://platform.claude.com (Agents → New agent → Template: Incident
-# commander → switch to YAML).
+# Install programmatically:
+#   export ANTHROPIC_API_KEY=sk-ant-...
+#   node scripts/install-agent.mjs agents/incident-commander.yml
 #
-# This agent triages alerts surfaced by the SUPER ULTRA BRAIN
-# (netlify/functions/brain.mts), opens GitHub incidents, publishes Cachet
-# updates, and drafts CNMR/STR narratives via the genaiscript skills.
+# Or paste into platform.claude.com → Agents → New agent → YAML.
 #
-# Scope: READ + ESCALATE only. It cannot submit to goAML, cannot email
-# subjects (FDL Art.29 — no tipping off), and cannot bypass four-eyes.
+# IMPORTANT: the brain_event and cachet_incident tools below are declared
+# as `type: custom`. The Managed Agents runtime does NOT execute HTTP
+# calls for you — it emits an `agent.custom_tool_use` event and the
+# orchestrator (scripts/agent-orchestrator.mjs) forwards the call to
+# /api/brain or the Cachet REST API with the right auth, then responds
+# with `user.custom_tool_result`. Credentials live host-side.
 # ==========================================================================
 
 name: hawkeye-incident-commander
@@ -73,7 +76,6 @@ system: |
   - Start the filing deadline tracker (FDL Art.26-27 — without delay)
   - Apply FDL Art.29 confidentiality lock
   - Append to the evidence chain
-  - Use the `str-narrative` genaiscript skill to draft the narrative
   - Open a GitHub PR that adds the draft under `history/str-drafts/`
   - Require MLRO review label before anything is filed
 
@@ -99,14 +101,13 @@ system: |
   # Operating procedure
 
   For every event you receive:
-  1. Read the brain's routing decision (tool + autoActions).
+  1. Read the brain's routing decision by calling the brain_event tool.
   2. Verify the decision matches the regulatory decision trees above.
      If it differs, STOP and escalate as a brain routing anomaly.
   3. Execute only the actions labelled as safe for auto-run:
-       - open GitHub issues / PRs
-       - publish Cachet incidents
-       - draft narratives via genaiscript
-       - append entries to claude-mem
+       - open GitHub issues / PRs (via the github MCP server)
+       - publish Cachet incidents (via cachet_incident tool)
+       - draft narratives in text
   4. For any action that touches money, freezes, filings, or regulator
      portals: prepare the artefact, tag the MLRO, stop.
   5. End every response with an "Actions taken" list and a
@@ -118,34 +119,33 @@ system: |
   regulation article for every decision. Write for the MLRO, not the
   customer.
 
+# Managed Agents only supports URL-based MCP servers (the agent runs
+# in Anthropic-hosted containers). Local stdio servers like claude-mem
+# and code-review-graph cannot be used here — consume them from your
+# own Claude Code sessions instead.
 mcp_servers:
-  - name: code-review-graph
-    command: uvx
-    args: [code-review-graph, serve]
-    description: Structural code queries over the compliance-analyzer repo.
-  - name: claude-mem
-    command: npx
-    args: ["-y", "claude-mem@12.1.0", "serve"]
-    description: Persistent compliance memory across sessions.
-  - name: github
+  - type: url
+    name: github
     url: https://api.githubcopilot.com/mcp/
-    description: GitHub repository for trex0092/compliance-analyzer.
-    scopes: [repo, issues, pull_requests]
 
 tools:
+  # Pre-built Claude Agent tools: bash, read, write, edit, glob, grep,
+  # web_fetch, web_search. The agent uses these inside its container.
   - type: agent_toolset_20260401
-  - type: http
+    default_config:
+      enabled: true
+
+  # Client-side custom tool — orchestrator forwards to /api/brain.
+  - type: custom
     name: brain_event
     description: >
-      POST a compliance event to the Hawkeye Sterling SUPER ULTRA BRAIN
-      for deterministic routing. Returns the brain's routing decision
-      and auto-actions.
-    method: POST
-    url: https://compliance-analyzer.netlify.app/api/brain
-    auth:
-      type: bearer
-      token_env: HAWKEYE_BRAIN_TOKEN
-    schema:
+      Submit a compliance event to the Hawkeye Sterling SUPER ULTRA
+      BRAIN for deterministic routing. Returns the brain's routing
+      decision (tool, purpose, autoActions, escalate). Use this as
+      the FIRST action for any new alert — the brain's decision is
+      the ground truth you must verify against the regulatory
+      decision trees.
+    input_schema:
       type: object
       required: [kind, severity, summary]
       properties:
@@ -159,50 +159,76 @@ tools:
             - cdd_overdue
             - evidence_break
             - manual
+          description: Event kind from the brain taxonomy.
         severity:
           type: string
           enum: [info, low, medium, high, critical]
-        summary: { type: string, maxLength: 500 }
-        subject: { type: string, maxLength: 200 }
-        refId: { type: string, maxLength: 64 }
-        matchScore: { type: number, minimum: 0, maximum: 1 }
-        meta: { type: object }
-  - type: http
+        summary:
+          type: string
+          maxLength: 500
+          description: >
+            Neutral factual summary. Must NOT contain raw PII — use
+            refId to point at the authoritative record.
+        subject:
+          type: string
+          maxLength: 200
+          description: >
+            Anonymised subject label (e.g. "Counterparty XYZ-0042").
+        refId:
+          type: string
+          maxLength: 64
+          description: >
+            Internal record id (STR-xxx, CRA-xxx, CASE-xxx).
+        matchScore:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Sanctions match confidence, if applicable.
+
+  # Client-side custom tool — orchestrator publishes to Cachet.
+  - type: custom
     name: cachet_incident
-    description: Publish an incident to the Cachet status page.
-    method: POST
-    url: ${CACHET_BASE_URL}/api/v1/incidents
-    auth:
-      type: header
-      header: X-Cachet-Token
-      token_env: CACHET_API_TOKEN
-    schema:
+    description: >
+      Publish an incident to the public Cachet status page. Use for
+      confirmed sanctions freezes, missed filing deadlines, and
+      evidence-chain breaks. Visible to customers — never include PII.
+    input_schema:
       type: object
       required: [name, message, status]
       properties:
-        name: { type: string }
-        message: { type: string }
-        status: { type: integer, enum: [1, 2, 3, 4] }  # 1=Investigating 2=Identified 3=Watching 4=Fixed
-        visible: { type: integer, enum: [0, 1] }
+        name:
+          type: string
+          maxLength: 120
+          description: Short incident title.
+        message:
+          type: string
+          maxLength: 2000
+          description: Public-facing incident body (no PII).
+        status:
+          type: integer
+          enum: [1, 2, 3, 4]
+          description: >
+            1 = Investigating, 2 = Identified, 3 = Watching, 4 = Fixed.
+        visible:
+          type: integer
+          enum: [0, 1]
+          description: 1 = public, 0 = unlisted.
 
 skills:
-  - name: str-narrative
-    path: genaisrc/str-narrative.genai.mjs
-    description: >
-      Draft a UAE FIU-compliant STR narrative (goAML "Reason for
-      suspicion" field). Output is neutral, factual prose under 2000
-      characters, dd/mm/yyyy, AED, no tipping off.
-  - name: sanctions-triage
-    path: genaisrc/sanctions-triage.genai.mjs
-    description: >
-      Classify a sanctions screening hit as confirmed / potential /
-      false-positive and recommend the next compliance action per the
-      CLAUDE.md decision tree. Requires checking ALL six lists
-      (UN, OFAC, EU, UK, UAE, EOCN).
+  # Anthropic pre-built skills for document production during audit
+  # pack generation. Reference by name.
+  - type: anthropic
+    skill_id: xlsx
+  - type: anthropic
+    skill_id: docx
 
-# Environment variables the agent expects at runtime (set these in the
-# platform.claude.com agent settings — NEVER commit the values):
-#   HAWKEYE_BRAIN_TOKEN   — 32+ hex-char bearer token for /api/brain
-#   CACHET_BASE_URL       — https://status.example.com
-#   CACHET_API_TOKEN      — generated in Cachet UI → Settings → API
-#   GITHUB_TOKEN          — fine-grained PAT with repo + issues scope
+# Required environment variables the *orchestrator* must have — NOT the
+# agent itself. The agent only emits custom_tool_use events; the
+# orchestrator (scripts/agent-orchestrator.mjs) forwards them with auth.
+#
+#   ANTHROPIC_API_KEY      — to create agents, environments, sessions
+#   HAWKEYE_BRAIN_URL      — e.g. https://compliance-analyzer.netlify.app
+#   HAWKEYE_BRAIN_TOKEN    — 32+ hex-char bearer token for /api/brain
+#   CACHET_BASE_URL        — https://status.example.com
+#   CACHET_API_TOKEN       — Cachet UI → Settings → API
+#   GITHUB_TOKEN           — used by the github MCP server

@@ -28,6 +28,7 @@
     "@netlify/functions": "^5.1.5"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.87.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^7.0.0",

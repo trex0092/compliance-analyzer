@@ -1,9 +1,11 @@
 # Hawkeye Sterling — Managed Agents
 
-Agent configs for [platform.claude.com](https://platform.claude.com).
+Agent configs for the Anthropic Managed Agents API
+(`POST /v1/agents`, beta header `managed-agents-2026-04-01`).
+
 These are **separate** from the in-repo TypeScript agents under
-`src/agents/definitions/` — those run inside the React app; these run
-in Anthropic's managed agent runtime.
+`src/agents/definitions/` — those run inside the React app; these
+run in Anthropic's managed agent runtime with hosted containers.
 
 ## Agents
 
@@ -12,62 +14,104 @@ in Anthropic's managed agent runtime.
 | `incident-commander.yml` | Reactive triager for brain alerts | Read + draft + escalate. No portal access. |
 | `hawkeye-mlro.yml` | Strategic drafting assistant for the MLRO | Read everything, draft everything, approve nothing. |
 
-## Installing an agent on platform.claude.com
+## Installing an agent
+
+### Scripted (recommended)
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Creates the agent via /v1/agents, stores id + version in .env.agents
+node scripts/install-agent.mjs agents/incident-commander.yml
+node scripts/install-agent.mjs agents/hawkeye-mlro.yml
+```
+
+The install script:
+- Validates the YAML against the Managed Agents API schema + the
+  safety invariants in `tests/agentConfigs.test.ts` **before** making
+  any API call.
+- Refuses to install any agent whose system prompt is missing the
+  FDL Art.29 no-tipping-off language.
+- Refuses to install any tool whose name suggests subject
+  notification or direct portal submission.
+- **Idempotent.** If an agent with the same name exists in your
+  workspace, it calls `agents.update()` (which creates a new
+  immutable version) instead of creating a duplicate.
+- Writes `{agent_id, version}` pairs to `.env.agents` (gitignored)
+  for the orchestrator to pick up.
+
+### Manual (platform.claude.com UI)
 
 1. Go to **platform.claude.com → Agents → New agent**.
-2. Pick the **Incident commander** template as the starting point
-   (only matters for the toolset version pinned in `tools:`).
-3. Switch the config editor to **YAML**.
-4. Replace the default content with the contents of
-   `agents/incident-commander.yml`.
-5. Click **Create agent**.
+2. Switch to the **YAML** config editor.
+3. Paste the contents of the `.yml` file.
+4. Click **Create agent**.
 
-Repeat for `hawkeye-mlro.yml` if you want the strategic agent too.
+## Running an agent
 
-## Required environment variables
+```bash
+# Orchestrator env vars — host-side only, never mounted to the agent
+export ANTHROPIC_API_KEY=sk-ant-...
+export HAWKEYE_BRAIN_URL=https://compliance-analyzer.netlify.app
+export HAWKEYE_BRAIN_TOKEN=<32+ hex bearer token>
+export CACHET_BASE_URL=https://status.example.com   # optional
+export CACHET_API_TOKEN=<from Cachet Settings>       # optional
 
-Set these in the agent's **Settings → Environment** panel on
-platform.claude.com. **Never** commit the values.
+node scripts/agent-orchestrator.mjs incident-commander "Triage last night's alerts"
+```
 
-| Variable | Purpose | How to get it |
-|---|---|---|
-| `HAWKEYE_BRAIN_TOKEN` | Bearer token for POST `/api/brain`. 32+ hex chars. | Generate with the client auth module, store in Netlify env, copy the hex here. |
-| `CACHET_BASE_URL` | Public URL of your Cachet status page. | e.g. `https://status.hawkeye-sterling.com`. |
-| `CACHET_API_TOKEN` | Cachet REST token. | Cachet UI → Settings → API → Generate. |
-| `GITHUB_TOKEN` | Fine-grained PAT scoped to `trex0092/compliance-analyzer`. | github.com → Settings → Developer settings → PAT → fine-grained. |
+The orchestrator:
+- Resolves the agent id from `.env.agents`.
+- Reuses (or creates) a shared `hawkeye-compliance` environment.
+- Opens a session, streams events.
+- Handles `agent.custom_tool_use` for `brain_event` and
+  `cachet_incident` by calling the real HTTP endpoints host-side
+  with the orchestrator's credentials, then responding with
+  `user.custom_tool_result`. **The agent container never sees the
+  brain token or the Cachet token** — per the "keep credentials
+  host-side via custom tools" pattern.
+- Breaks on `session.status_terminated` or on `session.status_idle`
+  with a terminal `stop_reason` (not on bare idle — handles the
+  `requires_action` transient state correctly).
+
+## Why not pure MCP for the brain and Cachet?
+
+Managed Agents only supports **URL-based MCP servers** — the agent
+runs in an Anthropic-hosted container, so `stdio` MCP servers like
+`claude-mem` and `code-review-graph` (which launch via `npx` or
+`uvx` on your machine) cannot be reached.
+
+The `brain_event` and `cachet_incident` capabilities are therefore
+declared as `type: custom` tools. The agent emits
+`agent.custom_tool_use`; the orchestrator forwards the call to
+`/api/brain` or Cachet with the appropriate auth and returns the
+result via `user.custom_tool_result`. This is the idiomatic pattern
+for host-side credentials — see `shared/managed-agents-client-patterns.md`
+in the `claude-api` skill.
+
+The only MCP server the agents use is the hosted `github` server
+(`https://api.githubcopilot.com/mcp/`), which is URL-based and
+authenticates via the `GITHUB_TOKEN` injected into the session's
+GitHub repository resource.
 
 ## Safety model
 
-Both agents operate under hard invariants that match `CLAUDE.md`:
+Both agents operate under hard invariants that match `CLAUDE.md` and
+are enforced by `tests/agentConfigs.test.ts`:
 
-1. **No tipping off** (FDL Art.29). Neither agent can draft anything
-   that reaches a subject. The prohibition is in both system prompts
-   AND the brain endpoint's routing test suite.
-2. **No portal submission.** Agents draft only. goAML, EOCN, and CNMR
-   submissions require a human MLRO signature.
-3. **No raw PII in agent artefacts.** Agents pass `refId` and let the
-   brain look up the authoritative record server-side.
+1. **No tipping off** (FDL Art.29). Every system prompt contains the
+   prohibition, no tool name suggests subject notification, and the
+   brain endpoint's routing test suite proves the invariant across
+   all 7 event kinds.
+2. **No portal submission.** Agents draft only. goAML, EOCN, and
+   CNMR submissions require a human MLRO signature.
+3. **No raw PII in agent artefacts.** Agents pass `refId` and let
+   the brain look up the authoritative record server-side.
 4. **Four-eyes for High / Very-High / PEP / sanctions decisions.**
    Agents prepare the action for a human approver, they do not
    execute it.
 5. **Rate-limited, authed endpoint.** The brain endpoint enforces
-   Bearer auth + 10 req/15min per IP, matches the rest of the
-   compliance suite's security posture.
-
-## What each agent sees
-
-Both agents talk to the same backend:
-
-- **POST `/api/brain`** (`netlify/functions/brain.mts`) for routing
-  decisions and event persistence.
-- **`code-review-graph` MCP** for structural queries over the repo
-  (callers, impact radius, review context).
-- **`claude-mem` MCP** for persistent compliance memory across
-  sessions.
-- **GitHub MCP** for issues + PRs on `trex0092/compliance-analyzer`.
-- **Cachet REST API** for public status page incidents.
-- **GenAIScript skills** (`str-narrative`, `sanctions-triage`) for
-  drafting regulatory narratives.
+   Bearer auth + 10 req/15min per IP.
 
 ## Recommended rollout
 

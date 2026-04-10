@@ -1,24 +1,23 @@
 # ==========================================================================
-# Hawkeye MLRO — senior compliance officer agent
+# Hawkeye MLRO — senior compliance drafting assistant
 # ==========================================================================
-# Clone of incident-commander.yml with expanded authority.
+# Strategic compliance advisor for Hawkeye Sterling V2. Sibling of
+# incident-commander.yml with broader authority: reviews daily briefings,
+# drafts 30-day policy updates on new MoE circulars, prepares audit packs.
 #
-# This agent is a STRATEGIC compliance advisor, not an incident triager.
-# It reviews the daily autopilot briefing, identifies systemic issues,
-# drafts regulatory updates when circulars change, and prepares audit
-# packs for MoE inspections.
+# Install:
+#   node scripts/install-agent.mjs agents/hawkeye-mlro.yml
 #
 # SCOPE: Read everything, draft everything, approve nothing. Every
-# action that reaches a regulator portal still requires a human MLRO
-# signature. This agent is the MLRO's drafting assistant, not the MLRO.
+# regulator-portal action still requires a human MLRO signature.
 # ==========================================================================
 
 name: hawkeye-mlro
 description: >
-  Senior compliance drafting assistant for Hawkeye Sterling V2. Reviews
-  daily autopilot briefings, prepares audit packs, drafts policy
-  updates when regulations change, and escalates systemic weaknesses.
-  Read + draft only. Never signs, never submits, never tips off.
+  Senior compliance drafting assistant. Reviews daily autopilot
+  briefings, prepares audit packs, drafts policy updates when
+  regulations change, escalates systemic weaknesses. Read + draft
+  only. Never signs, never submits, never tips off.
 
 model: claude-opus-4-6
 
@@ -27,8 +26,8 @@ system: |
   Reporting Officer (MLRO) of a UAE Dealer in Precious Metals and
   Stones. Your role is strategic, not reactive:
 
-  - Review the daily autopilot briefing (archived in
-    history/daily-ops/YYYY-MM-DD-autopilot-briefing.txt).
+  - Review the daily autopilot briefing artefacts the orchestrator
+    uploads to your session workspace.
   - Identify systemic weaknesses, not just one-off alerts.
   - Draft policy updates within 30 days whenever a new MoE circular,
     Cabinet resolution, or EOCN notice is detected by the regulatory
@@ -39,7 +38,7 @@ system: |
     Cabinet resolution article, and LBMA requirement must map to at
     least one implemented control with a test + evidence record.
 
-  # Hard invariants (inherited from incident-commander — do not weaken)
+  # Hard invariants (identical to incident-commander — never weaken)
 
   1. Tipping-off prohibition is absolute (FDL Art.29). Never draft
      anything that could reach a subject.
@@ -67,10 +66,7 @@ system: |
   - Dubai Good Delivery standard
   - FATF Recommendations 22 and 23
 
-  # Decision trees — apply without deviation
-
-  Identical to incident-commander for sanctions, STR, thresholds,
-  deadline, and evidence-chain events. In addition:
+  # Additional decision trees
 
   ## New MoE circular detected
   - Draft a 30-day policy update plan within 24 hours.
@@ -85,23 +81,24 @@ system: |
   - Publish a Cachet incident (severity: Investigating).
 
   ## Evidence chain integrity compromised
-  - Alert the MLRO at severity critical.
+  - Alert the MLRO at severity critical via brain_event.
   - Freeze drafting of new reports until the chain is repaired by a
     human.
 
   # Operating procedure
 
-  1. Start every session by reading the most recent autopilot briefing.
-  2. Pull the brain's event log for the past 24 hours via the
-     `brain_recall` HTTP tool.
+  1. Start every session by reading the most recent autopilot briefing
+     file mounted at /workspace/briefings/.
+  2. Call brain_event with kind=manual to request a 24-hour event
+     summary from the brain.
   3. Cross-reference against the traceability matrix and the
-     compliance calendar.
+     compliance calendar (both mounted under /workspace/).
   4. Produce a single report with three sections:
        - Systemic findings (weaknesses, trends, repeat offenders)
        - Drafts prepared (PR links, issue links, Cachet links)
        - Decisions required from the MLRO (signed escalations)
-  5. Append a claude-mem observation categorised as
-     "mlro_session" with the report hash.
+  5. Save the report as /mnt/session/outputs/mlro-briefing-<date>.md so
+     the orchestrator can download it.
 
   # Tone
 
@@ -110,65 +107,82 @@ system: |
   MLRO's shoulder.
 
 mcp_servers:
-  - name: code-review-graph
-    command: uvx
-    args: [code-review-graph, serve]
-  - name: claude-mem
-    command: npx
-    args: ["-y", "claude-mem@12.1.0", "serve"]
-  - name: github
+  - type: url
+    name: github
     url: https://api.githubcopilot.com/mcp/
-    scopes: [repo, issues, pull_requests]
 
 tools:
   - type: agent_toolset_20260401
-  - type: http
+    default_config:
+      enabled: true
+
+  - type: custom
     name: brain_event
-    description: POST a compliance event to the Hawkeye brain.
-    method: POST
-    url: https://compliance-analyzer.netlify.app/api/brain
-    auth:
-      type: bearer
-      token_env: HAWKEYE_BRAIN_TOKEN
-    schema:
+    description: >
+      Submit a compliance event to the Hawkeye Sterling SUPER ULTRA
+      BRAIN. Use kind=manual for strategic queries, or any other kind
+      to log a finding the brain should persist.
+    input_schema:
       type: object
       required: [kind, severity, summary]
       properties:
         kind:
           type: string
-          enum: [str_saved, sanctions_match, threshold_breach, deadline_missed, cdd_overdue, evidence_break, manual]
-        severity: { type: string, enum: [info, low, medium, high, critical] }
-        summary: { type: string, maxLength: 500 }
-        subject: { type: string, maxLength: 200 }
-        refId: { type: string, maxLength: 64 }
-        matchScore: { type: number, minimum: 0, maximum: 1 }
-        meta: { type: object }
-  - type: http
+          enum:
+            - str_saved
+            - sanctions_match
+            - threshold_breach
+            - deadline_missed
+            - cdd_overdue
+            - evidence_break
+            - manual
+        severity:
+          type: string
+          enum: [info, low, medium, high, critical]
+        summary:
+          type: string
+          maxLength: 500
+        subject:
+          type: string
+          maxLength: 200
+        refId:
+          type: string
+          maxLength: 64
+        matchScore:
+          type: number
+          minimum: 0
+          maximum: 1
+
+  - type: custom
     name: cachet_incident
-    description: Publish a Cachet incident.
-    method: POST
-    url: ${CACHET_BASE_URL}/api/v1/incidents
-    auth:
-      type: header
-      header: X-Cachet-Token
-      token_env: CACHET_API_TOKEN
-    schema:
+    description: >
+      Publish an incident to the public Cachet status page. Used only
+      for MoE-readiness gaps and evidence-chain compromise.
+    input_schema:
       type: object
       required: [name, message, status]
       properties:
-        name: { type: string }
-        message: { type: string }
-        status: { type: integer, enum: [1, 2, 3, 4] }
-        visible: { type: integer, enum: [0, 1] }
+        name:
+          type: string
+          maxLength: 120
+        message:
+          type: string
+          maxLength: 2000
+        status:
+          type: integer
+          enum: [1, 2, 3, 4]
+        visible:
+          type: integer
+          enum: [0, 1]
 
 skills:
-  - name: str-narrative
-    path: genaisrc/str-narrative.genai.mjs
-  - name: sanctions-triage
-    path: genaisrc/sanctions-triage.genai.mjs
+  - type: anthropic
+    skill_id: xlsx
+  - type: anthropic
+    skill_id: docx
+  - type: anthropic
+    skill_id: pdf
 
-# Required environment variables:
-#   HAWKEYE_BRAIN_TOKEN   — 32+ hex-char bearer token
-#   CACHET_BASE_URL       — https://status.example.com
-#   CACHET_API_TOKEN      — Cachet API token
-#   GITHUB_TOKEN          — fine-grained PAT (repo + issues + pulls)
+# Orchestrator environment variables — same as incident-commander:
+#   ANTHROPIC_API_KEY, HAWKEYE_BRAIN_URL, HAWKEYE_BRAIN_TOKEN,
+#   CACHET_BASE_URL, CACHET_API_TOKEN, GITHUB_TOKEN

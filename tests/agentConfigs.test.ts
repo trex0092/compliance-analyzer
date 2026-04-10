@@ -2,9 +2,14 @@
  * Agent config safety invariants.
  *
  * These tests lock in the hard rules that every managed agent YAML
- * under agents/ MUST satisfy. If someone later relaxes the system
- * prompt, removes a decision tree, or opens up portal access, the
- * test suite fails.
+ * under agents/ MUST satisfy. They also enforce the Managed Agents
+ * API schema (POST /v1/agents, beta managed-agents-2026-04-01):
+ *  - model is a real Claude ID
+ *  - mcp_servers only use {type: "url", name, url} (no stdio)
+ *  - tools are agent_toolset_20260401 | custom | mcp_toolset
+ *  - no "type: http" (doesn't exist)
+ *  - no tool name that implies subject notification
+ *  - no portal submission tool
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -13,14 +18,25 @@ import YAML from 'yaml';
 
 const AGENT_FILES = ['agents/incident-commander.yml', 'agents/hawkeye-mlro.yml'];
 
+type McpServer = { type: string; name: string; url?: string };
+type ToolBase = { type: string; name?: string };
+type CustomTool = ToolBase & {
+  type: 'custom';
+  name: string;
+  description: string;
+  input_schema: { type: 'object'; required?: string[]; properties: Record<string, unknown> };
+};
+type AgentToolset = ToolBase & { type: 'agent_toolset_20260401' };
+type Tool = CustomTool | AgentToolset | ToolBase;
+
 interface AgentDoc {
   name: string;
   description: string;
   model: string;
   system: string;
-  mcp_servers: Array<{ name: string; command?: string; args?: string[]; url?: string }>;
-  tools: Array<{ type?: string; name?: string; url?: string; method?: string }>;
-  skills: Array<{ name: string; path: string }>;
+  mcp_servers?: McpServer[];
+  tools: Tool[];
+  skills?: Array<{ type: 'anthropic' | 'custom'; skill_id: string; version?: string }>;
 }
 
 function loadAgent(path: string): AgentDoc {
@@ -42,7 +58,20 @@ describe.each(AGENT_FILES)('agent config: %s', (file) => {
     expect(agent.model).toBe('claude-opus-4-6');
   });
 
-  it('includes the FDL Art.29 no-tipping-off invariant in the system prompt', () => {
+  it('name length is within API limits (1-256 chars)', () => {
+    expect(agent.name.length).toBeGreaterThanOrEqual(1);
+    expect(agent.name.length).toBeLessThanOrEqual(256);
+  });
+
+  it('description is within API limit (<=2048 chars)', () => {
+    expect(agent.description.length).toBeLessThanOrEqual(2048);
+  });
+
+  it('system prompt is within API limit (<=100000 chars)', () => {
+    expect(agent.system.length).toBeLessThanOrEqual(100_000);
+  });
+
+  it('includes the FDL Art.29 no-tipping-off invariant', () => {
     const s = agent.system.toLowerCase();
     expect(s).toMatch(/tipping.?off|art\.?\s*29/);
     expect(s).toContain('never');
@@ -62,43 +91,85 @@ describe.each(AGENT_FILES)('agent config: %s', (file) => {
     expect(agent.system.toLowerCase()).toMatch(/pii|personally/);
   });
 
-  it('wires the claude-mem MCP server at v12.1.0', () => {
-    const mem = agent.mcp_servers.find((s) => s.name === 'claude-mem');
-    expect(mem).toBeDefined();
-    expect((mem?.args ?? []).some((a) => a.includes('claude-mem@12.1.0'))).toBe(true);
+  it('mcp_servers (if any) are all URL-based', () => {
+    for (const srv of agent.mcp_servers ?? []) {
+      expect(srv.type, `${srv.name} must be URL-based`).toBe('url');
+      expect(srv.url).toMatch(/^https:\/\//);
+      // No stdio fields leaked in.
+      expect(srv as unknown as Record<string, unknown>).not.toHaveProperty('command');
+      expect(srv as unknown as Record<string, unknown>).not.toHaveProperty('args');
+    }
   });
 
-  it('wires the code-review-graph MCP server', () => {
-    expect(agent.mcp_servers.find((s) => s.name === 'code-review-graph')).toBeDefined();
+  it('mcp_servers respects the API cap of 20 unique names', () => {
+    const servers = agent.mcp_servers ?? [];
+    expect(servers.length).toBeLessThanOrEqual(20);
+    const names = new Set(servers.map((s) => s.name));
+    expect(names.size).toBe(servers.length);
   });
 
-  it('wires the github MCP server', () => {
-    expect(agent.mcp_servers.find((s) => s.name === 'github')).toBeDefined();
+  it('declares the agent_toolset_20260401 base toolset', () => {
+    const base = agent.tools.find((t) => t.type === 'agent_toolset_20260401');
+    expect(base).toBeDefined();
   });
 
-  it('exposes the brain_event HTTP tool pointed at /api/brain', () => {
-    const brain = agent.tools.find((t) => t.name === 'brain_event');
+  it('uses only valid Managed Agents tool types', () => {
+    const VALID = new Set(['agent_toolset_20260401', 'custom', 'mcp_toolset']);
+    for (const tool of agent.tools) {
+      expect(VALID.has(tool.type), `unknown tool type: ${tool.type}`).toBe(true);
+    }
+  });
+
+  it('never uses the invalid "http" tool type', () => {
+    for (const tool of agent.tools) {
+      expect(tool.type).not.toBe('http');
+    }
+  });
+
+  it('tools count is within API cap (<=50)', () => {
+    expect(agent.tools.length).toBeLessThanOrEqual(50);
+  });
+
+  it('exposes brain_event as a custom tool with strict input schema', () => {
+    const brain = agent.tools.find((t): t is CustomTool =>
+      t.type === 'custom' && t.name === 'brain_event',
+    );
     expect(brain).toBeDefined();
-    expect(brain?.method).toBe('POST');
-    expect(brain?.url).toContain('/api/brain');
+    expect(brain?.description).toBeTruthy();
+    const schema = brain?.input_schema;
+    expect(schema?.type).toBe('object');
+    expect(schema?.required).toContain('kind');
+    expect(schema?.required).toContain('severity');
+    expect(schema?.required).toContain('summary');
+    const kind = (schema?.properties.kind as { enum?: string[] }) ?? {};
+    expect(kind.enum).toContain('sanctions_match');
+    expect(kind.enum).toContain('str_saved');
+    expect(kind.enum).toContain('evidence_break');
   });
 
-  it('exposes the cachet_incident tool (severity escalation surface)', () => {
-    expect(agent.tools.find((t) => t.name === 'cachet_incident')).toBeDefined();
+  it('exposes cachet_incident as a custom tool', () => {
+    const cachet = agent.tools.find((t): t is CustomTool =>
+      t.type === 'custom' && t.name === 'cachet_incident',
+    );
+    expect(cachet).toBeDefined();
+    expect(cachet?.input_schema.required).toContain('name');
+    expect(cachet?.input_schema.required).toContain('status');
   });
 
-  it('exposes the str-narrative and sanctions-triage skills', () => {
-    const names = agent.skills.map((s) => s.name);
-    expect(names).toContain('str-narrative');
-    expect(names).toContain('sanctions-triage');
+  it('every custom tool has a description and valid input_schema', () => {
+    const customs = agent.tools.filter((t): t is CustomTool => t.type === 'custom');
+    for (const tool of customs) {
+      expect(tool.name).toBeTruthy();
+      expect(tool.description).toBeTruthy();
+      expect(tool.input_schema.type).toBe('object');
+      expect(tool.input_schema.properties).toBeDefined();
+    }
   });
 
   it('does NOT expose any goAML / EOCN / portal submission tool', () => {
     for (const tool of agent.tools) {
       const name = (tool.name ?? '').toLowerCase();
-      const url = (tool.url ?? '').toLowerCase();
       expect(name).not.toMatch(/goaml|eocn|submit.?report|portal/);
-      expect(url).not.toMatch(/goaml|eocn\.gov/);
     }
   });
 
@@ -106,6 +177,17 @@ describe.each(AGENT_FILES)('agent config: %s', (file) => {
     for (const tool of agent.tools) {
       const name = (tool.name ?? '').toLowerCase();
       expect(name).not.toMatch(/email.?(customer|subject)|sms|notify.?subject|tip.?off/);
+    }
+  });
+
+  it('skills count is within API cap (<=64)', () => {
+    expect((agent.skills ?? []).length).toBeLessThanOrEqual(64);
+  });
+
+  it('skill references use valid type and id', () => {
+    for (const skill of agent.skills ?? []) {
+      expect(['anthropic', 'custom']).toContain(skill.type);
+      expect(skill.skill_id).toBeTruthy();
     }
   });
 });
