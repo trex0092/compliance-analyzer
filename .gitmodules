@@ -73,3 +73,6 @@
 [submodule "vendor/airflow"]
 	path = vendor/airflow
 	url = https://github.com/apache/airflow.git
+[submodule "vendor/skill-vault"]
+	path = vendor/skill-vault
+	url = https://github.com/Hainrixz/skill-vault.git

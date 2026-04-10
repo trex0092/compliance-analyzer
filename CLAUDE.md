@@ -263,6 +263,7 @@ The following multi-agent frameworks are vendored for reference and integration 
 | supersonic | `vendor/supersonic` | AI-native NL→SQL BI engine | Reference for extending nlComplianceQuery DSL to richer analytics; inspiration for entity→metric mapping |
 | bolt | `vendor/bolt` | JavaScript monorepo manager (archived 2019) | Reference only — archived; kept for historical monorepo workflow patterns |
 | dr-claw | `vendor/dr-claw` | OpenLAIR defensive AI tooling | Reference for defensive AI patterns; relevance TBD, added for review |
+| skill-vault | `vendor/skill-vault` | Zero-dep skill organizer + 13-point security analyzer | Reference for skill curation, security rubric, and Vault Master agent pattern; informs how we audit future additions to `skills/` and `.agents/skills/` for supply-chain risk |
 
 ## Hooks
 
@@ -276,25 +277,71 @@ The following multi-agent frameworks are vendored for reference and integration 
 Workflow rules for operating Claude Code effectively on this project.
 Complements the "Token-Efficient Workflow" section at the top.
 
-## 1. Model Routing: Worker + Advisor
+## 1. Model Routing: Worker + Advisor (Anthropic Advisor Strategy)
 
-Run a two-tier setup so you only pay Opus rates when you actually need them.
-Both models share the same conversation memory — the advisor reads everything
-the worker has already done, no re-explaining needed.
+Pair a fast executor model with a higher-intelligence advisor model.
+This project implements the pattern from Anthropic's engineering post
+[The advisor strategy: Give Sonnet an intelligence boost with Opus](https://claude.com/blog/the-advisor-strategy)
+and the formal API reference at
+[platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool).
 
-- **Worker (Sonnet or Haiku)** — runs every step. Handles routine work:
-  targeted file edits, lint/type fixes, test runs, renames, doc updates,
-  single-file refactors, dependency bumps.
-- **Advisor (Opus)** — called only for hard tasks. Escalate to Opus when:
-  - The change touches `src/domain/constants.ts` (regulatory values).
-  - Threshold logic is involved (AED 55K CTR, AED 60K cross-border, 25% UBO, 24h freeze).
-  - Sanctions match confidence or STR/CNMR/EOCN workflow decisions are in play.
-  - The blast radius from `get_impact_radius` spans >5 files or crosses domain boundaries.
-  - You're debugging a subtle bug the worker has already failed on once.
-  - The ask is architectural ("should we use handoffs or a DAG here?").
+**How it works at the API level (not just prompting):**
+- Beta header: `anthropic-beta: advisor-tool-2026-03-01`
+- Tool type:   `advisor_20260301`
+- Valid pairs: `claude-sonnet-4-6 → claude-opus-4-6`,
+               `claude-haiku-4-5-20251001 → claude-opus-4-6`,
+               `claude-opus-4-6 → claude-opus-4-6`
+- The executor model runs the task. When it calls the advisor tool,
+  Anthropic runs a **server-side sub-inference** on the advisor model
+  with the full transcript, returns ~400-700 text tokens of advice
+  back to the executor, and the executor continues. All in a single
+  `/v1/messages` request — no client round-trips.
 
-Rule of thumb: ~80% of runs stay on Sonnet. Opus fires for the tough calls
-only — see `vendor/wshobson-agents` for the model-tiering reference pattern.
+**Project plumbing (live on `main` as of this commit):**
+- **`src/services/advisorStrategy.ts`** — browser-safe TypeScript
+  module that builds advisor-enabled API request bodies, validates
+  executor/advisor pairs locally (fail-fast before the round trip),
+  and parses the response. Exposes `buildAdvisorRequest()`,
+  `parseAdvisorResponse()`, `callAdvisorAssisted()`.
+- **`netlify/functions/ai-proxy.mts`** — forwards allowlisted betas
+  (currently only `advisor-tool-2026-03-01`) as the `anthropic-beta`
+  header. Anything not in the allowlist is silently dropped.
+- **`COMPLIANCE_ADVISOR_SYSTEM_PROMPT`** — exported from
+  `advisorStrategy.ts`. Adapts Anthropic's suggested timing block
+  verbatim and adds six mandatory compliance escalation triggers.
+
+**Compliance escalation triggers (hard-coded into the system prompt):**
+1. Sanctions match confidence ≥ 0.5 (FDL Art.20, Cabinet Res 74/2020 Art.4-7)
+2. Threshold edge cases (AED 55K CTR, AED 60K cross-border, 25% UBO)
+3. STR / SAR / CTR / DPMSR / CNMR narrative drafting (FDL Art.26-27)
+4. Verdicts of "freeze" or "escalate"
+5. CDD level changes (SDD → CDD → EDD)
+6. Any decision visible to the subject — never tip off (FDL Art.29)
+
+**Who runs what, in practice:**
+- **Executor (Sonnet 4.6 or Haiku 4.5)** — runs every step. Handles
+  targeted file edits, lint/type fixes, test runs, renames, doc
+  updates, single-file refactors, dependency bumps.
+- **Advisor (Opus 4.6)** — called automatically by the executor when
+  one of the six triggers fires, or when the executor is stuck. Never
+  calls tools and never produces user-facing output — it only returns
+  advice text (under 100 words, enumerated steps per the conciseness
+  directive that cuts advisor output by 35-45%).
+
+**Composition with the Weaponized Brain:**
+The compliance decision path layers on top of this:
+`src/services/weaponizedBrain.ts` calls `runMegaBrain()` (13 subsystems)
+and then wires in 6 more (adverse media, UBO + layering + shell
+company, VASP wallets, transaction anomalies, explainable scoring,
+zk-proof audit seal) plus new safety clamps. The *reasoning* about
+edge cases in those subsystems is where the advisor strategy adds the
+most value — the mechanical subsystem calls stay on Sonnet, but the
+MLRO-facing verdict rationale can escalate to Opus when confidence is
+low or a clamp fires.
+
+Rule of thumb: ~80% of runs stay on Sonnet. Opus fires for the tough
+calls only — see `vendor/wshobson-agents` for the model-tiering
+reference pattern.
 
 ## 2. Subagents for Side Tasks
 
@@ -372,3 +419,190 @@ A well-run session on this repo typically looks like:
 The goal: high-quality regulatory code without burning Opus budget on
 steps Sonnet can handle, and without losing context by delegating
 understanding to subagents.
+
+## 6. Skill Dispatch Table
+
+The project ships **17+ custom skills** that encode the correct sequence
+for every common compliance task. Before planning a bespoke solution,
+check whether a skill already exists for the request. Never re-derive a
+skill's workflow by hand — invoke the skill.
+
+| User asks about…                                  | Invoke first                       |
+|---------------------------------------------------|------------------------------------|
+| "review this PR" / "safe to merge?"               | `/review-pr`                       |
+| "new customer onboarding"                         | `/onboard` → `/screen`             |
+| "sanctions hit" / "asset freeze"                  | `/incident` → `/goaml`             |
+| "quarterly / annual MoE report"                   | `/kpi-report`                      |
+| "can we ship?" / pre-deploy                       | `/deploy-check`                    |
+| "new law" / "new circular"                        | `/regulatory-update`               |
+| "MoE inspection coming"                           | `/moe-readiness` → `/audit-pack`   |
+| "prove filing X was on time"                      | `/filing-compliance`               |
+| "entity Y history / timeline"                     | `/timeline`                        |
+| "map Article Z to code + test"                    | `/traceability`                    |
+| "bulk / parallel sanctions screening"             | `/multi-agent-screen`              |
+| "complex multi-stage CDD / EDD workflow"          | `/agent-orchestrate`               |
+| "quarterly compliance audit"                      | `/audit`                           |
+| "STR / SAR / CTR / DPMSR / CNMR submission"       | `/goaml`                           |
+| "generate goAML XML"                              | `/goaml`                           |
+| "multi-agent PR review"                           | `/agent-review`                    |
+| "full audit pack for inspection"                  | `/audit-pack`                      |
+
+If the ask doesn't match any skill, fall back to §1 (model routing) and
+§4 (plan-first).
+
+## 7. Context Budget Rules
+
+Specific landmines in this repo that will blow your context window if
+read blindly. The "graph first, files second" rule at the top of
+CLAUDE.md applies — these are its teeth.
+
+- **`compliance-suite.js` is 4300+ lines.** Never read it without
+  `offset` + `limit`. Query `code-review-graph` first for line numbers,
+  then read a ~50-line window around the hit.
+- **`index.html` is 2794 lines** with inline scripts and styles. Grep
+  for the element ID or selector first, then `Read` with `offset`.
+- **`vendor/**` has 49k+ files.** Never grep the tree without a
+  `--glob` restrictor. Scope searches to a single vendor directory.
+- **`graphify-out/**` and `package-lock.json`** — do not read unless
+  debugging graph drift or lockfile drift specifically. They're
+  generated artefacts.
+- **`node_modules/**`** — never read. Use published types or the
+  library's source on npm.
+- **Test files** — when diagnosing a failing test, read only the
+  failing test block (offset + limit), not the whole file.
+
+**Budget target: a single file read should not exceed 200 lines** in
+normal operation. If you need more, query the graph for the specific
+function and read that neighborhood.
+
+## 8. Regulatory Citation Discipline
+
+Every commit and PR that touches compliance logic **must cite the
+Article, Circular, or Guidance section** it implements. This is
+non-negotiable — it's the audit trail that proves the code traces to a
+regulation, which is exactly what MoE, LBMA, and internal audit want to
+see.
+
+**Commit message format:**
+
+```
+<short summary> (<regulatory citation>)
+
+<body explaining what changed and why>
+```
+
+**Examples:**
+
+```
+Good:  Add 24h freeze countdown for confirmed sanctions matches
+       (Cabinet Res 74/2020 Art.4-7)
+
+Good:  Enforce AED 55K DPMS CTR threshold on cash transactions
+       (MoE Circular 08/AML/2021)
+
+Good:  Raise UBO re-verification deadline to 15 working days
+       (Cabinet Decision 109/2023)
+
+Bad:   Add countdown timer
+Bad:   Fix threshold
+Bad:   Update UBO logic
+```
+
+The full citation list lives in the "Regulatory Domain Knowledge"
+section of this file — copy the exact wording into commit messages.
+PRs must also include the citation in their description.
+
+**Scope:** applies to any change in `src/domain/`, `src/services/`,
+`src/risk/`, `src/agents/tools/`, `compliance-suite.js`, and
+`netlify/functions/`. Pure UI, lint, and doc changes are exempt.
+
+## 9. Error Recovery Playbook
+
+Common failure modes on this repo and the first thing to check. Do not
+guess, do not retry blindly, do not bypass — consult this table.
+
+| Failure                                          | First check                                                                              |
+|--------------------------------------------------|------------------------------------------------------------------------------------------|
+| Netlify secrets scan fails                       | Is the offending path in `SECRETS_SCAN_OMIT_PATHS` in `netlify.toml`?                     |
+| `pre-commit-security` hook blocks commit         | Real secret or placeholder? Never use `--no-verify`. Add to `.secretsignore` if FP.       |
+| `vitest` ESM import errors                       | `package.json` has `"type": "module"`? Is the import extension `.js` in runtime imports?  |
+| `tsc` fails only on `tests/constants.test.ts`    | You changed a regulatory constant. Regulation actually updated? Bump REG constant version. |
+| `eslint` fails in `src/agents/`                  | New agent added without export from `src/agents/index.ts`?                               |
+| Netlify build works locally, fails on deploy     | Node version mismatch in `netlify.toml` vs local? Submodules initialised?                 |
+| `cannot find module vendor/xxx`                  | Run `git submodule update --init --recursive`.                                            |
+| `goAML` XML validation fails                     | Use `/goaml` skill — never hand-write XML. Validate via `src/utils/goamlValidator.ts`.    |
+| `businessDays` calculation off by one            | You used calendar days somewhere. Use `src/utils/businessDays.ts` exclusively.            |
+| Sanctions screen returns empty                   | One of the lists (UN/OFAC/EU/UK/UAE/EOCN) was skipped. Never skip a list.                |
+| Netlify build fails on inline script CSP hash    | Inline script changed → regenerate the sha256 hash and update CSP in `netlify.toml`.     |
+
+**Golden rule:** if a hook, test, or check fails, treat it as
+information — not an obstacle. Understand the failure before acting.
+Never use destructive shortcuts (`--no-verify`, `reset --hard`,
+`push --force`) to silence a failing check.
+
+## 10. Read-Only vs Write Subagent Discipline
+
+Every subagent prompt **must open** with one of two contracts so the
+blast radius is explicit before the subagent starts work.
+
+### Read-only subagent (default)
+
+```
+READ-ONLY: do not edit, write, create, or delete any files. Do not
+run git commands that mutate state. Report findings as a written
+summary only.
+
+<task description>
+```
+
+Use for: research, audits, surveys, impact analysis, grep/glob
+exploration, reading through vendored frameworks.
+
+### Write-mode subagent (rare)
+
+```
+WRITE MODE: you may edit files under <specific path>. Do not create
+new files outside <specific path>. Do not run git commit, git push,
+or git branch. Do not modify CLAUDE.md or constants.ts.
+
+<task description>
+```
+
+Use for: targeted refactors scoped to one directory, test generation,
+lint fixes. Never for anything touching regulatory logic.
+
+### Never delegate
+
+- `git commit`, `git push`, `git merge`, `git rebase`
+- Changes to `src/domain/constants.ts`
+- Changes to `CLAUDE.md`
+- Changes to `netlify.toml`, `package.json`, `.env*`
+- Any compliance decision (sanctions confirmation, STR filing, freeze)
+- Any change you don't fully understand yourself
+
+The main agent owns decisions and commits. Subagents do the grunt work.
+
+## 11. Session-Start Checklist
+
+The first action in every new session is a parallel status dump. Catches
+90% of "wrong branch", "stashed work", "someone merged while I was away"
+problems.
+
+Run in a **single message with parallel tool calls**:
+
+```
+├── git status                        (uncommitted work?)
+├── git branch --show-current         (on the designated branch?)
+├── git log --oneline -5 origin/main  (what shipped while I was away?)
+├── git stash list                    (any stashed work?)
+└── git fetch origin                  (pick up remote changes)
+```
+
+Only after these return should you read the user's actual ask. If
+anything surprising comes back (uncommitted files, wrong branch, unknown
+commits on main), **ask the user before doing anything**. Do not
+auto-resolve unexpected state — investigate first.
+
+**Exceptions:** single-turn trivial asks ("what does X mean?", "fix this
+typo") can skip the checklist. Apply it for any session that will touch
+code.
