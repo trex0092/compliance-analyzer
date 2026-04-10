@@ -73,7 +73,7 @@ describe('brain endpoint: validate()', () => {
 });
 
 describe('brain endpoint: route()', () => {
-  it('confirmed sanctions match → 24h freeze protocol', () => {
+  it('confirmed sanctions match → 24h freeze protocol + Cachet publish', () => {
     const d = route({
       kind: 'sanctions_match',
       severity: 'critical',
@@ -87,6 +87,35 @@ describe('brain endpoint: route()', () => {
     expect(d.autoActions).toContain('schedule_cnmr_filing:5bd');
     // No tipping off — FDL Art.29
     expect(d.autoActions).toContain('suppress_subject_notification:FDL_Art29');
+    // F-05 fix: confirmed freeze MUST publish to the public status page,
+    // regardless of client-supplied severity.
+    expect(d.autoActions).toContain('publish_cachet_incident');
+  });
+
+  it('confirmed sanctions match at severity=high still publishes to Cachet', () => {
+    // Proves the F-05 fix: the publish decision is routing-driven, not
+    // severity-driven. Previously, only severity="critical" would
+    // publish — a silent downgrade when the client mislabeled severity.
+    const d = route({
+      kind: 'sanctions_match',
+      severity: 'high',
+      summary: 'hit',
+      matchScore: 0.95,
+    });
+    expect(d.autoActions).toContain('publish_cachet_incident');
+  });
+
+  it('potential sanctions match (0.5-0.89) does NOT auto-publish to Cachet', () => {
+    const d = route({
+      kind: 'sanctions_match',
+      severity: 'high',
+      summary: 'partial',
+      matchScore: 0.7,
+    });
+    expect(d.autoActions).not.toContain('publish_cachet_incident');
+    // but still escalates + requires four-eyes
+    expect(d.autoActions).toContain('escalate_to_co');
+    expect(d.autoActions).toContain('require_four_eyes_review');
   });
 
   it('potential sanctions match → four-eyes review', () => {

@@ -2,32 +2,56 @@
  * Four-Eyes Approval API
  *
  * GET  /api/approvals         → list pending brain-escalated events
- * POST /api/approvals/approve → record an approval (requires auth)
- * POST /api/approvals/reject  → record a rejection (requires auth)
+ * POST /api/approvals/approve → record an approval (requires approver key)
+ * POST /api/approvals/reject  → record a rejection (requires approver key)
  *
- * Enforces the CLAUDE.md "four-eyes" invariant:
- *   - Every High / Very-High / PEP / sanctions decision requires TWO
- *     independent approvers before it can be actioned
- *   - The submitter is auto-excluded from the approval set
- *   - An item is "approved" only when it has 2+ distinct approver ids
+ * Enforces the CLAUDE.md "four-eyes" invariant with TEETH:
+ *   1. Auth via per-user keys (HAWKEYE_APPROVER_KEYS), NOT the shared
+ *      brain token. Two distinct registered users must approve.
+ *   2. Same user voting twice is idempotent (no-op).
+ *   3. Single rejection is terminal.
+ *   4. Malformed blob entries are skipped with a warning — one bad
+ *      record cannot hide the entire queue.
  *
- * Storage: Netlify Blobs store `brain-events` contains the event
- * log; approvals live in a separate `brain-approvals` store keyed by
- * event id, so the original events stay immutable.
+ * Storage:
+ *   - brain-events store: one blob per event under events/YYYY-MM-DD/<ts>-<uuid>.json
+ *     (see netlify/functions/brain.mts persistEvent — F-03/F-04 fix).
+ *   - brain-approvals store: one blob per approval record keyed by event id.
+ *
+ * Review findings addressed:
+ *   F-01/F-02 — uses authenticateApprover (per-user) instead of the
+ *               shared-token authenticate. Two distinct approvers is
+ *               now a real constraint.
+ *   F-07     — per-entry try/catch + shape guard so a malformed entry
+ *               doesn't crash listPending.
+ *   F-08     — CORS Access-Control-Allow-Origin on every response.
  */
 
 import type { Config, Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
 import { createHash } from "node:crypto";
 import { checkRateLimit } from "./middleware/rate-limit.mts";
-import { authenticate } from "./middleware/auth.mts";
+import { authenticateApprover } from "./middleware/auth.mts";
 
 const EVENT_STORE = "brain-events";
 const APPROVAL_STORE = "brain-approvals";
-
-// Minimum distinct approvers required to mark an item "approved".
-// Matches the CLAUDE.md four-eyes requirement.
 const REQUIRED_APPROVERS = 2;
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin":
+    process.env.HAWKEYE_ALLOWED_ORIGIN ?? "https://compliance-analyzer.netlify.app",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Max-Age": "600",
+  Vary: "Origin",
+} as const;
+
+function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
+  return Response.json(body, {
+    ...init,
+    headers: { ...CORS_HEADERS, ...(init.headers ?? {}) },
+  });
+}
 
 interface StoredBrainEvent {
   at: string;
@@ -55,61 +79,120 @@ interface ApprovalEntry {
   status: "pending" | "approved" | "rejected";
 }
 
-// Severity gates that require four-eyes.
 const FOUR_EYES_SEVERITY = new Set(["high", "critical"]);
 
-function needsFourEyes(event: StoredBrainEvent): boolean {
-  if (FOUR_EYES_SEVERITY.has(event.event.severity)) return true;
-  if (event.decision.escalate) return true;
-  if (event.event.kind === "sanctions_match" && (event.event.matchScore ?? 0) >= 0.5) {
+function isStoredBrainEvent(x: unknown): x is StoredBrainEvent {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  if (typeof o.at !== "string") return false;
+  if (!o.event || typeof o.event !== "object") return false;
+  if (!o.decision || typeof o.decision !== "object") return false;
+  const ev = o.event as Record<string, unknown>;
+  const dec = o.decision as Record<string, unknown>;
+  return (
+    typeof ev.kind === "string" &&
+    typeof ev.severity === "string" &&
+    typeof ev.summary === "string" &&
+    typeof dec.escalate === "boolean" &&
+    Array.isArray(dec.autoActions)
+  );
+}
+
+function needsFourEyes(entry: StoredBrainEvent): boolean {
+  if (FOUR_EYES_SEVERITY.has(entry.event.severity)) return true;
+  if (entry.decision.escalate) return true;
+  if (
+    entry.event.kind === "sanctions_match" &&
+    typeof entry.event.matchScore === "number" &&
+    entry.event.matchScore >= 0.5
+  ) {
     return true;
   }
   return false;
 }
 
-function makeEventId(entry: StoredBrainEvent, index: number): string {
-  // Stable deterministic id derived from timestamp + ref + index.
-  // We use sha256 truncated to 32 chars rather than truncated base64 —
-  // base64 truncation loses entropy from the end of the input, so two
-  // entries differing only in their index produce the same prefix.
-  const base = `${entry.at}|${entry.event.refId ?? entry.event.kind}|${index}`;
-  return createHash("sha256").update(base).digest("base64url").slice(0, 32);
+function makeEventIdFromKey(blobKey: string): string {
+  // Stable id derived from the blob key (which is itself unique via
+  // uuid). sha256 truncated to 32 chars. The key never leaks to the
+  // client.
+  return createHash("sha256").update(blobKey).digest("base64url").slice(0, 32);
 }
 
 // ---------------------------------------------------------------------------
 // List pending approvals — GET /api/approvals
 // ---------------------------------------------------------------------------
 
-async function listPending(): Promise<
-  Array<StoredBrainEvent & { id: string; approval: ApprovalEntry }>
-> {
+interface PendingItem extends StoredBrainEvent {
+  id: string;
+  approval: ApprovalEntry;
+}
+
+async function listPending(): Promise<{
+  items: PendingItem[];
+  scanned: number;
+  skipped: number;
+}> {
   const eventStore = getStore(EVENT_STORE);
   const approvalStore = getStore(APPROVAL_STORE);
+  let scanned = 0;
+  let skipped = 0;
+  const items: PendingItem[] = [];
 
-  const out: Array<StoredBrainEvent & { id: string; approval: ApprovalEntry }> = [];
-
-  // Scan the last 7 days of events.
+  // Scan the last 7 days of events via prefix. Netlify Blobs `list`
+  // is paginated — we walk all pages.
+  const today = new Date();
   for (let daysBack = 0; daysBack < 7; daysBack++) {
-    const d = new Date();
+    const d = new Date(today);
     d.setUTCDate(d.getUTCDate() - daysBack);
-    const key = `events/${d.toISOString().slice(0, 10)}.json`;
-    let day: StoredBrainEvent[] | null = null;
+    const prefix = `events/${d.toISOString().slice(0, 10)}/`;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let listResult: any;
     try {
-      day = (await eventStore.get(key, { type: "json" })) as StoredBrainEvent[] | null;
-    } catch {
-      day = null;
+      // @ts-expect-error — Netlify Blobs .list() signature varies by SDK version
+      listResult = await eventStore.list({ prefix });
+    } catch (err) {
+      console.warn(`[approvals] list ${prefix} failed: ${(err as Error).message}`);
+      continue;
     }
-    if (!day) continue;
 
-    for (let i = 0; i < day.length; i++) {
-      const entry = day[i];
-      if (!needsFourEyes(entry)) continue;
+    // @netlify/blobs `list` returns { blobs: [{ key }], directories: [] }
+    // but shape varies across runtime versions. Normalise to an array
+    // of keys.
+    const keys: string[] =
+      (listResult?.blobs?.map((b: { key: string }) => b.key) as string[] | undefined) ??
+      (Array.isArray(listResult) ? listResult.map((b: { key: string }) => b.key) : []);
 
-      const id = makeEventId(entry, i);
+    for (const key of keys) {
+      scanned++;
+      let raw: unknown;
+      try {
+        raw = await eventStore.get(key, { type: "json" });
+      } catch (err) {
+        console.warn(`[approvals] read ${key} failed: ${(err as Error).message}`);
+        skipped++;
+        continue;
+      }
+      if (!isStoredBrainEvent(raw)) {
+        skipped++;
+        continue;
+      }
+      const entry = raw;
+
+      try {
+        if (!needsFourEyes(entry)) continue;
+      } catch (err) {
+        console.warn(`[approvals] needsFourEyes ${key}: ${(err as Error).message}`);
+        skipped++;
+        continue;
+      }
+
+      const id = makeEventIdFromKey(key);
       let approval: ApprovalEntry | null = null;
       try {
         approval = (await approvalStore.get(id, { type: "json" })) as ApprovalEntry | null;
-      } catch {
+      } catch (err) {
+        console.warn(`[approvals] approval-read ${id}: ${(err as Error).message}`);
         approval = null;
       }
       const rec: ApprovalEntry = approval ?? {
@@ -119,12 +202,12 @@ async function listPending(): Promise<
         status: "pending",
       };
       if (rec.status === "pending") {
-        out.push({ ...entry, id, approval: rec });
+        items.push({ ...entry, id, approval: rec });
       }
     }
   }
 
-  return out;
+  return { items, scanned, skipped };
 }
 
 // ---------------------------------------------------------------------------
@@ -146,22 +229,25 @@ async function recordDecision(
     status: "pending",
   };
 
-  // Submitter auto-exclusion + distinct-approver enforcement.
-  // The actor is derived from the bearer token, not the request body,
-  // so it can't be forged.
+  // Do not mutate a terminal record.
+  if (rec.status === "approved" || rec.status === "rejected") {
+    return rec;
+  }
+
   if (verdict === "approve") {
-    if (rec.approvals.some((a) => a.actor === actor)) {
-      // Idempotent — same approver voting twice is a no-op.
-      return rec;
-    }
+    // Idempotent: same approver voting twice is a no-op.
+    if (rec.approvals.some((a) => a.actor === actor)) return rec;
     rec.approvals.push({ actor, at: new Date().toISOString(), note });
+    // Distinct-approver check is enforced by the per-user auth flavour —
+    // `actor` is the verified username from HAWKEYE_APPROVER_KEYS, so
+    // two entries in rec.approvals with different `actor` values
+    // necessarily come from two different registered humans.
     if (rec.approvals.length >= REQUIRED_APPROVERS) {
       rec.status = "approved";
     }
   } else {
     if (rec.rejections.some((r) => r.actor === actor)) return rec;
     rec.rejections.push({ actor, at: new Date().toISOString(), note });
-    // One rejection is enough to block the action.
     rec.status = "rejected";
   }
 
@@ -175,22 +261,16 @@ async function recordDecision(
 
 export default async (req: Request, context: Context) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Authorization, Content-Type",
-      },
-    });
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
   // Rate limit (sensitive endpoint — approvals can freeze accounts).
   const rl = await checkRateLimit(req, { max: 10, clientIp: context.ip });
   if (rl) return rl;
 
-  // Auth required on both GET and POST. The actor id is derived from
-  // the token, NOT from the request body or URL.
-  const auth = authenticate(req);
+  // Auth required on both GET and POST. The actor is the username
+  // matched from HAWKEYE_APPROVER_KEYS — verified, unforgeable.
+  const auth = authenticateApprover(req);
   if (!auth.ok) return auth.response!;
 
   const url = new URL(req.url);
@@ -198,11 +278,17 @@ export default async (req: Request, context: Context) => {
 
   if (req.method === "GET" && pathname.endsWith("/approvals")) {
     try {
-      const pending = await listPending();
-      return Response.json({ pending, count: pending.length, actor: auth.userId });
+      const { items, scanned, skipped } = await listPending();
+      return jsonResponse({
+        pending: items,
+        count: items.length,
+        scanned,
+        skipped,
+        actor: auth.username,
+      });
     } catch (err) {
       console.error(`[approvals] list error: ${(err as Error).message}`);
-      return Response.json({ error: "failed_to_list" }, { status: 500 });
+      return jsonResponse({ error: "failed_to_list" }, { status: 500 });
     }
   }
 
@@ -210,19 +296,22 @@ export default async (req: Request, context: Context) => {
     const isApprove = pathname.endsWith("/approve");
     const isReject = pathname.endsWith("/reject");
     if (!isApprove && !isReject) {
-      return Response.json({ error: "Not found" }, { status: 404 });
+      return jsonResponse({ error: "Not found" }, { status: 404 });
     }
 
     let body: { eventId?: string; note?: string };
     try {
       body = (await req.json()) as typeof body;
     } catch {
-      return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+      return jsonResponse({ error: "Invalid JSON body" }, { status: 400 });
     }
 
     const eventId = typeof body.eventId === "string" ? body.eventId.trim() : "";
-    if (!eventId || eventId.length > 64) {
-      return Response.json({ error: "eventId required (<=64 chars)" }, { status: 400 });
+    if (!eventId || eventId.length > 64 || !/^[A-Za-z0-9_-]+$/.test(eventId)) {
+      return jsonResponse(
+        { error: "eventId required (<=64 url-safe chars)" },
+        { status: 400 },
+      );
     }
     const note =
       typeof body.note === "string"
@@ -232,21 +321,21 @@ export default async (req: Request, context: Context) => {
     try {
       const rec = await recordDecision(
         eventId,
-        auth.userId!,
+        auth.username!,
         isApprove ? "approve" : "reject",
         note,
       );
       console.log(
-        `[approvals] ${isApprove ? "approve" : "reject"} eventId=${eventId} actor=${auth.userId} status=${rec.status}`,
+        `[approvals] ${isApprove ? "approve" : "reject"} eventId=${eventId} actor=${auth.username} status=${rec.status}`,
       );
-      return Response.json({ ok: true, record: rec });
+      return jsonResponse({ ok: true, record: rec });
     } catch (err) {
       console.error(`[approvals] record error: ${(err as Error).message}`);
-      return Response.json({ error: "failed_to_record" }, { status: 500 });
+      return jsonResponse({ error: "failed_to_record" }, { status: 500 });
     }
   }
 
-  return Response.json({ error: "Method not allowed" }, { status: 405 });
+  return jsonResponse({ error: "Method not allowed" }, { status: 405 });
 };
 
 export const config: Config = {
@@ -254,9 +343,10 @@ export const config: Config = {
   method: ["GET", "POST", "OPTIONS"],
 };
 
-// For unit tests.
+// Exports for unit tests.
 export const __test__ = {
   needsFourEyes,
-  makeEventId,
+  makeEventIdFromKey,
+  isStoredBrainEvent,
   REQUIRED_APPROVERS,
 };

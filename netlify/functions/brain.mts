@@ -22,8 +22,27 @@
 
 import type { Config, Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
+import { randomUUID } from "node:crypto";
 import { checkRateLimit } from "./middleware/rate-limit.mts";
 import { authenticate } from "./middleware/auth.mts";
+
+// CORS headers applied to both preflight and actual responses. Single
+// allow-origin per env var so cross-site requests can't forge identity.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin":
+    process.env.HAWKEYE_ALLOWED_ORIGIN ?? "https://compliance-analyzer.netlify.app",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Max-Age": "600",
+  Vary: "Origin",
+} as const;
+
+function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
+  return Response.json(body, {
+    ...init,
+    headers: { ...CORS_HEADERS, ...(init.headers ?? {}) },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -86,6 +105,9 @@ function route(event: BrainEvent): RouteDecision {
         autoActions.push("start_eocn_countdown:24h");
         autoActions.push("schedule_cnmr_filing:5bd");
         autoActions.push("suppress_subject_notification:FDL_Art29");
+        // F-05 fix: confirmed freeze is exactly the case that MUST
+        // reach the public status page.
+        autoActions.push("publish_cachet_incident");
         escalate = true;
       } else if (score >= 0.5) {
         purpose = "POTENTIAL match — escalate to Compliance Officer.";
@@ -228,8 +250,8 @@ function validate(input: unknown): { ok: true; event: BrainEvent } | { ok: false
 async function publishCachet(event: BrainEvent, decision: RouteDecision): Promise<
   { published: boolean; reason?: string }
 > {
-  const base = Netlify.env.get("CACHET_BASE_URL");
-  const token = Netlify.env.get("CACHET_API_TOKEN");
+  const base = process.env.CACHET_BASE_URL;
+  const token = process.env.CACHET_API_TOKEN;
   if (!base || !token) return { published: false, reason: "cachet_not_configured" };
 
   const status = event.severity === "critical" ? 2 /* Identified */ : 1 /* Investigating */;
@@ -258,26 +280,37 @@ async function publishCachet(event: BrainEvent, decision: RouteDecision): Promis
 }
 
 // ---------------------------------------------------------------------------
-// Persistence — append to Netlify Blobs for autopilot consumption.
+// Persistence — one blob per event (no read-modify-write race, no eviction).
+//
+// Review findings addressed:
+//   F-03 — silent eviction of oldest events when a day exceeded 1000.
+//          FDL Art.24 mandates 5-year retention — slicing was a data
+//          loss bug disguised as "flood protection".
+//   F-04 — concurrent writes to the same day blob raced each other and
+//          silently lost events.
+//
+// Fix: each event gets its own blob keyed by `events/YYYY-MM-DD/<iso>-<uuid>.json`.
+// No shared mutable state, so no race. Consumers (listPending in
+// approvals.mts, autopilot, MLRO agent) list by prefix.
 // ---------------------------------------------------------------------------
 const EVENT_STORE = "brain-events";
 
 async function persistEvent(event: BrainEvent, decision: RouteDecision) {
   try {
     const store = getStore(EVENT_STORE);
-    const today = new Date().toISOString().slice(0, 10);
-    const key = `events/${today}.json`;
-    const existing = ((await store.get(key, { type: "json" })) as unknown[]) ?? [];
-    existing.push({
-      at: new Date().toISOString(),
+    const now = new Date();
+    const day = now.toISOString().slice(0, 10);
+    // Millisecond timestamp + uuid ensures unique keys even under
+    // massive concurrent load.
+    const key = `events/${day}/${now.toISOString().replace(/[:.]/g, "-")}-${randomUUID()}.json`;
+    await store.setJSON(key, {
+      at: now.toISOString(),
       event,
       decision,
     });
-    // Keep the last 1000 events per day (pathological flood protection).
-    const trimmed = existing.slice(-1000);
-    await store.setJSON(key, trimmed);
-    return { persisted: true, count: trimmed.length };
+    return { persisted: true, key };
   } catch (err) {
+    console.error(`[BRAIN] persist failed: ${(err as Error).message}`);
     return { persisted: false, reason: (err as Error).message };
   }
 }
@@ -287,24 +320,19 @@ async function persistEvent(event: BrainEvent, decision: RouteDecision) {
 // ---------------------------------------------------------------------------
 export default async (req: Request, context: Context) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Authorization, Content-Type",
-      },
-    });
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
   if (req.method !== "POST") {
-    return Response.json({ error: "Method not allowed" }, { status: 405 });
+    return jsonResponse({ error: "Method not allowed" }, { status: 405 });
   }
 
   // Rate limit: sensitive endpoint per CLAUDE.md (10 req / 15 min per IP).
   const rl = await checkRateLimit(req, { max: 10, clientIp: context.ip });
   if (rl) return rl;
 
-  // Auth required — brain must not accept unauthenticated compliance events.
+  // Auth required — brain MUST compare against HAWKEYE_BRAIN_TOKEN.
+  // Fails closed (503) if server-side env is misconfigured.
   const auth = authenticate(req);
   if (!auth.ok) return auth.response!;
 
@@ -312,13 +340,13 @@ export default async (req: Request, context: Context) => {
   try {
     body = await req.json();
   } catch {
-    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+    return jsonResponse({ error: "Invalid JSON body" }, { status: 400 });
   }
 
   const v = validate(body);
   if (!v.ok) {
     console.warn(`[BRAIN] Rejected input from ${auth.userId}: ${v.error}`);
-    return Response.json({ error: v.error }, { status: 400 });
+    return jsonResponse({ error: v.error }, { status: 400 });
   }
   const event = v.event;
 
@@ -331,14 +359,16 @@ export default async (req: Request, context: Context) => {
 
   const persistence = await persistEvent(event, decision);
 
+  // F-05 fix: any escalated event with `publish_cachet_incident` in
+  // autoActions publishes. Severity-critical alone is no longer a
+  // condition — the route() function is the source of truth for which
+  // events surface on the public status page.
   let cachet: { published: boolean; reason?: string } = { published: false, reason: "not_triggered" };
-  if (decision.escalate && decision.autoActions.includes("publish_cachet_incident")) {
-    cachet = await publishCachet(event, decision);
-  } else if (event.severity === "critical") {
+  if (decision.autoActions.includes("publish_cachet_incident")) {
     cachet = await publishCachet(event, decision);
   }
 
-  return Response.json({
+  return jsonResponse({
     ok: true,
     actor: auth.userId,
     decision,
