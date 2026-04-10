@@ -18,17 +18,19 @@ name: Scheduled Screening — Twice Daily
 #   - GitHub UI → Actions → "Scheduled Screening — Twice Daily" → Run workflow
 #   - Or via gh CLI: gh workflow run scheduled-screening.yml
 #
-# Required secrets (set in GitHub repo → Settings → Secrets → Actions):
-#   HAWKEYE_BRAIN_TOKEN    — bearer for /api/watchlist and /api/brain
-#   ASANA_TOKEN            — Asana Personal Access Token
+# Required secrets (set in GitHub repo → Settings → Secrets and variables
+# → Actions → Secrets tab). Put ALL five under the Secrets tab for
+# simplicity — GitHub secrets can hold any value, sensitive or not, and
+# keeping config in one place avoids the vars-vs-secrets confusion.
 #
-# Required env vars (set as GitHub Actions vars, not secrets, since they're
-# not sensitive):
+#   HAWKEYE_BRAIN_TOKEN           bearer for /api/watchlist and /api/brain
+#   ASANA_TOKEN                   Asana Personal Access Token
 #   ASANA_SCREENINGS_PROJECT_GID  = 1213924883251269
 #   ASANA_WORKSPACE_GID           = 1213645083721316
 #   ASANA_DEFAULT_ASSIGNEE_NAME   = Luisa Fernanda
 #
-# Set these in repo → Settings → Secrets and variables → Actions → Variables.
+# Optional variable (in the Variables tab — or also set as a secret, same effect):
+#   HAWKEYE_BRAIN_URL             defaults to compliance-analyzer.netlify.app
 #
 # Regulatory basis:
 #   - FATF Rec 10 (ongoing customer due diligence)
@@ -82,15 +84,17 @@ jobs:
 
       - name: Run scheduled screening
         env:
-          # Endpoint URL (defaults to compliance-analyzer.netlify.app if unset)
+          # Endpoint URL — reads from vars first (non-sensitive) with a
+          # safe default for compliance-analyzer.netlify.app.
           HAWKEYE_BRAIN_URL: ${{ vars.HAWKEYE_BRAIN_URL || 'https://compliance-analyzer.netlify.app' }}
-          # Auth tokens (repo secrets)
+          # All other config read from secrets.* regardless of whether
+          # the value is technically sensitive. This keeps setup simple
+          # — you only touch ONE tab in GitHub Actions settings.
           HAWKEYE_BRAIN_TOKEN: ${{ secrets.HAWKEYE_BRAIN_TOKEN }}
           ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
-          # Asana non-secret config (repo variables)
-          ASANA_SCREENINGS_PROJECT_GID: ${{ vars.ASANA_SCREENINGS_PROJECT_GID }}
-          ASANA_WORKSPACE_GID: ${{ vars.ASANA_WORKSPACE_GID }}
-          ASANA_DEFAULT_ASSIGNEE_NAME: ${{ vars.ASANA_DEFAULT_ASSIGNEE_NAME }}
+          ASANA_SCREENINGS_PROJECT_GID: ${{ secrets.ASANA_SCREENINGS_PROJECT_GID }}
+          ASANA_WORKSPACE_GID: ${{ secrets.ASANA_WORKSPACE_GID }}
+          ASANA_DEFAULT_ASSIGNEE_NAME: ${{ secrets.ASANA_DEFAULT_ASSIGNEE_NAME }}
           # Dry-run flag (from workflow_dispatch input; ignored on schedule)
           SCHEDULED_SCREENING_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
         run: |
