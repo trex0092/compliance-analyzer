@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <title>Watchlist Admin — Hawkeye Sterling</title>
+  <link rel="icon" type="image/svg+xml" href="assets/logos/hawkeye-icon.svg">
+  <style>
+    /* Self-contained dark-luxury theme matching the main tool. CSP allows
+       'unsafe-inline' for styles, so this inline block is permitted. */
+    :root {
+      --gold: #C9A84C;
+      --bg: #0A0A0A;
+      --surface: rgba(201,168,76,0.03);
+      --surface2: rgba(201,168,76,0.06);
+      --border: rgba(201,168,76,0.12);
+      --border-strong: rgba(201,168,76,0.25);
+      --text: #F5F0E8;
+      --muted: rgba(245,240,232,0.55);
+      --red: #D94F4F;
+      --amber: #E8A030;
+      --green: #3DA876;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { overscroll-behavior-y: contain; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+      padding-top: calc(20px + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1 {
+      color: var(--gold);
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    h1 .badge {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--bg);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      margin-left: 8px;
+      vertical-align: middle;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    h2 {
+      color: var(--gold);
+      font-size: 17px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .intro {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 8px 0 24px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-top: 16px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    label:first-of-type { margin-top: 10px; }
+    input, select, textarea {
+      width: 100%;
+      padding: 14px;
+      background: #111;
+      border: 1px solid var(--border-strong);
+      color: var(--text);
+      border-radius: 4px;
+      font-size: 16px; /* 16px prevents iOS auto-zoom on focus */
+      font-family: inherit;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+    select {
+      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+                        linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%;
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+      padding-right: 40px;
+    }
+    button {
+      width: 100%;
+      padding: 16px;
+      background: var(--gold);
+      color: var(--bg);
+      border: none;
+      border-radius: 4px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      margin-top: 20px;
+      min-height: 52px;
+      touch-action: manipulation;
+      font-family: inherit;
+    }
+    button:active { transform: translateY(1px); }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      color: var(--muted);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: var(--gold);
+      border: 1px solid var(--gold);
+    }
+    .btn-small {
+      width: auto;
+      padding: 8px 14px;
+      margin: 0;
+      font-size: 12px;
+      min-height: 36px;
+      background: transparent;
+      color: var(--red);
+      border: 1px solid var(--red);
+    }
+    .msg {
+      padding: 14px;
+      border-radius: 4px;
+      margin-top: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .msg-success {
+      background: rgba(61,168,118,0.12);
+      border: 1px solid var(--green);
+      color: var(--green);
+    }
+    .msg-error {
+      background: rgba(217,79,79,0.12);
+      border: 1px solid var(--red);
+      color: var(--red);
+    }
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .stat {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat-item {
+      flex: 1;
+      text-align: center;
+      padding: 16px 8px;
+      background: var(--surface2);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 6px;
+      letter-spacing: 1px;
+    }
+    .subject-row {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .subject-row:last-child { border-bottom: none; }
+    .subject-info { flex: 1; min-width: 180px; }
+    .subject-name {
+      font-weight: 500;
+      font-size: 15px;
+      word-break: break-word;
+    }
+    .subject-id {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: "DM Mono", "Courier New", monospace;
+      margin-top: 2px;
+    }
+    .subject-tier {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .tier-high { background: rgba(217,79,79,0.15); color: var(--red); }
+    .tier-medium { background: rgba(232,160,48,0.15); color: var(--amber); }
+    .tier-low { background: rgba(61,168,118,0.15); color: var(--green); }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    .token-hint {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Watchlist Admin <span class="badge">v1</span></h1>
+  <p class="intro">Add people or entities to ongoing compliance monitoring. They will be screened automatically twice daily (06:00 and 14:00 UTC). New adverse media hits will appear as Asana tasks in the SCREENINGS project, assigned to Luisa Fernanda.</p>
+
+  <!-- Authentication ────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>Authentication</h2>
+    <label for="token">Hawkeye brain token</label>
+    <input type="password" id="token" placeholder="Paste your HAWKEYE_BRAIN_TOKEN" autocomplete="off" spellcheck="false">
+    <span class="token-hint">Saved locally in this browser only. Never sent anywhere except to your own compliance API.</span>
+  </div>
+
+  <!-- Add subject ────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>Add a new subject</h2>
+    <label for="subjectName">Full name *</label>
+    <input type="text" id="subjectName" placeholder="e.g. Mohammed Al Rashid" autocomplete="off">
+
+    <label for="subjectId">Customer ID (optional)</label>
+    <input type="text" id="subjectId" placeholder="Auto-generated if left blank" autocomplete="off">
+
+    <label for="riskTier">Risk tier</label>
+    <select id="riskTier">
+      <option value="high">High risk</option>
+      <option value="medium" selected>Medium risk</option>
+      <option value="low">Low risk</option>
+    </select>
+
+    <label for="jurisdiction">Jurisdiction (optional)</label>
+    <input type="text" id="jurisdiction" placeholder="e.g. AE, UK, US" autocomplete="off">
+
+    <label for="notes">Notes (optional)</label>
+    <input type="text" id="notes" placeholder="e.g. onboarded Oct 2025" autocomplete="off">
+
+    <button id="addBtn" type="button">Add to monitoring</button>
+    <div id="addMsg"></div>
+  </div>
+
+  <!-- Current watchlist ────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>Current watchlist</h2>
+    <div class="stat">
+      <div class="stat-item">
+        <div class="stat-value" id="statCount">—</div>
+        <div class="stat-label">Subjects watched</div>
+      </div>
+    </div>
+    <button id="refreshBtn" class="btn-secondary" type="button">Refresh list</button>
+    <div id="subjectList" style="margin-top: 20px;"></div>
+  </div>
+
+  <p class="footer">
+    Hawkeye Sterling V2 · Compliance Monitoring Admin<br>
+    FATF Rec 10 · Cabinet Res 134/2025 Art.19 · FDL Art.24
+  </p>
+
+  <script src="watchlist-admin.js"></script>
+</body>
+</html>
