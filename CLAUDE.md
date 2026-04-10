@@ -240,6 +240,7 @@ The following multi-agent frameworks are vendored for reference and integration 
 | claude-seo | `vendor/claude-seo` | Parallel subagent audits | Concurrent multi-domain analysis |
 | quant-trading | `vendor/quant-trading` | Quantitative trading strategies | Transaction pattern analysis, market risk assessment |
 | Google AutoML | `vendor/google-automl` | Automated ML model selection | Risk model optimization, anomaly detection tuning |
+| friday-tony-stark-demo | `vendor/friday-tony-stark-demo` | FastMCP server + LiveKit voice pipeline (SSE) | Voice-driven compliance officer assistant; MCP tool server pattern for STR/screening queries |
 
 ## Hooks
 
