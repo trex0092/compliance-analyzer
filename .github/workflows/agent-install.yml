@@ -1,0 +1,136 @@
+name: Install Managed Agents
+
+# Browser-only installer for the Hawkeye Managed Agents.
+#
+# Trigger from: GitHub → Actions → Install Managed Agents → Run workflow.
+#
+# Required secrets (Settings → Secrets and variables → Actions):
+#   ANTHROPIC_API_KEY — console.anthropic.com → Settings → Keys
+#
+# Optional (for the "generate token" convenience path):
+#   HAWKEYE_BRAIN_TOKEN — if set, the workflow reuses it. If unset,
+#                         the workflow generates a new one and prints it
+#                         in the step summary for you to save elsewhere.
+
+on:
+  workflow_dispatch:
+    inputs:
+      which:
+        description: Which agent to install
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - incident-commander
+          - hawkeye-mlro
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/install-compliance-analyzer-SVN6Y
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve or generate brain token
+        id: token
+        run: |
+          if [ -n "${{ secrets.HAWKEYE_BRAIN_TOKEN }}" ]; then
+            echo "using existing HAWKEYE_BRAIN_TOKEN secret"
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+          else
+            NEW_TOKEN=$(openssl rand -hex 24)
+            echo "::add-mask::$NEW_TOKEN"
+            echo "NEW_TOKEN=$NEW_TOKEN" >> "$GITHUB_ENV"
+            echo "generated=true" >> "$GITHUB_OUTPUT"
+            echo "generated a new token (masked in logs, revealed in step summary)"
+          fi
+
+      - name: Install agent(s)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -e
+          case "${{ inputs.which }}" in
+            both)
+              node scripts/install-agent.mjs agents/incident-commander.yml
+              node scripts/install-agent.mjs agents/hawkeye-mlro.yml
+              ;;
+            incident-commander)
+              node scripts/install-agent.mjs agents/incident-commander.yml
+              ;;
+            hawkeye-mlro)
+              node scripts/install-agent.mjs agents/hawkeye-mlro.yml
+              ;;
+          esac
+
+      - name: Upload .env.agents as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-agents
+          path: .env.agents
+          retention-days: 30
+
+      - name: Write step summary
+        if: always()
+        run: |
+          {
+            echo "# Hawkeye Managed Agent install"
+            echo
+            echo "**Which:** \`${{ inputs.which }}\`"
+            echo
+            if [ -f .env.agents ]; then
+              echo "## Agent IDs (from .env.agents)"
+              echo
+              echo '```'
+              cat .env.agents
+              echo '```'
+              echo
+              echo "The .env.agents file is also uploaded as an artifact."
+            fi
+            echo
+            echo "## Next steps"
+            echo
+            if [ "${{ steps.token.outputs.generated }}" = "true" ]; then
+              echo "### Save your new brain token"
+              echo
+              echo "A new \`HAWKEYE_BRAIN_TOKEN\` was generated for this run."
+              echo "You need to save it in TWO places before the agent can reach the brain endpoint."
+              echo
+              echo '```'
+              echo "HAWKEYE_BRAIN_TOKEN=${NEW_TOKEN}"
+              echo '```'
+              echo
+              echo "1. **GitHub** → Settings → Secrets and variables → Actions →"
+              echo "   New repository secret. Name: \`HAWKEYE_BRAIN_TOKEN\`,"
+              echo "   Value: (paste above)."
+              echo
+              echo "2. **Netlify** → site settings → Environment variables →"
+              echo "   Add a variable. Key: \`HAWKEYE_BRAIN_TOKEN\`,"
+              echo "   Value: (paste above). Then **Trigger deploy** so the"
+              echo "   new value reaches the /api/brain function."
+            else
+              echo "Your existing \`HAWKEYE_BRAIN_TOKEN\` secret was reused."
+              echo "Make sure the SAME value is also set in Netlify site env vars."
+            fi
+            echo
+            echo "### Run a session"
+            echo
+            echo "Once the token is in both places, trigger the"
+            echo "**Run Managed Agent** workflow from the Actions tab."
+          } >> "$GITHUB_STEP_SUMMARY"

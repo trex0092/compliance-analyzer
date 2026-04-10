@@ -5,6 +5,8 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.agents
+.env.local.tmp
 ops/cachet/.env.cachet
 
 # Build artifacts

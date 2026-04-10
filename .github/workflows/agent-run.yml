@@ -1,0 +1,118 @@
+name: Run Managed Agent
+
+# Browser-only runner for a Hawkeye Managed Agent session.
+#
+# Trigger from: GitHub → Actions → Run Managed Agent → Run workflow.
+# Pick the agent, type your kickoff message, click "Run workflow".
+#
+# Required secrets:
+#   ANTHROPIC_API_KEY     — console.anthropic.com
+#   HAWKEYE_BRAIN_TOKEN   — same value that's set in Netlify env vars
+#
+# Optional secrets:
+#   HAWKEYE_BRAIN_URL     — defaults to https://compliance-analyzer.netlify.app
+#   CACHET_BASE_URL       — if you want Cachet publishing
+#   CACHET_API_TOKEN      — pair with CACHET_BASE_URL
+#
+# The workflow downloads the .env.agents artifact produced by the most
+# recent successful "Install Managed Agents" run. Install the agents
+# first, then run this workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: Which agent to run
+        required: true
+        default: incident-commander
+        type: choice
+        options:
+          - incident-commander
+          - hawkeye-mlro
+      message:
+        description: Kickoff message for the agent
+        required: true
+        default: "Smoke test. Call brain_event with kind=manual, severity=info, summary=github actions smoke test. Then summarize the response."
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/install-compliance-analyzer-SVN6Y
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download .env.agents from latest install run
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: agent-install.yml
+          workflow_conclusion: success
+          name: env-agents
+          path: .
+          if_no_artifact_found: fail
+
+      - name: Verify agent id for requested agent
+        id: verify
+        run: |
+          AGENT_KEY="AGENT_$(echo '${{ inputs.agent }}' | tr '[:lower:]-' '[:upper:]_')_ID"
+          if grep -q "^${AGENT_KEY}=" .env.agents; then
+            echo "found ${AGENT_KEY}"
+          else
+            echo "::error::${AGENT_KEY} not found in .env.agents. Run the Install Managed Agents workflow first with inputs.which=${{ inputs.agent }} (or both)."
+            cat .env.agents
+            exit 1
+          fi
+
+      - name: Run agent orchestrator
+        id: run
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          HAWKEYE_BRAIN_URL: ${{ secrets.HAWKEYE_BRAIN_URL || 'https://compliance-analyzer.netlify.app' }}
+          HAWKEYE_BRAIN_TOKEN: ${{ secrets.HAWKEYE_BRAIN_TOKEN }}
+          CACHET_BASE_URL: ${{ secrets.CACHET_BASE_URL }}
+          CACHET_API_TOKEN: ${{ secrets.CACHET_API_TOKEN }}
+        run: |
+          set -o pipefail
+          mkdir -p agent-runs
+          LOG="agent-runs/${{ inputs.agent }}-$(date +%Y%m%dT%H%M%S).log"
+          node scripts/agent-orchestrator.mjs "${{ inputs.agent }}" "${{ inputs.message }}" 2>&1 | tee "$LOG"
+          echo "log=$LOG" >> "$GITHUB_OUTPUT"
+
+      - name: Upload run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-run-${{ inputs.agent }}-${{ github.run_number }}
+          path: agent-runs/
+          retention-days: 30
+
+      - name: Write step summary
+        if: always()
+        run: |
+          {
+            echo "# Hawkeye agent run"
+            echo
+            echo "**Agent:** \`${{ inputs.agent }}\`"
+            echo
+            echo "**Kickoff:**"
+            echo
+            echo '> ${{ inputs.message }}'
+            echo
+            echo "The full streaming transcript is uploaded as the \`agent-run-${{ inputs.agent }}-${{ github.run_number }}\` artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
