@@ -35,6 +35,8 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { think as brainThink } from './brain.mjs';
+import cachet, { IncidentStatus } from './lib/cachet-client.mjs';
 
 const PROJECT_ROOT = resolve(import.meta.dirname || '.', '..');
 const HISTORY_DIR = resolve(PROJECT_ROOT, 'history', 'daily-ops');
@@ -175,8 +177,48 @@ async function run() {
     return `${implemented}/${TRACEABILITY_MATRIX.length} requirements implemented (${Math.round(implemented / TRACEABILITY_MATRIX.length * 100)}%)`;
   });
 
-  // Phase 6: Generate Briefing
-  console.log('\n═══ PHASE 6: BRIEFING ═══\n');
+  // Phase 6: Brain Pass — route every alert through the SUPER ULTRA BRAIN
+  // so it can apply deterministic auto-actions, escalate to Cachet, and
+  // record routing decisions in claude-mem.
+  console.log('\n═══ PHASE 6: BRAIN ═══\n');
+
+  await step('12. Brain routing + escalation', async () => {
+    results.brain = { routed: 0, escalated: 0, cachetPublished: 0, cachetErrors: 0 };
+    const cachetConfigured = Boolean(process.env.CACHET_BASE_URL && process.env.CACHET_API_TOKEN);
+
+    for (const alert of alerts) {
+      try {
+        const decision = await brainThink(alert.msg);
+        results.brain.routed++;
+
+        // Escalate critical alerts to the public status page when Cachet is configured.
+        if (alert.level === 'CRITICAL' && cachetConfigured) {
+          try {
+            await cachet.createIncident({
+              name: `[CRITICAL] ${alert.msg.slice(0, 80)}`,
+              message: `Autopilot critical alert\n\nBrain routed to: ${decision.tool ?? 'unrouted'}\nPurpose: ${decision.purpose}\n\nFull alert: ${alert.msg}`,
+              status: IncidentStatus.IDENTIFIED,
+            });
+            results.brain.cachetPublished++;
+          } catch (err) {
+            results.brain.cachetErrors++;
+            console.warn(`  [brain] cachet publish failed: ${err.message}`);
+          }
+        }
+
+        if (decision.tool === null || alert.level === 'CRITICAL' || alert.level === 'HIGH') {
+          results.brain.escalated++;
+        }
+      } catch (err) {
+        console.warn(`  [brain] routing failed for alert: ${err.message}`);
+      }
+    }
+
+    return `Routed ${results.brain.routed}, escalated ${results.brain.escalated}, cachet ${results.brain.cachetPublished}/${results.brain.cachetPublished + results.brain.cachetErrors}`;
+  });
+
+  // Phase 7: Generate Briefing
+  console.log('\n═══ PHASE 7: BRIEFING ═══\n');
 
   const briefing = generateBriefing();
   await archiveBriefing(briefing);
@@ -260,6 +302,7 @@ function generateBriefing() {
   if (results.traceability) lines.push(`  Regulatory coverage: ${results.traceability.implemented}/${results.traceability.total}`);
   if (results.portfolio) lines.push(`  Portfolio: ${results.portfolio.screened} entities screened`);
   if (results.chain) lines.push(`  Evidence chain: ${results.chain.valid ? 'INTACT' : 'BROKEN'} (${results.chain.entries} entries)`);
+  if (results.brain) lines.push(`  Brain: ${results.brain.routed} routed, ${results.brain.escalated} escalated, ${results.brain.cachetPublished} published to Cachet`);
   lines.push('');
 
   // Errors

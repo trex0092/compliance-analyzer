@@ -585,6 +585,33 @@ window.csFormatDateInput = function (el) {
     toast(`CRA saved — ${name}: ${rating}`, 'success');
     renderCRA();
 
+    // Brain hook: if the CRA logs a sanctions hit, escalate to the brain
+    // immediately. The brain routes confirmed matches to the 24h freeze
+    // protocol (Cabinet Res 74/2020) and escalates potential matches to
+    // the Compliance Officer for four-eyes review.
+    try {
+      if (typeof global.__brainNotify === 'function' && form.sanctionsHit && form.sanctionsHit !== 'No Match') {
+        var _score = form.sanctionsHit === 'Confirmed Match' ? 0.95
+                   : form.sanctionsHit === 'Potential Match – Pending' ? 0.7
+                   : 0.2;
+        global.__brainNotify({
+          kind: 'sanctions_match',
+          severity: _score >= 0.9 ? 'critical' : _score >= 0.5 ? 'high' : 'medium',
+          summary: 'CRA sanctions hit: ' + form.sanctionsHit + ' on ' + name,
+          subject: name,
+          matchScore: _score,
+          refId: record.id,
+          meta: {
+            rating: rating,
+            cddLevel: cddLevel,
+            pepStatus: form.pepStatus,
+            geography: form.geography,
+            nationality: form.nationality,
+          },
+        });
+      }
+    } catch (_brainErr) { /* best-effort */ }
+
     // Auto-sync to Asana
     var craIdx = editIdx >= 0 ? editIdx : 0;
     try {
@@ -1322,6 +1349,28 @@ window.csFormatDateInput = function (el) {
     document.getElementById('strModal').classList.remove('open');
     toast(`STR case saved — ${subject}`, 'success');
     renderSTR();
+
+    // Brain hook: fire-and-forget notify the SUPER ULTRA BRAIN so it can
+    // start the filing deadline tracker, apply the FDL Art.29 confidentiality
+    // lock, and append to the evidence chain. Never blocks the UI.
+    try {
+      if (typeof global.__brainNotify === 'function') {
+        global.__brainNotify({
+          kind: 'str_saved',
+          severity: (record.priority && /urgent|critical|immediate/i.test(record.priority)) ? 'critical' : 'high',
+          summary: `STR saved: ${record.reportType} for ${subject}`,
+          subject: subject,
+          refId: record.id,
+          meta: {
+            reportType: record.reportType,
+            priority: record.priority,
+            flagCount: (record.flags || []).length,
+            hasNarrative: !!record.narrative,
+            filed: !!record.goamlRef,
+          },
+        });
+      }
+    } catch (_brainErr) { /* brain is best-effort — never break the save path */ }
   };
 
   global.suiteDeleteSTR = function(idx) {
