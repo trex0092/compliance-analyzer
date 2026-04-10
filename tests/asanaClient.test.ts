@@ -157,18 +157,17 @@ describe('asanaClient — listWorkspaceUsers', () => {
   });
 
   // Longer timeout: asanaRequestWithRetry waits 2+4+8=14s between retries
-  // on non-config errors. We don't want to test the retry backoff itself,
-  // just that the final error propagates, so we allow the full delay.
-  // Note: the retry wrapper collapses the specific status code into the
-  // generic "failed after max retries" message — a pre-existing behavior
-  // of asanaClient.ts, not something this session should refactor.
+  // on non-config errors. We test that the ORIGINAL status code (401)
+  // propagates through the retry wrapper so ops can triage failures
+  // (stale token vs rate limit vs outage).
   it(
-    'returns error after exhausting retries on non-2xx response',
+    'returns error with original status code after exhausting retries',
     async () => {
       mockFetch({ errors: [{ message: 'Unauthorized' }] }, false, 401);
       const result = await listWorkspaceUsers('1213645083721316');
       expect(result.ok).toBe(false);
-      expect(result.error).toContain('failed after max retries');
+      expect(result.error).toContain('401');
+      expect(result.error).toContain('failed after');
     },
     20000
   );
@@ -246,15 +245,16 @@ describe('asanaClient — resolveAsanaUserByName', () => {
   });
 
   // Longer timeout for the retry-backoff path (14s of retry delays).
-  // Same note as above: the retry wrapper collapses the original status
-  // code into a generic "failed after max retries" message.
+  // The original 404 status code now propagates through the retry
+  // wrapper — the caller can distinguish "workspace doesn't exist"
+  // from other failure modes.
   it(
-    'propagates failure from listWorkspaceUsers up through resolveAsanaUserByName',
+    'propagates original status code from listWorkspaceUsers failure',
     async () => {
       mockFetch({ error: 'not found' }, false, 404);
       const result = await resolveAsanaUserByName('1213645083721316', 'Luisa');
       expect(result.ok).toBe(false);
-      expect(result.error).toContain('failed after max retries');
+      expect(result.error).toContain('404');
     },
     20000
   );

@@ -155,11 +155,13 @@ export async function asanaRequestWithRetry<T>(
   path: string,
   opts: RequestInit = {}
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
+  let lastError: string | undefined;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const result = await asanaRequest<T>(path, opts);
     if (result.ok) return result;
+    lastError = result.error;
 
-    // Don't retry config errors
+    // Don't retry config errors (token missing, proxy misconfigured)
     if (result.error?.includes('not configured')) return result;
 
     // Retry transient failures with exponential backoff
@@ -167,7 +169,15 @@ export async function asanaRequestWithRetry<T>(
       await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
     }
   }
-  return { ok: false, error: 'Asana request failed after max retries' };
+  // Preserve the ACTUAL last error (status code, body, network message)
+  // so callers can distinguish 401/403/429/500/timeout. The old behavior
+  // of collapsing everything to "failed after max retries" made it
+  // impossible to triage production failures — you couldn't tell a
+  // stale token from a rate limit from an outage.
+  return {
+    ok: false,
+    error: `Asana request failed after ${MAX_RETRIES + 1} attempts: ${lastError ?? 'unknown error'}`,
+  };
 }
 
 export async function createAsanaTask(
