@@ -108,9 +108,10 @@ export function detectDormancyActivity(
     hits.length === 0
       ? `Dormancy-activity detector: 0 hits across ${byCustomer.size} customer(s).`
       : `Dormancy-activity detector: ${hits.length} customer(s) exhibited dormant-then-burst patterns ` +
-        `(${hits.slice(0, 3).map((h) => `${h.customerId}@${h.gapDays}d ×${h.multiplier}`).join(', ')}${
-          hits.length > 3 ? ', ...' : ''
-        }).`;
+        `(${hits
+          .slice(0, 3)
+          .map((h) => `${h.customerId}@${h.gapDays}d ×${h.multiplier}`)
+          .join(', ')}${hits.length > 3 ? ', ...' : ''}).`;
 
   return { hits, checked: byCustomer.size, narrative };
 }

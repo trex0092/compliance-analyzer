@@ -20,10 +20,7 @@ import {
 } from './asanaClient';
 import { enqueueRetry } from './asanaQueue';
 import { addTaskLink } from './asanaTaskLinks';
-import {
-  buildComplianceCustomFields,
-  deadlineTypeFromCaseType,
-} from './asanaCustomFields';
+import { buildComplianceCustomFields, deadlineTypeFromCaseType } from './asanaCustomFields';
 
 const DEFAULT_PROJECT = '1213759768596515';
 

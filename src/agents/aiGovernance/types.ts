@@ -40,9 +40,9 @@ export type Framework = 'eu_ai_act' | 'nist_ai_rmf' | 'iso_42001' | 'uae_ai_gov'
  */
 export type EuAiActRiskTier =
   | 'unacceptable' // Art.5 — prohibited (biometric ID, social scoring, etc.)
-  | 'high'         // Art.6 — high-risk AI systems (Annex III + conformity assessment)
-  | 'limited'      // Art.52 — transparency obligations only
-  | 'minimal';     // Default — no additional obligations
+  | 'high' // Art.6 — high-risk AI systems (Annex III + conformity assessment)
+  | 'limited' // Art.52 — transparency obligations only
+  | 'minimal'; // Default — no additional obligations
 
 /**
  * NIST AI RMF function categories.

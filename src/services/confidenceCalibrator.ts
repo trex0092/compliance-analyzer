@@ -103,10 +103,7 @@ export function fitPlattCalibration(
  * Apply the Platt calibration to a raw confidence. Returns the calibrated
  * P(outcome_positive | raw_confidence) in [0,1].
  */
-export function calibrateConfidence(
-  rawConfidence: number,
-  params: CalibrationParams
-): number {
+export function calibrateConfidence(rawConfidence: number, params: CalibrationParams): number {
   return sigmoid(params.a * rawConfidence + params.b);
 }
 

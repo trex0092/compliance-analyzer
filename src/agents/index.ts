@@ -300,7 +300,10 @@ export type { OnboardingAgentConfig, OnboardingAgentResult } from './definitions
 export type { IncidentAgentConfig, IncidentAgentResult } from './definitions/incident-agent';
 export type { FilingAgentConfig, FilingAgentResult } from './definitions/filing-agent';
 export type { AuditAgentConfig, AuditAgentResult } from './definitions/audit-agent';
-export type { AiGovernanceAgentConfig, AiGovernanceAgentResult } from './definitions/ai-governance-agent';
+export type {
+  AiGovernanceAgentConfig,
+  AiGovernanceAgentResult,
+} from './definitions/ai-governance-agent';
 export type { ToolResult, ToolCallRequest, ToolCallResponse } from './mcp-server';
 export type { AgentMessage, SessionSnapshot } from './session/manager';
 export type { WorkflowDefinition, WorkflowExecution, WorkflowStep } from './orchestration/engine';

@@ -53,13 +53,9 @@ export interface AiGovernanceAgentResult {
   markdownSummary: string;
 }
 
-export function runAiGovernanceAgent(
-  config: AiGovernanceAgentConfig
-): AiGovernanceAgentResult {
+export function runAiGovernanceAgent(config: AiGovernanceAgentConfig): AiGovernanceAgentResult {
   const evidence =
-    config.mode === 'self'
-      ? SELF_AUDIT_EVIDENCE
-      : config.evidence ?? extendSelfAudit({}); // default: empty customer overrides baseline
+    config.mode === 'self' ? SELF_AUDIT_EVIDENCE : (config.evidence ?? extendSelfAudit({})); // default: empty customer overrides baseline
 
   const audit = runGovernanceAudit({
     target: config.target,

@@ -54,11 +54,16 @@ export interface StrGradeReport {
 // Grader
 // ---------------------------------------------------------------------------
 
-const WHO_PATTERNS = /\b(customer|subject|entity|natural person|legal entity|beneficial owner|signatory|counterparty)\b/i;
-const WHAT_PATTERNS = /\b(transaction|transfer|deposit|withdrawal|wire|cash|bullion|gold|crypto|shipment|invoice)\b/i;
-const WHEN_PATTERNS = /\b(on|between|from|since|during|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}\/\d{1,2}\/\d{2,4})\b/i;
-const WHERE_PATTERNS = /\b(UAE|Dubai|Abu Dhabi|Iran|DPRK|Sudan|Syria|Russia|onshore|offshore|free zone|bank account|exchange|VASP)\b/i;
-const WHY_PATTERNS = /\b(suspicion|suspicious|possible|likely|indicator|red flag|typology|evasion|structuring|layering|integration|TF|terrorist|PF|proliferation)\b/i;
+const WHO_PATTERNS =
+  /\b(customer|subject|entity|natural person|legal entity|beneficial owner|signatory|counterparty)\b/i;
+const WHAT_PATTERNS =
+  /\b(transaction|transfer|deposit|withdrawal|wire|cash|bullion|gold|crypto|shipment|invoice)\b/i;
+const WHEN_PATTERNS =
+  /\b(on|between|from|since|during|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}\/\d{1,2}\/\d{2,4})\b/i;
+const WHERE_PATTERNS =
+  /\b(UAE|Dubai|Abu Dhabi|Iran|DPRK|Sudan|Syria|Russia|onshore|offshore|free zone|bank account|exchange|VASP)\b/i;
+const WHY_PATTERNS =
+  /\b(suspicion|suspicious|possible|likely|indicator|red flag|typology|evasion|structuring|layering|integration|TF|terrorist|PF|proliferation)\b/i;
 
 const SPECIFICITY_PATTERNS = [
   /\bAED\s?\d/i, // amount with AED
@@ -77,7 +82,8 @@ const BOILERPLATE_PHRASES = [
   'without clear economic purpose',
 ];
 
-const ARTICLE_CITATION = /(FDL\s*(?:No\.?\s*)?10\/2025|Cabinet\s*Res(olution)?\s*\d+\/\d{4}|Cabinet\s*Decision\s*\d+\/\d{4}|MoE\s*Circular|FATF\s*Rec)/i;
+const ARTICLE_CITATION =
+  /(FDL\s*(?:No\.?\s*)?10\/2025|Cabinet\s*Res(olution)?\s*\d+\/\d{4}|Cabinet\s*Decision\s*\d+\/\d{4}|MoE\s*Circular|FATF\s*Rec)/i;
 
 export function gradeStrNarrative(input: StrGradeInput): StrGradeReport {
   const text = input.narrative;
@@ -109,7 +115,11 @@ export function gradeStrNarrative(input: StrGradeInput): StrGradeReport {
   let typology = 0;
   if (input.matchedTypologies && input.matchedTypologies.length > 0) {
     typology = 20;
-  } else if (/\b(structuring|smurfing|layering|trade-based|front-company|shell|chain-hopping|BIC stripping)\b/i.test(text)) {
+  } else if (
+    /\b(structuring|smurfing|layering|trade-based|front-company|shell|chain-hopping|BIC stripping)\b/i.test(
+      text
+    )
+  ) {
     typology = 16;
   } else if (/\btypology\b/i.test(text)) {
     typology = 10;
@@ -132,7 +142,8 @@ export function gradeStrNarrative(input: StrGradeInput): StrGradeReport {
     if (lower.includes(b)) nonBoilerplate -= 4;
   }
   nonBoilerplate = Math.max(0, nonBoilerplate);
-  if (nonBoilerplate < 16) gaps.push('Non-boilerplate: replace cliché phrases with specific observations.');
+  if (nonBoilerplate < 16)
+    gaps.push('Non-boilerplate: replace cliché phrases with specific observations.');
 
   // 6. Regulatory citation — 20 if article cited, else 0
   let citation = 0;

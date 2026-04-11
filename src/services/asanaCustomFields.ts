@@ -154,9 +154,7 @@ export function buildComplianceCustomFields(
  * Utility: map case risk level → filing deadline type. Used by
  * filingAsanaSync when it doesn't have an explicit deadline type.
  */
-export function deadlineTypeFromCaseType(
-  caseType: string | undefined
-): DeadlineType | undefined {
+export function deadlineTypeFromCaseType(caseType: string | undefined): DeadlineType | undefined {
   if (!caseType) return undefined;
   const upper = caseType.toUpperCase();
   if (upper.includes('STR')) return 'STR';

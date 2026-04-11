@@ -101,7 +101,10 @@ export function diffInterpretations(
   }
 
   const affectedSubsystems: AffectedSubsystem[] = [];
-  const checkSection = (section: InterpretationSection, changeType: AffectedSubsystem['changeType']) => {
+  const checkSection = (
+    section: InterpretationSection,
+    changeType: AffectedSubsystem['changeType']
+  ) => {
     for (const entry of KEYWORD_MAP) {
       if (entry.keyword.test(section.body) || entry.keyword.test(section.heading)) {
         affectedSubsystems.push({

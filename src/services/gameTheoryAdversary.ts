@@ -43,10 +43,7 @@ export interface EvasionStrategy {
 }
 
 /** Payoff for the DEFENDER = detection_rate - attacker_cost. */
-export type PayoffFn = (
-  detection: DetectionStrategy,
-  evasion: EvasionStrategy
-) => number;
+export type PayoffFn = (detection: DetectionStrategy, evasion: EvasionStrategy) => number;
 
 export interface EquilibriumReport {
   defenderMix: ReadonlyArray<{ strategy: string; probability: number }>;

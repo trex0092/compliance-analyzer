@@ -162,13 +162,11 @@ function monteCarloShapley(input: ShapleyInput): ShapleyReport {
     }
   }
 
-  const attributions: ShapleyAttribution[] = Array.from(phi.entries()).map(
-    ([signal, value]) => ({
-      signal,
-      value: value / samples,
-      normalised: 0,
-    })
-  );
+  const attributions: ShapleyAttribution[] = Array.from(phi.entries()).map(([signal, value]) => ({
+    signal,
+    value: value / samples,
+    normalised: 0,
+  }));
   const totalAbs = attributions.reduce((acc, a) => acc + Math.abs(a.value), 0);
   if (totalAbs > 0) {
     for (const a of attributions) a.normalised = Math.abs(a.value) / totalAbs;

@@ -80,9 +80,7 @@ export interface OriginTraceReport {
 // Tracer
 // ---------------------------------------------------------------------------
 
-export function traceGoldOrigin(
-  shipments: readonly GoldShipment[]
-): OriginTraceReport {
+export function traceGoldOrigin(shipments: readonly GoldShipment[]): OriginTraceReport {
   const results: OriginTraceResult[] = [];
 
   for (const s of shipments) {
@@ -124,10 +122,10 @@ export function traceGoldOrigin(
         verdict === 'refuse'
           ? 'LBMA RGG v9 + UAE MoE RSG Framework + OECD CAHRA Guidance'
           : verdict === 'escalate'
-          ? 'LBMA RGG v9 Step 3 (EDD on high-risk supply chain)'
-          : verdict === 'edd_required'
-          ? 'LBMA RGG v9 Step 2 (refiner + provenance verification)'
-          : 'LBMA RGG v9 Step 1 (standard supply-chain CDD)',
+            ? 'LBMA RGG v9 Step 3 (EDD on high-risk supply chain)'
+            : verdict === 'edd_required'
+              ? 'LBMA RGG v9 Step 2 (refiner + provenance verification)'
+              : 'LBMA RGG v9 Step 1 (standard supply-chain CDD)',
     });
   }
 

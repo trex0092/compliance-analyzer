@@ -40,7 +40,11 @@ export function buildSlaBreachSlackAlert(input: {
   taskGid: string;
 }): SlackAlertPayload {
   const urgency =
-    input.daysRemaining < 0 ? '🚨 BREACHED' : input.daysRemaining === 0 ? '⚠ DUE TODAY' : '⚠ BREACH RISK';
+    input.daysRemaining < 0
+      ? '🚨 BREACHED'
+      : input.daysRemaining === 0
+        ? '⚠ DUE TODAY'
+        : '⚠ BREACH RISK';
   return {
     channel: '#compliance-alerts',
     text: `${urgency} — ${input.deadlineType} for ${input.customerName}`,
@@ -179,8 +183,8 @@ export function reconcileWebhookGaps(
           l.lastKnownStatus === 'open' && r.remoteStatus === 'completed'
             ? 'completion_missed'
             : l.lastKnownStatus === 'completed' && r.remoteStatus === 'open'
-            ? 'reopened'
-            : 'unknown',
+              ? 'reopened'
+              : 'unknown',
         lastLocalAt: l.lastSeenAt,
         remoteAt: r.remoteUpdatedAt,
       });

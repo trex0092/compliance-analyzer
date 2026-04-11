@@ -100,7 +100,17 @@ export function excavateEntityHistory(input: ArchaeologyInput): ArchaeologyRepor
 
 export interface CalendarEntry {
   date: string; // ISO date
-  kind: 'STR' | 'SAR' | 'CTR' | 'DPMSR' | 'CNMR' | 'EOCN' | 'CDD_REVIEW' | 'UBO_REVERIFY' | 'LBMA_AUDIT' | 'KPI_REPORT';
+  kind:
+    | 'STR'
+    | 'SAR'
+    | 'CTR'
+    | 'DPMSR'
+    | 'CNMR'
+    | 'EOCN'
+    | 'CDD_REVIEW'
+    | 'UBO_REVERIFY'
+    | 'LBMA_AUDIT'
+    | 'KPI_REPORT';
   title: string;
   citation: string;
   priority: 'critical' | 'high' | 'medium' | 'low';
@@ -229,10 +239,7 @@ function formatDdMmYyyy(iso: string): string {
  * for Node 18 where globalThis.crypto.subtle isn't available.
  */
 
-export async function computeHmacSha256Hex(
-  secret: string,
-  message: string
-): Promise<string> {
+export async function computeHmacSha256Hex(secret: string, message: string): Promise<string> {
   // Prefer Web Crypto (browser + Node 19+).
   const g = globalThis as { crypto?: { subtle?: SubtleCrypto } };
   if (g.crypto?.subtle) {

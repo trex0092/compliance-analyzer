@@ -175,7 +175,9 @@ function renderSheet(sheet: WorkbookSheet): string {
     return Math.min(60, Math.max(headerLen, maxBody) + 2);
   });
 
-  const columnTags = widths.map((w) => `<Column ss:AutoFitWidth="0" ss:Width="${w * 6}"/>`).join('');
+  const columnTags = widths
+    .map((w) => `<Column ss:AutoFitWidth="0" ss:Width="${w * 6}"/>`)
+    .join('');
 
   const titleRow = sheet.title
     ? `<Row><Cell ss:MergeAcross="${colCount - 1}" ss:StyleID="Title"><Data ss:Type="String">${escXml(sheet.title)}</Data></Cell></Row>`

@@ -93,8 +93,6 @@ export const SELF_AUDIT_EVIDENCE: Readonly<GovernanceEvidence> = Object.freeze({
  * baseline. Used by tests and by customer audits that want to start
  * from the self-audit and patch specific fields.
  */
-export function extendSelfAudit(
-  overrides: Partial<GovernanceEvidence>
-): GovernanceEvidence {
+export function extendSelfAudit(overrides: Partial<GovernanceEvidence>): GovernanceEvidence {
   return { ...SELF_AUDIT_EVIDENCE, ...overrides };
 }

@@ -137,13 +137,15 @@ export function detectPromptInjection(input: string): InjectionReport {
     }
   }
 
-  const topSeverity: InjectionReport['topSeverity'] = findings.some((f) => f.severity === 'critical')
+  const topSeverity: InjectionReport['topSeverity'] = findings.some(
+    (f) => f.severity === 'critical'
+  )
     ? 'critical'
     : findings.some((f) => f.severity === 'high')
-    ? 'high'
-    : findings.some((f) => f.severity === 'medium')
-    ? 'medium'
-    : 'none';
+      ? 'high'
+      : findings.some((f) => f.severity === 'medium')
+        ? 'medium'
+        : 'none';
 
   // Sanitise: strip zero-width / bidi unicode, collapse mega repetition.
   const sanitised = input

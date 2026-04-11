@@ -129,9 +129,7 @@ export function scoreSubsystem(
   const name = runs[0].subsystem;
 
   // Correctness: verdicts that matched the MLRO override (or were not overridden).
-  const correctRuns = runs.filter(
-    (r) => !r.mlroOverride || r.mlroOverride === r.verdict
-  );
+  const correctRuns = runs.filter((r) => !r.mlroOverride || r.mlroOverride === r.verdict);
   const correctness = (correctRuns.length / runs.length) * 20;
 
   // Completeness: runs where `complete` was true.
@@ -167,7 +165,10 @@ export function scoreSubsystem(
 
   // Maturity state transitions.
   let maturity: SubsystemScoreReport['maturity'] = 'draft';
-  if (runs.length >= config.crystallizationMinExecutions && total >= config.crystallizationThreshold) {
+  if (
+    runs.length >= config.crystallizationMinExecutions &&
+    total >= config.crystallizationThreshold
+  ) {
     maturity = 'crystallized';
   } else if (runs.length >= config.hardenedMinExecutions && total >= config.hardenedThreshold) {
     maturity = 'hardened';
@@ -191,7 +192,15 @@ export function scoreSubsystem(
     `Rubric — correctness ${rubric.correctness}, completeness ${rubric.completeness}, ` +
     `edge cases ${rubric.edgeCases}, efficiency ${rubric.efficiency}, reusability ${rubric.reusability}.`;
 
-  return { subsystem: name, rubric, total, runCount: runs.length, maturity, recommendation, narrative };
+  return {
+    subsystem: name,
+    rubric,
+    total,
+    runCount: runs.length,
+    maturity,
+    recommendation,
+    narrative,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -214,7 +223,13 @@ export function buildRepairTaskPayload(report: SubsystemScoreReport): {
   priority: 'critical' | 'high' | 'medium' | 'low';
 } {
   const priority: 'critical' | 'high' | 'medium' | 'low' =
-    report.total < 30 ? 'critical' : report.total < 50 ? 'high' : report.total < 70 ? 'medium' : 'low';
+    report.total < 30
+      ? 'critical'
+      : report.total < 50
+        ? 'high'
+        : report.total < 70
+          ? 'medium'
+          : 'low';
   return {
     name: `[BRAIN-REPAIR] Subsystem ${report.subsystem} degraded (${report.total}/100)`,
     notes:

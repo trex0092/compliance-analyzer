@@ -102,9 +102,7 @@ export function compactCase(events: readonly AuditEvent[]): CompactedCase {
     .sort((a, b) => b.count - a.count);
 
   // Canonical form for hashing: preserve the original event sequence verbatim.
-  const canonical = sorted
-    .map((e) => `${e.at}|${e.actor}|${e.action}|${e.note ?? ''}`)
-    .join('\n');
+  const canonical = sorted.map((e) => `${e.at}|${e.actor}|${e.action}|${e.note ?? ''}`).join('\n');
   const integrityHash = fnv1a(canonical);
 
   return {
@@ -128,8 +126,6 @@ export function verifyCompactedCase(
   compacted: CompactedCase
 ): boolean {
   const sorted = [...events].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-  const canonical = sorted
-    .map((e) => `${e.at}|${e.actor}|${e.action}|${e.note ?? ''}`)
-    .join('\n');
+  const canonical = sorted.map((e) => `${e.at}|${e.actor}|${e.action}|${e.note ?? ''}`).join('\n');
   return fnv1a(canonical) === compacted.integrityHash;
 }

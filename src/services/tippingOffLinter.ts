@@ -42,25 +42,29 @@ const PATTERNS: readonly TippingOffPattern[] = [
   // Critical — explicit STR / SAR / CTR filing mentions
   {
     id: 'TO-01',
-    regex: /\b(filed|filing|submitted|reported)\s+(a|an|the)?\s*(str|sar|ctr|dpmsr|cnmr|suspicious\s+(transaction|activity)\s+report)\b/i,
+    regex:
+      /\b(filed|filing|submitted|reported)\s+(a|an|the)?\s*(str|sar|ctr|dpmsr|cnmr|suspicious\s+(transaction|activity)\s+report)\b/i,
     description: 'Explicit mention of filing an STR/SAR/CTR/DPMSR/CNMR',
     severity: 'critical',
   },
   {
     id: 'TO-02',
-    regex: /\b(reported|disclosed)\s+to\s+(the\s+)?(fiu|financial\s+intelligence\s+unit|goaml|moe|ministry\s+of\s+economy)\b/i,
+    regex:
+      /\b(reported|disclosed)\s+to\s+(the\s+)?(fiu|financial\s+intelligence\s+unit|goaml|moe|ministry\s+of\s+economy)\b/i,
     description: 'Explicit mention of reporting to FIU / MoE / goAML',
     severity: 'critical',
   },
   {
     id: 'TO-03',
-    regex: /\b(you|your\s+account|your\s+transaction)\s+.{0,30}\b(matched|flagged|hit)\s+.{0,30}\b(sanctions?|watchlist|blacklist|ofac|un\s+list)\b/i,
+    regex:
+      /\b(you|your\s+account|your\s+transaction)\s+.{0,30}\b(matched|flagged|hit)\s+.{0,30}\b(sanctions?|watchlist|blacklist|ofac|un\s+list)\b/i,
     description: 'Telling the subject they matched a sanctions list',
     severity: 'critical',
   },
   {
     id: 'TO-04',
-    regex: /\b(your\s+(funds|account|assets)\s+(has\s+|have\s+)?been\s+frozen|asset\s+freeze\s+has\s+been\s+executed|we\s+have\s+frozen\s+your)\b/i,
+    regex:
+      /\b(your\s+(funds|account|assets)\s+(has\s+|have\s+)?been\s+frozen|asset\s+freeze\s+has\s+been\s+executed|we\s+have\s+frozen\s+your)\b/i,
     description: 'Telling the subject their assets have been frozen',
     severity: 'critical',
   },
@@ -68,19 +72,22 @@ const PATTERNS: readonly TippingOffPattern[] = [
   // High — investigation / review language
   {
     id: 'TO-05',
-    regex: /\b(your\s+account|your\s+activity)\s+(is|has\s+been)\s+(under|undergoing)\s+(investigation|review|scrutiny)\b/i,
+    regex:
+      /\b(your\s+account|your\s+activity)\s+(is|has\s+been)\s+(under|undergoing)\s+(investigation|review|scrutiny)\b/i,
     description: 'Telling the subject they are under investigation',
     severity: 'high',
   },
   {
     id: 'TO-06',
-    regex: /\b(compliance\s+(officer|team)|mlro|aml\s+team)\s+.{0,30}\b(reviewing|investigating|looking\s+at)\s+.{0,30}\b(your|you)\b/i,
+    regex:
+      /\b(compliance\s+(officer|team)|mlro|aml\s+team)\s+.{0,30}\b(reviewing|investigating|looking\s+at)\s+.{0,30}\b(your|you)\b/i,
     description: 'Telling the subject the compliance team is reviewing them',
     severity: 'high',
   },
   {
     id: 'TO-07',
-    regex: /\b(anti[- ]money[- ]laundering|aml|cft|counter[- ]terrorism[- ]financing)\s+.{0,30}\b(concerns?|suspicious?|alerts?|red[ -]?flags?)\b/i,
+    regex:
+      /\b(anti[- ]money[- ]laundering|aml|cft|counter[- ]terrorism[- ]financing)\s+.{0,30}\b(concerns?|suspicious?|alerts?|red[ -]?flags?)\b/i,
     description: 'AML/CFT language paired with concerns/suspicion',
     severity: 'high',
   },
@@ -94,13 +101,15 @@ const PATTERNS: readonly TippingOffPattern[] = [
   },
   {
     id: 'TO-09',
-    regex: /\b(cannot|unable\s+to)\s+.{0,30}\b(process|complete)\s+.{0,30}\b(sanctions?|aml|compliance\s+(reasons?|concerns?))\b/i,
+    regex:
+      /\b(cannot|unable\s+to)\s+.{0,30}\b(process|complete)\s+.{0,30}\b(sanctions?|aml|compliance\s+(reasons?|concerns?))\b/i,
     description: 'Blaming sanctions / AML / compliance directly',
     severity: 'medium',
   },
   {
     id: 'TO-10',
-    regex: /\b(eocn|executive\s+office\s+of\s+control|financial\s+intelligence\s+unit|goaml|str[- ]filing)\b/i,
+    regex:
+      /\b(eocn|executive\s+office\s+of\s+control|financial\s+intelligence\s+unit|goaml|str[- ]filing)\b/i,
     description: 'Naming a regulator or reporting system to the subject',
     severity: 'high',
   },
@@ -143,13 +152,15 @@ export function lintForTippingOff(text: string): TippingOffReport {
     }
   }
 
-  const topSeverity: TippingOffReport['topSeverity'] = findings.some((f) => f.severity === 'critical')
+  const topSeverity: TippingOffReport['topSeverity'] = findings.some(
+    (f) => f.severity === 'critical'
+  )
     ? 'critical'
     : findings.some((f) => f.severity === 'high')
-    ? 'high'
-    : findings.some((f) => f.severity === 'medium')
-    ? 'medium'
-    : 'none';
+      ? 'high'
+      : findings.some((f) => f.severity === 'medium')
+        ? 'medium'
+        : 'none';
 
   const clean = findings.length === 0;
   const narrative = clean

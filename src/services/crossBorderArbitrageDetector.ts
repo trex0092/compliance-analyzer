@@ -70,9 +70,7 @@ const JURISDICTION_PAIR_WEIGHTS: ReadonlyArray<{
   { pair: ['AE', 'PA'], weight: 0.6, reason: 'UAE + Panama (ICIJ exposure)' },
 ];
 
-function buildPairWeight(
-  jurs: readonly string[]
-): { score: number; reason: string } {
+function buildPairWeight(jurs: readonly string[]): { score: number; reason: string } {
   let maxScore = 0;
   let reason = `${jurs.length} jurisdictions`;
   for (let i = 0; i < jurs.length; i++) {

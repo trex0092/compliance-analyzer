@@ -136,7 +136,10 @@ export class TenantRateLimiter {
       currentDelayMs: this.defaultDelayMs,
     };
     bucket.lastRequestMs = now;
-    bucket.currentDelayMs = Math.min(this.maxDelayMs, Math.max(bucket.currentDelayMs, retryAfterMs));
+    bucket.currentDelayMs = Math.min(
+      this.maxDelayMs,
+      Math.max(bucket.currentDelayMs, retryAfterMs)
+    );
     this.buckets.set(tenantId, bucket);
   }
 

@@ -83,14 +83,7 @@ const TYPOLOGY_GROUPS = [
   // 2. Criminal justice verbs (high-signal only — dropped fine/penalty/
   //    settlement/sentenced/cease-and-desist as they generate too much
   //    noise; dropped "deferred prosecution" as it's US-specific legal terminology)
-  [
-    'convicted',
-    'indicted',
-    'charged',
-    'prosecuted',
-    'arrested',
-    '"found guilty"',
-  ],
+  ['convicted', 'indicted', 'charged', 'prosecuted', 'arrested', '"found guilty"'],
   // 3. Financial crime predicate offences
   [
     'fraud',
@@ -164,14 +157,7 @@ const TYPOLOGY_GROUPS = [
   // (dropped "Cabinet Resolution 74"/"134" — adverse media rarely cites
   // them by number; EOCN + Ministry of Economy + goAML cover the same
   // regulatory signal space more efficiently)
-  [
-    'MoE',
-    '"Ministry of Economy"',
-    '"Central Bank of the UAE"',
-    'goAML',
-    'EOCN',
-    'CNMR',
-  ],
+  ['MoE', '"Ministry of Economy"', '"Central Bank of the UAE"', 'goAML', 'EOCN', 'CNMR'],
 ];
 
 const DEFAULT_NEGATIVE_EXCLUSIONS = [

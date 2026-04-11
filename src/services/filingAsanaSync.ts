@@ -29,10 +29,7 @@ import {
 } from './asanaClient';
 import { enqueueRetry } from './asanaQueue';
 import { addTaskLink } from './asanaTaskLinks';
-import {
-  buildComplianceCustomFields,
-  type DeadlineType,
-} from './asanaCustomFields';
+import { buildComplianceCustomFields, type DeadlineType } from './asanaCustomFields';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -204,10 +201,10 @@ export async function updateFilingAsanaStatus(
     filing.status === 'submitted'
       ? `[SUBMITTED][${filing.filingType}] ${filing.entityName}`
       : filing.status === 'accepted'
-      ? `[ACCEPTED][${filing.filingType}] ${filing.entityName}`
-      : filing.status === 'rejected'
-      ? `[REJECTED][${filing.filingType}] ${filing.entityName}`
-      : `[${filing.status.toUpperCase()}][${filing.filingType}] ${filing.entityName}`;
+        ? `[ACCEPTED][${filing.filingType}] ${filing.entityName}`
+        : filing.status === 'rejected'
+          ? `[REJECTED][${filing.filingType}] ${filing.entityName}`
+          : `[${filing.status.toUpperCase()}][${filing.filingType}] ${filing.entityName}`;
 
   const completed = filing.status === 'accepted';
   return updateAsanaTask(taskGid, { name, completed });
@@ -232,9 +229,7 @@ export async function updateFilingAsanaStatus(
  * Regulatory basis: FDL No.10/2025 Art.26-27 (filing closure),
  * Cabinet Res 134/2025 Art.19 (auditable state transitions).
  */
-export async function bulkCloseOnSubmission(
-  taskGids: readonly string[]
-): Promise<{
+export async function bulkCloseOnSubmission(taskGids: readonly string[]): Promise<{
   ok: boolean;
   closed: number;
   failed: number;

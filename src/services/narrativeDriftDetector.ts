@@ -72,9 +72,9 @@ export function detectNarrativeDrift(
       `at ${(closestMatch!.similarity * 100).toFixed(1)}% similarity. ` +
       `Rewrite required to avoid boilerplate flag (FDL Art.26-27).`
     : closestMatch
-    ? `Narrative drift OK: closest prior filing ${closestMatch.filingId} at ` +
-      `${(closestMatch.similarity * 100).toFixed(1)}% similarity (threshold ${(threshold * 100).toFixed(0)}%).`
-    : `Narrative drift OK: no prior filings in this typology to compare against.`;
+      ? `Narrative drift OK: closest prior filing ${closestMatch.filingId} at ` +
+        `${(closestMatch.similarity * 100).toFixed(1)}% similarity (threshold ${(threshold * 100).toFixed(0)}%).`
+      : `Narrative drift OK: no prior filings in this typology to compare against.`;
 
   return { draftTypology, hasDrift, closestMatch, topMatches: matches, narrative };
 }

@@ -63,10 +63,7 @@ export interface TaintReport {
 // Propagator
 // ---------------------------------------------------------------------------
 
-export function propagateTaint(
-  graph: TaintGraph,
-  config: TaintConfig = {}
-): TaintReport {
+export function propagateTaint(graph: TaintGraph, config: TaintConfig = {}): TaintReport {
   const decay = 1 - (config.propagationDecay ?? 0.2);
   const threshold = config.minTaintThreshold ?? 0.05;
   const maxHops = config.maxHops ?? 10;

@@ -60,9 +60,7 @@ function perturbValue(val: unknown): unknown[] {
   return [];
 }
 
-export function inventoryAttackSurface(
-  input: AttackSurfaceInput
-): AttackSurfaceReport {
+export function inventoryAttackSurface(input: AttackSurfaceInput): AttackSurfaceReport {
   const baselineVerdict = input.probe(input.baselineSignals);
   const scores: SurfaceScore[] = [];
 

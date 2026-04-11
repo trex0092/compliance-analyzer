@@ -119,10 +119,7 @@ export const SCHEDULED_REPORTS: readonly ScheduledReportDefinition[] = [
 // Next-run calculator
 // ---------------------------------------------------------------------------
 
-export function computeNextRun(
-  cadence: Cadence,
-  from: Date = new Date()
-): string {
+export function computeNextRun(cadence: Cadence, from: Date = new Date()): string {
   const next = new Date(from);
   next.setUTCHours(0, 0, 0, 0);
   switch (cadence) {

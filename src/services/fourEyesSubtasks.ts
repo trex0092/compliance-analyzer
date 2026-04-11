@@ -74,7 +74,10 @@ export function buildFourEyesSubtaskPayloads(
   const dueDays = context.riskLevel === 'critical' ? 1 : 2;
   const dueOn = new Date(Date.now() + dueDays * 86400000).toISOString().slice(0, 10);
 
-  const build = (approver: FourEyesApprover, role: 'primary' | 'independent'): FourEyesSubtaskPayload => ({
+  const build = (
+    approver: FourEyesApprover,
+    role: 'primary' | 'independent'
+  ): FourEyesSubtaskPayload => ({
     name: `[4-EYES ${role.toUpperCase()}] ${context.caseType} — ${context.entityName}`,
     notes: [
       `Four-eyes approval required under Cabinet Res 134/2025 Art.19.`,

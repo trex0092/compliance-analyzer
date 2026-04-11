@@ -65,10 +65,7 @@ export function reviewExtensions(input: TeacherExtensionInput): TeacherExtension
       `Sanctioned UBO present but verdict is ${input.studentVerdict} (expected freeze per Cabinet Res 74/2020).`
     );
   }
-  if (
-    (input.extensions.confirmedWalletHits ?? 0) > 0 &&
-    input.studentVerdict !== 'freeze'
-  ) {
+  if ((input.extensions.confirmedWalletHits ?? 0) > 0 && input.studentVerdict !== 'freeze') {
     concerns.push(
       `Confirmed wallet hits present but verdict is ${input.studentVerdict} (expected freeze per FATF Rec 15).`
     );
@@ -76,17 +73,13 @@ export function reviewExtensions(input: TeacherExtensionInput): TeacherExtension
 
   // Concern 2: typology matcher says one thing, brain says another.
   if (input.phase2?.typologyTopAction === 'freeze' && input.studentVerdict !== 'freeze') {
-    concerns.push(
-      `Typology matcher suggests freeze but verdict is ${input.studentVerdict}.`
-    );
+    concerns.push(`Typology matcher suggests freeze but verdict is ${input.studentVerdict}.`);
   }
   if (
     input.phase2?.typologyTopAction === 'escalate' &&
     (input.studentVerdict === 'pass' || input.studentVerdict === 'flag')
   ) {
-    concerns.push(
-      `Typology matcher suggests escalate but verdict is ${input.studentVerdict}.`
-    );
+    concerns.push(`Typology matcher suggests escalate but verdict is ${input.studentVerdict}.`);
   }
 
   // Concern 3: contradiction detector fired.

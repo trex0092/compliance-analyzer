@@ -269,8 +269,8 @@ function buildHtml(input: ScreeningReportInput, integrityHash: string): string {
     input.subjectsClean.length === 0
       ? '<p><em>No subjects screened in this run.</em></p>'
       : input.subjectsClean.length > 50
-      ? `<p>${input.subjectsClean.length} subjects returned clean. List omitted for brevity; full list available in the JSON artefact.</p>`
-      : `<ul>${input.subjectsClean.map((s) => `<li>${esc(s.subjectName)} <span class="small">(${esc(s.subjectId)})</span></li>`).join('')}</ul>`;
+        ? `<p>${input.subjectsClean.length} subjects returned clean. List omitted for brevity; full list available in the JSON artefact.</p>`
+        : `<ul>${input.subjectsClean.map((s) => `<li>${esc(s.subjectName)} <span class="small">(${esc(s.subjectId)})</span></li>`).join('')}</ul>`;
 
   const brainBlock =
     input.brainVerdict || typeof input.brainConfidence === 'number'
@@ -415,9 +415,7 @@ function buildMarkdown(input: ScreeningReportInput, integrityHash: string): stri
     lines.push(`| Subject ID | Subject Name | New hits | Linked task |`);
     lines.push(`|---|---|---:|---|`);
     for (const s of input.subjectsWithAlerts) {
-      lines.push(
-        `| ${s.subjectId} | ${s.subjectName} | ${s.newHitCount} | ${s.asanaGid ?? '—'} |`
-      );
+      lines.push(`| ${s.subjectId} | ${s.subjectName} | ${s.newHitCount} | ${s.asanaGid ?? '—'} |`);
     }
     lines.push('');
   }
@@ -456,9 +454,7 @@ function buildMarkdown(input: ScreeningReportInput, integrityHash: string): stri
   lines.push(`Algorithm: SHA-256 over canonical JSON`);
   lines.push(`\`\`\``);
   lines.push('');
-  lines.push(
-    '_Retain for 5 years per FDL No.10/2025 Art.24. Store with goAML XML + FIU receipt._'
-  );
+  lines.push('_Retain for 5 years per FDL No.10/2025 Art.24. Store with goAML XML + FIU receipt._');
 
   return lines.join('\n');
 }

@@ -78,7 +78,8 @@ const TYPOLOGIES: readonly TypologyTemplate[] = [
       structuringSeverity: 'high',
       intermediaryCount: Math.floor(2 + r() * 3),
     }),
-    summaryTemplate: 'Sub-threshold structuring: repeated AED 52K cash deposits across short window.',
+    summaryTemplate:
+      'Sub-threshold structuring: repeated AED 52K cash deposits across short window.',
   },
   {
     id: 'T-SHELLFRONT',
@@ -140,16 +141,12 @@ const TYPOLOGIES: readonly TypologyTemplate[] = [
 // Generator
 // ---------------------------------------------------------------------------
 
-export function generateSyntheticEvasionCases(
-  config: GenerateConfig = {}
-): SyntheticCase[] {
+export function generateSyntheticEvasionCases(config: GenerateConfig = {}): SyntheticCase[] {
   const seed = config.seed ?? 42;
   const count = config.count ?? TYPOLOGIES.length * 3;
   const whitelist = config.typologyWhitelist;
 
-  const pool = whitelist
-    ? TYPOLOGIES.filter((t) => whitelist.includes(t.id))
-    : TYPOLOGIES;
+  const pool = whitelist ? TYPOLOGIES.filter((t) => whitelist.includes(t.id)) : TYPOLOGIES;
   if (pool.length === 0) return [];
 
   const rand = mulberry32(seed);

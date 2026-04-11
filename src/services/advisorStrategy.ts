@@ -137,7 +137,10 @@ export interface AiProxyBody {
     max_tokens: number;
     system: string;
     tools: Array<Record<string, unknown>>;
-    messages: Array<{ role: 'user' | 'assistant'; content: string | Array<Record<string, unknown>> }>;
+    messages: Array<{
+      role: 'user' | 'assistant';
+      content: string | Array<Record<string, unknown>>;
+    }>;
   };
 }
 

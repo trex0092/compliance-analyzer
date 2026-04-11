@@ -133,7 +133,8 @@ export function addBusinessDays(fromIso: string, days: number): string {
 
 export function computeSlaState(input: SlaInput, now: Date = new Date()): SlaState {
   const deadlineIso =
-    input.deadlineIso ?? addBusinessDays(input.triggeredAt, DEFAULT_DEADLINE_DAYS[input.deadlineType]);
+    input.deadlineIso ??
+    addBusinessDays(input.triggeredAt, DEFAULT_DEADLINE_DAYS[input.deadlineType]);
 
   const nowIso = now.toISOString();
   const businessDaysRemaining = businessDaysBetween(nowIso, deadlineIso);
@@ -143,20 +144,20 @@ export function computeSlaState(input: SlaInput, now: Date = new Date()): SlaSta
     businessDaysRemaining < 0
       ? 'breached'
       : businessDaysRemaining === 0
-      ? 'red'
-      : businessDaysRemaining <= Math.max(1, Math.floor(totalDays / 3))
-      ? 'red'
-      : businessDaysRemaining <= Math.max(2, Math.floor((totalDays * 2) / 3))
-      ? 'amber'
-      : 'green';
+        ? 'red'
+        : businessDaysRemaining <= Math.max(1, Math.floor(totalDays / 3))
+          ? 'red'
+          : businessDaysRemaining <= Math.max(2, Math.floor((totalDays * 2) / 3))
+            ? 'amber'
+            : 'green';
 
   const customFieldsUpdate = buildComplianceCustomFields({
     riskLevel:
       bucket === 'breached' || bucket === 'red'
         ? 'critical'
         : bucket === 'amber'
-        ? 'high'
-        : 'medium',
+          ? 'high'
+          : 'medium',
     caseId: input.caseId,
     deadlineType: input.deadlineType,
     daysRemaining: businessDaysRemaining,
