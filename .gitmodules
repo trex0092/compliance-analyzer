@@ -82,3 +82,12 @@
 [submodule "vendor/claudesidian"]
 	path = vendor/claudesidian
 	url = https://github.com/heyitsnoah/claudesidian.git
+[submodule "vendor/claude-mem"]
+	path = vendor/claude-mem
+	url = https://github.com/rodboev/claude-mem.git
+[submodule "vendor/MiroFish"]
+	path = vendor/MiroFish
+	url = https://github.com/666ghj/MiroFish.git
+[submodule "vendor/multi-agent-ai-system"]
+	path = vendor/multi-agent-ai-system
+	url = https://github.com/FareedKhan-dev/Multi-Agent-AI-System.git
