@@ -94,3 +94,39 @@
 [submodule "vendor/oca-reporting-engine"]
 	path = vendor/oca-reporting-engine
 	url = https://github.com/OCA/reporting-engine.git
+[submodule "vendor/awesome-openclaw-skills"]
+	path = vendor/awesome-openclaw-skills
+	url = https://github.com/VoltAgent/awesome-openclaw-skills.git
+[submodule "vendor/awesome-claude-skills"]
+	path = vendor/awesome-claude-skills
+	url = https://github.com/ComposioHQ/awesome-claude-skills.git
+[submodule "vendor/antigravity-awesome-skills"]
+	path = vendor/antigravity-awesome-skills
+	url = https://github.com/sickn33/antigravity-awesome-skills.git
+[submodule "vendor/awesome-copilot"]
+	path = vendor/awesome-copilot
+	url = https://github.com/github/awesome-copilot.git
+[submodule "vendor/awesome-agent-skills"]
+	path = vendor/awesome-agent-skills
+	url = https://github.com/VoltAgent/awesome-agent-skills.git
+[submodule "vendor/awesome-claude-code-setup"]
+	path = vendor/awesome-claude-code-setup
+	url = https://github.com/cassler/awesome-claude-code-setup.git
+[submodule "vendor/claude-code"]
+	path = vendor/claude-code
+	url = https://github.com/anthropics/claude-code.git
+[submodule "vendor/anthropics-skills"]
+	path = vendor/anthropics-skills
+	url = https://github.com/anthropics/skills.git
+[submodule "vendor/claude-cookbooks"]
+	path = vendor/claude-cookbooks
+	url = https://github.com/anthropics/claude-cookbooks.git
+[submodule "vendor/prompt-eng-interactive-tutorial"]
+	path = vendor/prompt-eng-interactive-tutorial
+	url = https://github.com/anthropics/prompt-eng-interactive-tutorial.git
+[submodule "vendor/claude-plugins-official"]
+	path = vendor/claude-plugins-official
+	url = https://github.com/anthropics/claude-plugins-official.git
+[submodule "vendor/anthropics-courses"]
+	path = vendor/anthropics-courses
+	url = https://github.com/anthropics/courses.git
