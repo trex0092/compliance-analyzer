@@ -148,9 +148,10 @@ export interface InboxNotification {
   ageHours: number;
 }
 
-export function sweepInbox(
-  notifications: readonly InboxNotification[]
-): { archive: string[]; keep: string[] } {
+export function sweepInbox(notifications: readonly InboxNotification[]): {
+  archive: string[];
+  keep: string[];
+} {
   const archive: string[] = [];
   const keep: string[] = [];
   for (const n of notifications) {

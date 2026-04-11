@@ -26,11 +26,7 @@
 
 import { EU_AI_ACT_CONTROLS } from '../agents/aiGovernance/euAiAct';
 import type { Control, GovernanceAudit } from '../agents/aiGovernance';
-import {
-  createAsanaTask,
-  isAsanaConfigured,
-  type AsanaTaskPayload,
-} from './asanaClient';
+import { createAsanaTask, isAsanaConfigured, type AsanaTaskPayload } from './asanaClient';
 import { enqueueRetry } from './asanaQueue';
 import { buildComplianceCustomFields } from './asanaCustomFields';
 
@@ -67,7 +63,9 @@ export function buildReadinessPayloads(
     }
   }
 
-  return EU_AI_ACT_CONTROLS.map((control) => buildSingleTask(control, projectId, statusByControl.get(control.id)));
+  return EU_AI_ACT_CONTROLS.map((control) =>
+    buildSingleTask(control, projectId, statusByControl.get(control.id))
+  );
 }
 
 function buildSingleTask(
@@ -80,10 +78,10 @@ function buildSingleTask(
       control.severity === 'critical'
         ? 'critical'
         : control.severity === 'high'
-        ? 'high'
-        : control.severity === 'medium'
-        ? 'medium'
-        : 'low',
+          ? 'high'
+          : control.severity === 'medium'
+            ? 'medium'
+            : 'low',
     caseId: control.id,
     regulationCitation: control.citation,
   });

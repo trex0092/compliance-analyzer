@@ -86,9 +86,7 @@ export function matchAssayCertificates(
 
     const prior = seenNumbers.get(claim.certificateNumber);
     if (prior && prior !== claim.shipmentId) {
-      failures.push(
-        `Duplicate certificate number: also used on shipment ${prior}`
-      );
+      failures.push(`Duplicate certificate number: also used on shipment ${prior}`);
     } else {
       seenNumbers.set(claim.certificateNumber, claim.shipmentId);
     }

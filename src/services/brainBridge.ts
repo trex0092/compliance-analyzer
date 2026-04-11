@@ -214,9 +214,7 @@ export function assessWithMegaBrain(req: MegaBrainRequest): MegaBrainResponse {
  * brain proceeds without advisor input. Never throws — compliance
  * decisions must never block on advisor availability.
  */
-export function createDefaultAdvisorEscalation(
-  deps: AdvisorCallDeps = {}
-): AdvisorEscalationFn {
+export function createDefaultAdvisorEscalation(deps: AdvisorCallDeps = {}): AdvisorEscalationFn {
   return async (input: AdvisorEscalationInput): Promise<AdvisorEscalationResult | null> => {
     const prompt = buildAdvisorPrompt(input);
     try {
@@ -245,9 +243,7 @@ export function createDefaultAdvisorEscalation(
       };
     } catch (err) {
       // Never throw — log to console for ops visibility and return null.
-      console.warn(
-        `[brainBridge] advisor escalation failed: ${(err as Error).message}`
-      );
+      console.warn(`[brainBridge] advisor escalation failed: ${(err as Error).message}`);
       return null;
     }
   };
@@ -287,9 +283,7 @@ export async function runWeaponizedAssessment(
   options: { advisor?: AdvisorEscalationFn | null } = {}
 ): Promise<WeaponizedBrainResponse> {
   const advisor =
-    options.advisor === null
-      ? undefined
-      : options.advisor ?? createDefaultAdvisorEscalation();
+    options.advisor === null ? undefined : (options.advisor ?? createDefaultAdvisorEscalation());
   return runWeaponizedBrain({ ...req, advisor });
 }
 
@@ -382,7 +376,9 @@ export async function weaponizeFullAssessment(
   return result;
 }
 
-function weaponizedVerdictToBridgeKind(verdict: WeaponizedBrainResponse['finalVerdict']): BrainEventKind {
+function weaponizedVerdictToBridgeKind(
+  verdict: WeaponizedBrainResponse['finalVerdict']
+): BrainEventKind {
   switch (verdict) {
     case 'freeze':
       return 'sanctions_match';
@@ -396,7 +392,9 @@ function weaponizedVerdictToBridgeKind(verdict: WeaponizedBrainResponse['finalVe
   }
 }
 
-function weaponizedVerdictToBridgeSeverity(verdict: WeaponizedBrainResponse['finalVerdict']): BrainSeverity {
+function weaponizedVerdictToBridgeSeverity(
+  verdict: WeaponizedBrainResponse['finalVerdict']
+): BrainSeverity {
   switch (verdict) {
     case 'freeze':
       return 'critical';

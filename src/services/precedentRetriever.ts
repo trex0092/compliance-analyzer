@@ -119,9 +119,7 @@ export function queryPrecedents(
     scored.length === 0
       ? 'No similar past cases found in the precedent index.'
       : `Found ${scored.length} similar past case(s). ` +
-        (dominantOutcome
-          ? `${dominantCount} of ${scored.length} → ${dominantOutcome}.`
-          : '') +
+        (dominantOutcome ? `${dominantCount} of ${scored.length} → ${dominantOutcome}.` : '') +
         ` Most similar: ${scored[0].record.label} (similarity ${(scored[0].similarity * 100).toFixed(0)}%).`;
 
   return { matches: scored, outcomeCounts, dominantOutcome, summary };

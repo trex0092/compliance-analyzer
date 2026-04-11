@@ -42,7 +42,12 @@ const CONTROL_LIBRARIES: Record<Framework, readonly Control[]> = {
   uae_ai_gov: UAE_AI_GOV_CONTROLS,
 };
 
-const ALL_FRAMEWORKS: readonly Framework[] = ['eu_ai_act', 'nist_ai_rmf', 'iso_42001', 'uae_ai_gov'];
+const ALL_FRAMEWORKS: readonly Framework[] = [
+  'eu_ai_act',
+  'nist_ai_rmf',
+  'iso_42001',
+  'uae_ai_gov',
+];
 
 export function runGovernanceAudit(options: RunAuditOptions): GovernanceAudit {
   const frameworks = options.frameworks ?? ALL_FRAMEWORKS;

@@ -28,9 +28,7 @@ export interface TimeRollupByAnalyst {
   byCategory: Record<TimeEntry['category'], number>;
 }
 
-export function rollupTimeByAnalyst(
-  entries: readonly TimeEntry[]
-): TimeRollupByAnalyst[] {
+export function rollupTimeByAnalyst(entries: readonly TimeEntry[]): TimeRollupByAnalyst[] {
   const byAnalyst = new Map<string, TimeRollupByAnalyst>();
   for (const e of entries) {
     const existing = byAnalyst.get(e.analystGid) ?? {
@@ -111,9 +109,7 @@ export interface FilingFunnelRollup {
   rejected: number;
 }
 
-export function rollupFilingFunnel(
-  rows: readonly FilingRow[]
-): FilingFunnelRollup[] {
+export function rollupFilingFunnel(rows: readonly FilingRow[]): FilingFunnelRollup[] {
   const byKey = new Map<string, FilingFunnelRollup>();
   for (const r of rows) {
     const quarter = quarterOf(r.filedAt);
@@ -131,7 +127,9 @@ export function rollupFilingFunnel(
     byKey.set(key, existing);
   }
   return Array.from(byKey.values()).sort((a, b) =>
-    a.quarter === b.quarter ? a.filingType.localeCompare(b.filingType) : a.quarter.localeCompare(b.quarter)
+    a.quarter === b.quarter
+      ? a.filingType.localeCompare(b.filingType)
+      : a.quarter.localeCompare(b.quarter)
   );
 }
 

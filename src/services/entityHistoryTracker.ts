@@ -69,9 +69,7 @@ function diffAttributes(
  * Build the history timeline from a list of snapshots. Each entry
  * describes the diff from the previous snapshot.
  */
-export function buildHistory(
-  snapshots: readonly EntitySnapshot[]
-): HistoryEntry[] {
+export function buildHistory(snapshots: readonly EntitySnapshot[]): HistoryEntry[] {
   if (snapshots.length === 0) return [];
   const sorted = [...snapshots].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
   const entries: HistoryEntry[] = [];
@@ -127,7 +125,5 @@ export function findAttributeChanges(
   snapshots: readonly EntitySnapshot[],
   attribute: string
 ): HistoryEntry[] {
-  return buildHistory(snapshots).filter((e) =>
-    e.diffs.some((d) => d.attribute === attribute)
-  );
+  return buildHistory(snapshots).filter((e) => e.diffs.some((d) => d.attribute === attribute));
 }

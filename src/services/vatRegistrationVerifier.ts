@@ -65,7 +65,11 @@ export interface TrnVerificationReport {
 const TRN_FORMAT = /^100[0-9]{12}$/;
 
 function normalise(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function verifyTrnRegistrations(

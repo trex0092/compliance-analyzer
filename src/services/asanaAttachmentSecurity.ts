@@ -36,7 +36,9 @@ export type VirusScanner = (bytes: Uint8Array | string) => Promise<{
  * ClamAV/VirusTotal client. Detects the EICAR standard test signature.
  */
 export function createSignatureScanner(
-  signatures: readonly string[] = ['X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*']
+  signatures: readonly string[] = [
+    'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*',
+  ]
 ): VirusScanner {
   return async (content) => {
     const text = typeof content === 'string' ? content : new TextDecoder().decode(content);
@@ -55,9 +57,7 @@ export async function assertScanClean(
 ): Promise<void> {
   const result = await scanner(content);
   if (result.verdict === 'infected') {
-    throw new Error(
-      `Attachment rejected: infected with ${result.signature ?? 'unknown malware'}`
-    );
+    throw new Error(`Attachment rejected: infected with ${result.signature ?? 'unknown malware'}`);
   }
   if (result.verdict === 'error') {
     throw new Error('Attachment scanner error — rejecting upload conservatively');
@@ -78,7 +78,11 @@ const REDACTION_RULES: readonly RedactionRule[] = [
   { name: 'passport', regex: /\b[A-Z]\d{8}\b/g, replacement: '[REDACTED-PASSPORT]' },
   { name: 'emirates_id', regex: /\b784-?\d{4}-?\d{7}-?\d\b/g, replacement: '[REDACTED-EID]' },
   { name: 'iban', regex: /\bAE\d{2}\s?\d{3}\s?\d{16}\b/g, replacement: '[REDACTED-IBAN]' },
-  { name: 'uae_phone', regex: /\b(?:\+971|00971|0)?[ -]?5[0-9][ -]?\d{3}[ -]?\d{4}\b/g, replacement: '[REDACTED-PHONE]' },
+  {
+    name: 'uae_phone',
+    regex: /\b(?:\+971|00971|0)?[ -]?5[0-9][ -]?\d{3}[ -]?\d{4}\b/g,
+    replacement: '[REDACTED-PHONE]',
+  },
   { name: 'email', regex: /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, replacement: '[REDACTED-EMAIL]' },
 ];
 

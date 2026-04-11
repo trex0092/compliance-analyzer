@@ -43,12 +43,7 @@ export type TriggerEvent =
 
 export interface RescreenTask {
   customerId: string;
-  reason:
-    | 'adverse_media'
-    | 'new_sanction'
-    | 'ubo_change'
-    | 'tier_boundary'
-    | 'interval_expired';
+  reason: 'adverse_media' | 'new_sanction' | 'ubo_change' | 'tier_boundary' | 'interval_expired';
   priority: 'critical' | 'high' | 'medium' | 'low';
   dueBy: string;
   citation: string;

@@ -68,8 +68,7 @@ export const UAE_AI_GOV_CONTROLS: readonly Control[] = [
     title: 'Arabic language support',
     framework: 'uae_ai_gov',
     citation: 'UAE AI Charter Principle 6',
-    requirement:
-      'AI systems serving UAE users should support Arabic for user-facing interactions.',
+    requirement: 'AI systems serving UAE users should support Arabic for user-facing interactions.',
     evidenceKeys: ['hasArabicSupport'],
     severity: 'medium',
   },

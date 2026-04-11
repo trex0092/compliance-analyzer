@@ -108,9 +108,10 @@ export function walkCorporateGraph(
     hits.length === 0
       ? `Corporate graph walker: ${visited.size} node(s) visited, no flags within ${maxHops} hops of ${queryId}.`
       : `Corporate graph walker: ${visited.size} node(s) visited, ${hits.length} flagged ` +
-        `(${hits.slice(0, 3).map((h) => `${h.nodeName}@${h.hops}hops`).join(', ')}${
-          hits.length > 3 ? ', ...' : ''
-        }).`;
+        `(${hits
+          .slice(0, 3)
+          .map((h) => `${h.nodeName}@${h.hops}hops`)
+          .join(', ')}${hits.length > 3 ? ', ...' : ''}).`;
 
   return { queryId, hops: maxHops, visited: visited.size, hits, narrative };
 }

@@ -134,9 +134,7 @@ function normaliseName(n: string): string {
     .trim();
 }
 
-export function resolveEntities(
-  observations: readonly EntityObservation[]
-): ResolutionReport {
+export function resolveEntities(observations: readonly EntityObservation[]): ResolutionReport {
   const uf = new UnionFind();
   const strongIdBuckets = new Map<string, string[]>(); // fingerprint → obsIds
   const softIdBuckets = new Map<string, string[]>();
@@ -199,9 +197,7 @@ export function resolveEntities(
       // If any observation in the group had a strong ID shared with another,
       // label 'strong_id'; otherwise soft.
       const hasSharedStrong = group.some((g) =>
-        Object.values(g.strongIdentifiers ?? {}).some(
-          (v) => typeof v === 'string' && v.length > 0
-        )
+        Object.values(g.strongIdentifiers ?? {}).some((v) => typeof v === 'string' && v.length > 0)
       );
       reason = hasSharedStrong ? 'strong_id' : 'name_dob_nationality';
     }

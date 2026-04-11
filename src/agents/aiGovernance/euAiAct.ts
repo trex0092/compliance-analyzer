@@ -49,7 +49,12 @@ export const EU_AI_ACT_CONTROLS: readonly Control[] = [
     requirement:
       'Training, validation and test datasets must be subject to data governance practices covering lineage, bias, and quality.',
     tier: 'high',
-    evidenceKeys: ['hasDataGovernancePolicy', 'hasTrainingDataLineage', 'hasBiasAssessment', 'hasDataQualityChecks'],
+    evidenceKeys: [
+      'hasDataGovernancePolicy',
+      'hasTrainingDataLineage',
+      'hasBiasAssessment',
+      'hasDataQualityChecks',
+    ],
     severity: 'high',
   },
   {

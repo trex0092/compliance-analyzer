@@ -101,11 +101,7 @@ import {
   type AdverseMediaHit,
   type AdverseMediaReport,
 } from './adverseMediaRanker';
-import {
-  summariseUboRisk,
-  type UboGraph,
-  type UboRiskSummary,
-} from './uboGraph';
+import { summariseUboRisk, type UboGraph, type UboRiskSummary } from './uboGraph';
 import {
   analyseLayering,
   analyseShellCompany,
@@ -117,16 +113,8 @@ import {
   type WalletDatabase,
   type PortfolioWalletRisk,
 } from './vaspWalletScoring';
-import {
-  runAllDetectors,
-  type Transaction,
-  type DetectorSuiteResult,
-} from './transactionAnomaly';
-import {
-  explainableScore,
-  type ScoringInput,
-  type Explanation,
-} from './explainableScoring';
+import { runAllDetectors, type Transaction, type DetectorSuiteResult } from './transactionAnomaly';
+import { explainableScore, type ScoringInput, type Explanation } from './explainableScoring';
 import {
   sealComplianceBundle,
   type ComplianceProofBundle,
@@ -134,11 +122,7 @@ import {
 } from './zkComplianceProof';
 import { DEFAULT_CLAMP_POLICY, type ClampPolicy } from './clampPolicy';
 import { redTeamCritique, type RedTeamChallenge } from './redTeamCritic';
-import {
-  queryPrecedents,
-  type PrecedentRecord,
-  type PrecedentReport,
-} from './precedentRetriever';
+import { queryPrecedents, type PrecedentRecord, type PrecedentReport } from './precedentRetriever';
 import {
   detectContradictions,
   type ContradictionReport,
@@ -149,14 +133,8 @@ import {
   type RegulatorVoiceInput,
   type RegulatorVoiceReport,
 } from './regulatorVoicePass';
-import {
-  calibrateConfidence,
-  type CalibrationParams,
-} from './confidenceCalibrator';
-import {
-  computeCounterfactuals,
-  type CounterfactualReport,
-} from './counterfactualFlipper';
+import { calibrateConfidence, type CalibrationParams } from './confidenceCalibrator';
+import { computeCounterfactuals, type CounterfactualReport } from './counterfactualFlipper';
 import {
   detectTemporalPatterns,
   type TemporalEvent,
@@ -167,20 +145,13 @@ import {
   type TypologySignals,
   type TypologyMatchReport,
 } from './sanctionsEvasionTypologyMatcher';
-import {
-  detectNarrativeDrift,
-  type PriorFiling,
-  type DriftReport,
-} from './narrativeDriftDetector';
+import { detectNarrativeDrift, type PriorFiling, type DriftReport } from './narrativeDriftDetector';
 import {
   correlateAcrossCustomers,
   type CustomerSnapshot,
   type CorrelationReport,
 } from './crossCustomerCorrelator';
-import {
-  reviewExtensions,
-  type TeacherExtensionReport,
-} from './teacherExtensionReviewer';
+import { reviewExtensions, type TeacherExtensionReport } from './teacherExtensionReviewer';
 
 // ---------------------------------------------------------------------------
 // Verdict ordering — verdicts can only escalate under new clamps.
@@ -434,7 +405,7 @@ export async function runWeaponizedBrain(
   // Partial-success helper: every extension runs inside this wrapper so that
   // a failure in one subsystem never loses the decision from the others.
   // Failures escalate to human review instead of throwing. FDL Art.24.
-  const runSafely = <T,>(name: string, fn: () => T): T | undefined => {
+  const runSafely = <T>(name: string, fn: () => T): T | undefined => {
     try {
       return fn();
     } catch (err) {
@@ -449,9 +420,7 @@ export async function runWeaponizedBrain(
 
   // 2. Subsystem 14: Adverse media ranking
   if (req.adverseMedia && req.adverseMedia.length > 0) {
-    const report = runSafely('adverseMediaRanker', () =>
-      rankAdverseMedia(req.adverseMedia!)
-    );
+    const report = runSafely('adverseMediaRanker', () => rankAdverseMedia(req.adverseMedia!));
     if (report) {
       extensions.adverseMedia = report;
       if (report.counts.critical > 0) {
@@ -590,9 +559,9 @@ export async function runWeaponizedBrain(
     uboUndisclosedPct: extensions.ubo?.summary.undisclosedPercentage,
     hasSanctionedUbo: extensions.ubo?.summary.hasSanctionedUbo,
     confirmedWalletHits: extensions.wallets?.confirmedHits,
-    structuringSeverity: extensions.transactionAnomalies?.findings
-      .find((f) => f.kind === 'structuring')
-      ?.severity as 'low' | 'medium' | 'high' | undefined,
+    structuringSeverity: extensions.transactionAnomalies?.findings.find(
+      (f) => f.kind === 'structuring'
+    )?.severity as 'low' | 'medium' | 'high' | undefined,
   };
   extensions.redTeam = runSafely('redTeamCritic', () =>
     redTeamCritique({
@@ -607,11 +576,19 @@ export async function runWeaponizedBrain(
   if (req.precedentIndex && extensions.explanation) {
     const factors = [
       extensions.explanation.score / 100,
-      extensions.explanation.cddLevel === 'EDD' ? 1 : extensions.explanation.cddLevel === 'CDD' ? 0.5 : 0,
+      extensions.explanation.cddLevel === 'EDD'
+        ? 1
+        : extensions.explanation.cddLevel === 'CDD'
+          ? 0.5
+          : 0,
       extensions.adverseMedia ? extensions.adverseMedia.ranked.length / 10 : 0,
-      extensions.ubo?.summary.undisclosedPercentage ? extensions.ubo.summary.undisclosedPercentage / 100 : 0,
+      extensions.ubo?.summary.undisclosedPercentage
+        ? extensions.ubo.summary.undisclosedPercentage / 100
+        : 0,
       extensions.wallets?.confirmedHits ? 1 : 0,
-      extensions.transactionAnomalies?.findings.length ? extensions.transactionAnomalies.findings.length / 10 : 0,
+      extensions.transactionAnomalies?.findings.length
+        ? extensions.transactionAnomalies.findings.length / 10
+        : 0,
     ];
     extensions.precedents = runSafely('precedentRetriever', () =>
       queryPrecedents(req.precedentIndex!, { factors, topK: 5 })
@@ -702,9 +679,7 @@ export async function runWeaponizedBrain(
       const top = extensions.typologies.topHit;
       if (top.action === 'freeze') {
         finalVerdict = 'freeze';
-        clampReasons.push(
-          `CLAMP: typology ${top.id} ${top.name} forces freeze (${top.citation})`
-        );
+        clampReasons.push(`CLAMP: typology ${top.id} ${top.name} forces freeze (${top.citation})`);
       } else if (top.action === 'escalate') {
         const next = escalateTo(finalVerdict, 'escalate');
         if (next !== finalVerdict) {
@@ -819,9 +794,7 @@ export async function runWeaponizedBrain(
   let advisorResult: AdvisorEscalationResult | null = null;
   if (req.advisor) {
     const shouldEscalate =
-      finalVerdict === 'escalate' ||
-      finalVerdict === 'freeze' ||
-      clampReasons.length > 0;
+      finalVerdict === 'escalate' || finalVerdict === 'freeze' || clampReasons.length > 0;
     if (shouldEscalate) {
       const reason = buildAdvisorReason(finalVerdict, confidence, clampReasons);
       try {

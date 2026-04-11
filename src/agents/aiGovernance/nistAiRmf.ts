@@ -101,8 +101,7 @@ export const NIST_AI_RMF_CONTROLS: readonly Control[] = [
     title: 'AI system categorisation',
     framework: 'nist_ai_rmf',
     citation: 'NIST AI RMF MP-1.2',
-    requirement:
-      'The AI system is categorised according to its risk level and intended use.',
+    requirement: 'The AI system is categorised according to its risk level and intended use.',
     nistFunction: 'map',
     evidenceKeys: ['hasRiskAssessment'],
     severity: 'high',
@@ -147,8 +146,7 @@ export const NIST_AI_RMF_CONTROLS: readonly Control[] = [
     title: 'Bias assessment',
     framework: 'nist_ai_rmf',
     citation: 'NIST AI RMF MS-1.2',
-    requirement:
-      'Potential biases in training data and model outputs are measured and documented.',
+    requirement: 'Potential biases in training data and model outputs are measured and documented.',
     nistFunction: 'measure',
     evidenceKeys: ['hasBiasAssessment'],
     severity: 'high',
@@ -158,8 +156,7 @@ export const NIST_AI_RMF_CONTROLS: readonly Control[] = [
     title: 'Drift detection',
     framework: 'nist_ai_rmf',
     citation: 'NIST AI RMF MS-2.1',
-    requirement:
-      'AI system performance is monitored continuously and drift is detected.',
+    requirement: 'AI system performance is monitored continuously and drift is detected.',
     nistFunction: 'measure',
     evidenceKeys: ['hasDriftDetection', 'hasMonitoring'],
     severity: 'high',
@@ -169,8 +166,7 @@ export const NIST_AI_RMF_CONTROLS: readonly Control[] = [
     title: 'Explainability evaluated',
     framework: 'nist_ai_rmf',
     citation: 'NIST AI RMF MS-2.2',
-    requirement:
-      'The interpretability of AI system decisions is measured.',
+    requirement: 'The interpretability of AI system decisions is measured.',
     nistFunction: 'measure',
     evidenceKeys: ['hasExplainability'],
     severity: 'medium',
@@ -180,8 +176,7 @@ export const NIST_AI_RMF_CONTROLS: readonly Control[] = [
     title: 'Audit trail for decisions',
     framework: 'nist_ai_rmf',
     citation: 'NIST AI RMF MS-4.1',
-    requirement:
-      'Every AI system decision is logged and traceable.',
+    requirement: 'Every AI system decision is logged and traceable.',
     nistFunction: 'measure',
     evidenceKeys: ['hasDecisionLogging', 'hasAuditTrail'],
     severity: 'critical',
@@ -193,8 +188,7 @@ export const NIST_AI_RMF_CONTROLS: readonly Control[] = [
     title: 'Risk treatment plan',
     framework: 'nist_ai_rmf',
     citation: 'NIST AI RMF MG-1.1',
-    requirement:
-      'A risk treatment plan identifies, prioritises, and addresses AI risks.',
+    requirement: 'A risk treatment plan identifies, prioritises, and addresses AI risks.',
     nistFunction: 'manage',
     evidenceKeys: ['hasRiskRegister'],
     severity: 'high',
@@ -204,8 +198,7 @@ export const NIST_AI_RMF_CONTROLS: readonly Control[] = [
     title: 'Incident response',
     framework: 'nist_ai_rmf',
     citation: 'NIST AI RMF MG-2.1',
-    requirement:
-      'Mechanisms are in place to respond to AI incidents.',
+    requirement: 'Mechanisms are in place to respond to AI incidents.',
     nistFunction: 'manage',
     evidenceKeys: ['hasIncidentReporting'],
     severity: 'critical',
@@ -215,8 +208,7 @@ export const NIST_AI_RMF_CONTROLS: readonly Control[] = [
     title: 'Human oversight checkpoints',
     framework: 'nist_ai_rmf',
     citation: 'NIST AI RMF MG-3.1',
-    requirement:
-      'Human oversight checkpoints are defined for high-impact decisions.',
+    requirement: 'Human oversight checkpoints are defined for high-impact decisions.',
     nistFunction: 'manage',
     evidenceKeys: ['hasHumanOversight', 'hasFourEyesApproval'],
     severity: 'critical',
@@ -226,8 +218,7 @@ export const NIST_AI_RMF_CONTROLS: readonly Control[] = [
     title: 'Kill switch available',
     framework: 'nist_ai_rmf',
     citation: 'NIST AI RMF MG-3.2',
-    requirement:
-      'A kill switch or disable mechanism is available for autonomous systems.',
+    requirement: 'A kill switch or disable mechanism is available for autonomous systems.',
     nistFunction: 'manage',
     evidenceKeys: ['hasKillSwitch'],
     severity: 'critical',
@@ -237,8 +228,7 @@ export const NIST_AI_RMF_CONTROLS: readonly Control[] = [
     title: 'Post-deployment monitoring',
     framework: 'nist_ai_rmf',
     citation: 'NIST AI RMF MG-4.1',
-    requirement:
-      'Post-deployment monitoring captures real-world performance.',
+    requirement: 'Post-deployment monitoring captures real-world performance.',
     nistFunction: 'manage',
     evidenceKeys: ['hasPostMarketMonitoring'],
     severity: 'high',

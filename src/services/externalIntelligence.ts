@@ -40,9 +40,7 @@ export interface ExternalQuery {
   nationality?: string;
 }
 
-export type LookupTransport<TResult> = (
-  query: ExternalQuery
-) => Promise<TResult>;
+export type LookupTransport<TResult> = (query: ExternalQuery) => Promise<TResult>;
 
 // ---------------------------------------------------------------------------
 // #81 realTimeSanctionsApi

@@ -27,7 +27,8 @@ export const ISO_42001_CONTROLS: readonly Control[] = [
     title: 'Roles and responsibilities',
     framework: 'iso_42001',
     citation: 'ISO/IEC 42001:2023 A.2.4',
-    requirement: 'AI-related roles, responsibilities, and authorities are defined and communicated.',
+    requirement:
+      'AI-related roles, responsibilities, and authorities are defined and communicated.',
     evidenceKeys: ['hasAgentIdentity', 'hasAgentPermissions'],
     severity: 'high',
   },
@@ -108,7 +109,8 @@ export const ISO_42001_CONTROLS: readonly Control[] = [
     title: 'System information to users',
     framework: 'iso_42001',
     citation: 'ISO/IEC 42001:2023 A.8.2',
-    requirement: 'Users of the AI system receive information about its purpose, limitations, and results.',
+    requirement:
+      'Users of the AI system receive information about its purpose, limitations, and results.',
     evidenceKeys: ['hasUserDisclosure', 'hasExplainability'],
     severity: 'medium',
   },

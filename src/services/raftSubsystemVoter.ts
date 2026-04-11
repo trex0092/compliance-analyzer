@@ -48,10 +48,7 @@ export interface RaftRoundReport {
 // Voter
 // ---------------------------------------------------------------------------
 
-export function runRaftElection(
-  voters: readonly RaftVoter[],
-  term = 1
-): RaftRoundReport {
+export function runRaftElection(voters: readonly RaftVoter[], term = 1): RaftRoundReport {
   if (voters.length === 0) {
     throw new Error('runRaftElection: requires at least one voter');
   }

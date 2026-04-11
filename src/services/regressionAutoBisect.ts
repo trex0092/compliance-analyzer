@@ -92,7 +92,8 @@ export async function bisectRegression(
     culprit,
     iterations,
     checked,
-    narrative: `Bisect found ${culprit} as the first-bad commit in ${iterations} iteration(s). ` +
+    narrative:
+      `Bisect found ${culprit} as the first-bad commit in ${iterations} iteration(s). ` +
       `Checked ${checked.length} commit(s).`,
   };
 }

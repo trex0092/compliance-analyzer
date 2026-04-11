@@ -30,16 +30,9 @@
  *   - FDL No.10/2025 Art.20-21 (CO duty of care)
  */
 
-import {
-  buildRepairTaskPayload,
-  type SubsystemScoreReport,
-} from './subsystemScoring';
+import { buildRepairTaskPayload, type SubsystemScoreReport } from './subsystemScoring';
 import type { GovernanceAudit } from '../agents/aiGovernance';
-import {
-  createAsanaTask,
-  isAsanaConfigured,
-  type AsanaTaskPayload,
-} from './asanaClient';
+import { createAsanaTask, isAsanaConfigured, type AsanaTaskPayload } from './asanaClient';
 import { enqueueRetry } from './asanaQueue';
 import { buildComplianceCustomFields } from './asanaCustomFields';
 
@@ -88,10 +81,10 @@ export async function dispatchSubsystemRepair(
       base.priority === 'critical'
         ? 'critical'
         : base.priority === 'high'
-        ? 'high'
-        : base.priority === 'medium'
-        ? 'medium'
-        : 'low',
+          ? 'high'
+          : base.priority === 'medium'
+            ? 'medium'
+            : 'low',
     caseId: `BRAIN-REPAIR-${report.subsystem}`,
     confidence: report.total / 100,
     regulationCitation: 'Cabinet Res 134/2025 Art.19 + NIST AI RMF MS-2.1',
@@ -144,10 +137,10 @@ export async function dispatchGovernanceRemediation(
         item.severity === 'critical'
           ? 'critical'
           : item.severity === 'high'
-          ? 'high'
-          : item.severity === 'medium'
-          ? 'medium'
-          : 'low',
+            ? 'high'
+            : item.severity === 'medium'
+              ? 'medium'
+              : 'low',
       caseId: `GOV-REPAIR-${item.controlId}`,
       regulationCitation: item.citation,
     });

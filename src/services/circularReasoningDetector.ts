@@ -41,9 +41,7 @@ export interface CircularReport {
 // Detector
 // ---------------------------------------------------------------------------
 
-export function detectCircularReasoning(
-  edges: readonly DependencyEdge[]
-): CircularReport {
+export function detectCircularReasoning(edges: readonly DependencyEdge[]): CircularReport {
   // Build adjacency
   const adj = new Map<string, DependencyEdge[]>();
   for (const e of edges) {
@@ -69,7 +67,10 @@ export function detectCircularReasoning(
         if (found) cycleEdges.push(found);
       }
       if (cycleEdges.length > 0) {
-        const weakest = cycleEdges.reduce((acc, e) => (e.weight < acc.weight ? e : acc), cycleEdges[0]);
+        const weakest = cycleEdges.reduce(
+          (acc, e) => (e.weight < acc.weight ? e : acc),
+          cycleEdges[0]
+        );
         // De-dupe by canonical cycle string
         const canonical = [...cycleNodes].sort().join('|');
         if (!cycles.some((c) => [...c.nodes].sort().join('|') === canonical)) {

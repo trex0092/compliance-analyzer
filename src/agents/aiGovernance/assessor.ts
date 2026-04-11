@@ -35,10 +35,7 @@ import type {
   GovernanceEvidence,
 } from './types';
 
-function assessControl(
-  control: Control,
-  evidence: GovernanceEvidence
-): ControlAssessment {
+function assessControl(control: Control, evidence: GovernanceEvidence): ControlAssessment {
   if (control.evidenceKeys.length === 0) {
     return {
       controlId: control.id,
@@ -136,7 +133,9 @@ export function assessFramework(
   }
 
   // Score: exclude n/a, count unknown as zero contribution (not in denom).
-  const scoreable = assessments.filter((a) => a.status !== 'not_applicable' && a.status !== 'unknown');
+  const scoreable = assessments.filter(
+    (a) => a.status !== 'not_applicable' && a.status !== 'unknown'
+  );
   let scoreSum = 0;
   for (const a of scoreable) {
     if (a.status === 'pass') scoreSum += 1;
