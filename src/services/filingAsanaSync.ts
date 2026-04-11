@@ -213,5 +213,63 @@ export async function updateFilingAsanaStatus(
   return updateAsanaTask(taskGid, { name, completed });
 }
 
+// ---------------------------------------------------------------------------
+// Bulk close on filing submission — Asana Phase 2 #A11
+// ---------------------------------------------------------------------------
+
+/**
+ * Close an entire chain of dependent Asana tasks when a filing is
+ * marked submitted. Use case: a single STR filing can have a parent
+ * task plus several subtasks (screening, narrative drafting, 4-eyes
+ * approvals, evidence uploads). When the FIU submission goes through,
+ * all of those should complete at once — this function walks the set
+ * and marks each complete with one call.
+ *
+ * Idempotent: tasks already marked complete remain complete.
+ * Failure-tolerant: one task failing to close does not block the
+ * others.
+ *
+ * Regulatory basis: FDL No.10/2025 Art.26-27 (filing closure),
+ * Cabinet Res 134/2025 Art.19 (auditable state transitions).
+ */
+export async function bulkCloseOnSubmission(
+  taskGids: readonly string[]
+): Promise<{
+  ok: boolean;
+  closed: number;
+  failed: number;
+  errors: string[];
+}> {
+  if (!isAsanaConfigured()) {
+    return {
+      ok: false,
+      closed: 0,
+      failed: 0,
+      errors: ['Asana not configured'],
+    };
+  }
+
+  const errors: string[] = [];
+  let closed = 0;
+  let failed = 0;
+
+  for (const gid of taskGids) {
+    const result = await updateAsanaTask(gid, { completed: true });
+    if (result.ok) {
+      closed += 1;
+    } else {
+      failed += 1;
+      errors.push(`${gid}: ${result.error ?? 'unknown'}`);
+    }
+  }
+
+  return {
+    ok: failed === 0,
+    closed,
+    failed,
+    errors,
+  };
+}
+
 /** Exported for tests. */
 export const __test__ = { buildFilingTaskPayload, filingDueDays, filingCitation };
