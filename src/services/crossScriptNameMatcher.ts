@@ -101,7 +101,10 @@ const CYRILLIC_TO_LATIN: ReadonlyArray<[string, string]> = [
 function transliterate(input: string, rules: ReadonlyArray<[string, string]>): string {
   let out = input.toLowerCase();
   for (const [from, to] of rules) {
-    out = out.replaceAll(from, to);
+    // Use split/join instead of String.prototype.replaceAll for
+    // compatibility with the project's TypeScript lib target
+    // (replaceAll landed in ES2021).
+    out = out.split(from).join(to);
   }
   return out;
 }
