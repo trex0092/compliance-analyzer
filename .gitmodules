@@ -76,3 +76,9 @@
 [submodule "vendor/skill-vault"]
 	path = vendor/skill-vault
 	url = https://github.com/Hainrixz/skill-vault.git
+[submodule "vendor/ruflo"]
+	path = vendor/ruflo
+	url = https://github.com/ruvnet/ruflo.git
+[submodule "vendor/claudesidian"]
+	path = vendor/claudesidian
+	url = https://github.com/heyitsnoah/claudesidian.git
