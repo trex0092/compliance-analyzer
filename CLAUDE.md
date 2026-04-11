@@ -233,6 +233,7 @@ This is the single source of truth. When a regulation changes:
 | `/multi-agent-screen` | Parallel multi-agent sanctions screening | High-volume screening, full-list coverage across all sanctions lists |
 | `/agent-orchestrate` | Multi-agent compliance workflow orchestrator | Complex CDD/EDD/STR workflows using PEER pattern |
 | `/agent-review` | Multi-agent compliance code review | PR review with parallel specialist agents (regulatory, security, audit, architecture) |
+| AI Governance agent | EU AI Act + NIST AI RMF + ISO/IEC 42001 + UAE AI audit | Self-audit of the analyzer itself or customer AI audits. Invoke via `ComplianceHarness.runAiGovernanceAudit({ mode: 'self' \| 'customer', ... })` or directly via `runAiGovernanceAgent()` — src/agents/definitions/ai-governance-agent.ts |
 
 ## Integrated Agent Frameworks
 
