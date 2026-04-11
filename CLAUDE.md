@@ -264,6 +264,8 @@ The following multi-agent frameworks are vendored for reference and integration 
 | bolt | `vendor/bolt` | JavaScript monorepo manager (archived 2019) | Reference only — archived; kept for historical monorepo workflow patterns |
 | dr-claw | `vendor/dr-claw` | OpenLAIR defensive AI tooling | Reference for defensive AI patterns; relevance TBD, added for review |
 | skill-vault | `vendor/skill-vault` | Zero-dep skill organizer + 13-point security analyzer | Reference for skill curation, security rubric, and Vault Master agent pattern; informs how we audit future additions to `skills/` and `.agents/skills/` for supply-chain risk |
+| ruflo | `vendor/ruflo` | Enterprise multi-agent orchestration (100+ agents, Raft/Byzantine/Gossip consensus, RuVector self-learning, 310+ MCP tools) | Reference architecture for scaling our compliance agent swarms; RuVector vector-memory pattern for recall of successful CDD/EDD decision paths; multi-provider cost-based routing complements our Sonnet/Opus advisor strategy. Formerly Claude Flow. |
+| claudesidian | `vendor/claudesidian` | Pre-configured Obsidian vault + Claude Code thinking-partner skills (PARA folders, `/init-bootstrap`) | Reference vault layout for MLRO research notebooks and incident post-mortems; complements our existing `graphify-obsidian-setup.md` workflow; skills pattern (`thinking-partner`, `research-assistant`, `inbox-processor`) informs future additions to `skills/`. |
 
 ## Hooks
 
