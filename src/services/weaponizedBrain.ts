@@ -132,6 +132,55 @@ import {
   type ComplianceProofBundle,
   type ComplianceRecord,
 } from './zkComplianceProof';
+import { DEFAULT_CLAMP_POLICY, type ClampPolicy } from './clampPolicy';
+import { redTeamCritique, type RedTeamChallenge } from './redTeamCritic';
+import {
+  queryPrecedents,
+  type PrecedentRecord,
+  type PrecedentReport,
+} from './precedentRetriever';
+import {
+  detectContradictions,
+  type ContradictionReport,
+  type SubsystemSignal,
+} from './contradictionDetector';
+import {
+  runRegulatorVoicePass,
+  type RegulatorVoiceInput,
+  type RegulatorVoiceReport,
+} from './regulatorVoicePass';
+import {
+  calibrateConfidence,
+  type CalibrationParams,
+} from './confidenceCalibrator';
+import {
+  computeCounterfactuals,
+  type CounterfactualReport,
+} from './counterfactualFlipper';
+import {
+  detectTemporalPatterns,
+  type TemporalEvent,
+  type TemporalPatternReport,
+} from './temporalPatternDetector';
+import {
+  matchTypologies,
+  type TypologySignals,
+  type TypologyMatchReport,
+} from './sanctionsEvasionTypologyMatcher';
+import {
+  detectNarrativeDrift,
+  type PriorFiling,
+  type DriftReport,
+} from './narrativeDriftDetector';
+import {
+  correlateAcrossCustomers,
+  type CustomerSnapshot,
+  type CorrelationReport,
+} from './crossCustomerCorrelator';
+import {
+  reviewExtensions,
+  type TeacherExtensionReport,
+} from './teacherExtensionReviewer';
 
 // ---------------------------------------------------------------------------
 // Verdict ordering — verdicts can only escalate under new clamps.
@@ -208,6 +257,66 @@ export interface WeaponizedBrainRequest {
    * duty of care), Cabinet Res 134/2025 Art.19 (internal review).
    */
   advisor?: AdvisorEscalationFn;
+
+  // --- Phase 2 weaponization — 11 new subsystems, all optional ---
+
+  /**
+   * Clamp policy override. Defaults to DEFAULT_CLAMP_POLICY. Tests and
+   * backtest runs can override specific thresholds without touching code.
+   */
+  clampPolicy?: Readonly<ClampPolicy>;
+
+  /**
+   * Precedent index for subsystem #21 (precedent retriever). If omitted
+   * the retriever is skipped. Factor vectors must be the same dimension
+   * as the explainable scoring factor vector.
+   */
+  precedentIndex?: readonly PrecedentRecord[];
+
+  /**
+   * Historical (raw_confidence, outcome) examples for subsystem #24
+   * (confidence calibrator). If omitted, no calibration is applied.
+   */
+  calibrationParams?: CalibrationParams;
+
+  /**
+   * Historical temporal events for subsystem #26 (temporal pattern
+   * detector). The detector looks at events with `entityId === req.mega.entity.id`
+   * within the policy.temporalWindowDays window. Omit to skip.
+   */
+  temporalEvents?: readonly TemporalEvent[];
+
+  /**
+   * Signals for subsystem #27 (typology matcher). If omitted, the matcher
+   * is still run with an empty signal set (producing zero hits).
+   */
+  typologySignals?: TypologySignals;
+
+  /**
+   * Prior filings library for subsystem #28 (narrative drift detector).
+   * Also requires `draftNarrative` and `draftTypology`. If any is missing,
+   * the detector is skipped.
+   */
+  priorFilings?: readonly PriorFiling[];
+
+  /** Draft STR/SAR/CTR/DPMSR/CNMR narrative for subsystem #28. */
+  draftNarrative?: string;
+
+  /** Draft filing typology label for subsystem #28 (e.g. 'STR', 'DPMSR'). */
+  draftTypology?: string;
+
+  /**
+   * Peer customer snapshots for subsystem #29 (cross-customer correlator).
+   * Typically passed by brainBridge from the customer registry.
+   */
+  peerCustomerSnapshots?: readonly CustomerSnapshot[];
+
+  /**
+   * Evidence flags for subsystem #23 (regulator voice pass). Missing
+   * flags are treated as "absent" so the pass surfaces the gap. Omit to
+   * skip the regulator voice pass entirely.
+   */
+  regulatorEvidence?: RegulatorVoiceInput['evidence'];
 }
 
 export interface WeaponizedExtensions {
@@ -221,6 +330,32 @@ export interface WeaponizedExtensions {
   transactionAnomalies?: DetectorSuiteResult;
   explanation?: Explanation;
   proofBundle?: ComplianceProofBundle;
+
+  // --- Phase 2 subsystems (#20-#30) — all optional, populated only when
+  // the required inputs are present or the subsystem is always-on ---
+
+  /** #20 Red team critic — adversarial challenge to the verdict. */
+  redTeam?: RedTeamChallenge;
+  /** #21 Precedent retriever — top-K similar past cases. */
+  precedents?: PrecedentReport;
+  /** #22 Contradiction detector — inter-subsystem disagreements. */
+  contradictions?: ContradictionReport;
+  /** #23 Regulator voice pass — inspector question gaps. */
+  regulatorVoice?: RegulatorVoiceReport;
+  /** #24 Calibrated confidence (Platt). null when no calibration params. */
+  calibratedConfidence?: number;
+  /** #25 Counterfactual flipper — what would change the verdict. */
+  counterfactuals?: CounterfactualReport;
+  /** #26 Temporal pattern detector — 90-day window patterns. */
+  temporalPatterns?: TemporalPatternReport;
+  /** #27 Sanctions-evasion typology matcher — FATF/EOCN library hits. */
+  typologies?: TypologyMatchReport;
+  /** #28 Narrative drift detector — STR boilerplate detection. */
+  narrativeDrift?: DriftReport;
+  /** #29 Cross-customer correlator — shared-signal detection. */
+  crossCustomer?: CorrelationReport;
+  /** #30 Teacher extension reviewer — ratified/contested over extensions. */
+  teacherExtension?: TeacherExtensionReport;
 }
 
 export interface WeaponizedBrainResponse {
@@ -441,21 +576,214 @@ export async function runWeaponizedBrain(
     }
   }
 
+  // 7b. Phase 2 subsystems (#20-#30) — all run independently of each other
+  // and of the Phase 1 extensions. We run them in parallel via Promise.all
+  // where any are async, but all 11 current implementations are synchronous
+  // pure functions so we just invoke them inline. runSafely still wraps
+  // each one so a failure in one never kills the others.
+  const policy = req.clampPolicy ?? DEFAULT_CLAMP_POLICY;
+
+  // #20 Red team critic — adversarial challenge to the current verdict.
+  const redTeamSignals = {
+    sanctionsMatchScore: req.mega.entity.isSanctionsConfirmed ? 1.0 : 0,
+    adverseMediaCriticalCount: extensions.adverseMedia?.counts.critical,
+    uboUndisclosedPct: extensions.ubo?.summary.undisclosedPercentage,
+    hasSanctionedUbo: extensions.ubo?.summary.hasSanctionedUbo,
+    confirmedWalletHits: extensions.wallets?.confirmedHits,
+    structuringSeverity: extensions.transactionAnomalies?.findings
+      .find((f) => f.kind === 'structuring')
+      ?.severity as 'low' | 'medium' | 'high' | undefined,
+  };
+  extensions.redTeam = runSafely('redTeamCritic', () =>
+    redTeamCritique({
+      verdict: finalVerdict,
+      confidence: mega.confidence,
+      clampReasons,
+      signals: redTeamSignals,
+    })
+  );
+
+  // #21 Precedent retriever — only if an index was provided.
+  if (req.precedentIndex && extensions.explanation) {
+    const factors = [
+      extensions.explanation.score / 100,
+      extensions.explanation.cddLevel === 'EDD' ? 1 : extensions.explanation.cddLevel === 'CDD' ? 0.5 : 0,
+      extensions.adverseMedia ? extensions.adverseMedia.ranked.length / 10 : 0,
+      extensions.ubo?.summary.undisclosedPercentage ? extensions.ubo.summary.undisclosedPercentage / 100 : 0,
+      extensions.wallets?.confirmedHits ? 1 : 0,
+      extensions.transactionAnomalies?.findings.length ? extensions.transactionAnomalies.findings.length / 10 : 0,
+    ];
+    extensions.precedents = runSafely('precedentRetriever', () =>
+      queryPrecedents(req.precedentIndex!, { factors, topK: 5 })
+    );
+  }
+
+  // #22 Contradiction detector — over any subsystems we can score.
+  const signals: SubsystemSignal[] = [];
+  if (extensions.ubo?.summary.hasSanctionedUbo) {
+    signals.push({ name: 'ubo', impliedVerdict: 'freeze', confidence: 0.9 });
+  } else if (
+    extensions.ubo?.summary.hasUndisclosedPortion &&
+    extensions.ubo.summary.undisclosedPercentage > policy.uboUndisclosedEscalateAbovePct
+  ) {
+    signals.push({ name: 'ubo', impliedVerdict: 'escalate', confidence: 0.8 });
+  }
+  if (extensions.wallets && extensions.wallets.confirmedHits > 0) {
+    signals.push({ name: 'wallets', impliedVerdict: 'freeze', confidence: 0.95 });
+  }
+  if (
+    extensions.transactionAnomalies?.findings.some(
+      (f) => f.kind === 'structuring' && f.severity === 'high'
+    )
+  ) {
+    signals.push({ name: 'anomaly', impliedVerdict: 'escalate', confidence: 0.8 });
+  }
+  if (extensions.adverseMedia?.counts.critical && extensions.adverseMedia.counts.critical > 0) {
+    signals.push({ name: 'media', impliedVerdict: 'escalate', confidence: 0.7 });
+  }
+  // Add the baseline MegaBrain signal so we can check the new subsystems
+  // against the original verdict.
+  signals.push({ name: 'mega', impliedVerdict: mega.verdict, confidence: mega.confidence });
+  extensions.contradictions = runSafely('contradictionDetector', () =>
+    detectContradictions(signals, policy)
+  );
+  if (extensions.contradictions?.hasContradiction) {
+    clampReasons.push(
+      `CLAMP: ${extensions.contradictions.disagreements.length} inter-subsystem contradiction(s) — ` +
+        `human review required (FDL Art.20-21)`
+    );
+  }
+
+  // #23 Regulator voice pass — only if evidence flags provided.
+  if (req.regulatorEvidence) {
+    extensions.regulatorVoice = runSafely('regulatorVoicePass', () =>
+      runRegulatorVoicePass({
+        verdict: finalVerdict,
+        narrative: 'pending',
+        evidence: req.regulatorEvidence!,
+      })
+    );
+    if (extensions.regulatorVoice?.hasGaps) {
+      clampReasons.push(
+        `CLAMP: regulator voice pass has ${extensions.regulatorVoice.unansweredCount} ` +
+          `unanswered inspector question(s) (MoE Circular 08/AML/2021)`
+      );
+    }
+  }
+
+  // #24 Confidence calibrator — only if params provided.
+  if (req.calibrationParams) {
+    extensions.calibratedConfidence = runSafely('confidenceCalibrator', () =>
+      calibrateConfidence(mega.confidence, req.calibrationParams!)
+    );
+  }
+
+  // #25 Counterfactual flipper — always runs.
+  extensions.counterfactuals = runSafely('counterfactualFlipper', () =>
+    computeCounterfactuals({ verdict: finalVerdict, signals: redTeamSignals }, policy)
+  );
+
+  // #26 Temporal pattern detector — only if events provided.
+  if (req.temporalEvents) {
+    extensions.temporalPatterns = runSafely('temporalPatternDetector', () =>
+      detectTemporalPatterns(req.temporalEvents!, req.mega.entity.id, new Date(), policy)
+    );
+  }
+
+  // #27 Typology matcher — only if signals provided.
+  if (req.typologySignals) {
+    extensions.typologies = runSafely('sanctionsEvasionTypologyMatcher', () =>
+      matchTypologies(req.typologySignals!, policy)
+    );
+    // Clamp: top typology hit action of 'freeze' or 'escalate' forces the
+    // verdict up. This is the place where the deterministic typology
+    // library actually applies the escalation.
+    if (extensions.typologies?.topHit) {
+      const top = extensions.typologies.topHit;
+      if (top.action === 'freeze') {
+        finalVerdict = 'freeze';
+        clampReasons.push(
+          `CLAMP: typology ${top.id} ${top.name} forces freeze (${top.citation})`
+        );
+      } else if (top.action === 'escalate') {
+        const next = escalateTo(finalVerdict, 'escalate');
+        if (next !== finalVerdict) {
+          finalVerdict = next;
+          clampReasons.push(
+            `CLAMP: typology ${top.id} ${top.name} forces escalate (${top.citation})`
+          );
+        }
+      }
+    }
+  }
+
+  // #28 Narrative drift detector — only if draft narrative + filings provided.
+  if (req.draftNarrative && req.draftTypology && req.priorFilings) {
+    extensions.narrativeDrift = runSafely('narrativeDriftDetector', () =>
+      detectNarrativeDrift(req.draftNarrative!, req.draftTypology!, req.priorFilings!, policy)
+    );
+    if (extensions.narrativeDrift?.hasDrift) {
+      clampReasons.push(
+        'CLAMP: draft narrative shows boilerplate drift — rewrite required (FDL Art.26-27)'
+      );
+    }
+  }
+
+  // #29 Cross-customer correlator — only if peer snapshots provided.
+  if (req.peerCustomerSnapshots) {
+    extensions.crossCustomer = runSafely('crossCustomerCorrelator', () =>
+      correlateAcrossCustomers(req.peerCustomerSnapshots!)
+    );
+  }
+
+  // #30 Teacher extension reviewer — always runs, reviews the other extensions.
+  extensions.teacherExtension = runSafely('teacherExtensionReviewer', () =>
+    reviewExtensions({
+      studentVerdict: finalVerdict,
+      extensions: {
+        adverseMediaCriticalCount: extensions.adverseMedia?.counts.critical,
+        hasSanctionedUbo: extensions.ubo?.summary.hasSanctionedUbo,
+        uboUndisclosedPct: extensions.ubo?.summary.undisclosedPercentage,
+        confirmedWalletHits: extensions.wallets?.confirmedHits,
+        structuringHigh: extensions.transactionAnomalies?.findings.some(
+          (f) => f.kind === 'structuring' && f.severity === 'high'
+        ),
+        explainableScore: extensions.explanation?.score,
+      },
+      phase2: {
+        typologyTopAction: extensions.typologies?.topHit?.action ?? null,
+        contradictionDetected: extensions.contradictions?.hasContradiction,
+        regulatorVoiceGaps: extensions.regulatorVoice?.unansweredCount,
+        redTeamProposal: extensions.redTeam?.proposedVerdict ?? null,
+        narrativeDrift: extensions.narrativeDrift?.hasDrift,
+      },
+    })
+  );
+  if (extensions.teacherExtension?.verdict === 'contested') {
+    clampReasons.push(
+      `CLAMP: teacher extension review contested (${extensions.teacherExtension.concerns.length} concern(s)) — ` +
+        `human review required (Cabinet Res 134/2025 Art.19)`
+    );
+  }
+
   // 8. Augmented confidence — take MIN across MegaBrain + new signals.
   let confidence = mega.confidence;
   if (extensions.adverseMedia?.topCategory === 'critical') {
-    confidence = Math.min(confidence, 0.5);
+    confidence = Math.min(confidence, policy.adverseMediaCriticalConfidenceCap);
   }
   if (extensions.ubo?.summary.hasSanctionedUbo) {
-    confidence = Math.min(confidence, 0.4);
+    confidence = Math.min(confidence, policy.sanctionedUboConfidenceCap);
   }
   if (extensions.wallets && extensions.wallets.confirmedHits > 0) {
-    confidence = Math.min(confidence, 0.3);
+    confidence = Math.min(confidence, policy.walletConfirmedConfidenceCap);
   }
   if (subsystemFailures.length > 0) {
-    // Any subsystem failure caps confidence — the decision record is
-    // incomplete and should not be trusted at high confidence.
-    confidence = Math.min(confidence, 0.5);
+    confidence = Math.min(confidence, policy.subsystemFailureConfidenceCap);
+  }
+  if (extensions.contradictions?.hasContradiction) {
+    // Contradiction detector: cap confidence by (1 - score) so a 0.67 score
+    // drops confidence to 0.33.
+    confidence = Math.min(confidence, 1 - extensions.contradictions.score);
   }
 
   // 9. Augmented human-review flag.
@@ -637,6 +965,84 @@ function buildAuditNarrative(
     lines.push(
       `  - ZK audit seal: Merkle root ${extensions.proofBundle.rootHash.slice(0, 16)}... ` +
         `(${extensions.proofBundle.recordCount} records, sealed ${extensions.proofBundle.sealedAt})`
+    );
+  }
+
+  // Phase 2 subsystems (#20-#30)
+  if (extensions.redTeam?.hasChallenge) {
+    lines.push(
+      `  - Red team critic: ${extensions.redTeam.reasons.length} challenge(s)` +
+        (extensions.redTeam.proposedVerdict
+          ? `, proposed counter-verdict ${extensions.redTeam.proposedVerdict}`
+          : '')
+    );
+  }
+  if (extensions.precedents) {
+    lines.push(
+      `  - Precedents: ${extensions.precedents.matches.length} similar past case(s)` +
+        (extensions.precedents.dominantOutcome
+          ? `, dominant outcome ${extensions.precedents.dominantOutcome}`
+          : '')
+    );
+  }
+  if (extensions.contradictions?.hasContradiction) {
+    lines.push(
+      `  - Contradictions: ${extensions.contradictions.disagreements.length} material ` +
+        `disagreement(s), score ${(extensions.contradictions.score * 100).toFixed(0)}%`
+    );
+  }
+  if (extensions.regulatorVoice?.hasGaps) {
+    lines.push(
+      `  - Regulator voice pass: ${extensions.regulatorVoice.unansweredCount}/` +
+        `${extensions.regulatorVoice.questions.length} inspector question(s) unanswered`
+    );
+  }
+  if (typeof extensions.calibratedConfidence === 'number') {
+    lines.push(
+      `  - Calibrated confidence (Platt): ${(extensions.calibratedConfidence * 100).toFixed(1)}%`
+    );
+  }
+  if (extensions.counterfactuals && extensions.counterfactuals.counterfactuals.length > 0) {
+    lines.push(
+      `  - Counterfactuals: ${extensions.counterfactuals.counterfactuals.length} single-signal flip(s) possible`
+    );
+  }
+  if (extensions.temporalPatterns) {
+    const parts: string[] = [];
+    if (extensions.temporalPatterns.hasRepeatPattern) parts.push('repeat');
+    if (extensions.temporalPatterns.hasEscalatingPattern) parts.push('escalating');
+    if (extensions.temporalPatterns.hasBurstPattern) parts.push('burst');
+    lines.push(
+      `  - Temporal patterns (${extensions.temporalPatterns.windowDays}d): ` +
+        (parts.length > 0 ? parts.join(', ') : 'none') +
+        `, strength ${(extensions.temporalPatterns.strength * 100).toFixed(0)}%`
+    );
+  }
+  if (extensions.typologies && extensions.typologies.hits.length > 0) {
+    lines.push(
+      `  - Typology matches: ${extensions.typologies.hits.length} hit(s)` +
+        (extensions.typologies.topHit
+          ? `, top ${extensions.typologies.topHit.id} ${extensions.typologies.topHit.name}`
+          : '')
+    );
+  }
+  if (extensions.narrativeDrift?.hasDrift) {
+    lines.push(
+      `  - Narrative drift: boilerplate detected (closest match ` +
+        `${extensions.narrativeDrift.closestMatch?.filingId})`
+    );
+  }
+  if (extensions.crossCustomer && extensions.crossCustomer.hits.length > 0) {
+    lines.push(
+      `  - Cross-customer: ${extensions.crossCustomer.hits.length} shared-signal match(es)`
+    );
+  }
+  if (extensions.teacherExtension) {
+    lines.push(
+      `  - Teacher extension review: ${extensions.teacherExtension.verdict}` +
+        (extensions.teacherExtension.verdict === 'contested'
+          ? ` (${extensions.teacherExtension.concerns.length} concern(s))`
+          : '')
     );
   }
 
