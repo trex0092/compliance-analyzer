@@ -468,18 +468,30 @@ function buildMarkdown(input: ScreeningReportInput, integrityHash: string): stri
 // ---------------------------------------------------------------------------
 
 async function sha256Hex(input: string): Promise<string> {
-  // Both Node 20+ and modern browsers expose globalThis.crypto.subtle.
-  // Fall back to a marker if unavailable — the report is still produced
-  // but the chain-of-custody seal records 'unavailable' so the MLRO
-  // knows to anchor it manually (FDL Art.24 still requires retention).
+  // Prefer Web Crypto (available globally on browsers and on Node 19+).
+  // On Node 18 the global `crypto.subtle` is NOT exposed by default (it
+  // landed in Node 19.0.0), so we fall back to a dynamic import of
+  // `node:crypto` which ships a synchronous createHash. The dynamic
+  // import is guarded by a process check so browser bundlers can tree-
+  // shake it out of client builds.
   const g = globalThis as { crypto?: { subtle?: SubtleCrypto } };
-  if (!g.crypto?.subtle) {
-    return 'unavailable:no-webcrypto';
+  if (g.crypto?.subtle) {
+    const bytes = new TextEncoder().encode(input);
+    const hash = await g.crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
   }
-  const bytes = new TextEncoder().encode(input);
-  const hash = await g.crypto.subtle.digest('SHA-256', bytes);
-  const hex = Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-  return hex;
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    try {
+      const nodeCrypto = await import('node:crypto');
+      return nodeCrypto.createHash('sha256').update(input).digest('hex');
+    } catch {
+      // fall through
+    }
+  }
+  // Final fallback: return an explicit marker so the MLRO knows to
+  // manually anchor the decision record (FDL Art.24 still requires
+  // retention even when the cryptographic seal is unavailable).
+  return 'unavailable:no-webcrypto';
 }
