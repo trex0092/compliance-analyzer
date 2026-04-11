@@ -20,6 +20,10 @@ import {
 } from './asanaClient';
 import { enqueueRetry } from './asanaQueue';
 import { addTaskLink } from './asanaTaskLinks';
+import {
+  buildComplianceCustomFields,
+  deadlineTypeFromCaseType,
+} from './asanaCustomFields';
 
 const DEFAULT_PROJECT = '1213759768596515';
 
@@ -76,6 +80,14 @@ function riskToDueDays(riskLevel: string): number {
 
 function buildCaseTaskPayload(caseObj: ComplianceCase, projectId: string): AsanaTaskPayload {
   const flags = caseObj.redFlags.join(', ');
+  const dueDays = riskToDueDays(caseObj.riskLevel);
+  const custom_fields = buildComplianceCustomFields({
+    riskLevel: caseObj.riskLevel as 'critical' | 'high' | 'medium' | 'low',
+    caseId: caseObj.id,
+    deadlineType: deadlineTypeFromCaseType(caseObj.caseType),
+    daysRemaining: dueDays,
+    regulationCitation: 'FDL No.10/2025 Art.12-14 + Cabinet Res 134/2025 Art.7-10',
+  });
   return {
     name: `[${caseObj.riskLevel.toUpperCase()}] ${caseObj.caseType} — ${caseObj.entityId}`,
     notes: [
@@ -96,7 +108,8 @@ function buildCaseTaskPayload(caseObj: ComplianceCase, projectId: string): Asana
       `Timestamp: ${new Date().toISOString()}`,
     ].join('\n'),
     projects: [projectId],
-    due_on: dueInDays(riskToDueDays(caseObj.riskLevel)),
+    due_on: dueInDays(dueDays),
+    ...(Object.keys(custom_fields).length > 0 ? { custom_fields } : {}),
   };
 }
 
@@ -105,6 +118,13 @@ function buildAlertTaskPayload(
   entityName: string,
   projectId: string
 ): AsanaTaskPayload {
+  const dueDays = alertItem.severity === 'critical' ? 1 : 3;
+  const custom_fields = buildComplianceCustomFields({
+    riskLevel: alertItem.severity as 'critical' | 'high' | 'medium' | 'low',
+    caseId: alertItem.id,
+    daysRemaining: dueDays,
+    regulationCitation: 'Cabinet Res 134/2025 Art.14 + FATF Rec 10',
+  });
   return {
     name: `[ALERT] ${alertItem.type} — ${entityName}`,
     notes: [
@@ -120,7 +140,8 @@ function buildAlertTaskPayload(
       `Timestamp: ${alertItem.createdAt}`,
     ].join('\n'),
     projects: [projectId],
-    due_on: dueInDays(alertItem.severity === 'critical' ? 1 : 3),
+    due_on: dueInDays(dueDays),
+    ...(Object.keys(custom_fields).length > 0 ? { custom_fields } : {}),
   };
 }
 
@@ -129,6 +150,14 @@ function buildApprovalTaskPayload(
   caseObj: ComplianceCase,
   projectId: string
 ): AsanaTaskPayload {
+  const dueDays = approval.urgency === 'immediate' ? 1 : 2;
+  const custom_fields = buildComplianceCustomFields({
+    riskLevel: caseObj.riskLevel as 'critical' | 'high' | 'medium' | 'low',
+    caseId: approval.caseId,
+    daysRemaining: dueDays,
+    regulationCitation:
+      approval.regulatoryBasis ?? 'Cabinet Res 134/2025 Art.12-14 + 4-Eyes Principle',
+  });
   return {
     name: `[APPROVAL] ${approval.requiredFor} — ${caseObj.entityId}`,
     notes: [
@@ -151,7 +180,8 @@ function buildApprovalTaskPayload(
       `Auto-created by Hawkeye Sterling V2 Approval Workflow`,
     ].join('\n'),
     projects: [projectId],
-    due_on: dueInDays(2),
+    due_on: dueInDays(dueDays),
+    ...(Object.keys(custom_fields).length > 0 ? { custom_fields } : {}),
   };
 }
 
@@ -159,6 +189,11 @@ function buildReviewTaskPayload(
   review: PeriodicReviewSchedule,
   projectId: string
 ): AsanaTaskPayload {
+  const custom_fields = buildComplianceCustomFields({
+    riskLevel: review.riskRating as 'critical' | 'high' | 'medium' | 'low',
+    caseId: review.id,
+    regulationCitation: 'FDL No.10/2025 Art.12-14 + FATF Rec 10',
+  });
   return {
     name: `[REVIEW] ${review.reviewType} — ${review.customerName}`,
     notes: [
@@ -178,6 +213,7 @@ function buildReviewTaskPayload(
     ].join('\n'),
     projects: [projectId],
     due_on: review.nextReviewDate.slice(0, 10),
+    ...(Object.keys(custom_fields).length > 0 ? { custom_fields } : {}),
   };
 }
 

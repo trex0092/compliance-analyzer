@@ -9,8 +9,13 @@
  * public API breaks the tests at their actual integration point, which is
  * exactly where we want it to break.
  */
-import { describe, it, expect } from 'vitest';
-import { runWeaponizedBrain } from '@/services/weaponizedBrain';
+import { describe, it, expect, vi } from 'vitest';
+import {
+  runWeaponizedBrain,
+  type AdvisorEscalationFn,
+  type AdvisorEscalationInput,
+  type AdvisorEscalationResult,
+} from '@/services/weaponizedBrain';
 import type { StrFeatures } from '@/services/predictiveStr';
 import { createGraph, addNode, addEdge } from '@/services/uboGraph';
 import {
@@ -344,5 +349,179 @@ describe('weaponizedBrain — audit narrative', () => {
       sealProofBundle: false,
     });
     expect(result.auditNarrative).not.toContain('ZK audit seal');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 1 weaponization: partial-success guards
+// ---------------------------------------------------------------------------
+
+describe('weaponizedBrain — partial-success guards', () => {
+  it('clean path records no subsystem failures', async () => {
+    const result = await runWeaponizedBrain({ mega: cleanMegaRequest() });
+    expect(result.subsystemFailures).toEqual([]);
+  });
+
+  it('subsystem failure is recorded and forces human review', async () => {
+    // Force a failure in the UBO analysis pipeline by passing a malformed
+    // graph object — missing nodes/edges keys will throw inside
+    // analyseLayering/summariseUboRisk. The brain must catch this, record
+    // the failure, and continue without losing the decision from the
+    // other subsystems.
+    const entityId = 'broken-target';
+    const badGraph = {} as never;
+
+    const result = await runWeaponizedBrain({
+      mega: cleanMegaRequest(entityId, 'Broken Co'),
+      ubo: { graph: badGraph, targetId: entityId },
+    });
+
+    // Verdict proceeds (doesn't throw) — decision from other subsystems
+    // is preserved. Human review is forced because the record is incomplete.
+    expect(result.subsystemFailures.length).toBeGreaterThan(0);
+    expect(result.subsystemFailures).toContain('uboAnalysis');
+    expect(result.requiresHumanReview).toBe(true);
+    expect(result.confidence).toBeLessThanOrEqual(0.5);
+    expect(result.clampReasons.some((r) => r.includes('FDL Art.24'))).toBe(true);
+  });
+
+  it('failure narrative appends subsystem failure list', async () => {
+    const entityId = 'broken-target';
+    const badGraph = {} as never;
+    const result = await runWeaponizedBrain({
+      mega: cleanMegaRequest(entityId, 'Broken Co'),
+      ubo: { graph: badGraph, targetId: entityId },
+    });
+    expect(result.auditNarrative).toContain('Subsystem failures');
+    expect(result.auditNarrative).toContain('uboAnalysis');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 1 weaponization: advisor escalation
+// ---------------------------------------------------------------------------
+
+describe('weaponizedBrain — advisor escalation', () => {
+  /** Build a mock advisor that always returns the same text. */
+  function makeMockAdvisor(text: string): AdvisorEscalationFn {
+    return vi.fn(async (_input: AdvisorEscalationInput): Promise<AdvisorEscalationResult> => ({
+      text,
+      advisorCallCount: 1,
+      modelUsed: 'claude-opus-4-6',
+    }));
+  }
+
+  it('advisor is NOT called for a clean pass verdict', async () => {
+    const advisor = vi.fn(
+      async (): Promise<AdvisorEscalationResult> => ({
+        text: 'should not be called',
+        advisorCallCount: 1,
+        modelUsed: 'claude-opus-4-6',
+      })
+    );
+    const result = await runWeaponizedBrain({
+      mega: cleanMegaRequest(),
+      advisor,
+    });
+    expect(result.finalVerdict).toBe('pass');
+    expect(advisor).not.toHaveBeenCalled();
+    expect(result.advisorResult).toBeNull();
+  });
+
+  it('advisor IS called when verdict is freeze', async () => {
+    const entityId = 'target-co';
+    const advisor = makeMockAdvisor(
+      '1. Confirm sanctions hit (FDL Art.20). 2. Execute 24h freeze (Cabinet Res 74/2020 Art.4-7). 3. File CNMR within 5bd.'
+    );
+    const result = await runWeaponizedBrain({
+      mega: cleanMegaRequest(entityId, 'Target Co'),
+      ubo: { graph: sanctionedUboGraph(entityId), targetId: entityId },
+      advisor,
+    });
+    expect(result.finalVerdict).toBe('freeze');
+    expect(advisor).toHaveBeenCalledOnce();
+    expect(result.advisorResult).not.toBeNull();
+    expect(result.advisorResult?.modelUsed).toBe('claude-opus-4-6');
+    expect(result.clampReasons.some((r) => r.startsWith('ADVISOR:'))).toBe(true);
+    expect(result.auditNarrative).toContain('Advisor review');
+    expect(result.auditNarrative).toContain('claude-opus-4-6');
+  });
+
+  it('advisor IS called when verdict is escalate', async () => {
+    const entityId = 'target-co';
+    const advisor = makeMockAdvisor('1. Request UBO disclosure. 2. Extend CDD to EDD.');
+    const result = await runWeaponizedBrain({
+      mega: cleanMegaRequest(entityId, 'Target Co'),
+      ubo: { graph: undisclosedUboGraph(entityId), targetId: entityId },
+      advisor,
+    });
+    expect(result.finalVerdict).toBe('escalate');
+    expect(advisor).toHaveBeenCalledOnce();
+    expect(result.advisorResult?.text).toContain('EDD');
+  });
+
+  it('advisor IS called when any clamp triggers', async () => {
+    const advisor = makeMockAdvisor('Review structuring pattern.');
+    const result = await runWeaponizedBrain({
+      mega: cleanMegaRequest(),
+      transactions: structuringTransactions(),
+      advisor,
+    });
+    // structuring transactions trigger at least one clamp
+    if (result.clampReasons.length > 0) {
+      expect(advisor).toHaveBeenCalledOnce();
+    }
+  });
+
+  it('advisor failure does NOT block the verdict', async () => {
+    const advisor = vi.fn(async () => {
+      throw new Error('upstream timeout');
+    });
+    const entityId = 'target-co';
+    const result = await runWeaponizedBrain({
+      mega: cleanMegaRequest(entityId, 'Target Co'),
+      ubo: { graph: sanctionedUboGraph(entityId), targetId: entityId },
+      advisor,
+    });
+    expect(result.finalVerdict).toBe('freeze');
+    expect(result.advisorResult).toBeNull();
+    expect(result.auditNarrative).toContain('Advisor escalation attempted but failed');
+  });
+
+  it('advisor returning null leaves the verdict intact', async () => {
+    const advisor = vi.fn(async () => null);
+    const entityId = 'target-co';
+    const result = await runWeaponizedBrain({
+      mega: cleanMegaRequest(entityId, 'Target Co'),
+      ubo: { graph: sanctionedUboGraph(entityId), targetId: entityId },
+      advisor,
+    });
+    expect(result.finalVerdict).toBe('freeze');
+    expect(result.advisorResult).toBeNull();
+    // No ADVISOR: clamp reason because the advisor produced no text
+    expect(result.clampReasons.some((r) => r.startsWith('ADVISOR:'))).toBe(false);
+  });
+
+  it('advisor input includes verdict, confidence, and clamp reasons', async () => {
+    const received: AdvisorEscalationInput[] = [];
+    const advisor: AdvisorEscalationFn = async (input) => {
+      received.push(input);
+      return { text: 'ok', advisorCallCount: 1, modelUsed: 'claude-opus-4-6' };
+    };
+    const entityId = 'target-co';
+    await runWeaponizedBrain({
+      mega: cleanMegaRequest(entityId, 'Target Co'),
+      ubo: { graph: sanctionedUboGraph(entityId), targetId: entityId },
+      advisor,
+    });
+    expect(received).toHaveLength(1);
+    expect(received[0].verdict).toBe('freeze');
+    expect(received[0].entityId).toBe(entityId);
+    expect(received[0].entityName).toBe('Target Co');
+    expect(received[0].clampReasons.some((r) => r.includes('sanctioned beneficial owner'))).toBe(
+      true
+    );
+    expect(received[0].narrative).toContain('Final verdict: freeze');
+    expect(received[0].reason).toContain('verdict=freeze');
   });
 });

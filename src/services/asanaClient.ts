@@ -13,6 +13,21 @@ export interface AsanaTaskPayload {
   notes: string;
   projects: string[];
   due_on?: string;
+  /**
+   * Optional Asana custom fields. Keys must be custom field GIDs from the
+   * target workspace. Values are the raw payload shape Asana expects
+   * (enum GID for enum fields, number for number fields, string for text).
+   *
+   * Built via src/services/asanaCustomFields.ts so callers never hand-craft
+   * the map — they pass compliance enums and the builder maps them to the
+   * configured field GIDs.
+   */
+  custom_fields?: Record<string, string | number | boolean>;
+  /**
+   * Optional assignee GID. Resolved via resolveAsanaUserByName() for
+   * scheduled jobs, or set directly when the caller already knows the GID.
+   */
+  assignee?: string;
 }
 
 export interface AsanaTaskResponse {
@@ -23,9 +38,21 @@ export interface AsanaTaskResponse {
 
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [2000, 4000, 8000];
-const RATE_LIMIT_DELAY = 250; // ms between requests to stay under 250 req/min
+const RATE_LIMIT_DELAY_DEFAULT = 250; // ms between requests to stay under 250 req/min
 
+// Adaptive rate limiting state. The current delay starts at the default
+// (250ms) and grows toward the server's Retry-After value when Asana
+// returns 429. It decays back toward the default on successful responses.
+// This replaces the previous fixed 250ms delay with something that
+// actually respects server-side backpressure.
 let lastRequestTime = 0;
+let currentDelayMs = RATE_LIMIT_DELAY_DEFAULT;
+
+/** Exposed for tests to reset adaptive-rate-limit state between runs. */
+export function __resetAdaptiveRateLimit(): void {
+  lastRequestTime = 0;
+  currentDelayMs = RATE_LIMIT_DELAY_DEFAULT;
+}
 
 /**
  * Resolve the Asana config at call time.
@@ -97,10 +124,48 @@ export function isAsanaConfigured(): boolean {
 async function rateLimitedWait(): Promise<void> {
   const now = Date.now();
   const elapsed = now - lastRequestTime;
-  if (elapsed < RATE_LIMIT_DELAY) {
-    await new Promise((r) => setTimeout(r, RATE_LIMIT_DELAY - elapsed));
+  if (elapsed < currentDelayMs) {
+    await new Promise((r) => setTimeout(r, currentDelayMs - elapsed));
   }
   lastRequestTime = Date.now();
+}
+
+/**
+ * Honour an Asana Retry-After header by growing the adaptive delay so
+ * the next request waits at least that long. Called after a 429.
+ *
+ * Asana may return the value as seconds (integer) or HTTP-date. We parse
+ * both forms; malformed values fall back to doubling the current delay
+ * (capped at 30s) so we always back off on 429.
+ */
+function honourRetryAfter(headers: Headers): void {
+  const raw = headers.get('retry-after');
+  let waitMs = currentDelayMs * 2;
+  if (raw) {
+    const asSeconds = Number.parseFloat(raw);
+    if (Number.isFinite(asSeconds) && asSeconds > 0) {
+      waitMs = Math.ceil(asSeconds * 1000);
+    } else {
+      const asDateMs = Date.parse(raw);
+      if (Number.isFinite(asDateMs)) {
+        waitMs = Math.max(0, asDateMs - Date.now());
+      }
+    }
+  }
+  // Cap at 30s so a misbehaving proxy can't freeze us indefinitely.
+  currentDelayMs = Math.min(30_000, Math.max(currentDelayMs, waitMs));
+}
+
+/** Decay the adaptive delay toward the default on successful responses. */
+function decayRateLimit(): void {
+  if (currentDelayMs > RATE_LIMIT_DELAY_DEFAULT) {
+    // Exponential decay: halve the excess each successful call.
+    const excess = currentDelayMs - RATE_LIMIT_DELAY_DEFAULT;
+    currentDelayMs = RATE_LIMIT_DELAY_DEFAULT + Math.floor(excess / 2);
+    if (currentDelayMs < RATE_LIMIT_DELAY_DEFAULT + 10) {
+      currentDelayMs = RATE_LIMIT_DELAY_DEFAULT;
+    }
+  }
 }
 
 async function asanaRequest<T>(
@@ -139,9 +204,19 @@ async function asanaRequest<T>(
     clearTimeout(timeout);
 
     if (!res.ok) {
+      // 429 rate limit: respect Retry-After and grow the adaptive delay
+      // so the next call waits long enough. The caller's retry loop
+      // (asanaRequestWithRetry) will then wait out the new delay.
+      if (res.status === 429) {
+        honourRetryAfter(res.headers);
+      }
       const body = await res.text();
       return { ok: false, error: `Asana API ${res.status}: ${body}` };
     }
+
+    // Success: decay the adaptive delay back toward the default so we
+    // don't punish future calls for a transient 429.
+    decayRateLimit();
 
     const json = await res.json();
     return { ok: true, data: json.data as T };

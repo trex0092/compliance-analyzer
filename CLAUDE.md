@@ -233,6 +233,7 @@ This is the single source of truth. When a regulation changes:
 | `/multi-agent-screen` | Parallel multi-agent sanctions screening | High-volume screening, full-list coverage across all sanctions lists |
 | `/agent-orchestrate` | Multi-agent compliance workflow orchestrator | Complex CDD/EDD/STR workflows using PEER pattern |
 | `/agent-review` | Multi-agent compliance code review | PR review with parallel specialist agents (regulatory, security, audit, architecture) |
+| AI Governance agent | EU AI Act + NIST AI RMF + ISO/IEC 42001 + UAE AI audit | Self-audit of the analyzer itself or customer AI audits. Invoke via `ComplianceHarness.runAiGovernanceAudit({ mode: 'self' \| 'customer', ... })` or directly via `runAiGovernanceAgent()` — src/agents/definitions/ai-governance-agent.ts |
 
 ## Integrated Agent Frameworks
 
@@ -266,6 +267,9 @@ The following multi-agent frameworks are vendored for reference and integration 
 | skill-vault | `vendor/skill-vault` | Zero-dep skill organizer + 13-point security analyzer | Reference for skill curation, security rubric, and Vault Master agent pattern; informs how we audit future additions to `skills/` and `.agents/skills/` for supply-chain risk |
 | ruflo | `vendor/ruflo` | Enterprise multi-agent orchestration (100+ agents, Raft/Byzantine/Gossip consensus, RuVector self-learning, 310+ MCP tools) | Reference architecture for scaling our compliance agent swarms; RuVector vector-memory pattern for recall of successful CDD/EDD decision paths; multi-provider cost-based routing complements our Sonnet/Opus advisor strategy. Formerly Claude Flow. |
 | claudesidian | `vendor/claudesidian` | Pre-configured Obsidian vault + Claude Code thinking-partner skills (PARA folders, `/init-bootstrap`) | Reference vault layout for MLRO research notebooks and incident post-mortems; complements our existing `graphify-obsidian-setup.md` workflow; skills pattern (`thinking-partner`, `research-assistant`, `inbox-processor`) informs future additions to `skills/`. |
+| claude-mem | `vendor/claude-mem` | Claude Code persistent memory plugin — auto-captures tool usage, compresses observations, injects context on session restart (TypeScript, Bun, SQLite + Chroma vector search) | Reference for Phase 3 self-evolving hook storage: demonstrates progressive-disclosure retrieval (compact index → timeline → full details) which could reduce the cost of brain-lessons at scale; also informs the compliance-analyzer audit-trail replay pattern (MLRO session reconstruction). |
+| MiroFish | `vendor/MiroFish` | Multi-agent simulation / prediction engine — Python + Vue + Zep Cloud memory + GraphRAG knowledge representation | Reference for agent-behaviour sandboxing (policy-change dry-run before production deploy) and GraphRAG as an alternative to our xyflow reasoningChain visualisation when the agent count grows beyond ~40 nodes. |
+| Multi-Agent-AI-System | `vendor/multi-agent-ai-system` | LangGraph + LangSmith customer-support workflow — supervisor + specialist sub-agents + short/long-term memory + human-in-the-loop + full tracing | Reference for the four-eyes approval + MLRO override patterns: demonstrates explicit state-management, LangSmith-style execution tracing, and human-gated handoffs that directly map to our `src/agents/orchestration/` engine and the Phase 5 AI Governance agent's self-audit pattern. |
 
 ## Hooks
 

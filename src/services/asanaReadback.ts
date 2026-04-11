@@ -39,7 +39,7 @@ export interface AsanaEvent {
 
 export interface ReadbackResult {
   entityId: string;
-  entityType: 'case' | 'alert' | 'approval' | 'review';
+  entityType: 'case' | 'alert' | 'approval' | 'review' | 'filing';
   action: 'marked-completed' | 'comment-added' | 'status-updated';
   asanaGid: string;
   detail: string;

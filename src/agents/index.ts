@@ -52,6 +52,11 @@ import {
   type AuditAgentConfig,
   type AuditAgentResult,
 } from './definitions/audit-agent';
+import {
+  runAiGovernanceAgent,
+  type AiGovernanceAgentConfig,
+  type AiGovernanceAgentResult,
+} from './definitions/ai-governance-agent';
 
 import type { CustomerProfile } from '../domain/customers';
 import type { ComplianceCase } from '../domain/cases';
@@ -138,6 +143,25 @@ export class ComplianceHarness {
   /** Run compliance audit */
   async runAudit(config: AuditAgentConfig): Promise<AuditAgentResult> {
     return runAuditAgent(config, this.server, this.session);
+  }
+
+  /**
+   * Run an AI governance audit against the four frameworks
+   * (EU AI Act, NIST AI RMF, ISO/IEC 42001, UAE AI Governance).
+   *
+   * Supports both self-audit (audits the compliance-analyzer itself
+   * against the self-audit evidence baseline) and customer audit
+   * (caller provides the evidence map).
+   *
+   * Regulatory basis:
+   *   - EU Reg 2024/1689 Art.27 (deployer obligations, full
+   *     enforcement August 2026)
+   *   - NIST AI RMF 1.0 (Govern, Map, Measure, Manage)
+   *   - ISO/IEC 42001:2023 Clause 9 (performance evaluation)
+   *   - UAE AI Charter + National AI Strategy 2031
+   */
+  runAiGovernanceAudit(config: AiGovernanceAgentConfig): AiGovernanceAgentResult {
+    return runAiGovernanceAgent(config);
   }
 
   // -----------------------------------------------------------------------
@@ -268,6 +292,7 @@ export { runOnboardingAgent } from './definitions/onboarding-agent';
 export { runIncidentAgent } from './definitions/incident-agent';
 export { runFilingAgent } from './definitions/filing-agent';
 export { runAuditAgent } from './definitions/audit-agent';
+export { runAiGovernanceAgent } from './definitions/ai-governance-agent';
 
 // Types
 export type { ScreeningAgentConfig, ScreeningAgentResult } from './definitions/screening-agent';
@@ -275,6 +300,7 @@ export type { OnboardingAgentConfig, OnboardingAgentResult } from './definitions
 export type { IncidentAgentConfig, IncidentAgentResult } from './definitions/incident-agent';
 export type { FilingAgentConfig, FilingAgentResult } from './definitions/filing-agent';
 export type { AuditAgentConfig, AuditAgentResult } from './definitions/audit-agent';
+export type { AiGovernanceAgentConfig, AiGovernanceAgentResult } from './definitions/ai-governance-agent';
 export type { ToolResult, ToolCallRequest, ToolCallResponse } from './mcp-server';
 export type { AgentMessage, SessionSnapshot } from './session/manager';
 export type { WorkflowDefinition, WorkflowExecution, WorkflowStep } from './orchestration/engine';

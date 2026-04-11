@@ -2,7 +2,7 @@
   "hooks": [
     {
       "name": "session-start",
-      "description": "Auto-update code-review-graph on session start",
+      "description": "Auto-update code-review-graph + load brain-lessons on session start",
       "event": "session_start",
       "command": "bash hooks/session-start.sh",
       "timeout_ms": 30000
@@ -12,6 +12,13 @@
       "description": "Scan for hardcoded secrets, eval(), and unsafe patterns",
       "event": "pre_commit",
       "command": "bash hooks/pre-commit-security.sh",
+      "timeout_ms": 10000
+    },
+    {
+      "name": "brain-learn",
+      "description": "Record session marker and scan brain-lessons on session stop (Phase 3 self-evolving, data-only — never modifies code)",
+      "event": "session_stop",
+      "command": "bash hooks/brain-learn.sh",
       "timeout_ms": 10000
     }
   ]
