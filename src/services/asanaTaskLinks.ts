@@ -8,7 +8,7 @@
 
 const LINKS_KEY = 'asana_task_links';
 
-export type LinkType = 'case' | 'alert' | 'approval' | 'review';
+export type LinkType = 'case' | 'alert' | 'approval' | 'review' | 'filing';
 
 export interface AsanaTaskLink {
   localId: string;
@@ -111,6 +111,7 @@ export function getLinkStats(): {
     alert: { total: 0, completed: 0 },
     approval: { total: 0, completed: 0 },
     review: { total: 0, completed: 0 },
+    filing: { total: 0, completed: 0 },
   };
 
   for (const l of links) {
