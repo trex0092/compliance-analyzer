@@ -47,6 +47,55 @@
 
 import { runMegaBrain, type MegaBrainRequest, type MegaBrainResponse } from './megaBrain';
 import type { Verdict } from './teacherStudent';
+
+// ---------------------------------------------------------------------------
+// Advisor escalation — optional plug-in hook.
+//
+// Phase 1 weaponization: every high-stakes verdict (escalate/freeze, confidence
+// below 0.7, or any safety clamp firing) gets double-checked by an Opus-class
+// advisor via the Anthropic advisor tool (src/services/advisorStrategy.ts).
+//
+// The advisor never changes the deterministic verdict — compliance decisions
+// stay auditable and reproducible. Instead, the advisor produces a concise
+// rationale (<=100 words) that is appended to the audit narrative and to
+// clampReasons so the MLRO reviewing the case sees the frontier model's
+// reasoning alongside the mechanical subsystem outputs.
+//
+// The function is injected (not imported directly) so that:
+//   1. Tests can provide a mock without touching the network.
+//   2. Offline / air-gapped deployments can disable the advisor entirely.
+//   3. The brain core stays browser-safe — no transitive fetch dependency.
+// ---------------------------------------------------------------------------
+
+export interface AdvisorEscalationInput {
+  /** Why we're escalating to the advisor (e.g. 'freeze verdict + confidence 0.42'). */
+  reason: string;
+  /** Entity identifier for traceability — used by the advisor transcript. */
+  entityId: string;
+  /** Short human-readable label (e.g. 'Dirty Corp LLC'). */
+  entityName: string;
+  /** The current final verdict after weaponized clamps. */
+  verdict: Verdict;
+  /** Confidence in [0,1] after all clamps. */
+  confidence: number;
+  /** Clamp reasons produced so far (one per line). */
+  clampReasons: readonly string[];
+  /** The auto-built audit narrative (plain text). */
+  narrative: string;
+}
+
+export interface AdvisorEscalationResult {
+  /** Advisor's text output. Empty string means the call succeeded but produced no text. */
+  text: string;
+  /** Number of advisor sub-inferences that actually ran. */
+  advisorCallCount: number;
+  /** Model identifier used (e.g. 'claude-opus-4-6'). */
+  modelUsed: string;
+}
+
+export type AdvisorEscalationFn = (
+  input: AdvisorEscalationInput
+) => Promise<AdvisorEscalationResult | null>;
 import {
   rankAdverseMedia,
   type AdverseMediaHit,
@@ -139,6 +188,26 @@ export interface WeaponizedBrainRequest {
    * per-call.
    */
   sealProofBundle?: boolean;
+
+  /**
+   * Optional advisor escalation hook. If provided, the brain will call this
+   * function when any of the six mandatory compliance triggers fires (see
+   * COMPLIANCE_ADVISOR_SYSTEM_PROMPT in advisorStrategy.ts):
+   *
+   *  - final verdict is 'escalate' or 'freeze'
+   *  - confidence drops below 0.7 after clamps
+   *  - any safety clamp triggered (undisclosed UBO, structuring, critical
+   *    adverse media, sanctioned wallet, sanctioned UBO)
+   *
+   * The advisor's text is appended to `auditNarrative` and surfaced as a
+   * clamp reason prefixed with 'ADVISOR:'. Failures are logged and the
+   * verdict proceeds without advisor input — compliance decisions never
+   * block on the advisor.
+   *
+   * Regulatory basis for the escalation: FDL No.10/2025 Art.20-21 (CO
+   * duty of care), Cabinet Res 134/2025 Art.19 (internal review).
+   */
+  advisor?: AdvisorEscalationFn;
 }
 
 export interface WeaponizedExtensions {
@@ -186,6 +255,20 @@ export interface WeaponizedBrainResponse {
    * paste into a case file or email to an MLRO.
    */
   auditNarrative: string;
+
+  /**
+   * Names of subsystems that failed during execution. Empty when all
+   * subsystems ran successfully. A non-empty array forces human review
+   * per FDL Art.24 — a failing subsystem means the decision record is
+   * incomplete and must be manually anchored.
+   */
+  subsystemFailures: string[];
+
+  /**
+   * Advisor escalation result, if the advisor was invoked. null when the
+   * advisor hook was not provided or was not triggered for this case.
+   */
+  advisorResult: AdvisorEscalationResult | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -210,85 +293,113 @@ export async function runWeaponizedBrain(
 
   const extensions: WeaponizedExtensions = {};
   const clampReasons: string[] = [];
+  const subsystemFailures: string[] = [];
   let finalVerdict: Verdict = mega.verdict;
+
+  // Partial-success helper: every extension runs inside this wrapper so that
+  // a failure in one subsystem never loses the decision from the others.
+  // Failures escalate to human review instead of throwing. FDL Art.24.
+  const runSafely = <T,>(name: string, fn: () => T): T | undefined => {
+    try {
+      return fn();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      subsystemFailures.push(name);
+      clampReasons.push(
+        `CLAMP: subsystem ${name} failed (${message}) — manual review required (FDL Art.24)`
+      );
+      return undefined;
+    }
+  };
 
   // 2. Subsystem 14: Adverse media ranking
   if (req.adverseMedia && req.adverseMedia.length > 0) {
-    const report = rankAdverseMedia(req.adverseMedia);
-    extensions.adverseMedia = report;
-
-    // Clamp: one or more critical-impact hits force escalate.
-    if (report.counts.critical > 0) {
-      const next = escalateTo(finalVerdict, 'escalate');
-      if (next !== finalVerdict) {
-        finalVerdict = next;
-        clampReasons.push(
-          `CLAMP: ${report.counts.critical} critical adverse media hit(s) — escalated ` +
-            `(FATF Rec 10 + Cabinet Res 134/2025 Art.14)`
-        );
+    const report = runSafely('adverseMediaRanker', () =>
+      rankAdverseMedia(req.adverseMedia!)
+    );
+    if (report) {
+      extensions.adverseMedia = report;
+      if (report.counts.critical > 0) {
+        const next = escalateTo(finalVerdict, 'escalate');
+        if (next !== finalVerdict) {
+          finalVerdict = next;
+          clampReasons.push(
+            `CLAMP: ${report.counts.critical} critical adverse media hit(s) — escalated ` +
+              `(FATF Rec 10 + Cabinet Res 134/2025 Art.14)`
+          );
+        }
       }
     }
   }
 
   // 3. Subsystem 15: UBO risk + layering + shell-company analysis
   if (req.ubo) {
-    const summary = summariseUboRisk(req.ubo.graph, req.ubo.targetId);
-    const layering = analyseLayering(req.ubo.graph, req.ubo.targetId);
-    const shellCompany = analyseShellCompany(req.ubo.graph, req.ubo.targetId);
-    extensions.ubo = { summary, layering, shellCompany };
-
-    // Clamp: sanctioned beneficial owner → forced freeze. Cannot downgrade.
-    if (summary.hasSanctionedUbo) {
-      finalVerdict = 'freeze';
-      clampReasons.push(
-        'CLAMP: sanctioned beneficial owner detected — verdict forced to freeze ' +
-          '(Cabinet Res 74/2020 Art.4-7 + Cabinet Decision 109/2023)'
-      );
-    } else if (summary.hasUndisclosedPortion && summary.undisclosedPercentage > 25) {
-      // Clamp: > 25% undisclosed ownership → escalate (Art.6 Cabinet 109).
-      const next = escalateTo(finalVerdict, 'escalate');
-      if (next !== finalVerdict) {
-        finalVerdict = next;
+    const uboResult = runSafely('uboAnalysis', () => {
+      const summary = summariseUboRisk(req.ubo!.graph, req.ubo!.targetId);
+      const layering = analyseLayering(req.ubo!.graph, req.ubo!.targetId);
+      const shellCompany = analyseShellCompany(req.ubo!.graph, req.ubo!.targetId);
+      return { summary, layering, shellCompany };
+    });
+    if (uboResult) {
+      extensions.ubo = uboResult;
+      if (uboResult.summary.hasSanctionedUbo) {
+        finalVerdict = 'freeze';
         clampReasons.push(
-          `CLAMP: ${summary.undisclosedPercentage.toFixed(1)}% undisclosed ownership — ` +
-            `escalated (Cabinet Decision 109/2023)`
+          'CLAMP: sanctioned beneficial owner detected — verdict forced to freeze ' +
+            '(Cabinet Res 74/2020 Art.4-7 + Cabinet Decision 109/2023)'
         );
+      } else if (
+        uboResult.summary.hasUndisclosedPortion &&
+        uboResult.summary.undisclosedPercentage > 25
+      ) {
+        const next = escalateTo(finalVerdict, 'escalate');
+        if (next !== finalVerdict) {
+          finalVerdict = next;
+          clampReasons.push(
+            `CLAMP: ${uboResult.summary.undisclosedPercentage.toFixed(1)}% undisclosed ownership — ` +
+              `escalated (Cabinet Decision 109/2023)`
+          );
+        }
       }
     }
   }
 
   // 4. Subsystem 16: VASP wallet portfolio risk
   if (req.wallets && req.wallets.addresses.length > 0) {
-    const walletRisk = summarisePortfolioWallets(req.wallets.db, req.wallets.addresses);
-    extensions.wallets = walletRisk;
-
-    // Clamp: confirmed_hit on any wallet → forced freeze.
-    if (walletRisk.confirmedHits > 0) {
-      finalVerdict = 'freeze';
-      clampReasons.push(
-        `CLAMP: ${walletRisk.confirmedHits} confirmed sanctioned/illicit wallet(s) — ` +
-          `verdict forced to freeze (Cabinet Res 74/2020 + FATF Rec 15 VASP)`
-      );
+    const walletRisk = runSafely('vaspWalletScoring', () =>
+      summarisePortfolioWallets(req.wallets!.db, req.wallets!.addresses)
+    );
+    if (walletRisk) {
+      extensions.wallets = walletRisk;
+      if (walletRisk.confirmedHits > 0) {
+        finalVerdict = 'freeze';
+        clampReasons.push(
+          `CLAMP: ${walletRisk.confirmedHits} confirmed sanctioned/illicit wallet(s) — ` +
+            `verdict forced to freeze (Cabinet Res 74/2020 + FATF Rec 15 VASP)`
+        );
+      }
     }
   }
 
   // 5. Subsystem 17: Transaction anomaly detectors
   if (req.transactions && req.transactions.length > 0) {
-    const detectorResult = runAllDetectors(req.transactions);
-    extensions.transactionAnomalies = detectorResult;
-
-    // Clamp: high-severity structuring detected → escalate.
-    const structuringHigh = detectorResult.findings.some(
-      (f) => f.kind === 'structuring' && f.severity === 'high'
+    const detectorResult = runSafely('transactionAnomaly', () =>
+      runAllDetectors(req.transactions!)
     );
-    if (structuringHigh) {
-      const next = escalateTo(finalVerdict, 'escalate');
-      if (next !== finalVerdict) {
-        finalVerdict = next;
-        clampReasons.push(
-          'CLAMP: high-severity structuring detected — escalated ' +
-            '(MoE Circular 08/AML/2021 + FDL Art.26-27)'
-        );
+    if (detectorResult) {
+      extensions.transactionAnomalies = detectorResult;
+      const structuringHigh = detectorResult.findings.some(
+        (f) => f.kind === 'structuring' && f.severity === 'high'
+      );
+      if (structuringHigh) {
+        const next = escalateTo(finalVerdict, 'escalate');
+        if (next !== finalVerdict) {
+          finalVerdict = next;
+          clampReasons.push(
+            'CLAMP: high-severity structuring detected — escalated ' +
+              '(MoE Circular 08/AML/2021 + FDL Art.26-27)'
+          );
+        }
       }
     }
   }
@@ -303,17 +414,9 @@ export async function runWeaponizedBrain(
     hasHighSeverityAnomaly:
       extensions.transactionAnomalies?.findings.some((f) => f.severity === 'high') ?? false,
   };
-  extensions.explanation = explainableScore(explainInput);
+  extensions.explanation = runSafely('explainableScoring', () => explainableScore(explainInput));
 
   // 7. Subsystem 19: zk-proof audit seal (default on, opt-out via sealProofBundle: false)
-  //
-  // The zk-seal uses Web Crypto SubtleDigest. If the runtime lacks
-  // crypto.subtle (very old browsers, some Node ESM contexts) or the digest
-  // call fails, we must NOT lose the compliance verdict — the decision is
-  // more important than the audit seal. Log the failure and continue with
-  // proofBundle undefined, then force human review so an MLRO manually
-  // anchors the decision. FDL Art.24 requires the decision record to be
-  // retained even if the cryptographic attestation is unavailable.
   if (req.sealProofBundle !== false) {
     const record: ComplianceRecord = {
       recordId: mega.chain.id,
@@ -331,12 +434,10 @@ export async function runWeaponizedBrain(
       extensions.proofBundle = await sealComplianceBundle([record]);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      subsystemFailures.push('zkComplianceProof');
       clampReasons.push(
         `CLAMP: zk-proof audit seal failed (${message}) — manual audit anchor required (FDL Art.24)`
       );
-      // Degrade gracefully: leave extensions.proofBundle undefined. The
-      // augmented human-review flag below will flip to true because
-      // clampReasons is non-empty, so an MLRO will see this case.
     }
   }
 
@@ -351,16 +452,75 @@ export async function runWeaponizedBrain(
   if (extensions.wallets && extensions.wallets.confirmedHits > 0) {
     confidence = Math.min(confidence, 0.3);
   }
+  if (subsystemFailures.length > 0) {
+    // Any subsystem failure caps confidence — the decision record is
+    // incomplete and should not be trusted at high confidence.
+    confidence = Math.min(confidence, 0.5);
+  }
 
   // 9. Augmented human-review flag.
   const requiresHumanReview =
     mega.requiresHumanReview ||
     clampReasons.length > 0 ||
     finalVerdict === 'freeze' ||
-    confidence < 0.7;
+    confidence < 0.7 ||
+    subsystemFailures.length > 0;
 
-  // 10. Audit narrative.
-  const auditNarrative = buildAuditNarrative(mega, finalVerdict, clampReasons, extensions);
+  // 10. Audit narrative (before advisor — the advisor sees the narrative).
+  let auditNarrative = buildAuditNarrative(mega, finalVerdict, clampReasons, extensions);
+  if (subsystemFailures.length > 0) {
+    auditNarrative += `\n\nSubsystem failures: ${subsystemFailures.join(', ')}`;
+  }
+
+  // 11. Advisor escalation — called only when a compliance trigger fires.
+  //
+  // Trigger rules (match the mandatory triggers in
+  // COMPLIANCE_ADVISOR_SYSTEM_PROMPT, advisorStrategy.ts):
+  //   - verdict is 'escalate' or 'freeze'           (trigger #4)
+  //   - any safety clamp fired                       (triggers #2, #5, #6)
+  //
+  // Confidence alone is NOT a trigger — MegaBrain is calibrated
+  // conservative and routinely emits 0.3 confidence on clean passes. Using
+  // confidence < 0.7 as a trigger would fire the advisor on every routine
+  // request and burn Opus budget on nothing. Instead, low confidence
+  // shows up in requiresHumanReview downstream.
+  //
+  // The advisor never changes the verdict (that's deterministic) — it only
+  // produces a concise rationale appended to the narrative + clampReasons.
+  // Failures are logged and swallowed; the decision proceeds without advice.
+  let advisorResult: AdvisorEscalationResult | null = null;
+  if (req.advisor) {
+    const shouldEscalate =
+      finalVerdict === 'escalate' ||
+      finalVerdict === 'freeze' ||
+      clampReasons.length > 0;
+    if (shouldEscalate) {
+      const reason = buildAdvisorReason(finalVerdict, confidence, clampReasons);
+      try {
+        advisorResult = await req.advisor({
+          reason,
+          entityId: mega.entityId,
+          entityName: req.mega.entity.name,
+          verdict: finalVerdict,
+          confidence,
+          clampReasons,
+          narrative: auditNarrative,
+        });
+        if (advisorResult && advisorResult.text.trim().length > 0) {
+          clampReasons.push(`ADVISOR: ${advisorResult.text.trim()}`);
+          auditNarrative +=
+            `\n\nAdvisor review (${advisorResult.modelUsed}, ` +
+            `${advisorResult.advisorCallCount} sub-inference${advisorResult.advisorCallCount === 1 ? '' : 's'}):\n` +
+            advisorResult.text.trim();
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        // Advisor failures never block the decision. Log to narrative so
+        // the MLRO sees that the advisor was attempted.
+        auditNarrative += `\n\nAdvisor escalation attempted but failed: ${message}`;
+      }
+    }
+  }
 
   return {
     mega,
@@ -370,7 +530,27 @@ export async function runWeaponizedBrain(
     requiresHumanReview,
     confidence: Math.round(confidence * 10000) / 10000,
     auditNarrative,
+    subsystemFailures,
+    advisorResult,
   };
+}
+
+function buildAdvisorReason(
+  verdict: Verdict,
+  confidence: number,
+  clampReasons: readonly string[]
+): string {
+  const parts: string[] = [];
+  if (verdict === 'freeze' || verdict === 'escalate') {
+    parts.push(`verdict=${verdict}`);
+  }
+  if (confidence < 0.7) {
+    parts.push(`confidence=${confidence.toFixed(2)}`);
+  }
+  if (clampReasons.length > 0) {
+    parts.push(`${clampReasons.length} clamp(s)`);
+  }
+  return parts.length > 0 ? parts.join(' + ') : 'routine review';
 }
 
 // ---------------------------------------------------------------------------
