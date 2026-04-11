@@ -76,6 +76,10 @@ import {
   type SerialisedWatchlist,
   type WatchlistEntry,
 } from '../src/services/screeningWatchlist';
+import {
+  buildScreeningReport,
+  type ScreeningReportInput,
+} from '../src/services/complianceReportBuilder';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -156,6 +160,60 @@ interface AsanaDispatchResult {
   ok: boolean;
   gid?: string;
   error?: string;
+}
+
+/**
+ * Upload a file as an attachment on an Asana task via POST
+ * /tasks/{gid}/attachments. Used to attach compliance-grade reports
+ * (HTML + JSON + Markdown) built by complianceReportBuilder to every
+ * daily heartbeat task, so each task carries its own audit-grade
+ * evidence bundle per FDL Art.24 + MoE Circular 08/AML/2021.
+ *
+ * Keeps the same dry-run / token guards as createScreeningTask so the
+ * local dev loop + CI smoke run don't burn real API calls.
+ */
+async function uploadScreeningAttachment(
+  cfg: RunConfig,
+  taskGid: string,
+  fileName: string,
+  contentType: string,
+  content: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (cfg.dryRun || taskGid === 'dry-run') {
+    console.log(`[dry-run] would upload attachment ${fileName} (${contentType}) to task ${taskGid}`);
+    return { ok: true };
+  }
+  if (!cfg.asanaToken) {
+    return { ok: false, error: 'ASANA_TOKEN not set' };
+  }
+
+  const form = new FormData();
+  form.append('file', new Blob([content], { type: contentType }), fileName);
+
+  try {
+    const res = await fetch(
+      `https://app.asana.com/api/1.0/tasks/${encodeURIComponent(taskGid)}/attachments`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cfg.asanaToken}` },
+        body: form,
+        signal: AbortSignal.timeout(30_000),
+      }
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      return {
+        ok: false,
+        error: `Asana attachment ${res.status}: ${text.slice(0, 200)}`,
+      };
+    }
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: `asana attachment upload failed: ${(err as Error).message}`,
+    };
+  }
 }
 
 async function createScreeningTask(
@@ -550,9 +608,70 @@ export async function runScheduledScreening(cfg?: RunConfig): Promise<RunSummary
   console.log(`[scheduled-screening] state saved: ${updated.entries.length} entries`);
 
   // 5. Create the heartbeat summary task (always — on zero-alert days too)
+  //    and attach a MoE/FIU/EOCN-compliant report bundle (HTML + JSON + MD)
+  //    so every task carries a self-contained audit-grade evidence pack.
   const heartbeatName = buildHeartbeatTaskName(runAtIso, summary.totalChecked, summary.subjectsWithAlerts.length);
   const heartbeatNotes = buildHeartbeatTaskNotes(summary);
-  await createScreeningTask(runCfg, assigneeGid, heartbeatName, heartbeatNotes, runAtIso.slice(0, 10));
+  const heartbeatDispatch = await createScreeningTask(
+    runCfg,
+    assigneeGid,
+    heartbeatName,
+    heartbeatNotes,
+    runAtIso.slice(0, 10)
+  );
+
+  if (heartbeatDispatch.ok && heartbeatDispatch.gid) {
+    const reportInput: ScreeningReportInput = {
+      runAtIso,
+      reportingEntity: process.env.REPORTING_ENTITY_NAME ?? 'Hawkeye Sterling V2',
+      licenceNumber: process.env.REPORTING_ENTITY_LICENCE,
+      complianceOfficer: runCfg.asanaAssigneeName ?? 'Compliance Officer',
+      listsScreened: ['UN', 'OFAC', 'EU', 'UK', 'UAE', 'EOCN'],
+      totalChecked: summary.totalChecked,
+      totalNewHits: summary.totalNewHits,
+      subjectsWithAlerts: summary.subjectsWithAlerts.map((s) => ({
+        subjectId: s.id,
+        subjectName: s.subjectName,
+        newHitCount: s.newHitCount,
+        asanaGid: s.asanaGid,
+      })),
+      subjectsWithErrors: summary.subjectsWithErrors.map((s) => ({
+        subjectId: s.id,
+        subjectName: s.subjectName,
+        error: s.error,
+      })),
+      subjectsClean: summary.subjectsClean.map((s) => ({
+        subjectId: s.id,
+        subjectName: s.subjectName,
+      })),
+    };
+
+    try {
+      const report = await buildScreeningReport(reportInput);
+      // Upload all three artefacts in order. Failures on one artefact
+      // do not block the others — the task still gets at least partial
+      // evidence attached. The integrity hash is the same across all
+      // three so auditors can cross-verify.
+      const uploads = [
+        { name: report.filenames.html, type: 'text/html', body: report.html },
+        { name: report.filenames.json, type: 'application/json', body: report.json },
+        { name: report.filenames.markdown, type: 'text/markdown', body: report.markdown },
+      ];
+      for (const u of uploads) {
+        const r = await uploadScreeningAttachment(runCfg, heartbeatDispatch.gid, u.name, u.type, u.body);
+        if (!r.ok) {
+          console.warn(`[scheduled-screening] attachment ${u.name} failed: ${r.error}`);
+        }
+      }
+      console.log(
+        `[scheduled-screening] heartbeat attachments uploaded (integrity ${report.integrityHash.slice(0, 16)}...)`
+      );
+    } catch (err) {
+      console.warn(
+        `[scheduled-screening] report generation failed (non-fatal): ${(err as Error).message}`
+      );
+    }
+  }
 
   // 6. Emit brain event
   await emitBrainEvent(runCfg, summary);
