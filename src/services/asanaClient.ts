@@ -293,6 +293,102 @@ export async function listProjectTasks(
   return { ok: false, error: result.error };
 }
 
+// ─── Attachments ────────────────────────────────────────────────────────────
+
+export interface AsanaAttachmentResponse {
+  gid: string;
+  name: string;
+  download_url?: string;
+  permanent_url?: string;
+}
+
+/**
+ * Upload a file as an attachment on an Asana task.
+ *
+ * Asana's /tasks/{gid}/attachments endpoint expects multipart/form-data
+ * with a `file` field. This helper builds the FormData payload and
+ * POSTs it through the same rate-limited transport as the rest of the
+ * client. Works on both Node (native FormData + Blob) and the browser.
+ *
+ * Used by the scheduled-screening runner to attach
+ * complianceReportBuilder artefacts (HTML + JSON + Markdown) to the
+ * daily heartbeat and per-subject alert tasks so every task carries
+ * its own audit-grade evidence bundle.
+ *
+ * Regulatory basis: FDL No.10/2025 Art.24 (5-year record retention);
+ * MoE Circular 08/AML/2021 (goAML evidence chain); LBMA RGG v9
+ * (annual audit pack attachments).
+ */
+export async function uploadAsanaAttachment(
+  taskGid: string,
+  fileName: string,
+  contentType: string,
+  content: string | Uint8Array
+): Promise<{ ok: boolean; attachment?: AsanaAttachmentResponse; error?: string }> {
+  const cfg = getConfig();
+  if (!cfg.token && !cfg.proxyUrl) {
+    return {
+      ok: false,
+      error: 'Asana not configured — set Proxy URL or Asana token in Settings',
+    };
+  }
+
+  // Use the global FormData / Blob — available in Node 20+ and the browser.
+  // We intentionally avoid `Buffer` so this module stays browser-safe.
+  const body = new FormData();
+  const blob =
+    typeof content === 'string'
+      ? new Blob([content], { type: contentType })
+      : new Blob([content.buffer as ArrayBuffer], { type: contentType });
+  body.append('file', blob, fileName);
+
+  await rateLimitedWait();
+
+  const headers: Record<string, string> = {};
+  let url: string;
+  if (cfg.proxyUrl) {
+    url = `${cfg.proxyUrl}/asana/tasks/${encodeURIComponent(taskGid)}/attachments`;
+  } else {
+    url = `https://app.asana.com/api/1.0/tasks/${encodeURIComponent(taskGid)}/attachments`;
+    if (cfg.token) headers['Authorization'] = `Bearer ${cfg.token}`;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+
+  try {
+    // NOTE: do NOT set Content-Type manually — fetch fills in the
+    // correct `multipart/form-data; boundary=...` when body is FormData.
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      if (res.status === 429) honourRetryAfter(res.headers);
+      const text = await res.text();
+      return {
+        ok: false,
+        error: `Asana attachment upload ${res.status}: ${text.slice(0, 200)}`,
+      };
+    }
+
+    decayRateLimit();
+
+    const json = (await res.json()) as { data?: AsanaAttachmentResponse };
+    return { ok: true, attachment: json.data };
+  } catch (err) {
+    clearTimeout(timeout);
+    return {
+      ok: false,
+      error: `Asana attachment upload failed: ${(err as Error).message}`,
+    };
+  }
+}
+
 // ─── User Directory ─────────────────────────────────────────────────────────
 
 export interface AsanaUser {
