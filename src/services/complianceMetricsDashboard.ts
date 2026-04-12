@@ -237,7 +237,7 @@ export function buildKpiReport(
   const notMeasuredCount = kpiMeasurements.filter(k => k.status === 'not_measured').length;
 
   const overallScore = Math.round(
-    ((greenCount * 100 + amberCount * 50) / (KPI_DEFINITIONS.length))
+    (greenCount * 100 + amberCount * 50) / Math.max(1, greenCount + amberCount + redCount)
   );
 
   const criticalRedKpis = kpiMeasurements

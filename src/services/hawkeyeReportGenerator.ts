@@ -327,7 +327,7 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
       const sev   = { CRITICAL: '🔴 CRITICAL', HIGH: '🟠 HIGH', MEDIUM: '🟡 MEDIUM', INFO: 'ℹ INFO' }[alert.severity] ?? alert.severity;
       const feStr = alert.fourEyesRequired ? ' ✅ Four-eyes required.' : '';
       const toStr = alert.tipOffProhibited ? ' ⚠ Tip-off prohibited (Art.29).' : '';
-      lines.push(`| ${sev} | ${alert.title.slice(0, 70)} | ${alert.deadline.split('T')[0]} | ${alert.description.slice(0, 80)}${feStr}${toStr} |`);
+      lines.push(`| ${sev} | ${alert.title.slice(0, 70)} | ${alert.deadline.split('T')[0]} | ${alert.requiredAction.slice(0, 80)}${feStr}${toStr} |`);
     }
     lines.push('');
     if (ext.mlroAlerts.alerts.some(a => a.tipOffProhibited)) {

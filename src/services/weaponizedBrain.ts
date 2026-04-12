@@ -2902,7 +2902,7 @@ export async function runWeaponizedBrain(
     const allGeneratedText = [
       auditNarrative,
       extensions.strNarrative?.narrative ?? '',
-      extensions.mlroAlerts?.alerts?.map((a) => a.description).join('\n') ?? '',
+      extensions.mlroAlerts?.alerts?.map((a) => a.narrative).join('\n') ?? '',
     ].join('\n\n---\n\n');
 
     const tippingReport = runSafely('tippingOffLinter', () =>
