@@ -62,7 +62,18 @@
       var el = document.getElementById('tab-intelligence');
       if (el && typeof ComplianceIntelligence !== 'undefined') el.innerHTML = ComplianceIntelligence.renderIntelligenceTab();
     }
+    if (name === 'metalstrading') {
+      if (typeof mtInit === 'function') mtInit();
+    }
   };
+
+  // Handle #metals-trading URL hash on page load
+  setTimeout(function() {
+    var hash = window.location.hash;
+    if (hash === '#metals-trading' || hash === '#metalstrading') {
+      window.switchTab('metalstrading');
+    }
+  }, 500);
 
   // Auto-migrate localStorage to IndexedDB on first load
   if (typeof ComplianceDB !== 'undefined') {

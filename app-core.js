@@ -1064,6 +1064,7 @@ function switchTab(name) {
   if (name==='uploads') loadUploadedFiles();
   if (name==='incidents') { if (typeof updateIncidentMetrics === 'function') updateIncidentMetrics(); }
   if (name==='riskassessment') renderRiskAssessment();
+  if (name==='metalstrading') { if (typeof mtInit === 'function') mtInit(); }
 }
 
 function persistEmployeeTraining() {
@@ -3665,9 +3666,10 @@ async function autoSyncToAsana(taskName, taskNotes, dueInDays) {
   if (!ASANA_TOKEN && !PROXY_URL) return null;
   try {
     const due = new Date(); due.setDate(due.getDate() + (dueInDays || 14));
-    const body = { data: { name: taskName, notes: taskNotes, projects: [getAsanaProject()], workspace: ASANA_WORKSPACE, due_on: due.toISOString().split('T')[0] } };
+    const body = { data: { name: taskName, notes: taskNotes, projects: [getAsanaProject()], due_on: due.toISOString().split('T')[0] } };
     setAsanaModuleSync('writeback', { status: 'Syncing', lastError: '' });
     const r = await asanaFetch('/tasks', { method: 'POST', body: JSON.stringify(body) });
+    if (!r.ok) throw new Error('Asana API returned ' + r.status);
     const d = await r.json();
     if (d.errors) throw new Error(d.errors[0]?.message || 'Asana error');
     setAsanaModuleSync('writeback', { status: 'Healthy', lastSuccess: new Date().toISOString(), lastError: '', lastCount: 1 });
@@ -3720,7 +3722,6 @@ async function getOrCreateScreeningProject() {
     const createBody = {
       data: {
         name: projectName,
-        workspace: ASANA_WORKSPACE,
         notes: 'TFS / Sanctions Screening — All screening tasks\nCreated by Hawkeye Sterling V2.\n\nRegulatory Basis: UAE FDL No.10/2025, FATF Rec 6, Cabinet Decision No.74/2020',
         layout: 'list',
         default_view: 'list'
@@ -3751,9 +3752,10 @@ async function syncScreeningToAsana(entityName, taskName, taskNotes, dueInDays) 
       return autoSyncToAsana(taskName, taskNotes, dueInDays);
     }
     const due = new Date(); due.setDate(due.getDate() + (dueInDays || 14));
-    const body = { data: { name: taskName, notes: taskNotes, projects: [projectGid], workspace: ASANA_WORKSPACE, due_on: due.toISOString().split('T')[0] } };
+    const body = { data: { name: taskName, notes: taskNotes, projects: [projectGid], due_on: due.toISOString().split('T')[0] } };
     setAsanaModuleSync('writeback', { status: 'Syncing', lastError: '' });
     const r = await asanaFetch('/tasks', { method: 'POST', body: JSON.stringify(body) });
+    if (!r.ok) throw new Error('Asana API returned ' + r.status);
     const d = await r.json();
     if (d.errors) throw new Error(d.errors[0]?.message || 'Asana error');
     setAsanaModuleSync('writeback', { status: 'Healthy', lastSuccess: new Date().toISOString(), lastError: '', lastCount: 1 });
@@ -3788,13 +3790,14 @@ async function submitCreateTask() {
   if (!name) { toast('Task name is required','error'); return; }
   if (!ASANA_TOKEN && !PROXY_URL) { toast('Asana token required','error'); return; }
 
-  const body = { data: { name, notes, projects: [getAsanaProject()], workspace: ASANA_WORKSPACE } };
+  const body = { data: { name, notes, projects: [getAsanaProject()] } };
   if (due) body.data.due_on = due;
   if (priorityGid) body.data.custom_fields = { '1213759653333851': priorityGid };
 
   try {
     setAsanaModuleSync('writeback', { status: 'Syncing', lastError: '' });
     const r = await asanaFetch('/tasks', { method: 'POST', body: JSON.stringify(body) });
+    if (!r.ok) throw new Error('Asana API returned ' + r.status);
     const d = await r.json();
     if (d.errors) throw new Error(d.errors[0]?.message || 'Asana error');
     const taskGid = d.data?.gid;

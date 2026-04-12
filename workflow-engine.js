@@ -845,7 +845,7 @@
         queueAsanaRetry({ kind: 'workflow-task-create', body: JSON.parse(taskBody), taskName, lastError: e.message, ruleId: data._ruleId || '' });
       }
       if (typeof setAsanaModuleSync === 'function') setAsanaModuleSync('writeback', { status: 'Degraded', lastError: e.message, lastCount: 0 });
-      return { skipped: true, reason: 'Asana connection failed: ' + e.message };
+      throw new Error('Asana connection failed: ' + e.message);
     }
   }
 
