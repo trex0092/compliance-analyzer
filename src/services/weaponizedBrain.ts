@@ -990,7 +990,7 @@ export interface WeaponizedBrainRequest {
    * #88 Quantum-resistant seal — SHA-3/512-based post-quantum audit seal for
    * the full brain response. Complements the Merkle ZK proof (#19) with a
    * quantum-resistant hash. Always produces a QuantumSealBundle.
-   * (FDL Art.24 5yr retention / NIST Post-Quantum Cryptography Framework)
+   * (FDL Art.24 10yr retention / NIST Post-Quantum Cryptography Framework)
    */
   // No input needed — seals the final response automatically.
 
@@ -1005,7 +1005,7 @@ export interface WeaponizedBrainRequest {
    * #90 Time-travel audit — evidence entries for the current case, enabling
    * MLRO to replay the decision at any historical point.
    * Critical path of evidence is surfaced for audit pack generation.
-   * (FDL Art.24 5yr retention / Cabinet Res 134/2025 Art.19 internal review)
+   * (FDL Art.24 10yr retention / Cabinet Res 134/2025 Art.19 internal review)
    */
   auditEvidenceEntries?: readonly EvidenceEntry[];
   /** Target case reference ID for time-travel replay queries. */

@@ -315,7 +315,7 @@ export interface AsanaAttachmentResponse {
  * daily heartbeat and per-subject alert tasks so every task carries
  * its own audit-grade evidence bundle.
  *
- * Regulatory basis: FDL No.10/2025 Art.24 (5-year record retention);
+ * Regulatory basis: FDL No.10/2025 Art.24 (10-year record retention);
  * MoE Circular 08/AML/2021 (goAML evidence chain); LBMA RGG v9
  * (annual audit pack attachments).
  */

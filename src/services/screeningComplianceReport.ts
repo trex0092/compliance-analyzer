@@ -271,7 +271,7 @@ function buildAuditTrailSection(entries?: AuditEntry[]): ReportSectionContent {
     section: 'audit_trail',
     title: 'Audit Trail',
     status: (entries?.length ?? 0) > 0 ? 'compliant' : 'partial',
-    summary: `${entries?.length ?? 0} audit entries recorded. FDL No.10/2025 Art.24 requires 5-year retention.`,
+    summary: `${entries?.length ?? 0} audit entries recorded. FDL No.10/2025 Art.24 requires 10-year retention.`,
     details: { entries: entries?.slice(-20) ?? [] },  // last 20 entries
   };
 }

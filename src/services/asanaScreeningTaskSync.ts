@@ -13,7 +13,7 @@
  *  - Due date = next review date from the report
  *
  * Regulatory: FDL No.10/2025 Art.20-21 (CO record-keeping duties),
- *             FDL No.10/2025 Art.24 (5-year retention), Cabinet Res 71/2024.
+ *             FDL No.10/2025 Art.24 (10-year retention), Cabinet Res 71/2024.
  */
 
 import type { ScreeningComplianceReport, ComplianceFinding } from './screeningComplianceReport';

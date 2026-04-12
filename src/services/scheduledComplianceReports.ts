@@ -13,7 +13,7 @@
  *
  * Regulatory basis:
  *   - MoE Circular 08/AML/2021 (quarterly DPMSR — AED 55K threshold)
- *   - FDL No.10/2025 Art.24 (5yr retention of scheduled outputs)
+ *   - FDL No.10/2025 Art.24 (10yr retention of scheduled outputs)
  *   - Cabinet Res 134/2025 Art.19 (periodic internal review)
  *   - FATF Rec 20 (timely STR filing)
  *   - LBMA RGG v9 (annual responsible-gold audit)

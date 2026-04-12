@@ -102,7 +102,7 @@ const INSPECTOR_QUESTIONS: ReadonlyArray<{
   {
     id: 'Q5',
     question: 'Is the audit chain sealed and tamper-evident?',
-    citation: 'FDL No.10/2025 Art.24 (5yr retention)',
+    citation: 'FDL No.10/2025 Art.24 (10yr retention)',
     requires: 'hasAuditChain',
     appliesTo: ['pass', 'flag', 'escalate', 'freeze'],
   },

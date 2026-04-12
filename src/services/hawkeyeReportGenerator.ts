@@ -20,10 +20,10 @@
  *   E — Key Findings         (regulatory-cited alerts, actions, deadlines)
  *   F — Filing Obligations   (STR/CTR/CNMR/EOCN + goAML form codes)
  *   G — ESG & Sustainability (grade, carbon, TCFD, SDG, greenwashing)
- *   H — Audit Trail          (FDL Art.24 — 5-year retention log)
+ *   H — Audit Trail          (FDL Art.24 — 10-year retention log)
  *   I — Report Footer        (Hawkeye branding, confidentiality, ref)
  *
- * Regulatory: FDL No.10/2025 Art.24 (5yr retention), Art.29 (no tipping off),
+ * Regulatory: FDL No.10/2025 Art.24 (10yr retention), Art.29 (no tipping off),
  *             Cabinet Res 134/2025 Art.19 (internal review documentation),
  *             Cabinet Res 71/2024 (penalty references), NIST AI RMF GV-1.6.
  */
@@ -381,7 +381,7 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   lines.push('');
 
   // ── H: Audit Trail ────────────────────────────────────────────────────────
-  lines.push(`## H — Audit Trail *(FDL No.10/2025 Art.24 — retain 5 years)*`);
+  lines.push(`## H — Audit Trail *(FDL No.10/2025 Art.24 — Retain 10 years)*`);
   lines.push('');
   lines.push(`| Timestamp | Action | Actor | Regulatory Ref |`);
   lines.push(`|-----------|--------|-------|----------------|`);
@@ -398,7 +398,7 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   if (ext.asanaSync?.parentTaskGid) {
     lines.push(`| ${now} | Asana task created: ${ext.asanaSync.parentTaskGid} | Asana Orchestrator | FDL No.10/2025 Art.24 |`);
   }
-  lines.push(`| ${now} | Report generated: ${reportId} | Hawkeye V2 | FDL No.10/2025 Art.24 — 5yr retention |`);
+  lines.push(`| ${now} | Report generated: ${reportId} | Hawkeye V2 | FDL No.10/2025 Art.24 — 10yr retention |`);
   lines.push('');
   lines.push('---');
   lines.push('');
@@ -411,7 +411,7 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   lines.push(`> **CONFIDENTIALITY NOTICE:** This report is generated for authorised compliance`);
   lines.push(`> monitoring purposes only. Disclosure to the subject of the screening or any`);
   lines.push(`> unauthorised party is a criminal offence under FDL No.10/2025 Art.29 (tipping off).`);
-  lines.push(`> Retained for 5 years per FDL No.10/2025 Art.24.`);
+  lines.push(`> retained for 10 years per FDL No.10/2025 Art.24.`);
   lines.push('');
   lines.push(`*Report ID: \`${reportId}\` | Generated: ${now} | Jurisdiction: UAE*`);
 
@@ -462,7 +462,7 @@ function buildSummaryCard(
     `│  FILING : ${(ext.filingClassification?.primaryCategory !== 'NONE' && ext.filingClassification ? `${ext.filingClassification.primaryCategory} — due ${ext.filingClassification.deadlineDueDate ?? 'TBD'}` : 'No filing obligation triggered').padEnd(61)} │`,
     `├────────────────────────────────────────────────────────────────────┤`,
     `│  ⚠  Tip-off Prohibited: FDL No.10/2025 Art.29                     │`,
-    `│  ⚠  Retain 5 years: FDL No.10/2025 Art.24                         │`,
+    `│  ⚠  Retain 10 years: FDL No.10/2025 Art.24                         │`,
     `└────────────────────────────────────────────────────────────────────┘`,
   ];
 
@@ -495,7 +495,7 @@ function buildAuditBlock(
     `Clamps Fired : ${brain.clampReasons.length > 0 ? brain.clampReasons.join(' | ') : 'NONE'}`,
     `Filing       : ${brain.extensions.filingClassification?.primaryCategory ?? 'NONE'}`,
     `Regulatory   : FDL No.10/2025 | Cabinet Res 134/2025 | Cabinet Res 74/2020`,
-    `Retention    : 5 years from ${now} (FDL No.10/2025 Art.24)`,
+    `Retention    : 10 years from ${now} (FDL No.10/2025 Art.24)`,
     `Tip-Off Prohibited: YES (FDL No.10/2025 Art.29)`,
   ].join('\n');
 }

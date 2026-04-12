@@ -9,7 +9,7 @@
  * - Filing compliance verification
  * - Audit trail integrity verification
  *
- * Regulatory basis: FDL No.10/2025 Art.24 (record retention 5yr),
+ * Regulatory basis: FDL No.10/2025 Art.24 (record retention 10yr),
  * Cabinet Res 134/2025 Art.19 (internal review)
  */
 

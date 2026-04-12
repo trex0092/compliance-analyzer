@@ -29,7 +29,7 @@ export type ObligationType =
   | 'LBMA_ANNUAL_AUDIT'
   | 'GOAML_REGISTRATION_RENEWAL'
   | 'MoE_LICENSE_RENEWAL'
-  | 'RECORD_RETENTION_5YR'
+  | 'RECORD_RETENTION_10YR'
   | 'SANCTIONS_LIST_REFRESH';
 
 export type DeadlineStatus = 'upcoming' | 'due_today' | 'overdue' | 'completed' | 'blocked';
@@ -113,7 +113,7 @@ const OBLIGATION_SPECS: Record<ObligationType, ObligationSpec> = {
   LBMA_ANNUAL_AUDIT:         { businessDays: 260, description: 'LBMA RGG annual audit', regulatoryRef: 'LBMA Responsible Gold Guidance v9 §3.2', actionRequired: 'Commission independent LBMA supply-chain audit. Submit to LBMA member portal.' },
   GOAML_REGISTRATION_RENEWAL: { businessDays: 260, description: 'goAML system registration renewal', regulatoryRef: 'UAE FIU goAML Guidelines 2024', actionRequired: 'Renew goAML registration. Update entity details, CO contact, digital certificate.' },
   MoE_LICENSE_RENEWAL:       { businessDays: 30, description: 'MoE DPMS licence renewal', regulatoryRef: 'MoE Circular 08/AML/2021', penaltyRange: 'Licence suspension', actionRequired: 'Submit MoE DPMS licence renewal with updated AML attestation.' },
-  RECORD_RETENTION_5YR:      { businessDays: 0, description: 'Record retention check (5-year minimum)', regulatoryRef: 'FDL No.10/2025 Art.24', penaltyRange: 'AED 10K–50M', actionRequired: 'Verify all transaction and CDD records retained for minimum 5 years from relationship end.' },
+  RECORD_RETENTION_10YR:      { businessDays: 0, description: 'Record retention check (10-year minimum)', regulatoryRef: 'FDL No.10/2025 Art.24', penaltyRange: 'AED 10K–50M', actionRequired: 'Verify all transaction and CDD records retained for minimum 10 years from relationship end.' },
   SANCTIONS_LIST_REFRESH:    { businessDays: 1, description: 'Sanctions list refresh (next business day)', regulatoryRef: 'Cabinet Res 74/2020 Art.3; FDL No.10/2025 Art.35', actionRequired: 'Refresh UN, OFAC, EU, UK, UAE, EOCN sanctions lists. Re-screen all active customers.' },
 };
 

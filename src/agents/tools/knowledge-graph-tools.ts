@@ -359,7 +359,7 @@ export class ComplianceKnowledgeGraph {
         name: 'Record Retention',
         source: 'FDL No.10/2025',
         article: 'Art.24',
-        description: 'Minimum 5-year record retention',
+        description: 'Minimum 10-year record retention',
         effectiveDate: '2025-01-01',
         category: 'record-keeping',
       },

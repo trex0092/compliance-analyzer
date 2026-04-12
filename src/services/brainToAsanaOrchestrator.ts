@@ -11,7 +11,7 @@
  *   flag      → MEDIUM parent + review subtask
  *   pass      → INFO task (skipped unless passThrough=true)
  *
- * Regulatory: FDL No.10/2025 Art.20-21 (CO duties), Art.24 (5yr retention),
+ * Regulatory: FDL No.10/2025 Art.20-21 (CO duties), Art.24 (10yr retention),
  *             Art.26-27 (STR filing), Cabinet Res 74/2020 Art.4-7 (24h freeze),
  *             Cabinet Res 71/2024 (penalty exposure).
  */
@@ -232,7 +232,7 @@ function buildQuantumSealSubtask(
       `**Domain-Separated:** ${qs.domainSeparated ? 'YES' : 'NO'}`,
       '',
       '**Regulatory basis:**',
-      '- FDL No.10/2025 Art.24 — 5-year record retention requirement',
+      '- FDL No.10/2025 Art.24 — 10-year record retention requirement',
       '- NIST Post-Quantum Cryptography Framework (FIPS 203/204/205)',
       '- EU AI Act Art.12 — record-keeping for high-risk AI systems',
       '',
@@ -268,7 +268,7 @@ function buildGoAMLXmlSubtask(
       '3. Log in to goAML portal (https://goaml.uaf.gov.ae)',
       '4. Submit via File → Upload XML',
       '5. Record submission confirmation number',
-      '6. Retain confirmation in case file (FDL Art.24 — 5yr retention)',
+      '6. Retain confirmation in case file (FDL Art.24 — 10yr retention)',
       '',
       '**XML Preview (first 2000 chars):**',
       '```xml',
@@ -582,7 +582,7 @@ function buildStrSubtask(entityId: string, classification: string, dueDate: stri
       `- Prepare ${classification} via goAML`,
       '- Four-eyes review: CO + MLRO',
       '- DO NOT notify subject (FDL Art.29)',
-      '- Retain filing record for 5 years (FDL Art.24)',
+      '- Retain filing record for 10 years (FDL Art.24)',
       '',
       `**Regulatory ref:** FDL No.10/2025 Art.26-27; MoE Circular 08/AML/2021`,
     ].join('\n'),

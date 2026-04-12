@@ -33,7 +33,7 @@
  * interface is fixed so swapping implementations is trivial.
  *
  * Regulatory basis:
- *   - FDL No.10/2025 Art.24 (5-year retention — quantum horizon)
+ *   - FDL No.10/2025 Art.24 (10-year retention — quantum horizon)
  *   - NIST AI RMF MS-4.1 (audit trail integrity)
  *   - ISO/IEC 42001:2023 A.9.3 (long-term AIMS audit)
  *   - EU AI Act Art.11, 12 (technical documentation + logging)

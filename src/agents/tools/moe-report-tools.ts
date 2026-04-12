@@ -275,7 +275,7 @@ const MOE_CHECKLIST: ChecklistDefinition[] = [
   },
   {
     itemNumber: 17,
-    title: 'Record Retention (5 years min)',
+    title: 'Record Retention (10 years min)',
     category: 'Records',
     regulatoryRef: 'FDL Art.24',
     weight: 3,
@@ -688,7 +688,7 @@ export interface ReadinessDataSources {
   independentAuditConducted: boolean;
   /** Last audit date (dd/mm/yyyy) */
   lastAuditDate?: string;
-  /** Whether record retention policy meets 5yr minimum */
+  /** Whether record retention policy meets 10yr minimum */
   recordRetentionCompliant: boolean;
   /** Whether supply chain DD is documented (LBMA RGG v9) */
   supplyChainDDDocumented: boolean;
@@ -1031,7 +1031,7 @@ export function runReadinessCheck(input: {
   // 17. Record Retention
   addItem(
     17,
-    'Record Retention (5 years min)',
+    'Record Retention (10 years min)',
     'Records',
     3,
     false,
@@ -1042,7 +1042,7 @@ export function runReadinessCheck(input: {
       : 'Record retention policy deficient.',
     ds.recordRetentionCompliant
       ? undefined
-      : 'Implement record retention meeting 5-year minimum per FDL Art.24.'
+      : 'Implement record retention meeting 10-year minimum per FDL Art.24.'
   );
 
   // 18. Staff Training

@@ -120,7 +120,7 @@ const STANDARD_GUARDRAILS: AgentGuardrail[] = [
     type: 'audit_trail_mandatory',
     enforcedAt: 'post_tool',
     blockOnViolation: true,
-    regulatoryRef: 'FDL No.10/2025 Art.24 — all actions must be logged for 5 years',
+    regulatoryRef: 'FDL No.10/2025 Art.24 — all actions must be logged for 10 years',
   },
   {
     type: 'rate_limit',
@@ -355,7 +355,7 @@ ${task.toolsAllowed.map(t => `- ${t}`).join('\n')}
 
 ## COMPLIANCE RULES
 1. NEVER tip off the subject of an investigation (FDL No.10/2025 Art.29 — criminal offence)
-2. ALL actions must be logged with timestamp + user + action (FDL Art.24 — 5yr retention)
+2. ALL actions must be logged with timestamp + user + action (FDL Art.24 — 10yr retention)
 3. ALL sanctions screening must check 6 lists: UN, OFAC, EU, UK, UAE, EOCN
 4. ANY freeze or STR decision requires four-eyes approval before execution
 5. Use businessDays.ts for deadlines — never calendar days (except EOCN 24h clock)

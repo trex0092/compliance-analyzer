@@ -20,7 +20,7 @@
  * Excel 2003 through Microsoft 365 in 2026.
  *
  * Regulatory basis:
- *   - FDL No.10/2025 Art.24 (5yr retention — multi-format export)
+ *   - FDL No.10/2025 Art.24 (10yr retention — multi-format export)
  *   - MoE Circular 08/AML/2021 (DPMS quarterly reporting)
  *   - LBMA RGG v9 (annual audit pack — Excel is the regulator
  *     preferred format for line-item review)

@@ -21,7 +21,7 @@
  *   - regulatory_note, adverse_media_hit, adverse_media_cleared
  *
  * Regulatory basis:
- *   - FDL Art.24 (5-year record retention + reconstructable state)
+ *   - FDL Art.24 (10-year record retention + reconstructable state)
  *   - Cabinet Res 134/2025 Art.19 (internal review must be able to
  *     reconstruct past state)
  *   - EOCN Inspection Manual v4 §9 (audit trail replay)

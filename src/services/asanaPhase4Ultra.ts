@@ -196,7 +196,7 @@ export function buildInspectorPack(input: InspectorPackInput): InspectorPackMani
     `${input.artefacts.length} artefact(s) bundled.`,
     `Regulations covered: ${regulatoryIndex.length}.`,
     ``,
-    `This bundle is retained under FDL No.10/2025 Art.24 for 5 years.`,
+    `This bundle is retained under FDL No.10/2025 Art.24 for 10 years.`,
     `Tipping-off warning: do not share the content of this pack with`,
     `the subject (FDL No.10/2025 Art.29).`,
   ].join('\n');

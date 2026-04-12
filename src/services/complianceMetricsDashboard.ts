@@ -156,8 +156,8 @@ export const KPI_DEFINITIONS: KpiDefinition[] = [
     regulatoryRef: 'Cabinet Res 74/2020 Art.7',
     greenThreshold: '100%', amberThreshold: '100%', redThreshold: 'Any missed',
     penaltyIfRed: 'AED 100K–100M + criminal' },
-  { id: 'F5', name: 'Record retention compliance (% of files ≥5yr)', category: 'filing_reporting',
-    regulatoryRef: 'FDL No.10/2025 Art.24 — 5-year minimum',
+  { id: 'F5', name: 'Record retention compliance (% of files ≥10yr)', category: 'filing_reporting',
+    regulatoryRef: 'FDL No.10/2025 Art.24 — 10-year minimum',
     greenThreshold: '100%', amberThreshold: '99%', redThreshold: '<99%',
     penaltyIfRed: 'AED 10K–5M' },
 
