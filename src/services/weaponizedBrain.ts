@@ -299,6 +299,78 @@ import {
   type EsgAdvancedInput,
 } from './esgAdvancedFrameworkScorer';
 
+// --- Phase 11 imports: Security, Deduplication, STR Narrative, Predictive, Penalty, Gold ---
+import {
+  detectPromptInjection,
+  type InjectionReport,
+} from './adversarialPromptInjectionDetector';
+import {
+  detectDeepfakeDocument,
+  type DocumentEvidence,
+  type DeepfakeReport,
+} from './deepfakeDocumentDetector';
+import {
+  dedupeCrossListHits,
+  type RawListHit,
+  type DedupeReport,
+} from './crossListSanctionsDedupe';
+import {
+  buildStrNarrative,
+  type StrNarrativeInput,
+  type StrNarrative,
+} from './strNarrativeBuilder';
+import {
+  predictStr,
+  type StrFeatures,
+  type StrPrediction,
+} from './predictiveStr';
+import {
+  runPenaltyVaR,
+  UAE_DPMS_VIOLATIONS,
+  type VaRReport,
+  type VaRConfig,
+} from './penaltyVaR';
+import {
+  traceGoldOrigin,
+  type GoldShipment,
+  type OriginTraceReport,
+} from './goldOriginTracer';
+import {
+  matchAssayCertificates,
+  type AssayCertificateClaim,
+  type AssayMatchReport,
+} from './assayCertificateMatcher';
+import {
+  detectFinenessAnomalies,
+  type FinenessClaim,
+  type FinenessReport,
+} from './finenessAnomalyDetector';
+import {
+  detectCrossBorderArbitrage,
+  type CustomerFootprint,
+  type ArbitrageReport,
+} from './crossBorderArbitrageDetector';
+import {
+  detectDormancyActivity,
+  type DormancyTransaction,
+  type DormancyReport,
+} from './dormancyActivityDetector';
+import {
+  expandNameVariants,
+  type NameVariantReport,
+} from './nameVariantExpander';
+import {
+  gradeStrNarrative,
+  type StrGradeReport,
+} from './strNarrativeGrader';
+import {
+  resolveAgentsForVerdict,
+  spawnManagedAgent,
+  createOrchestratorSession,
+  type ManagedAgentTask,
+  type OrchestratorSession,
+} from './managedAgentOrchestrator';
+
 // ---------------------------------------------------------------------------
 // Verdict ordering — verdicts can only escalate under new clamps.
 // ---------------------------------------------------------------------------
@@ -606,6 +678,31 @@ export interface WeaponizedBrainRequest {
    * Stranded Assets, Climate VAR, Green Bond, SLL, Carbon Credits.
    */
   esgAdvancedInput?: EsgAdvancedInput;
+
+  // --- Phase 11 inputs (#59-#72) ---
+
+  /** #60 Deepfake document detector — KYC document evidence. */
+  documentEvidence?: DocumentEvidence;
+  /** #61 Cross-list dedupe — raw hits from all 6 sanctions lists. */
+  rawSanctionsHits?: RawListHit[];
+  /** #62 STR narrative builder — structured evidence for goAML narrative. */
+  strNarrativeInput?: StrNarrativeInput;
+  /** #63 Predictive STR — feature vector for probability model. */
+  strFeatures?: StrFeatures;
+  /** #64 Penalty VaR — active violations list. */
+  penaltyViolations?: import('./penaltyVaR').ViolationType[];
+  /** #64 Penalty VaR — config override. */
+  penaltyVarConfig?: VaRConfig;
+  /** #65 Gold origin tracer — list of gold shipments to trace. */
+  goldShipments?: GoldShipment[];
+  /** #66 Assay certificate matcher — certificate claims to validate. */
+  assayCertificateClaims?: AssayCertificateClaim[];
+  /** #67 Fineness anomaly — fineness claims from refiner documentation. */
+  finenessClaims?: FinenessClaim[];
+  /** #68 Cross-border arbitrage — customer trading footprint. */
+  customerFootprint?: CustomerFootprint;
+  /** #70 Dormancy detector — transaction history timeline. */
+  dormancyTransactions?: DormancyTransaction[];
 }
 
 export interface WeaponizedExtensions {
@@ -715,6 +812,34 @@ export interface WeaponizedExtensions {
   aiGovernance?: AiGovernanceReport;
   /** #58 ESG Advanced Framework — CSRD, SASB, Double Materiality, Stranded Assets, Climate VAR, Green/Social Bond, SLL, Carbon Credits. */
   esgAdvanced?: EsgAdvancedReport;
+
+  // ─── Phase 11 subsystems (#59-#72) ────────────────────────────────────────
+  /** #59 Prompt injection detection — entity name + narrative scanned for adversarial injection. */
+  promptInjection?: InjectionReport;
+  /** #60 Deepfake document detector — KYC document forgery signal. */
+  deepfakeDoc?: DeepfakeReport;
+  /** #61 Cross-list sanctions dedupe — merged hits across UN/OFAC/EU/UK/UAE/EOCN. */
+  sanctionsDedupe?: DedupeReport;
+  /** #62 STR narrative — auto-built goAML narrative from structured evidence. */
+  strNarrative?: StrNarrative;
+  /** #63 Predictive STR — probability the entity will trigger an STR within 30 days. */
+  strPrediction?: StrPrediction;
+  /** #64 Penalty VaR — AED penalty value at risk across all active violations. */
+  penaltyVar?: VaRReport;
+  /** #65 Gold origin tracer — LBMA/OECD DDG supply-chain origin trace. */
+  goldOrigin?: OriginTraceReport;
+  /** #66 Assay certificate matcher — certificate-to-refiner validation. */
+  assayMatch?: AssayMatchReport;
+  /** #67 Fineness anomaly — gold fineness claim vs. refiner capability check. */
+  finenessAnomaly?: FinenessReport;
+  /** #68 Cross-border arbitrage — pricing arbitrage across jurisdictions. */
+  arbitrage?: ArbitrageReport;
+  /** #70 Dormancy activity — sudden reactivation of dormant accounts. */
+  dormancy?: DormancyReport;
+  /** #71 Name variant expander — transliteration variants for better sanctions coverage. */
+  nameVariants?: NameVariantReport;
+  /** #72 STR narrative grader — quality score of auto-built narrative. */
+  strNarrativeGrade?: StrGradeReport;
 }
 
 export interface WeaponizedBrainResponse {
@@ -763,6 +888,18 @@ export interface WeaponizedBrainResponse {
    * advisor hook was not provided or was not triggered for this case.
    */
   advisorResult: AdvisorEscalationResult | null;
+
+  /**
+   * Managed agents resolved for this verdict — ordered list of agent types
+   * to spawn, populated by resolveAgentsForVerdict() in the synthesis layer.
+   */
+  managedAgentPlan: ManagedAgentTask[];
+
+  /**
+   * Orchestrator session for this screening run — groups all agent tasks
+   * spawned for this entity.
+   */
+  orchestratorSession: OrchestratorSession;
 }
 
 // ---------------------------------------------------------------------------
@@ -1522,6 +1659,179 @@ export async function runWeaponizedBrain(
   }) ?? undefined;
 
   // ---------------------------------------------------------------------------
+  // Phase 11 — Security, Deduplication, STR Narrative, Predictive, Gold (#59-#72)
+  // All run in parallel. Always-on subsystems derive inputs from existing data.
+  // ---------------------------------------------------------------------------
+
+  const [
+    p11nameVariants,
+    p11promptInjection,
+    p11deepfake,
+    p11dedupe,
+    p11strNarrative,
+    p11strPredict,
+    p11penaltyVar,
+    p11goldOrigin,
+    p11assay,
+    p11fineness,
+    p11arbitrage,
+    p11dormancy,
+  ] = await Promise.all([
+    // #71 Name variant expander — always-on; entity name is always available
+    Promise.resolve(runSafely('nameVariantExpander', () =>
+      expandNameVariants(req.mega.entity?.name ?? mega.entityId)
+    )),
+    // #59 Prompt injection — always-on; scan entity name + audit narrative for injection
+    Promise.resolve(runSafely('promptInjection', () =>
+      detectPromptInjection(`${req.mega.entity?.name ?? ''} ${mega.auditNarrative ?? ''}`)
+    )),
+    // #60 Deepfake document detector — conditional
+    req.documentEvidence
+      ? Promise.resolve(runSafely('deepfakeDoc', () =>
+          detectDeepfakeDocument(req.documentEvidence!)
+        ))
+      : Promise.resolve(undefined),
+    // #61 Cross-list sanctions dedupe — conditional on raw hits
+    req.rawSanctionsHits && req.rawSanctionsHits.length > 0
+      ? Promise.resolve(runSafely('sanctionsDedupe', () =>
+          dedupeCrossListHits(req.rawSanctionsHits!)
+        ))
+      : Promise.resolve(undefined),
+    // #62 STR narrative builder — runs when filing is required AND input provided
+    req.strNarrativeInput && extensions.filingClassification?.primaryCategory !== 'NONE'
+      ? Promise.resolve(runSafely('strNarrative', () =>
+          buildStrNarrative(req.strNarrativeInput!)
+        ))
+      : Promise.resolve(undefined),
+    // #63 Predictive STR — conditional on feature vector; auto-derive from mega if not supplied
+    Promise.resolve(runSafely('strPrediction', () => {
+      const features: StrFeatures = req.strFeatures ?? {
+        priorAlerts90d: 0,
+        txValue30dAED: 0,
+        nearThresholdCount30d: 0,
+        crossBorderRatio30d: extensions.crossBorderCash?.cumulativeAmountAED ? 0.5 : 0,
+        pepFlag: (extensions.pepProximity?.overallRisk === 'critical' || extensions.pepProximity?.overallRisk === 'high') ? 1 : 0,
+        adverseMediaFlag: extensions.adverseMedia?.topCategory === 'critical' ? 1 : 0,
+        sanctionsHit: finalVerdict === 'freeze' ? 1 : 0,
+        tbmlFlag: extensions.tbml?.overallRisk === 'critical' ? 1 : 0,
+        hawalaFlag: extensions.hawala?.riskLevel === 'critical' ? 1 : 0,
+        cashIntensity: 0,
+        jurisdictionRisk: 0,
+        dormancyFlag: 0,
+      };
+      return predictStr(features);
+    })),
+    // #64 Penalty VaR — always-on; uses standard UAE DPMS violation list
+    Promise.resolve(runSafely('penaltyVar', () => {
+      const config: VaRConfig = req.penaltyVarConfig ?? { confidenceLevel: 0.95, monteCarloRuns: 10_000 };
+      const violations = req.penaltyViolations?.length
+        ? req.penaltyViolations
+        : UAE_DPMS_VIOLATIONS.filter((v) =>
+            (finalVerdict === 'freeze' && v.severity === 'criminal') ||
+            (finalVerdict === 'escalate' && (v.severity === 'major' || v.severity === 'criminal')) ||
+            (finalVerdict === 'flag' && v.severity === 'major')
+          );
+      return violations.length > 0 ? runPenaltyVaR(violations, config) : undefined;
+    })),
+    // #65 Gold origin tracer — conditional on shipment data
+    req.goldShipments && req.goldShipments.length > 0
+      ? Promise.resolve(runSafely('goldOrigin', () =>
+          traceGoldOrigin(req.goldShipments!)
+        ))
+      : Promise.resolve(undefined),
+    // #66 Assay certificate matcher — conditional
+    req.assayCertificateClaims && req.assayCertificateClaims.length > 0
+      ? Promise.resolve(runSafely('assayMatch', () =>
+          matchAssayCertificates(req.assayCertificateClaims!, undefined)
+        ))
+      : Promise.resolve(undefined),
+    // #67 Fineness anomaly — conditional
+    req.finenessClaims && req.finenessClaims.length > 0
+      ? Promise.resolve(runSafely('finenessAnomaly', () =>
+          detectFinenessAnomalies(req.finenessClaims!, [])
+        ))
+      : Promise.resolve(undefined),
+    // #68 Cross-border arbitrage — conditional
+    req.customerFootprint
+      ? Promise.resolve(runSafely('arbitrage', () =>
+          detectCrossBorderArbitrage(req.customerFootprint!, [])
+        ))
+      : Promise.resolve(undefined),
+    // #70 Dormancy activity — conditional
+    req.dormancyTransactions && req.dormancyTransactions.length > 0
+      ? Promise.resolve(runSafely('dormancy', () =>
+          detectDormancyActivity(req.dormancyTransactions!, {})
+        ))
+      : Promise.resolve(undefined),
+  ]);
+
+  extensions.nameVariants    = p11nameVariants   ?? undefined;
+  extensions.promptInjection = p11promptInjection ?? undefined;
+  extensions.deepfakeDoc     = p11deepfake        ?? undefined;
+  extensions.sanctionsDedupe = p11dedupe          ?? undefined;
+  extensions.strNarrative    = p11strNarrative    ?? undefined;
+  extensions.strPrediction   = p11strPredict      ?? undefined;
+  extensions.penaltyVar      = p11penaltyVar      ?? undefined;
+  extensions.goldOrigin      = p11goldOrigin      ?? undefined;
+  extensions.assayMatch      = p11assay           ?? undefined;
+  extensions.finenessAnomaly = p11fineness        ?? undefined;
+  extensions.arbitrage       = p11arbitrage       ?? undefined;
+  extensions.dormancy        = p11dormancy        ?? undefined;
+
+  // #72 STR narrative grader — runs synchronously after narrative is built
+  if (extensions.strNarrative) {
+    extensions.strNarrativeGrade = runSafely('strNarrativeGrader', () =>
+      gradeStrNarrative({ narrative: extensions.strNarrative! })
+    );
+  }
+
+  // Phase 11 safety clamps
+  if (extensions.promptInjection?.injectionDetected) {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: prompt injection detected in entity input — input integrity compromised; ` +
+      `(NIST AI RMF MANAGE-4.2 / OWASP ML Top 10)`
+    );
+    confidence = Math.min(confidence, 0.45);
+  }
+  if (extensions.deepfakeDoc?.deepfakeDetected) {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: deepfake/forged document detected — KYC integrity compromised ` +
+      `(FDL No.10/2025 Art.12-14; Cabinet Decision 109/2023)`
+    );
+    confidence = Math.min(confidence, 0.40);
+  }
+  if (extensions.finenessAnomaly?.anomalyDetected) {
+    finalVerdict = escalateTo(finalVerdict, 'flag');
+    clampReasons.push(
+      `CLAMP: gold fineness anomaly — claimed purity exceeds refiner capability ` +
+      `(LBMA RGG v9 §4; DGD hallmark requirements; MoE Circular 08/AML/2021)`
+    );
+  }
+  if (extensions.arbitrage?.arbitrageDetected) {
+    finalVerdict = escalateTo(finalVerdict, 'flag');
+    clampReasons.push(
+      `CLAMP: cross-border price arbitrage detected — TBML indicator ` +
+      `(FATF TBML 2020; Cabinet Res 134/2025 Art.16)`
+    );
+  }
+  if (extensions.dormancy?.hits && extensions.dormancy.hits.length > 0) {
+    finalVerdict = escalateTo(finalVerdict, 'flag');
+    clampReasons.push(
+      `CLAMP: dormancy-to-activity pattern — ${extensions.dormancy.hits.length} customer(s) reactivated; ` +
+      `layering indicator (FATF Rec 10; Cabinet Res 134/2025 Art.7-10)`
+    );
+  }
+  if (extensions.strPrediction && extensions.strPrediction.strProbability > 0.7) {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: predictive STR model — ${(extensions.strPrediction.strProbability * 100).toFixed(0)}% ` +
+      `probability of STR trigger within 30 days (FDL No.10/2025 Art.26-27; FATF Rec 20)`
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Phase 4-10 safety clamps — monotone escalation only.
   // ---------------------------------------------------------------------------
 
@@ -1773,6 +2083,29 @@ export async function runWeaponizedBrain(
   // Never blocks the verdict — all failures are swallowed + logged.
   // ---------------------------------------------------------------------------
 
+  // Managed Agent Plan — resolve which agents to spawn for this verdict.
+  const orchestratorSession = createOrchestratorSession(mega.entityId);
+  const agentTypes = resolveAgentsForVerdict(finalVerdict, {
+    filingClassification: extensions.filingClassification
+      ? { primaryCategory: extensions.filingClassification.primaryCategory }
+      : undefined,
+    pepProximity: extensions.pepProximity
+      ? { requiresBoardApproval: extensions.pepProximity.requiresBoardApproval }
+      : undefined,
+    esgScore: extensions.esgScore
+      ? { riskLevel: extensions.esgScore.riskLevel }
+      : undefined,
+    hawala: extensions.hawala
+      ? { requiresCbuaeReport: extensions.hawala.requiresCbuaeReport }
+      : undefined,
+    crossBorderCash: extensions.crossBorderCash
+      ? { structuringDetected: extensions.crossBorderCash.structuringDetected }
+      : undefined,
+  });
+  const managedAgentPlan: ManagedAgentTask[] = agentTypes.map((agentType) =>
+    spawnManagedAgent(orchestratorSession, agentType, req.mega.entity?.name ?? mega.entityId, finalVerdict)
+  );
+
   // Build the partial response object for the synthesis layer to consume.
   const partialResponse: WeaponizedBrainResponse = {
     mega,
@@ -1784,6 +2117,8 @@ export async function runWeaponizedBrain(
     auditNarrative,
     subsystemFailures,
     advisorResult,
+    managedAgentPlan,
+    orchestratorSession,
   };
 
   // MLRO Alert Generator — always runs; produces structured alert bundle.
@@ -1843,6 +2178,8 @@ export async function runWeaponizedBrain(
     auditNarrative,
     subsystemFailures,
     advisorResult,
+    managedAgentPlan,
+    orchestratorSession,
   };
 }
 
@@ -2285,6 +2622,93 @@ function buildAuditNarrative(
       `strandedAssets=${extensions.esgAdvanced.strandedAssets.strandingRiskScore}/100, ` +
       `greenBond=${extensions.esgAdvanced.greenBond.status}, ` +
       `carbonCredit=${extensions.esgAdvanced.carbonCredit.qualityScore}/100`
+    );
+  }
+  // Phase 11 narrative entries
+  if (extensions.nameVariants) {
+    lines.push(
+      `  - Name variants (#71): ${extensions.nameVariants.variants.length} variant(s) expanded ` +
+      `from "${extensions.nameVariants.original}" for enhanced sanctions coverage`
+    );
+  }
+  if (extensions.promptInjection?.injectionDetected) {
+    lines.push(
+      `  - Prompt injection (#59): DETECTED — ` +
+      `${extensions.promptInjection.findings.length} finding(s), ` +
+      `severity=${extensions.promptInjection.highestSeverity ?? 'unknown'}`
+    );
+  }
+  if (extensions.deepfakeDoc) {
+    lines.push(
+      `  - Deepfake doc (#60): detected=${extensions.deepfakeDoc.deepfakeDetected}, ` +
+      `confidence=${(extensions.deepfakeDoc.confidence * 100).toFixed(0)}%`
+    );
+  }
+  if (extensions.sanctionsDedupe) {
+    lines.push(
+      `  - Sanctions dedupe (#61): ${extensions.sanctionsDedupe.inputCount} raw hits → ` +
+      `${extensions.sanctionsDedupe.deduplicatedCount} unique (removed ${extensions.sanctionsDedupe.duplicatesRemoved} duplicates)`
+    );
+  }
+  if (extensions.strNarrative) {
+    lines.push(
+      `  - STR narrative (#62): ready=${extensions.strNarrative.isFilingReady}, ` +
+      `length=${extensions.strNarrative.narrative.length} chars, ` +
+      `filingType=${extensions.strNarrative.filingType}`
+    );
+  }
+  if (extensions.strPrediction) {
+    lines.push(
+      `  - Predictive STR (#63): probability=${(extensions.strPrediction.strProbability * 100).toFixed(1)}%, ` +
+      `risk=${extensions.strPrediction.riskLevel}, ` +
+      `topFactor=${extensions.strPrediction.topFactors[0]?.factor ?? 'none'}`
+    );
+  }
+  if (extensions.penaltyVar) {
+    lines.push(
+      `  - Penalty VaR (#64): expected AED ${extensions.penaltyVar.expectedPenaltyAed.toLocaleString()}, ` +
+      `VaR-95 AED ${extensions.penaltyVar.varAed.toLocaleString()}, ` +
+      `violations=${extensions.penaltyVar.violationCount}`
+    );
+  }
+  if (extensions.goldOrigin) {
+    lines.push(
+      `  - Gold origin (#65): ${extensions.goldOrigin.totalShipments} shipment(s), ` +
+      `cahra=${extensions.goldOrigin.cahraExposure}, ` +
+      `riskLevel=${extensions.goldOrigin.overallRisk}`
+    );
+  }
+  if (extensions.assayMatch) {
+    lines.push(
+      `  - Assay certificates (#66): ${extensions.assayMatch.totalCertificates} cert(s), ` +
+      `passed=${extensions.assayMatch.passedCount}, ` +
+      `failed=${extensions.assayMatch.failedCount}`
+    );
+  }
+  if (extensions.finenessAnomaly) {
+    lines.push(
+      `  - Fineness anomaly (#67): detected=${extensions.finenessAnomaly.anomalyDetected}, ` +
+      `findings=${extensions.finenessAnomaly.findings.length}`
+    );
+  }
+  if (extensions.arbitrage) {
+    lines.push(
+      `  - Cross-border arbitrage (#68): detected=${extensions.arbitrage.arbitrageDetected}, ` +
+      `hits=${extensions.arbitrage.hits.length}, ` +
+      `maxSpreadPct=${extensions.arbitrage.maxSpreadPct?.toFixed(1) ?? 'N/A'}%`
+    );
+  }
+  if (extensions.dormancy) {
+    lines.push(
+      `  - Dormancy activity (#70): hits=${extensions.dormancy.hits.length}, ` +
+      `maxGapDays=${extensions.dormancy.maxGapDays ?? 0}`
+    );
+  }
+  if (extensions.strNarrativeGrade) {
+    lines.push(
+      `  - STR narrative grade (#72): score=${extensions.strNarrativeGrade.score}/100, ` +
+      `grade=${extensions.strNarrativeGrade.grade}, ` +
+      `readyToFile=${extensions.strNarrativeGrade.readyToFile}`
     );
   }
 

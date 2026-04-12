@@ -24,6 +24,7 @@ import {
 } from './asanaClient';
 import { enqueueRetry } from './asanaQueue';
 import { buildComplianceCustomFields } from './asanaCustomFields';
+import { buildHawkeyeAsanaTask } from './hawkeyeReportGenerator';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,24 +91,121 @@ function buildParentTask(
     esgGrade: brain.extensions.esgScore?.grade,
   });
 
+  // Use Hawkeye Sterling V2 report as the task notes when available —
+  // far more comprehensive than a plain-text summary.
+  const hawkeyeTask = brain.extensions.hawkeyeReport
+    ? buildHawkeyeAsanaTask(brain.extensions.hawkeyeReport, cfg.projectGid, v === 'freeze' || v === 'escalate' ? cfg.mlroGid : cfg.coGid)
+    : null;
+
+  const taskName = hawkeyeTask?.name ??
+    `${emoji} [${v.toUpperCase()}] Compliance Screening — ${entityName} — ${new Date().toISOString().split('T')[0]}`;
+
+  const taskNotes = hawkeyeTask?.notes ?? [
+    `**Entity:** ${entityName} (${entityId})`,
+    `**Verdict:** ${v.toUpperCase()}`,
+    `**Confidence:** ${(brain.confidence * 100).toFixed(1)}%`,
+    `**Clamp Reasons:** ${brain.clampReasons.length > 0 ? brain.clampReasons.join(' | ') : 'none'}`,
+    `**Subsystem Failures:** ${brain.subsystemFailures.length > 0 ? brain.subsystemFailures.join(', ') : 'none'}`,
+    `**Requires Human Review:** ${brain.requiresHumanReview}`,
+    '',
+    '**Audit Narrative:**',
+    brain.auditNarrative,
+  ].join('\n');
+
   return {
-    name: `${emoji} [${v.toUpperCase()}] Compliance Screening — ${entityName} — ${new Date().toISOString().split('T')[0]}`,
-    notes: [
-      `**Entity:** ${entityName} (${entityId})`,
-      `**Verdict:** ${v.toUpperCase()}`,
-      `**Confidence:** ${(brain.confidence * 100).toFixed(1)}%`,
-      `**Clamp Reasons:** ${brain.clampReasons.length > 0 ? brain.clampReasons.join(' | ') : 'none'}`,
-      `**Subsystem Failures:** ${brain.subsystemFailures.length > 0 ? brain.subsystemFailures.join(', ') : 'none'}`,
-      `**Requires Human Review:** ${brain.requiresHumanReview}`,
-      '',
-      '**Audit Narrative:**',
-      brain.auditNarrative,
-    ].join('\n'),
-    due_on: dueDateFromVerdict(v),
+    name: taskName,
+    notes: taskNotes,
+    due_on: hawkeyeTask?.due_on ?? dueDateFromVerdict(v),
     assignee: v === 'freeze' || v === 'escalate' ? cfg.mlroGid : cfg.coGid,
     projects: [cfg.projectGid],
-    tags: ['compliance-screening', v, entityId],
+    tags: hawkeyeTask?.tags ?? ['compliance-screening', v, entityId],
     custom_fields: customFields,
+  };
+}
+
+function buildManagedAgentsSubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  if (!brain.managedAgentPlan || brain.managedAgentPlan.length === 0) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const lines = [
+    '## Managed Agent Execution Plan — Hawkeye Sterling V2',
+    '',
+    `**Verdict:** ${brain.finalVerdict.toUpperCase()} | **Agents Queued:** ${brain.managedAgentPlan.length}`,
+    `**Session:** \`${brain.orchestratorSession.sessionId}\``,
+    '',
+    `| # | Agent Type | Priority | Deadline | Sandbox | Guardrails |`,
+    `|---|-----------|----------|----------|---------|-----------|`,
+    ...brain.managedAgentPlan.map((a, i) =>
+      `| ${i + 1} | ${a.agentType} | ${a.priority.toUpperCase()} | ${a.deadline?.split('T')[0] ?? 'N/A'} | ${a.sandboxIsolated ? '🔒 YES' : 'No'} | ${a.guardrails.length} active |`
+    ),
+    '',
+    '*NIST AI RMF GV-1.6 | FDL No.10/2025 Art.20-21 | Cabinet Res 74/2020 Art.4*',
+  ];
+  return {
+    name: `🤖 Managed Agent Plan (${brain.managedAgentPlan.length} agents) — ${entityId}`,
+    notes: lines.join('\n'),
+    due_on: dueDateFromVerdict(brain.finalVerdict),
+    assignee: mlroGid,
+    tags: ['managed-agents', 'hawkeye-v2', entityId],
+  };
+}
+
+function buildPenaltyVarSubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  const pv = brain.extensions.penaltyVar;
+  if (!pv) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  return {
+    name: `💰 Penalty VaR — AED ${pv.varAed.toLocaleString()} (95%) — ${entityId}`,
+    notes: [
+      `## Penalty Value at Risk — UAE DPMS`,
+      '',
+      `| Metric | Value |`,
+      `|--------|-------|`,
+      `| **Expected Penalty** | AED ${pv.expectedPenaltyAed.toLocaleString()} |`,
+      `| **VaR (95% confidence)** | AED ${pv.varAed.toLocaleString()} |`,
+      `| **Violations Count** | ${pv.violationCount} |`,
+      `| **Confidence Level** | ${(pv.confidenceLevel * 100).toFixed(0)}% |`,
+      '',
+      '*Cabinet Res 71/2024 | FDL No.10/2025 | CBUAE Administrative Penalties*',
+    ].join('\n'),
+    due_on: dueDateFromVerdict(brain.finalVerdict),
+    assignee: mlroGid,
+    tags: ['penalty-var', 'risk-exposure', entityId],
+  };
+}
+
+function buildStrNarrativeSubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  const sn = brain.extensions.strNarrative;
+  const sg = brain.extensions.strNarrativeGrade;
+  if (!sn) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  return {
+    name: `📝 STR Narrative — ${sn.filingType} — ${entityId} — Grade ${sg?.grade ?? '?'}`,
+    notes: [
+      `## Auto-Built goAML Narrative — ${sn.filingType}`,
+      '',
+      `**Filing Ready:** ${sn.isFilingReady ? '✅ YES' : '❌ NO — review required'}`,
+      `**Length:** ${sn.narrative.length} characters`,
+      `**Grade:** ${sg?.grade ?? 'Not graded'} (${sg?.score ?? '?'}/100)`,
+      `**Tip-Off Check:** ${sn.tipOffClean ? '✅ Clean' : '⚠ Review required'}`,
+      '',
+      '**Narrative:**',
+      sn.narrative.slice(0, 3000),
+      sn.narrative.length > 3000 ? '\n*[Truncated — see full report]*' : '',
+      '',
+      '*FDL No.10/2025 Art.26-27 | EOCN goAML STR Guidelines v3 | FATF Rec 20*',
+    ].filter(Boolean).join('\n'),
+    due_on: dueDateFromVerdict('escalate'),
+    assignee: mlroGid,
+    tags: ['str-narrative', sn.filingType.toLowerCase(), entityId],
   };
 }
 
@@ -275,6 +373,18 @@ export async function orchestrateBrainToAsana(
   for (const reason of brain.clampReasons.slice(0, 5)) {
     subtaskPayloads.push(buildClampSubtask(reason, entityId, cfg.mlroGid));
   }
+
+  // Managed agent plan subtask — shows which agents Hawkeye will spawn
+  const agentSubtask = buildManagedAgentsSubtask(brain, cfg.mlroGid);
+  if (agentSubtask) subtaskPayloads.push(agentSubtask);
+
+  // Penalty VaR subtask — financial exposure quantification
+  const penaltySubtask = buildPenaltyVarSubtask(brain, cfg.mlroGid);
+  if (penaltySubtask) subtaskPayloads.push(penaltySubtask);
+
+  // STR narrative subtask — auto-built goAML narrative ready for filing
+  const strNarrativeSubtask = buildStrNarrativeSubtask(brain, cfg.mlroGid);
+  if (strNarrativeSubtask) subtaskPayloads.push(strNarrativeSubtask);
 
   // Dispatch
   let parentTaskGid: string | undefined;
