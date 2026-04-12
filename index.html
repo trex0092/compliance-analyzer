@@ -174,6 +174,10 @@ table{font-size:10px}table td,table th{padding:5px 8px;font-size:10px}table sele
 .tab.active{background:rgba(201,168,76,0.06);border-color:rgba(201,168,76,0.15);border-bottom-color:var(--gold);color:var(--gold);font-weight:500}
 .tab:hover{color:var(--gold);border-bottom-color:rgba(201,168,76,0.3)}
 .tab-content{display:none} .tab-content.active{display:block}
+.mt-metal-tab{padding:8px 18px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;border:none;background:#161b22;color:#8b949e;letter-spacing:0.5px;font-family:'Montserrat',sans-serif}
+.mt-metal-tab.mt-active{background:#d4a843;color:#0d1117}
+.mt-otype{padding:4px 8px;border-radius:3px;font-size:10px;font-weight:400;cursor:pointer;border:1px solid #30363d;background:#010409;color:#8b949e;font-family:'Montserrat',sans-serif}
+.mt-otype.mt-active{font-weight:700;color:#d4a843;background:#21262d}
 .asana-item{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 16px;background:rgba(201,168,76,0.03);border-radius:3px;margin-bottom:8px;border:1px solid rgba(201,168,76,0.1);transition:border-color 0.3s}
 .asana-item:hover{border-color:rgba(201,168,76,0.25)}
 .asana-name{font-size:13px;font-weight:500}
@@ -534,7 +538,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <a id="watchlistAdminLink" href="/watchlist-admin.html" title="Open ongoing monitoring watchlist admin" style="padding:4px 10px;font-size:10px;text-decoration:none;color:var(--gold);border:1px solid var(--gold);border-radius:3px;font-family:'Montserrat',sans-serif;font-weight:600;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05)">
         👁️ WATCHLIST
       </a>
-      <a id="metalsTradingLink" href="#metals-trading" title="Precious Metals Trading Platform" onclick="if(typeof setPage==='function')setPage('metals-trading');return false;" style="padding:4px 10px;font-size:10px;text-decoration:none;color:var(--gold);border:1px solid var(--gold);border-radius:3px;font-family:'Montserrat',sans-serif;font-weight:600;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05)">
+      <a id="metalsTradingLink" href="#metals-trading" title="Precious Metals Trading Platform" onclick="switchTab('metalstrading');return false;" style="padding:4px 10px;font-size:10px;text-decoration:none;color:var(--gold);border:1px solid var(--gold);border-radius:3px;font-family:'Montserrat',sans-serif;font-weight:600;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05)">
         ◈ TRADING
       </a>
       <div id="currentUserInfo" style="display:flex;align-items:center;gap:6px">
@@ -611,6 +615,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="tab" data-action="switchTab" data-arg="workflows">⚡ Workflows</div>
       <div class="tab" data-action="switchTab" data-arg="pipeline">📦 Export Pipeline</div>
       <div class="tab" data-action="switchTab" data-arg="intelligence">🧠 Intelligence</div>
+      <div class="tab" data-action="switchTab" data-arg="metalstrading">◈ Trading</div>
       <!-- Data Upload removed -->
     </div>
 
@@ -2696,6 +2701,81 @@ Examples:
       </div>
     </div>
 
+    <!-- METALS TRADING TAB -->
+    <div id="tab-metalstrading" class="tab-content">
+      <div class="card" style="padding:0;background:transparent;border:none">
+        <div id="metalsTradingTopBar" style="display:flex;gap:12px;align-items:center;padding:12px 16px;background:#010409;border-radius:8px;border:1px solid #21262d;flex-wrap:wrap;margin-bottom:14px">
+          <button class="mt-metal-tab mt-active" data-metal="XAU" onclick="mtSelectMetal('XAU')">GOLD</button>
+          <button class="mt-metal-tab" data-metal="XAG" onclick="mtSelectMetal('XAG')">SILVER</button>
+          <button class="mt-metal-tab" data-metal="XPT" onclick="mtSelectMetal('XPT')">PLATINUM</button>
+          <button class="mt-metal-tab" data-metal="XPD" onclick="mtSelectMetal('XPD')">PALLADIUM</button>
+          <span style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:#d4a843;background:rgba(212,168,67,0.12);padding:3px 10px;border-radius:4px;margin-left:8px">SIMULATION</span>
+          <span id="mtGsRatio" style="font-size:10px;color:#8b949e;margin-left:8px"></span>
+          <span id="mtTickCount" style="font-size:10px;color:#484f58;margin-left:4px">Tick #0</span>
+          <button id="mtLiveBtn" onclick="mtToggleRunning()" style="margin-left:auto;padding:8px 20px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;border:none;letter-spacing:1px;background:#238636;color:#fff">START LIVE</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px">
+          <!-- Spot Price Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">SPOT PRICE</div>
+            <div id="mtPriceContent"><div style="color:#484f58;font-size:12px">Press START LIVE to begin</div></div>
+          </div>
+          <!-- AI Signal Fusion Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">AI SIGNAL FUSION</div>
+            <div id="mtSignalContent"><div style="color:#484f58;font-size:12px">No signals — standing aside</div></div>
+          </div>
+          <!-- Order Entry Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">ORDER ENTRY</div>
+            <div style="display:flex;gap:6px">
+              <button id="mtBuyBtn" onclick="mtSetSide('BUY')" style="flex:1;padding:6px;border-radius:4px;border:none;cursor:pointer;font-weight:700;font-size:11px;background:#238636;color:#fff">BUY</button>
+              <button id="mtSellBtn" onclick="mtSetSide('SELL')" style="flex:1;padding:6px;border-radius:4px;border:none;cursor:pointer;font-weight:700;font-size:11px;background:#161b22;color:#8b949e">SELL</button>
+            </div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap" id="mtOrderTypes">
+              <button class="mt-otype mt-active" onclick="mtSetOrderType('MARKET')">MARKET</button>
+              <button class="mt-otype" onclick="mtSetOrderType('LIMIT')">LIMIT</button>
+              <button class="mt-otype" onclick="mtSetOrderType('STOP')">STOP</button>
+              <button class="mt-otype" onclick="mtSetOrderType('TWAP')">TWAP</button>
+              <button class="mt-otype" onclick="mtSetOrderType('VWAP')">VWAP</button>
+              <button class="mt-otype" onclick="mtSetOrderType('ICEBERG')">ICEBERG</button>
+            </div>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1"><div style="color:#8b949e;font-size:11px">Quantity (oz)</div><input id="mtOrderQty" type="number" value="10" min="1" style="width:100%;background:#010409;border:1px solid #30363d;border-radius:4px;color:#e6edf3;padding:6px 8px;font-size:12px"></div>
+              <div style="flex:1;display:none" id="mtPriceField"><div style="color:#8b949e;font-size:11px">Price (USD)</div><input id="mtOrderPrice" type="number" step="0.01" style="width:100%;background:#010409;border:1px solid #30363d;border-radius:4px;color:#e6edf3;padding:6px 8px;font-size:12px"></div>
+            </div>
+            <button id="mtSubmitOrder" onclick="mtSubmitOrder()" style="padding:8px;border-radius:4px;border:none;cursor:pointer;font-weight:700;font-size:11px;background:#238636;color:#fff;letter-spacing:0.5px">BUY 10 oz GOLD @ MARKET</button>
+            <div id="mtAiSuggestion" style="font-size:10px;color:#d4a843;text-align:center;display:none"></div>
+          </div>
+          <!-- Portfolio Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">PORTFOLIO</div>
+            <div id="mtPortfolioContent"><div style="color:#484f58;font-size:12px">No portfolio data</div></div>
+          </div>
+          <!-- Risk Matrix Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">RISK MATRIX</div>
+            <div id="mtRiskContent"><div style="color:#484f58;font-size:12px">No risk data</div></div>
+          </div>
+          <!-- Alerts Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">COMPLIANCE ALERTS</div>
+            <div id="mtAlertsContent"><div style="color:#484f58;font-size:12px">No alerts</div></div>
+          </div>
+          <!-- Arbitrage Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">ARBITRAGE SCANNER</div>
+            <div id="mtArbContent"><div style="color:#484f58;font-size:12px">No arbitrage opportunities</div></div>
+          </div>
+          <!-- Market Commentary Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">MARKET COMMENTARY</div>
+            <div id="mtCommentary" style="color:#8b949e;font-size:12px;line-height:1.6">Press START LIVE for AI market commentary</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- DATA UPLOAD TAB -->
     <div id="tab-uploads" class="tab-content">
       <div class="card">
@@ -2794,6 +2874,7 @@ Examples:
 <script src="compliance-pipeline.js?v=20260409"></script>
 <script src="compliance-intelligence.js?v=20260409"></script>
 
+<script src="metals-trading.js?v=20260412"></script>
 <script src="brain-boot.js?v=20260410"></script>
 <script src="app-boot.js?v=20260409"></script>
 </body>
