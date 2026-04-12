@@ -406,11 +406,13 @@ export function classifyEsgAdverseMedia(
 
   // Determine top ESG risk category by hit count (combined counts toward each pillar)
   type CountedCategory = { category: EsgCategory | 'none'; count: number };
-  const categoryRanking: CountedCategory[] = [
-    { category: 'environmental', count: byCategory.environmental + byCategory.combined },
-    { category: 'social', count: byCategory.social + byCategory.combined },
-    { category: 'governance', count: byCategory.governance + byCategory.combined },
-  ].sort((a, b) => b.count - a.count);
+  const categoryRanking: CountedCategory[] = (
+    [
+      { category: 'environmental', count: byCategory.environmental + byCategory.combined },
+      { category: 'social', count: byCategory.social + byCategory.combined },
+      { category: 'governance', count: byCategory.governance + byCategory.combined },
+    ] satisfies CountedCategory[]
+  ).sort((a, b) => b.count - a.count);
 
   const topEsgRisk: EsgCategory | 'none' =
     categoryRanking[0].count > 0 ? categoryRanking[0].category : 'none';

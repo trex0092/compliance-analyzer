@@ -22,6 +22,14 @@ import { enqueueRetry } from './asanaQueue';
 import { buildComplianceCustomFields } from './asanaCustomFields';
 import { buildHawkeyeAsanaTask } from './hawkeyeReportGenerator';
 
+/**
+ * Subtask-shaped payload — identical to AsanaTaskPayload except that the
+ * `projects` list and `parent` GID are filled in by the orchestrator at
+ * dispatch time. This keeps each buildXxxSubtask() builder pure and
+ * workspace-agnostic.
+ */
+type SubtaskPayload = Omit<AsanaTaskPayload, 'projects' | 'parent'>;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AsanaOrchestratorConfig {
@@ -74,8 +82,8 @@ function buildParentTask(
   cfg: AsanaOrchestratorConfig
 ): AsanaTaskPayload {
   const v = brain.finalVerdict;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name ?? entityId;
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
+  const entityName = brain.mega.topic?.replace(/^Compliance assessment:\s*/i, '') || entityId;
   const emoji = PRIORITY_EMOJI[v] ?? '⚪';
 
   const customFields = buildComplianceCustomFields({
@@ -129,9 +137,9 @@ function buildParentTask(
 function buildManagedAgentsSubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   if (!brain.managedAgentPlan || brain.managedAgentPlan.length === 0) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   const lines = [
     '## Managed Agent Execution Plan — Hawkeye Sterling V2',
     '',
@@ -159,21 +167,21 @@ function buildManagedAgentsSubtask(
 function buildPenaltyVarSubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   const pv = brain.extensions.penaltyVar;
   if (!pv) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   return {
-    name: `💰 Penalty VaR — AED ${pv.varAed.toLocaleString()} (95%) — ${entityId}`,
+    name: `💰 Penalty VaR — AED ${pv.valueAtRisk.toLocaleString()} (95%) — ${entityId}`,
     notes: [
       `## Penalty Value at Risk — UAE DPMS`,
       '',
       `| Metric | Value |`,
       `|--------|-------|`,
-      `| **Expected Penalty** | AED ${pv.expectedPenaltyAed.toLocaleString()} |`,
-      `| **VaR (95% confidence)** | AED ${pv.varAed.toLocaleString()} |`,
-      `| **Violations Count** | ${pv.violationCount} |`,
-      `| **Confidence Level** | ${(pv.confidenceLevel * 100).toFixed(0)}% |`,
+      `| **Expected Penalty** | AED ${pv.expectedLoss.toLocaleString()} |`,
+      `| **VaR (95% confidence)** | AED ${pv.valueAtRisk.toLocaleString()} |`,
+      `| **Violations Count** | ${pv.byViolation.length} |`,
+      `| **Confidence Level** | ${(pv.confidence * 100).toFixed(0)}% |`,
       '',
       '*Cabinet Res 71/2024 | FDL No.10/2025 | CBUAE Administrative Penalties*',
     ].join('\n'),
@@ -186,24 +194,32 @@ function buildPenaltyVarSubtask(
 function buildStrNarrativeSubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   const sn = brain.extensions.strNarrative;
   const sg = brain.extensions.strNarrativeGrade;
   if (!sn) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
+  // StrNarrative (src/services/strNarrativeBuilder.ts:77) exposes `text`
+  // and `warnings`; filing-ready is derived from the grader's verdict.
+  // StrGradeReport uses `totalScore` + `verdict`, not `score` / `grade`.
+  const gradeLabel = sg?.verdict ?? 'ungraded';
+  const gradeScore = sg?.totalScore ?? 0;
+  const filingReady = gradeLabel === 'filing_ready' && sn.warnings.length === 0;
+  const tipOffClean = sn.warnings.every((w) => !/tip[- ]?off|art\.?\s*29/i.test(w));
   return {
-    name: `📝 STR Narrative — ${sn.filingType} — ${entityId} — Grade ${sg?.grade ?? '?'}`,
+    name: `📝 STR Narrative — ${sn.filingType} — ${entityId} — ${gradeLabel}`,
     notes: [
       `## Auto-Built goAML Narrative — ${sn.filingType}`,
       '',
-      `**Filing Ready:** ${sn.isFilingReady ? '✅ YES' : '❌ NO — review required'}`,
-      `**Length:** ${sn.narrative.length} characters`,
-      `**Grade:** ${sg?.grade ?? 'Not graded'} (${sg?.score ?? '?'}/100)`,
-      `**Tip-Off Check:** ${sn.tipOffClean ? '✅ Clean' : '⚠ Review required'}`,
+      `**Filing Ready:** ${filingReady ? '✅ YES' : '❌ NO — review required'}`,
+      `**Length:** ${sn.characterCount} characters`,
+      `**Grade:** ${gradeLabel} (${gradeScore}/100)`,
+      `**Tip-Off Check:** ${tipOffClean ? '✅ Clean' : '⚠ Review required'}`,
+      sn.warnings.length > 0 ? `**Warnings:** ${sn.warnings.join('; ')}` : '',
       '',
       '**Narrative:**',
-      sn.narrative.slice(0, 3000),
-      sn.narrative.length > 3000 ? '\n*[Truncated — see full report]*' : '',
+      sn.text.slice(0, 3000),
+      sn.text.length > 3000 ? '\n*[Truncated — see full report]*' : '',
       '',
       '*FDL No.10/2025 Art.26-27 | EOCN goAML STR Guidelines v3 | FATF Rec 20*',
     ]
@@ -222,10 +238,10 @@ function buildStrNarrativeSubtask(
 function buildQuantumSealSubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   const qs = brain.extensions.quantumSeal;
   if (!qs) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   return {
     name: `🔐 Quantum-Resistant Audit Seal — ${entityId}`,
     notes: [
@@ -254,10 +270,10 @@ function buildQuantumSealSubtask(
 function buildGoAMLXmlSubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   const xml = brain.extensions.goamlXml;
   if (!xml) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   const xmlPreview = xml.slice(0, 2000);
   return {
     name: `📤 goAML XML Filing — ${entityId} — READY FOR SUBMISSION`,
@@ -296,10 +312,10 @@ function buildGoAMLXmlSubtask(
 function buildBayesianVerdictSubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   const bb = brain.extensions.bayesianBelief;
   if (!bb) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   const topHyp = bb.mostLikely;
   const hypTable = bb.hypotheses
     .map((h) => `| ${h.label} | ${((bb.finalPosterior[h.id] ?? 0) * 100).toFixed(1)}% |`)
@@ -332,15 +348,18 @@ function buildBayesianVerdictSubtask(
 function buildCorporateGraphSubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   const cg = brain.extensions.corporateGraph;
   if (!cg) return null;
-  const flaggedHits = cg.hits.filter((h) => h.hit);
+  // GraphWalkReport.hits is already a pre-filtered list of hit records
+  // (no per-entry .hit boolean); hop distance is on `.hops`, not
+  // `.hopDistance`.
+  const flaggedHits = cg.hits;
   if (flaggedHits.length === 0) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   const hitTable = flaggedHits
     .slice(0, 20)
-    .map((h) => `| ${h.nodeId} | ${h.reason ?? 'Flagged'} | ${h.hopDistance} hop(s) |`)
+    .map((h) => `| ${h.nodeId} | ${h.reason ?? 'Flagged'} | ${h.hops} hop(s) |`)
     .join('\n');
   return {
     name: `🕸 Corporate Graph Alert — ${entityId} — ${flaggedHits.length} flagged node(s)`,
@@ -378,10 +397,10 @@ function buildCorporateGraphSubtask(
 function buildGameTheorySubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   const ge = brain.extensions.gameEquilibrium;
   if (!ge || ge.expectedPayoff >= 0) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   const attackerMix = ge.attackerMix
     .slice(0, 5)
     .map((s) => `| ${s.strategy} | ${(s.probability * 100).toFixed(1)}% |`)
@@ -425,10 +444,10 @@ function buildGameTheorySubtask(
 function buildInducedRulesSubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   const rules = brain.extensions.inducedRules;
   if (!rules || rules.length === 0) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   const ruleText = rules
     .slice(0, 15)
     .map(
@@ -461,10 +480,10 @@ function buildInducedRulesSubtask(
 function buildFreeZoneSubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   const fz = brain.extensions.freeZoneCompliance;
   if (!fz || fz.mandatoryFailures.length === 0) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   const failTable = fz.mandatoryFailures
     .slice(0, 10)
     .map((r) => `| ${r.category} | ${r.description} | ${r.source} |`)
@@ -501,18 +520,22 @@ function buildFreeZoneSubtask(
 function buildLbmaFixSubtask(
   brain: WeaponizedBrainResponse,
   mlroGid?: string
-): AsanaTaskPayload | null {
+): SubtaskPayload | null {
   const lf = brain.extensions.lbmaFixCheck;
   if (!lf || (lf.flagged === 0 && lf.frozen === 0)) return null;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   const severity = lf.frozen > 0 ? 'FREEZE' : 'FLAG';
+  // FixCheckResult (src/services/lbmaFixPriceChecker.ts:50): tradeId +
+  // fix (date/session/usdPerOz) + deviationPct + bucket + reason. No
+  // metalCode / tradePriceUsd / severity fields — derive as needed.
   const tradeTable = lf.results
-    .filter((r) => r.severity !== 'ok')
+    .filter((r) => r.bucket !== 'within_tolerance')
     .slice(0, 10)
-    .map(
-      (r) =>
-        `| ${r.tradeId} | ${r.metalCode} | ${r.tradePriceUsd.toLocaleString()} | ${r.fixPriceUsd.toLocaleString()} | ${r.deviationPct.toFixed(2)}% | ${r.severity} |`
-    )
+    .map((r) => {
+      const fixPrice = r.fix.usdPerOz;
+      const tradePrice = fixPrice * (1 + r.deviationPct / 100);
+      return `| ${r.tradeId} | ${r.fix.session} ${r.fix.date} | ${tradePrice.toLocaleString(undefined, { maximumFractionDigits: 2 })} | ${fixPrice.toLocaleString()} | ${r.deviationPct.toFixed(2)}% | ${r.bucket} |`;
+    })
     .join('\n');
   return {
     name: `⚖️ LBMA Fix Deviation [${severity}] — ${entityId} — ${lf.flagged} flagged, ${lf.frozen} frozen`,
@@ -544,7 +567,7 @@ function buildLbmaFixSubtask(
   };
 }
 
-function buildFreezeCountdownSubtask(entityId: string, mlroGid?: string): AsanaTaskPayload {
+function buildFreezeCountdownSubtask(entityId: string, mlroGid?: string): SubtaskPayload {
   const deadline = new Date(Date.now() + 24 * 3_600_000);
   return {
     name: `⏱ 24h EOCN FREEZE DEADLINE — ${entityId} — due ${deadline.toISOString()}`,
@@ -566,7 +589,7 @@ function buildFreezeCountdownSubtask(entityId: string, mlroGid?: string): AsanaT
   };
 }
 
-function buildEddSubtask(entityId: string, cddLevel: string, coGid?: string): AsanaTaskPayload {
+function buildEddSubtask(entityId: string, cddLevel: string, coGid?: string): SubtaskPayload {
   return {
     name: `📋 EDD Required — ${entityId} — ${cddLevel} → EDD`,
     notes: [
@@ -592,7 +615,7 @@ function buildStrSubtask(
   classification: string,
   dueDate: string | null,
   mlroGid?: string
-): AsanaTaskPayload {
+): SubtaskPayload {
   return {
     name: `📤 ${classification} Filing Required — ${entityId}`,
     notes: [
@@ -619,7 +642,7 @@ function buildEsgSubtask(
   grade: string,
   riskLevel: string,
   coGid?: string
-): AsanaTaskPayload {
+): SubtaskPayload {
   return {
     name: `🌱 ESG Risk — ${entityId} — Grade ${grade} (${riskLevel.toUpperCase()})`,
     notes: [
@@ -643,7 +666,7 @@ function buildClampSubtask(
   clampReason: string,
   entityId: string,
   mlroGid?: string
-): AsanaTaskPayload {
+): SubtaskPayload {
   const isFreeze = clampReason.includes('freeze') || clampReason.includes('FREEZE');
   return {
     name: `⚠ Safety Clamp Fired — ${entityId} — ${clampReason.slice(7, 70)}...`,
@@ -666,7 +689,7 @@ export async function orchestrateBrainToAsana(
   brain: WeaponizedBrainResponse,
   cfg: AsanaOrchestratorConfig
 ): Promise<OrchestratorResult> {
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
   const v = brain.finalVerdict;
   const errors: string[] = [];
 
@@ -681,9 +704,16 @@ export async function orchestrateBrainToAsana(
     };
   }
 
-  // Build all task payloads
+  // Build all task payloads. Subtasks are built project- and
+  // parent-agnostic; the dispatch loop below fills in projects +
+  // parent via toFullPayload() once the parent task gid is known.
   const parentPayload = buildParentTask(brain, cfg);
-  const subtaskPayloads: AsanaTaskPayload[] = [];
+  const subtaskPayloads: SubtaskPayload[] = [];
+  const toFullPayload = (sub: SubtaskPayload, parentGid?: string): AsanaTaskPayload => ({
+    ...sub,
+    projects: [cfg.projectGid],
+    ...(parentGid ? { parent: parentGid } : {}),
+  });
 
   // Freeze: 24h countdown + EOCN notification
   if (v === 'freeze') {
@@ -770,10 +800,12 @@ export async function orchestrateBrainToAsana(
   const quantumSealSubtask = buildQuantumSealSubtask(brain, cfg.mlroGid);
   if (quantumSealSubtask) subtaskPayloads.push(quantumSealSubtask);
 
-  // Dispatch
+  // Dispatch. enqueueRetry signature: (payload, kind, error, ruleId?)
   let parentTaskGid: string | undefined;
   let subtasksCreated = 0;
   let tasksQueued = 0;
+  const retryKind = 'brainToAsana';
+  const retryRuleId = `${v}:${entityId}`;
 
   if (isAsanaConfigured()) {
     try {
@@ -783,28 +815,29 @@ export async function orchestrateBrainToAsana(
       for (const sub of subtaskPayloads) {
         try {
           if (parentTaskGid) {
-            await createAsanaTask({ ...sub, parent: parentTaskGid });
+            await createAsanaTask(toFullPayload(sub, parentTaskGid));
             subtasksCreated++;
           }
         } catch (subErr) {
-          // Queue for retry
-          enqueueRetry({ ...sub, parent: parentTaskGid });
+          const subMsg = subErr instanceof Error ? subErr.message : String(subErr);
+          enqueueRetry(toFullPayload(sub, parentTaskGid), retryKind, subMsg, retryRuleId);
           tasksQueued++;
           errors.push(`Subtask queued for retry: ${sub.name.slice(0, 60)}`);
         }
       }
     } catch (err) {
-      // Queue parent for retry
-      enqueueRetry(parentPayload);
+      const parentMsg = err instanceof Error ? err.message : String(err);
+      enqueueRetry(parentPayload, retryKind, parentMsg, retryRuleId);
       tasksQueued++;
-      errors.push(`Parent task queued: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`Parent task queued: ${parentMsg}`);
     }
   } else {
     // Asana not configured — queue everything
-    enqueueRetry(parentPayload);
+    const unconfiguredMsg = 'Asana not configured — task deferred to retry queue';
+    enqueueRetry(parentPayload, retryKind, unconfiguredMsg, retryRuleId);
     tasksQueued++;
     for (const sub of subtaskPayloads) {
-      enqueueRetry(sub);
+      enqueueRetry(toFullPayload(sub), retryKind, unconfiguredMsg, retryRuleId);
       tasksQueued++;
     }
   }

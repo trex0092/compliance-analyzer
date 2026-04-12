@@ -56,6 +56,18 @@ export interface ComplianceCustomFieldInput {
   daysRemaining?: number;
   confidence?: number;
   regulationCitation?: string;
+  /**
+   * Optional numeric risk score (0–100). Silently dropped by the
+   * builder when no corresponding Asana field GID is configured — same
+   * degradation contract as every other field in this interface.
+   */
+  riskScore?: number;
+  /** Optional CDD level label (SDD / CDD / EDD). */
+  cddLevel?: string;
+  /** Optional sanctions flag for enum custom field. */
+  sanctionsFlag?: boolean;
+  /** Optional ESG grade (A–F). */
+  esgGrade?: string;
 }
 
 // ---------------------------------------------------------------------------

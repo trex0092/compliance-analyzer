@@ -64,8 +64,8 @@ function nextId(entityId: string): string {
 
 function buildAlerts(brain: WeaponizedBrainResponse): MlroAlert[] {
   const alerts: MlroAlert[] = [];
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name ?? entityId;
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
+  const entityName = brain.mega.topic?.replace(/^Compliance assessment:\s*/i, '') || entityId;
   const now = new Date().toISOString();
 
   const add = (
@@ -198,7 +198,7 @@ function buildAlerts(brain: WeaponizedBrainResponse): MlroAlert[] {
     add(
       esg.riskLevel === 'critical' ? 'HIGH' : 'MEDIUM',
       `ESG Risk ${esg.riskLevel.toUpperCase()} — Grade ${esg.grade} — ${entityName}`,
-      `ESG composite score ${esg.composite.toFixed(0)}/100 — risk level ${esg.riskLevel}`,
+      `ESG composite score ${esg.totalScore.toFixed(0)}/100 — risk level ${esg.riskLevel}`,
       'ISSB IFRS S1/S2 (2023); LBMA RGG v9 §6.2; GRI 2021',
       'Review ESG sub-scores. Escalate to sustainability committee. Disclose in next IFRS S1 report.',
       todayISO
@@ -327,8 +327,8 @@ function buildMarkdownReport(
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 export function generateMlroAlerts(brain: WeaponizedBrainResponse): MlroAlertBundle {
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name ?? entityId;
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
+  const entityName = brain.mega.topic?.replace(/^Compliance assessment:\s*/i, '') || entityId;
   const generatedAt = new Date().toISOString();
   const alerts = buildAlerts(brain);
   const criticalCount = alerts.filter((a) => a.severity === 'CRITICAL').length;

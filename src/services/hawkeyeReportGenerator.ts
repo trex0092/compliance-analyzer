@@ -164,8 +164,8 @@ function buildSanctionsResults(input: HawkeyeReportInput): {
 
 function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: string): string {
   const { brain } = input;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name ?? entityId;
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
+  const entityName = brain.mega.topic?.replace(/^Compliance assessment:\s*/i, '') || entityId;
   const verdict = brain.finalVerdict;
   const badge = verdictToRiskBadge(verdict, brain.confidence);
   const emoji = riskBadgeEmoji(badge);
@@ -238,9 +238,7 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   lines.push(
     `| **Citizenship** | ${input.subjectJurisdiction ?? 'Not specified'} | **Last Screened** | ${nowDisplay} |`
   );
-  lines.push(
-    `| **Case Created** | ${dateOnly} | **Entity Type** | ${brain.mega.entity?.type ?? 'Individual'} |`
-  );
+  lines.push(`| **Case Created** | ${dateOnly} | **Entity Type** | Individual |`);
   lines.push(`| **Ongoing Screening** | Yes | **Archived** | No |`);
   lines.push(
     `| **Name Transposition** | ${ext.nameVariants ? `Yes — ${ext.nameVariants.variants.length} variant(s)` : 'Standard'} | **CDD Level** | **${cddLevel}** |`
@@ -338,12 +336,19 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   }
   if (ext.esgScore) {
     lines.push(
-      `| **ESG Grade** | Grade ${ext.esgScore.grade} — ${ext.esgScore.riskLevel.toUpperCase()} | ${ext.esgScore.composite.toFixed(0)} / 100 | ISSB IFRS S1/S2; LBMA RGG v9 |`
+      `| **ESG Grade** | Grade ${ext.esgScore.grade} — ${ext.esgScore.riskLevel.toUpperCase()} | ${ext.esgScore.totalScore.toFixed(0)} / 100 | ISSB IFRS S1/S2; LBMA RGG v9 |`
     );
   }
   if (ext.goldOrigin) {
+    // OriginTraceReport exposes refuseCount/eddCount/cleanCount + results[].
+    const originRisk =
+      ext.goldOrigin.refuseCount > 0
+        ? 'REFUSE'
+        : ext.goldOrigin.eddCount > 0
+          ? 'EDD'
+          : 'CLEAN';
     lines.push(
-      `| **Gold Origin Risk** | ${ext.goldOrigin.overallRisk.toUpperCase()} | ${ext.goldOrigin.totalShipments} shipment(s) | LBMA RGG v9; OECD DDG 2016 |`
+      `| **Gold Origin Risk** | ${originRisk} | ${ext.goldOrigin.results.length} shipment(s) | LBMA RGG v9; OECD DDG 2016 |`
     );
   }
   if (ext.lbmaFixCheck && (ext.lbmaFixCheck.flagged > 0 || ext.lbmaFixCheck.frozen > 0)) {
@@ -353,7 +358,7 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   }
   if (ext.penaltyVar) {
     lines.push(
-      `| **Penalty VaR (AED)** | AED ${ext.penaltyVar.varAed.toLocaleString()} VaR-95 | Expected: AED ${ext.penaltyVar.expectedPenaltyAed.toLocaleString()} | Cabinet Res 71/2024 |`
+      `| **Penalty VaR (AED)** | AED ${ext.penaltyVar.valueAtRisk.toLocaleString()} VaR-95 | Expected: AED ${ext.penaltyVar.expectedLoss.toLocaleString()} | Cabinet Res 71/2024 |`
     );
   }
   lines.push('');
@@ -454,29 +459,35 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
     lines.push(`|---|---|---|---|`);
     if (ext.esgScore) {
       lines.push(
-        `| **ESG Composite** | Grade **${ext.esgScore.grade}** — ${ext.esgScore.riskLevel.toUpperCase()} | ${ext.esgScore.composite.toFixed(0)} / 100 | ISSB IFRS S1/S2 (2023) |`
+        `| **ESG Composite** | Grade **${ext.esgScore.grade}** — ${ext.esgScore.riskLevel.toUpperCase()} | ${ext.esgScore.totalScore.toFixed(0)} / 100 | ISSB IFRS S1/S2 (2023) |`
       );
-      if (ext.esgScore.environment !== undefined)
+      // EsgScore pillar sub-scores live on pillars.{E,S,G}.score.
+      const eScore = ext.esgScore.pillars?.E?.score;
+      const sScore = ext.esgScore.pillars?.S?.score;
+      const gScore = ext.esgScore.pillars?.G?.score;
+      if (eScore !== undefined)
         lines.push(
-          `| Environmental (E) | — | ${ext.esgScore.environment.toFixed(0)} / 100 | GRI 2021 Standards |`
+          `| Environmental (E) | — | ${eScore.toFixed(0)} / 100 | GRI 2021 Standards |`
         );
-      if (ext.esgScore.social !== undefined)
+      if (sScore !== undefined)
+        lines.push(`| Social (S) | — | ${sScore.toFixed(0)} / 100 | ILO Conventions 29, 105 |`);
+      if (gScore !== undefined)
         lines.push(
-          `| Social (S) | — | ${ext.esgScore.social.toFixed(0)} / 100 | ILO Conventions 29, 105 |`
-        );
-      if (ext.esgScore.governance !== undefined)
-        lines.push(
-          `| Governance (G) | — | ${ext.esgScore.governance.toFixed(0)} / 100 | OECD CG Principles 2023 |`
+          `| Governance (G) | — | ${gScore.toFixed(0)} / 100 | OECD CG Principles 2023 |`
         );
     }
     if (ext.carbonFootprint) {
+      // netZeroAligned is derived from netZeroGap_tCO2e; per-oz intensity
+      // lives on portfolioIntensityKgPerOz.
+      const nzAligned = (ext.carbonFootprint.netZeroGap_tCO2e ?? 0) <= 0;
       lines.push(
-        `| **Carbon Footprint** | ${ext.carbonFootprint.netZeroAligned ? '✅ NZ-Aligned' : '❌ Not Aligned'} | ${ext.carbonFootprint.totalKgCo2ePerOz?.toFixed(1) ?? 'N/A'} kgCO₂e/oz | LBMA RGG v9; UAE NZ2050 |`
+        `| **Carbon Footprint** | ${nzAligned ? '✅ NZ-Aligned' : '❌ Not Aligned'} | ${ext.carbonFootprint.portfolioIntensityKgPerOz?.toFixed(1) ?? 'N/A'} kgCO₂e/oz | LBMA RGG v9; UAE NZ2050 |`
       );
     }
     if (ext.tcfdAlignment) {
+      // TcfdAlignmentReport carries the maturity label on complianceLevel.
       lines.push(
-        `| **TCFD Alignment** | ${ext.tcfdAlignment.maturityLevel} | ${ext.tcfdAlignment.overallScore.toFixed(0)} / 100 | TCFD / ISSB IFRS S2 |`
+        `| **TCFD Alignment** | ${ext.tcfdAlignment.complianceLevel} | ${ext.tcfdAlignment.overallScore.toFixed(0)} / 100 | TCFD / ISSB IFRS S2 |`
       );
     }
     if (ext.esgAdvanced?.csrd) {
@@ -490,18 +501,21 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
       );
     }
     if (ext.greenwashing) {
+      // GreenwashingReport has no scalar criticalFindings; derive from findings[].severity.
+      const gwCritical = ext.greenwashing.findings.filter((f) => f.severity === 'critical').length;
       lines.push(
-        `| **Greenwashing Risk** | ${(ext.greenwashing.overallRisk ?? 'low').toUpperCase()} | ${ext.greenwashing.criticalFindings} critical finding(s) | ISSB S1 §B10; IOSCO |`
+        `| **Greenwashing Risk** | ${(ext.greenwashing.overallRisk ?? 'low').toUpperCase()} | ${gwCritical} critical finding(s) | ISSB S1 §B10; IOSCO |`
       );
     }
     if (ext.conflictMinerals) {
       lines.push(
-        `| **Conflict Minerals** | ${ext.conflictMinerals.overallRisk.toUpperCase()} | ${ext.conflictMinerals.criticalSupplierCount} critical supplier(s) | OECD DDG 2016; EU CMR |`
+        `| **Conflict Minerals** | ${ext.conflictMinerals.overallRisk.toUpperCase()} | ${ext.conflictMinerals.criticalCount} critical supplier(s) | OECD DDG 2016; EU CMR |`
       );
     }
     if (ext.modernSlavery) {
+      // ModernSlaveryReport has no numeric riskScore — show ILO indicator count out of 11.
       lines.push(
-        `| **Modern Slavery** | ${ext.modernSlavery.overallRisk.toUpperCase()} | ${ext.modernSlavery.riskScore} / 100 | ILO Conv. 29/105; UAE Fed. Law 51/2006 |`
+        `| **Modern Slavery** | ${ext.modernSlavery.riskLevel.toUpperCase()} | ${ext.modernSlavery.iloIndicatorsTriggered} / 11 ILO indicators | ILO Conv. 29/105; UAE Fed. Law 51/2006 |`
       );
     }
     if (ext.sdgAlignment) {
@@ -607,8 +621,8 @@ function buildSummaryCard(
   totals: { total: number; confirmed: number; possible: number; false: number; unresolved: number }
 ): string {
   const { brain } = input;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name ?? entityId;
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
+  const entityName = brain.mega.topic?.replace(/^Compliance assessment:\s*/i, '') || entityId;
   const verdict = brain.finalVerdict;
   const badge = verdictToRiskBadge(verdict, brain.confidence);
   const emoji = riskBadgeEmoji(badge);
@@ -633,7 +647,7 @@ function buildSummaryCard(
       ? `${ext.filingClassification.primaryCategory} · due ${ext.filingClassification.deadlineDueDate ?? 'TBD'} · ${ext.filingClassification.urgency.toUpperCase()}`
       : 'None triggered';
   const esgLine = ext.esgScore
-    ? `Grade ${ext.esgScore.grade} (${ext.esgScore.composite.toFixed(0)}/100) — ${ext.esgScore.riskLevel.toUpperCase()}`
+    ? `Grade ${ext.esgScore.grade} (${ext.esgScore.totalScore.toFixed(0)}/100) — ${ext.esgScore.riskLevel.toUpperCase()}`
     : 'N/A';
   const pepLine = ext.pepProximity
     ? `${ext.pepProximity.overallRisk.toUpperCase()} (score ${ext.pepProximity.maxProximityScore.toFixed(0)}/100)`
@@ -673,7 +687,7 @@ function buildSummaryCard(
     hdr('SUBJECT'),
     row('Name', entityName),
     row('Entity ID', entityId),
-    row('Entity Type', brain.mega.entity?.type ?? 'Individual'),
+    row('Entity Type', 'Individual'),
     row('Jurisdiction', input.subjectJurisdiction ?? 'Not specified'),
     row('Date of Birth', input.subjectDob ?? 'Not specified'),
     sep,
@@ -724,8 +738,8 @@ function buildSummaryCard(
 
 function buildAuditBlock(input: HawkeyeReportInput, reportId: string, now: string): string {
   const { brain } = input;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name ?? entityId;
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
+  const entityName = brain.mega.topic?.replace(/^Compliance assessment:\s*/i, '') || entityId;
 
   return [
     `HAWKEYE STERLING V2 — AUDIT RECORD`,
@@ -751,8 +765,8 @@ function buildAuditBlock(input: HawkeyeReportInput, reportId: string, now: strin
 
 export function generateHawkeyeReport(input: HawkeyeReportInput): HawkeyeReport {
   const { brain } = input;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name ?? entityId;
+  const entityId = brain.mega.entityId ?? 'UNKNOWN';
+  const entityName = brain.mega.topic?.replace(/^Compliance assessment:\s*/i, '') || entityId;
   const now = new Date().toISOString();
   const reportId = nextReportId(entityId);
   const verdict = brain.finalVerdict;

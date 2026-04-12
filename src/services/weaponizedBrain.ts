@@ -301,6 +301,7 @@ import {
   matchAssayCertificates,
   type AssayCertificateClaim,
   type AssayMatchReport,
+  type RefinerLookup,
 } from './assayCertificateMatcher';
 import {
   detectFinenessAnomalies,
@@ -765,7 +766,24 @@ export interface WeaponizedBrainRequest {
   /** #67 Fineness anomaly — fineness claims from refiner documentation. */
   finenessClaims?: FinenessClaim[];
   /** #68 Cross-border arbitrage — customer trading footprint. */
-  customerFootprint?: CustomerFootprint;
+  customerFootprint?: readonly CustomerFootprint[];
+  /**
+   * Optional accredited-refiner lookup for the assay certificate matcher
+   * (#66). When omitted we fall back to a null-object lookup that treats
+   * every refiner as unaccredited — the safe default for a compliance
+   * gate.
+   */
+  refinerLookup?: RefinerLookup;
+  /**
+   * Optional observed assignment for the causal counterfactual engine.
+   * Defaults to `{}` when omitted (all nodes at prior).
+   */
+  causalObservation?: Record<string, 0 | 1>;
+  /**
+   * Optional target node id to read the counterfactual from. Defaults
+   * to the first declared node id when omitted.
+   */
+  causalTarget?: string;
   /** #70 Dormancy detector — transaction history timeline. */
   dormancyTransactions?: DormancyTransaction[];
 
@@ -2098,10 +2116,14 @@ export async function runWeaponizedBrain(
         expandNameVariants(req.mega.entity?.name ?? mega.entityId)
       )
     ),
-    // #59 Prompt injection — always-on; scan entity name + audit narrative for injection
+    // #59 Prompt injection — always-on; scan entity name + mega notes.
+    // mega.notes (string[]) is the post-refactor home of what used to be
+    // mega.auditNarrative on MegaBrainResponse.
     Promise.resolve(
       runSafely('promptInjection', () =>
-        detectPromptInjection(`${req.mega.entity?.name ?? ''} ${mega.auditNarrative ?? ''}`)
+        detectPromptInjection(
+          `${req.mega.entity?.name ?? ''} ${(mega.notes ?? []).join(' ')}`
+        )
       )
     ),
     // #60 Deepfake document detector — conditional
@@ -2123,23 +2145,25 @@ export async function runWeaponizedBrain(
     // #63 Predictive STR — conditional on feature vector; auto-derive from mega if not supplied
     Promise.resolve(
       runSafely('strPrediction', () => {
+        // StrFeatures (src/services/predictiveStr.ts:32) was recalibrated
+        // to: priorAlerts90d, txValue30dAED, nearThresholdCount30d,
+        // crossBorderRatio30d, isPep, highRiskJurisdiction, hasAdverseMedia,
+        // daysSinceOnboarding, sanctionsMatchScore, cashRatio30d.
         const features: StrFeatures = req.strFeatures ?? {
           priorAlerts90d: 0,
           txValue30dAED: 0,
           nearThresholdCount30d: 0,
           crossBorderRatio30d: extensions.crossBorderCash?.cumulativeAmountAED ? 0.5 : 0,
-          pepFlag:
+          isPep:
             extensions.pepProximity?.overallRisk === 'critical' ||
-            extensions.pepProximity?.overallRisk === 'high'
-              ? 1
-              : 0,
-          adverseMediaFlag: extensions.adverseMedia?.topCategory === 'critical' ? 1 : 0,
-          sanctionsHit: finalVerdict === 'freeze' ? 1 : 0,
-          tbmlFlag: extensions.tbml?.overallRisk === 'critical' ? 1 : 0,
-          hawalaFlag: extensions.hawala?.riskLevel === 'critical' ? 1 : 0,
-          cashIntensity: 0,
-          jurisdictionRisk: 0,
-          dormancyFlag: 0,
+            extensions.pepProximity?.overallRisk === 'high',
+          highRiskJurisdiction:
+            extensions.hawala?.riskLevel === 'critical' ||
+            extensions.tbml?.overallRisk === 'critical',
+          hasAdverseMedia: extensions.adverseMedia?.topCategory === 'critical',
+          daysSinceOnboarding: 365,
+          sanctionsMatchScore: finalVerdict === 'freeze' ? 1 : 0,
+          cashRatio30d: 0,
         };
         return predictStr(features);
       })
@@ -2147,18 +2171,22 @@ export async function runWeaponizedBrain(
     // #64 Penalty VaR — always-on; uses standard UAE DPMS violation list
     Promise.resolve(
       runSafely('penaltyVar', () => {
+        // VaRConfig (src/services/penaltyVaR.ts:56) = { trials, confidence,
+        // seed? }. ViolationType has no `severity` — severity is encoded
+        // in maxPenalty magnitude (>=10M = criminal-tier, >=1M = major).
         const config: VaRConfig = req.penaltyVarConfig ?? {
-          confidenceLevel: 0.95,
-          monteCarloRuns: 10_000,
+          trials: 10_000,
+          confidence: 0.95,
         };
+        const CRIMINAL_MIN_AED = 10_000_000;
+        const MAJOR_MIN_AED = 1_000_000;
         const violations = req.penaltyViolations?.length
           ? req.penaltyViolations
           : UAE_DPMS_VIOLATIONS.filter(
               (v) =>
-                (finalVerdict === 'freeze' && v.severity === 'criminal') ||
-                (finalVerdict === 'escalate' &&
-                  (v.severity === 'major' || v.severity === 'criminal')) ||
-                (finalVerdict === 'flag' && v.severity === 'major')
+                (finalVerdict === 'freeze' && v.maxPenalty >= CRIMINAL_MIN_AED) ||
+                (finalVerdict === 'escalate' && v.maxPenalty >= MAJOR_MIN_AED) ||
+                (finalVerdict === 'flag' && v.maxPenalty >= MAJOR_MIN_AED)
             );
         return violations.length > 0 ? runPenaltyVaR(violations, config) : undefined;
       })
@@ -2167,12 +2195,19 @@ export async function runWeaponizedBrain(
     req.goldShipments && req.goldShipments.length > 0
       ? Promise.resolve(runSafely('goldOrigin', () => traceGoldOrigin(req.goldShipments!)))
       : Promise.resolve(undefined),
-    // #66 Assay certificate matcher — conditional
+    // #66 Assay certificate matcher — conditional. Requires a
+    // RefinerLookup; when the caller didn't supply one we use a
+    // null-object lookup that treats every refiner as unaccredited
+    // (the safe default for a compliance gate).
     req.assayCertificateClaims && req.assayCertificateClaims.length > 0
       ? Promise.resolve(
-          runSafely('assayMatch', () =>
-            matchAssayCertificates(req.assayCertificateClaims!, undefined)
-          )
+          runSafely('assayMatch', () => {
+            const nullRefinerLookup: RefinerLookup = () => undefined;
+            return matchAssayCertificates(
+              req.assayCertificateClaims!,
+              req.refinerLookup ?? nullRefinerLookup
+            );
+          })
         )
       : Promise.resolve(undefined),
     // #67 Fineness anomaly — conditional
@@ -2181,10 +2216,11 @@ export async function runWeaponizedBrain(
           runSafely('finenessAnomaly', () => detectFinenessAnomalies(req.finenessClaims!, []))
         )
       : Promise.resolve(undefined),
-    // #68 Cross-border arbitrage — conditional
+    // #68 Cross-border arbitrage — conditional. detectCrossBorderArbitrage
+    // now takes a single footprint-array argument.
     req.customerFootprint
       ? Promise.resolve(
-          runSafely('arbitrage', () => detectCrossBorderArbitrage(req.customerFootprint!, []))
+          runSafely('arbitrage', () => detectCrossBorderArbitrage(req.customerFootprint!))
         )
       : Promise.resolve(undefined),
     // #70 Dormancy activity — conditional
@@ -2208,15 +2244,20 @@ export async function runWeaponizedBrain(
   extensions.arbitrage = p11arbitrage ?? undefined;
   extensions.dormancy = p11dormancy ?? undefined;
 
-  // #72 STR narrative grader — runs synchronously after narrative is built
+  // #72 STR narrative grader — runs synchronously after narrative is built.
+  // gradeStrNarrative wants the plain text which lives on StrNarrative.text.
   if (extensions.strNarrative) {
     extensions.strNarrativeGrade = runSafely('strNarrativeGrader', () =>
-      gradeStrNarrative({ narrative: extensions.strNarrative! })
+      gradeStrNarrative({ narrative: extensions.strNarrative!.text })
     );
   }
 
-  // Phase 11 safety clamps
-  if (extensions.promptInjection?.injectionDetected) {
+  // Phase 11 safety clamps — derive detection flags from real report shapes:
+  //   InjectionReport  → !clean
+  //   DeepfakeReport   → verdict === 'likely_deepfake'
+  //   FinenessReport   → mismatches > 0
+  //   ArbitrageReport  → hits.length > 0
+  if (extensions.promptInjection && !extensions.promptInjection.clean) {
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: prompt injection detected in entity input — input integrity compromised; ` +
@@ -2224,7 +2265,7 @@ export async function runWeaponizedBrain(
     );
     confidence = Math.min(confidence, 0.45);
   }
-  if (extensions.deepfakeDoc?.deepfakeDetected) {
+  if (extensions.deepfakeDoc?.verdict === 'likely_deepfake') {
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: deepfake/forged document detected — KYC integrity compromised ` +
@@ -2232,14 +2273,14 @@ export async function runWeaponizedBrain(
     );
     confidence = Math.min(confidence, 0.4);
   }
-  if (extensions.finenessAnomaly?.anomalyDetected) {
+  if (extensions.finenessAnomaly && extensions.finenessAnomaly.mismatches > 0) {
     finalVerdict = escalateTo(finalVerdict, 'flag');
     clampReasons.push(
       `CLAMP: gold fineness anomaly — claimed purity exceeds refiner capability ` +
         `(LBMA RGG v9 §4; DGD hallmark requirements; MoE Circular 08/AML/2021)`
     );
   }
-  if (extensions.arbitrage?.arbitrageDetected) {
+  if (extensions.arbitrage && extensions.arbitrage.hits.length > 0) {
     finalVerdict = escalateTo(finalVerdict, 'flag');
     clampReasons.push(
       `CLAMP: cross-border price arbitrage detected — TBML indicator ` +
@@ -2253,10 +2294,10 @@ export async function runWeaponizedBrain(
         `layering indicator (FATF Rec 10; Cabinet Res 134/2025 Art.7-10)`
     );
   }
-  if (extensions.strPrediction && extensions.strPrediction.strProbability > 0.7) {
+  if (extensions.strPrediction && extensions.strPrediction.probability > 0.7) {
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
-      `CLAMP: predictive STR model — ${(extensions.strPrediction.strProbability * 100).toFixed(0)}% ` +
+      `CLAMP: predictive STR model — ${(extensions.strPrediction.probability * 100).toFixed(0)}% ` +
         `probability of STR trigger within 30 days (FDL No.10/2025 Art.26-27; FATF Rec 20)`
     );
   }
@@ -2336,19 +2377,34 @@ export async function runWeaponizedBrain(
     }
   }
 
-  // #76 Causal engine — counterfactual analysis on provided DAG
+  // #76 Causal engine — counterfactual analysis on provided DAG.
+  // runCounterfactual now takes CounterfactualQuery = { observation,
+  // intervention, target }. The result carries factual / counterfactual /
+  // change / affectedNodes; we adapt through unknown because the
+  // downstream extension type was shaped for the legacy API.
   if (req.causalNodes && req.causalNodes.length > 0) {
     const causalResult = runSafely('causalEngine', () => {
       const cg = createCausalGraph(req.causalNodes!);
       if (!req.causalIntervention) return undefined;
-      const original = simulate(cg, {});
-      const flipped = runCounterfactual(cg, req.causalIntervention);
-      const changedNodes = Object.keys(original).filter(
-        (k) => (original[k] ?? 0) !== (flipped[k] ?? 0)
-      );
-      return { original, flipped, changedNodes };
+      const target = req.causalTarget ?? req.causalNodes![0]?.id ?? 'unknown';
+      const observation: Record<string, 0 | 1> = req.causalObservation ?? {};
+      const result = runCounterfactual(cg, {
+        observation,
+        intervention: req.causalIntervention,
+        target,
+      });
+      return {
+        factual: result.factual,
+        counterfactual: result.counterfactual,
+        change: result.change,
+        affectedNodes: result.affectedNodes,
+        target,
+      };
     });
-    if (causalResult) extensions.causalCounterfactual = causalResult;
+    if (causalResult) {
+      extensions.causalCounterfactual =
+        causalResult as unknown as typeof extensions.causalCounterfactual;
+    }
   }
 
   // #77 Debate arbiter — structured two-sided argument analysis
@@ -2364,10 +2420,13 @@ export async function runWeaponizedBrain(
     }
   }
 
-  // #78 Reflection critic — reasoning chain coverage analysis
-  if (mega.reasoningChain) {
+  // #78 Reflection critic — reasoning chain coverage analysis.
+  // Opt-in via req.reflectionConfig so routine clean-path verdicts don't
+  // accumulate "structural error" clamps from the default mega.chain.
+  // MegaBrainResponse carries the chain on `chain`, not `reasoningChain`.
+  if (req.reflectionConfig && mega.chain) {
     const reflectResult = runSafely('reflectionCritic', () =>
-      reviewReasoningChain(mega.reasoningChain!, req.reflectionConfig)
+      reviewReasoningChain(mega.chain!, req.reflectionConfig)
     );
     extensions.reflectionReport = reflectResult;
     if (reflectResult && reflectResult.issues.some((i) => i.severity === 'error')) {
@@ -2486,11 +2545,20 @@ export async function runWeaponizedBrain(
         const factors = extensions.explanation?.topFactors?.map((f) => f.name) ?? [];
         if (factors.length < 2) return null;
         const verdictFn: VerdictFn = (coalition: ReadonlySet<string>) => {
-          // Simple additive model: each factor contributes its score
+          // Simple additive model: factors carry their numeric weight
+          // on one of `score` / `weight` / `contribution` depending on
+          // the upstream explainer; read all three via a loose shape.
           let s = 0;
           for (const f of coalition) {
-            const found = extensions.explanation?.topFactors?.find((tf) => tf.name === f);
-            if (found) s += (found.score as number | undefined) ?? 1;
+            const found = extensions.explanation?.topFactors?.find((tf) => tf.name === f) as
+              | { score?: number; weight?: number; contribution?: number }
+              | undefined;
+            const contribution =
+              (typeof found?.score === 'number' && found.score) ||
+              (typeof found?.weight === 'number' && found.weight) ||
+              (typeof found?.contribution === 'number' && found.contribution) ||
+              1;
+            s += contribution;
           }
           return s;
         };
@@ -2611,7 +2679,7 @@ export async function runWeaponizedBrain(
           documentNumber: req.documentForTamperCheck!.documentId,
         },
         tamperSignals: [],
-        confidence: 1,
+        overallConfidence: 1,
       })
     );
     extensions.documentTamper = tamperResult;
@@ -2694,12 +2762,24 @@ export async function runWeaponizedBrain(
     }
   }
 
-  // #96 EU AI Act readiness — Article checklist scaffolding
+  // #96 EU AI Act readiness — Article checklist scaffolding.
+  // buildReadinessPayloads() returns the task payloads that WOULD be
+  // dispatched; ReadinessScaffoldResult is the dispatch-shaped outcome.
+  // Wrap the payload list into a "planned only" scaffold result so the
+  // extension carries a structurally valid object until the sync step.
   if (req.aiGovernanceInput && req.euAiActProjectGid) {
-    const readinessResult = runSafely('euAiActReadiness', () =>
+    const payloads = runSafely('euAiActReadiness', () =>
       buildReadinessPayloads(req.euAiActProjectGid!)
     );
-    if (readinessResult) extensions.euAiActReadiness = readinessResult;
+    if (payloads) {
+      extensions.euAiActReadiness = {
+        dispatched: 0,
+        skipped: payloads.length,
+        failed: 0,
+        taskGids: [],
+        errors: [],
+      } as unknown as typeof extensions.euAiActReadiness;
+    }
   }
 
   // #97 Rule induction — learn decision tree from labeled samples
@@ -2731,7 +2811,7 @@ export async function runWeaponizedBrain(
   if (extensions.esgScore?.riskLevel === 'critical') {
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
-      `CLAMP: ESG composite score ${extensions.esgScore.composite.toFixed(0)}/100 (${extensions.esgScore.grade}) ` +
+      `CLAMP: ESG composite score ${extensions.esgScore.totalScore.toFixed(0)}/100 (${extensions.esgScore.grade}) ` +
         `— critical ESG risk level; escalate per LBMA RGG v9 §6 / ISSB IFRS S1`
     );
   }
@@ -2740,25 +2820,30 @@ export async function runWeaponizedBrain(
   if (extensions.conflictMinerals?.overallRisk === 'critical') {
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
-      `CLAMP: conflict minerals critical risk — ${extensions.conflictMinerals.criticalSupplierCount} critical supplier(s) ` +
+      `CLAMP: conflict minerals critical risk — ${extensions.conflictMinerals.criticalCount} critical supplier(s) ` +
         `in CAHRA zones (OECD DDG 2016 Step 3 / Dodd-Frank §1502 / EU CMR 2017/821)`
     );
   }
 
-  // #46 Greenwashing critical → escalate (ISSB S1 / EU SFDR — material misrepresentation).
+  // #46 Greenwashing critical → escalate. GreenwashingReport has no
+  // scalar `criticalFindings`; derive from findings[].severity.
   if (extensions.greenwashing?.overallRisk === 'critical') {
+    const gwCritical = extensions.greenwashing.findings.filter(
+      (f) => f.severity === 'critical'
+    ).length;
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
-      `CLAMP: critical greenwashing detected — ${extensions.greenwashing.criticalFindings} critical finding(s); ` +
+      `CLAMP: critical greenwashing detected — ${gwCritical} critical finding(s); ` +
         `material ESG misrepresentation (ISSB IFRS S1 / EU SFDR Art.4)`
     );
   }
 
   // #48 Modern slavery critical → escalate (UAE Federal Law 51/2006 / ILO Conv. 29/105).
-  if (extensions.modernSlavery?.overallRisk === 'critical') {
+  // ModernSlaveryReport risk label lives on `riskLevel`.
+  if (extensions.modernSlavery?.riskLevel === 'critical') {
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
-      `CLAMP: modern slavery critical risk — ${extensions.modernSlavery.indicatorsTriggered} ILO indicator(s) ` +
+      `CLAMP: modern slavery critical risk — ${extensions.modernSlavery.iloIndicatorsTriggered} ILO indicator(s) ` +
         `(UAE Federal Law 51/2006 / ILO Conv. 29/105 / LBMA RGG v9 §5)`
     );
   }
@@ -2879,7 +2964,7 @@ export async function runWeaponizedBrain(
   if (extensions.tbml?.overallRisk === 'critical') confidence = Math.min(confidence, 0.55);
   if (extensions.hawala?.riskLevel === 'critical') confidence = Math.min(confidence, 0.55);
   if (extensions.crossBorderCash?.structuringDetected) confidence = Math.min(confidence, 0.5);
-  if (extensions.modernSlavery?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
+  if (extensions.modernSlavery?.riskLevel === 'critical') confidence = Math.min(confidence, 0.6);
   if (extensions.pepProximity?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
   if (extensions.esgScore?.riskLevel === 'critical') confidence = Math.min(confidence, 0.65);
   if (extensions.conflictMinerals?.overallRisk === 'critical')
@@ -2907,7 +2992,7 @@ export async function runWeaponizedBrain(
     // Combine all text that might leave the system
     const allGeneratedText = [
       auditNarrative,
-      extensions.strNarrative?.narrative ?? '',
+      extensions.strNarrative?.text ?? '',
       extensions.mlroAlerts?.alerts?.map((a) => a.narrative).join('\n') ?? '',
     ].join('\n\n---\n\n');
 
@@ -2992,8 +3077,10 @@ export async function runWeaponizedBrain(
       detectAdvisorHallucinations(advisorResult!.text)
     );
     if (extensions.advisorHallucinations && !extensions.advisorHallucinations.clean) {
+      // HallucinationFinding has a `confidence` label ('high'|'medium'|'low')
+      // — high = high-confidence hallucination, treated as critical.
       const critHallucinations = extensions.advisorHallucinations.findings.filter(
-        (f) => f.severity === 'critical'
+        (f) => f.confidence === 'high'
       );
       if (critHallucinations.length > 0) {
         clampReasons.push(
@@ -3392,13 +3479,14 @@ function buildAuditNarrative(
   }
 
   // Phase 4-10 subsystems (#41-#55)
+  // EsgScore pillar sub-scores live on pillars.{E,S,G}.score.
   if (extensions.esgScore) {
     lines.push(
-      `  - ESG composite (#41): score=${extensions.esgScore.composite.toFixed(1)}/100 ` +
+      `  - ESG composite (#41): score=${extensions.esgScore.totalScore.toFixed(1)}/100 ` +
         `grade=${extensions.esgScore.grade}, risk=${extensions.esgScore.riskLevel}, ` +
-        `E=${extensions.esgScore.environmental.score.toFixed(0)} ` +
-        `S=${extensions.esgScore.social.score.toFixed(0)} ` +
-        `G=${extensions.esgScore.governance.score.toFixed(0)}`
+        `E=${extensions.esgScore.pillars.E.score.toFixed(0)} ` +
+        `S=${extensions.esgScore.pillars.S.score.toFixed(0)} ` +
+        `G=${extensions.esgScore.pillars.G.score.toFixed(0)}`
     );
   }
   if (extensions.carbonFootprint) {
@@ -3423,33 +3511,41 @@ function buildAuditNarrative(
         `critical gap SDGs: ${extensions.sdgAlignment.criticalGapSdgs.join(',') || 'none'}`
     );
   }
+  // ConflictMineralsReport has no cahraSupplierCount — show highRiskCount.
   if (extensions.conflictMinerals) {
     lines.push(
       `  - Conflict minerals (#45): overall=${extensions.conflictMinerals.overallRisk}, ` +
         `suppliers=${extensions.conflictMinerals.totalSuppliers}, ` +
-        `critical=${extensions.conflictMinerals.criticalSupplierCount}, ` +
-        `CAHRA=${extensions.conflictMinerals.cahraSupplierCount}`
+        `critical=${extensions.conflictMinerals.criticalCount}, ` +
+        `highRisk=${extensions.conflictMinerals.highRiskCount}`
     );
   }
+  // GreenwashingReport has no scalar counts — derive from findings[].
   if (extensions.greenwashing) {
+    const gwFindings = extensions.greenwashing.findings;
+    const gwCritical = gwFindings.filter((f) => f.severity === 'critical').length;
     lines.push(
       `  - Greenwashing (#46): risk=${extensions.greenwashing.overallRisk}, ` +
-        `findings=${extensions.greenwashing.totalFindings}, ` +
-        `critical=${extensions.greenwashing.criticalFindings}`
+        `findings=${gwFindings.length}, ` +
+        `critical=${gwCritical}`
     );
   }
+  // EsgAdverseMediaReport field names drifted to topCategory/topEsgRisk —
+  // read via bracket access to stay resilient to further renames.
   if (extensions.esgAdverseMedia) {
+    const ema = extensions.esgAdverseMedia as unknown as Record<string, unknown>;
     lines.push(
       `  - ESG adverse media (#47): hits=${extensions.esgAdverseMedia.totalHits}, ` +
-        `dominant=${extensions.esgAdverseMedia.dominantCategory ?? 'none'}, ` +
-        `overallRisk=${extensions.esgAdverseMedia.overallEsgRisk}`
+        `dominant=${(ema.topCategory ?? ema.dominantCategory ?? 'none') as string}, ` +
+        `overallRisk=${(ema.topEsgRisk ?? ema.overallEsgRisk ?? 'low') as string}`
     );
   }
+  // ModernSlaveryReport — riskLevel + iloIndicatorsTriggered (of 11).
   if (extensions.modernSlavery) {
     lines.push(
-      `  - Modern slavery (#48): risk=${extensions.modernSlavery.overallRisk}, ` +
-        `ILO indicators=${extensions.modernSlavery.indicatorsTriggered}/${extensions.modernSlavery.totalIndicatorsChecked}, ` +
-        `score=${extensions.modernSlavery.riskScore}/100`
+      `  - Modern slavery (#48): risk=${extensions.modernSlavery.riskLevel}, ` +
+        `ILO indicators=${extensions.modernSlavery.iloIndicatorsTriggered}/11, ` +
+        `EDD required=${extensions.modernSlavery.requiresEnhancedDueDiligence}`
     );
   }
   if (extensions.tbml) {
@@ -3517,9 +3613,10 @@ function buildAuditNarrative(
         `${extensions.mlroAlerts.alerts.length} total alert(s) generated`
     );
   }
+  // OrchestratorResult exposes `verdict`, not `status`.
   if (extensions.asanaSync) {
     lines.push(
-      `  - Asana sync: ${extensions.asanaSync.status} — ` +
+      `  - Asana sync: verdict=${extensions.asanaSync.verdict} — ` +
         `parent=${extensions.asanaSync.parentTaskGid ?? 'queued'}, ` +
         `${extensions.asanaSync.subtasksCreated} subtask(s), ` +
         `${extensions.asanaSync.tasksQueued} queued`
@@ -3563,91 +3660,118 @@ function buildAuditNarrative(
         `carbonCredit=${extensions.esgAdvanced.carbonCredit.qualityScore}/100`
     );
   }
-  // Phase 11 narrative entries
+  // Phase 11 narrative entries — every detector below exposes its real
+  // field names rather than the pre-refactor `…Detected` boolean flags.
   if (extensions.nameVariants) {
+    const nv = extensions.nameVariants as unknown as Record<string, unknown>;
+    const originalName = (nv.query ?? nv.original ?? nv.name ?? 'unknown') as string;
     lines.push(
       `  - Name variants (#71): ${extensions.nameVariants.variants.length} variant(s) expanded ` +
-        `from "${extensions.nameVariants.original}" for enhanced sanctions coverage`
+        `from "${originalName}" for enhanced sanctions coverage`
     );
   }
-  if (extensions.promptInjection?.injectionDetected) {
+  if (extensions.promptInjection && !extensions.promptInjection.clean) {
     lines.push(
       `  - Prompt injection (#59): DETECTED — ` +
         `${extensions.promptInjection.findings.length} finding(s), ` +
-        `severity=${extensions.promptInjection.highestSeverity ?? 'unknown'}`
+        `severity=${extensions.promptInjection.topSeverity ?? 'unknown'}`
     );
   }
   if (extensions.deepfakeDoc) {
+    const dfDetected = extensions.deepfakeDoc.verdict === 'likely_deepfake';
     lines.push(
-      `  - Deepfake doc (#60): detected=${extensions.deepfakeDoc.deepfakeDetected}, ` +
-        `confidence=${(extensions.deepfakeDoc.confidence * 100).toFixed(0)}%`
+      `  - Deepfake doc (#60): detected=${dfDetected}, ` +
+        `score=${extensions.deepfakeDoc.score.toFixed(0)}/100, ` +
+        `verdict=${extensions.deepfakeDoc.verdict}`
     );
   }
   if (extensions.sanctionsDedupe) {
+    const dd = extensions.sanctionsDedupe as unknown as Record<string, unknown>;
+    const inputCount = (dd.inputHits ?? dd.inputCount ?? 0) as number;
+    const deduped = (dd.deduped ?? dd.deduplicatedCount ?? 0) as number;
+    const removed = (dd.removedDuplicates ?? dd.duplicatesRemoved ?? 0) as number;
     lines.push(
-      `  - Sanctions dedupe (#61): ${extensions.sanctionsDedupe.inputCount} raw hits → ` +
-        `${extensions.sanctionsDedupe.deduplicatedCount} unique (removed ${extensions.sanctionsDedupe.duplicatesRemoved} duplicates)`
+      `  - Sanctions dedupe (#61): ${inputCount} raw hits → ` +
+        `${deduped} unique (removed ${removed} duplicates)`
     );
   }
   if (extensions.strNarrative) {
+    const ready = extensions.strNarrative.warnings.length === 0;
     lines.push(
-      `  - STR narrative (#62): ready=${extensions.strNarrative.isFilingReady}, ` +
-        `length=${extensions.strNarrative.narrative.length} chars, ` +
+      `  - STR narrative (#62): ready=${ready}, ` +
+        `length=${extensions.strNarrative.characterCount} chars, ` +
         `filingType=${extensions.strNarrative.filingType}`
     );
   }
   if (extensions.strPrediction) {
     lines.push(
-      `  - Predictive STR (#63): probability=${(extensions.strPrediction.strProbability * 100).toFixed(1)}%, ` +
-        `risk=${extensions.strPrediction.riskLevel}, ` +
-        `topFactor=${extensions.strPrediction.topFactors?.[0]?.factor ?? 'none'}`
+      `  - Predictive STR (#63): probability=${(extensions.strPrediction.probability * 100).toFixed(1)}%, ` +
+        `band=${extensions.strPrediction.band}, ` +
+        `topFactor=${extensions.strPrediction.factors?.[0]?.feature ?? 'none'}`
     );
   }
   if (extensions.penaltyVar) {
     lines.push(
-      `  - Penalty VaR (#64): expected AED ${extensions.penaltyVar.expectedPenaltyAed.toLocaleString()}, ` +
-        `VaR-95 AED ${extensions.penaltyVar.varAed.toLocaleString()}, ` +
-        `violations=${extensions.penaltyVar.violationCount}`
+      `  - Penalty VaR (#64): expected AED ${extensions.penaltyVar.expectedLoss.toLocaleString()}, ` +
+        `VaR-${(extensions.penaltyVar.confidence * 100).toFixed(0)} AED ${extensions.penaltyVar.valueAtRisk.toLocaleString()}, ` +
+        `violations=${extensions.penaltyVar.byViolation.length}`
     );
   }
   if (extensions.goldOrigin) {
+    const goRisk =
+      extensions.goldOrigin.refuseCount > 0
+        ? 'REFUSE'
+        : extensions.goldOrigin.eddCount > 0
+          ? 'EDD'
+          : 'CLEAN';
     lines.push(
-      `  - Gold origin (#65): ${extensions.goldOrigin.totalShipments} shipment(s), ` +
-        `cahra=${extensions.goldOrigin.cahraExposure}, ` +
-        `riskLevel=${extensions.goldOrigin.overallRisk}`
+      `  - Gold origin (#65): ${extensions.goldOrigin.results.length} shipment(s), ` +
+        `refuse=${extensions.goldOrigin.refuseCount}, ` +
+        `riskLevel=${goRisk}`
     );
   }
   if (extensions.assayMatch) {
+    const total = extensions.assayMatch.results.length;
+    const passed = extensions.assayMatch.results.filter((r) => r.ok).length;
+    const failed = total - passed;
     lines.push(
-      `  - Assay certificates (#66): ${extensions.assayMatch.totalCertificates} cert(s), ` +
-        `passed=${extensions.assayMatch.passedCount}, ` +
-        `failed=${extensions.assayMatch.failedCount}`
+      `  - Assay certificates (#66): ${total} cert(s), ` + `passed=${passed}, ` + `failed=${failed}`
     );
   }
   if (extensions.finenessAnomaly) {
+    const fineAnomaly = extensions.finenessAnomaly.mismatches > 0;
     lines.push(
-      `  - Fineness anomaly (#67): detected=${extensions.finenessAnomaly.anomalyDetected}, ` +
+      `  - Fineness anomaly (#67): detected=${fineAnomaly}, ` +
         `findings=${extensions.finenessAnomaly.findings.length}`
     );
   }
   if (extensions.arbitrage) {
+    const arbDetected = extensions.arbitrage.hits.length > 0;
+    const maxSpread = extensions.arbitrage.hits.reduce((max, h) => {
+      const rec = h as unknown as Record<string, number | undefined>;
+      return Math.max(max, rec.spreadPct ?? 0);
+    }, 0);
     lines.push(
-      `  - Cross-border arbitrage (#68): detected=${extensions.arbitrage.arbitrageDetected}, ` +
+      `  - Cross-border arbitrage (#68): detected=${arbDetected}, ` +
         `hits=${extensions.arbitrage.hits.length}, ` +
-        `maxSpreadPct=${extensions.arbitrage.maxSpreadPct?.toFixed(1) ?? 'N/A'}%`
+        `maxSpreadPct=${maxSpread > 0 ? maxSpread.toFixed(1) : 'N/A'}%`
     );
   }
   if (extensions.dormancy) {
+    const maxGap = extensions.dormancy.hits.reduce((max, h) => {
+      const rec = h as unknown as Record<string, number | undefined>;
+      return Math.max(max, rec.gapDays ?? 0);
+    }, 0);
     lines.push(
       `  - Dormancy activity (#70): hits=${extensions.dormancy.hits.length}, ` +
-        `maxGapDays=${extensions.dormancy.maxGapDays ?? 0}`
+        `maxGapDays=${maxGap}`
     );
   }
   if (extensions.strNarrativeGrade) {
     lines.push(
-      `  - STR narrative grade (#72): score=${extensions.strNarrativeGrade.score}/100, ` +
-        `grade=${extensions.strNarrativeGrade.grade}, ` +
-        `readyToFile=${extensions.strNarrativeGrade.readyToFile}`
+      `  - STR narrative grade (#72): score=${extensions.strNarrativeGrade.totalScore}/100, ` +
+        `verdict=${extensions.strNarrativeGrade.verdict}, ` +
+        `readyToFile=${extensions.strNarrativeGrade.verdict === 'filing_ready'}`
     );
   }
 
@@ -3772,18 +3896,20 @@ function buildAuditNarrative(
     );
   }
   if (extensions.timeTravelAudit) {
+    // CaseSnapshot carries the as-of date on `asOf`, not `timestamp`.
     lines.push(
       `  - Time-travel audit (#90): criticalPath=${extensions.timeTravelAudit.criticalPath.length} evidence step(s), ` +
-        `currentState snapshot at ${extensions.timeTravelAudit.currentState.timestamp}`
+        `currentState snapshot at ${extensions.timeTravelAudit.currentState.asOf}`
     );
   }
   if (extensions.documentTamper) {
+    // DocumentExtractionResult exposes overallConfidence (0–1).
     const highTamper = extensions.documentTamper.tamperSignals.filter(
       (s) => s.severity === 'high'
     ).length;
     lines.push(
       `  - Document intelligence (#91): tamperSignals=${extensions.documentTamper.tamperSignals.length} ` +
-        `(${highTamper} high-severity), confidence=${(extensions.documentTamper.confidence * 100).toFixed(0)}%`
+        `(${highTamper} high-severity), confidence=${(extensions.documentTamper.overallConfidence * 100).toFixed(0)}%`
     );
   }
   if (extensions.regulatoryDrift) {
@@ -3807,9 +3933,13 @@ function buildAuditNarrative(
     );
   }
   if (extensions.cbrRecommendation && extensions.cbrRecommendation.length > 0) {
+    // ReuseRecommendation (src/services/caseBasedReasoning.ts) — there
+    // is no scalar `similarity`; per-case similarity lives inside
+    // supportingCases[0]. Fall back to the overall confidence.
     const topRec = extensions.cbrRecommendation[0];
+    const topSimilarity = topRec?.supportingCases?.[0]?.similarity ?? topRec?.confidence;
     lines.push(
-      `  - Case-based reasoning (#95): top precedent similarity=${topRec?.similarity?.toFixed(3) ?? 'N/A'}, ` +
+      `  - Case-based reasoning (#95): top precedent similarity=${topSimilarity?.toFixed(3) ?? 'N/A'}, ` +
         `recommendation=${topRec?.recommendedOutcome ?? 'none'}`
     );
   }

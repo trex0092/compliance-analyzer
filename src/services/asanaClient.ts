@@ -28,6 +28,18 @@ export interface AsanaTaskPayload {
    * scheduled jobs, or set directly when the caller already knows the GID.
    */
   assignee?: string;
+  /**
+   * Optional parent task GID. When set, Asana creates this task as a
+   * subtask of the given parent. Used by the brain → Asana orchestrator
+   * to build parent + subtask hierarchies in a single atomic create call.
+   */
+  parent?: string;
+  /**
+   * Optional free-form tag labels. These are NOT Asana tag GIDs — they
+   * are compliance-orchestrator labels mirrored into the task notes for
+   * downstream filtering and reporting.
+   */
+  tags?: readonly string[];
 }
 
 export interface AsanaTaskResponse {
