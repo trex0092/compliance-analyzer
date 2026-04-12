@@ -270,6 +270,19 @@ import {
   type CrossBorderRiskInput,
   type CrossBorderAssessment,
 } from './crossBorderCashMonitor';
+import {
+  orchestrateBrainToAsana,
+  type AsanaOrchestratorConfig,
+  type OrchestratorResult,
+} from './brainToAsanaOrchestrator';
+import {
+  generateMlroAlerts,
+  type MlroAlertBundle,
+} from './mlroAlertGenerator';
+import {
+  buildKpiReport,
+  type KpiReport,
+} from './complianceMetricsDashboard';
 
 // ---------------------------------------------------------------------------
 // Verdict ordering — verdicts can only escalate under new clamps.
@@ -537,6 +550,29 @@ export interface WeaponizedBrainRequest {
 
   /** #54 Cross-border cash monitor — AED 60K threshold + structuring. */
   crossBorderMovement?: CrossBorderRiskInput;
+
+  // ─── Synthesis Layer: Asana, MLRO Alerts, KPI Dashboard ──────────────────
+
+  /**
+   * Asana orchestrator config — if supplied, every freeze/escalate/flag
+   * verdict automatically creates an Asana task tree (parent + subtasks).
+   * Uses the existing asanaClient + retry queue.
+   */
+  asanaConfig?: AsanaOrchestratorConfig;
+
+  /**
+   * KPI measurements for the compliance metrics dashboard.
+   * Produces a 30-KPI report aligned to MoE / FIU / FATF ME.
+   */
+  kpiMeasurements?: Array<{
+    kpiId: string;
+    value: number | string | boolean;
+    unit?: string;
+    notes?: string;
+    trend?: 'improving' | 'stable' | 'deteriorating' | 'unknown';
+  }>;
+  /** Reporting period for KPI dashboard (ISO dates). */
+  kpiPeriod?: { start: string; end: string };
 }
 
 export interface WeaponizedExtensions {
@@ -632,6 +668,14 @@ export interface WeaponizedExtensions {
   anomalyEnsemble?: EnsembleResult;
   /** #55 Cross-border cash — AED 60K threshold + structuring detection. */
   crossBorderCash?: CrossBorderAssessment;
+
+  // ─── Synthesis Layer ──────────────────────────────────────────────────────
+  /** MLRO alert bundle — structured regulatory alerts from all subsystem outputs. */
+  mlroAlerts?: MlroAlertBundle;
+  /** Asana orchestration result — tasks created from verdict + findings. */
+  asanaSync?: OrchestratorResult;
+  /** 30-KPI compliance metrics dashboard (MoE/FIU/FATF/LBMA aligned). */
+  kpiDashboard?: KpiReport;
 }
 
 export interface WeaponizedBrainResponse {
@@ -1684,6 +1728,50 @@ export async function runWeaponizedBrain(
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Synthesis Layer — runs LAST after all subsystems + advisor + clamps.
+  // Produces MLRO alerts, Asana task tree, and KPI dashboard in parallel.
+  // Never blocks the verdict — all failures are swallowed + logged.
+  // ---------------------------------------------------------------------------
+
+  // Build the partial response object for the synthesis layer to consume.
+  const partialResponse: WeaponizedBrainResponse = {
+    mega,
+    extensions,
+    finalVerdict,
+    clampReasons,
+    requiresHumanReview,
+    confidence: Math.round(confidence * 10000) / 10000,
+    auditNarrative,
+    subsystemFailures,
+    advisorResult,
+  };
+
+  // MLRO Alert Generator — always runs; produces structured alert bundle.
+  extensions.mlroAlerts = runSafely('mlroAlertGenerator', () =>
+    generateMlroAlerts(partialResponse)
+  );
+
+  // Asana Orchestrator — runs only when asanaConfig is supplied.
+  if (req.asanaConfig) {
+    try {
+      extensions.asanaSync = await orchestrateBrainToAsana(partialResponse, req.asanaConfig);
+    } catch {
+      subsystemFailures.push('brainToAsanaOrchestrator');
+    }
+  }
+
+  // KPI Dashboard — runs when kpiMeasurements are supplied.
+  if (req.kpiMeasurements && req.kpiMeasurements.length > 0) {
+    const period = req.kpiPeriod ?? {
+      start: new Date(Date.now() - 90 * 86_400_000).toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0],
+    };
+    extensions.kpiDashboard = runSafely('complianceMetricsDashboard', () =>
+      buildKpiReport(mega.entityId, period.start, period.end, req.kpiMeasurements!)
+    );
+  }
+
   return {
     mega,
     extensions,
@@ -2081,6 +2169,32 @@ function buildAuditNarrative(
       `structuring=${extensions.crossBorderCash.structuringDetected}, ` +
       `cumulative AED ${extensions.crossBorderCash.cumulativeAmountAED.toLocaleString()}, ` +
       `STR=${extensions.crossBorderCash.requiresStr}`
+    );
+  }
+
+  // Synthesis layer
+  if (extensions.mlroAlerts) {
+    lines.push(
+      `  - MLRO alerts: ${extensions.mlroAlerts.criticalCount} CRITICAL, ` +
+      `${extensions.mlroAlerts.highCount} HIGH — ` +
+      `${extensions.mlroAlerts.alerts.length} total alert(s) generated`
+    );
+  }
+  if (extensions.asanaSync) {
+    lines.push(
+      `  - Asana sync: ${extensions.asanaSync.status} — ` +
+      `parent=${extensions.asanaSync.parentTaskGid ?? 'queued'}, ` +
+      `${extensions.asanaSync.subtasksCreated} subtask(s), ` +
+      `${extensions.asanaSync.tasksQueued} queued`
+    );
+  }
+  if (extensions.kpiDashboard) {
+    lines.push(
+      `  - KPI dashboard: score=${extensions.kpiDashboard.overallScore}/100, ` +
+      `green=${extensions.kpiDashboard.greenCount}, ` +
+      `amber=${extensions.kpiDashboard.amberCount}, ` +
+      `red=${extensions.kpiDashboard.redCount}, ` +
+      `regulatory risk=${extensions.kpiDashboard.regulatoryRisk}`
     );
   }
 
