@@ -3,6 +3,7 @@ import CasesPage from './ui/cases/CasesPage';
 import STRDraftPage from './ui/reports/STRDraftPage';
 import ReportsHub from './ui/reports/ReportsHub';
 import KPIDashboard from './ui/dashboard/KPIDashboard';
+import MetalsTradingPage from './ui/metals/MetalsTradingPage';
 import { LocalAppStore } from './services/indexedDbStore';
 import { calculateKPI } from './domain/kpi';
 import { generateAlerts } from './services/alertEngine';
@@ -26,7 +27,8 @@ type Page =
   | 'screening'
   | 'templates'
   | 'history'
-  | 'backup';
+  | 'backup'
+  | 'metals-trading';
 
 // ─── Sidebar Navigation ──────────────────────────────────────────────────────
 
@@ -39,6 +41,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: 'screening', label: 'Screening', icon: '◈' },
   { id: 'templates', label: 'Templates', icon: '□' },
   { id: 'history', label: 'Audit History', icon: '≡' },
+  { id: 'metals-trading', label: 'Metals Trading', icon: '◈' },
   { id: 'backup', label: 'Data & Backup', icon: '⇅' },
 ];
 
@@ -1374,6 +1377,7 @@ export default function App() {
     templates: 'Compliance Templates',
     history: 'Audit History',
     backup: 'Data & Backup',
+    'metals-trading': 'Metals Trading Platform',
   };
 
   if (loading) {
@@ -1447,6 +1451,7 @@ export default function App() {
         {page === 'screening' && <ScreeningPage />}
         {page === 'templates' && <TemplatesPage />}
         {page === 'history' && <HistoryPage />}
+        {page === 'metals-trading' && <MetalsTradingPage />}
         {page === 'backup' && <BackupPage />}
       </main>
     </div>
