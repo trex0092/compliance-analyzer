@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash]
+context: [src/utils/businessDays.ts, src/services/trajectoryTracker.ts, src/services/approvalGates.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /filing-compliance completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: high
+regulatory-refs: [FDL No.10/2025 Art.26-27, Cabinet Res 74/2020 Art.4-7, MoE Circular 08/AML/2021]
+---
+
 # /filing-compliance — Filing Deadline Compliance Report
 
 Analyze ALL filings (STR, SAR, CTR, CNMR, DPMSR) and verify every deadline was met using business day calculations. This is the report that proves to auditors you file on time.

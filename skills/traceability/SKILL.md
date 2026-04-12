@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/domain/constants.ts, src/services/trajectoryTracker.ts, tests/constants.test.ts]
+hooks: { post-run: "echo '[AUDIT] /traceability completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: high
+regulatory-refs: [FDL No.10/2025, Cabinet Res 134/2025, LBMA RGG v9, FATF Rec 22/23]
+---
+
 # /traceability — Regulatory Traceability Matrix
 
 Map every regulatory requirement to its implementation in code, its test, and its audit evidence. This is the ultimate proof of compliance for auditors.

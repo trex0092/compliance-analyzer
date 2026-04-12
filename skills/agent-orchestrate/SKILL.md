@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/agents/orchestration/engine.ts, src/agents/orchestration/workflows.ts, src/services/weaponizedConsensus.ts, src/services/approvalGates.ts, src/services/trajectoryTracker.ts]
+hooks: { post-run: "echo '[AUDIT] /agent-orchestrate completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: high
+regulatory-refs: [FDL No.10/2025 Art.20-21, Cabinet Res 134/2025 Art.14, FATF Rec 26]
+---
+
 # /agent-orchestrate — Multi-Agent Compliance Workflow Orchestrator
 
 Orchestrate complex compliance workflows using the PEER pattern (Plan, Execute, Express, Review) from agentUniverse, with graph-based checkpointing from Microsoft Agent Framework.

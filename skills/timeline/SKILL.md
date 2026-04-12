@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash]
+context: [src/services/trajectoryTracker.ts, src/services/approvalGates.ts, src/utils/businessDays.ts]
+hooks: { post-run: "echo '[AUDIT] /timeline completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: medium
+regulatory-refs: [FDL No.10/2025 Art.24, Cabinet Res 134/2025 Art.19]
+---
+
 # /timeline — Entity Compliance History Reconstruction
 
 Reconstruct the complete compliance history for any entity. Every action, every screening, every alert, every decision — in chronological order with full audit trail.

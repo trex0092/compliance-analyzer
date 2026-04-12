@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/services/weaponizedBrain.ts, src/services/trajectoryTracker.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /audit completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: medium
+regulatory-refs: [FDL No.10/2025 Art.20-21, Cabinet Res 134/2025 Art.19, LBMA RGG v9]
+---
+
 # /audit — Enhanced Compliance Audit Report Generator
 
 Generate a comprehensive compliance audit report using code-review-graph analysis,

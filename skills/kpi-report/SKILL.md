@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash]
+context: [src/services/mlroDashboardStream.ts, src/services/trajectoryTracker.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /kpi-report completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: medium
+regulatory-refs: [MoE Circular 08/AML/2021, FATF Rec 22/23, LBMA RGG v9]
+---
+
 # /kpi-report — UAE DPMS Compliance KPI Report
 
 Generate a comprehensive KPI report aligned with MoE, EOCN, FIU, FATF, and LBMA requirements for Dealers in Precious Metals & Stones.

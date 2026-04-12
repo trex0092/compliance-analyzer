@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/services/trajectoryTracker.ts, src/services/approvalGates.ts, src/utils/businessDays.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /audit-pack completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: high
+regulatory-refs: [FDL No.10/2025 Art.24, Cabinet Res 134/2025 Art.19, LBMA RGG v9, UAE MoE RSG Framework]
+---
+
 # /audit-pack — Complete Audit Pack Generator
 
 Generate a comprehensive, auditor-ready compliance pack for any entity or time period. This is the single most powerful command for MoE inspections, LBMA audits, and internal reviews.

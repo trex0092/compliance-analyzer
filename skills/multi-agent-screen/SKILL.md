@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/services/multiModelScreening.ts, src/services/weaponizedConsensus.ts, src/services/trajectoryTracker.ts, src/risk/redFlags.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /multi-agent-screen completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: critical
+regulatory-refs: [FDL No.10/2025 Art.12-14 Art.35, Cabinet Res 74/2020 Art.4-7, FATF Rec 22/23]
+---
+
 # /multi-agent-screen — Parallel Multi-Agent Sanctions Screening
 
 Run parallel sanctions screening across all required lists using a multi-agent orchestration pattern inspired by open-multi-agent's DAG-based task decomposition.

@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash]
+context: [src/utils/goamlValidator.ts, src/utils/businessDays.ts, src/services/trajectoryTracker.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /goaml completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: critical
+regulatory-refs: [FDL No.10/2025 Art.26-27, MoE Circular 08/AML/2021, FDL No.10/2025 Art.29]
+---
+
 # /goaml — Generate & Validate goAML XML Filing
 
 Generate UAE FIU-compliant goAML XML for STR, SAR, CTR, DPMSR, or CNMR filings with pre-flight validation.

@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash]
+context: [src/domain/constants.ts, netlify.toml, package.json]
+hooks: { post-run: "echo '[AUDIT] /deploy-check completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: medium
+regulatory-refs: [FDL No.10/2025 Art.20]
+---
+
 # /deploy-check — Pre-Deployment Compliance Verification
 
 Run a comprehensive pre-deployment check to ensure no compliance regressions before pushing to production.

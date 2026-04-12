@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/agents/orchestration/engine.ts, src/services/weaponizedConsensus.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /agent-review completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: medium
+regulatory-refs: [FATF Rec 26, FDL No.10/2025 Art.20]
+---
+
 # /agent-review — Multi-Agent Compliance Code Review
 
 Perform a multi-agent code review focused on compliance correctness, using parallel specialist agents inspired by everything-claude-code's AgentShield pattern.

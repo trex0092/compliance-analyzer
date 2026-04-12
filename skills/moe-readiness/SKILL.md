@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/services/trajectoryTracker.ts, src/services/approvalGates.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /moe-readiness completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: high
+regulatory-refs: [MoE Circular 08/AML/2021, FDL No.10/2025, Cabinet Res 134/2025]
+---
+
 # /moe-readiness — Ministry of Economy Inspection Readiness
 
 Assess readiness against the full 25-item MOE AML/CFT audit checklist. Returns a scored report showing exactly what the inspector will look for and what's missing.

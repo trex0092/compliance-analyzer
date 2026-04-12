@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/services/approvalGates.ts, src/services/trajectoryTracker.ts, src/services/mlroDashboardStream.ts, src/utils/businessDays.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /incident completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: critical
+regulatory-refs: [Cabinet Res 74/2020 Art.4-7, FDL No.10/2025 Art.26-27, FDL No.10/2025 Art.29]
+---
+
 # /incident — Compliance Incident Response with EOCN Countdown
 
 Handle a compliance incident (sanctions match, STR trigger, asset freeze, PF alert) with countdown timers and regulatory workflow.

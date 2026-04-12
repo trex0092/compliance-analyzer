@@ -1,3 +1,12 @@
+---
+model: opus
+allowed-tools: [Read, Grep, Glob, Bash, Agent, Edit]
+context: [src/domain/constants.ts, tests/constants.test.ts, CLAUDE.md]
+hooks: { post-run: "echo '[AUDIT] /regulatory-update completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: critical
+regulatory-refs: [FDL No.10/2025, Cabinet Res 134/2025, Cabinet Res 74/2020]
+---
+
 # /regulatory-update — Process New Regulation & Update Codebase
 
 Process a new regulation, circular, or sanctions list update and identify all code that needs to change.

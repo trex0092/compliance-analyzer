@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/risk/redFlags.ts, src/risk/scoring.ts, src/risk/decisions.ts, src/services/multiModelScreening.ts, src/services/weaponizedConsensus.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /screen completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: high
+regulatory-refs: [FDL No.10/2025 Art.12-14, Cabinet Res 134/2025 Art.7-10, FATF Rec 22/23]
+---
+
 # /screen — Sanctions & Risk Screening Analysis
 
 Analyze an entity, customer, or transaction for sanctions, PEP, and risk indicators.

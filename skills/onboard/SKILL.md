@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/services/weaponizedConsensus.ts, src/services/approvalGates.ts, src/services/trajectoryTracker.ts, src/risk/scoring.ts, src/domain/constants.ts]
+hooks: { post-run: "echo '[AUDIT] /onboard completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: high
+regulatory-refs: [FDL No.10/2025 Art.12-14, Cabinet Res 134/2025 Art.7-10 Art.14, Cabinet Decision 109/2023]
+---
+
 # /onboard — Customer Onboarding Compliance Workflow
 
 Walk through full customer/counterparty onboarding with regulatory checkpoints at every step.

@@ -1,3 +1,12 @@
+---
+model: sonnet
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+context: [src/domain/constants.ts, src/services/weaponizedConsensus.ts, CLAUDE.md]
+hooks: { post-run: "echo '[AUDIT] /review-pr completed $(date -u +%Y-%m-%dT%H:%M:%SZ)'" }
+risk-level: medium
+regulatory-refs: [FATF Rec 26, FDL No.10/2025 Art.20]
+---
+
 # /review-pr — Enhanced Risk-Scored Pull Request Review
 
 Review a pull request with compliance-aware risk scoring using code-review-graph,
