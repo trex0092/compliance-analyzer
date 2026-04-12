@@ -12,7 +12,7 @@
  *   3. CDD            — CDD procedures documented, UBO coverage
  *   4. Screening      — sanctions list freshness, portfolio re-screen
  *   5. Filing         — STR/CTR/DPMSR/CNMR deadlines met
- *   6. Records        — evidence chain intact, 5-year retention
+ *   6. Records        — evidence chain intact, 10-year retention
  *   7. Training       — staff training current, attestations tracked
  *   8. Operational    — brain endpoint up, four-eyes configured
  *
@@ -196,7 +196,7 @@ function scoreRecords(input: SelfAuditInput): DimensionScore {
   if (input.evidenceChainIntact) score += DIMENSION_MAX * 0.6;
   else gaps.push('Evidence chain BROKEN (FDL Art.21; integrity at risk)');
   if (input.retentionMet) score += DIMENSION_MAX * 0.4;
-  else gaps.push('5-year retention not met for all records (FDL Art.24)');
+  else gaps.push('10-year retention not met for all records (FDL Art.24)');
   return {
     dimension: 'Records',
     score: Math.round(score * 100) / 100,

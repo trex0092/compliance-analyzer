@@ -7,7 +7,7 @@
  *   P2 capacityHeatmap        — weekly hours per analyst with overflow flag
  *   P3 filingFunnelRollup     — funnel count per filing type per quarter
  *   P4 coldStorageRotator     — picks tasks eligible for archival after
- *                               5-year FDL Art.24 retention
+ *                               10-year FDL Art.24 retention
  */
 
 // ---------------------------------------------------------------------------
@@ -152,7 +152,7 @@ export interface ArchivableTask {
 export function pickColdStorageEligible(
   tasks: readonly ArchivableTask[],
   now: Date = new Date(),
-  retentionYears = 5
+  retentionYears = 10
 ): string[] {
   const cutoff = new Date(now);
   cutoff.setUTCFullYear(cutoff.getUTCFullYear() - retentionYears);

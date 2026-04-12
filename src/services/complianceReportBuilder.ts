@@ -201,7 +201,7 @@ function formatCanonicalJson(input: ScreeningReportInput, integrityHash: string)
 
 const REGULATORY_BASIS = [
   'FDL No.10/2025 Art.20-21 (CO duty of care)',
-  'FDL No.10/2025 Art.24 (5-year record retention)',
+  'FDL No.10/2025 Art.24 (10-year record retention)',
   'FDL No.10/2025 Art.26-27 (STR filing obligations)',
   'FDL No.10/2025 Art.29 (no tipping off)',
   'FDL No.10/2025 Art.35 (targeted financial sanctions)',
@@ -454,7 +454,7 @@ function buildMarkdown(input: ScreeningReportInput, integrityHash: string): stri
   lines.push(`Algorithm: SHA-256 over canonical JSON`);
   lines.push(`\`\`\``);
   lines.push('');
-  lines.push('_Retain for 5 years per FDL No.10/2025 Art.24. Store with goAML XML + FIU receipt._');
+  lines.push('_retain for 10 years per FDL No.10/2025 Art.24. Store with goAML XML + FIU receipt._');
 
   return lines.join('\n');
 }

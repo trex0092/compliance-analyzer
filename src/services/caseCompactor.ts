@@ -5,7 +5,7 @@
  * hash. After 90 days a single compliance case can accumulate
  * hundreds of audit entries — threshold checks, CDD refreshes,
  * comments, policy evaluations. Storing each one indefinitely wastes
- * space; throwing them away breaks FDL Art.24 5-year retention.
+ * space; throwing them away breaks FDL Art.24 10-year retention.
  *
  * This module deterministically compacts an audit log while preserving:
  *   - Full ordered list of unique action types (one per kind)
@@ -19,7 +19,7 @@
  * needed for regulatory review; the compacted form is what stays hot.
  *
  * Regulatory basis:
- *   - FDL No.10/2025 Art.24 (5-year retention — lossless compaction)
+ *   - FDL No.10/2025 Art.24 (10-year retention — lossless compaction)
  *   - FATF Rec 11 (record-keeping integrity)
  *   - Cabinet Res 134/2025 Art.19 (auditable state transitions)
  */

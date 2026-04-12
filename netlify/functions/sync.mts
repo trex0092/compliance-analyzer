@@ -1,6 +1,7 @@
 import { getStore } from '@netlify/blobs'
 import type { Config, Context } from '@netlify/functions'
-import { authenticate, rateLimit } from './middleware/auth.mts'
+import { authenticate } from './middleware/auth.mts'
+import { checkRateLimit } from './middleware/rate-limit.mts'
 
 const STORE_NAME = 'compliance-sync'
 const MAX_SIZE = 10 * 1024 * 1024 // 10 MB max per sync payload
@@ -10,11 +11,11 @@ export default async (req: Request, context: Context) => {
     return new Response(null, { status: 204 })
   }
 
-  // Rate limit and authentication (use context.ip for reliable client IP)
-  const rl = rateLimit(req, context.ip)
-  if (!rl.ok) return rl.response!
+  // Rate limit (persistent via Blobs) and authentication
+  const rlResponse = await checkRateLimit(req, { clientIp: context.ip })
+  if (rlResponse) return rlResponse
   const auth = authenticate(req)
-  if (!auth.ok) return auth.response!
+  if (!auth.ok) return auth.response ?? Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
   const userId = url.searchParams.get('uid')

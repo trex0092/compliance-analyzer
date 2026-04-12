@@ -17,7 +17,7 @@
  * Regulatory basis:
  *   - Cabinet Decision 109/2023 (UBO chain with re-verification
  *     dates — requires temporal queries)
- *   - FDL No.10/2025 Art.24 (5-year retention with reconstructable
+ *   - FDL No.10/2025 Art.24 (10-year retention with reconstructable
  *     historical state)
  *   - FATF Rec 11 (record-keeping integrity + historical queries)
  *   - NIST AI RMF MP-1.1 (context of use — historical context matters)

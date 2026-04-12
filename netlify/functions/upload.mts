@@ -1,6 +1,7 @@
 import { getStore } from '@netlify/blobs'
 import type { Config, Context } from '@netlify/functions'
-import { authenticate, rateLimit } from './middleware/auth.mts'
+import { authenticate } from './middleware/auth.mts'
+import { checkRateLimit } from './middleware/rate-limit.mts'
 
 // Allowed file types for compliance document uploads
 const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx', '.xlsx', '.xls', '.csv', '.xml', '.txt', '.eml']
@@ -11,13 +12,13 @@ export default async (req: Request, context: Context) => {
     return new Response(null, { status: 204 })
   }
 
-  // Rate limit: 10 uploads per 15-minute window (use context.ip for reliable IP)
-  const rl = rateLimit(req, context.ip)
-  if (!rl.ok) return rl.response!
+  // Rate limit: 10 uploads per 15-minute window (persistent via Blobs)
+  const rlResponse = await checkRateLimit(req, { clientIp: context.ip, max: 10 })
+  if (rlResponse) return rlResponse
 
   // Authentication required
   const auth = authenticate(req)
-  if (!auth.ok) return auth.response!
+  if (!auth.ok) return auth.response ?? Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const contentType = req.headers.get('content-type') || ''
 
