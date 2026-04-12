@@ -8,8 +8,9 @@ export default async (req: Request, context: Context) => {
     return new Response(null, { status: 204 })
   }
 
-  // Rate limit (persistent via Blobs) and authentication
-  const rlResponse = await checkRateLimit(req, { clientIp: context.ip })
+  // Rate limit — sensitive tier (10/15min) because this endpoint serves
+  // uploaded compliance evidence files. CLAUDE.md §1 (Seguridad).
+  const rlResponse = await checkRateLimit(req, { clientIp: context.ip, max: 10 })
   if (rlResponse) return rlResponse
   const auth = authenticate(req)
   if (!auth.ok) return auth.response ?? Response.json({ error: 'Unauthorized' }, { status: 401 })

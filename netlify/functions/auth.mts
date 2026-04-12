@@ -100,13 +100,18 @@ async function hashPassword(
 function getSigningSecret(): string {
   const secret = Netlify.env.get('AUTH_SIGNING_SECRET');
   if (!secret || secret.length < 32) {
-    // Fall back to a derived secret from available env vars
-    // In production, AUTH_SIGNING_SECRET MUST be set as a Netlify env var
-    const fallback = Netlify.env.get('ANTHROPIC_API_KEY') || Netlify.env.get('ASANA_TOKEN') || '';
-    if (!fallback) {
-      throw new Error('AUTH_SIGNING_SECRET env var is required for server-side auth');
-    }
-    return fallback;
+    // FAIL HARD — never reuse a model/API token as an HMAC signing secret.
+    // If AUTH_SIGNING_SECRET is missing or too short, the auth layer is
+    // misconfigured and MUST refuse to issue or verify tokens. Silent
+    // fallback to another env var previously masked configuration errors
+    // and conflated two distinct secrets into one blast radius.
+    //
+    // Fix: set AUTH_SIGNING_SECRET to a ≥32-char random value in Netlify
+    // env. Generate via:  openssl rand -hex 32
+    throw new Error(
+      'AUTH_SIGNING_SECRET env var is required and must be at least 32 characters. ' +
+        'Auth is refusing to operate with a missing or short signing secret.'
+    );
   }
   return secret;
 }

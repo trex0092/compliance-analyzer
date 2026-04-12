@@ -246,8 +246,42 @@ ${(data.attachments || []).map(a => `    <attachment>
     URL.revokeObjectURL(url);
   }
 
+  /**
+   * Pre-submission validation gate. Runs the browser mirror of
+   * src/utils/goamlValidator.ts (loaded via goaml-validator-bridge.js)
+   * and refuses to emit any XML that fails.
+   *
+   * If the validator bridge is not loaded, the exporter REFUSES to produce
+   * XML — regulatory-critical artifacts must never ship unvalidated.
+   *
+   * Regulatory: FDL No.10/2025 Art.26-27 (STR), Art.29 (no tipping off),
+   *             UAE FIU goAML Schema.
+   */
+  function assertValidOrThrow(xml, reportType) {
+    var validator = typeof window !== 'undefined' ? window.GoAMLValidator : null;
+    if (!validator || typeof validator.validateReport !== 'function') {
+      var msg = '[goAML] Validator bridge not loaded (window.GoAMLValidator). '
+        + 'Refusing to emit goAML XML — unvalidated regulatory artifacts must not '
+        + 'leave this browser. Ensure <script src="goaml-validator-bridge.js"> is '
+        + 'loaded before goaml-export.js in index.html.';
+      console.error(msg);
+      if (typeof toast === 'function') toast('goAML validator not loaded — export blocked', 'error');
+      throw new Error(msg);
+    }
+    var result = validator.validateReport(xml, reportType);
+    if (!result.valid) {
+      var summary = result.errors.map(function (e) { return '[' + e.field + '] ' + e.message; }).join('; ');
+      var blockMsg = '[goAML] ' + reportType + ' validation FAILED: ' + summary;
+      console.error(blockMsg, result.errors);
+      if (typeof toast === 'function') toast('goAML ' + reportType + ' invalid — ' + summary, 'error');
+      if (typeof logAudit === 'function') logAudit('goaml', 'Rejected invalid ' + reportType + ': ' + summary);
+      throw new Error(blockMsg);
+    }
+  }
+
   function exportSTR(data) {
     const xml = buildSTRXml(data);
+    assertValidOrThrow(xml, 'STR');
     const reportId = xml.match(/<reportId>(.*?)<\/reportId>/)?.[1] || 'UNKNOWN';
     const filename = `goAML_STR_${reportId}_${new Date().toISOString().slice(0,10)}.xml`;
     downloadXml(xml, filename);
@@ -257,6 +291,7 @@ ${(data.attachments || []).map(a => `    <attachment>
 
   function exportCTR(data) {
     const xml = buildCTRXml(data);
+    assertValidOrThrow(xml, 'CTR');
     const reportId = xml.match(/<reportId>(.*?)<\/reportId>/)?.[1] || 'UNKNOWN';
     const filename = `goAML_CTR_${reportId}_${new Date().toISOString().slice(0,10)}.xml`;
     downloadXml(xml, filename);
@@ -394,10 +429,17 @@ ${(data.attachments || []).map(a => `    <attachment>
     if (!data.indicators && data.reportType !== 'CTR') { toast('Enter suspicious indicators', 'error'); return; }
 
     let result;
-    if (data.reportType === 'CTR') {
-      result = exportCTR(data);
-    } else {
-      result = exportSTR(data);
+    try {
+      if (data.reportType === 'CTR') {
+        result = exportCTR(data);
+      } else {
+        result = exportSTR(data);
+      }
+    } catch (err) {
+      // assertValidOrThrow already surfaced a toast + audit log. Abort the UI
+      // update so the operator is NOT shown a false "success" message for
+      // an unvalidated / rejected regulatory artifact.
+      return;
     }
 
     toast(`goAML ${data.reportType} exported: ${result.filename}`, 'success');
