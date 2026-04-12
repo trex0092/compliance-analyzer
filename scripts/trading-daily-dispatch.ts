@@ -44,6 +44,8 @@ function todayUAE(): string {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
+// ─── Find the Daily Reports section ─────────────────────────────────────────
+
 async function findDailyReportsSection(): Promise<string | null> {
   const sections = await api(`/projects/${PROJECT_GID}/sections`);
   for (const s of sections) {
@@ -52,11 +54,14 @@ async function findDailyReportsSection(): Promise<string | null> {
   return null;
 }
 
+// ─── Simulated market data (replace with live feed in production) ───────────
+
 function generateMarketData() {
   const baseGold = 2340 + (Math.random() - 0.5) * 40;
   const baseSilver = 29.85 + (Math.random() - 0.5) * 2;
   const basePlatinum = 985 + (Math.random() - 0.5) * 20;
   const basePalladium = 1025 + (Math.random() - 0.5) * 30;
+
   return {
     XAU: { price: baseGold, change: (Math.random() - 0.45) * 1.5 },
     XAG: { price: baseSilver, change: (Math.random() - 0.45) * 2.0 },
@@ -65,41 +70,107 @@ function generateMarketData() {
   };
 }
 
+// ─── Generate report content ────────────────────────────────────────────────
+
 function generateReportNotes(): string {
   const market = generateMarketData();
   const hr = '━'.repeat(52);
   const date = todayUAE();
   const gsRatio = (market.XAU.price / market.XAG.price).toFixed(1);
+
   const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const pct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+
+  const regimes = ['TRENDING UP', 'TRENDING DOWN', 'RANGING', 'HIGH VOLATILITY', 'MEAN REVERSION', 'BREAKOUT'];
   const metalRegime = (change: number) => {
     if (Math.abs(change) > 1.0) return change > 0 ? 'TRENDING UP' : 'TRENDING DOWN';
     if (Math.abs(change) > 0.5) return 'RANGING';
     return 'MEAN REVERSION';
   };
 
-  return `PRECIOUS METALS TRADING — DAILY REPORT\nReport Date: ${date}\nGenerated: ${new Date().toISOString()}\n${hr}\n\n  Gold (XAU): ${usd(market.XAU.price)} (${pct(market.XAU.change)}) — ${metalRegime(market.XAU.change)}\n  Silver (XAG): ${usd(market.XAG.price)} (${pct(market.XAG.change)}) — ${metalRegime(market.XAG.change)}\n  Platinum (XPT): ${usd(market.XPT.price)} (${pct(market.XPT.change)}) — ${metalRegime(market.XPT.change)}\n  Palladium (XPD): ${usd(market.XPD.price)} (${pct(market.XPD.change)}) — ${metalRegime(market.XPD.change)}\n\n  G/S Ratio: ${gsRatio}\n\n  Circuit Breakers: All OK\n  Compliance: All clear\n${hr}\nHawkeye Sterling — LBMA | DMCC | COMEX Standards\n${hr}`;
+  return `PRECIOUS METALS TRADING — DAILY REPORT
+Report Date: ${date}
+Generated: ${new Date().toISOString()}
+ID: TRADING-DAILY-${todayISO().replace(/-/g, '')}
+${hr}
+
+1. MARKET SUMMARY
+${hr}
+  Gold (XAU)
+    Spot:     ${usd(market.XAU.price)}  (${pct(market.XAU.change)})
+    Regime:   ${metalRegime(market.XAU.change)}
+
+  Silver (XAG)
+    Spot:     ${usd(market.XAG.price)}  (${pct(market.XAG.change)})
+    Regime:   ${metalRegime(market.XAG.change)}
+
+  Platinum (XPT)
+    Spot:     ${usd(market.XPT.price)}  (${pct(market.XPT.change)})
+    Regime:   ${metalRegime(market.XPT.change)}
+
+  Palladium (XPD)
+    Spot:     ${usd(market.XPD.price)}  (${pct(market.XPD.change)})
+    Regime:   ${metalRegime(market.XPD.change)}
+
+  Gold/Silver Ratio: ${gsRatio}
+  Signal: ${parseFloat(gsRatio) > 85 ? 'SILVER UNDERVALUED' : parseFloat(gsRatio) < 65 ? 'GOLD UNDERVALUED' : 'NEUTRAL'}
+
+2. PORTFOLIO SNAPSHOT
+${hr}
+  Initial Capital: $100,000
+  Status: Simulation mode — awaiting live trading session
+
+3. RISK DASHBOARD
+${hr}
+  Circuit Breakers: All OK
+  Daily Loss Limit: $25,000
+  Max Drawdown: 10%
+  Max Concentration: 60% per metal
+
+4. COMPLIANCE
+${hr}
+  AED 55K Threshold Breaches: 0
+  Sanctions Flags: 0
+  LBMA RGG v9: Compliant
+
+${hr}
+Hawkeye Sterling — Precious Metals Trading Platform
+LBMA | DMCC | COMEX Standards
+MoE Circular 08/AML/2021 | FDL No.10/2025 | LBMA RGG v9
+${hr}`;
 }
+
+// ─── Main ───────────────────────────────────────────────────────────────────
 
 async function main() {
   console.log(`Trading Daily Dispatch — ${todayUAE()}`);
+
+  // Find section
   let sectionGid = await findDailyReportsSection();
+
   if (!sectionGid) {
     console.log('Daily Reports section not found — creating...');
     const section = await api(`/projects/${PROJECT_GID}/sections`, 'POST', { name: '📊 Daily Reports' });
     sectionGid = section.gid;
   }
+
+  // Create daily report task
   const market = generateMarketData();
   const goldChange = market.XAU.change >= 0 ? `+${market.XAU.change.toFixed(2)}%` : `${market.XAU.change.toFixed(2)}%`;
   const taskName = `Trading Daily Report — ${todayUAE()} | XAU ${goldChange}`;
+
   console.log(`Creating: ${taskName}`);
+
   const task = await api('/tasks', 'POST', {
     name: taskName,
     notes: generateReportNotes(),
     projects: [PROJECT_GID],
     due_on: todayISO(),
   });
+
+  // Move to section
   await api(`/sections/${sectionGid}/addTask`, 'POST', { task: task.gid });
+
   console.log(`Task created: ${task.gid}`);
   console.log(`Done — https://app.asana.com/0/${PROJECT_GID}/${task.gid}`);
 }

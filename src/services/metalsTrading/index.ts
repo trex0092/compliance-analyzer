@@ -25,3 +25,39 @@ export {
 } from './signalFusion';
 export { TradingEngine } from './tradingEngine';
 export { MetalsTradingBrain, createTradingBrain } from './metalsTradingBrain';
+export {
+  generateDailyReport, formatAsanaTaskNotes, formatHTMLReport, formatJSONReport,
+} from './tradingDailyReport';
+export {
+  dispatchDailyTradingReport, generateTradingReportBundle,
+} from './tradingReportDispatcher';
+export {
+  hurstExponent, momentumExtrapolation, meanReversionModel,
+  volatilityForecast, orderFlowPredictor, magnetModel,
+  ensemblePrediction,
+} from './predictiveIntelligence';
+export {
+  computeCorrelation, analyzeMacroDrivers, classifyMacroRegime,
+  generateSimulatedMacro,
+} from './macroRegime';
+export {
+  getActivePatterns, getSeasonalScore, getSeasonalCalendar,
+  getUpcomingPatterns,
+} from './seasonalPatterns';
+export {
+  runBacktest, monteCarloSimulation, STRATEGIES,
+} from './backtestEngine';
+export {
+  evaluateStrategy, evaluateGridStrategy, evaluateDCAStrategy,
+  evaluateMomentumScalp, evaluateRangeTrader, evaluateUltraSniper,
+} from './autoStrategy';
+export {
+  analyzeTimeframe, computeConfluence,
+} from './multiTimeframe';
+export {
+  analyzeTrade, analyzeVenuePerformance, generateExecutionSummary,
+} from './executionAnalytics';
+export {
+  computeCovarianceMatrix, meanVarianceOptimize, riskParityOptimize,
+  minVarianceOptimize, optimizePortfolio,
+} from './portfolioOptimizer';
