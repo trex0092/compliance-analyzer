@@ -420,7 +420,7 @@ function buildInducedRulesSubtask(
   const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
   const ruleText = rules
     .slice(0, 15)
-    .map((r, i) => `${i + 1}. **IF** ${r.conditions.map((c) => `${c.feature}=${c.value}`).join(' AND ')} **THEN** ${r.outcome} (support=${r.support}, confidence=${(r.confidence * 100).toFixed(0)}%)`)
+    .map((r, i) => `${i + 1}. **IF** ${r.conditions.map((c) => `${c.feature}=${c.value}`).join(' AND ')} **THEN** ${r.label} (support=${r.support}, purity=${(r.purity * 100).toFixed(0)}%)`)
     .join('\n');
   return {
     name: `📐 Induced Decision Rules — ${entityId} — ${rules.length} rule(s)`,
@@ -453,7 +453,7 @@ function buildFreeZoneSubtask(
   const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
   const failTable = fz.mandatoryFailures
     .slice(0, 10)
-    .map((r) => `| ${r.category} | ${r.description} | ${r.penalty ?? 'N/A'} |`)
+    .map((r) => `| ${r.category} | ${r.description} | ${r.source} |`)
     .join('\n');
   return {
     name: `🏢 Free Zone Compliance Breach — ${entityId} — ${fz.freeZone} — ${fz.mandatoryFailures.length} breach(es)`,
@@ -467,12 +467,12 @@ function buildFreeZoneSubtask(
       '',
       '### Mandatory Compliance Breaches',
       '',
-      '| Category | Requirement | Penalty |',
+      '| Category | Requirement | Regulatory Source |',
       '|---|---|---|',
       failTable,
       '',
       '**Actions required:**',
-      '- Notify ${fz.freeZone} Authority within required timeframe',
+      `- Notify ${fz.freeZone} Authority within required timeframe`,
       '- File corrective action plan',
       '- Escalate to Senior Management (Cabinet Res 134/2025)',
       '',

@@ -508,8 +508,8 @@ function buildSummaryCard(
   const pepLine       = ext.pepProximity
     ? `${ext.pepProximity.overallRisk.toUpperCase()} (score ${ext.pepProximity.maxProximityScore.toFixed(0)}/100)`
     : 'None detected';
-  const adversaryLine = ext.gameTheory && ext.gameTheory.expectedPayoff < 0
-    ? `⚠ ADVERSARY EDGE (payoff ${ext.gameTheory.expectedPayoff.toFixed(2)}) — harden controls`
+  const adversaryLine = ext.gameEquilibrium && ext.gameEquilibrium.expectedPayoff < 0
+    ? `⚠ ADVERSARY EDGE (payoff ${ext.gameEquilibrium.expectedPayoff.toFixed(2)}) — harden controls`
     : 'No adversary advantage';
   const peerLine      = ext.peerAnomaly
     ? (ext.peerAnomaly.anomalies.length > 0

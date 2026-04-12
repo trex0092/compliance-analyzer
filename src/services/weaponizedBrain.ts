@@ -2280,10 +2280,10 @@ export async function runWeaponizedBrain(
       )
     );
     extensions.corporateGraph = cgReport;
-    if (cgReport && cgReport.hits.some((h) => h.hit)) {
+    if (cgReport && cgReport.hits.length > 0) {
       finalVerdict = escalateTo(finalVerdict, 'escalate');
       clampReasons.push(
-        `CLAMP: corporate graph walk found ${cgReport.hits.filter((h) => h.hit).length} flagged node(s) ` +
+        `CLAMP: corporate graph walk found ${cgReport.hits.length} flagged node(s) ` +
         `within ${cgReport.hops} hops — subsidiary/affiliate risk ` +
         `(FATF Rec 10 / Cabinet Decision 109/2023 UBO register)`
       );
@@ -2404,7 +2404,8 @@ export async function runWeaponizedBrain(
     const gameResult = runSafely('gameTheoryAdversary', () =>
       solveAdversaryGame(
         req.gameTheoryStrategies!.detectionStrategies,
-        req.gameTheoryStrategies!.evasionStrategies
+        req.gameTheoryStrategies!.evasionStrategies,
+        (d, e) => d.cost - e.cost   // default payoff: detection cost minus evasion cost
       )
     );
     extensions.gameEquilibrium = gameResult;
@@ -2909,12 +2910,12 @@ export async function runWeaponizedBrain(
     );
     extensions.tippingOff = tippingReport;
 
-    if (tippingReport && tippingReport.hasTippingOff) {
+    if (tippingReport && !tippingReport.clean) {
       // HARD gate: replace the tipping-off phrases with [REDACTED] markers
       let redacted = auditNarrative;
       for (const finding of tippingReport.findings) {
         redacted = redacted.replace(
-          new RegExp(finding.phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+          new RegExp(finding.matchedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
           '[REDACTED — FDL Art.29]'
         );
       }
@@ -3645,7 +3646,7 @@ function buildAuditNarrative(
 
   // Phase 12 narrative entries
   if (extensions.corporateGraph) {
-    const flaggedCount = extensions.corporateGraph.hits.filter((h) => h.hit).length;
+    const flaggedCount = extensions.corporateGraph.hits.length;
     lines.push(
       `  - Corporate graph (#73): visited=${extensions.corporateGraph.visited} node(s) ` +
       `in ${extensions.corporateGraph.hops} hop(s), flagged=${flaggedCount}`
@@ -3720,9 +3721,9 @@ function buildAuditNarrative(
   }
   if (extensions.tippingOff) {
     lines.push(
-      `  - Tipping-off linter (#84): hasTippingOff=${extensions.tippingOff.hasTippingOff}, ` +
+      `  - Tipping-off linter (#84): clean=${extensions.tippingOff.clean}, ` +
       `findings=${extensions.tippingOff.findings.length} ` +
-      `(FDL Art.29 — ${extensions.tippingOff.hasTippingOff ? 'REDACTED' : 'clean'})`
+      `(FDL Art.29 — ${!extensions.tippingOff.clean ? 'REDACTED' : 'clean'})`
     );
   }
   if (extensions.shapley) {
