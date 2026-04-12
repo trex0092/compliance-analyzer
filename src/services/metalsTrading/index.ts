@@ -25,3 +25,9 @@ export {
 } from './signalFusion';
 export { TradingEngine } from './tradingEngine';
 export { MetalsTradingBrain, createTradingBrain } from './metalsTradingBrain';
+export {
+  generateDailyReport, formatAsanaTaskNotes, formatHTMLReport, formatJSONReport,
+} from './tradingDailyReport';
+export {
+  dispatchDailyTradingReport, generateTradingReportBundle,
+} from './tradingReportDispatcher';
