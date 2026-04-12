@@ -35,7 +35,7 @@
  *   ASANA_CF_REGULATION_GID         — text custom field
  *
  * Regulatory basis:
- *   - FDL No.10/2025 Art.24 (5yr retention — rollup visibility)
+ *   - FDL No.10/2025 Art.24 (10yr retention — rollup visibility)
  *   - Cabinet Res 134/2025 Art.19 (internal review — SLA tracking)
  *   - MoE Circular 08/AML/2021 (DPMS quarterly reporting)
  */

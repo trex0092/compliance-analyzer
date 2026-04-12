@@ -23,7 +23,7 @@
  *     said pass" — that's a human escalation, not a reconcile).
  *
  * Regulatory basis:
- *   - FDL No.10/2025 Art.24 (5yr record retention — conflict history)
+ *   - FDL No.10/2025 Art.24 (10yr record retention — conflict history)
  *   - Cabinet Res 134/2025 Art.19 (auditable decisions)
  *   - FATF Rec 11 (record-keeping integrity)
  */

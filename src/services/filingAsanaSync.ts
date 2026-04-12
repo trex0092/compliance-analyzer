@@ -14,7 +14,7 @@
  * evolve it without touching the existing four sync flows.
  *
  * Regulatory basis:
- *   - FDL No.10/2025 Art.24 (5yr record retention, chain-of-custody)
+ *   - FDL No.10/2025 Art.24 (10yr record retention, chain-of-custody)
  *   - FDL No.10/2025 Art.26-27 (STR/SAR filing obligations)
  *   - Cabinet Res 134/2025 Art.19 (internal review before filing)
  *   - MoE Circular 08/AML/2021 (DPMS quarterly reports, goAML XML)

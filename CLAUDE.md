@@ -114,7 +114,7 @@ compliant by default.
 
 | Law / Resolution | Scope | Key Articles |
 |---|---|---|
-| FDL No.10/2025 | UAE AML/CFT/CPF Law | Art.12-14 (CDD), Art.15-16 (thresholds), Art.20-21 (CO duties), Art.24 (record retention 5yr), Art.26-27 (STR filing), Art.29 (no tipping off), Art.35 (TFS) |
+| FDL No.10/2025 | UAE AML/CFT/CPF Law | Art.12-14 (CDD), Art.15-16 (thresholds), Art.20-21 (CO duties), Art.24 (record retention 10yr), Art.26-27 (STR filing), Art.29 (no tipping off), Art.35 (TFS) |
 | Cabinet Res 134/2025 | Implementing Regulations | Art.5 (risk appetite), Art.7-10 (CDD tiers), Art.14 (PEP/EDD), Art.16 (cross-border cash AED 60K), Art.18 (CO change notification), Art.19 (internal review) |
 | Cabinet Res 74/2020 | TFS / Asset Freeze | Art.4-7 (freeze within 24h, report to EOCN, CNMR within 5 days) |
 | Cabinet Res 156/2025 | PF & Dual-Use Controls | PF risk assessment, strategic goods screening |
@@ -134,7 +134,7 @@ compliant by default.
 - **24 hours**: Asset freeze execution deadline after sanctions confirmation
 - **5 business days**: CNMR filing deadline to EOCN
 - **15 working days**: UBO re-verification deadline after ownership change
-- **5 years**: Minimum record retention period
+- **10 years**: Minimum record retention period (FDL No.10/2025 Art.24)
 - **30 days**: Policy update deadline after new MoE circular
 
 ## Coding Rules for Compliance Features

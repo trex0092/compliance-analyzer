@@ -11,7 +11,7 @@
  * wherever they want. The tracker produces diffs and rewinds.
  *
  * Regulatory basis:
- *   - FDL No.10/2025 Art.24 (5-year retention)
+ *   - FDL No.10/2025 Art.24 (10-year retention)
  *   - Cabinet Decision 109/2023 (UBO re-verification timeline)
  *   - FATF Rec 11 (record-keeping integrity)
  */

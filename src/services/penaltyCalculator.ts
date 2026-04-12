@@ -238,7 +238,7 @@ export const PENALTY_CATALOGUE: PenaltyBand[] = [
   {
     code: 'RECORDS_NOT_RETAINED',
     area: 'Records',
-    description: 'Records not retained for the 5-year minimum',
+    description: 'Records not retained for the 10-year minimum',
     minAED: 100_000,
     maxAED: 1_000_000,
     regulatory: 'FDL Art.24',

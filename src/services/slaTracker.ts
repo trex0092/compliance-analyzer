@@ -20,7 +20,7 @@
  *   EOCN        →  1 business day / 24 hours (Cabinet Res 74/2020 Art.4)
  *
  * Regulatory basis:
- *   - FDL No.10/2025 Art.24 (5yr retention of SLA state)
+ *   - FDL No.10/2025 Art.24 (10yr retention of SLA state)
  *   - FDL No.10/2025 Art.26-27 (STR deadlines)
  *   - Cabinet Res 74/2020 Art.4-7 (24h freeze, 5bd CNMR)
  *   - MoE Circular 08/AML/2021 (15bd DPMSR)

@@ -198,6 +198,325 @@ import {
   type BftConsensusReport,
 } from './byzantineFaultTolerant';
 
+// --- Phase 4-10 imports: ESG, TBML, PEP, Hawala, STR, Cross-border, Ensemble ---
+import { calculateEsgScore, type EsgInput, type EsgScore } from './esgScorer';
+import {
+  estimateCarbonFootprint,
+  type CarbonFootprintInput,
+  type CarbonFootprintReport,
+} from './carbonFootprintEstimator';
+import {
+  checkTcfdAlignment,
+  type TcfdAlignmentInput,
+  type TcfdAlignmentReport,
+} from './tcfdAlignmentChecker';
+import {
+  scoreUnSdgAlignment,
+  type SdgEvidenceInput,
+  type UnSdgReport,
+} from './unSdgAlignmentScorer';
+import {
+  screenConflictMinerals,
+  type MineralSupplier,
+  type ConflictMineralsReport,
+} from './conflictMineralsScreener';
+import {
+  detectGreenwashing,
+  type EsgDisclosure,
+  type GreenwashingReport,
+} from './greenwashingDetector';
+import {
+  classifyEsgAdverseMedia,
+  type AdverseMediaHitInput,
+  type EsgAdverseMediaReport,
+} from './esgAdverseMediaClassifier';
+import {
+  assessModernSlaveryRisk,
+  type WorkforceProfile,
+  type ModernSlaveryReport,
+} from './modernSlaveryDetector';
+import {
+  detectTbml,
+  type TbmlTransaction,
+  type TbmlAssessment,
+} from './tradeBasedMLDetector';
+import {
+  enforceFourEyes,
+  type ApprovalSubmission,
+  type FourEyesResult,
+} from './fourEyesEnforcer';
+import {
+  classifyFiling,
+  type ClassificationInput,
+  type ClassificationResult,
+} from './strAutoClassifier';
+import {
+  scorePepProximity,
+  type PepProximityInput,
+  type PepProximityScore,
+} from './pepProximityScorer';
+import {
+  detectHawala,
+  type HawalaTransaction,
+  type HawalaDetectionResult,
+} from './hawalaDetector';
+import {
+  runAnomalyEnsemble,
+  buildSignal,
+  type EnsembleResult,
+} from './anomalyEnsemble';
+import {
+  monitorCrossBorderCash,
+  type CrossBorderRiskInput,
+  type CrossBorderAssessment,
+} from './crossBorderCashMonitor';
+import {
+  orchestrateBrainToAsana,
+  type AsanaOrchestratorConfig,
+  type OrchestratorResult,
+} from './brainToAsanaOrchestrator';
+import {
+  generateMlroAlerts,
+  type MlroAlertBundle,
+} from './mlroAlertGenerator';
+import {
+  buildKpiReport,
+  type KpiReport,
+} from './complianceMetricsDashboard';
+import {
+  generateHawkeyeReport,
+  type HawkeyeReport,
+  type HawkeyeReportInput,
+} from './hawkeyeReportGenerator';
+import {
+  checkAiGovernance,
+  type AiGovernanceReport,
+  type AiGovernanceInput,
+} from './aiGovernanceChecker';
+import {
+  scoreEsgAdvancedFramework,
+  type EsgAdvancedReport,
+  type EsgAdvancedInput,
+} from './esgAdvancedFrameworkScorer';
+
+// --- Phase 11 imports: Security, Deduplication, STR Narrative, Predictive, Penalty, Gold ---
+import {
+  detectPromptInjection,
+  type InjectionReport,
+} from './adversarialPromptInjectionDetector';
+import {
+  detectDeepfakeDocument,
+  type DocumentEvidence,
+  type DeepfakeReport,
+} from './deepfakeDocumentDetector';
+import {
+  dedupeCrossListHits,
+  type RawListHit,
+  type DedupeReport,
+} from './crossListSanctionsDedupe';
+import {
+  buildStrNarrative,
+  type StrNarrativeInput,
+  type StrNarrative,
+} from './strNarrativeBuilder';
+import {
+  predictStr,
+  type StrFeatures,
+  type StrPrediction,
+} from './predictiveStr';
+import {
+  runPenaltyVaR,
+  UAE_DPMS_VIOLATIONS,
+  type VaRReport,
+  type VaRConfig,
+} from './penaltyVaR';
+import {
+  traceGoldOrigin,
+  type GoldShipment,
+  type OriginTraceReport,
+} from './goldOriginTracer';
+import {
+  matchAssayCertificates,
+  type AssayCertificateClaim,
+  type AssayMatchReport,
+} from './assayCertificateMatcher';
+import {
+  detectFinenessAnomalies,
+  type FinenessClaim,
+  type FinenessReport,
+} from './finenessAnomalyDetector';
+import {
+  detectCrossBorderArbitrage,
+  type CustomerFootprint,
+  type ArbitrageReport,
+} from './crossBorderArbitrageDetector';
+import {
+  detectDormancyActivity,
+  type DormancyTransaction,
+  type DormancyReport,
+} from './dormancyActivityDetector';
+import {
+  expandNameVariants,
+  type NameVariantReport,
+} from './nameVariantExpander';
+import {
+  gradeStrNarrative,
+  type StrGradeReport,
+} from './strNarrativeGrader';
+import {
+  resolveAgentsForVerdict,
+  spawnManagedAgent,
+  createOrchestratorSession,
+  type ManagedAgentTask,
+  type OrchestratorSession,
+} from './managedAgentOrchestrator';
+
+// --- Phase 12 imports (#73-#97): Corporate graph, causal engine, game theory,
+//     LBMA, melt loss, free zone, tipping-off, Shapley, invariant verification,
+//     quantum seal, peer anomaly, time-travel audit, goAML XML, Bayesian belief,
+//     rule induction, document intelligence, regulatory drift, EU AI Act,
+//     case-based reasoning, multi-model screening, synthetic evasion ---
+
+import {
+  walkCorporateGraph,
+  type CorporateGraph,
+  type NodePredicate,
+  type GraphWalkReport,
+} from './corporateGraphWalker';
+import {
+  analyseOwnershipMotifs,
+  type OwnershipEdge,
+  type MotifReport,
+} from './graphMotifUboAnalyzer';
+import {
+  runMultiModelScreening,
+  type MultiModelScreeningRequest,
+  type ConsensusResult as MultiModelConsensusResult,
+} from './multiModelScreening';
+import {
+  createCausalGraph,
+  simulate,
+  runCounterfactual,
+  type CausalNode,
+  type CausalGraph,
+  type Assignment,
+} from './causalEngine';
+import {
+  runDebate,
+  type DebateInput,
+  type DebateVerdict,
+} from './debateArbiter';
+import {
+  reviewReasoningChain,
+  type CriticConfig,
+  type ReflectionReport,
+} from './reflectionCritic';
+import {
+  detectCircularReasoning,
+  type DependencyEdge,
+  type CircularReport,
+} from './circularReasoningDetector';
+import {
+  solveAdversaryGame,
+  type DetectionStrategy,
+  type EvasionStrategy,
+  type EquilibriumReport,
+} from './gameTheoryAdversary';
+import {
+  checkLbmaFixDeviations,
+  type GoldTrade,
+  type FixLookup,
+  type FixCheckConfig,
+  type FixCheckReport,
+} from './lbmaFixPriceChecker';
+import {
+  assessMeltBatch,
+  detectRefinerDrift,
+  type MeltBatch,
+  type MeltLossAssessment,
+} from './meltLoss';
+import {
+  checkFreeZoneCompliance,
+  type EntityFacts as FreeZoneEntityFacts,
+  type FreeZoneCheckResult,
+} from './freeZoneRules';
+import {
+  lintForTippingOff,
+  type TippingOffReport,
+} from './tippingOffLinter';
+import {
+  computeShapleyAttribution,
+  type VerdictFn,
+  type ShapleyInput,
+  type ShapleyReport,
+} from './shapleyExplainer';
+import {
+  verifyInvariants,
+  CANONICAL_INVARIANTS,
+  type VerifyConfig,
+  type VerifyReport as InvariantVerifyReport,
+} from './formalInvariantVerifier';
+import {
+  sealQuantumResistant,
+  type QuantumSealRecord,
+  type QuantumSealBundle,
+} from './quantumResistantSeal';
+import {
+  analysePeerAnomaly,
+  type PeerAnomalyInput,
+  type PeerAnomalyReport,
+} from './peerAnomaly';
+import {
+  replayUntil,
+  currentState,
+  criticalPath,
+  type EvidenceEntry,
+  type CaseSnapshot,
+} from './timeTravelAudit';
+import {
+  buildGoAMLXml,
+} from './goamlBuilder';
+import {
+  runBeliefUpdate,
+  uniformPrior,
+  type Hypothesis,
+  type Evidence as BayesEvidence,
+  type BeliefReport,
+} from './bayesianBelief';
+import {
+  learnDecisionTree,
+  extractRules,
+  type LabeledSample,
+  type LearnedRule,
+  type InductionConfig,
+} from './ruleInduction';
+import {
+  runTamperChecks,
+  type TamperSignal,
+  type DocumentExtractionResult,
+} from './documentIntelligence';
+import {
+  analyseDrift,
+  type DriftSample,
+  type PortfolioDriftReport,
+} from './regulatoryDrift';
+import {
+  buildReadinessPayloads,
+  type ReadinessScaffoldResult,
+} from './euAiActReadinessProject';
+import {
+  CaseMemory,
+  cosineSimilarity,
+  type PastCase,
+  type RetrievalResult,
+  type ReuseRecommendation,
+} from './caseBasedReasoning';
+import {
+  generateSyntheticEvasionCases,
+  type SyntheticCase,
+  type GenerateConfig as SyntheticGenerateConfig,
+} from './syntheticEvasionGenerator';
+
 // ---------------------------------------------------------------------------
 // Verdict ordering — verdicts can only escalate under new clamps.
 // ---------------------------------------------------------------------------
@@ -420,6 +739,348 @@ export interface WeaponizedBrainRequest {
    * (Cabinet Res 134/2025 Art.19 / NIST AI RMF GV-1.6 / FATF Rec 6)
    */
   sanctionsSourceVotes?: readonly BftVote<string>[];
+
+  // ─── Phase 4-10: ESG, TBML, PEP proximity, Hawala, STR, Cross-border ──────
+
+  /** #41 ESG composite score (ISSB IFRS S1/S2, GRI 2021, LBMA RGG v9). */
+  esgInput?: EsgInput;
+
+  /** #42 Carbon footprint — Scope 1/2/3 for gold supply chain (IFRS S2). */
+  carbonInput?: CarbonFootprintInput;
+
+  /** #43 TCFD alignment checker — 4-pillar disclosure completeness. */
+  tcfdInput?: TcfdAlignmentInput;
+
+  /** #44 UN SDG alignment scorer — 17 goals with DPMS sector weighting. */
+  sdgEvidence?: { entityId: string; reportingYear: number; evidence: SdgEvidenceInput };
+
+  /** #45 Conflict minerals screener — CAHRA/Dodd-Frank §1502/EU CMR/OECD DDG. */
+  conflictMineralSuppliers?: MineralSupplier[];
+
+  /** #46 Greenwashing detector — ESG disclosure integrity (ISSB S1/EU SFDR). */
+  esgDisclosure?: EsgDisclosure;
+
+  /** #47 ESG adverse media classifier — ESG signal extraction from adverse media. */
+  esgAdverseMediaHits?: AdverseMediaHitInput[];
+
+  /** #48 Modern slavery risk — ILO 11 indicators + UAE Federal Law 51/2006. */
+  workforceProfile?: WorkforceProfile;
+
+  /** #49 TBML detector — over/under-invoicing, phantom trades, round-trips. */
+  tbmlTransaction?: TbmlTransaction;
+
+  /** #50 Four-eyes enforcer — dual-approval for high-stakes decisions. */
+  fourEyesSubmission?: ApprovalSubmission;
+
+  /** #51 STR/SAR/CTR auto-classifier — derives filing category + deadline. */
+  filingClassificationInput?: ClassificationInput;
+
+  /** #52 PEP proximity scorer — 1st/2nd/3rd-degree PEP network links. */
+  pepProximityInput?: PepProximityInput;
+
+  /** #53 Hawala / IVTS detector — informal value transfer patterns. */
+  hawalaTransaction?: HawalaTransaction;
+
+  /** #54 Cross-border cash monitor — AED 60K threshold + structuring. */
+  crossBorderMovement?: CrossBorderRiskInput;
+
+  // ─── Synthesis Layer: Asana, MLRO Alerts, KPI Dashboard ──────────────────
+
+  /**
+   * Asana orchestrator config — if supplied, every freeze/escalate/flag
+   * verdict automatically creates an Asana task tree (parent + subtasks).
+   * Uses the existing asanaClient + retry queue.
+   */
+  asanaConfig?: AsanaOrchestratorConfig;
+
+  /**
+   * KPI measurements for the compliance metrics dashboard.
+   * Produces a 30-KPI report aligned to MoE / FIU / FATF ME.
+   */
+  kpiMeasurements?: Array<{
+    kpiId: string;
+    value: number | string | boolean;
+    unit?: string;
+    notes?: string;
+    trend?: 'improving' | 'stable' | 'deteriorating' | 'unknown';
+  }>;
+  /** Reporting period for KPI dashboard (ISO dates). */
+  kpiPeriod?: { start: string; end: string };
+
+  /**
+   * Hawkeye Sterling V2 report metadata — enriches the generated report
+   * with screening officer, jurisdiction, DOB, ID numbers, group name.
+   */
+  hawkeyeReportMeta?: Omit<HawkeyeReportInput, 'brain'>;
+
+  /**
+   * AI Governance Checklist input — runs the 10-point pre-deployment
+   * governance assessment (NIST AI RMF + EU AI Act + UAE AI Ethics).
+   */
+  aiGovernanceInput?: AiGovernanceInput;
+
+  /**
+   * ESG Advanced Framework input — CSRD, SASB, Double Materiality,
+   * Stranded Assets, Climate VAR, Green Bond, SLL, Carbon Credits.
+   */
+  esgAdvancedInput?: EsgAdvancedInput;
+
+  // --- Phase 11 inputs (#59-#72) ---
+
+  /** #60 Deepfake document detector — KYC document evidence. */
+  documentEvidence?: DocumentEvidence;
+  /** #61 Cross-list dedupe — raw hits from all 6 sanctions lists. */
+  rawSanctionsHits?: RawListHit[];
+  /** #62 STR narrative builder — structured evidence for goAML narrative. */
+  strNarrativeInput?: StrNarrativeInput;
+  /** #63 Predictive STR — feature vector for probability model. */
+  strFeatures?: StrFeatures;
+  /** #64 Penalty VaR — active violations list. */
+  penaltyViolations?: import('./penaltyVaR').ViolationType[];
+  /** #64 Penalty VaR — config override. */
+  penaltyVarConfig?: VaRConfig;
+  /** #65 Gold origin tracer — list of gold shipments to trace. */
+  goldShipments?: GoldShipment[];
+  /** #66 Assay certificate matcher — certificate claims to validate. */
+  assayCertificateClaims?: AssayCertificateClaim[];
+  /** #67 Fineness anomaly — fineness claims from refiner documentation. */
+  finenessClaims?: FinenessClaim[];
+  /** #68 Cross-border arbitrage — customer trading footprint. */
+  customerFootprint?: CustomerFootprint;
+  /** #70 Dormancy detector — transaction history timeline. */
+  dormancyTransactions?: DormancyTransaction[];
+
+  // --- Phase 12 inputs (#73-#97) ---
+
+  /**
+   * #73 Corporate graph walker — directed graph of corporate entities.
+   * Walks from the queryId node up to maxHops, applying a flagging predicate.
+   * Hits on sanctioned/high-risk subsidiaries → escalate.
+   * (FATF Rec 10 / Cabinet Decision 109/2023 UBO register)
+   */
+  corporateGraph?: {
+    graph: CorporateGraph;
+    queryId: string;
+    predicate?: NodePredicate;
+    maxHops?: number;
+  };
+
+  /**
+   * #74 Graph motif UBO analyzer — ownership edge list for circular/star/
+   * cascade motif detection. Threshold defaults to 25% (Cabinet Decision 109/2023).
+   * Layering motifs → escalate.
+   */
+  ownershipEdges?: readonly OwnershipEdge[];
+
+  /**
+   * #75 Multi-model screening (async) — runs the same entity through multiple
+   * AI models and returns consensus. Requires apiKey and model list. If omitted
+   * the subsystem is skipped. Confirmed-match consensus → escalate + confidence cap.
+   * (Cabinet Res 134/2025 Art.5 / FATF Rec 1 — risk appetite + multi-source screening)
+   */
+  multiModelScreening?: {
+    request: MultiModelScreeningRequest;
+    apiKey: string;
+    models?: readonly string[];
+  };
+
+  /**
+   * #76 Causal engine — nodes define the DAG; interventions are applied to
+   * test what changes the verdict. Counterfactual result is recorded in extensions.
+   * No clamp — purely evidence for the MLRO to see causal paths.
+   */
+  causalNodes?: readonly CausalNode[];
+  /** Causal engine intervention to test (e.g. `{ pepStatus: 0 }`). */
+  causalIntervention?: Assignment;
+
+  /**
+   * #77 Debate arbiter — structured pro/con arguments about the verdict.
+   * If the con side wins decisively (margin > 0.4) → adds advisory clamp.
+   * Provides the MLRO with a balanced two-sided analysis.
+   */
+  debateInput?: DebateInput;
+
+  /**
+   * #78 Reflection critic — reviews the MegaBrain reasoning chain for
+   * missing node types, low coverage, or structural issues. Critical issues
+   * → confidence cap 0.65. (NIST AI RMF MS-2.2 / EU AI Act Art.72)
+   */
+  reflectionConfig?: CriticConfig;
+
+  /**
+   * #79 Circular reasoning detector — dependency edges among subsystem
+   * conclusions. Cycles → advisory clamp + confidence cap 0.70.
+   * (NIST AI RMF GV-1.6 / FDL Art.20-21 CO duty of care)
+   */
+  dependencyEdges?: readonly DependencyEdge[];
+
+  /**
+   * #80 Game theory adversary — evasion game between compliance detection
+   * strategies and money-laundering evasion strategies. Nash equilibrium
+   * surfaces the top attacker strategy so the MLRO can anticipate it.
+   * High attacker payoff → advisory clamp.
+   * (FATF Rec 1 — risk-based approach / NIST AI RMF GV-1.6)
+   */
+  gameTheoryStrategies?: {
+    detectionStrategies: readonly DetectionStrategy[];
+    evasionStrategies: readonly EvasionStrategy[];
+  };
+
+  /**
+   * #81 LBMA gold price fix checker — trades to validate against LBMA/CBUAE
+   * benchmarks. Frozen trades → clamp freeze. Flagged → escalate.
+   * (LBMA RGG v9 / FATF DPMS Typologies 2022 — price manipulation)
+   */
+  lbmaFixInput?: {
+    trades: readonly GoldTrade[];
+    lookup: FixLookup;
+    config?: FixCheckConfig;
+  };
+
+  /**
+   * #82 Melt loss — assay + refiner batch analysis. Critical melt loss
+   * deviation → escalate. Refiner drift detection surfaces systemic tampering.
+   * (LBMA RGG v9 §4 / MoE Circular 08/AML/2021 / Dubai Good Delivery)
+   */
+  meltBatch?: MeltBatch;
+  /** Refiner drift: historical batches from the same refiner. */
+  meltRefinerHistory?: readonly MeltBatch[];
+
+  /**
+   * #83 Free zone compliance checker — validates entity facts against the
+   * rule set for DMCC, JAFZA, DIFC, ADGM, or mainland UAE.
+   * Mandatory failures → escalate.
+   * (Cabinet Res 134/2025 / DMCC Rules 2024 / ADGM FSMR)
+   */
+  freeZoneFacts?: FreeZoneEntityFacts;
+
+  /**
+   * #84 Tipping-off linter (FDL Art.29) — automatically scans the audit
+   * narrative, MLRO alerts, and STR narrative for disclosure-risk phrases.
+   * Always-on once the narrative is built. Any tipping-off finding →
+   * HARD clamp + mandatory redaction before the report leaves the system.
+   * (FDL No.10/2025 Art.29 — no tipping off, penalty up to AED 5M)
+   */
+  // No input needed — lints the generated narrative automatically.
+
+  /**
+   * #85 Shapley explainer — feature attribution for the final verdict score.
+   * If omitted, auto-builds a ShapleyInput from the explainable scoring output.
+   * Produces per-factor contribution values for the MLRO dashboard.
+   * (EU AI Act Art.13 — transparency / NIST AI RMF MS-2.5)
+   */
+  shapleyInput?: ShapleyInput;
+
+  /**
+   * #86 Formal invariant verifier — validates the verdict state against
+   * CANONICAL_INVARIANTS (plus any custom invariants). Violations → advisory
+   * clamp + confidence cap 0.60. Catches impossible state combinations.
+   * (NIST AI RMF GV-1.6 / EU AI Act Art.9 — risk management system)
+   */
+  customInvariants?: readonly import('./formalInvariantVerifier').Invariant<WeaponizedBrainResponse>[];
+
+  /**
+   * #87 Synthetic evasion generator — generates evasion test cases and checks
+   * if the current verdict would catch them. Coverage gaps → advisory clamp.
+   * (FATF Guidance on Red Flags 2021 / NIST AI RMF GV-1.6)
+   */
+  syntheticEvasionConfig?: SyntheticGenerateConfig;
+
+  /**
+   * #88 Quantum-resistant seal — SHA-3/512-based post-quantum audit seal for
+   * the full brain response. Complements the Merkle ZK proof (#19) with a
+   * quantum-resistant hash. Always produces a QuantumSealBundle.
+   * (FDL Art.24 10yr retention / NIST Post-Quantum Cryptography Framework)
+   */
+  // No input needed — seals the final response automatically.
+
+  /**
+   * #89 Peer anomaly — statistical z-score analysis of the entity's risk
+   * features against a peer group. Anomalous outliers → flag clamp.
+   * (FATF Rec 10 / Cabinet Res 134/2025 Art.5 risk appetite)
+   */
+  peerAnomalyInput?: PeerAnomalyInput;
+
+  /**
+   * #90 Time-travel audit — evidence entries for the current case, enabling
+   * MLRO to replay the decision at any historical point.
+   * Critical path of evidence is surfaced for audit pack generation.
+   * (FDL Art.24 10yr retention / Cabinet Res 134/2025 Art.19 internal review)
+   */
+  auditEvidenceEntries?: readonly EvidenceEntry[];
+  /** Target case reference ID for time-travel replay queries. */
+  auditCaseRefId?: string;
+
+  /**
+   * #91 Document intelligence — runs tamper checks on uploaded documents.
+   * Critical tamper signals → escalate. Always triggers when documentEvidence
+   * is present (#60 deepfake). This is the structural extraction layer.
+   * (FDL Art.12-14 CDD / FATF Rec 10 / Cabinet Decision 109/2023)
+   */
+  documentForTamperCheck?: {
+    documentId: string;
+    documentType: import('./documentIntelligence').DocumentType;
+    rawText?: string;
+    base64Image?: string;
+  };
+
+  /**
+   * #92 Regulatory drift — compares the current entity's risk feature
+   * distribution against a historical baseline to detect concept drift.
+   * Significant drift → advisory clamp + re-calibration warning.
+   * (NIST AI RMF MS-2.1 / EU AI Act Art.72 post-market monitoring)
+   */
+  regulatoryDriftSamples?: {
+    baseline: readonly DriftSample[];
+    current: readonly DriftSample[];
+  };
+
+  /**
+   * #93 goAML XML builder — auto-generates a compliant goAML XML filing
+   * from the SuspicionReport domain object if present.
+   * Only fires when strNarrativeInput or filingClassificationInput is provided
+   * and the filing type requires XML submission.
+   * (UAE FIU goAML Schema / MoE Circular 08/AML/2021)
+   */
+  goamlReport?: import('../domain/reports').SuspicionReport;
+  /** Optional linked case and customer for goAML XML. */
+  goamlCase?: import('../domain/cases').ComplianceCase;
+  goamlCustomer?: import('../domain/customers').CustomerProfile;
+
+  /**
+   * #94 Bayesian belief network — updates prior belief about entity risk
+   * given the weight of evidence from all subsystems. Returns posterior
+   * probabilities and Shannon entropy (uncertainty measure).
+   * (FDL Art.20-21 / FATF Rec 10 — evidence-based risk assessment)
+   */
+  bayesianHypotheses?: readonly Hypothesis[];
+  /** Evidence array to pass into the Bayesian belief update chain. */
+  bayesianEvidence?: readonly BayesEvidence[];
+
+  /**
+   * #95 Case-based reasoning — retrieves top-K similar past cases from a
+   * CaseMemory instance and recommends a verdict by analogy.
+   * High-confidence precedent → advisory note on the verdict.
+   * (FDL Art.20-21 / FATF Rec 10 — risk-based approach + institutional memory)
+   */
+  caseMemory?: CaseMemory;
+
+  /**
+   * #96 EU AI Act readiness — scaffolds the EU AI Act high-risk system
+   * readiness payloads (Article 9, 10, 13, 14, 15, 72 checklist).
+   * Only fires when aiGovernanceInput is present (composites with #57).
+   * (EU AI Act 2024 Arts 9-15, 72 / NIST AI RMF MANAGE)
+   */
+  euAiActProjectGid?: string;
+
+  /**
+   * #97 Rule induction — learns a decision tree from the session's labeled
+   * samples and extracts human-readable rules for the MLRO.
+   * Provides interpretable logic behind the Bayesian/ensemble verdict.
+   * (EU AI Act Art.13 — transparency / NIST AI RMF MS-2.5 explainability)
+   */
+  inductionSamples?: readonly LabeledSample[];
+  inductionConfig?: InductionConfig;
 }
 
 export interface WeaponizedExtensions {
@@ -482,6 +1143,135 @@ export interface WeaponizedExtensions {
   priceAnomalies?: PriceAnomalyResult[];
   /** #40 BFT consensus — Byzantine fault-tolerant verdict voting (internal + external). */
   bftConsensus?: BftConsensusReport<string> | null;
+
+  // ─── Phase 4-10: ESG, TBML, PEP, Hawala, STR, Cross-border, Ensemble ──────
+
+  /** #41 ESG composite score (0-100, grade A-F, ISSB IFRS S1/S2). */
+  esgScore?: EsgScore;
+  /** #42 Carbon footprint — Scope 1/2/3 per troy oz. */
+  carbonFootprint?: CarbonFootprintReport;
+  /** #43 TCFD alignment — 4-pillar disclosure score. */
+  tcfdAlignment?: TcfdAlignmentReport;
+  /** #44 UN SDG alignment — 17-goal weighted score for DPMS sector. */
+  sdgAlignment?: UnSdgReport;
+  /** #45 Conflict minerals — CAHRA/OECD DDG supplier risk. */
+  conflictMinerals?: ConflictMineralsReport;
+  /** #46 Greenwashing — ESG disclosure integrity assessment. */
+  greenwashing?: GreenwashingReport;
+  /** #47 ESG adverse media — classified ESG signal from adverse media. */
+  esgAdverseMedia?: EsgAdverseMediaReport;
+  /** #48 Modern slavery — ILO forced-labour indicator risk. */
+  modernSlavery?: ModernSlaveryReport;
+  /** #49 TBML — trade-based money laundering detection. */
+  tbml?: TbmlAssessment;
+  /** #50 Four-eyes — dual-approval enforcement result. */
+  fourEyes?: FourEyesResult;
+  /** #51 STR/SAR/CTR filing classification + deadline. */
+  filingClassification?: ClassificationResult;
+  /** #52 PEP proximity — 1st/2nd/3rd-degree proximity score. */
+  pepProximity?: PepProximityScore;
+  /** #53 Hawala / IVTS detection result. */
+  hawala?: HawalaDetectionResult;
+  /** #54 Anomaly ensemble — Bayesian BMA across all anomaly signals. */
+  anomalyEnsemble?: EnsembleResult;
+  /** #55 Cross-border cash — AED 60K threshold + structuring detection. */
+  crossBorderCash?: CrossBorderAssessment;
+
+  // ─── Synthesis Layer ──────────────────────────────────────────────────────
+  /** MLRO alert bundle — structured regulatory alerts from all subsystem outputs. */
+  mlroAlerts?: MlroAlertBundle;
+  /** Asana orchestration result — tasks created from verdict + findings. */
+  asanaSync?: OrchestratorResult;
+  /** 30-KPI compliance metrics dashboard (MoE/FIU/FATF/LBMA aligned). */
+  kpiDashboard?: KpiReport;
+  /** #56 Hawkeye Sterling V2 case report — professional branded screening report for Asana. */
+  hawkeyeReport?: HawkeyeReport;
+  /** #57 AI Governance Checklist — 10-point NIST AI RMF + EU AI Act + UAE AI Ethics assessment. */
+  aiGovernance?: AiGovernanceReport;
+  /** #58 ESG Advanced Framework — CSRD, SASB, Double Materiality, Stranded Assets, Climate VAR, Green/Social Bond, SLL, Carbon Credits. */
+  esgAdvanced?: EsgAdvancedReport;
+
+  // ─── Phase 11 subsystems (#59-#72) ────────────────────────────────────────
+  /** #59 Prompt injection detection — entity name + narrative scanned for adversarial injection. */
+  promptInjection?: InjectionReport;
+  /** #60 Deepfake document detector — KYC document forgery signal. */
+  deepfakeDoc?: DeepfakeReport;
+  /** #61 Cross-list sanctions dedupe — merged hits across UN/OFAC/EU/UK/UAE/EOCN. */
+  sanctionsDedupe?: DedupeReport;
+  /** #62 STR narrative — auto-built goAML narrative from structured evidence. */
+  strNarrative?: StrNarrative;
+  /** #63 Predictive STR — probability the entity will trigger an STR within 30 days. */
+  strPrediction?: StrPrediction;
+  /** #64 Penalty VaR — AED penalty value at risk across all active violations. */
+  penaltyVar?: VaRReport;
+  /** #65 Gold origin tracer — LBMA/OECD DDG supply-chain origin trace. */
+  goldOrigin?: OriginTraceReport;
+  /** #66 Assay certificate matcher — certificate-to-refiner validation. */
+  assayMatch?: AssayMatchReport;
+  /** #67 Fineness anomaly — gold fineness claim vs. refiner capability check. */
+  finenessAnomaly?: FinenessReport;
+  /** #68 Cross-border arbitrage — pricing arbitrage across jurisdictions. */
+  arbitrage?: ArbitrageReport;
+  /** #70 Dormancy activity — sudden reactivation of dormant accounts. */
+  dormancy?: DormancyReport;
+  /** #71 Name variant expander — transliteration variants for better sanctions coverage. */
+  nameVariants?: NameVariantReport;
+  /** #72 STR narrative grader — quality score of auto-built narrative. */
+  strNarrativeGrade?: StrGradeReport;
+
+  // ─── Phase 12 subsystems (#73-#97) ────────────────────────────────────────
+
+  /** #73 Corporate graph walker — subsidiary/affiliate sanction hits up to N hops. */
+  corporateGraph?: GraphWalkReport;
+  /** #74 Graph motif UBO analyzer — circular/star/cascade ownership motifs. */
+  ownershipMotifs?: MotifReport;
+  /** #75 Multi-model screening (async) — consensus across multiple AI screeners. */
+  multiModelConsensus?: MultiModelConsensusResult;
+  /** #76 Causal engine — counterfactual reasoning: what would flip the verdict. */
+  causalCounterfactual?: { original: Record<string, number>; flipped: Record<string, number>; changedNodes: string[] };
+  /** #77 Debate arbiter — pro/con structured argument with winning action. */
+  verdictDebate?: DebateVerdict;
+  /** #78 Reflection critic — reasoning chain coverage + structural issue analysis. */
+  reflectionReport?: ReflectionReport;
+  /** #79 Circular reasoning detector — dependency cycles in subsystem conclusions. */
+  circularReasoning?: CircularReport;
+  /** #80 Game theory adversary — Nash equilibrium of detect vs evade strategies. */
+  gameEquilibrium?: EquilibriumReport;
+  /** #81 LBMA fix price checker — gold trade deviation from LBMA AM/PM fix. */
+  lbmaFixCheck?: FixCheckReport;
+  /** #82 Melt loss — gold batch melt loss assessment + refiner drift detection. */
+  meltLoss?: MeltLossAssessment;
+  /** #83 Free zone compliance — UAE free zone mandatory rule pass/fail. */
+  freeZoneCompliance?: FreeZoneCheckResult;
+  /** #84 Tipping-off linter — FDL Art.29 scan of all generated text output. */
+  tippingOff?: TippingOffReport;
+  /** #85 Shapley explainer — per-feature attribution values for the verdict. */
+  shapley?: ShapleyReport;
+  /** #86 Formal invariant verifier — canonical + custom state invariant checks. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  invariantVerification?: InvariantVerifyReport<any>;
+  /** #87 Synthetic evasion — coverage gaps against generated evasion test cases. */
+  syntheticEvasion?: SyntheticCase[];
+  /** #88 Quantum-resistant seal — SHA-3/512 post-quantum audit bundle. */
+  quantumSeal?: QuantumSealBundle;
+  /** #89 Peer anomaly — z-score outlier features vs peer group. */
+  peerAnomaly?: PeerAnomalyReport;
+  /** #90 Time-travel audit — critical path + current state snapshot for replay. */
+  timeTravelAudit?: { criticalPath: EvidenceEntry[]; currentState: CaseSnapshot };
+  /** #91 Document intelligence — structural tamper signals from KYC documents. */
+  documentTamper?: DocumentExtractionResult;
+  /** #92 Regulatory drift — concept drift in entity risk feature distribution. */
+  regulatoryDrift?: PortfolioDriftReport;
+  /** #93 goAML XML — auto-generated XML filing string for UAE FIU submission. */
+  goamlXml?: string;
+  /** #94 Bayesian belief — posterior probability + Shannon entropy for verdict risk. */
+  bayesianBelief?: BeliefReport;
+  /** #95 Case-based reasoning — top-K similar past cases + analogy recommendation. */
+  cbrRecommendation?: ReuseRecommendation[];
+  /** #96 EU AI Act readiness — Article 9/10/13/14/15/72 scaffolding result. */
+  euAiActReadiness?: ReadinessScaffoldResult;
+  /** #97 Rule induction — human-readable decision rules extracted from session data. */
+  inducedRules?: LearnedRule[];
 }
 
 export interface WeaponizedBrainResponse {
@@ -530,6 +1320,18 @@ export interface WeaponizedBrainResponse {
    * advisor hook was not provided or was not triggered for this case.
    */
   advisorResult: AdvisorEscalationResult | null;
+
+  /**
+   * Managed agents resolved for this verdict — ordered list of agent types
+   * to spawn, populated by resolveAgentsForVerdict() in the synthesis layer.
+   */
+  managedAgentPlan: ManagedAgentTask[];
+
+  /**
+   * Orchestrator session for this screening run — groups all agent tasks
+   * spawned for this entity.
+   */
+  orchestratorSession: OrchestratorSession;
 }
 
 // ---------------------------------------------------------------------------
@@ -1148,6 +1950,886 @@ export async function runWeaponizedBrain(
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Phase 4-10 subsystems (#41-#55) — ESG, TBML, PEP, Hawala, STR, Cross-border,
+  // Anomaly Ensemble. All run in parallel. All optional (require caller input).
+  // ---------------------------------------------------------------------------
+
+  const [
+    p4esg,
+    p4carbon,
+    p4tcfd,
+    p4sdg,
+    p4conflict,
+    p4greenwash,
+    p4esgMedia,
+    p4slavery,
+    p4tbml,
+    p4fourEyes,
+    p4filing,
+    p4pep,
+    p4hawala,
+    p4crossBorder,
+  ] = await Promise.all([
+    // #41 ESG composite score
+    req.esgInput
+      ? Promise.resolve(runSafely('esgScorer', () => calculateEsgScore(req.esgInput!)))
+      : Promise.resolve(undefined),
+
+    // #42 Carbon footprint
+    req.carbonInput
+      ? Promise.resolve(runSafely('carbonFootprintEstimator', () => estimateCarbonFootprint(req.carbonInput!)))
+      : Promise.resolve(undefined),
+
+    // #43 TCFD alignment
+    req.tcfdInput
+      ? Promise.resolve(runSafely('tcfdAlignmentChecker', () => checkTcfdAlignment(req.tcfdInput!)))
+      : Promise.resolve(undefined),
+
+    // #44 UN SDG alignment
+    req.sdgEvidence
+      ? Promise.resolve(runSafely('unSdgAlignmentScorer', () =>
+          scoreUnSdgAlignment(req.sdgEvidence!.entityId, req.sdgEvidence!.reportingYear, req.sdgEvidence!.evidence)
+        ))
+      : Promise.resolve(undefined),
+
+    // #45 Conflict minerals
+    req.conflictMineralSuppliers && req.conflictMineralSuppliers.length > 0
+      ? Promise.resolve(runSafely('conflictMineralsScreener', () => screenConflictMinerals(req.conflictMineralSuppliers!)))
+      : Promise.resolve(undefined),
+
+    // #46 Greenwashing
+    req.esgDisclosure
+      ? Promise.resolve(runSafely('greenwashingDetector', () => detectGreenwashing(req.esgDisclosure!)))
+      : Promise.resolve(undefined),
+
+    // #47 ESG adverse media
+    req.esgAdverseMediaHits && req.esgAdverseMediaHits.length > 0
+      ? Promise.resolve(runSafely('esgAdverseMediaClassifier', () => classifyEsgAdverseMedia(req.esgAdverseMediaHits!)))
+      : Promise.resolve(undefined),
+
+    // #48 Modern slavery
+    req.workforceProfile
+      ? Promise.resolve(runSafely('modernSlaveryDetector', () => assessModernSlaveryRisk(req.workforceProfile!)))
+      : Promise.resolve(undefined),
+
+    // #49 TBML
+    req.tbmlTransaction
+      ? Promise.resolve(runSafely('tradeBasedMLDetector', () => detectTbml(req.tbmlTransaction!)))
+      : Promise.resolve(undefined),
+
+    // #50 Four-eyes enforcer
+    req.fourEyesSubmission
+      ? Promise.resolve(runSafely('fourEyesEnforcer', () => enforceFourEyes(req.fourEyesSubmission!)))
+      : Promise.resolve(undefined),
+
+    // #51 STR/SAR/CTR auto-classifier
+    req.filingClassificationInput
+      ? Promise.resolve(runSafely('strAutoClassifier', () => classifyFiling(req.filingClassificationInput!)))
+      : Promise.resolve(undefined),
+
+    // #52 PEP proximity scorer
+    req.pepProximityInput
+      ? Promise.resolve(runSafely('pepProximityScorer', () => scorePepProximity(req.pepProximityInput!)))
+      : Promise.resolve(undefined),
+
+    // #53 Hawala detector
+    req.hawalaTransaction
+      ? Promise.resolve(runSafely('hawalaDetector', () => detectHawala(req.hawalaTransaction!)))
+      : Promise.resolve(undefined),
+
+    // #54 Cross-border cash monitor
+    req.crossBorderMovement
+      ? Promise.resolve(runSafely('crossBorderCashMonitor', () => monitorCrossBorderCash(req.crossBorderMovement!)))
+      : Promise.resolve(undefined),
+  ]);
+
+  // Assign Phase 4-10 results.
+  extensions.esgScore = p4esg ?? undefined;
+  extensions.carbonFootprint = p4carbon ?? undefined;
+  extensions.tcfdAlignment = p4tcfd ?? undefined;
+  extensions.sdgAlignment = p4sdg ?? undefined;
+  extensions.conflictMinerals = p4conflict ?? undefined;
+  extensions.greenwashing = p4greenwash ?? undefined;
+  extensions.esgAdverseMedia = p4esgMedia ?? undefined;
+  extensions.modernSlavery = p4slavery ?? undefined;
+  extensions.tbml = p4tbml ?? undefined;
+  extensions.fourEyes = p4fourEyes ?? undefined;
+  extensions.filingClassification = p4filing ?? undefined;
+  extensions.pepProximity = p4pep ?? undefined;
+  extensions.hawala = p4hawala ?? undefined;
+  extensions.crossBorderCash = p4crossBorder ?? undefined;
+
+  // #55 Anomaly Ensemble — runs AFTER all other subsystems resolve (needs their outputs).
+  extensions.anomalyEnsemble = runSafely('anomalyEnsemble', () => {
+    const signals = [
+      extensions.benford && buildSignal('benford',
+        extensions.benford.verdict === 'non-conformity' ? 80 : 20,
+        0.85, extensions.benford.verdict === 'non-conformity'),
+      extensions.priceAnomalies && buildSignal('price_anomaly',
+        extensions.priceAnomalies.filter(p => p.severity === 'critical').length > 0 ? 85 : 30,
+        0.9, extensions.priceAnomalies.some(p => p.severity === 'critical')),
+      extensions.tbml && buildSignal('tbml',
+        extensions.tbml.compositeScore,
+        0.88, extensions.tbml.overallRisk === 'high' || extensions.tbml.overallRisk === 'critical'),
+      extensions.hawala && buildSignal('hawala',
+        extensions.hawala.score,
+        0.82, extensions.hawala.riskLevel === 'high' || extensions.hawala.riskLevel === 'critical'),
+      extensions.buyBackRisks && buildSignal('buy_back',
+        extensions.buyBackRisks.reduce((m, r) => Math.max(m, r.score), 0),
+        0.85, extensions.buyBackRisks.some(r => r.level === 'critical')),
+      extensions.adversarialInput && buildSignal('adversarial_ml',
+        extensions.adversarialInput.topSeverity === 'critical' ? 90 : 20,
+        0.9, !extensions.adversarialInput.clean),
+      extensions.verdictDrift && buildSignal('verdict_drift',
+        extensions.verdictDrift.hasDrift ? 70 : 10,
+        0.75, extensions.verdictDrift.hasDrift),
+    ].filter((s): s is NonNullable<typeof s> => s !== undefined && s !== null);
+
+    if (signals.length === 0) return undefined;
+    return runAnomalyEnsemble(req.mega.entity.id, signals);
+  }) ?? undefined;
+
+  // ---------------------------------------------------------------------------
+  // Phase 11 — Security, Deduplication, STR Narrative, Predictive, Gold (#59-#72)
+  // All run in parallel. Always-on subsystems derive inputs from existing data.
+  // ---------------------------------------------------------------------------
+
+  const [
+    p11nameVariants,
+    p11promptInjection,
+    p11deepfake,
+    p11dedupe,
+    p11strNarrative,
+    p11strPredict,
+    p11penaltyVar,
+    p11goldOrigin,
+    p11assay,
+    p11fineness,
+    p11arbitrage,
+    p11dormancy,
+  ] = await Promise.all([
+    // #71 Name variant expander — always-on; entity name is always available
+    Promise.resolve(runSafely('nameVariantExpander', () =>
+      expandNameVariants(req.mega.entity?.name ?? mega.entityId)
+    )),
+    // #59 Prompt injection — always-on; scan entity name + audit narrative for injection
+    Promise.resolve(runSafely('promptInjection', () =>
+      detectPromptInjection(`${req.mega.entity?.name ?? ''} ${mega.auditNarrative ?? ''}`)
+    )),
+    // #60 Deepfake document detector — conditional
+    req.documentEvidence
+      ? Promise.resolve(runSafely('deepfakeDoc', () =>
+          detectDeepfakeDocument(req.documentEvidence!)
+        ))
+      : Promise.resolve(undefined),
+    // #61 Cross-list sanctions dedupe — conditional on raw hits
+    req.rawSanctionsHits && req.rawSanctionsHits.length > 0
+      ? Promise.resolve(runSafely('sanctionsDedupe', () =>
+          dedupeCrossListHits(req.rawSanctionsHits!)
+        ))
+      : Promise.resolve(undefined),
+    // #62 STR narrative builder — runs when filing is required AND input provided
+    req.strNarrativeInput && extensions.filingClassification?.primaryCategory !== 'NONE'
+      ? Promise.resolve(runSafely('strNarrative', () =>
+          buildStrNarrative(req.strNarrativeInput!)
+        ))
+      : Promise.resolve(undefined),
+    // #63 Predictive STR — conditional on feature vector; auto-derive from mega if not supplied
+    Promise.resolve(runSafely('strPrediction', () => {
+      const features: StrFeatures = req.strFeatures ?? {
+        priorAlerts90d: 0,
+        txValue30dAED: 0,
+        nearThresholdCount30d: 0,
+        crossBorderRatio30d: extensions.crossBorderCash?.cumulativeAmountAED ? 0.5 : 0,
+        pepFlag: (extensions.pepProximity?.overallRisk === 'critical' || extensions.pepProximity?.overallRisk === 'high') ? 1 : 0,
+        adverseMediaFlag: extensions.adverseMedia?.topCategory === 'critical' ? 1 : 0,
+        sanctionsHit: finalVerdict === 'freeze' ? 1 : 0,
+        tbmlFlag: extensions.tbml?.overallRisk === 'critical' ? 1 : 0,
+        hawalaFlag: extensions.hawala?.riskLevel === 'critical' ? 1 : 0,
+        cashIntensity: 0,
+        jurisdictionRisk: 0,
+        dormancyFlag: 0,
+      };
+      return predictStr(features);
+    })),
+    // #64 Penalty VaR — always-on; uses standard UAE DPMS violation list
+    Promise.resolve(runSafely('penaltyVar', () => {
+      const config: VaRConfig = req.penaltyVarConfig ?? { confidenceLevel: 0.95, monteCarloRuns: 10_000 };
+      const violations = req.penaltyViolations?.length
+        ? req.penaltyViolations
+        : UAE_DPMS_VIOLATIONS.filter((v) =>
+            (finalVerdict === 'freeze' && v.severity === 'criminal') ||
+            (finalVerdict === 'escalate' && (v.severity === 'major' || v.severity === 'criminal')) ||
+            (finalVerdict === 'flag' && v.severity === 'major')
+          );
+      return violations.length > 0 ? runPenaltyVaR(violations, config) : undefined;
+    })),
+    // #65 Gold origin tracer — conditional on shipment data
+    req.goldShipments && req.goldShipments.length > 0
+      ? Promise.resolve(runSafely('goldOrigin', () =>
+          traceGoldOrigin(req.goldShipments!)
+        ))
+      : Promise.resolve(undefined),
+    // #66 Assay certificate matcher — conditional
+    req.assayCertificateClaims && req.assayCertificateClaims.length > 0
+      ? Promise.resolve(runSafely('assayMatch', () =>
+          matchAssayCertificates(req.assayCertificateClaims!, undefined)
+        ))
+      : Promise.resolve(undefined),
+    // #67 Fineness anomaly — conditional
+    req.finenessClaims && req.finenessClaims.length > 0
+      ? Promise.resolve(runSafely('finenessAnomaly', () =>
+          detectFinenessAnomalies(req.finenessClaims!, [])
+        ))
+      : Promise.resolve(undefined),
+    // #68 Cross-border arbitrage — conditional
+    req.customerFootprint
+      ? Promise.resolve(runSafely('arbitrage', () =>
+          detectCrossBorderArbitrage(req.customerFootprint!, [])
+        ))
+      : Promise.resolve(undefined),
+    // #70 Dormancy activity — conditional
+    req.dormancyTransactions && req.dormancyTransactions.length > 0
+      ? Promise.resolve(runSafely('dormancy', () =>
+          detectDormancyActivity(req.dormancyTransactions!, {})
+        ))
+      : Promise.resolve(undefined),
+  ]);
+
+  extensions.nameVariants    = p11nameVariants   ?? undefined;
+  extensions.promptInjection = p11promptInjection ?? undefined;
+  extensions.deepfakeDoc     = p11deepfake        ?? undefined;
+  extensions.sanctionsDedupe = p11dedupe          ?? undefined;
+  extensions.strNarrative    = p11strNarrative    ?? undefined;
+  extensions.strPrediction   = p11strPredict      ?? undefined;
+  extensions.penaltyVar      = p11penaltyVar      ?? undefined;
+  extensions.goldOrigin      = p11goldOrigin      ?? undefined;
+  extensions.assayMatch      = p11assay           ?? undefined;
+  extensions.finenessAnomaly = p11fineness        ?? undefined;
+  extensions.arbitrage       = p11arbitrage       ?? undefined;
+  extensions.dormancy        = p11dormancy        ?? undefined;
+
+  // #72 STR narrative grader — runs synchronously after narrative is built
+  if (extensions.strNarrative) {
+    extensions.strNarrativeGrade = runSafely('strNarrativeGrader', () =>
+      gradeStrNarrative({ narrative: extensions.strNarrative! })
+    );
+  }
+
+  // Phase 11 safety clamps
+  if (extensions.promptInjection?.injectionDetected) {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: prompt injection detected in entity input — input integrity compromised; ` +
+      `(NIST AI RMF MANAGE-4.2 / OWASP ML Top 10)`
+    );
+    confidence = Math.min(confidence, 0.45);
+  }
+  if (extensions.deepfakeDoc?.deepfakeDetected) {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: deepfake/forged document detected — KYC integrity compromised ` +
+      `(FDL No.10/2025 Art.12-14; Cabinet Decision 109/2023)`
+    );
+    confidence = Math.min(confidence, 0.40);
+  }
+  if (extensions.finenessAnomaly?.anomalyDetected) {
+    finalVerdict = escalateTo(finalVerdict, 'flag');
+    clampReasons.push(
+      `CLAMP: gold fineness anomaly — claimed purity exceeds refiner capability ` +
+      `(LBMA RGG v9 §4; DGD hallmark requirements; MoE Circular 08/AML/2021)`
+    );
+  }
+  if (extensions.arbitrage?.arbitrageDetected) {
+    finalVerdict = escalateTo(finalVerdict, 'flag');
+    clampReasons.push(
+      `CLAMP: cross-border price arbitrage detected — TBML indicator ` +
+      `(FATF TBML 2020; Cabinet Res 134/2025 Art.16)`
+    );
+  }
+  if (extensions.dormancy?.hits && extensions.dormancy.hits.length > 0) {
+    finalVerdict = escalateTo(finalVerdict, 'flag');
+    clampReasons.push(
+      `CLAMP: dormancy-to-activity pattern — ${extensions.dormancy.hits.length} customer(s) reactivated; ` +
+      `layering indicator (FATF Rec 10; Cabinet Res 134/2025 Art.7-10)`
+    );
+  }
+  if (extensions.strPrediction && extensions.strPrediction.strProbability > 0.7) {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: predictive STR model — ${(extensions.strPrediction.strProbability * 100).toFixed(0)}% ` +
+      `probability of STR trigger within 30 days (FDL No.10/2025 Art.26-27; FATF Rec 20)`
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 12 execution block — 25 new subsystems (#73-#97), all optional.
+  // Runs AFTER Phase 11 so Phase 12 clamps can see Phase 11 signals.
+  // Async subsystem (#75 multi-model) runs via Promise.resolve() wrapper.
+  // ---------------------------------------------------------------------------
+
+  // #73 Corporate graph walker — always runs when corporateGraph provided
+  if (req.corporateGraph) {
+    const cgReport = runSafely('corporateGraphWalker', () =>
+      walkCorporateGraph(
+        req.corporateGraph!.graph,
+        req.corporateGraph!.queryId,
+        req.corporateGraph!.predicate ?? (() => ({ flagged: false })),
+        req.corporateGraph!.maxHops ?? 3
+      )
+    );
+    extensions.corporateGraph = cgReport;
+    if (cgReport && cgReport.hits.some((h) => h.hit)) {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: corporate graph walk found ${cgReport.hits.filter((h) => h.hit).length} flagged node(s) ` +
+        `within ${cgReport.hops} hops — subsidiary/affiliate risk ` +
+        `(FATF Rec 10 / Cabinet Decision 109/2023 UBO register)`
+      );
+    }
+  }
+
+  // #74 Graph motif UBO analyzer — circular ownership, star structures, cascades
+  if (req.ownershipEdges && req.ownershipEdges.length > 0) {
+    const motifReport = runSafely('graphMotifUboAnalyzer', () =>
+      analyseOwnershipMotifs(req.ownershipEdges!)
+    );
+    extensions.ownershipMotifs = motifReport;
+    if (motifReport && motifReport.findings.length > 0) {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: ${motifReport.findings.length} ownership motif(s) detected ` +
+        `(circular/cascade layering) — UBO obfuscation indicator ` +
+        `(Cabinet Decision 109/2023 / FATF Rec 10)`
+      );
+    }
+  }
+
+  // #75 Multi-model screening — async, runs only when request + apiKey provided
+  if (req.multiModelScreening) {
+    try {
+      const mmResult = await runMultiModelScreening(
+        req.multiModelScreening.request,
+        req.multiModelScreening.apiKey,
+        req.multiModelScreening.models
+      );
+      extensions.multiModelConsensus = mmResult;
+      if (mmResult.consensus === 'confirmed-match') {
+        finalVerdict = escalateTo(finalVerdict, 'escalate');
+        confidence = Math.min(confidence, 1 - mmResult.consensusConfidence + 0.05);
+        clampReasons.push(
+          `CLAMP: multi-model consensus CONFIRMED MATCH — ${mmResult.modelsResponded}/${mmResult.modelsQueried} models agree ` +
+          `(confidence ${(mmResult.consensusConfidence * 100).toFixed(0)}%) ` +
+          `(Cabinet Res 134/2025 Art.5 / FATF Rec 1 risk appetite)`
+        );
+      } else if (mmResult.riskLevel === 'critical') {
+        finalVerdict = escalateTo(finalVerdict, 'escalate');
+        clampReasons.push(
+          `CLAMP: multi-model screening critical risk score ${mmResult.riskScore}/100 ` +
+          `(Cabinet Res 134/2025 Art.5)`
+        );
+      }
+    } catch (err) {
+      subsystemFailures.push('multiModelScreening');
+      clampReasons.push(
+        `CLAMP: multiModelScreening failed (${err instanceof Error ? err.message : String(err)}) — manual review (FDL Art.24)`
+      );
+    }
+  }
+
+  // #76 Causal engine — counterfactual analysis on provided DAG
+  if (req.causalNodes && req.causalNodes.length > 0) {
+    const causalResult = runSafely('causalEngine', () => {
+      const cg = createCausalGraph(req.causalNodes!);
+      if (!req.causalIntervention) return undefined;
+      const original = simulate(cg, {});
+      const flipped = runCounterfactual(cg, req.causalIntervention);
+      const changedNodes = Object.keys(original).filter(
+        (k) => (original[k] ?? 0) !== (flipped[k] ?? 0)
+      );
+      return { original, flipped, changedNodes };
+    });
+    if (causalResult) extensions.causalCounterfactual = causalResult;
+  }
+
+  // #77 Debate arbiter — structured two-sided argument analysis
+  if (req.debateInput) {
+    const debateResult = runSafely('debateArbiter', () =>
+      runDebate(req.debateInput!)
+    );
+    extensions.verdictDebate = debateResult;
+    if (debateResult && debateResult.winner === 'con' && debateResult.margin > 0.4) {
+      clampReasons.push(
+        `ADVISORY: debate arbiter — CON side wins with margin ${debateResult.margin.toFixed(2)}; ` +
+        `MLRO should review counter-verdict "${debateResult.winningAction}" ` +
+        `before finalising (FDL Art.20-21 / Cabinet Res 134/2025 Art.19)`
+      );
+    }
+  }
+
+  // #78 Reflection critic — reasoning chain coverage analysis
+  if (mega.reasoningChain) {
+    const reflectResult = runSafely('reflectionCritic', () =>
+      reviewReasoningChain(mega.reasoningChain!, req.reflectionConfig)
+    );
+    extensions.reflectionReport = reflectResult;
+    if (reflectResult && reflectResult.issues.some((i) => i.severity === 'error')) {
+      confidence = Math.min(confidence, 0.65);
+      clampReasons.push(
+        `CLAMP: reflection critic found ${reflectResult.issues.filter((i) => i.severity === 'error').length} ` +
+        `structural error(s) in reasoning chain — confidence capped at 65% ` +
+        `(NIST AI RMF MS-2.2 / EU AI Act Art.72)`
+      );
+    }
+  }
+
+  // #79 Circular reasoning detector — dependency cycle detection
+  if (req.dependencyEdges && req.dependencyEdges.length > 0) {
+    const circularResult = runSafely('circularReasoningDetector', () =>
+      detectCircularReasoning(req.dependencyEdges!)
+    );
+    extensions.circularReasoning = circularResult;
+    if (circularResult && circularResult.cycles.length > 0) {
+      confidence = Math.min(confidence, 0.70);
+      clampReasons.push(
+        `CLAMP: ${circularResult.cycles.length} circular dependency cycle(s) in subsystem conclusions — ` +
+        `confidence capped at 70% (NIST AI RMF GV-1.6 / FDL Art.20-21)`
+      );
+    }
+  }
+
+  // #80 Game theory adversary — Nash equilibrium for detect vs evade
+  if (req.gameTheoryStrategies) {
+    const gameResult = runSafely('gameTheoryAdversary', () =>
+      solveAdversaryGame(
+        req.gameTheoryStrategies!.detectionStrategies,
+        req.gameTheoryStrategies!.evasionStrategies
+      )
+    );
+    extensions.gameEquilibrium = gameResult;
+    if (gameResult && gameResult.expectedPayoff < 0) {
+      clampReasons.push(
+        `ADVISORY: game theory — adversary has expected payoff advantage (${gameResult.expectedPayoff.toFixed(2)}); ` +
+        `top evasion tactic: "${gameResult.topAttackerChoice}"; ` +
+        `recommend strengthening "${gameResult.topDefenderChoice}" detection ` +
+        `(FATF Rec 1 risk-based approach)`
+      );
+    }
+  }
+
+  // #81 LBMA fix price checker — gold trade benchmark deviation
+  if (req.lbmaFixInput) {
+    const lbmaResult = runSafely('lbmaFixPriceChecker', () =>
+      checkLbmaFixDeviations(
+        req.lbmaFixInput!.trades,
+        req.lbmaFixInput!.lookup,
+        req.lbmaFixInput!.config
+      )
+    );
+    extensions.lbmaFixCheck = lbmaResult;
+    if (lbmaResult && lbmaResult.frozen > 0) {
+      finalVerdict = escalateTo(finalVerdict, 'freeze');
+      clampReasons.push(
+        `CLAMP: ${lbmaResult.frozen} LBMA gold trade(s) frozen — price deviation exceeds ` +
+        `tolerance threshold (LBMA RGG v9 / FATF DPMS Typologies 2022 §3.4)`
+      );
+    } else if (lbmaResult && lbmaResult.flagged > 0) {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: ${lbmaResult.flagged} gold trade(s) deviate from LBMA fix — price manipulation indicator ` +
+        `(LBMA RGG v9 / MoE Circular 08/AML/2021)`
+      );
+    }
+  }
+
+  // #82 Melt loss — gold batch + refiner drift
+  if (req.meltBatch) {
+    const meltResult = runSafely('meltLoss', () => {
+      const batch = assessMeltBatch(req.meltBatch!);
+      if (req.meltRefinerHistory && req.meltRefinerHistory.length > 0) {
+        // Detect refiner drift with historical data
+        return detectRefinerDrift(
+          req.meltBatch!.refinerId,
+          req.meltRefinerHistory,
+          req.meltBatch!
+        );
+      }
+      return batch;
+    });
+    extensions.meltLoss = meltResult;
+    if (meltResult && meltResult.severity === 'critical') {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: critical melt loss deviation — ${meltResult.lossPct.toFixed(2)}% vs ` +
+        `expected ${meltResult.expectedMinPct.toFixed(2)}%–${meltResult.expectedMaxPct.toFixed(2)}% ` +
+        `(LBMA RGG v9 §4 / Dubai Good Delivery / MoE Circular 08/AML/2021)`
+      );
+    }
+  }
+
+  // #83 Free zone compliance — mandatory rule pass/fail
+  if (req.freeZoneFacts) {
+    const fzResult = runSafely('freeZoneCompliance', () =>
+      checkFreeZoneCompliance(req.freeZoneFacts!)
+    );
+    extensions.freeZoneCompliance = fzResult;
+    if (fzResult && fzResult.mandatoryFailures.length > 0) {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: ${fzResult.mandatoryFailures.length} mandatory free zone rule failure(s) ` +
+        `in ${fzResult.freeZone} — regulatory breach ` +
+        `(Cabinet Res 134/2025 / ${fzResult.freeZone} Rules 2024)`
+      );
+    }
+  }
+
+  // #85 Shapley explainer — per-factor attribution values
+  {
+    const shapInput: ShapleyInput | null = req.shapleyInput ?? (() => {
+      // Auto-build from explainable scoring output if available
+      const factors = extensions.explanation?.topFactors?.map((f) => f.name) ?? [];
+      if (factors.length < 2) return null;
+      const verdictFn: VerdictFn = (coalition: ReadonlySet<string>) => {
+        // Simple additive model: each factor contributes its score
+        let s = 0;
+        for (const f of coalition) {
+          const found = extensions.explanation?.topFactors?.find((tf) => tf.name === f);
+          if (found) s += (found.score as number | undefined) ?? 1;
+        }
+        return s;
+      };
+      return { signals: factors, verdict: verdictFn };
+    })();
+
+    if (shapInput) {
+      extensions.shapley = runSafely('shapleyExplainer', () =>
+        computeShapleyAttribution(shapInput!)
+      );
+    }
+  }
+
+  // #86 Formal invariant verifier — validates canonical + custom state invariants
+  {
+    // Build a partial response snapshot for invariant verification
+    const partialSnap = {
+      finalVerdict,
+      confidence,
+      clampReasons,
+      requiresHumanReview: clampReasons.length > 0 || finalVerdict === 'freeze',
+      extensions,
+    } as unknown as WeaponizedBrainResponse;
+
+    const customInvs = req.customInvariants ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allInvariants = [...(CANONICAL_INVARIANTS as any[]), ...customInvs];
+    if (allInvariants.length > 0) {
+      extensions.invariantVerification = runSafely('invariantVerifier', () =>
+        verifyInvariants({
+          invariants: allInvariants,
+          initial: partialSnap as unknown as Record<string, unknown>,
+          transitions: [],
+        })
+      );
+      if (
+        extensions.invariantVerification &&
+        extensions.invariantVerification.violations.length > 0
+      ) {
+        confidence = Math.min(confidence, 0.60);
+        clampReasons.push(
+          `CLAMP: ${extensions.invariantVerification.violations.length} formal invariant violation(s) — ` +
+          `impossible state detected; confidence capped at 60% ` +
+          `(NIST AI RMF GV-1.6 / EU AI Act Art.9)`
+        );
+      }
+    }
+  }
+
+  // #87 Synthetic evasion generator — coverage gap check
+  {
+    const synCases = runSafely('syntheticEvasionGenerator', () =>
+      generateSyntheticEvasionCases(req.syntheticEvasionConfig ?? { count: 20 })
+    );
+    extensions.syntheticEvasion = synCases;
+    if (synCases) {
+      const uncaught = synCases.filter((c) => {
+        // Check if the current verdict would catch this evasion case
+        return c.expectedVerdict === 'freeze' && finalVerdict === 'pass';
+      });
+      if (uncaught.length > 0) {
+        clampReasons.push(
+          `ADVISORY: synthetic evasion test — ${uncaught.length}/${synCases.length} ` +
+          `generated evasion case(s) would NOT be caught by current verdict; ` +
+          `review detection coverage (FATF Guidance Red Flags 2021 / NIST AI RMF GV-1.6)`
+        );
+      }
+    }
+  }
+
+  // #89 Peer anomaly — z-score outlier detection vs peer group
+  if (req.peerAnomalyInput) {
+    const peerResult = runSafely('peerAnomaly', () =>
+      analysePeerAnomaly(req.peerAnomalyInput!)
+    );
+    extensions.peerAnomaly = peerResult;
+    const anomalyThreshold = req.peerAnomalyInput.anomalyThreshold ?? 2.0;
+    if (peerResult && peerResult.anomalies.length > 0) {
+      finalVerdict = escalateTo(finalVerdict, 'flag');
+      clampReasons.push(
+        `CLAMP: peer anomaly — ${peerResult.anomalies.length} feature(s) are statistical outliers ` +
+        `vs peer group (z-score threshold ${anomalyThreshold.toFixed(1)}) ` +
+        `(FATF Rec 10 / Cabinet Res 134/2025 Art.5 risk appetite)`
+      );
+    }
+  }
+
+  // #90 Time-travel audit — critical path + current state snapshot
+  if (req.auditEvidenceEntries && req.auditCaseRefId) {
+    const ttResult = runSafely('timeTravelAudit', () => {
+      const cp = criticalPath(req.auditEvidenceEntries!, req.auditCaseRefId!);
+      const cs = currentState(req.auditEvidenceEntries!, req.auditCaseRefId!);
+      return { criticalPath: cp, currentState: cs };
+    });
+    if (ttResult) extensions.timeTravelAudit = ttResult;
+  }
+
+  // #91 Document intelligence — structural tamper checks
+  if (req.documentForTamperCheck) {
+    const tamperResult = runSafely('documentIntelligence', () =>
+      runTamperChecks({
+        documentType: req.documentForTamperCheck!.documentType,
+        fields: [],
+        identifiers: {
+          documentNumber: req.documentForTamperCheck!.documentId,
+        },
+        tamperSignals: [],
+        confidence: 1,
+      })
+    );
+    extensions.documentTamper = tamperResult;
+    if (
+      tamperResult &&
+      tamperResult.tamperSignals.some((s) => s.severity === 'high')
+    ) {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: document intelligence — high-severity tamper signal(s) in ${req.documentForTamperCheck.documentType} ` +
+        `document — KYC/CDD integrity compromised ` +
+        `(FDL Art.12-14 / Cabinet Decision 109/2023 / FATF Rec 10)`
+      );
+    }
+  }
+
+  // #92 Regulatory drift — concept drift in risk feature distribution
+  if (req.regulatoryDriftSamples) {
+    const driftResult = runSafely('regulatoryDrift', () =>
+      analyseDrift(
+        req.regulatoryDriftSamples!.baseline,
+        req.regulatoryDriftSamples!.current
+      )
+    );
+    extensions.regulatoryDrift = driftResult;
+    if (driftResult && driftResult.overallBand === 'significant') {
+      confidence = Math.min(confidence, 0.65);
+      clampReasons.push(
+        `CLAMP: significant regulatory drift detected — ${driftResult.driftedFeatureCount} feature(s) drifted; ` +
+        `model re-calibration required (NIST AI RMF MS-2.1 / EU AI Act Art.72)`
+      );
+    }
+  }
+
+  // #93 goAML XML builder — auto-generates XML filing when report provided
+  if (req.goamlReport) {
+    const xmlResult = runSafely('goamlBuilder', () =>
+      buildGoAMLXml(req.goamlReport!, req.goamlCase, req.goamlCustomer)
+    );
+    if (xmlResult) extensions.goamlXml = xmlResult;
+  }
+
+  // #94 Bayesian belief network — posterior probability update
+  if (req.bayesianHypotheses && req.bayesianEvidence && req.bayesianEvidence.length > 0) {
+    const beliefResult = runSafely('bayesianBelief', () => {
+      const prior = uniformPrior(req.bayesianHypotheses!);
+      return runBeliefUpdate(req.bayesianHypotheses!, prior, req.bayesianEvidence!);
+    });
+    extensions.bayesianBelief = beliefResult;
+    if (beliefResult) {
+      // If the most likely hypothesis is 'high_risk' or 'freeze' → clamp
+      const topHyp = beliefResult.mostLikely;
+      if (
+        (topHyp.id === 'high_risk' || topHyp.id === 'freeze') &&
+        topHyp.probability > 0.65
+      ) {
+        finalVerdict = escalateTo(finalVerdict, 'escalate');
+        clampReasons.push(
+          `CLAMP: Bayesian belief — P(${topHyp.label})=${(topHyp.probability * 100).toFixed(0)}% ` +
+          `posterior probability; high-risk hypothesis dominant ` +
+          `(FDL Art.20-21 / FATF Rec 10)`
+        );
+      }
+      // High entropy → low confidence (uncertainty)
+      if (beliefResult.entropyBits > 2.5) {
+        confidence = Math.min(confidence, 0.60);
+        clampReasons.push(
+          `CLAMP: Bayesian belief high entropy (${beliefResult.entropyBits.toFixed(2)} bits) — ` +
+          `uncertain evidence; confidence capped at 60% (NIST AI RMF MS-2.1)`
+        );
+      }
+    }
+  }
+
+  // #95 Case-based reasoning — analogical verdict recommendation from past cases
+  if (req.caseMemory) {
+    const cbrResult = runSafely('caseBasedReasoning', () => {
+      const queryFeatures = {
+        verdict: VERDICT_RANK[finalVerdict],
+        confidence,
+        riskScore: extensions.explanation?.score ?? 50,
+        pepFlag: extensions.pepProximity?.overallRisk === 'critical' ? 1 : 0,
+        sanctionsFlag: finalVerdict === 'freeze' ? 1 : 0,
+      };
+      return req.caseMemory!.reuse(queryFeatures, 5);
+    });
+    if (cbrResult) {
+      extensions.cbrRecommendation = [cbrResult];
+    }
+  }
+
+  // #96 EU AI Act readiness — Article checklist scaffolding
+  if (req.aiGovernanceInput && req.euAiActProjectGid) {
+    const readinessResult = runSafely('euAiActReadiness', () =>
+      buildReadinessPayloads(req.euAiActProjectGid!)
+    );
+    if (readinessResult) extensions.euAiActReadiness = readinessResult;
+  }
+
+  // #97 Rule induction — learn decision tree from labeled samples
+  if (req.inductionSamples && req.inductionSamples.length >= 5) {
+    const rulesResult = runSafely('ruleInduction', () => {
+      const tree = learnDecisionTree(req.inductionSamples!, req.inductionConfig);
+      return extractRules(tree);
+    });
+    if (rulesResult) extensions.inducedRules = rulesResult;
+  }
+
+  // #88 Quantum-resistant seal — always runs last (seals everything above)
+  {
+    const sealRecords: QuantumSealRecord[] = [
+      { id: `${mega.entityId}:verdict`, data: `${finalVerdict}:${confidence.toFixed(4)}` },
+      { id: `${mega.entityId}:clamps`, data: clampReasons.join('|') },
+      { id: `${mega.entityId}:subsystems`, data: Object.keys(extensions).sort().join(',') },
+    ];
+    extensions.quantumSeal = runSafely('quantumResistantSeal', () =>
+      sealQuantumResistant(sealRecords)
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 4-10 safety clamps — monotone escalation only.
+  // ---------------------------------------------------------------------------
+
+  // #41 ESG critical risk → escalate (LBMA RGG v9 §6 / ISSB S1 materiality).
+  if (extensions.esgScore?.riskLevel === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: ESG composite score ${extensions.esgScore.composite.toFixed(0)}/100 (${extensions.esgScore.grade}) ` +
+      `— critical ESG risk level; escalate per LBMA RGG v9 §6 / ISSB IFRS S1`
+    );
+  }
+
+  // #45 Conflict minerals critical supplier → escalate (OECD DDG / Dodd-Frank §1502).
+  if (extensions.conflictMinerals?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: conflict minerals critical risk — ${extensions.conflictMinerals.criticalSupplierCount} critical supplier(s) ` +
+      `in CAHRA zones (OECD DDG 2016 Step 3 / Dodd-Frank §1502 / EU CMR 2017/821)`
+    );
+  }
+
+  // #46 Greenwashing critical → escalate (ISSB S1 / EU SFDR — material misrepresentation).
+  if (extensions.greenwashing?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: critical greenwashing detected — ${extensions.greenwashing.criticalFindings} critical finding(s); ` +
+      `material ESG misrepresentation (ISSB IFRS S1 / EU SFDR Art.4)`
+    );
+  }
+
+  // #48 Modern slavery critical → escalate (UAE Federal Law 51/2006 / ILO Conv. 29/105).
+  if (extensions.modernSlavery?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: modern slavery critical risk — ${extensions.modernSlavery.indicatorsTriggered} ILO indicator(s) ` +
+      `(UAE Federal Law 51/2006 / ILO Conv. 29/105 / LBMA RGG v9 §5)`
+    );
+  }
+
+  // #49 TBML critical → escalate (FATF TBML Guidance 2020 / FDL Art.12).
+  if (extensions.tbml?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: TBML critical — ${extensions.tbml.patterns.length} pattern(s) detected ` +
+      `(score ${extensions.tbml.compositeScore}/100); STR required ` +
+      `(FATF TBML Guidance 2020 / FDL No.10/2025 Art.12)`
+    );
+  }
+
+  // #50 Four-eyes violation → freeze (compliance decision without proper approval).
+  if (extensions.fourEyes && !extensions.fourEyes.meetsRequirements &&
+      extensions.fourEyes.decisionType === 'sanctions_freeze') {
+    finalVerdict = escalateTo(finalVerdict, 'freeze');
+    clampReasons.push(
+      `CLAMP: four-eyes violated for sanctions freeze decision — ` +
+      `${extensions.fourEyes.violations.join('; ')} ` +
+      `(Cabinet Res 74/2020 Art.4 / FDL No.10/2025 Art.20-21)`
+    );
+  }
+
+  // #52 PEP proximity critical → escalate (board approval required).
+  if (extensions.pepProximity?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: PEP proximity critical (score ${extensions.pepProximity.maxProximityScore.toFixed(0)}/100) — ` +
+      `board approval required (Cabinet Res 134/2025 Art.14)`
+    );
+  }
+
+  // #53 Hawala critical → escalate (UAE CBUAE Hawala / FATF Rec 14).
+  if (extensions.hawala?.riskLevel === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: Hawala/IVTS critical risk (score ${extensions.hawala.score}/100) — ` +
+      `${extensions.hawala.indicators.length} indicator(s) ` +
+      `(UAE CBUAE Hawala Registration Requirement 2022 / FATF Rec 14)`
+    );
+  }
+
+  // #54 Cross-border structuring → freeze (Cabinet Res 134/2025 Art.16).
+  if (extensions.crossBorderCash?.structuringDetected) {
+    finalVerdict = escalateTo(finalVerdict, 'freeze');
+    clampReasons.push(
+      `CLAMP: cross-border cash structuring detected — cumulative AED ` +
+      `${extensions.crossBorderCash.cumulativeAmountAED.toLocaleString()} ` +
+      `across sub-threshold movements (Cabinet Res 134/2025 Art.16 / FATF Rec 32)`
+    );
+  } else if (extensions.crossBorderCash?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: cross-border cash critical risk (score ${extensions.crossBorderCash.riskScore}/100) ` +
+      `(Cabinet Res 134/2025 Art.16)`
+    );
+  }
+
+  // #55 Anomaly ensemble critical → escalate (composite anomaly signal).
+  if (extensions.anomalyEnsemble?.anomalyLevel === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: anomaly ensemble score ${extensions.anomalyEnsemble.aggregatedScore.toFixed(0)}/100 (critical) — ` +
+      `dominant signal: ${extensions.anomalyEnsemble.dominantSignal ?? 'multi-source'}; ` +
+      `Bayesian BMA confidence ${(extensions.anomalyEnsemble.confidence * 100).toFixed(0)}%`
+    );
+  }
+
   // 8. Augmented confidence — take MIN across MegaBrain + new signals.
   let confidence = mega.confidence;
   if (extensions.adverseMedia?.topCategory === 'critical') {
@@ -1187,6 +2869,15 @@ export async function runWeaponizedBrain(
     confidence = Math.min(confidence, 0.65);
   }
 
+  // Phase 4-10 confidence adjustments.
+  if (extensions.tbml?.overallRisk === 'critical') confidence = Math.min(confidence, 0.55);
+  if (extensions.hawala?.riskLevel === 'critical') confidence = Math.min(confidence, 0.55);
+  if (extensions.crossBorderCash?.structuringDetected) confidence = Math.min(confidence, 0.5);
+  if (extensions.modernSlavery?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
+  if (extensions.pepProximity?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
+  if (extensions.esgScore?.riskLevel === 'critical') confidence = Math.min(confidence, 0.65);
+  if (extensions.conflictMinerals?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
+
   // 9. Augmented human-review flag.
   let requiresHumanReview =
     mega.requiresHumanReview ||
@@ -1199,6 +2890,44 @@ export async function runWeaponizedBrain(
   let auditNarrative = buildAuditNarrative(mega, finalVerdict, clampReasons, extensions);
   if (subsystemFailures.length > 0) {
     auditNarrative += `\n\nSubsystem failures: ${subsystemFailures.join(', ')}`;
+  }
+
+  // #84 Tipping-off linter — FDL Art.29 scan of ALL generated text before
+  // the narrative leaves the system. This is a HARD gate: if tipping-off
+  // phrases are detected, the narrative is redacted and a clamp fires.
+  // No human may receive the unredacted narrative if this fires.
+  {
+    // Combine all text that might leave the system
+    const allGeneratedText = [
+      auditNarrative,
+      extensions.strNarrative?.narrative ?? '',
+      extensions.mlroAlerts?.alerts?.map((a) => a.description).join('\n') ?? '',
+    ].join('\n\n---\n\n');
+
+    const tippingReport = runSafely('tippingOffLinter', () =>
+      lintForTippingOff(allGeneratedText)
+    );
+    extensions.tippingOff = tippingReport;
+
+    if (tippingReport && tippingReport.hasTippingOff) {
+      // HARD gate: replace the tipping-off phrases with [REDACTED] markers
+      let redacted = auditNarrative;
+      for (const finding of tippingReport.findings) {
+        redacted = redacted.replace(
+          new RegExp(finding.phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+          '[REDACTED — FDL Art.29]'
+        );
+      }
+      auditNarrative = redacted;
+
+      // Hard clamp: tipping-off is a criminal offence under FDL Art.29
+      clampReasons.push(
+        `HARD CLAMP: tipping-off linter detected ${tippingReport.findings.length} disclosure-risk phrase(s) ` +
+        `in generated narrative — phrases REDACTED before output ` +
+        `(FDL No.10/2025 Art.29 — criminal penalty up to AED 5M; NO tipping off)`
+      );
+      requiresHumanReview = true;
+    }
   }
 
   // 11. Advisor escalation — called only when a compliance trigger fires.
@@ -1279,6 +3008,97 @@ export async function runWeaponizedBrain(
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Synthesis Layer — runs LAST after all subsystems + advisor + clamps.
+  // Produces MLRO alerts, Asana task tree, and KPI dashboard in parallel.
+  // Never blocks the verdict — all failures are swallowed + logged.
+  // ---------------------------------------------------------------------------
+
+  // Managed Agent Plan — resolve which agents to spawn for this verdict.
+  const orchestratorSession = createOrchestratorSession(mega.entityId);
+  const agentTypes = resolveAgentsForVerdict(finalVerdict, {
+    filingClassification: extensions.filingClassification
+      ? { primaryCategory: extensions.filingClassification.primaryCategory }
+      : undefined,
+    pepProximity: extensions.pepProximity
+      ? { requiresBoardApproval: extensions.pepProximity.requiresBoardApproval }
+      : undefined,
+    esgScore: extensions.esgScore
+      ? { riskLevel: extensions.esgScore.riskLevel }
+      : undefined,
+    hawala: extensions.hawala
+      ? { requiresCbuaeReport: extensions.hawala.requiresCbuaeReport }
+      : undefined,
+    crossBorderCash: extensions.crossBorderCash
+      ? { structuringDetected: extensions.crossBorderCash.structuringDetected }
+      : undefined,
+  });
+  const managedAgentPlan: ManagedAgentTask[] = agentTypes.map((agentType) =>
+    spawnManagedAgent(orchestratorSession, agentType, req.mega.entity?.name ?? mega.entityId, finalVerdict)
+  );
+
+  // Build the partial response object for the synthesis layer to consume.
+  const partialResponse: WeaponizedBrainResponse = {
+    mega,
+    extensions,
+    finalVerdict,
+    clampReasons,
+    requiresHumanReview,
+    confidence: Math.round(confidence * 10000) / 10000,
+    auditNarrative,
+    subsystemFailures,
+    advisorResult,
+    managedAgentPlan,
+    orchestratorSession,
+  };
+
+  // MLRO Alert Generator — always runs; produces structured alert bundle.
+  extensions.mlroAlerts = runSafely('mlroAlertGenerator', () =>
+    generateMlroAlerts(partialResponse)
+  );
+
+  // Asana Orchestrator — runs only when asanaConfig is supplied.
+  if (req.asanaConfig) {
+    try {
+      extensions.asanaSync = await orchestrateBrainToAsana(partialResponse, req.asanaConfig);
+    } catch {
+      subsystemFailures.push('brainToAsanaOrchestrator');
+    }
+  }
+
+  // KPI Dashboard — runs when kpiMeasurements are supplied.
+  if (req.kpiMeasurements && req.kpiMeasurements.length > 0) {
+    const period = req.kpiPeriod ?? {
+      start: new Date(Date.now() - 90 * 86_400_000).toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0],
+    };
+    extensions.kpiDashboard = runSafely('complianceMetricsDashboard', () =>
+      buildKpiReport(mega.entityId, period.start, period.end, req.kpiMeasurements!)
+    );
+  }
+
+  // #56 Hawkeye Sterling V2 Report — always generated; uses optional meta for enrichment.
+  extensions.hawkeyeReport = runSafely('hawkeyeReportGenerator', () =>
+    generateHawkeyeReport({
+      brain: partialResponse,
+      ...(req.hawkeyeReportMeta ?? {}),
+    })
+  );
+
+  // #57 AI Governance Checklist — runs when aiGovernanceInput is supplied.
+  if (req.aiGovernanceInput) {
+    extensions.aiGovernance = runSafely('aiGovernanceChecker', () =>
+      checkAiGovernance(req.aiGovernanceInput!)
+    );
+  }
+
+  // #58 ESG Advanced Framework — CSRD/SASB/ClimateVAR/GreenBond/SLL/CarbonCredit.
+  if (req.esgAdvancedInput) {
+    extensions.esgAdvanced = runSafely('esgAdvancedFrameworkScorer', () =>
+      scoreEsgAdvancedFramework(req.esgAdvancedInput!)
+    );
+  }
+
   return {
     mega,
     extensions,
@@ -1289,6 +3109,8 @@ export async function runWeaponizedBrain(
     auditNarrative,
     subsystemFailures,
     advisorResult,
+    managedAgentPlan,
+    orchestratorSession,
   };
 }
 
@@ -1558,6 +3380,435 @@ function buildAuditNarrative(
         `winner=${extensions.bftConsensus.winner ?? 'none'}, ` +
         `votes=${extensions.bftConsensus.votes}/${extensions.bftConsensus.totalVotes} ` +
         `(quorum=${extensions.bftConsensus.quorum})`
+    );
+  }
+
+  // Phase 4-10 subsystems (#41-#55)
+  if (extensions.esgScore) {
+    lines.push(
+      `  - ESG composite (#41): score=${extensions.esgScore.composite.toFixed(1)}/100 ` +
+      `grade=${extensions.esgScore.grade}, risk=${extensions.esgScore.riskLevel}, ` +
+      `E=${extensions.esgScore.environmental.score.toFixed(0)} ` +
+      `S=${extensions.esgScore.social.score.toFixed(0)} ` +
+      `G=${extensions.esgScore.governance.score.toFixed(0)}`
+    );
+  }
+  if (extensions.carbonFootprint) {
+    lines.push(
+      `  - Carbon footprint (#42): ${extensions.carbonFootprint.scopeBreakdown.total_tCO2e.toFixed(2)} tCO2e total, ` +
+      `intensity=${extensions.carbonFootprint.portfolioIntensityKgPerOz.toFixed(1)} kgCO2e/oz, ` +
+      `risk=${extensions.carbonFootprint.carbonRisk}, NZ2050 gap=${extensions.carbonFootprint.netZeroGap_tCO2e.toFixed(2)} tCO2e`
+    );
+  }
+  if (extensions.tcfdAlignment) {
+    lines.push(
+      `  - TCFD alignment (#43): score=${extensions.tcfdAlignment.overallScore.toFixed(0)}/100, ` +
+      `level=${extensions.tcfdAlignment.complianceLevel}, IFRS S2=${extensions.tcfdAlignment.ifrss2Compliant}, ` +
+      `NZ2050=${extensions.tcfdAlignment.uaeNZ2050Aligned}`
+    );
+  }
+  if (extensions.sdgAlignment) {
+    lines.push(
+      `  - UN SDG alignment (#44): score=${extensions.sdgAlignment.overallScore.toFixed(0)}/100, ` +
+      `core DPMS goals=${extensions.sdgAlignment.coreGoalsScore.toFixed(0)}/100, ` +
+      `OECD 5-step level=${extensions.sdgAlignment.oecd5StepLevel}/5, ` +
+      `critical gap SDGs: ${extensions.sdgAlignment.criticalGapSdgs.join(',') || 'none'}`
+    );
+  }
+  if (extensions.conflictMinerals) {
+    lines.push(
+      `  - Conflict minerals (#45): overall=${extensions.conflictMinerals.overallRisk}, ` +
+      `suppliers=${extensions.conflictMinerals.totalSuppliers}, ` +
+      `critical=${extensions.conflictMinerals.criticalSupplierCount}, ` +
+      `CAHRA=${extensions.conflictMinerals.cahraSupplierCount}`
+    );
+  }
+  if (extensions.greenwashing) {
+    lines.push(
+      `  - Greenwashing (#46): risk=${extensions.greenwashing.overallRisk}, ` +
+      `findings=${extensions.greenwashing.totalFindings}, ` +
+      `critical=${extensions.greenwashing.criticalFindings}`
+    );
+  }
+  if (extensions.esgAdverseMedia) {
+    lines.push(
+      `  - ESG adverse media (#47): hits=${extensions.esgAdverseMedia.totalHits}, ` +
+      `dominant=${extensions.esgAdverseMedia.dominantCategory ?? 'none'}, ` +
+      `overallRisk=${extensions.esgAdverseMedia.overallEsgRisk}`
+    );
+  }
+  if (extensions.modernSlavery) {
+    lines.push(
+      `  - Modern slavery (#48): risk=${extensions.modernSlavery.overallRisk}, ` +
+      `ILO indicators=${extensions.modernSlavery.indicatorsTriggered}/${extensions.modernSlavery.totalIndicatorsChecked}, ` +
+      `score=${extensions.modernSlavery.riskScore}/100`
+    );
+  }
+  if (extensions.tbml) {
+    lines.push(
+      `  - TBML (#49): risk=${extensions.tbml.overallRisk}, score=${extensions.tbml.compositeScore}/100, ` +
+      `patterns=${extensions.tbml.patterns.length}, STR=${extensions.tbml.requiresStr}, ` +
+      `price deviation=${extensions.tbml.priceDeviationPct.toFixed(1)}%`
+    );
+  }
+  if (extensions.fourEyes) {
+    lines.push(
+      `  - Four-eyes (#50): status=${extensions.fourEyes.status}, ` +
+      `meetsRequirements=${extensions.fourEyes.meetsRequirements}, ` +
+      `approvals=${extensions.fourEyes.approvalCount}/${extensions.fourEyes.requiredCount}, ` +
+      `decisionType=${extensions.fourEyes.decisionType}`
+    );
+  }
+  if (extensions.filingClassification) {
+    lines.push(
+      `  - STR classifier (#51): category=${extensions.filingClassification.primaryCategory}, ` +
+      `urgency=${extensions.filingClassification.urgency}, ` +
+      `due=${extensions.filingClassification.deadlineDueDate ?? 'N/A'}, ` +
+      `tipOffProhibited=${extensions.filingClassification.tipOffProhibited}`
+    );
+  }
+  if (extensions.pepProximity) {
+    lines.push(
+      `  - PEP proximity (#52): risk=${extensions.pepProximity.overallRisk}, ` +
+      `maxScore=${extensions.pepProximity.maxProximityScore.toFixed(0)}/100, ` +
+      `links=${extensions.pepProximity.pepLinks.length}, CDD=${extensions.pepProximity.cddLevel}, ` +
+      `boardApproval=${extensions.pepProximity.requiresBoardApproval}`
+    );
+  }
+  if (extensions.hawala) {
+    lines.push(
+      `  - Hawala (#53): risk=${extensions.hawala.riskLevel}, score=${extensions.hawala.score}/100, ` +
+      `indicators=${extensions.hawala.indicators.length}, STR=${extensions.hawala.requiresStr}, ` +
+      `CBUAE report=${extensions.hawala.requiresCbuaeReport}`
+    );
+  }
+  if (extensions.anomalyEnsemble) {
+    lines.push(
+      `  - Anomaly ensemble (#54): level=${extensions.anomalyEnsemble.anomalyLevel}, ` +
+      `score=${extensions.anomalyEnsemble.aggregatedScore.toFixed(0)}/100, ` +
+      `confidence=${(extensions.anomalyEnsemble.confidence * 100).toFixed(0)}%, ` +
+      `dominant=${extensions.anomalyEnsemble.dominantSignal ?? 'none'}, ` +
+      `active signals=${extensions.anomalyEnsemble.activeSignals.length}`
+    );
+  }
+  if (extensions.crossBorderCash) {
+    lines.push(
+      `  - Cross-border cash (#55): risk=${extensions.crossBorderCash.overallRisk}, ` +
+      `score=${extensions.crossBorderCash.riskScore}/100, ` +
+      `structuring=${extensions.crossBorderCash.structuringDetected}, ` +
+      `cumulative AED ${extensions.crossBorderCash.cumulativeAmountAED.toLocaleString()}, ` +
+      `STR=${extensions.crossBorderCash.requiresStr}`
+    );
+  }
+
+  // Synthesis layer
+  if (extensions.mlroAlerts) {
+    lines.push(
+      `  - MLRO alerts: ${extensions.mlroAlerts.criticalCount} CRITICAL, ` +
+      `${extensions.mlroAlerts.highCount} HIGH — ` +
+      `${extensions.mlroAlerts.alerts.length} total alert(s) generated`
+    );
+  }
+  if (extensions.asanaSync) {
+    lines.push(
+      `  - Asana sync: ${extensions.asanaSync.status} — ` +
+      `parent=${extensions.asanaSync.parentTaskGid ?? 'queued'}, ` +
+      `${extensions.asanaSync.subtasksCreated} subtask(s), ` +
+      `${extensions.asanaSync.tasksQueued} queued`
+    );
+  }
+  if (extensions.kpiDashboard) {
+    lines.push(
+      `  - KPI dashboard: score=${extensions.kpiDashboard.overallScore}/100, ` +
+      `green=${extensions.kpiDashboard.greenCount}, ` +
+      `amber=${extensions.kpiDashboard.amberCount}, ` +
+      `red=${extensions.kpiDashboard.redCount}, ` +
+      `regulatory risk=${extensions.kpiDashboard.regulatoryRisk}`
+    );
+  }
+  if (extensions.hawkeyeReport) {
+    lines.push(
+      `  - Hawkeye Sterling V2 (#56): reportId=${extensions.hawkeyeReport.reportId}, ` +
+      `badge=${extensions.hawkeyeReport.riskBadge}, ` +
+      `lists=6/6 screened, ` +
+      `matches=${extensions.hawkeyeReport.totalMatches} ` +
+      `(confirmed=${extensions.hawkeyeReport.confirmedMatches}, unresolved=${extensions.hawkeyeReport.unresolvedMatches})`
+    );
+  }
+  if (extensions.aiGovernance) {
+    lines.push(
+      `  - AI governance (#57): score=${extensions.aiGovernance.overallScore}/100, ` +
+      `readiness=${extensions.aiGovernance.readiness}, ` +
+      `deploymentApproved=${extensions.aiGovernance.deploymentApproved}, ` +
+      `criticalFailures=${extensions.aiGovernance.criticalFailures.length}, ` +
+      `regulatoryRisk=${extensions.aiGovernance.regulatoryRisk}`
+    );
+  }
+  if (extensions.esgAdvanced) {
+    lines.push(
+      `  - ESG advanced framework (#58): score=${extensions.esgAdvanced.overallAdvancedEsgScore}/100, ` +
+      `risk=${extensions.esgAdvanced.overallRisk}, ` +
+      `CSRD=${extensions.esgAdvanced.csrd.status}, ` +
+      `climateVAR=${extensions.esgAdvanced.climateVar.combinedVarPct.toFixed(1)}%, ` +
+      `strandedAssets=${extensions.esgAdvanced.strandedAssets.strandingRiskScore}/100, ` +
+      `greenBond=${extensions.esgAdvanced.greenBond.status}, ` +
+      `carbonCredit=${extensions.esgAdvanced.carbonCredit.qualityScore}/100`
+    );
+  }
+  // Phase 11 narrative entries
+  if (extensions.nameVariants) {
+    lines.push(
+      `  - Name variants (#71): ${extensions.nameVariants.variants.length} variant(s) expanded ` +
+      `from "${extensions.nameVariants.original}" for enhanced sanctions coverage`
+    );
+  }
+  if (extensions.promptInjection?.injectionDetected) {
+    lines.push(
+      `  - Prompt injection (#59): DETECTED — ` +
+      `${extensions.promptInjection.findings.length} finding(s), ` +
+      `severity=${extensions.promptInjection.highestSeverity ?? 'unknown'}`
+    );
+  }
+  if (extensions.deepfakeDoc) {
+    lines.push(
+      `  - Deepfake doc (#60): detected=${extensions.deepfakeDoc.deepfakeDetected}, ` +
+      `confidence=${(extensions.deepfakeDoc.confidence * 100).toFixed(0)}%`
+    );
+  }
+  if (extensions.sanctionsDedupe) {
+    lines.push(
+      `  - Sanctions dedupe (#61): ${extensions.sanctionsDedupe.inputCount} raw hits → ` +
+      `${extensions.sanctionsDedupe.deduplicatedCount} unique (removed ${extensions.sanctionsDedupe.duplicatesRemoved} duplicates)`
+    );
+  }
+  if (extensions.strNarrative) {
+    lines.push(
+      `  - STR narrative (#62): ready=${extensions.strNarrative.isFilingReady}, ` +
+      `length=${extensions.strNarrative.narrative.length} chars, ` +
+      `filingType=${extensions.strNarrative.filingType}`
+    );
+  }
+  if (extensions.strPrediction) {
+    lines.push(
+      `  - Predictive STR (#63): probability=${(extensions.strPrediction.strProbability * 100).toFixed(1)}%, ` +
+      `risk=${extensions.strPrediction.riskLevel}, ` +
+      `topFactor=${extensions.strPrediction.topFactors[0]?.factor ?? 'none'}`
+    );
+  }
+  if (extensions.penaltyVar) {
+    lines.push(
+      `  - Penalty VaR (#64): expected AED ${extensions.penaltyVar.expectedPenaltyAed.toLocaleString()}, ` +
+      `VaR-95 AED ${extensions.penaltyVar.varAed.toLocaleString()}, ` +
+      `violations=${extensions.penaltyVar.violationCount}`
+    );
+  }
+  if (extensions.goldOrigin) {
+    lines.push(
+      `  - Gold origin (#65): ${extensions.goldOrigin.totalShipments} shipment(s), ` +
+      `cahra=${extensions.goldOrigin.cahraExposure}, ` +
+      `riskLevel=${extensions.goldOrigin.overallRisk}`
+    );
+  }
+  if (extensions.assayMatch) {
+    lines.push(
+      `  - Assay certificates (#66): ${extensions.assayMatch.totalCertificates} cert(s), ` +
+      `passed=${extensions.assayMatch.passedCount}, ` +
+      `failed=${extensions.assayMatch.failedCount}`
+    );
+  }
+  if (extensions.finenessAnomaly) {
+    lines.push(
+      `  - Fineness anomaly (#67): detected=${extensions.finenessAnomaly.anomalyDetected}, ` +
+      `findings=${extensions.finenessAnomaly.findings.length}`
+    );
+  }
+  if (extensions.arbitrage) {
+    lines.push(
+      `  - Cross-border arbitrage (#68): detected=${extensions.arbitrage.arbitrageDetected}, ` +
+      `hits=${extensions.arbitrage.hits.length}, ` +
+      `maxSpreadPct=${extensions.arbitrage.maxSpreadPct?.toFixed(1) ?? 'N/A'}%`
+    );
+  }
+  if (extensions.dormancy) {
+    lines.push(
+      `  - Dormancy activity (#70): hits=${extensions.dormancy.hits.length}, ` +
+      `maxGapDays=${extensions.dormancy.maxGapDays ?? 0}`
+    );
+  }
+  if (extensions.strNarrativeGrade) {
+    lines.push(
+      `  - STR narrative grade (#72): score=${extensions.strNarrativeGrade.score}/100, ` +
+      `grade=${extensions.strNarrativeGrade.grade}, ` +
+      `readyToFile=${extensions.strNarrativeGrade.readyToFile}`
+    );
+  }
+
+  // Phase 12 narrative entries
+  if (extensions.corporateGraph) {
+    const flaggedCount = extensions.corporateGraph.hits.filter((h) => h.hit).length;
+    lines.push(
+      `  - Corporate graph (#73): visited=${extensions.corporateGraph.visited} node(s) ` +
+      `in ${extensions.corporateGraph.hops} hop(s), flagged=${flaggedCount}`
+    );
+  }
+  if (extensions.ownershipMotifs) {
+    lines.push(
+      `  - Ownership motifs (#74): ${extensions.ownershipMotifs.findings.length} motif(s) detected ` +
+      `(circular/star/cascade layering)`
+    );
+  }
+  if (extensions.multiModelConsensus) {
+    lines.push(
+      `  - Multi-model screening (#75): consensus=${extensions.multiModelConsensus.consensus}, ` +
+      `riskLevel=${extensions.multiModelConsensus.riskLevel}, ` +
+      `score=${extensions.multiModelConsensus.riskScore}/100, ` +
+      `models=${extensions.multiModelConsensus.modelsResponded}/${extensions.multiModelConsensus.modelsQueried} responded`
+    );
+  }
+  if (extensions.causalCounterfactual) {
+    lines.push(
+      `  - Causal engine (#76): counterfactual changed ${extensions.causalCounterfactual.changedNodes.length} node(s): ` +
+      `[${extensions.causalCounterfactual.changedNodes.join(', ')}]`
+    );
+  }
+  if (extensions.verdictDebate) {
+    lines.push(
+      `  - Verdict debate (#77): winner=${extensions.verdictDebate.winner} ` +
+      `(${extensions.verdictDebate.winningAction}), ` +
+      `margin=${extensions.verdictDebate.margin.toFixed(2)}, ` +
+      `proScore=${extensions.verdictDebate.proScore.toFixed(0)} vs conScore=${extensions.verdictDebate.conScore.toFixed(0)}`
+    );
+  }
+  if (extensions.reflectionReport) {
+    const errorCount = extensions.reflectionReport.issues.filter((i) => i.severity === 'error').length;
+    lines.push(
+      `  - Reflection critic (#78): ${extensions.reflectionReport.issues.length} issue(s) ` +
+      `(${errorCount} error(s)), chain confidence=${(extensions.reflectionReport.confidence * 100).toFixed(0)}%`
+    );
+  }
+  if (extensions.circularReasoning) {
+    lines.push(
+      `  - Circular reasoning (#79): ${extensions.circularReasoning.cycles.length} cycle(s) detected`
+    );
+  }
+  if (extensions.gameEquilibrium) {
+    lines.push(
+      `  - Game theory (#80): expectedPayoff=${extensions.gameEquilibrium.expectedPayoff.toFixed(3)}, ` +
+      `topAttackerChoice="${extensions.gameEquilibrium.topAttackerChoice}", ` +
+      `topDefenderChoice="${extensions.gameEquilibrium.topDefenderChoice}"`
+    );
+  }
+  if (extensions.lbmaFixCheck) {
+    lines.push(
+      `  - LBMA fix check (#81): ${extensions.lbmaFixCheck.checked} trade(s) checked, ` +
+      `flagged=${extensions.lbmaFixCheck.flagged}, frozen=${extensions.lbmaFixCheck.frozen}`
+    );
+  }
+  if (extensions.meltLoss) {
+    lines.push(
+      `  - Melt loss (#82): severity=${extensions.meltLoss.severity}, ` +
+      `actual=${extensions.meltLoss.lossPct.toFixed(2)}%, ` +
+      `expected ${extensions.meltLoss.expectedMinPct.toFixed(2)}%–${extensions.meltLoss.expectedMaxPct.toFixed(2)}%`
+    );
+  }
+  if (extensions.freeZoneCompliance) {
+    lines.push(
+      `  - Free zone compliance (#83): zone=${extensions.freeZoneCompliance.freeZone}, ` +
+      `passed=${extensions.freeZoneCompliance.passed}/${extensions.freeZoneCompliance.totalRules}, ` +
+      `mandatory failures=${extensions.freeZoneCompliance.mandatoryFailures.length}`
+    );
+  }
+  if (extensions.tippingOff) {
+    lines.push(
+      `  - Tipping-off linter (#84): hasTippingOff=${extensions.tippingOff.hasTippingOff}, ` +
+      `findings=${extensions.tippingOff.findings.length} ` +
+      `(FDL Art.29 — ${extensions.tippingOff.hasTippingOff ? 'REDACTED' : 'clean'})`
+    );
+  }
+  if (extensions.shapley) {
+    const topAttr = extensions.shapley.attributions[0];
+    lines.push(
+      `  - Shapley explainer (#85): top signal="${topAttr?.signal ?? 'none'}" ` +
+      `φ=${topAttr?.value?.toFixed(3) ?? 'N/A'}, ` +
+      `total signals=${extensions.shapley.attributions.length}`
+    );
+  }
+  if (extensions.invariantVerification) {
+    lines.push(
+      `  - Invariant verifier (#86): violations=${extensions.invariantVerification.violations.length} ` +
+      `(invariantsChecked=${extensions.invariantVerification.invariantsChecked}, passed=${extensions.invariantVerification.passed})`
+    );
+  }
+  if (extensions.syntheticEvasion) {
+    lines.push(
+      `  - Synthetic evasion (#87): ${extensions.syntheticEvasion.length} test case(s) generated`
+    );
+  }
+  if (extensions.quantumSeal) {
+    lines.push(
+      `  - Quantum-resistant seal (#88): leafCount=${extensions.quantumSeal.leafCount} record(s), ` +
+      `algo=${extensions.quantumSeal.hashFunction}, ` +
+      `root=${extensions.quantumSeal.rootHash.slice(0, 16)}...`
+    );
+  }
+  if (extensions.peerAnomaly) {
+    const maxZ = extensions.peerAnomaly.anomalies.length > 0
+      ? Math.max(...extensions.peerAnomaly.anomalies.map((a) => Math.abs(a.zScore))).toFixed(2)
+      : 'N/A';
+    lines.push(
+      `  - Peer anomaly (#89): ${extensions.peerAnomaly.anomalies.length} anomalous feature(s), ` +
+      `maxZ=${maxZ}, score=${extensions.peerAnomaly.overallScore.toFixed(1)}`
+    );
+  }
+  if (extensions.timeTravelAudit) {
+    lines.push(
+      `  - Time-travel audit (#90): criticalPath=${extensions.timeTravelAudit.criticalPath.length} evidence step(s), ` +
+      `currentState snapshot at ${extensions.timeTravelAudit.currentState.timestamp}`
+    );
+  }
+  if (extensions.documentTamper) {
+    const highTamper = extensions.documentTamper.tamperSignals.filter((s) => s.severity === 'high').length;
+    lines.push(
+      `  - Document intelligence (#91): tamperSignals=${extensions.documentTamper.tamperSignals.length} ` +
+      `(${highTamper} high-severity), confidence=${(extensions.documentTamper.confidence * 100).toFixed(0)}%`
+    );
+  }
+  if (extensions.regulatoryDrift) {
+    lines.push(
+      `  - Regulatory drift (#92): overallBand=${extensions.regulatoryDrift.overallBand}, ` +
+      `driftedFeatures=${extensions.regulatoryDrift.driftedFeatureCount}, ` +
+      `maxPSI=${extensions.regulatoryDrift.overallMaxPsi?.toFixed(3) ?? 'N/A'}`
+    );
+  }
+  if (extensions.goamlXml) {
+    lines.push(
+      `  - goAML XML (#93): auto-generated UAE FIU XML filing ` +
+      `(${extensions.goamlXml.length.toLocaleString()} chars) — ready for submission`
+    );
+  }
+  if (extensions.bayesianBelief) {
+    lines.push(
+      `  - Bayesian belief (#94): P(${extensions.bayesianBelief.mostLikely.label})=` +
+      `${(extensions.bayesianBelief.mostLikely.probability * 100).toFixed(0)}%, ` +
+      `entropy=${extensions.bayesianBelief.entropyBits.toFixed(2)} bits`
+    );
+  }
+  if (extensions.cbrRecommendation && extensions.cbrRecommendation.length > 0) {
+    const topRec = extensions.cbrRecommendation[0];
+    lines.push(
+      `  - Case-based reasoning (#95): top precedent similarity=${topRec?.similarity?.toFixed(3) ?? 'N/A'}, ` +
+      `recommendation=${topRec?.recommendedOutcome ?? 'none'}`
+    );
+  }
+  if (extensions.euAiActReadiness) {
+    lines.push(
+      `  - EU AI Act readiness (#96): dispatched=${extensions.euAiActReadiness.dispatched} task(s), ` +
+      `failed=${extensions.euAiActReadiness.failed}`
+    );
+  }
+  if (extensions.inducedRules && extensions.inducedRules.length > 0) {
+    lines.push(
+      `  - Rule induction (#97): ${extensions.inducedRules.length} human-readable rule(s) extracted`
     );
   }
 

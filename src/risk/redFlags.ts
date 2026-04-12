@@ -850,9 +850,9 @@ export const RED_FLAGS: RedFlagDefinition[] = [
   },
   {
     code: 'RF088',
-    title: 'Records destroyed before 5-year retention period',
+    title: 'Records destroyed before 10-year retention period',
     description:
-      'Customer or transaction records destroyed before the mandatory 5-year retention period expires',
+      'Customer or transaction records destroyed before the mandatory 10-year retention period expires',
     category: 'documentation',
     likelihood: 5,
     impact: 5,
