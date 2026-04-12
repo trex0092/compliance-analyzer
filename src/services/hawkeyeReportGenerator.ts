@@ -156,264 +156,316 @@ function buildSanctionsResults(
 
 function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: string): string {
   const { brain } = input;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name ?? entityId;
-  const verdict = brain.finalVerdict;
-  const badge = verdictToRiskBadge(verdict, brain.confidence);
-  const emoji = riskBadgeEmoji(badge);
-  const ext = brain.extensions;
+  const entityId   = brain.mega.entity?.id   ?? 'UNKNOWN';
+  const entityName = brain.mega.entity?.name  ?? entityId;
+  const verdict    = brain.finalVerdict;
+  const badge      = verdictToRiskBadge(verdict, brain.confidence);
+  const emoji      = riskBadgeEmoji(badge);
+  const ext        = brain.extensions;
+  const cls        = input.classification ?? 'CONFIDENTIAL';
   const { results: listsResults, totals } = buildSanctionsResults(input);
+  const fc         = ext.filingClassification;
 
-  const lines: string[] = [];
-
-  // ── A: Report Header ──────────────────────────────────────────────────────
-  lines.push(`# ${emoji} ${BRAND} — SCREENING INTELLIGENCE REPORT`);
-  lines.push(`### *${BRAND_TAGLINE} | ${input.classification ?? 'CONFIDENTIAL'}*`);
-  lines.push('');
-  lines.push(`| Field | Value |`);
-  lines.push(`|-------|-------|`);
-  lines.push(`| **Report ID** | \`${reportId}\` |`);
-  lines.push(`| **Generated** | ${now} |`);
-  lines.push(`| **Classification** | ${input.classification ?? 'CONFIDENTIAL'} |`);
-  lines.push(`| **Jurisdiction** | UAE |`);
-  lines.push(`| **Regulatory Framework** | FDL No.10/2025 \\| Cabinet Res 134/2025 \\| Cabinet Res 74/2020 |`);
-  lines.push(`| **Screening Group** | ${input.screeningGroup ?? 'Compliance Screening'} |`);
-  if (input.asanaRef) lines.push(`| **Asana Ref** | ${input.asanaRef} |`);
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-
-  // ── B: Subject Profile ────────────────────────────────────────────────────
-  lines.push(`## B — Subject Profile`);
-  lines.push('');
-  lines.push(`| Field | Value |`);
-  lines.push(`|-------|-------|`);
-  lines.push(`| **Name** | **${entityName}** |`);
-  lines.push(`| **Entity ID** | \`${entityId}\` |`);
-  if (input.subjectIdNumbers?.length) {
-    lines.push(`| **ID Number(s)** | ${input.subjectIdNumbers.join(', ')} |`);
-  }
-  lines.push(`| **Entity Type** | ${brain.mega.entity?.type ?? 'Individual'} |`);
-  lines.push(`| **Jurisdiction / Citizenship** | ${input.subjectJurisdiction ?? 'Not specified'} |`);
-  if (input.subjectDob) lines.push(`| **Date of Birth** | ${input.subjectDob} |`);
-  if (input.subjectGender) lines.push(`| **Gender** | ${input.subjectGender} |`);
-  lines.push(`| **Risk Tier** | ${ext.explanation?.cddLevel ?? 'CDD'} |`);
-  lines.push(`| **Case Status** | Active |`);
-  lines.push(`| **Ongoing Screening** | Yes |`);
-  lines.push(`| **Last Screened** | ${now} |`);
-  lines.push(`| **Screened By** | ${input.screenedBy ?? 'Hawkeye Sterling V2 (Automated)'} |`);
+  // Derived display values
+  const nowDisplay = now.replace('T', ' ').slice(0, 16) + ' UTC';
+  const dateOnly   = now.split('T')[0];
+  const cddLevel   = ext.explanation?.cddLevel ?? 'CDD';
   const nextReview = (() => {
-    const cddLevel = ext.explanation?.cddLevel;
     const months = cddLevel === 'EDD' ? 3 : cddLevel === 'CDD' ? 6 : 12;
     const d = new Date(); d.setMonth(d.getMonth() + months);
     return d.toISOString().split('T')[0];
   })();
-  lines.push(`| **Next Review Due** | ${nextReview} (${ext.explanation?.cddLevel ?? 'CDD'} cycle) |`);
+  const totalResolved  = totals.confirmed + totals.possible + totals.false;
+  const overallStatus  =
+    totals.confirmed  > 0 ? `${emoji} MATCH CONFIRMED` :
+    totals.unresolved > 0 ? '🟠 MATCH — PENDING REVIEW' :
+    totals.possible   > 0 ? '🟡 POSSIBLE MATCH' : '🟢 CLEAR — NO ADVERSE FINDINGS';
+
+  const lines: string[] = [];
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // HEADER BLOCK
+  // ══════════════════════════════════════════════════════════════════════════
+  lines.push(`# ${BRAND}`);
+  lines.push(`## CASE REPORT`);
+  lines.push('');
+  lines.push(`> **${cls}** &nbsp;&nbsp;|&nbsp;&nbsp; ${BRAND_TAGLINE} &nbsp;&nbsp;|&nbsp;&nbsp; UAE Jurisdiction &nbsp;&nbsp;|&nbsp;&nbsp; Report ID: \`${reportId}\``);
   lines.push('');
   lines.push('---');
   lines.push('');
 
-  // ── C: Sanctions Screening Summary ────────────────────────────────────────
-  lines.push(`## C — Sanctions Screening Summary`);
-  lines.push('');
-  const allScreened = listsResults.every(r => r.screened);
-  const overallResult = totals.confirmed > 0 ? '🔴 MATCH CONFIRMED' :
-    totals.unresolved > 0 ? '🟠 MATCH PENDING REVIEW' :
-    totals.possible > 0 ? '🟡 POSSIBLE MATCH' : '🟢 CLEAR';
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION 1 — CASE OVERVIEW  (mirrors LSEG top table)
+  // ══════════════════════════════════════════════════════════════════════════
   lines.push(`| Field | Value |`);
-  lines.push(`|-------|-------|`);
-  lines.push(`| **Lists Screened** | ${listsResults.filter(r => r.screened).length} of ${SANCTIONS_LISTS.length} |`);
+  lines.push(`|---|---|`);
+  lines.push(`| **Name** | **${entityName}** |`);
+  if (input.subjectIdNumbers?.length) {
+    lines.push(`| **Identification Number(s)** | ${input.subjectIdNumbers.join(' \\| ')} |`);
+  }
+  lines.push(`| **Case Rating** | ${emoji} **${badge}** |`);
+  lines.push(`| **Total Matches (All Lists)** | **${totals.total}** |`);
+  lines.push(`| **Case ID** | \`${reportId}\` |`);
+  lines.push(`| **Screening Group** | ${input.screeningGroup ?? 'Compliance Screening — UAE DPMS'} |`);
+  if (input.asanaRef) lines.push(`| **Asana Reference** | ${input.asanaRef} |`);
+  lines.push('');
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION 2 — SUBJECT DETAILS  (LSEG-style two-column grid)
+  // ══════════════════════════════════════════════════════════════════════════
+  lines.push(`| | | | |`);
+  lines.push(`|---|---|---|---|`);
+  lines.push(`| **Gender** | ${input.subjectGender ?? 'Not specified'} | **Date of Birth** | ${input.subjectDob ?? 'Not specified'} |`);
+  lines.push(`| **Citizenship** | ${input.subjectJurisdiction ?? 'Not specified'} | **Last Screened** | ${nowDisplay} |`);
+  lines.push(`| **Case Created** | ${dateOnly} | **Entity Type** | ${brain.mega.entity?.type ?? 'Individual'} |`);
+  lines.push(`| **Ongoing Screening** | Yes | **Archived** | No |`);
+  lines.push(`| **Name Transposition** | ${ext.nameVariants ? `Yes — ${ext.nameVariants.variants.length} variant(s)` : 'Standard'} | **CDD Level** | **${cddLevel}** |`);
+  lines.push(`| **Next Review Due** | ${nextReview} | **Screened By** | ${input.screenedBy ?? 'Hawkeye V2 (Automated)'} |`);
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION 3 — KEY FINDINGS  (most prominent section — matches LSEG exactly)
+  // ══════════════════════════════════════════════════════════════════════════
+  lines.push(`## KEY FINDINGS`);
+  lines.push('');
+  lines.push(`| | |`);
+  lines.push(`|---|---|`);
   lines.push(`| **Total Matches** | **${totals.total}** |`);
-  lines.push(`| **Confirmed** | ${totals.confirmed} *(confidence ≥ 0.90)* |`);
-  lines.push(`| **Possible** | ${totals.possible} *(confidence 0.50–0.89)* |`);
-  lines.push(`| **False Positive** | ${totals.false} *(reviewed & dismissed)* |`);
-  lines.push(`| **Unresolved** | ${totals.unresolved} *(pending CO review)* |`);
-  lines.push(`| **All Lists Checked** | ${allScreened ? '✅ YES — All 6 mandatory lists' : '⚠ INCOMPLETE'} |`);
-  lines.push(`| **Overall Result** | ${overallResult} |`);
+  lines.push(`| **Resolved Matches** | ${totalResolved} &nbsp;&nbsp; Confirmed: **${totals.confirmed}** &nbsp;&nbsp; Possible: **${totals.possible}** &nbsp;&nbsp; False Positive: **${totals.false}** &nbsp;&nbsp; Unresolved: **${totals.unresolved}** |`);
+  lines.push(`| **Unresolved Matches** | **${totals.unresolved}** |`);
+  lines.push(`| **Lists Screened** | ${listsResults.filter(r => r.screened).length} of ${SANCTIONS_LISTS.length} — UN \\| OFAC \\| EU \\| UK \\| UAE \\| EOCN |`);
+  lines.push(`| **Overall Screening Result** | ${overallStatus} |`);
   lines.push('');
-  lines.push('### Per-List Breakdown');
-  lines.push('');
-  lines.push(`| List | Screened | Matches | Confirmed | Possible | False | Unresolved |`);
-  lines.push(`|------|----------|---------|-----------|----------|-------|------------|`);
+
+  // Per-list breakdown table
+  lines.push(`| List | Status | Total | Confirmed | Possible | False Positive | Unresolved |`);
+  lines.push(`|---|---|---|---|---|---|---|`);
   for (const r of listsResults) {
-    const status = r.screened ? '✅' : '❌';
-    lines.push(`| ${r.list} | ${status} | ${r.totalMatches} | ${r.confirmed} | ${r.possible} | ${r.falsePositive} | ${r.unresolved} |`);
+    const s = r.screened ? '✅ Screened' : '❌ Not screened';
+    const rowEmoji =
+      r.confirmed  > 0 ? '🔴' :
+      r.unresolved > 0 ? '🟠' :
+      r.possible   > 0 ? '🟡' : '🟢';
+    lines.push(`| ${r.list} | ${s} | ${rowEmoji} ${r.totalMatches} | ${r.confirmed} | ${r.possible} | ${r.falsePositive} | ${r.unresolved} |`);
+  }
+  if (!listsResults.every(r => r.screened)) {
+    lines.push('');
+    lines.push('> ⚠ **INCOMPLETE SCREENING** — Not all mandatory lists were checked. Escalate to CO immediately. (FATF Rec 1; Cabinet Res 74/2020 Art.3)');
   }
   lines.push('');
   lines.push('---');
   lines.push('');
 
-  // ── D: Risk Assessment ────────────────────────────────────────────────────
-  lines.push(`## D — Risk Assessment`);
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION 4 — RISK ASSESSMENT MATRIX
+  // ══════════════════════════════════════════════════════════════════════════
+  lines.push(`## Risk Assessment`);
   lines.push('');
-  lines.push(`| Dimension | Result | Detail |`);
-  lines.push(`|-----------|--------|--------|`);
-  lines.push(`| **Overall Verdict** | ${emoji} **${verdict.toUpperCase()}** | Confidence: ${(brain.confidence * 100).toFixed(1)}% |`);
-  lines.push(`| **Risk Badge** | ${emoji} ${badge} | Hawkeye composite |`);
-  lines.push(`| **Risk Score** | ${ext.explanation?.score?.toFixed(0) ?? 'N/A'}/100 | Explainable scoring engine |`);
-  lines.push(`| **CDD Level Required** | **${ext.explanation?.cddLevel ?? 'CDD'}** | Cabinet Res 134/2025 Art.7-10 |`);
-  lines.push(`| **Requires Human Review** | ${brain.requiresHumanReview ? '⚠ YES' : 'No'} | Cabinet Res 134/2025 Art.19 |`);
-  lines.push(`| **Four-Eyes Required** | ${ext.fourEyes?.meetsRequirements === false ? '⚠ PENDING' : verdict === 'freeze' || verdict === 'escalate' ? '✅ REQUIRED' : 'Not required'} | FDL No.10/2025 Art.20-21 |`);
+  lines.push(`| Risk Dimension | Rating | Score | Regulatory Reference |`);
+  lines.push(`|---|---|---|---|`);
+  lines.push(`| **Overall Verdict** | ${emoji} **${verdict.toUpperCase()}** | Confidence: ${(brain.confidence * 100).toFixed(1)}% | FDL No.10/2025 Art.20-21 |`);
+  lines.push(`| **Composite Risk Score** | ${badge} | ${ext.explanation?.score?.toFixed(0) ?? 'N/A'} / 100 | Weaponized Brain v2 |`);
+  lines.push(`| **CDD Level Required** | **${cddLevel}** | — | Cabinet Res 134/2025 Art.7-10 |`);
+  lines.push(`| **Human Review** | ${brain.requiresHumanReview ? '⚠ REQUIRED' : 'Not required'} | — | Cabinet Res 134/2025 Art.19 |`);
+  lines.push(`| **Four-Eyes Approval** | ${(verdict === 'freeze' || verdict === 'escalate') ? '✅ REQUIRED' : 'Not required'} | — | FDL No.10/2025 Art.20-21 |`);
   if (ext.pepProximity) {
-    lines.push(`| **PEP Proximity** | Score: ${ext.pepProximity.maxProximityScore.toFixed(0)}/100 | ${ext.pepProximity.overallRisk.toUpperCase()} — ${ext.pepProximity.pepLinks.length} PEP link(s) |`);
-  }
-  if (ext.esgScore) {
-    lines.push(`| **ESG Grade** | Grade ${ext.esgScore.grade} | Score: ${ext.esgScore.composite.toFixed(0)}/100 — ${ext.esgScore.riskLevel.toUpperCase()} |`);
+    lines.push(`| **PEP Proximity** | ${ext.pepProximity.overallRisk.toUpperCase()} | ${ext.pepProximity.maxProximityScore.toFixed(0)} / 100 | Cabinet Res 134/2025 Art.14 |`);
   }
   if (ext.tbml) {
-    lines.push(`| **TBML Risk** | ${ext.tbml.overallRisk.toUpperCase()} | Score: ${ext.tbml.compositeScore}/100 — Price deviation: ${ext.tbml.priceDeviationPct.toFixed(1)}% |`);
+    lines.push(`| **Trade-Based ML (TBML)** | ${ext.tbml.overallRisk.toUpperCase()} | ${ext.tbml.compositeScore} / 100 | FATF TBML Typologies 2020 |`);
   }
   if (ext.hawala) {
-    lines.push(`| **Hawala / IVTS** | ${ext.hawala.riskLevel.toUpperCase()} | Score: ${ext.hawala.score}/100 — ${ext.hawala.indicators.length} indicator(s) |`);
+    lines.push(`| **Hawala / IVTS** | ${ext.hawala.riskLevel.toUpperCase()} | ${ext.hawala.score} / 100 | CBUAE Hawala Regs; FATF Rec 14 |`);
   }
   if (ext.crossBorderCash) {
-    lines.push(`| **Cross-Border Cash** | ${ext.crossBorderCash.overallRisk.toUpperCase()} | Cumulative AED ${ext.crossBorderCash.cumulativeAmountAED.toLocaleString()} — Structuring: ${ext.crossBorderCash.structuringDetected} |`);
+    lines.push(`| **Cross-Border Cash** | ${ext.crossBorderCash.overallRisk.toUpperCase()} | AED ${ext.crossBorderCash.cumulativeAmountAED.toLocaleString()} | Cabinet Res 134/2025 Art.16 |`);
   }
   if (ext.anomalyEnsemble) {
-    lines.push(`| **Anomaly Ensemble** | ${ext.anomalyEnsemble.anomalyLevel.toUpperCase()} | BMA score: ${ext.anomalyEnsemble.aggregatedScore.toFixed(0)}/100 — Dominant: ${ext.anomalyEnsemble.dominantSignal ?? 'none'} |`);
+    lines.push(`| **Anomaly Ensemble (BMA)** | ${ext.anomalyEnsemble.anomalyLevel.toUpperCase()} | ${ext.anomalyEnsemble.aggregatedScore.toFixed(0)} / 100 | NIST AI RMF GV-1.6 |`);
+  }
+  if (ext.esgScore) {
+    lines.push(`| **ESG Grade** | Grade ${ext.esgScore.grade} — ${ext.esgScore.riskLevel.toUpperCase()} | ${ext.esgScore.composite.toFixed(0)} / 100 | ISSB IFRS S1/S2; LBMA RGG v9 |`);
+  }
+  if (ext.goldOrigin) {
+    lines.push(`| **Gold Origin Risk** | ${ext.goldOrigin.overallRisk.toUpperCase()} | ${ext.goldOrigin.totalShipments} shipment(s) | LBMA RGG v9; OECD DDG 2016 |`);
+  }
+  if (ext.lbmaFixCheck && (ext.lbmaFixCheck.flagged > 0 || ext.lbmaFixCheck.frozen > 0)) {
+    lines.push(`| **LBMA Fix Deviation** | ${ext.lbmaFixCheck.frozen > 0 ? '🔴 FROZEN' : '🟠 FLAGGED'} | ${ext.lbmaFixCheck.flagged} flagged / ${ext.lbmaFixCheck.frozen} frozen | LBMA RGG v9; FATF DPMS |`);
+  }
+  if (ext.penaltyVar) {
+    lines.push(`| **Penalty VaR (AED)** | AED ${ext.penaltyVar.varAed.toLocaleString()} VaR-95 | Expected: AED ${ext.penaltyVar.expectedPenaltyAed.toLocaleString()} | Cabinet Res 71/2024 |`);
   }
   lines.push('');
   lines.push('---');
   lines.push('');
 
-  // ── E: Key Findings & Required Actions ───────────────────────────────────
-  lines.push(`## E — Key Findings & Required Actions`);
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION 5 — MLRO ALERTS & SAFETY CLAMPS
+  // ══════════════════════════════════════════════════════════════════════════
+  lines.push(`## MLRO Alerts`);
   lines.push('');
 
   if (brain.clampReasons.length > 0) {
-    lines.push('### Safety Clamps Fired');
+    lines.push('**Safety Clamps Triggered:**');
+    lines.push('');
     for (const clamp of brain.clampReasons) {
-      const isCrit = clamp.toLowerCase().includes('freeze') || clamp.toLowerCase().includes('taint') || clamp.toLowerCase().includes('structuring');
+      const isCrit = clamp.toLowerCase().includes('freeze') ||
+                     clamp.toLowerCase().includes('tipping') ||
+                     clamp.toLowerCase().includes('structuring') ||
+                     clamp.toLowerCase().includes('hard clamp');
       lines.push(`- ${isCrit ? '🔴' : '🟠'} ${clamp}`);
     }
     lines.push('');
   }
 
   if (ext.mlroAlerts?.alerts.length) {
-    lines.push('### MLRO Alerts');
-    lines.push('');
-    lines.push(`| Severity | Title | Deadline | Four-Eyes | Tip-Off Prohibited |`);
-    lines.push(`|----------|-------|----------|-----------|-------------------|`);
-    for (const alert of ext.mlroAlerts.alerts.slice(0, 10)) {
-      const sev = { CRITICAL: '🔴 CRITICAL', HIGH: '🟠 HIGH', MEDIUM: '🟡 MEDIUM', INFO: 'ℹ INFO' }[alert.severity];
-      const tipOff = alert.tipOffProhibited ? '⚠ YES (FDL Art.29)' : 'No';
-      const fe = alert.fourEyesRequired ? '✅ Required' : 'No';
-      lines.push(`| ${sev} | ${alert.title.slice(0, 60)} | ${alert.deadline.split('T')[0]} | ${fe} | ${tipOff} |`);
+    lines.push(`| Severity | Alert | Deadline | Action Required |`);
+    lines.push(`|---|---|---|---|`);
+    for (const alert of ext.mlroAlerts.alerts.slice(0, 12)) {
+      const sev   = { CRITICAL: '🔴 CRITICAL', HIGH: '🟠 HIGH', MEDIUM: '🟡 MEDIUM', INFO: 'ℹ INFO' }[alert.severity] ?? alert.severity;
+      const feStr = alert.fourEyesRequired ? ' ✅ Four-eyes required.' : '';
+      const toStr = alert.tipOffProhibited ? ' ⚠ Tip-off prohibited (Art.29).' : '';
+      lines.push(`| ${sev} | ${alert.title.slice(0, 70)} | ${alert.deadline.split('T')[0]} | ${alert.description.slice(0, 80)}${feStr}${toStr} |`);
     }
     lines.push('');
     if (ext.mlroAlerts.alerts.some(a => a.tipOffProhibited)) {
-      lines.push('> ⚠ **TIP-OFF PROHIBITION ACTIVE** — Do NOT notify the subject. FDL No.10/2025 Art.29 — criminal offence.');
+      lines.push('> 🔴 **TIP-OFF PROHIBITION ACTIVE** — Do NOT inform the subject of this screening, report, or any related filing. Criminal offence under FDL No.10/2025 Art.29. Penalty up to AED 5,000,000.');
       lines.push('');
     }
-  } else {
-    if (verdict === 'pass') {
-      lines.push('> ✅ No adverse findings. Entity cleared across all 6 sanctions lists.');
-      lines.push('');
-    }
+  } else if (verdict === 'pass') {
+    lines.push('> ✅ No adverse findings. Entity screened clear across all 6 mandatory sanctions lists.');
+    lines.push('');
   }
-
   lines.push('---');
   lines.push('');
 
-  // ── F: Filing Obligations ─────────────────────────────────────────────────
-  lines.push(`## F — Filing Obligations`);
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION 6 — FILING OBLIGATIONS
+  // ══════════════════════════════════════════════════════════════════════════
+  lines.push(`## Filing Obligations`);
   lines.push('');
-  const fc = ext.filingClassification;
   if (fc && fc.primaryCategory !== 'NONE') {
     lines.push(`| Field | Value |`);
-    lines.push(`|-------|-------|`);
+    lines.push(`|---|---|`);
     lines.push(`| **Filing Type** | **${fc.primaryCategory}** |`);
     lines.push(`| **goAML Form Code** | \`${fc.goamlFormCode ?? 'N/A'}\` |`);
-    lines.push(`| **Deadline** | ${fc.deadlineDueDate ?? 'See regulatory calendar'} |`);
+    lines.push(`| **Deadline** | **${fc.deadlineDueDate ?? 'See regulatory calendar'}** |`);
     lines.push(`| **Urgency** | ${fc.urgency.toUpperCase()} |`);
-    lines.push(`| **Four-Eyes Required** | ${fc.requiresFourEyes ? '✅ YES' : 'No'} |`);
-    lines.push(`| **Tip-Off Prohibited** | ${fc.tipOffProhibited ? '⚠ YES — FDL Art.29' : 'No'} |`);
-    lines.push(`| **Regulatory Refs** | ${fc.regulatoryRefs.join(' \\| ')} |`);
+    lines.push(`| **Four-Eyes Required** | ${fc.requiresFourEyes ? '✅ YES — obtain dual approval before filing' : 'No'} |`);
+    lines.push(`| **Tip-Off Prohibited** | ${fc.tipOffProhibited ? '⚠ YES — FDL No.10/2025 Art.29' : 'No'} |`);
+    lines.push(`| **goAML XML Auto-Generated** | ${ext.goamlXml ? `✅ YES — ${ext.goamlXml.length.toLocaleString()} chars ready for submission` : 'No — run /goaml skill'} |`);
+    lines.push(`| **Regulatory References** | ${fc.regulatoryRefs.join(' \\| ')} |`);
     lines.push('');
     lines.push('**Filing Instructions:**');
     for (const instr of fc.filingInstructions) {
-      lines.push(`- ${instr}`);
+      lines.push(`1. ${instr}`);
     }
   } else {
-    lines.push('> ✅ No filing obligation triggered for this screening. Monitor for changes.');
+    lines.push('> ✅ No filing obligation triggered at this time. Continue periodic monitoring.');
   }
   lines.push('');
   lines.push('---');
   lines.push('');
 
-  // ── G: ESG & Sustainability ───────────────────────────────────────────────
-  lines.push(`## G — ESG & Sustainability Assessment`);
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION 7 — ESG & SUSTAINABILITY
+  // ══════════════════════════════════════════════════════════════════════════
+  lines.push(`## ESG & Sustainability`);
   lines.push('');
-  if (ext.esgScore || ext.carbonFootprint || ext.tcfdAlignment || ext.greenwashing) {
-    lines.push(`| Dimension | Result | Standard |`);
-    lines.push(`|-----------|--------|----------|`);
+  if (ext.esgScore || ext.carbonFootprint || ext.tcfdAlignment || ext.esgAdvanced) {
+    lines.push(`| ESG Dimension | Rating | Score | Standard |`);
+    lines.push(`|---|---|---|---|`);
     if (ext.esgScore) {
-      lines.push(`| **ESG Composite** | Grade ${ext.esgScore.grade} — ${(ext.esgScore.composite).toFixed(0)}/100 (${ext.esgScore.riskLevel.toUpperCase()}) | ISSB IFRS S1/S2 (2023) |`);
-      if (ext.esgScore.environment !== undefined) lines.push(`| Environmental | ${ext.esgScore.environment.toFixed(0)}/100 | GRI 2021 |`);
-      if (ext.esgScore.social !== undefined) lines.push(`| Social | ${ext.esgScore.social.toFixed(0)}/100 | ILO Conventions |`);
-      if (ext.esgScore.governance !== undefined) lines.push(`| Governance | ${ext.esgScore.governance.toFixed(0)}/100 | OECD CG Principles |`);
+      lines.push(`| **ESG Composite** | Grade **${ext.esgScore.grade}** — ${ext.esgScore.riskLevel.toUpperCase()} | ${ext.esgScore.composite.toFixed(0)} / 100 | ISSB IFRS S1/S2 (2023) |`);
+      if (ext.esgScore.environment !== undefined) lines.push(`| Environmental (E) | — | ${ext.esgScore.environment.toFixed(0)} / 100 | GRI 2021 Standards |`);
+      if (ext.esgScore.social !== undefined)      lines.push(`| Social (S) | — | ${ext.esgScore.social.toFixed(0)} / 100 | ILO Conventions 29, 105 |`);
+      if (ext.esgScore.governance !== undefined)  lines.push(`| Governance (G) | — | ${ext.esgScore.governance.toFixed(0)} / 100 | OECD CG Principles 2023 |`);
     }
     if (ext.carbonFootprint) {
-      lines.push(`| **Carbon Footprint** | ${ext.carbonFootprint.totalKgCo2ePerOz?.toFixed(1) ?? 'N/A'} kgCO₂e/troy oz | LBMA RGG v9; UAE NZ2050 |`);
-      lines.push(`| Net Zero Target | ${ext.carbonFootprint.netZeroAligned ? '✅ Aligned' : '❌ Not Aligned'} | UAE NZ2050 target: 4.8 kgCO₂e/oz |`);
+      lines.push(`| **Carbon Footprint** | ${ext.carbonFootprint.netZeroAligned ? '✅ NZ-Aligned' : '❌ Not Aligned'} | ${ext.carbonFootprint.totalKgCo2ePerOz?.toFixed(1) ?? 'N/A'} kgCO₂e/oz | LBMA RGG v9; UAE NZ2050 |`);
     }
     if (ext.tcfdAlignment) {
-      lines.push(`| **TCFD Alignment** | ${ext.tcfdAlignment.overallScore.toFixed(0)}/100 (${ext.tcfdAlignment.maturityLevel}) | TCFD / ISSB S2 |`);
+      lines.push(`| **TCFD Alignment** | ${ext.tcfdAlignment.maturityLevel} | ${ext.tcfdAlignment.overallScore.toFixed(0)} / 100 | TCFD / ISSB IFRS S2 |`);
+    }
+    if (ext.esgAdvanced?.csrd) {
+      lines.push(`| **CSRD Compliance** | ${ext.esgAdvanced.csrd.status.toUpperCase()} | ESRS score: ${ext.esgAdvanced.csrd.esrsAlignmentScore} / 100 | EU CSRD 2023 / ESRS |`);
+    }
+    if (ext.esgAdvanced?.climateVar) {
+      lines.push(`| **Climate VAR** | ${ext.esgAdvanced.overallRisk.toUpperCase()} | ${ext.esgAdvanced.climateVar.combinedVarPct.toFixed(1)}% combined VAR | NGFS Scenarios 2023 |`);
     }
     if (ext.greenwashing) {
-      const gwRisk = ext.greenwashing.overallRisk ?? 'low';
-      lines.push(`| **Greenwashing Risk** | ${gwRisk.toUpperCase()} | ISSB S1 §B10; IOSCO ESG Rating Guidance |`);
+      lines.push(`| **Greenwashing Risk** | ${(ext.greenwashing.overallRisk ?? 'low').toUpperCase()} | ${ext.greenwashing.criticalFindings} critical finding(s) | ISSB S1 §B10; IOSCO |`);
     }
     if (ext.conflictMinerals) {
-      lines.push(`| **Conflict Minerals** | ${ext.conflictMinerals.overallRisk.toUpperCase()} | OECD DDG 2016; EU CMR 2017/821 |`);
+      lines.push(`| **Conflict Minerals** | ${ext.conflictMinerals.overallRisk.toUpperCase()} | ${ext.conflictMinerals.criticalSupplierCount} critical supplier(s) | OECD DDG 2016; EU CMR |`);
     }
     if (ext.modernSlavery) {
-      lines.push(`| **Modern Slavery** | ${ext.modernSlavery.overallRisk.toUpperCase()} — Score: ${ext.modernSlavery.riskScore}/100 | ILO Forced Labour Conv. 29/105 |`);
+      lines.push(`| **Modern Slavery** | ${ext.modernSlavery.overallRisk.toUpperCase()} | ${ext.modernSlavery.riskScore} / 100 | ILO Conv. 29/105; UAE Fed. Law 51/2006 |`);
     }
     if (ext.sdgAlignment) {
-      lines.push(`| **UN SDG Alignment** | Score: ${ext.sdgAlignment.overallScore.toFixed(0)}/100 | UN SDG 8, 12, 13, 15, 16 |`);
+      lines.push(`| **UN SDG Alignment** | — | ${ext.sdgAlignment.overallScore.toFixed(0)} / 100 | UN SDG 8, 12, 13, 15, 16 |`);
     }
   } else {
-    lines.push('> ℹ ESG inputs not provided for this screening. Run full ESG audit via `/esg-audit` skill.');
+    lines.push('> ℹ ESG data not provided for this screening. Submit ESG inputs to unlock full sustainability assessment.');
   }
   lines.push('');
   lines.push('---');
   lines.push('');
 
-  // ── H: Audit Trail ────────────────────────────────────────────────────────
-  lines.push(`## H — Audit Trail *(FDL No.10/2025 Art.24 — Retain 10 years)*`);
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECTION 8 — AUDIT TRAIL  (FDL Art.24 — 10-year retention)
+  // ══════════════════════════════════════════════════════════════════════════
+  lines.push(`## Audit Trail`);
+  lines.push(`*FDL No.10/2025 Art.24 — retain 10 years from ${dateOnly}*`);
   lines.push('');
-  lines.push(`| Timestamp | Action | Actor | Regulatory Ref |`);
-  lines.push(`|-----------|--------|-------|----------------|`);
-  lines.push(`| ${now} | Screening initiated | ${input.screenedBy ?? 'Hawkeye V2 (Automated)'} | FDL No.10/2025 Art.12 |`);
-  lines.push(`| ${now} | Sanctions screening — 6 lists | Hawkeye Engine | Cabinet Res 74/2020 Art.3 |`);
-  lines.push(`| ${now} | Verdict rendered: ${verdict.toUpperCase()} | Weaponized Brain v2 | FDL No.10/2025 Art.20 |`);
+  lines.push(`| Timestamp (UTC) | Action | Actor | Regulatory Reference |`);
+  lines.push(`|---|---|---|---|`);
+  lines.push(`| ${nowDisplay} | Screening request initiated | ${input.screenedBy ?? 'Hawkeye V2 (Automated)'} | FDL No.10/2025 Art.12-14 |`);
+  lines.push(`| ${nowDisplay} | Sanctions check — 6 mandatory lists | Hawkeye Engine | Cabinet Res 74/2020 Art.3 |`);
+  lines.push(`| ${nowDisplay} | Weaponized Brain v2 — 97 subsystems | Weaponized Brain | FDL No.10/2025 Art.20-21 |`);
+  lines.push(`| ${nowDisplay} | Verdict rendered: **${verdict.toUpperCase()}** (confidence ${(brain.confidence * 100).toFixed(1)}%) | Hawkeye Engine | FDL No.10/2025 Art.20 |`);
+  if (brain.clampReasons.length > 0) {
+    lines.push(`| ${nowDisplay} | ${brain.clampReasons.length} safety clamp(s) applied | Weaponized Brain | NIST AI RMF GV-1.6 |`);
+  }
   if (verdict === 'freeze') {
-    lines.push(`| ${now} | Asset freeze obligation triggered | System | Cabinet Res 74/2020 Art.4 |`);
-    lines.push(`| ${now} | EOCN 24h notification countdown started | System | Cabinet Res 74/2020 Art.4-7 |`);
+    lines.push(`| ${nowDisplay} | Asset freeze obligation triggered | System | Cabinet Res 74/2020 Art.4 |`);
+    lines.push(`| ${nowDisplay} | EOCN 24h countdown started | System | Cabinet Res 74/2020 Art.4-7 |`);
   }
   if (fc && fc.primaryCategory !== 'NONE') {
-    lines.push(`| ${now} | Filing obligation: ${fc.primaryCategory} | Hawkeye Engine | FDL No.10/2025 Art.26-27 |`);
+    lines.push(`| ${nowDisplay} | Filing obligation identified: ${fc.primaryCategory} | Hawkeye Engine | FDL No.10/2025 Art.26-27 |`);
+  }
+  if (ext.quantumSeal) {
+    lines.push(`| ${nowDisplay} | Quantum-resistant audit seal applied | SHA-3/512 | FDL Art.24; NIST PQC Framework |`);
   }
   if (ext.asanaSync?.parentTaskGid) {
-    lines.push(`| ${now} | Asana task created: ${ext.asanaSync.parentTaskGid} | Asana Orchestrator | FDL No.10/2025 Art.24 |`);
+    lines.push(`| ${nowDisplay} | Asana task created: \`${ext.asanaSync.parentTaskGid}\` | Asana Orchestrator | FDL No.10/2025 Art.24 |`);
   }
-  lines.push(`| ${now} | Report generated: ${reportId} | Hawkeye V2 | FDL No.10/2025 Art.24 — 10yr retention |`);
+  lines.push(`| ${nowDisplay} | Case report generated: \`${reportId}\` | Hawkeye Sterling V2 | FDL No.10/2025 Art.24 — 10yr retention |`);
   lines.push('');
   lines.push('---');
   lines.push('');
 
-  // ── I: Footer ─────────────────────────────────────────────────────────────
-  lines.push(`---`);
-  lines.push(`### ${BRAND} | *${BRAND_TAGLINE}*`);
-  lines.push(`*Powered by Weaponized Brain v2 — 55+ Compliance Subsystems*`);
+  // ══════════════════════════════════════════════════════════════════════════
+  // FOOTER
+  // ══════════════════════════════════════════════════════════════════════════
+  lines.push(`| | |`);
+  lines.push(`|---|---|`);
+  lines.push(`| **Name** | ${entityName} |`);
+  lines.push(`| **Date Printed** | ${nowDisplay} |`);
+  lines.push(`| **Printed By** | ${input.screenedBy ?? 'Hawkeye V2 (Automated)'} |`);
+  lines.push(`| **Group** | ${input.screeningGroup ?? 'Compliance Screening — UAE DPMS'} |`);
+  lines.push(`| **Platform** | **${BRAND}** — ${BRAND_TAGLINE} |`);
+  lines.push(`| **Powered By** | Weaponized Brain v2 — 97 Compliance Subsystems |`);
   lines.push('');
-  lines.push(`> **CONFIDENTIALITY NOTICE:** This report is generated for authorised compliance`);
-  lines.push(`> monitoring purposes only. Disclosure to the subject of the screening or any`);
-  lines.push(`> unauthorised party is a criminal offence under FDL No.10/2025 Art.29 (tipping off).`);
-  lines.push(`> retained for 10 years per FDL No.10/2025 Art.24.`);
+  lines.push(`> **CONFIDENTIALITY NOTICE** — ${cls}`);
+  lines.push(`> This report is produced for authorised compliance monitoring purposes only.`);
+  lines.push(`> Disclosure of this report or any finding to the subject of the screening,`);
+  lines.push(`> or to any unauthorised party, is a criminal offence under FDL No.10/2025 Art.29`);
+  lines.push(`> (no tipping off). Maximum penalty: AED 5,000,000. Retain for 10 years per Art.24.`);
   lines.push('');
-  lines.push(`*Report ID: \`${reportId}\` | Generated: ${now} | Jurisdiction: UAE*`);
+  lines.push(`*Page 1 of 1 &nbsp;|&nbsp; Report ID: \`${reportId}\` &nbsp;|&nbsp; ${nowDisplay} &nbsp;|&nbsp; UAE Jurisdiction*`);
 
   return lines.join('\n');
 }
@@ -427,43 +479,103 @@ function buildSummaryCard(
   totals: { total: number; confirmed: number; possible: number; false: number; unresolved: number },
 ): string {
   const { brain } = input;
-  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name ?? entityId;
-  const verdict = brain.finalVerdict;
-  const badge = verdictToRiskBadge(verdict, brain.confidence);
-  const emoji = riskBadgeEmoji(badge);
-  const ext = brain.extensions;
+  const entityId   = brain.mega.entity?.id   ?? 'UNKNOWN';
+  const entityName = brain.mega.entity?.name  ?? entityId;
+  const verdict    = brain.finalVerdict;
+  const badge      = verdictToRiskBadge(verdict, brain.confidence);
+  const emoji      = riskBadgeEmoji(badge);
+  const ext        = brain.extensions;
+
+  // ── derived values ──────────────────────────────────────────────────────────
+  const nowShort      = now.replace('T', ' ').slice(0, 16) + ' UTC';
+  const cddLevel      = ext.explanation?.cddLevel ?? 'CDD';
+  const nextReview    = (() => {
+    const months = cddLevel === 'EDD' ? 3 : cddLevel === 'CDD' ? 6 : 12;
+    const d = new Date(); d.setMonth(d.getMonth() + months);
+    return d.toISOString().split('T')[0];
+  })();
+  const subsysCount   = Object.keys(ext).length;
+  const qSealShort    = ext.quantumSeal
+    ? `SHA-3/512 · ${ext.quantumSeal.rootHash.slice(0, 16)}…`
+    : 'NOT APPLIED';
+  const clampCount    = brain.clampReasons.length;
+  const filingLine    = (ext.filingClassification?.primaryCategory && ext.filingClassification.primaryCategory !== 'NONE')
+    ? `${ext.filingClassification.primaryCategory} · due ${ext.filingClassification.deadlineDueDate ?? 'TBD'} · ${ext.filingClassification.urgency.toUpperCase()}`
+    : 'None triggered';
+  const esgLine       = ext.esgScore
+    ? `Grade ${ext.esgScore.grade} (${ext.esgScore.composite.toFixed(0)}/100) — ${ext.esgScore.riskLevel.toUpperCase()}`
+    : 'N/A';
+  const pepLine       = ext.pepProximity
+    ? `${ext.pepProximity.overallRisk.toUpperCase()} (score ${ext.pepProximity.maxProximityScore.toFixed(0)}/100)`
+    : 'None detected';
+  const adversaryLine = ext.gameTheory && ext.gameTheory.expectedPayoff < 0
+    ? `⚠ ADVERSARY EDGE (payoff ${ext.gameTheory.expectedPayoff.toFixed(2)}) — harden controls`
+    : 'No adversary advantage';
+  const peerLine      = ext.peerAnomaly
+    ? (ext.peerAnomaly.anomalies.length > 0
+        ? `⚠ ${ext.peerAnomaly.anomalies.length} anomaly(ies) detected (z-score ${ext.peerAnomaly.overallScore.toFixed(1)})`
+        : 'No peer anomalies')
+    : 'N/A';
+
+  // ── box width: 72 chars inner, 74 total (│...│) ───────────────────────────
+  const W = 72;
+  const pad = (s: string, w = W) => s.slice(0, w).padEnd(w);
+  const row = (label: string, value: string) => {
+    const field = `  ${label.padEnd(18)}: ${value}`;
+    return `│${pad(field)}│`;
+  };
+  const sep = `├${'─'.repeat(W)}┤`;
+  const hdr = (title: string) => {
+    const inner = `  ── ${title} `;
+    return `│${pad(inner + '─'.repeat(Math.max(0, W - inner.length - 2)) + '  ')}│`;
+  };
 
   const lines = [
-    `┌─ ${BRAND} — CASE SUMMARY ─────────────────────────────────────────┐`,
-    `│  Report ID : ${reportId.padEnd(55)} │`,
-    `│  Generated : ${now.padEnd(55)} │`,
-    `├────────────────────────────────────────────────────────────────────┤`,
-    `│  SUBJECT   : ${entityName.slice(0, 55).padEnd(55)} │`,
-    `│  Entity ID : ${entityId.padEnd(55)} │`,
-    `│  Jurisdiction: ${(input.subjectJurisdiction ?? 'N/A').padEnd(53)} │`,
-    `│  Entity Type : ${(brain.mega.entity?.type ?? 'Individual').padEnd(53)} │`,
-    `├────────────────────────────────────────────────────────────────────┤`,
-    `│  SCREENING RESULT                                                  │`,
-    `│  Lists Screened  : 6 of 6 (UN | OFAC | EU | UK | UAE | EOCN)      │`,
-    `│  Total Matches   : ${String(totals.total).padEnd(50)} │`,
-    `│    Confirmed     : ${String(totals.confirmed).padEnd(50)} │`,
-    `│    Possible      : ${String(totals.possible).padEnd(50)} │`,
-    `│    False Positive: ${String(totals.false).padEnd(50)} │`,
-    `│    Unresolved    : ${String(totals.unresolved).padEnd(50)} │`,
-    `├────────────────────────────────────────────────────────────────────┤`,
-    `│  RISK VERDICT  : ${emoji} ${(badge + ' — ' + verdict.toUpperCase()).padEnd(53)} │`,
-    `│  Confidence    : ${((brain.confidence * 100).toFixed(1) + '%').padEnd(53)} │`,
-    `│  CDD Level     : ${(ext.explanation?.cddLevel ?? 'CDD').padEnd(53)} │`,
-    `│  ESG Grade     : ${(ext.esgScore ? `Grade ${ext.esgScore.grade} (${ext.esgScore.riskLevel.toUpperCase()})` : 'N/A — run ESG audit').padEnd(53)} │`,
-    `│  Human Review  : ${(brain.requiresHumanReview ? 'REQUIRED — Cabinet Res 134/2025 Art.19' : 'Not required').padEnd(53)} │`,
-    `│  Four-Eyes     : ${(verdict === 'freeze' || verdict === 'escalate' ? 'REQUIRED — FDL No.10/2025 Art.20-21' : 'Not required').padEnd(53)} │`,
-    `├────────────────────────────────────────────────────────────────────┤`,
-    `│  FILING : ${(ext.filingClassification?.primaryCategory !== 'NONE' && ext.filingClassification ? `${ext.filingClassification.primaryCategory} — due ${ext.filingClassification.deadlineDueDate ?? 'TBD'}` : 'No filing obligation triggered').padEnd(61)} │`,
-    `├────────────────────────────────────────────────────────────────────┤`,
-    `│  ⚠  Tip-off Prohibited: FDL No.10/2025 Art.29                     │`,
-    `│  ⚠  Retain 10 years: FDL No.10/2025 Art.24                         │`,
-    `└────────────────────────────────────────────────────────────────────┘`,
+    `┌${'─'.repeat(W)}┐`,
+    `│${pad(`  ${BRAND}  ·  CASE SUMMARY CARD`)}│`,
+    `│${pad(`  ${BRAND_TAGLINE}  ·  UAE Jurisdiction  ·  Confidential`)}│`,
+    sep,
+    row('Report ID',   reportId),
+    row('Generated',   nowShort),
+    row('Screened By', input.screenedBy ?? 'Hawkeye V2 (Automated)'),
+    sep,
+    hdr('SUBJECT'),
+    row('Name',        entityName),
+    row('Entity ID',   entityId),
+    row('Entity Type', brain.mega.entity?.type ?? 'Individual'),
+    row('Jurisdiction', input.subjectJurisdiction ?? 'Not specified'),
+    row('Date of Birth', input.subjectDob ?? 'Not specified'),
+    sep,
+    hdr('SANCTIONS SCREENING  —  6 of 6 Lists'),
+    row('Total Matches',   String(totals.total)),
+    row('  Confirmed',     String(totals.confirmed)),
+    row('  Possible',      String(totals.possible)),
+    row('  False Positive',String(totals.false)),
+    row('  Unresolved',    String(totals.unresolved)),
+    row('Lists',           'UN | OFAC | EU | UK | UAE | EOCN'),
+    sep,
+    hdr('RISK VERDICT'),
+    row('Verdict',      `${emoji} ${badge}  —  ${verdict.toUpperCase()}`),
+    row('Confidence',   `${(brain.confidence * 100).toFixed(1)}%`),
+    row('CDD Level',    cddLevel),
+    row('Next Review',  nextReview),
+    row('PEP Exposure', pepLine),
+    row('Peer Anomaly', peerLine),
+    row('Adversary',    adversaryLine),
+    row('ESG Grade',    esgLine),
+    sep,
+    hdr('COMPLIANCE ACTIONS'),
+    row('Human Review',  brain.requiresHumanReview ? '⚠ REQUIRED  (Cabinet Res 134/2025 Art.19)' : 'Not required'),
+    row('Four-Eyes',     (verdict === 'freeze' || verdict === 'escalate') ? '⚠ REQUIRED  (FDL No.10/2025 Art.20-21)' : 'Not required'),
+    row('Filing',        filingLine),
+    row('Clamps Fired',  `${clampCount} safety clamp(s)`),
+    sep,
+    hdr('INTEGRITY'),
+    row('Subsystems',   `${subsysCount} active (Weaponized Brain v2 — 97 total)`),
+    row('Quantum Seal',  qSealShort),
+    row('Tip-Off',      '⚠ PROHIBITED  (FDL No.10/2025 Art.29  —  AED 5M penalty)'),
+    row('Retention',    '10 years  (FDL No.10/2025 Art.24)'),
+    `└${'─'.repeat(W)}┘`,
   ];
 
   return lines.join('\n');
