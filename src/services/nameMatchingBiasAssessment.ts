@@ -40,13 +40,7 @@ import { classifyMatch, type MatchClassification } from './nameMatching';
  * UAE clientele distribution: GCC nationals + expats from the major
  * source countries.
  */
-export type NameOriginGroup =
-  | 'anglo'
-  | 'arabic'
-  | 'persian'
-  | 'slavic'
-  | 'south_asian'
-  | 'chinese';
+export type NameOriginGroup = 'anglo' | 'arabic' | 'persian' | 'slavic' | 'south_asian' | 'chinese';
 
 export interface NamePair {
   /** Display label so failures point at the offending pair. */
@@ -187,7 +181,11 @@ export interface GroupBiasMetrics {
   /** Pairs the engine missed (false negatives). */
   missedPositives: readonly { label: string; classification: MatchClassification; score: number }[];
   /** Pairs the engine wrongly flagged (false positives). */
-  spuriousNegatives: readonly { label: string; classification: MatchClassification; score: number }[];
+  spuriousNegatives: readonly {
+    label: string;
+    classification: MatchClassification;
+    score: number;
+  }[];
 }
 
 export interface BiasAssessmentReport {
@@ -258,7 +256,8 @@ export function assessNameMatchingBias(
   fixture: readonly BiasFixtureGroup[] = BIAS_FIXTURE
 ): BiasAssessmentReport {
   const groups: GroupBiasMetrics[] = fixture.map((g) => {
-    const missedPositives: { label: string; classification: MatchClassification; score: number }[] = [];
+    const missedPositives: { label: string; classification: MatchClassification; score: number }[] =
+      [];
     let positivesFlagged = 0;
     for (const p of g.positives) {
       const { classification, breakdown } = classifyMatch(p.a, p.b);
@@ -269,7 +268,11 @@ export function assessNameMatchingBias(
       }
     }
 
-    const spuriousNegatives: { label: string; classification: MatchClassification; score: number }[] = [];
+    const spuriousNegatives: {
+      label: string;
+      classification: MatchClassification;
+      score: number;
+    }[] = [];
     let negativesFlagged = 0;
     for (const n of g.negatives) {
       const { classification, breakdown } = classifyMatch(n.a, n.b);

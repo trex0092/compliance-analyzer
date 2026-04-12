@@ -45,39 +45,39 @@ export type BondAlignmentStatus = 'aligned' | 'partial' | 'not_aligned' | 'not_a
 export interface CsrdAssessment {
   status: CsrdStatus;
   doubleMaterialityCompleted: boolean;
-  financialMaterialityScore: number;   // 0-100
-  impactMaterialityScore: number;      // 0-100
-  esrsAlignmentScore: number;          // 0-100 — EU Sustainability Reporting Standards
+  financialMaterialityScore: number; // 0-100
+  impactMaterialityScore: number; // 0-100
+  esrsAlignmentScore: number; // 0-100 — EU Sustainability Reporting Standards
   gapFindings: string[];
-  disclosureDeadline?: string;         // ISO date
+  disclosureDeadline?: string; // ISO date
   regulatoryRef: string;
 }
 
 export interface SasbAssessment {
   sector: 'metals_mining' | 'chemicals' | 'construction' | 'other';
-  alignmentScore: number;              // 0-100
+  alignmentScore: number; // 0-100
   materialTopics: string[];
   disclosedTopics: string[];
   gaps: string[];
-  sasbCode: string;                    // e.g. 'EM-MM-110a.1'
+  sasbCode: string; // e.g. 'EM-MM-110a.1'
   regulatoryRef: string;
 }
 
 export interface StrandedAssetAssessment {
   totalExposureAed: number;
   highRiskAssetsCount: number;
-  strandingRiskScore: number;          // 0-100
-  transitionRiskExposure: number;      // 0-100
-  physicalRiskExposure: number;        // 0-100
+  strandingRiskScore: number; // 0-100
+  transitionRiskExposure: number; // 0-100
+  physicalRiskExposure: number; // 0-100
   highRiskAssets: Array<{ assetName: string; riskFactor: string; estimatedImpairmentPct: number }>;
   timeHorizon: '2030' | '2040' | '2050';
   regulatoryRef: string;
 }
 
 export interface ClimateVarAssessment {
-  physicalVarPct: number;              // % portfolio value at risk — physical climate
-  transitionVarPct: number;            // % portfolio value at risk — transition
-  combinedVarPct: number;              // combined Climate VAR
+  physicalVarPct: number; // % portfolio value at risk — physical climate
+  transitionVarPct: number; // % portfolio value at risk — transition
+  combinedVarPct: number; // combined Climate VAR
   scenario: '1.5c' | '2c' | '3c' | '4c';
   timeHorizon: '2030' | '2040' | '2050';
   keyRiskDrivers: string[];
@@ -90,7 +90,7 @@ export interface GreenBondAssessment {
   projectEligibilityConfirmed: boolean;
   reportingFrequency?: 'annual' | 'semi_annual' | 'quarterly';
   externalReviewObtained: boolean;
-  icmaGbpPrinciplesScore: number;      // 0-100
+  icmaGbpPrinciplesScore: number; // 0-100
   greenBondFrameworkPublished: boolean;
   regulatoryRef: string;
 }
@@ -100,7 +100,7 @@ export interface SocialBondAssessment {
   targetPopulationDefined: boolean;
   socialObjectivesClear: boolean;
   impactReportingEnabled: boolean;
-  icmaSbpPrinciplesScore: number;      // 0-100
+  icmaSbpPrinciplesScore: number; // 0-100
   regulatoryRef: string;
 }
 
@@ -110,15 +110,15 @@ export interface SllAssessment {
   kpisAmbitious: boolean;
   baselineDocumented: boolean;
   thirdPartyVerification: boolean;
-  sptMechanismDefined: boolean;        // Sustainability Performance Targets
-  lmaPrinciplesScore: number;          // 0-100
+  sptMechanismDefined: boolean; // Sustainability Performance Targets
+  lmaPrinciplesScore: number; // 0-100
   regulatoryRef: string;
 }
 
 export interface CarbonCreditAssessment {
   registryUsed: 'verra_vcs' | 'gold_standard' | 'acr' | 'car' | 'other' | 'none';
   vintageYear?: number;
-  qualityScore: number;                // 0-100
+  qualityScore: number; // 0-100
   permanenceRisk: 'high' | 'medium' | 'low';
   additionalityConfirmed: boolean;
   co2eOffsetTonnes?: number;
@@ -128,23 +128,23 @@ export interface CarbonCreditAssessment {
 }
 
 export interface EsgRatingComparison {
-  internalScore: number;               // 0-100 (from esgScorer.ts)
-  msciRating?: string;                 // 'AAA'–'CCC'
-  spRating?: string;                   // 'Excellent'–'Poor'
-  sustainalyticsScore?: number;        // 0-100 (lower = better)
+  internalScore: number; // 0-100 (from esgScorer.ts)
+  msciRating?: string; // 'AAA'–'CCC'
+  spRating?: string; // 'Excellent'–'Poor'
+  sustainalyticsScore?: number; // 0-100 (lower = better)
   ratingGap: 'aligned' | 'over_rated' | 'under_rated' | 'no_external';
-  lastExternalReview?: string;         // ISO date
+  lastExternalReview?: string; // ISO date
 }
 
 export interface EsgAdvancedInput {
   entityId: string;
 
   // CSRD & Double Materiality
-  euConnectedEntity?: boolean;         // triggers CSRD applicability
-  annualRevenueMEUR?: number;          // >€150M → CSRD in-scope
-  financialMaterialityScore?: number;  // 0-100
-  impactMaterialityScore?: number;     // 0-100
-  esrsAlignmentScore?: number;         // 0-100
+  euConnectedEntity?: boolean; // triggers CSRD applicability
+  annualRevenueMEUR?: number; // >€150M → CSRD in-scope
+  financialMaterialityScore?: number; // 0-100
+  impactMaterialityScore?: number; // 0-100
+  esrsAlignmentScore?: number; // 0-100
   csrdDisclosureDeadline?: string;
   csrdGaps?: string[];
 
@@ -158,8 +158,8 @@ export interface EsgAdvancedInput {
   physicalAssetsAed?: number;
   highRiskAssetsCount?: number;
   strandingRiskScore?: number;
-  transitionRiskExposure?: number;     // 0-100
-  physicalRiskExposure?: number;       // 0-100
+  transitionRiskExposure?: number; // 0-100
+  physicalRiskExposure?: number; // 0-100
   highRiskAssets?: StrandedAssetAssessment['highRiskAssets'];
   climateTimeHorizon?: '2030' | '2040' | '2050';
 
@@ -199,23 +199,23 @@ export interface EsgAdvancedInput {
   doublyCountedRisk?: boolean;
 
   // ESG Rating
-  internalEsgScore?: number;           // from esgScorer.ts
+  internalEsgScore?: number; // from esgScorer.ts
   msciRating?: string;
   spGlobalEsgRating?: string;
   sustainalyticsScore?: number;
   lastExternalEsgReview?: string;
 
   // Social & Governance Risk
-  labourPracticesScore?: number;       // 0-100
-  communityImpactScore?: number;       // 0-100
-  boardOversightScore?: number;        // 0-100
+  labourPracticesScore?: number; // 0-100
+  communityImpactScore?: number; // 0-100
+  boardOversightScore?: number; // 0-100
   executiveMisconductHistory?: boolean;
 }
 
 export interface EsgAdvancedReport {
   entityId: string;
   assessedAt: string;
-  overallAdvancedEsgScore: number;     // 0-100
+  overallAdvancedEsgScore: number; // 0-100
   overallRisk: EsgFrameworkRisk;
   csrd: CsrdAssessment;
   sasb: SasbAssessment;
@@ -251,7 +251,8 @@ const SASB_METALS_MINING_TOPICS = [
 // ─── Sub-Assessors ────────────────────────────────────────────────────────────
 
 function assessCsrd(input: EsgAdvancedInput): CsrdAssessment {
-  const applicable = input.euConnectedEntity === true ||
+  const applicable =
+    input.euConnectedEntity === true ||
     (input.annualRevenueMEUR !== undefined && input.annualRevenueMEUR > 150);
   const status: CsrdStatus = applicable ? 'mandatory' : 'voluntary';
 
@@ -279,14 +280,14 @@ function assessSasb(input: EsgAdvancedInput): SasbAssessment {
   const score = input.sasbAlignmentScore ?? 0;
   const disclosed = input.sasbDisclosedTopics ?? [];
   const material = input.sasbMaterialTopics ?? SASB_METALS_MINING_TOPICS.slice(0, 6);
-  const gaps = material.filter(t => !disclosed.some(d => d.includes(t.split(':')[0])));
+  const gaps = material.filter((t) => !disclosed.some((d) => d.includes(t.split(':')[0])));
 
   return {
     sector,
     alignmentScore: score,
     materialTopics: material,
     disclosedTopics: disclosed,
-    gaps: gaps.map(g => `Not disclosed: ${g}`),
+    gaps: gaps.map((g) => `Not disclosed: ${g}`),
     sasbCode: sector === 'metals_mining' ? 'EM-MM' : 'N/A',
     regulatoryRef: 'SASB Metals & Mining Standard (2018); ISSB IFRS S1 §B26',
   };
@@ -295,7 +296,7 @@ function assessSasb(input: EsgAdvancedInput): SasbAssessment {
 function assessStrandedAssets(input: EsgAdvancedInput): StrandedAssetAssessment {
   const transition = input.transitionRiskExposure ?? 0;
   const physical = input.physicalRiskExposure ?? 0;
-  const strandingScore = input.strandingRiskScore ?? Math.round((transition * 0.6 + physical * 0.4));
+  const strandingScore = input.strandingRiskScore ?? Math.round(transition * 0.6 + physical * 0.4);
 
   return {
     totalExposureAed: input.physicalAssetsAed ?? 0,
@@ -312,14 +313,15 @@ function assessStrandedAssets(input: EsgAdvancedInput): StrandedAssetAssessment 
 function assessClimateVar(input: EsgAdvancedInput): ClimateVarAssessment {
   const physVar = input.physicalVarPct ?? 0;
   const transVar = input.transitionVarPct ?? 0;
-  const combined = Math.min(physVar + transVar - (physVar * transVar / 100), 100);
+  const combined = Math.min(physVar + transVar - (physVar * transVar) / 100, 100);
 
   const drivers: string[] = [];
   if (physVar > 10) drivers.push('Physical risk: heat stress on mine operations / logistics');
   if (physVar > 20) drivers.push('Physical risk: extreme weather events disrupting supply chain');
   if (transVar > 10) drivers.push('Transition risk: carbon pricing on Scope 1/2 emissions');
   if (transVar > 15) drivers.push('Transition risk: stranded fossil-fuel linked assets');
-  if (combined > 25) drivers.push('Compound risk: physical + transition tail risk materialising simultaneously');
+  if (combined > 25)
+    drivers.push('Compound risk: physical + transition tail risk materialising simultaneously');
 
   return {
     physicalVarPct: physVar,
@@ -327,7 +329,8 @@ function assessClimateVar(input: EsgAdvancedInput): ClimateVarAssessment {
     combinedVarPct: Math.round(combined * 10) / 10,
     scenario: input.climateScenario ?? '2c',
     timeHorizon: input.climateTimeHorizon ?? '2050',
-    keyRiskDrivers: drivers.length > 0 ? drivers : ['No material climate VAR identified at current inputs'],
+    keyRiskDrivers:
+      drivers.length > 0 ? drivers : ['No material climate VAR identified at current inputs'],
     regulatoryRef: 'ISSB IFRS S2 §B1-B64; TCFD Scenario Analysis; NGFS Scenarios 2023; IPCC AR6',
   };
 }
@@ -335,18 +338,21 @@ function assessClimateVar(input: EsgAdvancedInput): ClimateVarAssessment {
 function assessGreenBond(input: EsgAdvancedInput): GreenBondAssessment {
   if (!input.isGreenBondIssuer) {
     return {
-      status: 'not_applicable', proceedsUseAligned: false, projectEligibilityConfirmed: false,
-      externalReviewObtained: false, icmaGbpPrinciplesScore: 0,
+      status: 'not_applicable',
+      proceedsUseAligned: false,
+      projectEligibilityConfirmed: false,
+      externalReviewObtained: false,
+      icmaGbpPrinciplesScore: 0,
       greenBondFrameworkPublished: false,
       regulatoryRef: 'ICMA GBP 2021; EU Green Bond Standard (EuGBS) 2023',
     };
   }
-  const score = input.icmaGbpScore ?? (
-    ((input.greenBondProceedsAligned ? 30 : 0) +
-     (input.greenBondProjectEligible ? 25 : 0) +
-     (input.greenBondExternalReview ? 25 : 0) +
-     (input.greenBondFrameworkPublished ? 20 : 0))
-  );
+  const score =
+    input.icmaGbpScore ??
+    (input.greenBondProceedsAligned ? 30 : 0) +
+      (input.greenBondProjectEligible ? 25 : 0) +
+      (input.greenBondExternalReview ? 25 : 0) +
+      (input.greenBondFrameworkPublished ? 20 : 0);
   return {
     status: score >= 75 ? 'aligned' : score >= 40 ? 'partial' : 'not_aligned',
     proceedsUseAligned: input.greenBondProceedsAligned ?? false,
@@ -361,16 +367,17 @@ function assessGreenBond(input: EsgAdvancedInput): GreenBondAssessment {
 function assessSocialBond(input: EsgAdvancedInput): SocialBondAssessment {
   if (!input.isSocialBondIssuer) {
     return {
-      status: 'not_applicable', targetPopulationDefined: false,
-      socialObjectivesClear: false, impactReportingEnabled: false,
+      status: 'not_applicable',
+      targetPopulationDefined: false,
+      socialObjectivesClear: false,
+      impactReportingEnabled: false,
       icmaSbpPrinciplesScore: 0,
       regulatoryRef: 'ICMA SBP 2023',
     };
   }
-  const score = input.icmaSbpScore ?? (
-    ((input.sbpTargetPopulationDefined ? 40 : 0) +
-     (input.sbpImpactReportingEnabled ? 40 : 0) + 20)
-  );
+  const score =
+    input.icmaSbpScore ??
+    (input.sbpTargetPopulationDefined ? 40 : 0) + (input.sbpImpactReportingEnabled ? 40 : 0) + 20;
   return {
     status: score >= 75 ? 'aligned' : score >= 40 ? 'partial' : 'not_aligned',
     targetPopulationDefined: input.sbpTargetPopulationDefined ?? false,
@@ -384,18 +391,23 @@ function assessSocialBond(input: EsgAdvancedInput): SocialBondAssessment {
 function assessSll(input: EsgAdvancedInput): SllAssessment {
   if (!input.hasSll) {
     return {
-      status: 'not_applicable', kpisDefinedCount: 0, kpisAmbitious: false,
-      baselineDocumented: false, thirdPartyVerification: false, sptMechanismDefined: false,
-      lmaPrinciplesScore: 0, regulatoryRef: 'LMA SLL Principles 2023',
+      status: 'not_applicable',
+      kpisDefinedCount: 0,
+      kpisAmbitious: false,
+      baselineDocumented: false,
+      thirdPartyVerification: false,
+      sptMechanismDefined: false,
+      lmaPrinciplesScore: 0,
+      regulatoryRef: 'LMA SLL Principles 2023',
     };
   }
-  const score = input.lmaSllScore ?? (
+  const score =
+    input.lmaSllScore ??
     ((input.sllKpiCount ?? 0) >= 2 ? 20 : 10) +
-    (input.sllKpisAmbitious ? 20 : 0) +
-    (input.sllBaselineDocumented ? 20 : 0) +
-    (input.sllThirdPartyVerification ? 25 : 0) +
-    (input.sllSptDefined ? 15 : 0)
-  );
+      (input.sllKpisAmbitious ? 20 : 0) +
+      (input.sllBaselineDocumented ? 20 : 0) +
+      (input.sllThirdPartyVerification ? 25 : 0) +
+      (input.sllSptDefined ? 15 : 0);
   return {
     status: score >= 75 ? 'aligned' : score >= 40 ? 'partial' : 'not_aligned',
     kpisDefinedCount: input.sllKpiCount ?? 0,
@@ -417,7 +429,9 @@ declare module './esgAdvancedFrameworkScorer' {
 
 function assessCarbonCredit(input: EsgAdvancedInput): CarbonCreditAssessment {
   const registry = input.carbonCreditRegistry ?? 'none';
-  const quality = input.carbonCreditQuality ?? (registry === 'none' ? 0 : registry === 'verra_vcs' || registry === 'gold_standard' ? 75 : 50);
+  const quality =
+    input.carbonCreditQuality ??
+    (registry === 'none' ? 0 : registry === 'verra_vcs' || registry === 'gold_standard' ? 75 : 50);
   const permanence: CarbonCreditAssessment['permanenceRisk'] =
     quality >= 70 ? 'low' : quality >= 40 ? 'medium' : 'high';
 
@@ -430,13 +444,15 @@ function assessCarbonCredit(input: EsgAdvancedInput): CarbonCreditAssessment {
     co2eOffsetTonnes: input.carbonCreditTonnes,
     retirementVerified: input.carbonRetirementVerified ?? false,
     doublyCountedRisk: input.doublyCountedRisk ?? false,
-    regulatoryRef: 'Verra VCS v4.5; Gold Standard Impact Registry; Article 6 Paris Agreement; IOSCO VCM Report 2023',
+    regulatoryRef:
+      'Verra VCS v4.5; Gold Standard Impact Registry; Article 6 Paris Agreement; IOSCO VCM Report 2023',
   };
 }
 
 function assessEsgRating(input: EsgAdvancedInput): EsgRatingComparison {
   const internal = input.internalEsgScore ?? 0;
-  const external = input.sustainalyticsScore !== undefined ? (100 - input.sustainalyticsScore) : undefined;
+  const external =
+    input.sustainalyticsScore !== undefined ? 100 - input.sustainalyticsScore : undefined;
 
   let gap: EsgRatingComparison['ratingGap'] = 'no_external';
   if (external !== undefined) {
@@ -470,10 +486,10 @@ export function scoreEsgAdvancedFramework(input: EsgAdvancedInput): EsgAdvancedR
   const esgRating = assessEsgRating(input);
 
   const socialRiskScore = Math.round(
-    ((input.labourPracticesScore ?? 50) + (input.communityImpactScore ?? 50)) / 2,
+    ((input.labourPracticesScore ?? 50) + (input.communityImpactScore ?? 50)) / 2
   );
   const governanceRiskScore = Math.round(
-    ((input.boardOversightScore ?? 50) + (input.executiveMisconductHistory ? 10 : 80)) / 2,
+    ((input.boardOversightScore ?? 50) + (input.executiveMisconductHistory ? 10 : 80)) / 2
   );
 
   // Composite advanced ESG score
@@ -490,33 +506,60 @@ export function scoreEsgAdvancedFramework(input: EsgAdvancedInput): EsgAdvancedR
   const overallAdvancedEsgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
 
   const overallRisk: EsgFrameworkRisk =
-    overallAdvancedEsgScore >= 75 ? 'low' :
-    overallAdvancedEsgScore >= 55 ? 'medium' :
-    overallAdvancedEsgScore >= 35 ? 'high' : 'critical';
+    overallAdvancedEsgScore >= 75
+      ? 'low'
+      : overallAdvancedEsgScore >= 55
+        ? 'medium'
+        : overallAdvancedEsgScore >= 35
+          ? 'high'
+          : 'critical';
 
   const keyFindings: string[] = [];
   if (csrd.status === 'mandatory' && !csrd.doubleMaterialityCompleted) {
-    keyFindings.push('CSRD MANDATORY: Double materiality assessment not completed — regulatory breach risk');
+    keyFindings.push(
+      'CSRD MANDATORY: Double materiality assessment not completed — regulatory breach risk'
+    );
   }
   if (sasb.gaps.length > 3) {
-    keyFindings.push(`SASB: ${sasb.gaps.length} material topic(s) not disclosed — ISSB S1 §B26 gap`);
+    keyFindings.push(
+      `SASB: ${sasb.gaps.length} material topic(s) not disclosed — ISSB S1 §B26 gap`
+    );
   }
   if (strandedAssets.strandingRiskScore > 60) {
-    keyFindings.push(`Stranded assets: HIGH risk (${strandedAssets.strandingRiskScore}/100) — ${strandedAssets.highRiskAssetsCount} asset(s) at risk`);
+    keyFindings.push(
+      `Stranded assets: HIGH risk (${strandedAssets.strandingRiskScore}/100) — ${strandedAssets.highRiskAssetsCount} asset(s) at risk`
+    );
   }
   if (climateVar.combinedVarPct > 15) {
-    keyFindings.push(`Climate VAR: ${climateVar.combinedVarPct.toFixed(1)}% portfolio at risk (${climateVar.scenario} scenario by ${climateVar.timeHorizon})`);
+    keyFindings.push(
+      `Climate VAR: ${climateVar.combinedVarPct.toFixed(1)}% portfolio at risk (${climateVar.scenario} scenario by ${climateVar.timeHorizon})`
+    );
   }
   if (carbonCredit.doublyCountedRisk) {
-    keyFindings.push('Carbon credits: double-counting risk detected — Article 6 Paris Agreement integrity issue');
+    keyFindings.push(
+      'Carbon credits: double-counting risk detected — Article 6 Paris Agreement integrity issue'
+    );
   }
   if (esgRating.ratingGap === 'over_rated') {
-    keyFindings.push('ESG Rating gap: internal score significantly exceeds external rating — greenwashing risk');
+    keyFindings.push(
+      'ESG Rating gap: internal score significantly exceeds external rating — greenwashing risk'
+    );
   }
 
   const markdownSummary = buildMarkdownSummary(
-    input.entityId, assessedAt, overallAdvancedEsgScore, overallRisk,
-    csrd, sasb, strandedAssets, climateVar, greenBond, sll, carbonCredit, esgRating, keyFindings,
+    input.entityId,
+    assessedAt,
+    overallAdvancedEsgScore,
+    overallRisk,
+    csrd,
+    sasb,
+    strandedAssets,
+    climateVar,
+    greenBond,
+    sll,
+    carbonCredit,
+    esgRating,
+    keyFindings
   );
 
   return {
@@ -555,11 +598,19 @@ function buildMarkdownSummary(
   sll: SllAssessment,
   cc: CarbonCreditAssessment,
   rating: EsgRatingComparison,
-  findings: string[],
+  findings: string[]
 ): string {
-  const riskEmoji: Record<EsgFrameworkRisk, string> = { critical: '🔴', high: '🟠', medium: '🟡', low: '🟢' };
+  const riskEmoji: Record<EsgFrameworkRisk, string> = {
+    critical: '🔴',
+    high: '🟠',
+    medium: '🟡',
+    low: '🟢',
+  };
   const alignEmoji: Record<BondAlignmentStatus, string> = {
-    aligned: '✅', partial: '🟡', not_aligned: '🔴', not_applicable: '⚪',
+    aligned: '✅',
+    partial: '🟡',
+    not_aligned: '🔴',
+    not_applicable: '⚪',
   };
 
   const lines = [
@@ -588,7 +639,9 @@ function buildMarkdownSummary(
     lines.push('');
   }
 
-  lines.push('*Regulatory: ISSB IFRS S1/S2 | CSRD/ESRS | SASB MM | TCFD | ICMA GBP/SBP | LMA SLL | Verra VCS | LBMA RGG v9*');
+  lines.push(
+    '*Regulatory: ISSB IFRS S1/S2 | CSRD/ESRS | SASB MM | TCFD | ICMA GBP/SBP | LMA SLL | Verra VCS | LBMA RGG v9*'
+  );
 
   return lines.join('\n');
 }

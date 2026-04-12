@@ -49,22 +49,22 @@ export interface WorkforceProfile {
   sector: string;
   countryOfOperations: string[]; // ISO alpha-2
   totalWorkers?: number;
-  migrantWorkerPct?: number;        // 0-100
-  recruitmentFeesPaid?: boolean;    // workers paying recruitment fees = red flag
-  passportsHeld?: boolean;          // employer retaining passports = red flag
-  freedomOfMovement?: boolean;      // workers can leave freely (true = safe)
-  overtimeHours?: number;           // average hours/week
+  migrantWorkerPct?: number; // 0-100
+  recruitmentFeesPaid?: boolean; // workers paying recruitment fees = red flag
+  passportsHeld?: boolean; // employer retaining passports = red flag
+  freedomOfMovement?: boolean; // workers can leave freely (true = safe)
+  overtimeHours?: number; // average hours/week
   minimumWageCompliant?: boolean;
   paySlipsProvided?: boolean;
   independentAuditConducted?: boolean;
-  lastAuditDate?: string;           // ISO 8601
+  lastAuditDate?: string; // ISO 8601
   grievanceMechanismOperational?: boolean;
   subcontractorsAudited?: boolean;
 }
 
 export interface SlaveryFinding {
-  indicator: string;        // ILO forced labour indicator name
-  iloIndicatorId: number;   // 1-11 per ILO SAP-FL framework
+  indicator: string; // ILO forced labour indicator name
+  iloIndicatorId: number; // 1-11 per ILO SAP-FL framework
   severity: 'critical' | 'high' | 'medium';
   detail: string;
   citation: string;
@@ -205,12 +205,12 @@ function checkIndicator7_DocumentRetention(p: WorkforceProfile): SlaveryFinding 
 }
 
 function checkIndicator8_WithholdingOfWages(p: WorkforceProfile): SlaveryFinding | null {
-  const wageIssues =
-    p.minimumWageCompliant === false || p.paySlipsProvided === false;
+  const wageIssues = p.minimumWageCompliant === false || p.paySlipsProvided === false;
   if (wageIssues) {
     const details: string[] = [];
     if (p.minimumWageCompliant === false) details.push('wages below legal minimum');
-    if (p.paySlipsProvided === false) details.push('no payslips provided (concealment of wage deductions)');
+    if (p.paySlipsProvided === false)
+      details.push('no payslips provided (concealment of wage deductions)');
     return {
       indicator: 'Withholding of wages',
       iloIndicatorId: 8,
@@ -336,15 +336,14 @@ export function assessModernSlaveryRisk(profile: WorkforceProfile): ModernSlaver
   const iloIndicatorsTriggered = new Set(dedupedFindings.map((f) => f.iloIndicatorId)).size;
   const requiresImmediateAction =
     riskLevel === 'critical' ||
-    dedupedFindings.some((f) =>
-      [3, 6, 7, 9].includes(f.iloIndicatorId), // movement, threats, docs, debt bondage
+    dedupedFindings.some(
+      (f) => [3, 6, 7, 9].includes(f.iloIndicatorId) // movement, threats, docs, debt bondage
     );
   const requiresEnhancedDueDiligence =
     requiresImmediateAction || riskLevel === 'high' || iloIndicatorsTriggered >= 2;
 
   // Audit gap always added to findings if overdue, unless already critical
-  const auditMissing =
-    !profile.independentAuditConducted || auditOverdue(profile.lastAuditDate);
+  const auditMissing = !profile.independentAuditConducted || auditOverdue(profile.lastAuditDate);
   if (auditMissing && riskLevel !== 'critical') {
     dedupedFindings.push({
       indicator: 'No current independent audit',
@@ -359,7 +358,9 @@ export function assessModernSlaveryRisk(profile: WorkforceProfile): ModernSlaver
   }
 
   // Build narrative
-  const criticalFlags = dedupedFindings.filter((f) => f.severity === 'critical').map((f) => f.indicator);
+  const criticalFlags = dedupedFindings
+    .filter((f) => f.severity === 'critical')
+    .map((f) => f.indicator);
   let narrative =
     `Modern slavery risk assessment for entity ${profile.entityId} (sector: ${profile.sector}). ` +
     `Risk level: ${riskLevel.toUpperCase()}. ` +
@@ -375,7 +376,8 @@ export function assessModernSlaveryRisk(profile: WorkforceProfile): ModernSlaver
       ' Enhanced Due Diligence required before continuing commercial relationship.' +
       ' (Cabinet Res 134/2025 Art.14; LBMA RGG v9 §7)';
   } else if (riskLevel === 'medium') {
-    narrative += ' Corrective action plan required within 30 days. (LBMA RGG v9 §7; UAE MoE RSG §3.3)';
+    narrative +=
+      ' Corrective action plan required within 30 days. (LBMA RGG v9 §7; UAE MoE RSG §3.3)';
   } else {
     narrative += ' No critical forced-labour indicators detected. Maintain annual audit schedule.';
   }

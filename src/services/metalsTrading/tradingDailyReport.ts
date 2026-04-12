@@ -23,17 +23,13 @@
  */
 
 import type { MetalsTradingBrain } from './metalsTradingBrain';
-import type {
-  Metal, Portfolio, RiskMetrics, PerformanceStats,
-  TradingAlert, ArbitrageOpportunity, FusedDecision,
-  SpotSnapshot, MarketRegime, Position, TradeRecord,
-} from './types';
+import type { Metal, FusedDecision, MarketRegime } from './types';
 
 // ─── Report Structure ───────────────────────────────────────────────────────
 
 export interface TradingDailyReportData {
-  reportDate: string;          // dd/mm/yyyy (UAE format)
-  generatedAt: string;         // ISO 8601
+  reportDate: string; // dd/mm/yyyy (UAE format)
+  generatedAt: string; // ISO 8601
   reportId: string;
 
   marketSummary: {
@@ -179,7 +175,10 @@ export interface TradingDailyReportData {
 // ─── Report Generation ──────────────────────────────────────────────────────
 
 const METAL_NAMES: Record<Metal, string> = {
-  XAU: 'Gold', XAG: 'Silver', XPT: 'Platinum', XPD: 'Palladium',
+  XAU: 'Gold',
+  XAG: 'Silver',
+  XPT: 'Platinum',
+  XPD: 'Palladium',
 };
 
 function formatDateUAE(date: Date = new Date()): string {
@@ -194,7 +193,7 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
   const metals: Metal[] = ['XAU', 'XAG', 'XPT', 'XPD'];
 
   // Market Summary
-  const metalSnapshots = metals.map(metal => {
+  const metalSnapshots = metals.map((metal) => {
     const snapshot = brain.oracle.getSnapshot(metal);
     return {
       metal,
@@ -220,20 +219,20 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
 
   // Trading Activity
   const orders = brain.engine.getOrderHistory(50);
-  const executions = brain.engine.getExecutions(50);
   const trades = brain.positions.getTradeHistory(20);
 
-  const filledOrders = orders.filter(o => o.status === 'FILLED');
-  const cancelledOrders = orders.filter(o => o.status === 'CANCELLED');
+  const filledOrders = orders.filter((o) => o.status === 'FILLED');
+  const cancelledOrders = orders.filter((o) => o.status === 'CANCELLED');
   const totalVolume = filledOrders.reduce((s, o) => s + o.filledQty, 0);
   const totalFees = filledOrders.reduce((s, o) => s + o.fees, 0);
-  const avgSlippage = filledOrders.length > 0
-    ? filledOrders.reduce((s, o) => s + o.slippage, 0) / filledOrders.length
-    : 0;
+  const avgSlippage =
+    filledOrders.length > 0
+      ? filledOrders.reduce((s, o) => s + o.slippage, 0) / filledOrders.length
+      : 0;
 
   // Signals
-  const decisions = metals.map(m => brain.getDecision(m)).filter(Boolean) as FusedDecision[];
-  const allSignals = decisions.flatMap(d => d.signals);
+  const decisions = metals.map((m) => brain.getDecision(m)).filter(Boolean) as FusedDecision[];
+  const allSignals = decisions.flatMap((d) => d.signals);
   const bySource: Record<string, number> = {};
   for (const s of allSignals) {
     bySource[s.source] = (bySource[s.source] ?? 0) + 1;
@@ -257,7 +256,7 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
     const tradeValue = trade.quantity * trade.entryPrice;
     if (tradeValue >= aedThreshold) {
       thresholdAlerts.push(
-        `Trade ${trade.id}: ${trade.metal} ${trade.quantity}oz @ $${trade.entryPrice.toFixed(2)} = $${tradeValue.toFixed(0)} exceeds AED 55K threshold (MoE Circular 08/AML/2021)`,
+        `Trade ${trade.id}: ${trade.metal} ${trade.quantity}oz @ $${trade.entryPrice.toFixed(2)} = $${tradeValue.toFixed(0)} exceeds AED 55K threshold (MoE Circular 08/AML/2021)`
       );
     }
   }
@@ -281,7 +280,7 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
       totalPnLPct: portfolio.totalPnLPct,
       unrealizedPnL: portfolio.totalUnrealizedPnL,
       realizedPnL: portfolio.totalRealizedPnL,
-      positions: portfolio.positions.map(p => ({
+      positions: portfolio.positions.map((p) => ({
         metal: p.metal,
         side: p.side,
         quantity: p.quantity,
@@ -309,7 +308,7 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
       dailyPnL: riskMetrics.dailyPnL,
       weeklyPnL: riskMetrics.weeklyPnL,
       monthlyPnL: riskMetrics.monthlyPnL,
-      circuitBreakers: circuitBreakers.map(cb => ({
+      circuitBreakers: circuitBreakers.map((cb) => ({
         type: cb.type,
         triggered: cb.triggered,
         value: cb.currentValue,
@@ -324,7 +323,7 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
       totalVolumeTraded: totalVolume,
       totalFeesUSD: totalFees,
       avgSlippageBps: avgSlippage,
-      recentTrades: trades.slice(-10).map(t => ({
+      recentTrades: trades.slice(-10).map((t) => ({
         metal: t.metal,
         side: t.side,
         quantity: t.quantity,
@@ -339,7 +338,7 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
     signals: {
       totalGenerated: allSignals.length,
       bySource,
-      latestDecisions: decisions.map(d => ({
+      latestDecisions: decisions.map((d) => ({
         metal: d.metal,
         direction: d.direction,
         conviction: d.conviction,
@@ -353,7 +352,7 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
     arbitrage: {
       totalDetected: arbStats.totalDetected,
       totalEstimatedProfit: arbStats.totalProfit,
-      opportunities: arbHistory.slice(-5).map(a => ({
+      opportunities: arbHistory.slice(-5).map((a) => ({
         type: a.type,
         venueA: a.venueA,
         venueB: a.venueB,
@@ -370,7 +369,7 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
       medium: alertStats.bySeverity.MEDIUM,
       low: alertStats.bySeverity.LOW,
       byType: alertStats.byType,
-      recentAlerts: recentAlerts.map(a => ({
+      recentAlerts: recentAlerts.map((a) => ({
         type: a.type,
         severity: a.severity,
         metal: a.metal,
@@ -406,7 +405,12 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
 // ─── Asana Rich Text Formatter ──────────────────────────────────────────────
 
 function usd(n: number, d = 2): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d });
+  return n.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: d,
+    maximumFractionDigits: d,
+  });
 }
 
 function pct(n: number): string {
@@ -456,7 +460,9 @@ export function formatAsanaTaskNotes(report: TradingDailyReportData): string {
   lines.push(hr);
   lines.push(`  Cash Balance:    ${usd(report.portfolio.cashBalance, 0)}`);
   lines.push(`  Market Value:    ${usd(report.portfolio.totalMarketValue, 0)}`);
-  lines.push(`  Total P&L:       ${usd(report.portfolio.totalPnL, 0)} (${pct(report.portfolio.totalPnLPct)})`);
+  lines.push(
+    `  Total P&L:       ${usd(report.portfolio.totalPnL, 0)} (${pct(report.portfolio.totalPnLPct)})`
+  );
   lines.push(`  Unrealized P&L:  ${usd(report.portfolio.unrealizedPnL, 0)}`);
   lines.push(`  Realized P&L:    ${usd(report.portfolio.realizedPnL, 0)}`);
   lines.push(`  Concentration:   ${(report.portfolio.concentrationRisk * 100).toFixed(0)}% HHI`);
@@ -464,7 +470,9 @@ export function formatAsanaTaskNotes(report: TradingDailyReportData): string {
   if (report.portfolio.positions.length > 0) {
     lines.push('  Open Positions:');
     for (const p of report.portfolio.positions) {
-      lines.push(`    ${p.side} ${p.quantity}oz ${p.metal} @ ${usd(p.avgEntry)} → ${usd(p.currentPrice)}  P&L: ${usd(p.unrealizedPnL)} (${pct(p.unrealizedPnLPct)})`);
+      lines.push(
+        `    ${p.side} ${p.quantity}oz ${p.metal} @ ${usd(p.avgEntry)} → ${usd(p.currentPrice)}  P&L: ${usd(p.unrealizedPnL)} (${pct(p.unrealizedPnLPct)})`
+      );
     }
   } else {
     lines.push('  No open positions');
@@ -476,14 +484,20 @@ export function formatAsanaTaskNotes(report: TradingDailyReportData): string {
   lines.push(hr);
   lines.push(`  VaR (1d, 95%):   ${usd(report.risk.valueAtRisk1d, 0)}`);
   lines.push(`  VaR (5d, 95%):   ${usd(report.risk.valueAtRisk5d, 0)}`);
-  lines.push(`  Drawdown:        ${usd(report.risk.currentDrawdown, 0)} (${pct(report.risk.currentDrawdownPct)})`);
-  lines.push(`  Max Drawdown:    ${usd(report.risk.maxDrawdown, 0)} (${pct(report.risk.maxDrawdownPct)})`);
+  lines.push(
+    `  Drawdown:        ${usd(report.risk.currentDrawdown, 0)} (${pct(report.risk.currentDrawdownPct)})`
+  );
+  lines.push(
+    `  Max Drawdown:    ${usd(report.risk.maxDrawdown, 0)} (${pct(report.risk.maxDrawdownPct)})`
+  );
   lines.push(`  Sharpe Ratio:    ${report.risk.sharpeRatio.toFixed(2)}`);
   lines.push(`  Sortino Ratio:   ${report.risk.sortinoRatio.toFixed(2)}`);
   lines.push(`  Kelly Fraction:  ${(report.risk.kellyFraction * 100).toFixed(1)}%`);
   lines.push(`  Volatility 30d:  ${report.risk.volatility30d.toFixed(1)}%`);
   lines.push('');
-  lines.push(`  P&L:  Daily ${usd(report.risk.dailyPnL, 0)}  |  Weekly ${usd(report.risk.weeklyPnL, 0)}  |  Monthly ${usd(report.risk.monthlyPnL, 0)}`);
+  lines.push(
+    `  P&L:  Daily ${usd(report.risk.dailyPnL, 0)}  |  Weekly ${usd(report.risk.weeklyPnL, 0)}  |  Monthly ${usd(report.risk.monthlyPnL, 0)}`
+  );
   lines.push('');
   lines.push('  Circuit Breakers:');
   for (const cb of report.risk.circuitBreakers) {
@@ -505,7 +519,9 @@ export function formatAsanaTaskNotes(report: TradingDailyReportData): string {
     lines.push('');
     lines.push('  Recent Trades:');
     for (const t of report.tradingActivity.recentTrades.slice(-5)) {
-      lines.push(`    ${t.side} ${t.quantity}oz ${t.metal}: ${usd(t.entryPrice)} → ${usd(t.exitPrice)}  P&L: ${usd(t.pnl)} (${pct(t.pnlPct)})`);
+      lines.push(
+        `    ${t.side} ${t.quantity}oz ${t.metal}: ${usd(t.entryPrice)} → ${usd(t.exitPrice)}  P&L: ${usd(t.pnl)} (${pct(t.pnlPct)})`
+      );
     }
   }
 
@@ -515,11 +531,19 @@ export function formatAsanaTaskNotes(report: TradingDailyReportData): string {
   lines.push(hr);
   lines.push(`  Signals Generated: ${report.signals.totalGenerated}`);
   if (Object.keys(report.signals.bySource).length > 0) {
-    lines.push(`  By Source: ${Object.entries(report.signals.bySource).map(([k, v]) => `${k}=${v}`).join(', ')}`);
+    lines.push(
+      `  By Source: ${Object.entries(report.signals.bySource)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', ')}`
+    );
   }
   for (const d of report.signals.latestDecisions) {
-    lines.push(`  ${d.metal}: ${d.direction} ${bar(d.conviction, 1)} ${(d.conviction * 100).toFixed(0)}% conviction`);
-    lines.push(`    Regime: ${d.regime.replace(/_/g, ' ')}  |  R:R ${d.riskReward.toFixed(2)}  |  Alignment: ${(d.signalAlignment * 100).toFixed(0)}%  |  ${d.signalCount} signals`);
+    lines.push(
+      `  ${d.metal}: ${d.direction} ${bar(d.conviction, 1)} ${(d.conviction * 100).toFixed(0)}% conviction`
+    );
+    lines.push(
+      `    Regime: ${d.regime.replace(/_/g, ' ')}  |  R:R ${d.riskReward.toFixed(2)}  |  Alignment: ${(d.signalAlignment * 100).toFixed(0)}%  |  ${d.signalCount} signals`
+    );
   }
 
   // 6. Arbitrage
@@ -529,7 +553,9 @@ export function formatAsanaTaskNotes(report: TradingDailyReportData): string {
   lines.push(`  Opportunities Detected: ${report.arbitrage.totalDetected}`);
   lines.push(`  Estimated Total Profit: ${usd(report.arbitrage.totalEstimatedProfit, 0)}`);
   for (const a of report.arbitrage.opportunities) {
-    lines.push(`    ${a.type.replace(/_/g, ' ')}: ${a.venueA} → ${a.venueB}  |  Spread: ${a.spreadPct.toFixed(2)}%  |  Net: ${usd(a.netProfit, 0)}  |  Conf: ${(a.confidence * 100).toFixed(0)}%`);
+    lines.push(
+      `    ${a.type.replace(/_/g, ' ')}: ${a.venueA} → ${a.venueB}  |  Spread: ${a.spreadPct.toFixed(2)}%  |  Net: ${usd(a.netProfit, 0)}  |  Conf: ${(a.confidence * 100).toFixed(0)}%`
+    );
   }
 
   // 7. Alerts
@@ -537,7 +563,9 @@ export function formatAsanaTaskNotes(report: TradingDailyReportData): string {
   lines.push('7. ALERT SUMMARY');
   lines.push(hr);
   lines.push(`  Total Active: ${report.alerts.total}`);
-  lines.push(`  CRITICAL: ${report.alerts.critical}  |  HIGH: ${report.alerts.high}  |  MEDIUM: ${report.alerts.medium}  |  LOW: ${report.alerts.low}`);
+  lines.push(
+    `  CRITICAL: ${report.alerts.critical}  |  HIGH: ${report.alerts.high}  |  MEDIUM: ${report.alerts.medium}  |  LOW: ${report.alerts.low}`
+  );
   for (const a of report.alerts.recentAlerts.slice(-5)) {
     lines.push(`    [${a.severity}] ${a.title}`);
     if (a.suggestedAction) lines.push(`      Action: ${a.suggestedAction}`);
@@ -548,13 +576,19 @@ export function formatAsanaTaskNotes(report: TradingDailyReportData): string {
   lines.push('8. PERFORMANCE METRICS');
   lines.push(hr);
   lines.push(`  Total Trades:    ${report.performance.totalTrades}`);
-  lines.push(`  Win Rate:        ${(report.performance.winRate * 100).toFixed(0)}%  ${bar(report.performance.winRate, 1)}`);
-  lines.push(`  Total Return:    ${usd(report.performance.totalReturn, 0)} (${pct(report.performance.totalReturnPct)})`);
+  lines.push(
+    `  Win Rate:        ${(report.performance.winRate * 100).toFixed(0)}%  ${bar(report.performance.winRate, 1)}`
+  );
+  lines.push(
+    `  Total Return:    ${usd(report.performance.totalReturn, 0)} (${pct(report.performance.totalReturnPct)})`
+  );
   lines.push(`  Avg Return:      ${usd(report.performance.avgReturn)}`);
   lines.push(`  Profit Factor:   ${report.performance.profitFactor.toFixed(2)}`);
   lines.push(`  Best Trade:      ${usd(report.performance.bestTradePnL)}`);
   lines.push(`  Worst Trade:     ${usd(report.performance.worstTradePnL)}`);
-  lines.push(`  Win Streak:      ${report.performance.currentWinStreak} (longest: ${report.performance.longestWinStreak})`);
+  lines.push(
+    `  Win Streak:      ${report.performance.currentWinStreak} (longest: ${report.performance.longestWinStreak})`
+  );
   lines.push(`  Loss Streak:     ${report.performance.currentLossStreak}`);
 
   // 9. Compliance
@@ -615,7 +649,7 @@ export function formatHTMLReport(report: TradingDailyReportData): string {
     .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #21262d; font-size: 10px; color: #484f58; text-align: center; }
   `;
 
-  const pnlClass = (n: number) => n >= 0 ? 'green' : 'red';
+  const pnlClass = (n: number) => (n >= 0 ? 'green' : 'red');
 
   let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Trading Daily Report — ${report.reportDate}</title><style>${style}</style></head><body><div class="container">`;
 
@@ -666,7 +700,12 @@ export function formatHTMLReport(report: TradingDailyReportData): string {
     html += `<h2>Alerts (${report.alerts.total})</h2>`;
     html += `<div style="font-size:11px;margin:8px 0">CRITICAL: ${report.alerts.critical} | HIGH: ${report.alerts.high} | MEDIUM: ${report.alerts.medium}</div>`;
     for (const a of report.alerts.recentAlerts.slice(-5)) {
-      const badgeClass = a.severity === 'CRITICAL' ? 'badge-crit' : a.severity === 'HIGH' ? 'badge-high' : 'badge-med';
+      const badgeClass =
+        a.severity === 'CRITICAL'
+          ? 'badge-crit'
+          : a.severity === 'HIGH'
+            ? 'badge-high'
+            : 'badge-med';
       html += `<div style="margin:4px 0"><span class="badge ${badgeClass}">${a.severity}</span> ${a.title}</div>`;
     }
   }

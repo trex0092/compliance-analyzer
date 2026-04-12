@@ -4,9 +4,15 @@
 // Integrates compliance brain for counterparty/sanctions screening.
 
 import type {
-  Metal, Currency, Venue, TradeSide, OrderType, OrderStatus,
-  TimeInForce, Order, Execution, ExecutionStrategy, PriceQuote,
-  Portfolio, RiskLimits,
+  Metal,
+  Venue,
+  TradeSide,
+  OrderType,
+  TimeInForce,
+  Order,
+  Execution,
+  PriceQuote,
+  RiskLimits,
 } from './types';
 import type { PriceOracle } from './priceOracle';
 import type { PositionManager } from './positionManager';
@@ -60,7 +66,7 @@ export class TradingEngine {
   constructor(
     oracle: PriceOracle,
     positionManager: PositionManager,
-    config: Partial<EngineConfig> = {},
+    config: Partial<EngineConfig> = {}
   ) {
     this.config = { ...DEFAULT_ENGINE_CONFIG, ...config };
     this.oracle = oracle;
@@ -129,8 +135,13 @@ export class TradingEngine {
     const portfolio = this.positionManager.getPortfolio();
     const currentPrice = this.getCurrentPrice(order.metal, order.venue);
     const riskCheck = preTradeRiskCheck(
-      order.metal, order.side, order.quantity, currentPrice,
-      portfolio, this.config.riskLimits, this.circuitBreakers,
+      order.metal,
+      order.side,
+      order.quantity,
+      currentPrice,
+      portfolio,
+      this.config.riskLimits,
+      this.circuitBreakers
     );
 
     if (!riskCheck.approved) {
@@ -204,9 +215,7 @@ export class TradingEngine {
     const quote = this.oracle.getConsolidated(order.metal);
     if (!quote) return;
 
-    const canFill = order.side === 'BUY'
-      ? quote.ask <= order.price
-      : quote.bid >= order.price;
+    const canFill = order.side === 'BUY' ? quote.ask <= order.price : quote.bid >= order.price;
 
     if (canFill) {
       this.fill(order, order.quantity, order.price, 0);
@@ -324,9 +333,8 @@ export class TradingEngine {
 
         case 'STOP':
           if (order.stopPrice) {
-            const triggered = order.side === 'BUY'
-              ? quote.ask >= order.stopPrice
-              : quote.bid <= order.stopPrice;
+            const triggered =
+              order.side === 'BUY' ? quote.ask >= order.stopPrice : quote.bid <= order.stopPrice;
             if (triggered) {
               order.type = 'MARKET';
               this.executeMarketOrder(order);
@@ -336,9 +344,8 @@ export class TradingEngine {
 
         case 'STOP_LIMIT':
           if (order.stopPrice) {
-            const triggered = order.side === 'BUY'
-              ? quote.ask >= order.stopPrice
-              : quote.bid <= order.stopPrice;
+            const triggered =
+              order.side === 'BUY' ? quote.ask >= order.stopPrice : quote.bid <= order.stopPrice;
             if (triggered) {
               order.type = 'LIMIT';
               this.checkLimitOrder(order);
@@ -415,15 +422,13 @@ export class TradingEngine {
 
   getOpenOrders(metal?: Metal): Order[] {
     const open = [...this.orders.values()].filter(
-      o => o.status === 'PENDING' || o.status === 'PARTIAL',
+      (o) => o.status === 'PENDING' || o.status === 'PARTIAL'
     );
-    return metal ? open.filter(o => o.metal === metal) : open;
+    return metal ? open.filter((o) => o.metal === metal) : open;
   }
 
   getOrderHistory(limit = 50): Order[] {
-    return [...this.orders.values()]
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, limit);
+    return [...this.orders.values()].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, limit);
   }
 
   getExecutions(limit = 50): Execution[] {
@@ -455,12 +460,12 @@ export class TradingEngine {
 
   private calculateFees(quantity: number, price: number, venue: Venue): number {
     const feeSchedule: Record<Venue, number> = {
-      LBMA: 0.0002,     // 2bps
-      COMEX: 0.00025,   // 2.5bps
-      SGE: 0.0003,      // 3bps
-      DMCC: 0.00015,    // 1.5bps
+      LBMA: 0.0002, // 2bps
+      COMEX: 0.00025, // 2.5bps
+      SGE: 0.0003, // 3bps
+      DMCC: 0.00015, // 1.5bps
       OTC_SPOT: 0.0001, // 1bp
-      PHYSICAL: 0.005,  // 50bps
+      PHYSICAL: 0.005, // 50bps
     };
     return quantity * price * (feeSchedule[venue] ?? 0.0003);
   }

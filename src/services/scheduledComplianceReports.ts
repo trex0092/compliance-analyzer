@@ -117,7 +117,8 @@ export const SCHEDULED_REPORTS: readonly ScheduledReportDefinition[] = [
     id: 'daily_trading_report',
     name: 'Daily precious metals trading report',
     cadence: 'daily',
-    purpose: 'Daily P&L, risk metrics, signal decisions, arbitrage, and compliance flags for metals trading desk',
+    purpose:
+      'Daily P&L, risk metrics, signal decisions, arbitrage, and compliance flags for metals trading desk',
     citation: 'FDL No.10/2025 Art.24 + MoE Circular 08/AML/2021 + LBMA RGG v9',
     outputs: ['html', 'json', 'markdown'],
     dispatchTo: 'compliance_project',

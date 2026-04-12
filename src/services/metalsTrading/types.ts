@@ -5,11 +5,25 @@
 export type Metal = 'XAU' | 'XAG' | 'XPT' | 'XPD';
 export type Currency = 'USD' | 'AED' | 'EUR' | 'GBP' | 'CHF' | 'CNY' | 'JPY';
 export type TradeSide = 'BUY' | 'SELL';
-export type OrderType = 'MARKET' | 'LIMIT' | 'STOP' | 'STOP_LIMIT' | 'TRAILING_STOP' | 'ICEBERG' | 'TWAP' | 'VWAP';
+export type OrderType =
+  | 'MARKET'
+  | 'LIMIT'
+  | 'STOP'
+  | 'STOP_LIMIT'
+  | 'TRAILING_STOP'
+  | 'ICEBERG'
+  | 'TWAP'
+  | 'VWAP';
 export type OrderStatus = 'PENDING' | 'PARTIAL' | 'FILLED' | 'CANCELLED' | 'REJECTED' | 'EXPIRED';
 export type TimeInForce = 'GTC' | 'IOC' | 'FOK' | 'DAY' | 'GTD';
 export type Venue = 'LBMA' | 'COMEX' | 'SGE' | 'DMCC' | 'OTC_SPOT' | 'PHYSICAL';
-export type MarketRegime = 'TRENDING_UP' | 'TRENDING_DOWN' | 'RANGING' | 'HIGH_VOLATILITY' | 'BREAKOUT' | 'MEAN_REVERSION';
+export type MarketRegime =
+  | 'TRENDING_UP'
+  | 'TRENDING_DOWN'
+  | 'RANGING'
+  | 'HIGH_VOLATILITY'
+  | 'BREAKOUT'
+  | 'MEAN_REVERSION';
 export type SignalStrength = 'ULTRA_STRONG' | 'STRONG' | 'MODERATE' | 'WEAK' | 'NEUTRAL';
 export type AlertSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
 
@@ -170,22 +184,22 @@ export interface Portfolio {
 // ─── Risk Management ────────────────────────────────────────────────────────
 
 export interface RiskLimits {
-  maxPositionSize: number;      // max troy oz per position
+  maxPositionSize: number; // max troy oz per position
   maxPortfolioExposure: number; // max total market value
-  maxLossPerTrade: number;      // max loss before auto-close
-  maxDailyLoss: number;         // daily stop
-  maxDrawdownPct: number;       // max drawdown from peak
-  maxConcentration: number;     // max % in single metal
+  maxLossPerTrade: number; // max loss before auto-close
+  maxDailyLoss: number; // daily stop
+  maxDrawdownPct: number; // max drawdown from peak
+  maxConcentration: number; // max % in single metal
   maxLeverage: number;
   maxOpenOrders: number;
   maxDailyTrades: number;
-  cooldownAfterLoss: number;    // ms cooldown after hitting loss limit
+  cooldownAfterLoss: number; // ms cooldown after hitting loss limit
 }
 
 export interface RiskMetrics {
-  valueAtRisk1d: number;        // 1-day 95% VaR
-  valueAtRisk5d: number;        // 5-day 95% VaR
-  conditionalVaR: number;       // Expected Shortfall
+  valueAtRisk1d: number; // 1-day 95% VaR
+  valueAtRisk5d: number; // 5-day 95% VaR
+  conditionalVaR: number; // Expected Shortfall
   sharpeRatio: number;
   sortinoRatio: number;
   maxDrawdown: number;
@@ -201,7 +215,7 @@ export interface RiskMetrics {
   weeklyPnL: number;
   monthlyPnL: number;
   volatility30d: number;
-  beta: number;                 // vs gold
+  beta: number; // vs gold
   correlation: CorrelationMatrix;
   kellyFraction: number;
   optimalPositionSize: number;
@@ -227,7 +241,7 @@ export interface CircuitBreaker {
 export interface TAIndicators {
   metal: Metal;
   timestamp: number;
-  sma: Record<number, number>;    // period -> value (20, 50, 100, 200)
+  sma: Record<number, number>; // period -> value (20, 50, 100, 200)
   ema: Record<number, number>;
   rsi14: number;
   macd: { value: number; signal: number; histogram: number };
@@ -238,7 +252,15 @@ export interface TAIndicators {
   obv: number;
   vwap: number;
   fibonacci: { levels: number[]; trend: 'UP' | 'DOWN' };
-  pivotPoints: { pivot: number; r1: number; r2: number; r3: number; s1: number; s2: number; s3: number };
+  pivotPoints: {
+    pivot: number;
+    r1: number;
+    r2: number;
+    r3: number;
+    s1: number;
+    s2: number;
+    s3: number;
+  };
   ichimoku: { tenkan: number; kijun: number; senkouA: number; senkouB: number; chikou: number };
   volumeProfile: { poc: number; valueAreaHigh: number; valueAreaLow: number };
   supportLevels: number[];
@@ -261,7 +283,13 @@ export interface PatternDetection {
 
 export interface ArbitrageOpportunity {
   id: string;
-  type: 'SPOT_FUTURES' | 'CROSS_EXCHANGE' | 'TRIANGULAR' | 'RATIO_TRADE' | 'PHYSICAL_PAPER' | 'REGIONAL';
+  type:
+    | 'SPOT_FUTURES'
+    | 'CROSS_EXCHANGE'
+    | 'TRIANGULAR'
+    | 'RATIO_TRADE'
+    | 'PHYSICAL_PAPER'
+    | 'REGIONAL';
   metalA: Metal;
   metalB?: Metal;
   venueA: Venue;
@@ -274,7 +302,7 @@ export interface ArbitrageOpportunity {
   estimatedCosts: number;
   netProfit: number;
   confidence: number;
-  expiryMs: number;       // how long the window lasts
+  expiryMs: number; // how long the window lasts
   detectedAt: number;
   riskFactors: string[];
   executionPlan: { step: number; action: string; venue: Venue; side: TradeSide; qty: number }[];
@@ -295,14 +323,14 @@ export interface OrderBook {
   asks: OrderBookLevel[];
   midPrice: number;
   spread: number;
-  imbalance: number;   // -1 to +1 (bid heavy to ask heavy)
-  depth10: number;     // total qty within 10 levels
+  imbalance: number; // -1 to +1 (bid heavy to ask heavy)
+  depth10: number; // total qty within 10 levels
   timestamp: number;
 }
 
 export interface FlowMetrics {
   metal: Metal;
-  vpin: number;           // Volume-synchronized Probability of Informed Trading
+  vpin: number; // Volume-synchronized Probability of Informed Trading
   tradeFlowImbalance: number;
   avgTradeSize: number;
   largeTradeCount: number;
@@ -310,7 +338,7 @@ export interface FlowMetrics {
   buyVolume: number;
   sellVolume: number;
   netFlow: number;
-  toxicity: number;       // 0-1, how toxic is the flow
+  toxicity: number; // 0-1, how toxic is the flow
   smartMoneyDirection: TradeSide | 'NEUTRAL';
   retailDirection: TradeSide | 'NEUTRAL';
   timestamp: number;
@@ -359,12 +387,20 @@ export interface TradingAlert {
 
 export interface TradingSignal {
   id: string;
-  source: 'TECHNICAL' | 'MICROSTRUCTURE' | 'ARBITRAGE' | 'SENTIMENT' | 'FLOW' | 'PATTERN' | 'SEASONAL' | 'MACRO';
+  source:
+    | 'TECHNICAL'
+    | 'MICROSTRUCTURE'
+    | 'ARBITRAGE'
+    | 'SENTIMENT'
+    | 'FLOW'
+    | 'PATTERN'
+    | 'SEASONAL'
+    | 'MACRO';
   metal: Metal;
   direction: TradeSide;
   strength: SignalStrength;
-  confidence: number;     // 0-1
-  weight: number;         // signal weight in fusion
+  confidence: number; // 0-1
+  weight: number; // signal weight in fusion
   entryPrice: number;
   targetPrice: number;
   stopLoss: number;
@@ -379,10 +415,10 @@ export interface FusedDecision {
   id: string;
   metal: Metal;
   direction: TradeSide;
-  conviction: number;       // 0-1 overall conviction
+  conviction: number; // 0-1 overall conviction
   regime: MarketRegime;
   signals: TradingSignal[];
-  signalAlignment: number;  // 0-1, how aligned are signals
+  signalAlignment: number; // 0-1, how aligned are signals
   entryPrice: number;
   targetPrice: number;
   stopLoss: number;
@@ -458,7 +494,10 @@ export interface TradingConfig {
   activeVenues: Venue[];
   riskLimits: RiskLimits;
   executionStrategy: ExecutionStrategy;
-  alertPreferences: Record<AlertType, { enabled: boolean; autoExecute: boolean; minSeverity: AlertSeverity }>;
+  alertPreferences: Record<
+    AlertType,
+    { enabled: boolean; autoExecute: boolean; minSeverity: AlertSeverity }
+  >;
   signalWeights: Record<TradingSignal['source'], number>;
   priceUpdateIntervalMs: number;
   complianceMode: boolean; // ties into existing compliance brain

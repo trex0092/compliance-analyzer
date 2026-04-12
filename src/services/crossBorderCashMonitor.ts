@@ -19,7 +19,13 @@ export const CROSS_BORDER_THRESHOLD_AED = 60_000;
 /** Structuring detection window: 30-day rolling */
 export const STRUCTURING_WINDOW_DAYS = 30;
 
-export type BniType = 'cash' | 'travellers_cheque' | 'money_order' | 'bearer_bond' | 'prepaid_card' | 'crypto_equivalent';
+export type BniType =
+  | 'cash'
+  | 'travellers_cheque'
+  | 'money_order'
+  | 'bearer_bond'
+  | 'prepaid_card'
+  | 'crypto_equivalent';
 
 export type CrossBorderDirection = 'inbound' | 'outbound';
 
@@ -27,7 +33,7 @@ export interface CrossBorderMovement {
   movementId: string;
   entityId: string;
   travellerOrCarrierId: string;
-  movementDate: string;             // ISO date
+  movementDate: string; // ISO date
   direction: CrossBorderDirection;
   originCountry: string;
   destinationCountry: string;
@@ -35,7 +41,7 @@ export interface CrossBorderMovement {
   amountAED: number;
   declared: boolean;
   customsClearanceRef?: string;
-  linkedMovementIds?: string[];     // for related travellers / same trip
+  linkedMovementIds?: string[]; // for related travellers / same trip
 }
 
 export interface CrossBorderRiskInput {
@@ -48,7 +54,13 @@ export interface CrossBorderRiskInput {
 export type CrossBorderRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export interface CrossBorderFlag {
-  type: 'threshold_breach' | 'structuring' | 'undeclared' | 'high_risk_corridor' | 'multiple_travellers' | 'round_trip';
+  type:
+    | 'threshold_breach'
+    | 'structuring'
+    | 'undeclared'
+    | 'high_risk_corridor'
+    | 'multiple_travellers'
+    | 'round_trip';
   severity: CrossBorderRiskLevel;
   description: string;
   amountAED: number;
@@ -60,9 +72,9 @@ export interface CrossBorderAssessment {
   movementId: string;
   generatedAt: string;
   overallRisk: CrossBorderRiskLevel;
-  riskScore: number;              // 0–100
+  riskScore: number; // 0–100
   flags: CrossBorderFlag[];
-  cumulativeAmountAED: number;    // rolling 30-day total (same entity/carrier)
+  cumulativeAmountAED: number; // rolling 30-day total (same entity/carrier)
   structuringDetected: boolean;
   requiresDeclaration: boolean;
   requiresStr: boolean;
@@ -75,8 +87,21 @@ export interface CrossBorderAssessment {
 
 /** Countries with elevated FATF/CBCM risk for cash couriers */
 const HIGH_RISK_CORRIDORS = new Set([
-  'IR', 'KP', 'AF', 'IQ', 'SY', 'LY', 'YE', 'SD', 'SS', 'CF',
-  'ML', 'NI', 'HT', 'MM', 'PK',
+  'IR',
+  'KP',
+  'AF',
+  'IQ',
+  'SY',
+  'LY',
+  'YE',
+  'SD',
+  'SS',
+  'CF',
+  'ML',
+  'NI',
+  'HT',
+  'MM',
+  'PK',
 ]);
 
 // ─── Detection Logic ──────────────────────────────────────────────────────────
@@ -110,13 +135,15 @@ function detectFlags(input: CrossBorderRiskInput): CrossBorderFlag[] {
   const windowStart = new Date(mv.movementDate);
   windowStart.setDate(windowStart.getDate() - STRUCTURING_WINDOW_DAYS);
 
-  const cumulativeAmount = input.recentMovements
-    .filter(r =>
-      r.travellerOrCarrierId === mv.travellerOrCarrierId &&
-      new Date(r.movementDate) >= windowStart &&
-      r.movementId !== mv.movementId,
-    )
-    .reduce((s, r) => s + r.amountAED, 0) + mv.amountAED;
+  const cumulativeAmount =
+    input.recentMovements
+      .filter(
+        (r) =>
+          r.travellerOrCarrierId === mv.travellerOrCarrierId &&
+          new Date(r.movementDate) >= windowStart &&
+          r.movementId !== mv.movementId
+      )
+      .reduce((s, r) => s + r.amountAED, 0) + mv.amountAED;
 
   if (cumulativeAmount >= CROSS_BORDER_THRESHOLD_AED && mv.amountAED < CROSS_BORDER_THRESHOLD_AED) {
     flags.push({
@@ -129,8 +156,8 @@ function detectFlags(input: CrossBorderRiskInput): CrossBorderFlag[] {
   }
 
   // 3. Multiple travellers on same trip carrying just below threshold
-  const linkedMovements = input.recentMovements.filter(
-    r => mv.linkedMovementIds?.includes(r.movementId),
+  const linkedMovements = input.recentMovements.filter((r) =>
+    mv.linkedMovementIds?.includes(r.movementId)
   );
   if (linkedMovements.length > 0) {
     const linkedTotal = linkedMovements.reduce((s, r) => s + r.amountAED, 0) + mv.amountAED;
@@ -160,12 +187,13 @@ function detectFlags(input: CrossBorderRiskInput): CrossBorderFlag[] {
   // 5. Round-trip (same entity, in then out within 7 days)
   const roundTripWindow = new Date(mv.movementDate);
   roundTripWindow.setDate(roundTripWindow.getDate() - 7);
-  const oppositeDirection: CrossBorderDirection = mv.direction === 'inbound' ? 'outbound' : 'inbound';
+  const oppositeDirection: CrossBorderDirection =
+    mv.direction === 'inbound' ? 'outbound' : 'inbound';
   const roundTrip = input.recentMovements.find(
-    r =>
+    (r) =>
       r.travellerOrCarrierId === mv.travellerOrCarrierId &&
       r.direction === oppositeDirection &&
-      new Date(r.movementDate) >= roundTripWindow,
+      new Date(r.movementDate) >= roundTripWindow
   );
   if (roundTrip) {
     flags.push({
@@ -193,19 +221,34 @@ export function monitorCrossBorderCash(input: CrossBorderRiskInput): CrossBorder
   const flags = detectFlags(input);
   const mv = input.currentMovement;
 
-  const severityScores: Record<CrossBorderRiskLevel, number> = { critical: 40, high: 25, medium: 15, low: 5 };
-  const riskScore = Math.min(100, flags.reduce((s, f) => s + severityScores[f.severity], 0));
+  const severityScores: Record<CrossBorderRiskLevel, number> = {
+    critical: 40,
+    high: 25,
+    medium: 15,
+    low: 5,
+  };
+  const riskScore = Math.min(
+    100,
+    flags.reduce((s, f) => s + severityScores[f.severity], 0)
+  );
   const overallRisk = riskLevelFromScore(riskScore);
 
   const windowStart = new Date(mv.movementDate);
   windowStart.setDate(windowStart.getDate() - STRUCTURING_WINDOW_DAYS);
-  const cumulativeAmountAED = input.recentMovements
-    .filter(r => r.travellerOrCarrierId === mv.travellerOrCarrierId && new Date(r.movementDate) >= windowStart)
-    .reduce((s, r) => s + r.amountAED, 0) + mv.amountAED;
+  const cumulativeAmountAED =
+    input.recentMovements
+      .filter(
+        (r) =>
+          r.travellerOrCarrierId === mv.travellerOrCarrierId &&
+          new Date(r.movementDate) >= windowStart
+      )
+      .reduce((s, r) => s + r.amountAED, 0) + mv.amountAED;
 
-  const structuringDetected = flags.some(f => f.type === 'structuring' || f.type === 'multiple_travellers');
+  const structuringDetected = flags.some(
+    (f) => f.type === 'structuring' || f.type === 'multiple_travellers'
+  );
   const requiresDeclaration = mv.amountAED >= CROSS_BORDER_THRESHOLD_AED;
-  const requiresStr = flags.some(f => f.severity === 'critical') || structuringDetected;
+  const requiresStr = flags.some((f) => f.severity === 'critical') || structuringDetected;
   const requiresCtr = requiresDeclaration && mv.bniType === 'cash';
 
   const narrativeSummary =

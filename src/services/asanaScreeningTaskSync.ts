@@ -52,7 +52,7 @@ export interface AsanaSyncConfig {
 export interface AsanaSyncPayload {
   parentTask: AsanaTaskPayload;
   subtasks: AsanaTaskPayload[];
-  attachmentMarkdown: string;         // full report as markdown attachment content
+  attachmentMarkdown: string; // full report as markdown attachment content
 }
 
 export interface AsanaSyncResult {
@@ -68,7 +68,13 @@ export interface AsanaSyncResult {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function severityEmoji(severity: string): string {
-  const map: Record<string, string> = { critical: '🔴', high: '🟠', medium: '🟡', low: '🟢', info: 'ℹ️' };
+  const map: Record<string, string> = {
+    critical: '🔴',
+    high: '🟠',
+    medium: '🟡',
+    low: '🟢',
+    info: 'ℹ️',
+  };
   return map[severity] ?? '⚪';
 }
 
@@ -82,15 +88,20 @@ function buildFindingSubtask(finding: ComplianceFinding, assignee?: string): Asa
       `**Remediation:** ${finding.remediation}`,
       finding.penaltyExposure ? `**Penalty Exposure:** ${finding.penaltyExposure}` : '',
       finding.deadline ? `**Deadline:** ${finding.deadline}` : '',
-    ].filter(Boolean).join('\n\n'),
+    ]
+      .filter(Boolean)
+      .join('\n\n'),
     due_on: finding.deadline ?? undefined,
     assignee,
     tags: [finding.framework, finding.severity, 'compliance-finding'],
   };
 }
 
-function buildFilingSubtask(report: ScreeningComplianceReport, assignee?: string): AsanaTaskPayload[] {
-  return report.overdueFilings.map(filing => ({
+function buildFilingSubtask(
+  report: ScreeningComplianceReport,
+  assignee?: string
+): AsanaTaskPayload[] {
+  return report.overdueFilings.map((filing) => ({
     name: `🚨 OVERDUE ${filing.filingType} — ${filing.referenceNumber}`,
     notes: [
       `**Filing Type:** ${filing.filingType}`,
@@ -103,8 +114,10 @@ function buildFilingSubtask(report: ScreeningComplianceReport, assignee?: string
       '**Action:** Submit immediately via goAML. Document reason for delay.',
       '**Regulatory Ref:** FDL No.10/2025 Art.26-27; MoE Circular 08/AML/2021',
       '**Penalty Exposure:** AED 10K–100M (Cabinet Res 71/2024)',
-    ].filter(Boolean).join('\n\n'),
-    due_on: new Date().toISOString().split('T')[0],  // overdue → due today
+    ]
+      .filter(Boolean)
+      .join('\n\n'),
+    due_on: new Date().toISOString().split('T')[0], // overdue → due today
     assignee,
     tags: ['overdue-filing', filing.filingType, 'compliance-finding'],
   }));
@@ -141,20 +154,21 @@ function buildAttachmentMarkdown(report: ScreeningComplianceReport): string {
     '---',
     '',
     '## Findings',
-    ...report.findings.map(f =>
-      `### ${severityEmoji(f.severity)} [${f.severity.toUpperCase()}] ${f.finding}\n` +
-      `- **Section:** ${f.section.replace(/_/g, ' ')}\n` +
-      `- **Framework:** ${f.framework}\n` +
-      `- **Regulatory Ref:** ${f.regulatoryRef}\n` +
-      `- **Remediation:** ${f.remediation}\n` +
-      (f.penaltyExposure ? `- **Penalty:** ${f.penaltyExposure}\n` : '')
+    ...report.findings.map(
+      (f) =>
+        `### ${severityEmoji(f.severity)} [${f.severity.toUpperCase()}] ${f.finding}\n` +
+        `- **Section:** ${f.section.replace(/_/g, ' ')}\n` +
+        `- **Framework:** ${f.framework}\n` +
+        `- **Regulatory Ref:** ${f.regulatoryRef}\n` +
+        `- **Remediation:** ${f.remediation}\n` +
+        (f.penaltyExposure ? `- **Penalty:** ${f.penaltyExposure}\n` : '')
     ),
     '',
     '---',
     '',
     '## Section Summaries',
-    ...report.sections.map(s =>
-      `### ${s.title}\n**Status:** ${s.status.toUpperCase()}\n${s.summary}\n`
+    ...report.sections.map(
+      (s) => `### ${s.title}\n**Status:** ${s.status.toUpperCase()}\n${s.summary}\n`
     ),
     '',
     '---',
@@ -165,7 +179,7 @@ function buildAttachmentMarkdown(report: ScreeningComplianceReport): string {
     '---',
     '',
     '## Regulatory References',
-    ...report.regulatoryRefs.map(r => `- ${r}`),
+    ...report.regulatoryRefs.map((r) => `- ${r}`),
     '',
     '---',
     '',
@@ -174,14 +188,14 @@ function buildAttachmentMarkdown(report: ScreeningComplianceReport): string {
     `_${report.disclaimer}_`,
   ];
 
-  return lines.filter(l => l !== undefined).join('\n');
+  return lines.filter((l) => l !== undefined).join('\n');
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 export function buildAsanaSyncPayload(
   report: ScreeningComplianceReport,
-  config: AsanaSyncConfig,
+  config: AsanaSyncConfig
 ): AsanaSyncResult {
   try {
     const assignee = config.defaultAssigneeGid;
@@ -196,7 +210,8 @@ export function buildAsanaSyncPayload(
       tags: ['compliance-report', report.overallStatus, report.entityId],
       custom_fields: {
         [config.customFieldGids.riskScore]: report.overallRiskScore,
-        [config.customFieldGids.cddLevel]: report.sections.find(s => s.section === 'cdd_edd_status')?.details?.cddLevel ?? 'CDD',
+        [config.customFieldGids.cddLevel]:
+          report.sections.find((s) => s.section === 'cdd_edd_status')?.details?.cddLevel ?? 'CDD',
         [config.customFieldGids.sanctionsFlag]: report.sanctionsExposure,
         [config.customFieldGids.esgGrade]: report.esgRiskLevel ?? 'N/A',
         [config.customFieldGids.overallStatus]: report.overallStatus,
@@ -206,8 +221,8 @@ export function buildAsanaSyncPayload(
 
     // Subtasks for critical + high findings
     const findingSubtasks = report.findings
-      .filter(f => f.severity === 'critical' || f.severity === 'high')
-      .map(f => buildFindingSubtask(f, assignee));
+      .filter((f) => f.severity === 'critical' || f.severity === 'high')
+      .map((f) => buildFindingSubtask(f, assignee));
 
     // Subtasks for overdue filings
     const filingSubtasks = buildFilingSubtask(report, assignee);
@@ -246,9 +261,10 @@ export function buildScreeningAlertTask(
   verdict: string,
   confidence: number,
   narrativeSummary: string,
-  assignee?: string,
+  assignee?: string
 ): AsanaTaskPayload {
-  const urgency = verdict === 'freeze' ? '🔴 FREEZE' : verdict === 'escalate' ? '🟠 ESCALATE' : '🟡 FLAG';
+  const urgency =
+    verdict === 'freeze' ? '🔴 FREEZE' : verdict === 'escalate' ? '🟠 ESCALATE' : '🟡 FLAG';
   return {
     name: `${urgency} Screening Alert — ${entityId} — ${new Date().toISOString().split('T')[0]}`,
     notes: [

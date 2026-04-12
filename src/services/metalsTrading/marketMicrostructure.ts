@@ -3,14 +3,22 @@
 // Trading), trade flow toxicity, smart money detection, liquidity metrics.
 
 import type {
-  Metal, Venue, TradeSide, OrderBook, OrderBookLevel,
-  FlowMetrics, PriceQuote,
+  Metal,
+  Venue,
+  TradeSide,
+  OrderBook,
+  OrderBookLevel,
+  FlowMetrics,
+  PriceQuote,
 } from './types';
 
 // ─── Order Book Analysis ────────────────────────────────────────────────────
 
 export function analyzeOrderBook(
-  bids: OrderBookLevel[], asks: OrderBookLevel[], metal: Metal, venue: Venue,
+  bids: OrderBookLevel[],
+  asks: OrderBookLevel[],
+  metal: Metal,
+  venue: Venue
 ): OrderBook {
   const bestBid = bids[0]?.price ?? 0;
   const bestAsk = asks[0]?.price ?? Infinity;
@@ -40,14 +48,14 @@ export function analyzeOrderBook(
 export interface LiquidityMetrics {
   bidAskSpread: number;
   bidAskSpreadBps: number;
-  depth5Bps: number;      // qty available within 5bps of mid
-  depth10Bps: number;     // qty available within 10bps of mid
-  depth50Bps: number;     // qty available within 50bps of mid
-  resiliency: number;     // how fast book refills after a trade (0-1)
-  impactCost1k: number;   // price impact of 1000 oz market order
-  impactCost10k: number;  // price impact of 10000 oz market order
-  topOfBookSize: number;  // qty at best bid + best ask
-  bookAsymmetry: number;  // -1 (ask heavy) to +1 (bid heavy)
+  depth5Bps: number; // qty available within 5bps of mid
+  depth10Bps: number; // qty available within 10bps of mid
+  depth50Bps: number; // qty available within 50bps of mid
+  resiliency: number; // how fast book refills after a trade (0-1)
+  impactCost1k: number; // price impact of 1000 oz market order
+  impactCost10k: number; // price impact of 10000 oz market order
+  topOfBookSize: number; // qty at best bid + best ask
+  bookAsymmetry: number; // -1 (ask heavy) to +1 (bid heavy)
 }
 
 export function computeLiquidity(book: OrderBook): LiquidityMetrics {
@@ -55,7 +63,8 @@ export function computeLiquidity(book: OrderBook): LiquidityMetrics {
   const spreadBps = mid > 0 ? (book.spread / mid) * 10_000 : 0;
 
   const withinBps = (levels: OrderBookLevel[], bps: number) =>
-    levels.filter(l => Math.abs(l.price - mid) / mid * 10_000 <= bps)
+    levels
+      .filter((l) => (Math.abs(l.price - mid) / mid) * 10_000 <= bps)
       .reduce((s, l) => s + l.quantity, 0);
 
   const depth5Bps = withinBps(book.bids, 5) + withinBps(book.asks, 5);
@@ -89,7 +98,7 @@ export function computeLiquidity(book: OrderBook): LiquidityMetrics {
     depth5Bps,
     depth10Bps,
     depth50Bps,
-    resiliency: depth50Bps > 0 ? Math.min(depth5Bps / depth50Bps * 2, 1) : 0,
+    resiliency: depth50Bps > 0 ? Math.min((depth5Bps / depth50Bps) * 2, 1) : 0,
     impactCost1k: impactCost('buy', 1000),
     impactCost10k: impactCost('buy', 10000),
     topOfBookSize: topTotal,
@@ -101,7 +110,10 @@ export function computeLiquidity(book: OrderBook): LiquidityMetrics {
 
 export class VPINCalculator {
   private buckets: { buyVolume: number; sellVolume: number }[] = [];
-  private currentBucket: { buyVolume: number; sellVolume: number } = { buyVolume: 0, sellVolume: 0 };
+  private currentBucket: { buyVolume: number; sellVolume: number } = {
+    buyVolume: 0,
+    sellVolume: 0,
+  };
   private bucketSize: number;
   private windowSize: number;
 
@@ -174,31 +186,41 @@ export class FlowAnalyzer {
   analyze(metal: Metal): FlowMetrics {
     const now = Date.now();
     const recentWindow = 300_000; // 5 minutes
-    const recent = this.trades.filter(t => t.timestamp > now - recentWindow);
+    const recent = this.trades.filter((t) => t.timestamp > now - recentWindow);
 
-    const buyVolume = recent.filter(t => t.side === 'BUY').reduce((s, t) => s + t.volume, 0);
-    const sellVolume = recent.filter(t => t.side === 'SELL').reduce((s, t) => s + t.volume, 0);
+    const buyVolume = recent.filter((t) => t.side === 'BUY').reduce((s, t) => s + t.volume, 0);
+    const sellVolume = recent.filter((t) => t.side === 'SELL').reduce((s, t) => s + t.volume, 0);
     const totalVolume = buyVolume + sellVolume;
     const avgTradeSize = recent.length > 0 ? totalVolume / recent.length : 0;
 
     const largeThreshold = avgTradeSize * this.largeTradeMultiplier;
-    const largeTrades = recent.filter(t => t.volume >= largeThreshold);
-    const largeBuyVol = largeTrades.filter(t => t.side === 'BUY').reduce((s, t) => s + t.volume, 0);
-    const largeSellVol = largeTrades.filter(t => t.side === 'SELL').reduce((s, t) => s + t.volume, 0);
+    const largeTrades = recent.filter((t) => t.volume >= largeThreshold);
+    const largeBuyVol = largeTrades
+      .filter((t) => t.side === 'BUY')
+      .reduce((s, t) => s + t.volume, 0);
+    const largeSellVol = largeTrades
+      .filter((t) => t.side === 'SELL')
+      .reduce((s, t) => s + t.volume, 0);
 
     const vpin = this.vpinCalc.getVPIN();
     const imbalance = totalVolume > 0 ? (buyVolume - sellVolume) / totalVolume : 0;
 
     // Smart money = large trades, retail = small trades
     const smartDirection: TradeSide | 'NEUTRAL' =
-      largeBuyVol > largeSellVol * 1.3 ? 'BUY' :
-      largeSellVol > largeBuyVol * 1.3 ? 'SELL' : 'NEUTRAL';
+      largeBuyVol > largeSellVol * 1.3
+        ? 'BUY'
+        : largeSellVol > largeBuyVol * 1.3
+          ? 'SELL'
+          : 'NEUTRAL';
 
     const smallBuyVol = buyVolume - largeBuyVol;
     const smallSellVol = sellVolume - largeSellVol;
     const retailDirection: TradeSide | 'NEUTRAL' =
-      smallBuyVol > smallSellVol * 1.3 ? 'BUY' :
-      smallSellVol > smallBuyVol * 1.3 ? 'SELL' : 'NEUTRAL';
+      smallBuyVol > smallSellVol * 1.3
+        ? 'BUY'
+        : smallSellVol > smallBuyVol * 1.3
+          ? 'SELL'
+          : 'NEUTRAL';
 
     return {
       metal,
@@ -218,10 +240,14 @@ export class FlowAnalyzer {
   }
 
   // Detect stop hunts (sharp move followed by reversal with large volume)
-  detectStopHunt(recentQuotes: PriceQuote[]): { detected: boolean; direction: TradeSide; magnitude: number } {
+  detectStopHunt(recentQuotes: PriceQuote[]): {
+    detected: boolean;
+    direction: TradeSide;
+    magnitude: number;
+  } {
     if (recentQuotes.length < 10) return { detected: false, direction: 'BUY', magnitude: 0 };
 
-    const prices = recentQuotes.map(q => q.mid);
+    const prices = recentQuotes.map((q) => q.mid);
     const last5 = prices.slice(-5);
     const prev5 = prices.slice(-10, -5);
 
@@ -231,16 +257,16 @@ export class FlowAnalyzer {
     const lastPrice = prices[prices.length - 1];
 
     // Spike down then recovery = stop hunt on longs
-    const downSpike = prevAvg > 0 ? (prevAvg - minRecent) / prevAvg * 100 : 0;
-    const recovery = prevAvg > 0 ? (lastPrice - minRecent) / prevAvg * 100 : 0;
+    const downSpike = prevAvg > 0 ? ((prevAvg - minRecent) / prevAvg) * 100 : 0;
+    const recovery = prevAvg > 0 ? ((lastPrice - minRecent) / prevAvg) * 100 : 0;
 
     if (downSpike > 0.3 && recovery > downSpike * 0.6) {
       return { detected: true, direction: 'BUY', magnitude: downSpike };
     }
 
     // Spike up then pullback = stop hunt on shorts
-    const upSpike = prevAvg > 0 ? (maxRecent - prevAvg) / prevAvg * 100 : 0;
-    const pullback = prevAvg > 0 ? (maxRecent - lastPrice) / prevAvg * 100 : 0;
+    const upSpike = prevAvg > 0 ? ((maxRecent - prevAvg) / prevAvg) * 100 : 0;
+    const pullback = prevAvg > 0 ? ((maxRecent - lastPrice) / prevAvg) * 100 : 0;
 
     if (upSpike > 0.3 && pullback > upSpike * 0.6) {
       return { detected: true, direction: 'SELL', magnitude: upSpike };
@@ -254,9 +280,9 @@ export class FlowAnalyzer {
 
 export interface SpreadComponents {
   totalSpread: number;
-  adverseSelection: number;    // information asymmetry cost
-  inventoryRisk: number;       // market maker inventory cost
-  orderProcessing: number;     // fixed transaction costs
+  adverseSelection: number; // information asymmetry cost
+  inventoryRisk: number; // market maker inventory cost
+  orderProcessing: number; // fixed transaction costs
   adverseSelectionPct: number;
   inventoryRiskPct: number;
   orderProcessingPct: number;
@@ -265,12 +291,18 @@ export interface SpreadComponents {
 export function decomposeSpread(
   spreads: number[], // historical spread snapshots
   priceChanges: number[], // mid-price changes
-  inventoryProxy: number[], // net position of market makers
+  inventoryProxy: number[] // net position of market makers
 ): SpreadComponents {
-  if (spreads.length === 0) return {
-    totalSpread: 0, adverseSelection: 0, inventoryRisk: 0, orderProcessing: 0,
-    adverseSelectionPct: 33, inventoryRiskPct: 33, orderProcessingPct: 34,
-  };
+  if (spreads.length === 0)
+    return {
+      totalSpread: 0,
+      adverseSelection: 0,
+      inventoryRisk: 0,
+      orderProcessing: 0,
+      adverseSelectionPct: 33,
+      inventoryRiskPct: 33,
+      orderProcessingPct: 34,
+    };
 
   const avgSpread = spreads.reduce((a, b) => a + b, 0) / spreads.length;
 
@@ -312,7 +344,9 @@ function correlation(a: number[], b: number[]): number {
   if (n < 2) return 0;
   const meanA = a.slice(0, n).reduce((s, v) => s + v, 0) / n;
   const meanB = b.slice(0, n).reduce((s, v) => s + v, 0) / n;
-  let num = 0, denA = 0, denB = 0;
+  let num = 0,
+    denA = 0,
+    denB = 0;
   for (let i = 0; i < n; i++) {
     const da = a[i] - meanA;
     const db = b[i] - meanB;

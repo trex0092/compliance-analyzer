@@ -39,17 +39,23 @@ export interface HawalaTransaction {
   crossBorder: boolean;
   declaredForCustoms: boolean;
   counterpartyType: 'registered_dealer' | 'unregistered_individual' | 'broker' | 'unknown';
-  paymentMethod: 'bank_transfer' | 'cash' | 'crypto' | 'informal_settlement' | 'commodity_swap' | 'netting';
+  paymentMethod:
+    | 'bank_transfer'
+    | 'cash'
+    | 'crypto'
+    | 'informal_settlement'
+    | 'commodity_swap'
+    | 'netting';
   correspondingOutwardTransaction?: {
     transactionId: string;
     amountAED: number;
     jurisdictionCode: string;
     timeDifferenceHours: number;
   };
-  brokerChainLength?: number;         // number of intermediaries
+  brokerChainLength?: number; // number of intermediaries
   hasFormalBankRecord: boolean;
   settlementJurisdiction?: string;
-  goodsMovementConfirmed: boolean;    // was physical gold actually moved?
+  goodsMovementConfirmed: boolean; // was physical gold actually moved?
   invoiceMatchesPayment: boolean;
 }
 
@@ -57,10 +63,10 @@ export interface HawalaDetectionResult {
   transactionId: string;
   generatedAt: string;
   riskLevel: HawalaRiskLevel;
-  score: number;                      // 0–100
+  score: number; // 0–100
   indicators: HawalaIndicatorDetail[];
   requiresStr: boolean;
-  requiresCbuaeReport: boolean;       // UAE CBUAE Hawala Registry reporting
+  requiresCbuaeReport: boolean; // UAE CBUAE Hawala Registry reporting
   narrativeSummary: string;
   regulatoryRefs: string[];
 }
@@ -86,7 +92,8 @@ function detectIndicators(tx: HawalaTransaction): HawalaIndicatorDetail[] {
       indicator: 'unregistered_hawaladar',
       severity: 'critical',
       weight: 30,
-      description: 'Transaction with unregistered individual lacking formal bank record — IVTS indicator',
+      description:
+        'Transaction with unregistered individual lacking formal bank record — IVTS indicator',
       regulatoryRef: 'UAE CBUAE Hawala Registration Requirement 2022; FATF Rec 14',
     });
   }
@@ -113,13 +120,18 @@ function detectIndicators(tx: HawalaTransaction): HawalaIndicatorDetail[] {
       indicator: 'commodity_backed_settlement',
       severity: 'high',
       weight: 25,
-      description: 'Commodity swap payment with no confirmed physical movement — possible hawala settlement',
+      description:
+        'Commodity swap payment with no confirmed physical movement — possible hawala settlement',
       regulatoryRef: 'FATF Typology on Hawala 2018 §3.1; LBMA RGG v9 §5',
     });
   }
 
   // 4. Broker chain
-  if (tx.brokerChainLength != null && tx.brokerChainLength >= 3) {
+  if (
+    tx.brokerChainLength !== null &&
+    tx.brokerChainLength !== undefined &&
+    tx.brokerChainLength >= 3
+  ) {
     found.push({
       indicator: 'broker_chain',
       severity: 'high',
@@ -135,17 +147,14 @@ function detectIndicators(tx: HawalaTransaction): HawalaIndicatorDetail[] {
       indicator: 'no_formal_banking',
       severity: 'medium',
       weight: 15,
-      description: 'No formal banking record for non-trivial transaction — value transfer without paper trail',
+      description:
+        'No formal banking record for non-trivial transaction — value transfer without paper trail',
       regulatoryRef: 'FDL No.10/2025 Art.12; FATF Typology on Hawala 2013 §2.1',
     });
   }
 
   // 6. Cross-border without declaration
-  if (
-    tx.crossBorder &&
-    !tx.declaredForCustoms &&
-    tx.amountAED >= CROSS_BORDER_CASH_THRESHOLD_AED
-  ) {
+  if (tx.crossBorder && !tx.declaredForCustoms && tx.amountAED >= CROSS_BORDER_CASH_THRESHOLD_AED) {
     found.push({
       indicator: 'cross_border_no_declaration',
       severity: 'critical',
@@ -183,7 +192,8 @@ function detectIndicators(tx: HawalaTransaction): HawalaIndicatorDetail[] {
       indicator: 'trust_based_settlement',
       severity: 'medium',
       weight: 15,
-      description: 'Payment amount does not match invoice — informal / trust-based settlement possible',
+      description:
+        'Payment amount does not match invoice — informal / trust-based settlement possible',
       regulatoryRef: 'FDL No.10/2025 Art.13; Cabinet Res 134/2025 Art.9',
     });
   }
@@ -197,21 +207,22 @@ export function detectHawala(tx: HawalaTransaction): HawalaDetectionResult {
   const indicators = detectIndicators(tx);
 
   // Weighted composite score
-  const score = Math.min(100, indicators.reduce((s, i) => s + i.weight, 0));
+  const score = Math.min(
+    100,
+    indicators.reduce((s, i) => s + i.weight, 0)
+  );
 
   const riskLevel: HawalaRiskLevel =
-    score >= 60 ? 'critical' :
-    score >= 35 ? 'high' :
-    score >= 15 ? 'medium' : 'low';
+    score >= 60 ? 'critical' : score >= 35 ? 'high' : score >= 15 ? 'medium' : 'low';
 
-  const requiresStr = score >= 60 || indicators.some(i => i.severity === 'critical');
+  const requiresStr = score >= 60 || indicators.some((i) => i.severity === 'critical');
   const requiresCbuaeReport = indicators.some(
-    i => i.indicator === 'unregistered_hawaladar' || i.indicator === 'mirror_trade',
+    (i) => i.indicator === 'unregistered_hawaladar' || i.indicator === 'mirror_trade'
   );
 
   const narrativeSummary =
     `Transaction ${tx.transactionId}: Hawala/IVTS score ${score}/100 (${riskLevel.toUpperCase()}). ` +
-    `${indicators.length} indicator(s): ${indicators.map(i => i.indicator.replace(/_/g, ' ')).join(', ') || 'none'}. ` +
+    `${indicators.length} indicator(s): ${indicators.map((i) => i.indicator.replace(/_/g, ' ')).join(', ') || 'none'}. ` +
     `STR required: ${requiresStr}. CBUAE report required: ${requiresCbuaeReport}.`;
 
   return {

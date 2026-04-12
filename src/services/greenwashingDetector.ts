@@ -266,13 +266,13 @@ export function detectGreenwashing(disclosure: EsgDisclosure): GreenwashingRepor
 
   // ── 5. Scope 3 omission ────────────────────────────────────────────────────
   const hasClimateClaim = claims.some(
-    (c) => c.category === 'environmental' && isNetZeroClaim(c.claim),
+    (c) => c.category === 'environmental' && isNetZeroClaim(c.claim)
   );
   const hasScope3Claim = claims.some(
-    (c) => c.category === 'environmental' && /scope\s*3/i.test(c.claim),
+    (c) => c.category === 'environmental' && /scope\s*3/i.test(c.claim)
   );
   const hasScope3Outcome = (disclosure.measuredOutcomes ?? []).some((o) =>
-    /scope\s*3/i.test(o.metric),
+    /scope\s*3/i.test(o.metric)
   );
 
   if (hasClimateClaim && !hasScope3Claim && !hasScope3Outcome) {
@@ -294,7 +294,7 @@ export function detectGreenwashing(disclosure: EsgDisclosure): GreenwashingRepor
     const materialClaimsWithNoOutcome = claims.filter(
       (c) =>
         isMaterialTopic(c.claim) &&
-        !outcomes.some((o) => o.metric.toLowerCase().includes(c.category)),
+        !outcomes.some((o) => o.metric.toLowerCase().includes(c.category))
     );
     if (materialClaimsWithNoOutcome.length > 0 && outcomes.length < claims.length / 2) {
       findings.push({
@@ -337,10 +337,7 @@ export function detectGreenwashing(disclosure: EsgDisclosure): GreenwashingRepor
   // Bonus for recognised disclosure standard (+10 for ISSB/GRI, +5 for others)
   if (disclosure.disclosureStandard === 'ISSB' || disclosure.disclosureStandard === 'GRI') {
     integrityScore += 10;
-  } else if (
-    disclosure.disclosureStandard === 'SASB' ||
-    disclosure.disclosureStandard === 'TCFD'
-  ) {
+  } else if (disclosure.disclosureStandard === 'SASB' || disclosure.disclosureStandard === 'TCFD') {
     integrityScore += 5;
   }
 
@@ -439,7 +436,7 @@ function buildNarrative(ctx: NarrativeContext): string {
 
   if (findings.length === 0) {
     parts.push(
-      'No greenwashing indicators were detected. Claims are quantified, baselined, and independently verified.',
+      'No greenwashing indicators were detected. Claims are quantified, baselined, and independently verified.'
     );
   } else {
     const criticals = findings.filter((f) => f.severity === 'critical');
@@ -447,13 +444,11 @@ function buildNarrative(ctx: NarrativeContext): string {
     const mediums = findings.filter((f) => f.severity === 'medium');
 
     parts.push(
-      `${findings.length} finding(s) identified: ${criticals.length} critical, ${highs.length} high, ${mediums.length} medium.`,
+      `${findings.length} finding(s) identified: ${criticals.length} critical, ${highs.length} high, ${mediums.length} medium.`
     );
 
     if (criticals.length > 0) {
-      parts.push(
-        `Critical issues: ${criticals.map((f) => f.type.replace(/_/g, ' ')).join('; ')}.`,
-      );
+      parts.push(`Critical issues: ${criticals.map((f) => f.type.replace(/_/g, ' ')).join('; ')}.`);
     }
   }
 
@@ -466,14 +461,14 @@ function buildNarrative(ctx: NarrativeContext): string {
 
   if (disclosure.hasExternalAssurance) {
     parts.push(
-      `External assurance: present (level: ${disclosure.assuranceLevel ?? 'unspecified'}).`,
+      `External assurance: present (level: ${disclosure.assuranceLevel ?? 'unspecified'}).`
     );
   } else {
     parts.push('No external assurance obtained — all data is self-reported.');
   }
 
   parts.push(
-    'Regulatory references: EU SFDR 2019/2088 Art.4; EU Taxonomy Regulation 2020/852 Art.3; ESMA Greenwashing Report 2023; FCA SDR 2023; ISSB IFRS S1 §B14-B15; GRI Standards 2021 §2-4.',
+    'Regulatory references: EU SFDR 2019/2088 Art.4; EU Taxonomy Regulation 2020/852 Art.3; ESMA Greenwashing Report 2023; FCA SDR 2023; ISSB IFRS S1 §B14-B15; GRI Standards 2021 §2-4.'
   );
 
   return parts.join(' ');

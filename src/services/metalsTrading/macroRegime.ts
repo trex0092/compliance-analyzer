@@ -13,16 +13,16 @@ import type { Metal, TradeSide } from './types';
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface MacroSnapshot {
-  dxy: number;                    // US Dollar Index (typically 90-110)
-  realRate10y: number;            // 10Y TIPS yield (typically -1% to +3%)
-  nominalRate10y: number;         // 10Y Treasury yield
-  rate2y: number;                 // 2Y Treasury yield
-  yieldCurveSpread: number;       // 10Y - 2Y (negative = inverted)
-  vix: number;                    // VIX fear index (typically 12-80)
-  breakeven5y: number;            // 5Y inflation expectations
-  fedFundsRate: number;           // Fed target rate
-  cbuaeRate: number;              // CBUAE repo rate
-  cbGoldPurchases: number;        // tons/month (central bank buying)
+  dxy: number; // US Dollar Index (typically 90-110)
+  realRate10y: number; // 10Y TIPS yield (typically -1% to +3%)
+  nominalRate10y: number; // 10Y Treasury yield
+  rate2y: number; // 2Y Treasury yield
+  yieldCurveSpread: number; // 10Y - 2Y (negative = inverted)
+  vix: number; // VIX fear index (typically 12-80)
+  breakeven5y: number; // 5Y inflation expectations
+  fedFundsRate: number; // Fed target rate
+  cbuaeRate: number; // CBUAE repo rate
+  cbGoldPurchases: number; // tons/month (central bank buying)
   timestamp: number;
 }
 
@@ -50,7 +50,7 @@ export interface MacroCorrelation {
   correlation30d: number;
   correlation90d: number;
   isNormal: boolean;
-  breakdown: boolean;     // correlation has broken from historical norm
+  breakdown: boolean; // correlation has broken from historical norm
 }
 
 // ─── Correlation Engine ─────────────────────────────────────────────────────
@@ -62,7 +62,9 @@ export function computeCorrelation(seriesA: number[], seriesB: number[]): number
   const b = seriesB.slice(-n);
   const meanA = a.reduce((s, v) => s + v, 0) / n;
   const meanB = b.reduce((s, v) => s + v, 0) / n;
-  let num = 0, denA = 0, denB = 0;
+  let num = 0,
+    denA = 0,
+    denB = 0;
   for (let i = 0; i < n; i++) {
     const da = a[i] - meanA;
     const db = b[i] - meanB;
@@ -85,11 +87,12 @@ export function analyzeMacroDrivers(snapshot: MacroSnapshot): MacroDriver[] {
     value: snapshot.dxy,
     signal: snapshot.dxy > 105 ? 'BEARISH' : snapshot.dxy < 100 ? 'BULLISH' : 'NEUTRAL',
     weight: 0.25,
-    reasoning: snapshot.dxy > 105
-      ? `Strong dollar (${snapshot.dxy.toFixed(1)}) pressures gold`
-      : snapshot.dxy < 100
-        ? `Weak dollar (${snapshot.dxy.toFixed(1)}) supports gold`
-        : `Dollar neutral (${snapshot.dxy.toFixed(1)})`,
+    reasoning:
+      snapshot.dxy > 105
+        ? `Strong dollar (${snapshot.dxy.toFixed(1)}) pressures gold`
+        : snapshot.dxy < 100
+          ? `Weak dollar (${snapshot.dxy.toFixed(1)}) supports gold`
+          : `Dollar neutral (${snapshot.dxy.toFixed(1)})`,
   };
   drivers.push(dxySignal);
 
@@ -97,26 +100,34 @@ export function analyzeMacroDrivers(snapshot: MacroSnapshot): MacroDriver[] {
   drivers.push({
     factor: 'Real Rates (10Y TIPS)',
     value: snapshot.realRate10y,
-    signal: snapshot.realRate10y > 2.0 ? 'BEARISH' : snapshot.realRate10y < 0.5 ? 'BULLISH' : 'NEUTRAL',
+    signal:
+      snapshot.realRate10y > 2.0 ? 'BEARISH' : snapshot.realRate10y < 0.5 ? 'BULLISH' : 'NEUTRAL',
     weight: 0.25,
-    reasoning: snapshot.realRate10y > 2.0
-      ? `High real rates (${snapshot.realRate10y.toFixed(2)}%) compete with gold`
-      : snapshot.realRate10y < 0.5
-        ? `Low/negative real rates (${snapshot.realRate10y.toFixed(2)}%) make gold attractive`
-        : `Real rates neutral (${snapshot.realRate10y.toFixed(2)}%)`,
+    reasoning:
+      snapshot.realRate10y > 2.0
+        ? `High real rates (${snapshot.realRate10y.toFixed(2)}%) compete with gold`
+        : snapshot.realRate10y < 0.5
+          ? `Low/negative real rates (${snapshot.realRate10y.toFixed(2)}%) make gold attractive`
+          : `Real rates neutral (${snapshot.realRate10y.toFixed(2)}%)`,
   });
 
   // 3. Yield Curve — Inversion signals recession risk, gold bullish
   drivers.push({
     factor: 'Yield Curve (10Y-2Y)',
     value: snapshot.yieldCurveSpread,
-    signal: snapshot.yieldCurveSpread < -0.5 ? 'BULLISH' : snapshot.yieldCurveSpread > 1.5 ? 'BEARISH' : 'NEUTRAL',
-    weight: 0.10,
-    reasoning: snapshot.yieldCurveSpread < -0.5
-      ? `Inverted curve (${snapshot.yieldCurveSpread.toFixed(2)}%) — recession risk, gold safe haven`
-      : snapshot.yieldCurveSpread > 1.5
-        ? `Steep curve (${snapshot.yieldCurveSpread.toFixed(2)}%) — growth optimism, gold less needed`
-        : `Curve normal (${snapshot.yieldCurveSpread.toFixed(2)}%)`,
+    signal:
+      snapshot.yieldCurveSpread < -0.5
+        ? 'BULLISH'
+        : snapshot.yieldCurveSpread > 1.5
+          ? 'BEARISH'
+          : 'NEUTRAL',
+    weight: 0.1,
+    reasoning:
+      snapshot.yieldCurveSpread < -0.5
+        ? `Inverted curve (${snapshot.yieldCurveSpread.toFixed(2)}%) — recession risk, gold safe haven`
+        : snapshot.yieldCurveSpread > 1.5
+          ? `Steep curve (${snapshot.yieldCurveSpread.toFixed(2)}%) — growth optimism, gold less needed`
+          : `Curve normal (${snapshot.yieldCurveSpread.toFixed(2)}%)`,
   });
 
   // 4. VIX — Fear = gold buying
@@ -125,35 +136,44 @@ export function analyzeMacroDrivers(snapshot: MacroSnapshot): MacroDriver[] {
     value: snapshot.vix,
     signal: snapshot.vix > 30 ? 'BULLISH' : snapshot.vix < 15 ? 'BEARISH' : 'NEUTRAL',
     weight: 0.15,
-    reasoning: snapshot.vix > 30
-      ? `Elevated fear (VIX ${snapshot.vix.toFixed(1)}) — flight to gold`
-      : snapshot.vix < 15
-        ? `Complacency (VIX ${snapshot.vix.toFixed(1)}) — risk-on, gold ignored`
-        : `Moderate volatility (VIX ${snapshot.vix.toFixed(1)})`,
+    reasoning:
+      snapshot.vix > 30
+        ? `Elevated fear (VIX ${snapshot.vix.toFixed(1)}) — flight to gold`
+        : snapshot.vix < 15
+          ? `Complacency (VIX ${snapshot.vix.toFixed(1)}) — risk-on, gold ignored`
+          : `Moderate volatility (VIX ${snapshot.vix.toFixed(1)})`,
   });
 
   // 5. Inflation Expectations — Higher inflation = gold bullish
   drivers.push({
     factor: 'Inflation Expectations (5Y BEI)',
     value: snapshot.breakeven5y,
-    signal: snapshot.breakeven5y > 3.0 ? 'BULLISH' : snapshot.breakeven5y < 2.0 ? 'BEARISH' : 'NEUTRAL',
-    weight: 0.10,
-    reasoning: snapshot.breakeven5y > 3.0
-      ? `High inflation expectations (${snapshot.breakeven5y.toFixed(2)}%) — gold as inflation hedge`
-      : snapshot.breakeven5y < 2.0
-        ? `Low inflation (${snapshot.breakeven5y.toFixed(2)}%) — less demand for gold hedge`
-        : `Inflation expectations moderate (${snapshot.breakeven5y.toFixed(2)}%)`,
+    signal:
+      snapshot.breakeven5y > 3.0 ? 'BULLISH' : snapshot.breakeven5y < 2.0 ? 'BEARISH' : 'NEUTRAL',
+    weight: 0.1,
+    reasoning:
+      snapshot.breakeven5y > 3.0
+        ? `High inflation expectations (${snapshot.breakeven5y.toFixed(2)}%) — gold as inflation hedge`
+        : snapshot.breakeven5y < 2.0
+          ? `Low inflation (${snapshot.breakeven5y.toFixed(2)}%) — less demand for gold hedge`
+          : `Inflation expectations moderate (${snapshot.breakeven5y.toFixed(2)}%)`,
   });
 
   // 6. Central Bank Gold Purchases — Structural demand driver
   drivers.push({
     factor: 'CB Gold Purchases',
     value: snapshot.cbGoldPurchases,
-    signal: snapshot.cbGoldPurchases > 50 ? 'BULLISH' : snapshot.cbGoldPurchases < 10 ? 'NEUTRAL' : 'NEUTRAL',
+    signal:
+      snapshot.cbGoldPurchases > 50
+        ? 'BULLISH'
+        : snapshot.cbGoldPurchases < 10
+          ? 'NEUTRAL'
+          : 'NEUTRAL',
     weight: 0.15,
-    reasoning: snapshot.cbGoldPurchases > 50
-      ? `Heavy CB buying (${snapshot.cbGoldPurchases}t/mo) — structural demand, de-dollarization`
-      : `Moderate CB activity (${snapshot.cbGoldPurchases}t/mo)`,
+    reasoning:
+      snapshot.cbGoldPurchases > 50
+        ? `Heavy CB buying (${snapshot.cbGoldPurchases}t/mo) — structural demand, de-dollarization`
+        : `Moderate CB activity (${snapshot.cbGoldPurchases}t/mo)`,
   });
 
   return drivers;
@@ -193,7 +213,7 @@ export function classifyMacroRegime(snapshot: MacroSnapshot): MacroRegime {
       description: 'Strong dollar + high real rates — headwinds for gold',
       goldBias: 'SELL',
       silverBias: 'SELL',
-      confidence: 0.70,
+      confidence: 0.7,
       drivers,
       historicalAnalog: '2022 Fed hiking cycle, 2014-2015 dollar rally',
     };
@@ -217,7 +237,7 @@ export function classifyMacroRegime(snapshot: MacroSnapshot): MacroRegime {
       description: 'Inverted yield curve signals recession risk ahead',
       goldBias: 'BUY',
       silverBias: 'NEUTRAL',
-      confidence: 0.60,
+      confidence: 0.6,
       drivers,
       historicalAnalog: '2019 pre-COVID inversion, 2006 pre-GFC',
     };
@@ -229,7 +249,7 @@ export function classifyMacroRegime(snapshot: MacroSnapshot): MacroRegime {
       description: 'Central banks aggressively buying gold, weakening dollar',
       goldBias: 'BUY',
       silverBias: 'BUY',
-      confidence: 0.70,
+      confidence: 0.7,
       drivers,
       historicalAnalog: '2023-2024 BRICS CB accumulation',
     };
@@ -264,7 +284,7 @@ export function classifyMacroRegime(snapshot: MacroSnapshot): MacroRegime {
     description: 'Mixed macro signals — no clear direction from fundamentals',
     goldBias: 'NEUTRAL',
     silverBias: 'NEUTRAL',
-    confidence: 0.30,
+    confidence: 0.3,
     drivers,
     historicalAnalog: 'Transition period between regimes',
   };
@@ -282,7 +302,7 @@ export function generateSimulatedMacro(): MacroSnapshot {
     vix: 18 + (Math.random() - 0.5) * 15,
     breakeven5y: 2.4 + (Math.random() - 0.5) * 1.0,
     fedFundsRate: 5.25,
-    cbuaeRate: 5.40,
+    cbuaeRate: 5.4,
     cbGoldPurchases: 35 + Math.floor(Math.random() * 40),
     timestamp: Date.now(),
   };

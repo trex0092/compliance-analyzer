@@ -3,9 +3,16 @@
 // Kelly criterion sizing, VaR calculation, correlation monitoring.
 
 import type {
-  Metal, Currency, Venue, TradeSide, Position, Portfolio,
-  RiskMetrics, CorrelationMatrix, Execution, TradeRecord,
-  PerformanceStats, RiskLimits, PriceQuote,
+  Metal,
+  Venue,
+  TradeSide,
+  Position,
+  Portfolio,
+  RiskMetrics,
+  Execution,
+  TradeRecord,
+  PerformanceStats,
+  PriceQuote,
 } from './types';
 
 // ─── Position Manager ───────────────────────────────────────────────────────
@@ -105,9 +112,8 @@ export class PositionManager {
 
   private closePartial(key: string, pos: Position, exec: Execution): void {
     const closeQty = Math.min(pos.quantity, exec.quantity);
-    const pnlPerUnit = pos.side === 'BUY'
-      ? exec.price - pos.avgEntryPrice
-      : pos.avgEntryPrice - exec.price;
+    const pnlPerUnit =
+      pos.side === 'BUY' ? exec.price - pos.avgEntryPrice : pos.avgEntryPrice - exec.price;
     const realizedPnL = pnlPerUnit * closeQty;
 
     // Record trade
@@ -175,13 +181,13 @@ export class PositionManager {
       pos.currentPrice = pos.side === 'BUY' ? quote.bid : quote.ask;
       pos.marketValue = pos.currentPrice * pos.quantity;
 
-      const pnlPerUnit = pos.side === 'BUY'
-        ? pos.currentPrice - pos.avgEntryPrice
-        : pos.avgEntryPrice - pos.currentPrice;
+      const pnlPerUnit =
+        pos.side === 'BUY'
+          ? pos.currentPrice - pos.avgEntryPrice
+          : pos.avgEntryPrice - pos.currentPrice;
 
       pos.unrealizedPnL = pnlPerUnit * pos.quantity;
-      pos.unrealizedPnLPct = pos.avgEntryPrice > 0
-        ? (pnlPerUnit / pos.avgEntryPrice) * 100 : 0;
+      pos.unrealizedPnLPct = pos.avgEntryPrice > 0 ? (pnlPerUnit / pos.avgEntryPrice) * 100 : 0;
       pos.totalPnL = pos.unrealizedPnL + pos.realizedPnL;
     }
 
@@ -194,10 +200,20 @@ export class PositionManager {
 
   getPortfolio(): Portfolio {
     const positions = Array.from(this.positions.values());
-    let totalMV = 0, totalCB = 0, totalUPnL = 0, totalRPnL = 0;
+    let totalMV = 0,
+      totalCB = 0,
+      totalUPnL = 0,
+      totalRPnL = 0;
 
     const exposureByMetal: Record<Metal, number> = { XAU: 0, XAG: 0, XPT: 0, XPD: 0 };
-    const exposureByVenue: Record<Venue, number> = { LBMA: 0, COMEX: 0, SGE: 0, DMCC: 0, OTC_SPOT: 0, PHYSICAL: 0 };
+    const exposureByVenue: Record<Venue, number> = {
+      LBMA: 0,
+      COMEX: 0,
+      SGE: 0,
+      DMCC: 0,
+      OTC_SPOT: 0,
+      PHYSICAL: 0,
+    };
 
     for (const p of positions) {
       totalMV += p.marketValue;
@@ -262,12 +278,14 @@ export class PositionManager {
     const drawdown = this.peakEquity - equity;
     const drawdownPct = this.peakEquity > 0 ? (drawdown / this.peakEquity) * 100 : 0;
 
-    const wins = this.tradeHistory.filter(t => t.pnl > 0);
-    const losses = this.tradeHistory.filter(t => t.pnl < 0);
+    const wins = this.tradeHistory.filter((t) => t.pnl > 0);
+    const losses = this.tradeHistory.filter((t) => t.pnl < 0);
     const winRate = this.tradeHistory.length > 0 ? wins.length / this.tradeHistory.length : 0;
     const avgWin = wins.length > 0 ? wins.reduce((s, t) => s + t.pnl, 0) / wins.length : 0;
-    const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((s, t) => s + t.pnl, 0) / losses.length) : 0;
-    const profitFactor = avgLoss > 0 ? (avgWin * wins.length) / (avgLoss * losses.length) : Infinity;
+    const avgLoss =
+      losses.length > 0 ? Math.abs(losses.reduce((s, t) => s + t.pnl, 0) / losses.length) : 0;
+    const profitFactor =
+      avgLoss > 0 ? (avgWin * wins.length) / (avgLoss * losses.length) : Infinity;
 
     // Historical VaR (parametric)
     const sortedReturns = [...returns].sort((a, b) => a - b);
@@ -277,28 +295,30 @@ export class PositionManager {
 
     // Standard deviation for Sharpe
     const meanReturn = returns.length > 0 ? returns.reduce((a, b) => a + b, 0) / returns.length : 0;
-    const stdDev = returns.length > 1
-      ? Math.sqrt(returns.reduce((sum, r) => sum + (r - meanReturn) ** 2, 0) / (returns.length - 1))
-      : 0;
+    const stdDev =
+      returns.length > 1
+        ? Math.sqrt(
+            returns.reduce((sum, r) => sum + (r - meanReturn) ** 2, 0) / (returns.length - 1)
+          )
+        : 0;
 
     // Downside deviation for Sortino
-    const negReturns = returns.filter(r => r < 0);
-    const downsideDev = negReturns.length > 1
-      ? Math.sqrt(negReturns.reduce((sum, r) => sum + r ** 2, 0) / negReturns.length)
-      : 0;
+    const negReturns = returns.filter((r) => r < 0);
+    const downsideDev =
+      negReturns.length > 1
+        ? Math.sqrt(negReturns.reduce((sum, r) => sum + r ** 2, 0) / negReturns.length)
+        : 0;
 
     // Kelly criterion
-    const kellyFraction = avgLoss > 0
-      ? (winRate * avgWin - (1 - winRate) * avgLoss) / avgWin
-      : 0;
+    const kellyFraction = avgLoss > 0 ? (winRate * avgWin - (1 - winRate) * avgLoss) / avgWin : 0;
 
     // Daily P&L (last 24h trades)
     const now = Date.now();
-    const dailyTrades = this.tradeHistory.filter(t => t.exitTime > now - 86_400_000);
+    const dailyTrades = this.tradeHistory.filter((t) => t.exitTime > now - 86_400_000);
     const dailyPnL = dailyTrades.reduce((s, t) => s + t.pnl, 0);
-    const weeklyTrades = this.tradeHistory.filter(t => t.exitTime > now - 604_800_000);
+    const weeklyTrades = this.tradeHistory.filter((t) => t.exitTime > now - 604_800_000);
     const weeklyPnL = weeklyTrades.reduce((s, t) => s + t.pnl, 0);
-    const monthlyTrades = this.tradeHistory.filter(t => t.exitTime > now - 2_592_000_000);
+    const monthlyTrades = this.tradeHistory.filter((t) => t.exitTime > now - 2_592_000_000);
     const monthlyPnL = monthlyTrades.reduce((s, t) => s + t.pnl, 0);
 
     return {
@@ -333,28 +353,48 @@ export class PositionManager {
     const trades = this.tradeHistory;
     if (trades.length === 0) {
       return {
-        totalTrades: 0, winRate: 0, avgReturn: 0, totalReturn: 0, totalReturnPct: 0,
-        profitFactor: 0, sharpeRatio: 0, sortinoRatio: 0, maxDrawdown: 0, maxDrawdownPct: 0,
-        avgHoldingPeriod: 0, bestTrade: {} as TradeRecord, worstTrade: {} as TradeRecord,
+        totalTrades: 0,
+        winRate: 0,
+        avgReturn: 0,
+        totalReturn: 0,
+        totalReturnPct: 0,
+        profitFactor: 0,
+        sharpeRatio: 0,
+        sortinoRatio: 0,
+        maxDrawdown: 0,
+        maxDrawdownPct: 0,
+        avgHoldingPeriod: 0,
+        bestTrade: {} as TradeRecord,
+        worstTrade: {} as TradeRecord,
         streaks: { currentWin: 0, currentLoss: 0, longestWin: 0, longestLoss: 0 },
-        byMetal: { XAU: { trades: 0, winRate: 0, pnl: 0 }, XAG: { trades: 0, winRate: 0, pnl: 0 }, XPT: { trades: 0, winRate: 0, pnl: 0 }, XPD: { trades: 0, winRate: 0, pnl: 0 } },
+        byMetal: {
+          XAU: { trades: 0, winRate: 0, pnl: 0 },
+          XAG: { trades: 0, winRate: 0, pnl: 0 },
+          XPT: { trades: 0, winRate: 0, pnl: 0 },
+          XPD: { trades: 0, winRate: 0, pnl: 0 },
+        },
         byStrategy: {},
         equityCurve: [],
       };
     }
 
-    const wins = trades.filter(t => t.pnl > 0);
+    const wins = trades.filter((t) => t.pnl > 0);
     const totalPnL = trades.reduce((s, t) => s + t.pnl, 0);
 
     // Streaks
-    let currentWin = 0, currentLoss = 0, longestWin = 0, longestLoss = 0;
+    let currentWin = 0,
+      currentLoss = 0,
+      longestWin = 0,
+      longestLoss = 0;
     let streak = 0;
     for (const t of trades) {
       if (t.pnl > 0) {
-        if (streak > 0) streak++; else streak = 1;
+        if (streak > 0) streak++;
+        else streak = 1;
         if (streak > longestWin) longestWin = streak;
       } else {
-        if (streak < 0) streak--; else streak = -1;
+        if (streak < 0) streak--;
+        else streak = -1;
         if (-streak > longestLoss) longestLoss = -streak;
       }
     }
@@ -391,7 +431,7 @@ export class PositionManager {
 
     // Equity curve
     let equity = this.initialCapital;
-    const equityCurve = trades.map(t => {
+    const equityCurve = trades.map((t) => {
       equity += t.pnl;
       return { timestamp: t.exitTime, equity };
     });
@@ -404,13 +444,16 @@ export class PositionManager {
       avgReturn: totalPnL / trades.length,
       totalReturn: totalPnL,
       totalReturnPct: this.initialCapital > 0 ? (totalPnL / this.initialCapital) * 100 : 0,
-      profitFactor: trades.filter(t => t.pnl < 0).reduce((s, t) => s + Math.abs(t.pnl), 0) > 0
-        ? wins.reduce((s, t) => s + t.pnl, 0) / trades.filter(t => t.pnl < 0).reduce((s, t) => s + Math.abs(t.pnl), 0)
-        : Infinity,
+      profitFactor:
+        trades.filter((t) => t.pnl < 0).reduce((s, t) => s + Math.abs(t.pnl), 0) > 0
+          ? wins.reduce((s, t) => s + t.pnl, 0) /
+            trades.filter((t) => t.pnl < 0).reduce((s, t) => s + Math.abs(t.pnl), 0)
+          : Infinity,
       sharpeRatio: 0,
       sortinoRatio: 0,
       maxDrawdown: this.peakEquity - this.getEquity(),
-      maxDrawdownPct: this.peakEquity > 0 ? ((this.peakEquity - this.getEquity()) / this.peakEquity) * 100 : 0,
+      maxDrawdownPct:
+        this.peakEquity > 0 ? ((this.peakEquity - this.getEquity()) / this.peakEquity) * 100 : 0,
       avgHoldingPeriod: trades.reduce((s, t) => s + t.holdingPeriodMs, 0) / trades.length,
       bestTrade: sorted[0],
       worstTrade: sorted[sorted.length - 1],

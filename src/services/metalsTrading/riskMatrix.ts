@@ -2,43 +2,49 @@
 // Position sizing (Kelly, fixed fractional, volatility-adjusted), stop loss
 // management, circuit breakers, correlation monitoring, drawdown protection.
 
-import type {
-  Metal, RiskLimits, RiskMetrics, CircuitBreaker,
-  Position, Portfolio, TradeSide, PriceQuote,
-} from './types';
+import type { Metal, RiskLimits, CircuitBreaker, Portfolio, TradeSide } from './types';
 
 // ─── Default Risk Limits ────────────────────────────────────────────────────
 
 export const DEFAULT_RISK_LIMITS: RiskLimits = {
-  maxPositionSize: 1000,         // 1000 troy oz
+  maxPositionSize: 1000, // 1000 troy oz
   maxPortfolioExposure: 5_000_000,
   maxLossPerTrade: 5_000,
   maxDailyLoss: 25_000,
   maxDrawdownPct: 10,
-  maxConcentration: 0.6,        // 60% in one metal
+  maxConcentration: 0.6, // 60% in one metal
   maxLeverage: 10,
   maxOpenOrders: 20,
   maxDailyTrades: 100,
-  cooldownAfterLoss: 300_000,   // 5 min cooldown
+  cooldownAfterLoss: 300_000, // 5 min cooldown
 };
 
 // ─── Position Sizing Strategies ─────────────────────────────────────────────
 
 export interface PositionSizeResult {
-  quantity: number;           // troy ounces
+  quantity: number; // troy ounces
   dollarValue: number;
-  riskAmount: number;         // max $ at risk
+  riskAmount: number; // max $ at risk
   method: string;
   reasoning: string;
 }
 
 export function kellyPositionSize(
-  winRate: number, avgWin: number, avgLoss: number,
-  portfolioValue: number, currentPrice: number,
-  fractionMultiplier: number = 0.25, // quarter-Kelly for safety
+  winRate: number,
+  avgWin: number,
+  avgLoss: number,
+  portfolioValue: number,
+  currentPrice: number,
+  fractionMultiplier: number = 0.25 // quarter-Kelly for safety
 ): PositionSizeResult {
   if (avgLoss === 0 || avgWin === 0) {
-    return { quantity: 0, dollarValue: 0, riskAmount: 0, method: 'KELLY', reasoning: 'Insufficient trade history' };
+    return {
+      quantity: 0,
+      dollarValue: 0,
+      riskAmount: 0,
+      method: 'KELLY',
+      reasoning: 'Insufficient trade history',
+    };
   }
 
   const kelly = (winRate * avgWin - (1 - winRate) * avgLoss) / avgWin;
@@ -56,8 +62,10 @@ export function kellyPositionSize(
 }
 
 export function fixedFractionalSize(
-  portfolioValue: number, riskPct: number, currentPrice: number,
-  stopDistance: number,
+  portfolioValue: number,
+  riskPct: number,
+  currentPrice: number,
+  stopDistance: number
 ): PositionSizeResult {
   const riskAmount = portfolioValue * (riskPct / 100);
   const quantity = stopDistance > 0 ? Math.floor(riskAmount / stopDistance) : 0;
@@ -72,11 +80,19 @@ export function fixedFractionalSize(
 }
 
 export function volatilityAdjustedSize(
-  portfolioValue: number, targetVolPct: number,
-  atr14: number, currentPrice: number,
+  portfolioValue: number,
+  targetVolPct: number,
+  atr14: number,
+  currentPrice: number
 ): PositionSizeResult {
   if (atr14 === 0 || currentPrice === 0) {
-    return { quantity: 0, dollarValue: 0, riskAmount: 0, method: 'VOL_ADJUSTED', reasoning: 'Insufficient volatility data' };
+    return {
+      quantity: 0,
+      dollarValue: 0,
+      riskAmount: 0,
+      method: 'VOL_ADJUSTED',
+      reasoning: 'Insufficient volatility data',
+    };
   }
 
   const dollarVolPerUnit = atr14;
@@ -103,11 +119,14 @@ export interface StopLossConfig {
 }
 
 export function calculateStopLoss(
-  entryPrice: number, side: TradeSide,
+  entryPrice: number,
+  side: TradeSide,
   config: StopLossConfig,
   atr14: number,
-  supportLevel?: number, resistanceLevel?: number,
-  highestSinceEntry?: number, lowestSinceEntry?: number,
+  supportLevel?: number,
+  resistanceLevel?: number,
+  highestSinceEntry?: number,
+  lowestSinceEntry?: number
 ): number {
   switch (config.type) {
     case 'ATR':
@@ -253,15 +272,15 @@ export class CircuitBreakerEngine {
   }
 
   getTriggered(): CircuitBreaker[] {
-    return this.breakers.filter(cb => cb.triggered);
+    return this.breakers.filter((cb) => cb.triggered);
   }
 
   isTradingHalted(): boolean {
-    return this.breakers.some(cb => cb.triggered && cb.action === 'HALT_TRADING');
+    return this.breakers.some((cb) => cb.triggered && cb.action === 'HALT_TRADING');
   }
 
   isSizeReduced(): boolean {
-    return this.breakers.some(cb => cb.triggered && cb.action === 'REDUCE_SIZE');
+    return this.breakers.some((cb) => cb.triggered && cb.action === 'REDUCE_SIZE');
   }
 
   getSizeMultiplier(): number {
@@ -271,7 +290,7 @@ export class CircuitBreakerEngine {
   }
 
   reset(breakerId: string): void {
-    const cb = this.breakers.find(b => b.id === breakerId);
+    const cb = this.breakers.find((b) => b.id === breakerId);
     if (cb) {
       cb.triggered = false;
       cb.triggeredAt = undefined;
@@ -298,9 +317,13 @@ export interface RiskCheckResult {
 }
 
 export function preTradeRiskCheck(
-  metal: Metal, side: TradeSide, quantity: number, price: number,
-  portfolio: Portfolio, limits: RiskLimits,
-  circuitBreakers: CircuitBreakerEngine,
+  metal: Metal,
+  side: TradeSide,
+  quantity: number,
+  price: number,
+  portfolio: Portfolio,
+  limits: RiskLimits,
+  circuitBreakers: CircuitBreakerEngine
 ): RiskCheckResult {
   const warnings: string[] = [];
   let adjustedQty = quantity;

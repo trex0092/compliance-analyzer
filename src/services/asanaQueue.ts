@@ -46,7 +46,9 @@ export function enqueueRetry(
   const queue = readQueue();
   // Deduplicate by task name + project
   const exists = queue.some(
-    (e) => e.payload.name === payload.name && (e.payload.projects?.[0] ?? '') === (payload.projects?.[0] ?? '')
+    (e) =>
+      e.payload.name === payload.name &&
+      (e.payload.projects?.[0] ?? '') === (payload.projects?.[0] ?? '')
   );
   if (exists) return;
 

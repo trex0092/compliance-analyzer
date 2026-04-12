@@ -30,12 +30,7 @@
 // Types — exported as specified
 // ---------------------------------------------------------------------------
 
-export type EsgCategory =
-  | 'environmental'
-  | 'social'
-  | 'governance'
-  | 'esg_combined'
-  | 'not_esg';
+export type EsgCategory = 'environmental' | 'social' | 'governance' | 'esg_combined' | 'not_esg';
 
 export interface AdverseMediaHitInput {
   id: string;
@@ -151,9 +146,28 @@ const GOVERNANCE_KEYWORDS: KeywordEntry[] = [
 ];
 
 // Escalation patterns that push severity to critical
-const CRITICAL_ESCALATION_ENV: RegExp[] = [/\bcriminal\b/i, /\bmillion[s]?\s+(?:USD|AED|EUR|fine)\b/i, /\bprosecuted\b/i, /\bindicted\b/i];
-const CRITICAL_ESCALATION_SOCIAL: RegExp[] = [/\bforced\s+lab/i, /\bchild\s+lab/i, /\bslavery\b/i, /\btraffick/i, /\bkafala\b/i, /\bpassport\s+confis/i];
-const CRITICAL_ESCALATION_GOV: RegExp[] = [/\bsanctions\b/i, /\bmoney\s+launder/i, /\bterror/i, /\bembezzl/i, /\baccounting\s+fraud/i, /\bkickback/i];
+const CRITICAL_ESCALATION_ENV: RegExp[] = [
+  /\bcriminal\b/i,
+  /\bmillion[s]?\s+(?:USD|AED|EUR|fine)\b/i,
+  /\bprosecuted\b/i,
+  /\bindicted\b/i,
+];
+const CRITICAL_ESCALATION_SOCIAL: RegExp[] = [
+  /\bforced\s+lab/i,
+  /\bchild\s+lab/i,
+  /\bslavery\b/i,
+  /\btraffick/i,
+  /\bkafala\b/i,
+  /\bpassport\s+confis/i,
+];
+const CRITICAL_ESCALATION_GOV: RegExp[] = [
+  /\bsanctions\b/i,
+  /\bmoney\s+launder/i,
+  /\bterror/i,
+  /\bembezzl/i,
+  /\baccounting\s+fraud/i,
+  /\bkickback/i,
+];
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -224,7 +238,10 @@ function severityGovernance(fullText: string, weight: number): EsgMediaFinding['
 }
 
 /** Regulation citation lookup by subCategory. */
-function regulationForSubCategory(subCategory: string, pillar: 'environmental' | 'social' | 'governance'): string {
+function regulationForSubCategory(
+  subCategory: string,
+  pillar: 'environmental' | 'social' | 'governance'
+): string {
   // Governance citations (FDL + AML)
   const govCitations: Record<string, string> = {
     money_laundering: 'FDL No.10/2025 Art.20-21; Cabinet Res 134/2025 Art.7-10',
@@ -298,7 +315,11 @@ function classifySingleHit(hit: AdverseMediaHitInput): EsgMediaFinding | null {
     signals = [...envMatch.signals, ...socMatch.signals, ...govMatch.signals];
     // Pick primary sub-category from highest-weight pillar
     const dominant = [
-      { pillar: 'environmental' as const, weight: envMatch.totalWeight, subs: envMatch.subCategories },
+      {
+        pillar: 'environmental' as const,
+        weight: envMatch.totalWeight,
+        subs: envMatch.subCategories,
+      },
       { pillar: 'social' as const, weight: socMatch.totalWeight, subs: socMatch.subCategories },
       { pillar: 'governance' as const, weight: govMatch.totalWeight, subs: govMatch.subCategories },
     ].sort((a, b) => b.weight - a.weight)[0];
@@ -311,7 +332,7 @@ function classifySingleHit(hit: AdverseMediaHitInput): EsgMediaFinding | null {
     const worstIdx = Math.min(
       severityOrder.indexOf(envSev),
       severityOrder.indexOf(socSev),
-      severityOrder.indexOf(govSev),
+      severityOrder.indexOf(govSev)
     );
     severity = severityOrder[worstIdx];
     relevantRegulation =
@@ -364,7 +385,7 @@ function classifySingleHit(hit: AdverseMediaHitInput): EsgMediaFinding | null {
  * @see FDL No.10/2025 Art.20-21
  */
 export function classifyEsgAdverseMedia(
-  hits: readonly AdverseMediaHitInput[],
+  hits: readonly AdverseMediaHitInput[]
 ): EsgAdverseMediaReport {
   const allFindings: EsgMediaFinding[] = [];
   const byCategory = { environmental: 0, social: 0, governance: 0, combined: 0 };
@@ -440,12 +461,12 @@ function buildMediaNarrative(ctx: MediaNarrativeCtx): string {
   }
 
   parts.push(
-    `Breakdown: ${byCategory.environmental} environmental, ${byCategory.social} social, ${byCategory.governance} governance, ${byCategory.combined} multi-pillar.`,
+    `Breakdown: ${byCategory.environmental} environmental, ${byCategory.social} social, ${byCategory.governance} governance, ${byCategory.combined} multi-pillar.`
   );
 
   if (criticalCount > 0) {
     parts.push(
-      `CRITICAL: ${criticalCount} finding(s) require immediate escalation per FDL No.10/2025 Art.20-21 and Cabinet Res 134/2025 Art.7-10 (EDD trigger).`,
+      `CRITICAL: ${criticalCount} finding(s) require immediate escalation per FDL No.10/2025 Art.20-21 and Cabinet Res 134/2025 Art.7-10 (EDD trigger).`
     );
   }
 
@@ -454,13 +475,15 @@ function buildMediaNarrative(ctx: MediaNarrativeCtx): string {
   }
 
   // List the most severe sub-categories found
-  const critSubCats = [...new Set(allFindings.filter(f => f.severity === 'critical').map(f => f.subCategory))];
+  const critSubCats = [
+    ...new Set(allFindings.filter((f) => f.severity === 'critical').map((f) => f.subCategory)),
+  ];
   if (critSubCats.length > 0) {
     parts.push(`Critical sub-categories: ${critSubCats.join(', ')}.`);
   }
 
   parts.push(
-    'Regulatory obligations: EU SFDR 2019/2088 Art.4 (PAI disclosure); GRI 13 Mining Sector Standard; LBMA RGG v9 §4; FDL No.10/2025 Art.20-21 (CDD adverse media); Cabinet Res 134/2025 Art.7-10 (EDD if critical findings present).',
+    'Regulatory obligations: EU SFDR 2019/2088 Art.4 (PAI disclosure); GRI 13 Mining Sector Standard; LBMA RGG v9 §4; FDL No.10/2025 Art.20-21 (CDD adverse media); Cabinet Res 134/2025 Art.7-10 (EDD if critical findings present).'
   );
 
   return parts.join(' ');

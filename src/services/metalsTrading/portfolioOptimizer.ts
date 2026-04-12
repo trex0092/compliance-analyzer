@@ -14,24 +14,24 @@ import type { Metal } from './types';
 
 export interface OptimizationInput {
   metals: Metal[];
-  returns: Record<Metal, number[]>;      // historical daily returns
-  views?: TraderView[];                    // subjective views for Black-Litterman
-  riskFreeRate: number;                    // annualized (e.g., 0.05 for 5%)
-  targetReturn?: number;                   // for mean-variance with target
-  maxWeight: number;                       // max allocation per metal (e.g., 0.6 = 60%)
-  minWeight: number;                       // min allocation (e.g., 0.0 = allow zero)
+  returns: Record<Metal, number[]>; // historical daily returns
+  views?: TraderView[]; // subjective views for Black-Litterman
+  riskFreeRate: number; // annualized (e.g., 0.05 for 5%)
+  targetReturn?: number; // for mean-variance with target
+  maxWeight: number; // max allocation per metal (e.g., 0.6 = 60%)
+  minWeight: number; // min allocation (e.g., 0.0 = allow zero)
 }
 
 export interface TraderView {
   metal: Metal;
-  expectedReturn: number;   // annualized expected return (e.g., 0.10 = 10%)
-  confidence: number;       // 0-1
+  expectedReturn: number; // annualized expected return (e.g., 0.10 = 10%)
+  confidence: number; // 0-1
 }
 
 export interface OptimizedPortfolio {
   method: string;
   weights: Record<Metal, number>;
-  expectedReturn: number;    // annualized
+  expectedReturn: number; // annualized
   expectedVolatility: number; // annualized
   sharpeRatio: number;
   diversificationRatio: number;
@@ -41,18 +41,24 @@ export interface OptimizedPortfolio {
 // ─── Covariance Matrix ──────────────────────────────────────────────────────
 
 export function computeCovarianceMatrix(
-  returns: Record<Metal, number[]>, metals: Metal[],
+  returns: Record<Metal, number[]>,
+  metals: Metal[]
 ): number[][] {
   const n = metals.length;
-  const minLen = Math.min(...metals.map(m => returns[m]?.length ?? 0));
-  if (minLen < 2) return Array(n).fill(null).map(() => Array(n).fill(0));
+  const minLen = Math.min(...metals.map((m) => returns[m]?.length ?? 0));
+  if (minLen < 2)
+    return Array(n)
+      .fill(null)
+      .map(() => Array(n).fill(0));
 
-  const means: number[] = metals.map(m => {
+  const means: number[] = metals.map((m) => {
     const r = returns[m].slice(-minLen);
     return r.reduce((a, b) => a + b, 0) / r.length;
   });
 
-  const cov: number[][] = Array(n).fill(null).map(() => Array(n).fill(0));
+  const cov: number[][] = Array(n)
+    .fill(null)
+    .map(() => Array(n).fill(0));
 
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
@@ -77,7 +83,7 @@ export function meanVarianceOptimize(input: OptimizationInput): OptimizedPortfol
   const cov = computeCovarianceMatrix(returns, metals);
 
   // Expected returns (annualized from historical)
-  const expReturns = metals.map(m => {
+  const expReturns = metals.map((m) => {
     const r = returns[m];
     const mean = r.reduce((a, b) => a + b, 0) / r.length;
     return mean * 252; // annualize
@@ -108,10 +114,14 @@ export function meanVarianceOptimize(input: OptimizationInput): OptimizedPortfol
   const riskContrib = computeRiskContribution(bestWeights, cov, portVol);
 
   const weights: Record<Metal, number> = {} as Record<Metal, number>;
-  metals.forEach((m, i) => { weights[m] = bestWeights[i]; });
+  metals.forEach((m, i) => {
+    weights[m] = bestWeights[i];
+  });
 
   const rc: Record<Metal, number> = {} as Record<Metal, number>;
-  metals.forEach((m, i) => { rc[m] = riskContrib[i]; });
+  metals.forEach((m, i) => {
+    rc[m] = riskContrib[i];
+  });
 
   return {
     method: 'Mean-Variance (Max Sharpe)',
@@ -135,18 +145,18 @@ export function riskParityOptimize(input: OptimizationInput): OptimizedPortfolio
 
   // Individual volatilities
   const vols = metals.map((_, i) => Math.sqrt(cov[i][i]));
-  const invVols = vols.map(v => v > 0 ? 1 / v : 0);
+  const invVols = vols.map((v) => (v > 0 ? 1 / v : 0));
   const totalInvVol = invVols.reduce((a, b) => a + b, 0);
 
   // Weights inversely proportional to volatility
-  let rawWeights = invVols.map(iv => totalInvVol > 0 ? iv / totalInvVol : 1 / n);
+  let rawWeights = invVols.map((iv) => (totalInvVol > 0 ? iv / totalInvVol : 1 / n));
 
   // Apply constraints
-  rawWeights = rawWeights.map(w => Math.max(minWeight, Math.min(maxWeight, w)));
+  rawWeights = rawWeights.map((w) => Math.max(minWeight, Math.min(maxWeight, w)));
   const totalW = rawWeights.reduce((a, b) => a + b, 0);
-  rawWeights = rawWeights.map(w => w / totalW); // re-normalize
+  rawWeights = rawWeights.map((w) => w / totalW); // re-normalize
 
-  const expReturns = metals.map(m => {
+  const expReturns = metals.map((m) => {
     const r = returns[m];
     return (r.reduce((a, b) => a + b, 0) / r.length) * 252;
   });
@@ -157,10 +167,14 @@ export function riskParityOptimize(input: OptimizationInput): OptimizedPortfolio
   const riskContrib = computeRiskContribution(rawWeights, cov, portVol);
 
   const weights: Record<Metal, number> = {} as Record<Metal, number>;
-  metals.forEach((m, i) => { weights[m] = rawWeights[i]; });
+  metals.forEach((m, i) => {
+    weights[m] = rawWeights[i];
+  });
 
   const rc: Record<Metal, number> = {} as Record<Metal, number>;
-  metals.forEach((m, i) => { rc[m] = riskContrib[i]; });
+  metals.forEach((m, i) => {
+    rc[m] = riskContrib[i];
+  });
 
   return {
     method: 'Risk Parity',
@@ -194,7 +208,7 @@ export function minVarianceOptimize(input: OptimizationInput): OptimizedPortfoli
     }
   }
 
-  const expReturns = metals.map(m => {
+  const expReturns = metals.map((m) => {
     const r = returns[m];
     return (r.reduce((a, b) => a + b, 0) / r.length) * 252;
   });
@@ -203,11 +217,15 @@ export function minVarianceOptimize(input: OptimizationInput): OptimizedPortfoli
   const portVol = Math.sqrt(bestVar);
 
   const weights: Record<Metal, number> = {} as Record<Metal, number>;
-  metals.forEach((m, i) => { weights[m] = bestWeights[i]; });
+  metals.forEach((m, i) => {
+    weights[m] = bestWeights[i];
+  });
 
   const riskContrib = computeRiskContribution(bestWeights, cov, portVol);
   const rc: Record<Metal, number> = {} as Record<Metal, number>;
-  metals.forEach((m, i) => { rc[m] = riskContrib[i]; });
+  metals.forEach((m, i) => {
+    rc[m] = riskContrib[i];
+  });
 
   return {
     method: 'Minimum Variance',
@@ -223,11 +241,7 @@ export function minVarianceOptimize(input: OptimizationInput): OptimizedPortfoli
 // ─── Run All Optimizations ──────────────────────────────────────────────────
 
 export function optimizePortfolio(input: OptimizationInput): OptimizedPortfolio[] {
-  return [
-    meanVarianceOptimize(input),
-    riskParityOptimize(input),
-    minVarianceOptimize(input),
-  ];
+  return [meanVarianceOptimize(input), riskParityOptimize(input), minVarianceOptimize(input)];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -254,7 +268,7 @@ function computeRiskContribution(weights: number[], cov: number[][], portVol: nu
   }
 
   const total = marginal.reduce((a, b) => a + b, 0);
-  return marginal.map(m => total > 0 ? m / total : 1 / n);
+  return marginal.map((m) => (total > 0 ? m / total : 1 / n));
 }
 
 function computeDiversificationRatio(weights: number[], cov: number[][]): number {
@@ -265,9 +279,7 @@ function computeDiversificationRatio(weights: number[], cov: number[][]): number
   return portVol > 0 ? weightedVol / portVol : 1;
 }
 
-function generateWeightCandidates(
-  n: number, step: number, minW: number, maxW: number,
-): number[][] {
+function generateWeightCandidates(n: number, step: number, minW: number, maxW: number): number[][] {
   const results: number[][] = [];
 
   if (n === 4) {

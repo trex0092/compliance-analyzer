@@ -389,8 +389,7 @@ export function tokenSetBreakdown(a: string, b: string): TokenSetBreakdown {
   }
 
   const sameTokenCount = tokensA.length === tokensB.length;
-  const [short, long] =
-    tokensA.length <= tokensB.length ? [tokensA, tokensB] : [tokensB, tokensA];
+  const [short, long] = tokensA.length <= tokensB.length ? [tokensA, tokensB] : [tokensB, tokensA];
 
   let total = 0;
   let minBest = Infinity;

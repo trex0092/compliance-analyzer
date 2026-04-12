@@ -50,14 +50,14 @@ const CAHRA_COUNTRIES = new Set<string>([
 /** Programmes providing independent third-party supply-chain assurance. */
 const STRONG_CERTIFICATIONS = new Set<MineralSupplier['certifications'][number]>([
   'LBMA_RGG', // LBMA Responsible Gold Guidance — annual third-party audit
-  'RMI_RMAP',  // Responsible Minerals Initiative — RMAP audit programme
-  'ITSCI',     // ITRI Tin Supply Chain Initiative (covers tin, tantalum, tungsten)
+  'RMI_RMAP', // Responsible Minerals Initiative — RMAP audit programme
+  'ITSCI', // ITRI Tin Supply Chain Initiative (covers tin, tantalum, tungsten)
 ]);
 
 const MODERATE_CERTIFICATIONS = new Set<MineralSupplier['certifications'][number]>([
-  'IRMA',      // Initiative for Responsible Mining Assurance
-  'ASM_GOLD',  // Alliance for Responsible Mining — Fairtrade/Fairmined
-  'CRAFT',     // Community-based Responsible Artisanal & Small-scale mining framework
+  'IRMA', // Initiative for Responsible Mining Assurance
+  'ASM_GOLD', // Alliance for Responsible Mining — Fairtrade/Fairmined
+  'CRAFT', // Community-based Responsible Artisanal & Small-scale mining framework
 ]);
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -65,13 +65,13 @@ const MODERATE_CERTIFICATIONS = new Set<MineralSupplier['certifications'][number
 export interface MineralSupplier {
   supplierId: string;
   name: string;
-  countryOfOrigin: string;  // ISO alpha-2
+  countryOfOrigin: string; // ISO alpha-2
   mineral: 'gold' | 'tin' | 'tantalum' | 'tungsten';
   annualVolumeKg?: number;
   certifications: Array<'LBMA_RGG' | 'RMI_RMAP' | 'ITSCI' | 'CRAFT' | 'ASM_GOLD' | 'IRMA' | 'none'>;
   caharaStatus?: 'confirmed' | 'likely' | 'possible' | 'none';
   lastAuditDate?: string; // ISO 8601 date string
-  hasSignedCoC: boolean;   // Chain-of-Custody signed declaration
+  hasSignedCoC: boolean; // Chain-of-Custody signed declaration
   hasTraceabilitySystem: boolean;
 }
 
@@ -102,13 +102,12 @@ function auditAgeMonths(lastAuditDate: string | undefined): number | null {
   const audit = new Date(lastAuditDate);
   if (isNaN(audit.getTime())) return null;
   const now = new Date();
-  return (now.getFullYear() - audit.getFullYear()) * 12 +
-    (now.getMonth() - audit.getMonth());
+  return (now.getFullYear() - audit.getFullYear()) * 12 + (now.getMonth() - audit.getMonth());
 }
 
 function hasCertification(
   certs: MineralSupplier['certifications'],
-  set: Set<MineralSupplier['certifications'][number]>,
+  set: Set<MineralSupplier['certifications'][number]>
 ): boolean {
   return certs.some((c) => set.has(c));
 }
@@ -181,7 +180,6 @@ function assessSupplier(supplier: MineralSupplier): SupplierConflictAssessment {
   const requiredActions: string[] = [];
   const isCahra = CAHRA_COUNTRIES.has(supplier.countryOfOrigin);
   const hasStrong = hasCertification(supplier.certifications, STRONG_CERTIFICATIONS);
-  const hasModerate = hasCertification(supplier.certifications, MODERATE_CERTIFICATIONS);
   const hasAny = hasAnyCertification(supplier.certifications);
   const ageMonths = auditAgeMonths(supplier.lastAuditDate);
   const caharaStatus = supplier.caharaStatus ?? 'none';
@@ -194,7 +192,7 @@ function assessSupplier(supplier: MineralSupplier): SupplierConflictAssessment {
       citation: 'OECD DDG Step 3; LBMA RGG v9 §4.3; EU Reg 2017/821 Art.5',
     });
     requiredActions.push(
-      'Obtain LBMA RGG, RMI RMAP, or ITSCI certification before next procurement cycle.',
+      'Obtain LBMA RGG, RMI RMAP, or ITSCI certification before next procurement cycle.'
     );
   }
 
@@ -227,7 +225,7 @@ function assessSupplier(supplier: MineralSupplier): SupplierConflictAssessment {
       citation: 'OECD DDG Step 1; UAE MoE RSG Framework §2.3; LBMA RGG v9 §3.4',
     });
     requiredActions.push(
-      'Implement or require documented supply-chain traceability down to mine/country of origin.',
+      'Implement or require documented supply-chain traceability down to mine/country of origin.'
     );
   }
 
@@ -257,7 +255,7 @@ function assessSupplier(supplier: MineralSupplier): SupplierConflictAssessment {
         'Cabinet Res 74/2020 Art.4 (UAE TFS); OFAC SDN; EU Reg 833/2014 (Russia); UNSC Res 2397 (DPRK)',
     });
     requiredActions.push(
-      'STOP procurement. Refer immediately to Compliance Officer for TFS screening before any further engagement.',
+      'STOP procurement. Refer immediately to Compliance Officer for TFS screening before any further engagement.'
     );
   }
 
@@ -266,10 +264,10 @@ function assessSupplier(supplier: MineralSupplier): SupplierConflictAssessment {
   // Derive risk level from flags and score
   let riskLevel: ConflictRiskLevel;
   const hasCriticalFlag = flags.some((f) =>
-    ['CAHRA_NO_CERT', 'SANCTIONS_JURISDICTION'].includes(f.code),
+    ['CAHRA_NO_CERT', 'SANCTIONS_JURISDICTION'].includes(f.code)
   );
   const hasHighFlag = flags.some((f) =>
-    ['CONFIRMED_CAHRA_NO_STRONG_CERT', 'CAHRA_NO_COC'].includes(f.code),
+    ['CONFIRMED_CAHRA_NO_STRONG_CERT', 'CAHRA_NO_COC'].includes(f.code)
   );
 
   if (hasCriticalFlag) {
@@ -310,7 +308,7 @@ function rollupRisk(assessments: SupplierConflictAssessment[]): ConflictRiskLeve
  * @returns ConflictMineralsReport
  */
 export function screenConflictMinerals(
-  suppliers: readonly MineralSupplier[],
+  suppliers: readonly MineralSupplier[]
 ): ConflictMineralsReport {
   if (suppliers.length === 0) {
     return {
@@ -330,8 +328,7 @@ export function screenConflictMinerals(
   const criticalCount = assessments.filter((a) => a.riskLevel === 'critical').length;
   const highRiskCount = assessments.filter((a) => a.riskLevel === 'high').length;
   const overallRisk = rollupRisk(assessments);
-  const avgScore =
-    assessments.reduce((sum, a) => sum + a.oecd5StepScore, 0) / assessments.length;
+  const avgScore = assessments.reduce((sum, a) => sum + a.oecd5StepScore, 0) / assessments.length;
 
   const criticalNames = suppliers
     .filter((s) => assessments.find((a) => a.supplierId === s.supplierId)?.riskLevel === 'critical')

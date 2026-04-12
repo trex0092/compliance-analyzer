@@ -13,17 +13,17 @@ export interface TCAResult {
   metal: Metal;
   side: TradeSide;
   venue: Venue;
-  decisionPrice: number;     // price when we decided to trade
-  arrivalPrice: number;      // mid-price when order hit the market
-  executionPrice: number;    // actual fill price
-  benchmarkVWAP: number;     // VWAP during execution window
+  decisionPrice: number; // price when we decided to trade
+  arrivalPrice: number; // mid-price when order hit the market
+  executionPrice: number; // actual fill price
+  benchmarkVWAP: number; // VWAP during execution window
   implementationShortfall: number; // total cost vs decision price
-  slippageCost: number;      // fill vs arrival
-  marketImpact: number;      // price moved due to our order
-  timingCost: number;        // cost of delay (decision to arrival)
-  spreadCost: number;        // half-spread paid
+  slippageCost: number; // fill vs arrival
+  marketImpact: number; // price moved due to our order
+  timingCost: number; // cost of delay (decision to arrival)
+  spreadCost: number; // half-spread paid
   feeCost: number;
-  totalCostBps: number;      // total all-in cost in bps
+  totalCostBps: number; // total all-in cost in bps
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
 }
 
@@ -33,9 +33,9 @@ export interface VenueAnalytics {
   avgSlippageBps: number;
   avgImpactBps: number;
   avgTotalCostBps: number;
-  fillRate: number;           // % of orders fully filled
+  fillRate: number; // % of orders fully filled
   avgFillTimeMs: number;
-  bestExecution: boolean;     // is this the best venue?
+  bestExecution: boolean; // is this the best venue?
 }
 
 export interface ExecutionSummary {
@@ -54,27 +54,25 @@ export interface ExecutionSummary {
 // ─── TCA Calculation ────────────────────────────────────────────────────────
 
 export function analyzeTrade(
-  order: Order, execution: Execution,
-  decisionPrice: number, arrivalPrice: number, vwap: number,
+  order: Order,
+  execution: Execution,
+  decisionPrice: number,
+  arrivalPrice: number,
+  vwap: number
 ): TCAResult {
   const fillPrice = execution.price;
   const qty = execution.quantity;
   const mid = arrivalPrice;
 
   // Implementation shortfall: total cost from decision to fill
-  const isShortfall = order.side === 'BUY'
-    ? fillPrice - decisionPrice
-    : decisionPrice - fillPrice;
+  const isShortfall = order.side === 'BUY' ? fillPrice - decisionPrice : decisionPrice - fillPrice;
 
   // Timing cost: delay from decision to arrival
-  const timingCost = order.side === 'BUY'
-    ? arrivalPrice - decisionPrice
-    : decisionPrice - arrivalPrice;
+  const timingCost =
+    order.side === 'BUY' ? arrivalPrice - decisionPrice : decisionPrice - arrivalPrice;
 
   // Slippage: arrival to fill
-  const slippage = order.side === 'BUY'
-    ? fillPrice - arrivalPrice
-    : arrivalPrice - fillPrice;
+  const slippage = order.side === 'BUY' ? fillPrice - arrivalPrice : arrivalPrice - fillPrice;
 
   // Market impact estimate (simplified)
   const marketImpact = slippage * 0.6; // ~60% of slippage is market impact
@@ -162,7 +160,8 @@ export function analyzeVenuePerformance(results: TCAResult[]): VenueAnalytics[] 
 // ─── Execution Summary ──────────────────────────────────────────────────────
 
 export function generateExecutionSummary(
-  results: TCAResult[], period: string = 'session',
+  results: TCAResult[],
+  period: string = 'session'
 ): ExecutionSummary {
   if (results.length === 0) {
     return {
@@ -172,7 +171,12 @@ export function generateExecutionSummary(
       avgCostBps: 0,
       gradeDistribution: {},
       byVenue: [],
-      byMetal: { XAU: { orders: 0, avgCostBps: 0 }, XAG: { orders: 0, avgCostBps: 0 }, XPT: { orders: 0, avgCostBps: 0 }, XPD: { orders: 0, avgCostBps: 0 } },
+      byMetal: {
+        XAU: { orders: 0, avgCostBps: 0 },
+        XAG: { orders: 0, avgCostBps: 0 },
+        XPT: { orders: 0, avgCostBps: 0 },
+        XPD: { orders: 0, avgCostBps: 0 },
+      },
       worstExecution: null,
       bestExecution: null,
       recommendations: ['No executions to analyze'],
@@ -183,7 +187,10 @@ export function generateExecutionSummary(
   const grades: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, F: 0 };
   for (const r of results) grades[r.grade]++;
 
-  const totalCost = results.reduce((s, r) => s + Math.abs(r.implementationShortfall) * r.executionPrice, 0);
+  const totalCost = results.reduce(
+    (s, r) => s + Math.abs(r.implementationShortfall) * r.executionPrice,
+    0
+  );
   const avgCost = results.reduce((s, r) => s + r.totalCostBps, 0) / results.length;
 
   // By metal
@@ -203,12 +210,17 @@ export function generateExecutionSummary(
 
   // Recommendations
   const recommendations: string[] = [];
-  if (avgCost > 10) recommendations.push('Avg execution cost > 10bps — consider using TWAP/VWAP for large orders');
-  if (grades.D + grades.F > results.length * 0.2) recommendations.push('20%+ poor executions — review order timing and venue selection');
+  if (avgCost > 10)
+    recommendations.push('Avg execution cost > 10bps — consider using TWAP/VWAP for large orders');
+  if (grades.D + grades.F > results.length * 0.2)
+    recommendations.push('20%+ poor executions — review order timing and venue selection');
 
   const venueAnalytics = analyzeVenuePerformance(results);
-  const bestVenue = venueAnalytics.find(v => v.bestExecution);
-  if (bestVenue) recommendations.push(`Best venue: ${bestVenue.venue} (avg ${bestVenue.avgTotalCostBps.toFixed(1)} bps)`);
+  const bestVenue = venueAnalytics.find((v) => v.bestExecution);
+  if (bestVenue)
+    recommendations.push(
+      `Best venue: ${bestVenue.venue} (avg ${bestVenue.avgTotalCostBps.toFixed(1)} bps)`
+    );
 
   return {
     period,
