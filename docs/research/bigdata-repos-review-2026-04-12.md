@@ -1,6 +1,6 @@
 # Big Data Repository Review — 2026-04-12
 
-Evaluation of 3 open-source big data repositories for patterns, tools, and
+Evaluation of 4 open-source repositories for patterns, tools, and
 ideas applicable to the compliance-analyzer project.
 
 ## Evaluation Criteria
@@ -276,6 +276,99 @@ entries (Kafka, Flink, Neo4j, Elasticsearch) are current stable projects.
 
 ---
 
+## 4. milla-jovovich/mempalace
+
+| Field | Detail |
+|-------|--------|
+| **URL** | https://github.com/milla-jovovich/mempalace (fork: trex0092/mempalace) |
+| **Stars** | 42,900+ |
+| **License** | MIT |
+| **Stack** | Python 3.9+, ChromaDB (vector store), SQLite (knowledge graph), MCP server (19 tools) |
+| **Last active** | April 2026 (early stage — ~7 commits over 2 days) |
+
+### What it does
+MemPalace is a local-first, long-term memory system for AI agents. It persists
+conversation history and structured facts on the user's machine via ChromaDB
+(vector embeddings) and SQLite (temporal knowledge graph triples), then
+retrieves them in subsequent AI sessions without cloud APIs or subscriptions.
+The system exposes an MCP server with 19 tools so that Claude, ChatGPT, Cursor,
+and other MCP-compatible clients can read/write to the memory store.
+
+The design philosophy is "verbatim-first": raw exchanges are stored in ChromaDB
+with deterministic heuristics (regex, keyword scoring) for classification and
+chunking — no LLM calls on the write path. Retrieval uses a progressive 4-layer
+loading strategy (L0: ~50-100 tokens identity constants, L1: ~500-800 tokens
+top-15 importance-scored drawers, L2: ~200-500 tokens room-scoped recall,
+L3: unbounded semantic search fallback) to inject only the most relevant
+context at session start.
+
+The project uses a spatial "palace" metaphor: Wings (people/projects) → Rooms
+(topics) → Halls (memory types: facts, events, discoveries) → Closets
+(summaries) → Drawers (verbatim originals). "Tunnels" link related rooms
+across wings. The temporal knowledge graph stores RDF-style subject-predicate-
+object triples with valid-from/ended date windows for time-windowed fact
+validity.
+
+### Key architectural patterns
+- **4-layer progressive context loading** — predictable, cheap session
+  injection with escalating detail levels. Prevents context bloat while
+  preserving recall optionality (~170 tokens for the wake-up context).
+- **Verbatim-first storage** — no lossy summarization at write time. Raw
+  exchanges preserved; LLM calls only happen in the conversation layer.
+- **Temporal knowledge graph** — SQLite-backed RDF triples with valid-from/
+  ended date windows. Entity types: person, project; properties as JSON blobs.
+- **MCP 19-tool exposure** — `add_drawer`, `query_palace`, `get_wake_up_context`,
+  etc. Designed for direct AI client integration.
+- **Zero-LLM write path** — all classification and chunking uses regex/keyword
+  heuristics. Fast, deterministic, cost-free.
+- **AAAK dialect** — experimental lossy abbreviation for token compression
+  (entity codes + 55-char truncation); currently regresses retrieval performance.
+
+### Compliance relevance
+| Aspect | Rating | Notes |
+|--------|--------|-------|
+| MLRO session reconstruction | **High** | 4-layer progressive loading injects last N decisions at session start without full replay |
+| Audit trail integrity | **High** | Verbatim-first storage aligns with FDL Art.24 (10-year verbatim record retention) |
+| Temporal fact tracking | **High** | Valid-from/ended triples answer "what did we know and when" for STR/CNMR timelines |
+| Case-scoped recall | **High** | Wing/Room metadata filtering isolates memories per customer entity |
+| MCP tool exposure | Medium | Could expose compliance memory as tools to the advisor/executor agent pair |
+| Provenance / evidence trails | None | Cannot prove a retrieved fact came from a specific source document (LBMA/MoE requirement) |
+| Multi-user access control | None | No authentication — assumes local machine; incompatible with four-eyes separation |
+| Contradiction detection | None | Described in README but not implemented — dangerous for compliance fact stores |
+
+### Security
+- **Local-first**: no cloud egress is a genuine strength for sensitive data.
+- **No authentication**: assumes trusted local machine. No user auth, no API
+  keys for the MCP server.
+- **No encryption at rest**: SQLite and ChromaDB files are plaintext on disk.
+- **No input validation**: `add_drawer` MCP tool performs no input validation —
+  identified as a prompt injection surface.
+- **No write gating**: any MCP client call writes immediately without
+  confirmation.
+- **Minimal dependencies**: ChromaDB + PyYAML only — small attack surface.
+
+### Verdict: PATTERN REFERENCE (with caveats)
+- **Adopt?** Not direct code — Python stack, and critical compliance gaps (no
+  auth, no provenance, no encryption, non-functional contradiction detection).
+  But **two patterns are directly transferable**:
+  1. **4-layer progressive context loading** for MLRO session reconstruction —
+     inject the last N compliance decisions at session start without full
+     context replay. Maps to the `claude-mem` vendor pattern already in the
+     project.
+  2. **Temporal knowledge graph with validity windows** for "what did we know
+     and when" audit trail queries — essential for CNMR filing timelines
+     (Cabinet Res 74/2020 Art.4-7) and STR retrospective analysis.
+  3. **Spatial metaphor (Wing/Room/Hall)** as a compliance domain model:
+     Wings = business units, Rooms = customer entities, Halls = case types
+     (CDD/EDD/STR/CTR), Drawers = individual evidence items.
+- **Caution:** The project is very early stage (~7 commits). Benchmarks are
+  disputed (headline 96.6% LongMemEval actually measures ChromaDB defaults,
+  not the palace architecture). Contradiction detection is non-functional.
+- **Risk:** Low (MIT license, pattern reference only). Do not vendor without
+  adding auth, provenance, and encryption layers.
+
+---
+
 ## Summary Matrix
 
 | Repo | Stars | Stack | Compliance Relevance | Recommendation |
@@ -283,8 +376,9 @@ entries (Kafka, Flink, Neo4j, Elasticsearch) are current stable projects.
 | apache/superset | 63K | Python/React | **High** (dashboards, reporting, alerting, RBAC) | Integration candidate: MLRO dashboards, scheduled compliance reports, threshold alerts |
 | pathwaycom/pathway | 63.5K | Python/Rust | **High** (streaming, CDC, incremental screening) | Architecture reference: incremental sanctions screening, CDC audit trails, threshold detection |
 | oxnr/awesome-bigdata | 14.3K | Markdown | Medium (technology directory) | Reference: tool selection for graph DB, search, streaming, time-series components |
+| milla-jovovich/mempalace | 42.9K | Python/ChromaDB/SQLite | **High** (memory, temporal KG, session recall) | Pattern reference: 4-layer progressive loading, temporal fact validity, spatial domain model |
 
-## Top 3 Actionable Takeaways
+## Top 4 Actionable Takeaways
 
 1. **Superset for MLRO compliance dashboards** (from apache/superset): Deploy
    Superset alongside the compliance-analyzer, connected to the same PostgreSQL
@@ -310,6 +404,16 @@ entries (Kafka, Flink, Neo4j, Elasticsearch) are current stable projects.
    cycle analysis, and layering pattern identification — capabilities that are
    expensive to implement in relational SQL alone.
 
+4. **Temporal knowledge graph + progressive loading for MLRO memory** (from
+   milla-jovovich/mempalace): The 4-layer progressive context loading pattern
+   (L0 identity → L1 top facts → L2 scoped recall → L3 full search) maps
+   directly to MLRO session reconstruction — inject the last N compliance
+   decisions at session start without full context replay. The temporal
+   knowledge graph with valid-from/ended date windows enables "what did we
+   know and when" audit trail queries, essential for CNMR filing timelines
+   (Cabinet Res 74/2020 Art.4-7). Complements the `claude-mem` vendor
+   pattern already in the project.
+
 ## Repos NOT Recommended for Vendoring
 
 - **apache/superset** — too large to vendor (63K+ files); should be deployed as
@@ -320,3 +424,7 @@ entries (Kafka, Flink, Neo4j, Elasticsearch) are current stable projects.
   (incremental computation, CDC pipelines), not the code.
 - **oxnr/awesome-bigdata** — no code to vendor; pure reference material.
   Bookmark for technology selection decisions.
+- **milla-jovovich/mempalace** — very early stage (~7 commits), Python stack,
+  critical compliance gaps (no auth, no provenance, no encryption, non-functional
+  contradiction detection). Adopt the architectural patterns (progressive loading,
+  temporal KG, spatial metaphor), not the code.
