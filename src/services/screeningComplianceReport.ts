@@ -292,7 +292,7 @@ function buildEsgSection(esg?: EsgScore): ReportSectionContent {
         : esg.riskLevel === 'medium'
           ? 'partial'
           : 'non_compliant',
-    summary: `Overall ESG score: ${esg.composite.toFixed(1)}/100 (${esg.grade}). Environmental: ${esg.environmental.score.toFixed(1)}. Social: ${esg.social.score.toFixed(1)}. Governance: ${esg.governance.score.toFixed(1)}. Risk level: ${esg.riskLevel.toUpperCase()}.`,
+    summary: `Overall ESG score: ${esg.totalScore.toFixed(1)}/100 (${esg.grade}). Environmental: ${esg.pillars.E.score.toFixed(1)}. Social: ${esg.pillars.S.score.toFixed(1)}. Governance: ${esg.pillars.G.score.toFixed(1)}. Risk level: ${esg.riskLevel.toUpperCase()}.`,
     details: { esgScore: esg },
   };
 }
