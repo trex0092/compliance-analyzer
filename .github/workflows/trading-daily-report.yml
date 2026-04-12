@@ -1,0 +1,79 @@
+name: Trading Daily Report — Asana Dispatch
+
+# Populates the TRADING Asana project with daily reports, market intelligence,
+# signals, arbitrage, risk, compliance, performance, and strategy tasks.
+#
+# Schedule: 05:00 UTC = 09:00 Dubai time (before market open briefing)
+#
+# Can also be triggered manually from GitHub Actions UI or via:
+#   gh workflow run trading-daily-report.yml
+#
+# Required secrets (set in GitHub repo → Settings → Secrets → Actions):
+#   ASANA_TOKEN                    Asana Personal Access Token
+#   ASANA_TRADING_PROJECT_GID      = 1213914392047122
+#   ASANA_WORKSPACE_GID            = 1213645083721316
+#
+# First run: bootstraps the project with 8 sections and 16 tasks.
+# Subsequent runs: adds a new daily report task to the Daily Reports section.
+
+on:
+  schedule:
+    # 05:00 UTC = 09:00 Dubai time (morning pre-market briefing)
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'bootstrap'
+        type: choice
+        options:
+          - bootstrap
+          - daily-report
+
+permissions:
+  contents: read
+
+jobs:
+  trading-report:
+    name: Generate & Dispatch Trading Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run bootstrap (first run / manual)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'bootstrap'
+        env:
+          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
+          ASANA_TRADING_PROJECT_GID: ${{ secrets.ASANA_TRADING_PROJECT_GID || '1213914392047122' }}
+          ASANA_WORKSPACE_GID: ${{ secrets.ASANA_WORKSPACE_GID || '1213645083721316' }}
+        run: npx tsx scripts/bootstrap-trading-project.ts
+
+      - name: Run daily report (scheduled / manual)
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'daily-report')
+        env:
+          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
+          ASANA_TRADING_PROJECT_GID: ${{ secrets.ASANA_TRADING_PROJECT_GID || '1213914392047122' }}
+          ASANA_WORKSPACE_GID: ${{ secrets.ASANA_WORKSPACE_GID || '1213645083721316' }}
+        run: npx tsx scripts/trading-daily-dispatch.ts
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Trading Daily Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Date:** $(date -u '+%d/%m/%Y %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Mode:** ${{ github.event.inputs.mode || 'scheduled' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Project:** [TRADING](https://app.asana.com/0/${{ secrets.ASANA_TRADING_PROJECT_GID || '1213914392047122' }})" >> $GITHUB_STEP_SUMMARY
