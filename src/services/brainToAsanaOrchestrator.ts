@@ -209,6 +209,324 @@ function buildStrNarrativeSubtask(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Phase 12 Ultra-Weaponized Asana subtask builders
+// ---------------------------------------------------------------------------
+
+function buildQuantumSealSubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  const qs = brain.extensions.quantumSeal;
+  if (!qs) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  return {
+    name: `🔐 Quantum-Resistant Audit Seal — ${entityId}`,
+    notes: [
+      '## Post-Quantum Cryptographic Audit Seal',
+      '',
+      `**Hash Function:** ${qs.hashFunction} (SHA-3/512 — post-quantum resistant)`,
+      `**Root Hash:** \`${qs.rootHash}\``,
+      `**Leaf Count:** ${qs.leafCount} record(s) sealed`,
+      `**Sealed At:** ${qs.sealedAt}`,
+      `**Domain-Separated:** ${qs.domainSeparated ? 'YES' : 'NO'}`,
+      '',
+      '**Regulatory basis:**',
+      '- FDL No.10/2025 Art.24 — 5-year record retention requirement',
+      '- NIST Post-Quantum Cryptography Framework (FIPS 203/204/205)',
+      '- EU AI Act Art.12 — record-keeping for high-risk AI systems',
+      '',
+      'This seal provides mathematically verifiable proof that the compliance',
+      'decision record has not been altered since generation. Retain for audit.',
+    ].join('\n'),
+    due_on: dueDateFromVerdict('pass'),
+    assignee: mlroGid,
+    tags: ['quantum-seal', 'audit-trail', 'fDL-art24', entityId],
+  };
+}
+
+function buildGoAMLXmlSubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  const xml = brain.extensions.goamlXml;
+  if (!xml) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const xmlPreview = xml.slice(0, 2000);
+  return {
+    name: `📤 goAML XML Filing — ${entityId} — READY FOR SUBMISSION`,
+    notes: [
+      '## Auto-Generated UAE FIU goAML XML Filing',
+      '',
+      `**Status:** ✅ Ready for submission to goAML portal`,
+      `**Size:** ${xml.length.toLocaleString()} characters`,
+      `**Generated:** ${new Date().toISOString()}`,
+      '',
+      '**Actions required:**',
+      '1. Review XML content for accuracy',
+      '2. Validate against UAE FIU goAML XML Schema v3',
+      '3. Log in to goAML portal (https://goaml.uaf.gov.ae)',
+      '4. Submit via File → Upload XML',
+      '5. Record submission confirmation number',
+      '6. Retain confirmation in case file (FDL Art.24 — 5yr retention)',
+      '',
+      '**XML Preview (first 2000 chars):**',
+      '```xml',
+      xmlPreview,
+      xml.length > 2000 ? '\n... [truncated]' : '',
+      '```',
+      '',
+      '*UAE FIU goAML Schema v3 | MoE Circular 08/AML/2021 | FDL No.10/2025 Art.26-27*',
+    ].filter(Boolean).join('\n').slice(0, 8000),
+    due_on: dueDateFromVerdict('escalate'),
+    assignee: mlroGid,
+    tags: ['goaml-xml', 'str-filing', 'fiu-submission', entityId],
+  };
+}
+
+function buildBayesianVerdictSubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  const bb = brain.extensions.bayesianBelief;
+  if (!bb) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const topHyp = bb.mostLikely;
+  const hypTable = bb.hypotheses
+    .map((h) => `| ${h.label} | ${((bb.finalPosterior[h.id] ?? 0) * 100).toFixed(1)}% |`)
+    .join('\n');
+  return {
+    name: `🧠 Bayesian Verdict — ${entityId} — P(${topHyp.label})=${(topHyp.probability * 100).toFixed(0)}%`,
+    notes: [
+      '## Bayesian Belief Network — Evidence-Based Posterior',
+      '',
+      `**Most Likely Hypothesis:** ${topHyp.label} (${(topHyp.probability * 100).toFixed(1)}%)`,
+      `**Shannon Entropy:** ${bb.entropyBits.toFixed(2)} bits (${bb.entropyBits > 2 ? '⚠ HIGH uncertainty' : '✅ Low uncertainty'})`,
+      `**Evidence Steps:** ${bb.steps.length}`,
+      '',
+      '### Posterior Probability Distribution',
+      '',
+      '| Hypothesis | Posterior |',
+      '|---|---|',
+      hypTable,
+      '',
+      '**Interpretation:** Higher entropy = more uncertain evidence = higher review priority',
+      '',
+      '*FDL Art.20-21 — CO evidence-based risk assessment | FATF Rec 10 | NIST AI RMF MS-2.1*',
+    ].join('\n'),
+    due_on: dueDateFromVerdict('flag'),
+    assignee: mlroGid,
+    tags: ['bayesian-belief', 'risk-probability', entityId],
+  };
+}
+
+function buildCorporateGraphSubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  const cg = brain.extensions.corporateGraph;
+  if (!cg) return null;
+  const flaggedHits = cg.hits.filter((h) => h.hit);
+  if (flaggedHits.length === 0) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const hitTable = flaggedHits
+    .slice(0, 20)
+    .map((h) => `| ${h.nodeId} | ${h.reason ?? 'Flagged'} | ${h.hopDistance} hop(s) |`)
+    .join('\n');
+  return {
+    name: `🕸 Corporate Graph Alert — ${entityId} — ${flaggedHits.length} flagged node(s)`,
+    notes: [
+      '## Corporate Graph Walk — Affiliate / Subsidiary Risk',
+      '',
+      `**Nodes Visited:** ${cg.visited}`,
+      `**Max Hops:** ${cg.hops}`,
+      `**Flagged Nodes:** ${flaggedHits.length}`,
+      '',
+      '### Flagged Corporate Affiliates',
+      '',
+      '| Node ID | Reason | Distance |',
+      '|---|---|---|',
+      hitTable,
+      flaggedHits.length > 20 ? `\n*... and ${flaggedHits.length - 20} more*` : '',
+      '',
+      `**Narrative:** ${cg.narrative}`,
+      '',
+      '**Actions required:**',
+      '- Investigate each flagged affiliate for sanctions / adverse media',
+      '- Update UBO register if ownership links discovered',
+      '- Apply EDD to entity if any affiliate is confirmed sanctioned',
+      '',
+      '*FATF Rec 10 — CDD on beneficial ownership | Cabinet Decision 109/2023 UBO Register*',
+    ].filter(Boolean).join('\n'),
+    due_on: dueDateFromVerdict('escalate'),
+    assignee: mlroGid,
+    tags: ['corporate-graph', 'ubo', 'affiliate-risk', entityId],
+  };
+}
+
+function buildGameTheorySubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  const ge = brain.extensions.gameEquilibrium;
+  if (!ge || ge.expectedPayoff >= 0) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const attackerMix = ge.attackerMix
+    .slice(0, 5)
+    .map((s) => `| ${s.strategy} | ${(s.probability * 100).toFixed(1)}% |`)
+    .join('\n');
+  const defenderMix = ge.defenderMix
+    .slice(0, 5)
+    .map((s) => `| ${s.strategy} | ${(s.probability * 100).toFixed(1)}% |`)
+    .join('\n');
+  return {
+    name: `⚔️ Game Theory Alert — ${entityId} — Adversary Advantage (payoff ${ge.expectedPayoff.toFixed(2)})`,
+    notes: [
+      '## Nash Equilibrium — Compliance vs Evasion Game',
+      '',
+      `**Expected Adversary Payoff:** ${ge.expectedPayoff.toFixed(3)} (negative = adversary wins)`,
+      `**Top Attacker Strategy:** "${ge.topAttackerChoice}"`,
+      `**Optimal Defender Response:** "${ge.topDefenderChoice}"`,
+      `**Nash Iterations:** ${ge.iterations}`,
+      '',
+      '### Attacker Mixed Strategy',
+      '',
+      '| Evasion Tactic | Probability |',
+      '|---|---|',
+      attackerMix,
+      '',
+      '### Defender Mixed Strategy',
+      '',
+      '| Detection Method | Probability |',
+      '|---|---|',
+      defenderMix,
+      '',
+      `**Advisory:** ${ge.narrative}`,
+      '',
+      '*FATF Rec 1 — risk-based approach | NIST AI RMF GV-1.6 | FDL Art.20-21*',
+    ].join('\n'),
+    due_on: dueDateFromVerdict('flag'),
+    assignee: mlroGid,
+    tags: ['game-theory', 'adversary-analysis', 'detection-strategy', entityId],
+  };
+}
+
+function buildInducedRulesSubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  const rules = brain.extensions.inducedRules;
+  if (!rules || rules.length === 0) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const ruleText = rules
+    .slice(0, 15)
+    .map((r, i) => `${i + 1}. **IF** ${r.conditions.map((c) => `${c.feature}=${c.value}`).join(' AND ')} **THEN** ${r.outcome} (support=${r.support}, confidence=${(r.confidence * 100).toFixed(0)}%)`)
+    .join('\n');
+  return {
+    name: `📐 Induced Decision Rules — ${entityId} — ${rules.length} rule(s)`,
+    notes: [
+      '## Rule Induction — Human-Readable Decision Logic',
+      '',
+      `**Rules Extracted:** ${rules.length}`,
+      '',
+      '### Decision Rules (top 15)',
+      '',
+      ruleText,
+      '',
+      '**Purpose:** These rules provide an interpretable explanation of the AI verdict',
+      'logic, fulfilling EU AI Act Art.13 transparency requirements.',
+      '',
+      '*EU AI Act Art.13 — transparency | NIST AI RMF MS-2.5 — explainability*',
+    ].join('\n'),
+    due_on: dueDateFromVerdict('pass'),
+    assignee: mlroGid,
+    tags: ['rule-induction', 'explainability', 'eu-ai-act', entityId],
+  };
+}
+
+function buildFreeZoneSubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  const fz = brain.extensions.freeZoneCompliance;
+  if (!fz || fz.mandatoryFailures.length === 0) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const failTable = fz.mandatoryFailures
+    .slice(0, 10)
+    .map((r) => `| ${r.category} | ${r.description} | ${r.penalty ?? 'N/A'} |`)
+    .join('\n');
+  return {
+    name: `🏢 Free Zone Compliance Breach — ${entityId} — ${fz.freeZone} — ${fz.mandatoryFailures.length} breach(es)`,
+    notes: [
+      `## ${fz.freeZone} Mandatory Rule Failures`,
+      '',
+      `**Free Zone:** ${fz.freeZone}`,
+      `**Total Rules:** ${fz.totalRules}`,
+      `**Passed:** ${fz.passed}`,
+      `**Mandatory Failures:** ${fz.mandatoryFailures.length}`,
+      '',
+      '### Mandatory Compliance Breaches',
+      '',
+      '| Category | Requirement | Penalty |',
+      '|---|---|---|',
+      failTable,
+      '',
+      '**Actions required:**',
+      '- Notify ${fz.freeZone} Authority within required timeframe',
+      '- File corrective action plan',
+      '- Escalate to Senior Management (Cabinet Res 134/2025)',
+      '',
+      `*Cabinet Res 134/2025 | ${fz.freeZone} Rules 2024 | Cabinet Res 71/2024 (Penalties)*`,
+    ].join('\n'),
+    due_on: dueDateFromVerdict('escalate'),
+    assignee: mlroGid,
+    tags: ['free-zone', fz.freeZone.toLowerCase(), 'regulatory-breach', entityId],
+  };
+}
+
+function buildLbmaFixSubtask(
+  brain: WeaponizedBrainResponse,
+  mlroGid?: string,
+): AsanaTaskPayload | null {
+  const lf = brain.extensions.lbmaFixCheck;
+  if (!lf || (lf.flagged === 0 && lf.frozen === 0)) return null;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const severity = lf.frozen > 0 ? 'FREEZE' : 'FLAG';
+  const tradeTable = lf.results
+    .filter((r) => r.severity !== 'ok')
+    .slice(0, 10)
+    .map((r) => `| ${r.tradeId} | ${r.metalCode} | ${r.tradePriceUsd.toLocaleString()} | ${r.fixPriceUsd.toLocaleString()} | ${r.deviationPct.toFixed(2)}% | ${r.severity} |`)
+    .join('\n');
+  return {
+    name: `⚖️ LBMA Fix Deviation [${severity}] — ${entityId} — ${lf.flagged} flagged, ${lf.frozen} frozen`,
+    notes: [
+      '## LBMA Gold Price Fix Deviation Alert',
+      '',
+      `**Status:** ${severity}`,
+      `**Trades Checked:** ${lf.checked}`,
+      `**Flagged:** ${lf.flagged} | **Frozen:** ${lf.frozen}`,
+      '',
+      '### Deviating Trades',
+      '',
+      '| Trade ID | Metal | Trade Price USD | Fix Price USD | Deviation | Severity |',
+      '|---|---|---|---|---|---|',
+      tradeTable,
+      '',
+      `**Narrative:** ${lf.narrative}`,
+      '',
+      '**Actions required:**',
+      '- Investigate each flagged/frozen trade for manipulation',
+      '- Execute freeze on frozen trades immediately',
+      '- File STR if intentional price manipulation suspected',
+      '',
+      '*LBMA RGG v9 / FATF DPMS Typologies 2022 §3.4 — price manipulation*',
+    ].join('\n'),
+    due_on: lf.frozen > 0 ? new Date().toISOString().split('T')[0] : dueDateFromVerdict('escalate'),
+    assignee: mlroGid,
+    tags: ['lbma-fix', 'gold-price', severity.toLowerCase(), entityId],
+  };
+}
+
 function buildFreezeCountdownSubtask(entityId: string, mlroGid?: string): AsanaTaskPayload {
   const deadline = new Date(Date.now() + 24 * 3_600_000);
   return {
@@ -385,6 +703,40 @@ export async function orchestrateBrainToAsana(
   // STR narrative subtask — auto-built goAML narrative ready for filing
   const strNarrativeSubtask = buildStrNarrativeSubtask(brain, cfg.mlroGid);
   if (strNarrativeSubtask) subtaskPayloads.push(strNarrativeSubtask);
+
+  // ─── Phase 12 Ultra-Weaponized Subtasks ──────────────────────────────────
+
+  // #93 goAML XML — auto-generated XML filing ready for UAE FIU submission
+  const goamlXmlSubtask = buildGoAMLXmlSubtask(brain, cfg.mlroGid);
+  if (goamlXmlSubtask) subtaskPayloads.push(goamlXmlSubtask);
+
+  // #94 Bayesian belief verdict — posterior probability distribution
+  const bayesianSubtask = buildBayesianVerdictSubtask(brain, cfg.mlroGid);
+  if (bayesianSubtask) subtaskPayloads.push(bayesianSubtask);
+
+  // #73 Corporate graph — flagged subsidiary/affiliate nodes
+  const corporateGraphSubtask = buildCorporateGraphSubtask(brain, cfg.mlroGid);
+  if (corporateGraphSubtask) subtaskPayloads.push(corporateGraphSubtask);
+
+  // #80 Game theory adversary — Nash equilibrium advisory when adversary has edge
+  const gameTheorySubtask = buildGameTheorySubtask(brain, cfg.mlroGid);
+  if (gameTheorySubtask) subtaskPayloads.push(gameTheorySubtask);
+
+  // #97 Rule induction — human-readable decision rules for transparency
+  const inducedRulesSubtask = buildInducedRulesSubtask(brain, cfg.mlroGid);
+  if (inducedRulesSubtask) subtaskPayloads.push(inducedRulesSubtask);
+
+  // #83 Free zone compliance — mandatory rule breach notifications
+  const freeZoneSubtask = buildFreeZoneSubtask(brain, cfg.mlroGid);
+  if (freeZoneSubtask) subtaskPayloads.push(freeZoneSubtask);
+
+  // #81 LBMA fix checker — gold price manipulation alerts
+  const lbmaFixSubtask = buildLbmaFixSubtask(brain, cfg.mlroGid);
+  if (lbmaFixSubtask) subtaskPayloads.push(lbmaFixSubtask);
+
+  // #88 Quantum seal — post-quantum audit trail record (always attached)
+  const quantumSealSubtask = buildQuantumSealSubtask(brain, cfg.mlroGid);
+  if (quantumSealSubtask) subtaskPayloads.push(quantumSealSubtask);
 
   // Dispatch
   let parentTaskGid: string | undefined;

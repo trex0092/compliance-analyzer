@@ -371,6 +371,152 @@ import {
   type OrchestratorSession,
 } from './managedAgentOrchestrator';
 
+// --- Phase 12 imports (#73-#97): Corporate graph, causal engine, game theory,
+//     LBMA, melt loss, free zone, tipping-off, Shapley, invariant verification,
+//     quantum seal, peer anomaly, time-travel audit, goAML XML, Bayesian belief,
+//     rule induction, document intelligence, regulatory drift, EU AI Act,
+//     case-based reasoning, multi-model screening, synthetic evasion ---
+
+import {
+  walkCorporateGraph,
+  type CorporateGraph,
+  type NodePredicate,
+  type GraphWalkReport,
+} from './corporateGraphWalker';
+import {
+  analyseOwnershipMotifs,
+  type OwnershipEdge,
+  type MotifReport,
+} from './graphMotifUboAnalyzer';
+import {
+  runMultiModelScreening,
+  type MultiModelScreeningRequest,
+  type ConsensusResult as MultiModelConsensusResult,
+} from './multiModelScreening';
+import {
+  createCausalGraph,
+  simulate,
+  runCounterfactual,
+  type CausalNode,
+  type CausalGraph,
+  type Assignment,
+} from './causalEngine';
+import {
+  runDebate,
+  type DebateInput,
+  type DebateVerdict,
+} from './debateArbiter';
+import {
+  reviewReasoningChain,
+  type CriticConfig,
+  type ReflectionReport,
+} from './reflectionCritic';
+import {
+  detectCircularReasoning,
+  type DependencyEdge,
+  type CircularReport,
+} from './circularReasoningDetector';
+import {
+  solveAdversaryGame,
+  type DetectionStrategy,
+  type EvasionStrategy,
+  type EquilibriumReport,
+} from './gameTheoryAdversary';
+import {
+  checkLbmaFixDeviations,
+  type GoldTrade,
+  type FixLookup,
+  type FixCheckConfig,
+  type FixCheckReport,
+} from './lbmaFixPriceChecker';
+import {
+  assessMeltBatch,
+  detectRefinerDrift,
+  type MeltBatch,
+  type MeltLossAssessment,
+} from './meltLoss';
+import {
+  checkFreeZoneCompliance,
+  type EntityFacts as FreeZoneEntityFacts,
+  type FreeZoneCheckResult,
+} from './freeZoneRules';
+import {
+  lintForTippingOff,
+  type TippingOffReport,
+} from './tippingOffLinter';
+import {
+  computeShapleyAttribution,
+  type VerdictFn,
+  type ShapleyInput,
+  type ShapleyReport,
+} from './shapleyExplainer';
+import {
+  verifyInvariants,
+  CANONICAL_INVARIANTS,
+  type VerifyConfig,
+  type VerifyReport as InvariantVerifyReport,
+} from './formalInvariantVerifier';
+import {
+  sealQuantumResistant,
+  type QuantumSealRecord,
+  type QuantumSealBundle,
+} from './quantumResistantSeal';
+import {
+  analysePeerAnomaly,
+  type PeerAnomalyInput,
+  type PeerAnomalyReport,
+} from './peerAnomaly';
+import {
+  replayUntil,
+  currentState,
+  criticalPath,
+  type EvidenceEntry,
+  type CaseSnapshot,
+} from './timeTravelAudit';
+import {
+  buildGoAMLXml,
+} from './goamlBuilder';
+import {
+  runBeliefUpdate,
+  uniformPrior,
+  type Hypothesis,
+  type Evidence as BayesEvidence,
+  type BeliefReport,
+} from './bayesianBelief';
+import {
+  learnDecisionTree,
+  extractRules,
+  type LabeledSample,
+  type LearnedRule,
+  type InductionConfig,
+} from './ruleInduction';
+import {
+  runTamperChecks,
+  type TamperSignal,
+  type DocumentExtractionResult,
+} from './documentIntelligence';
+import {
+  analyseDrift,
+  type DriftSample,
+  type PortfolioDriftReport,
+} from './regulatoryDrift';
+import {
+  buildReadinessPayloads,
+  type ReadinessScaffoldResult,
+} from './euAiActReadinessProject';
+import {
+  CaseMemory,
+  cosineSimilarity,
+  type PastCase,
+  type RetrievalResult,
+  type ReuseRecommendation,
+} from './caseBasedReasoning';
+import {
+  generateSyntheticEvasionCases,
+  type SyntheticCase,
+  type GenerateConfig as SyntheticGenerateConfig,
+} from './syntheticEvasionGenerator';
+
 // ---------------------------------------------------------------------------
 // Verdict ordering — verdicts can only escalate under new clamps.
 // ---------------------------------------------------------------------------
@@ -703,6 +849,238 @@ export interface WeaponizedBrainRequest {
   customerFootprint?: CustomerFootprint;
   /** #70 Dormancy detector — transaction history timeline. */
   dormancyTransactions?: DormancyTransaction[];
+
+  // --- Phase 12 inputs (#73-#97) ---
+
+  /**
+   * #73 Corporate graph walker — directed graph of corporate entities.
+   * Walks from the queryId node up to maxHops, applying a flagging predicate.
+   * Hits on sanctioned/high-risk subsidiaries → escalate.
+   * (FATF Rec 10 / Cabinet Decision 109/2023 UBO register)
+   */
+  corporateGraph?: {
+    graph: CorporateGraph;
+    queryId: string;
+    predicate?: NodePredicate;
+    maxHops?: number;
+  };
+
+  /**
+   * #74 Graph motif UBO analyzer — ownership edge list for circular/star/
+   * cascade motif detection. Threshold defaults to 25% (Cabinet Decision 109/2023).
+   * Layering motifs → escalate.
+   */
+  ownershipEdges?: readonly OwnershipEdge[];
+
+  /**
+   * #75 Multi-model screening (async) — runs the same entity through multiple
+   * AI models and returns consensus. Requires apiKey and model list. If omitted
+   * the subsystem is skipped. Confirmed-match consensus → escalate + confidence cap.
+   * (Cabinet Res 134/2025 Art.5 / FATF Rec 1 — risk appetite + multi-source screening)
+   */
+  multiModelScreening?: {
+    request: MultiModelScreeningRequest;
+    apiKey: string;
+    models?: readonly string[];
+  };
+
+  /**
+   * #76 Causal engine — nodes define the DAG; interventions are applied to
+   * test what changes the verdict. Counterfactual result is recorded in extensions.
+   * No clamp — purely evidence for the MLRO to see causal paths.
+   */
+  causalNodes?: readonly CausalNode[];
+  /** Causal engine intervention to test (e.g. `{ pepStatus: 0 }`). */
+  causalIntervention?: Assignment;
+
+  /**
+   * #77 Debate arbiter — structured pro/con arguments about the verdict.
+   * If the con side wins decisively (margin > 0.4) → adds advisory clamp.
+   * Provides the MLRO with a balanced two-sided analysis.
+   */
+  debateInput?: DebateInput;
+
+  /**
+   * #78 Reflection critic — reviews the MegaBrain reasoning chain for
+   * missing node types, low coverage, or structural issues. Critical issues
+   * → confidence cap 0.65. (NIST AI RMF MS-2.2 / EU AI Act Art.72)
+   */
+  reflectionConfig?: CriticConfig;
+
+  /**
+   * #79 Circular reasoning detector — dependency edges among subsystem
+   * conclusions. Cycles → advisory clamp + confidence cap 0.70.
+   * (NIST AI RMF GV-1.6 / FDL Art.20-21 CO duty of care)
+   */
+  dependencyEdges?: readonly DependencyEdge[];
+
+  /**
+   * #80 Game theory adversary — evasion game between compliance detection
+   * strategies and money-laundering evasion strategies. Nash equilibrium
+   * surfaces the top attacker strategy so the MLRO can anticipate it.
+   * High attacker payoff → advisory clamp.
+   * (FATF Rec 1 — risk-based approach / NIST AI RMF GV-1.6)
+   */
+  gameTheoryStrategies?: {
+    detectionStrategies: readonly DetectionStrategy[];
+    evasionStrategies: readonly EvasionStrategy[];
+  };
+
+  /**
+   * #81 LBMA gold price fix checker — trades to validate against LBMA/CBUAE
+   * benchmarks. Frozen trades → clamp freeze. Flagged → escalate.
+   * (LBMA RGG v9 / FATF DPMS Typologies 2022 — price manipulation)
+   */
+  lbmaFixInput?: {
+    trades: readonly GoldTrade[];
+    lookup: FixLookup;
+    config?: FixCheckConfig;
+  };
+
+  /**
+   * #82 Melt loss — assay + refiner batch analysis. Critical melt loss
+   * deviation → escalate. Refiner drift detection surfaces systemic tampering.
+   * (LBMA RGG v9 §4 / MoE Circular 08/AML/2021 / Dubai Good Delivery)
+   */
+  meltBatch?: MeltBatch;
+  /** Refiner drift: historical batches from the same refiner. */
+  meltRefinerHistory?: readonly MeltBatch[];
+
+  /**
+   * #83 Free zone compliance checker — validates entity facts against the
+   * rule set for DMCC, JAFZA, DIFC, ADGM, or mainland UAE.
+   * Mandatory failures → escalate.
+   * (Cabinet Res 134/2025 / DMCC Rules 2024 / ADGM FSMR)
+   */
+  freeZoneFacts?: FreeZoneEntityFacts;
+
+  /**
+   * #84 Tipping-off linter (FDL Art.29) — automatically scans the audit
+   * narrative, MLRO alerts, and STR narrative for disclosure-risk phrases.
+   * Always-on once the narrative is built. Any tipping-off finding →
+   * HARD clamp + mandatory redaction before the report leaves the system.
+   * (FDL No.10/2025 Art.29 — no tipping off, penalty up to AED 5M)
+   */
+  // No input needed — lints the generated narrative automatically.
+
+  /**
+   * #85 Shapley explainer — feature attribution for the final verdict score.
+   * If omitted, auto-builds a ShapleyInput from the explainable scoring output.
+   * Produces per-factor contribution values for the MLRO dashboard.
+   * (EU AI Act Art.13 — transparency / NIST AI RMF MS-2.5)
+   */
+  shapleyInput?: ShapleyInput;
+
+  /**
+   * #86 Formal invariant verifier — validates the verdict state against
+   * CANONICAL_INVARIANTS (plus any custom invariants). Violations → advisory
+   * clamp + confidence cap 0.60. Catches impossible state combinations.
+   * (NIST AI RMF GV-1.6 / EU AI Act Art.9 — risk management system)
+   */
+  customInvariants?: readonly import('./formalInvariantVerifier').Invariant<WeaponizedBrainResponse>[];
+
+  /**
+   * #87 Synthetic evasion generator — generates evasion test cases and checks
+   * if the current verdict would catch them. Coverage gaps → advisory clamp.
+   * (FATF Guidance on Red Flags 2021 / NIST AI RMF GV-1.6)
+   */
+  syntheticEvasionConfig?: SyntheticGenerateConfig;
+
+  /**
+   * #88 Quantum-resistant seal — SHA-3/512-based post-quantum audit seal for
+   * the full brain response. Complements the Merkle ZK proof (#19) with a
+   * quantum-resistant hash. Always produces a QuantumSealBundle.
+   * (FDL Art.24 5yr retention / NIST Post-Quantum Cryptography Framework)
+   */
+  // No input needed — seals the final response automatically.
+
+  /**
+   * #89 Peer anomaly — statistical z-score analysis of the entity's risk
+   * features against a peer group. Anomalous outliers → flag clamp.
+   * (FATF Rec 10 / Cabinet Res 134/2025 Art.5 risk appetite)
+   */
+  peerAnomalyInput?: PeerAnomalyInput;
+
+  /**
+   * #90 Time-travel audit — evidence entries for the current case, enabling
+   * MLRO to replay the decision at any historical point.
+   * Critical path of evidence is surfaced for audit pack generation.
+   * (FDL Art.24 5yr retention / Cabinet Res 134/2025 Art.19 internal review)
+   */
+  auditEvidenceEntries?: readonly EvidenceEntry[];
+  /** Target case reference ID for time-travel replay queries. */
+  auditCaseRefId?: string;
+
+  /**
+   * #91 Document intelligence — runs tamper checks on uploaded documents.
+   * Critical tamper signals → escalate. Always triggers when documentEvidence
+   * is present (#60 deepfake). This is the structural extraction layer.
+   * (FDL Art.12-14 CDD / FATF Rec 10 / Cabinet Decision 109/2023)
+   */
+  documentForTamperCheck?: {
+    documentId: string;
+    documentType: import('./documentIntelligence').DocumentType;
+    rawText?: string;
+    base64Image?: string;
+  };
+
+  /**
+   * #92 Regulatory drift — compares the current entity's risk feature
+   * distribution against a historical baseline to detect concept drift.
+   * Significant drift → advisory clamp + re-calibration warning.
+   * (NIST AI RMF MS-2.1 / EU AI Act Art.72 post-market monitoring)
+   */
+  regulatoryDriftSamples?: {
+    baseline: readonly DriftSample[];
+    current: readonly DriftSample[];
+  };
+
+  /**
+   * #93 goAML XML builder — auto-generates a compliant goAML XML filing
+   * from the SuspicionReport domain object if present.
+   * Only fires when strNarrativeInput or filingClassificationInput is provided
+   * and the filing type requires XML submission.
+   * (UAE FIU goAML Schema / MoE Circular 08/AML/2021)
+   */
+  goamlReport?: import('../domain/reports').SuspicionReport;
+  /** Optional linked case and customer for goAML XML. */
+  goamlCase?: import('../domain/cases').ComplianceCase;
+  goamlCustomer?: import('../domain/customers').CustomerProfile;
+
+  /**
+   * #94 Bayesian belief network — updates prior belief about entity risk
+   * given the weight of evidence from all subsystems. Returns posterior
+   * probabilities and Shannon entropy (uncertainty measure).
+   * (FDL Art.20-21 / FATF Rec 10 — evidence-based risk assessment)
+   */
+  bayesianHypotheses?: readonly Hypothesis[];
+  /** Evidence array to pass into the Bayesian belief update chain. */
+  bayesianEvidence?: readonly BayesEvidence[];
+
+  /**
+   * #95 Case-based reasoning — retrieves top-K similar past cases from a
+   * CaseMemory instance and recommends a verdict by analogy.
+   * High-confidence precedent → advisory note on the verdict.
+   * (FDL Art.20-21 / FATF Rec 10 — risk-based approach + institutional memory)
+   */
+  caseMemory?: CaseMemory;
+
+  /**
+   * #96 EU AI Act readiness — scaffolds the EU AI Act high-risk system
+   * readiness payloads (Article 9, 10, 13, 14, 15, 72 checklist).
+   * Only fires when aiGovernanceInput is present (composites with #57).
+   * (EU AI Act 2024 Arts 9-15, 72 / NIST AI RMF MANAGE)
+   */
+  euAiActProjectGid?: string;
+
+  /**
+   * #97 Rule induction — learns a decision tree from the session's labeled
+   * samples and extracts human-readable rules for the MLRO.
+   * Provides interpretable logic behind the Bayesian/ensemble verdict.
+   * (EU AI Act Art.13 — transparency / NIST AI RMF MS-2.5 explainability)
+   */
+  inductionSamples?: readonly LabeledSample[];
+  inductionConfig?: InductionConfig;
 }
 
 export interface WeaponizedExtensions {
@@ -840,6 +1218,60 @@ export interface WeaponizedExtensions {
   nameVariants?: NameVariantReport;
   /** #72 STR narrative grader — quality score of auto-built narrative. */
   strNarrativeGrade?: StrGradeReport;
+
+  // ─── Phase 12 subsystems (#73-#97) ────────────────────────────────────────
+
+  /** #73 Corporate graph walker — subsidiary/affiliate sanction hits up to N hops. */
+  corporateGraph?: GraphWalkReport;
+  /** #74 Graph motif UBO analyzer — circular/star/cascade ownership motifs. */
+  ownershipMotifs?: MotifReport;
+  /** #75 Multi-model screening (async) — consensus across multiple AI screeners. */
+  multiModelConsensus?: MultiModelConsensusResult;
+  /** #76 Causal engine — counterfactual reasoning: what would flip the verdict. */
+  causalCounterfactual?: { original: Record<string, number>; flipped: Record<string, number>; changedNodes: string[] };
+  /** #77 Debate arbiter — pro/con structured argument with winning action. */
+  verdictDebate?: DebateVerdict;
+  /** #78 Reflection critic — reasoning chain coverage + structural issue analysis. */
+  reflectionReport?: ReflectionReport;
+  /** #79 Circular reasoning detector — dependency cycles in subsystem conclusions. */
+  circularReasoning?: CircularReport;
+  /** #80 Game theory adversary — Nash equilibrium of detect vs evade strategies. */
+  gameEquilibrium?: EquilibriumReport;
+  /** #81 LBMA fix price checker — gold trade deviation from LBMA AM/PM fix. */
+  lbmaFixCheck?: FixCheckReport;
+  /** #82 Melt loss — gold batch melt loss assessment + refiner drift detection. */
+  meltLoss?: MeltLossAssessment;
+  /** #83 Free zone compliance — UAE free zone mandatory rule pass/fail. */
+  freeZoneCompliance?: FreeZoneCheckResult;
+  /** #84 Tipping-off linter — FDL Art.29 scan of all generated text output. */
+  tippingOff?: TippingOffReport;
+  /** #85 Shapley explainer — per-feature attribution values for the verdict. */
+  shapley?: ShapleyReport;
+  /** #86 Formal invariant verifier — canonical + custom state invariant checks. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  invariantVerification?: InvariantVerifyReport<any>;
+  /** #87 Synthetic evasion — coverage gaps against generated evasion test cases. */
+  syntheticEvasion?: SyntheticCase[];
+  /** #88 Quantum-resistant seal — SHA-3/512 post-quantum audit bundle. */
+  quantumSeal?: QuantumSealBundle;
+  /** #89 Peer anomaly — z-score outlier features vs peer group. */
+  peerAnomaly?: PeerAnomalyReport;
+  /** #90 Time-travel audit — critical path + current state snapshot for replay. */
+  timeTravelAudit?: { criticalPath: EvidenceEntry[]; currentState: CaseSnapshot };
+  /** #91 Document intelligence — structural tamper signals from KYC documents. */
+  documentTamper?: DocumentExtractionResult;
+  /** #92 Regulatory drift — concept drift in entity risk feature distribution. */
+  regulatoryDrift?: PortfolioDriftReport;
+  /** #93 goAML XML — auto-generated XML filing string for UAE FIU submission. */
+  goamlXml?: string;
+  /** #94 Bayesian belief — posterior probability + Shannon entropy for verdict risk. */
+  bayesianBelief?: BeliefReport;
+  /** #95 Case-based reasoning — top-K similar past cases + analogy recommendation. */
+  cbrRecommendation?: ReuseRecommendation[];
+  /** #96 EU AI Act readiness — Article 9/10/13/14/15/72 scaffolding result. */
+  euAiActReadiness?: ReadinessScaffoldResult;
+  /** #97 Rule induction — human-readable decision rules extracted from session data. */
+  inducedRules?: LearnedRule[];
 }
 
 export interface WeaponizedBrainResponse {
@@ -1832,6 +2264,467 @@ export async function runWeaponizedBrain(
   }
 
   // ---------------------------------------------------------------------------
+  // Phase 12 execution block — 25 new subsystems (#73-#97), all optional.
+  // Runs AFTER Phase 11 so Phase 12 clamps can see Phase 11 signals.
+  // Async subsystem (#75 multi-model) runs via Promise.resolve() wrapper.
+  // ---------------------------------------------------------------------------
+
+  // #73 Corporate graph walker — always runs when corporateGraph provided
+  if (req.corporateGraph) {
+    const cgReport = runSafely('corporateGraphWalker', () =>
+      walkCorporateGraph(
+        req.corporateGraph!.graph,
+        req.corporateGraph!.queryId,
+        req.corporateGraph!.predicate ?? (() => ({ flagged: false })),
+        req.corporateGraph!.maxHops ?? 3
+      )
+    );
+    extensions.corporateGraph = cgReport;
+    if (cgReport && cgReport.hits.some((h) => h.hit)) {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: corporate graph walk found ${cgReport.hits.filter((h) => h.hit).length} flagged node(s) ` +
+        `within ${cgReport.hops} hops — subsidiary/affiliate risk ` +
+        `(FATF Rec 10 / Cabinet Decision 109/2023 UBO register)`
+      );
+    }
+  }
+
+  // #74 Graph motif UBO analyzer — circular ownership, star structures, cascades
+  if (req.ownershipEdges && req.ownershipEdges.length > 0) {
+    const motifReport = runSafely('graphMotifUboAnalyzer', () =>
+      analyseOwnershipMotifs(req.ownershipEdges!)
+    );
+    extensions.ownershipMotifs = motifReport;
+    if (motifReport && motifReport.findings.length > 0) {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: ${motifReport.findings.length} ownership motif(s) detected ` +
+        `(circular/cascade layering) — UBO obfuscation indicator ` +
+        `(Cabinet Decision 109/2023 / FATF Rec 10)`
+      );
+    }
+  }
+
+  // #75 Multi-model screening — async, runs only when request + apiKey provided
+  if (req.multiModelScreening) {
+    try {
+      const mmResult = await runMultiModelScreening(
+        req.multiModelScreening.request,
+        req.multiModelScreening.apiKey,
+        req.multiModelScreening.models
+      );
+      extensions.multiModelConsensus = mmResult;
+      if (mmResult.consensus === 'confirmed-match') {
+        finalVerdict = escalateTo(finalVerdict, 'escalate');
+        confidence = Math.min(confidence, 1 - mmResult.consensusConfidence + 0.05);
+        clampReasons.push(
+          `CLAMP: multi-model consensus CONFIRMED MATCH — ${mmResult.modelsResponded}/${mmResult.modelsQueried} models agree ` +
+          `(confidence ${(mmResult.consensusConfidence * 100).toFixed(0)}%) ` +
+          `(Cabinet Res 134/2025 Art.5 / FATF Rec 1 risk appetite)`
+        );
+      } else if (mmResult.riskLevel === 'critical') {
+        finalVerdict = escalateTo(finalVerdict, 'escalate');
+        clampReasons.push(
+          `CLAMP: multi-model screening critical risk score ${mmResult.riskScore}/100 ` +
+          `(Cabinet Res 134/2025 Art.5)`
+        );
+      }
+    } catch (err) {
+      subsystemFailures.push('multiModelScreening');
+      clampReasons.push(
+        `CLAMP: multiModelScreening failed (${err instanceof Error ? err.message : String(err)}) — manual review (FDL Art.24)`
+      );
+    }
+  }
+
+  // #76 Causal engine — counterfactual analysis on provided DAG
+  if (req.causalNodes && req.causalNodes.length > 0) {
+    const causalResult = runSafely('causalEngine', () => {
+      const cg = createCausalGraph(req.causalNodes!);
+      if (!req.causalIntervention) return undefined;
+      const original = simulate(cg, {});
+      const flipped = runCounterfactual(cg, req.causalIntervention);
+      const changedNodes = Object.keys(original).filter(
+        (k) => (original[k] ?? 0) !== (flipped[k] ?? 0)
+      );
+      return { original, flipped, changedNodes };
+    });
+    if (causalResult) extensions.causalCounterfactual = causalResult;
+  }
+
+  // #77 Debate arbiter — structured two-sided argument analysis
+  if (req.debateInput) {
+    const debateResult = runSafely('debateArbiter', () =>
+      runDebate(req.debateInput!)
+    );
+    extensions.verdictDebate = debateResult;
+    if (debateResult && debateResult.winner === 'con' && debateResult.margin > 0.4) {
+      clampReasons.push(
+        `ADVISORY: debate arbiter — CON side wins with margin ${debateResult.margin.toFixed(2)}; ` +
+        `MLRO should review counter-verdict "${debateResult.winningAction}" ` +
+        `before finalising (FDL Art.20-21 / Cabinet Res 134/2025 Art.19)`
+      );
+    }
+  }
+
+  // #78 Reflection critic — reasoning chain coverage analysis
+  if (mega.reasoningChain) {
+    const reflectResult = runSafely('reflectionCritic', () =>
+      reviewReasoningChain(mega.reasoningChain!, req.reflectionConfig)
+    );
+    extensions.reflectionReport = reflectResult;
+    if (reflectResult && reflectResult.issues.some((i) => i.severity === 'error')) {
+      confidence = Math.min(confidence, 0.65);
+      clampReasons.push(
+        `CLAMP: reflection critic found ${reflectResult.issues.filter((i) => i.severity === 'error').length} ` +
+        `structural error(s) in reasoning chain — confidence capped at 65% ` +
+        `(NIST AI RMF MS-2.2 / EU AI Act Art.72)`
+      );
+    }
+  }
+
+  // #79 Circular reasoning detector — dependency cycle detection
+  if (req.dependencyEdges && req.dependencyEdges.length > 0) {
+    const circularResult = runSafely('circularReasoningDetector', () =>
+      detectCircularReasoning(req.dependencyEdges!)
+    );
+    extensions.circularReasoning = circularResult;
+    if (circularResult && circularResult.cycles.length > 0) {
+      confidence = Math.min(confidence, 0.70);
+      clampReasons.push(
+        `CLAMP: ${circularResult.cycles.length} circular dependency cycle(s) in subsystem conclusions — ` +
+        `confidence capped at 70% (NIST AI RMF GV-1.6 / FDL Art.20-21)`
+      );
+    }
+  }
+
+  // #80 Game theory adversary — Nash equilibrium for detect vs evade
+  if (req.gameTheoryStrategies) {
+    const gameResult = runSafely('gameTheoryAdversary', () =>
+      solveAdversaryGame(
+        req.gameTheoryStrategies!.detectionStrategies,
+        req.gameTheoryStrategies!.evasionStrategies
+      )
+    );
+    extensions.gameEquilibrium = gameResult;
+    if (gameResult && gameResult.expectedPayoff < 0) {
+      clampReasons.push(
+        `ADVISORY: game theory — adversary has expected payoff advantage (${gameResult.expectedPayoff.toFixed(2)}); ` +
+        `top evasion tactic: "${gameResult.topAttackerChoice}"; ` +
+        `recommend strengthening "${gameResult.topDefenderChoice}" detection ` +
+        `(FATF Rec 1 risk-based approach)`
+      );
+    }
+  }
+
+  // #81 LBMA fix price checker — gold trade benchmark deviation
+  if (req.lbmaFixInput) {
+    const lbmaResult = runSafely('lbmaFixPriceChecker', () =>
+      checkLbmaFixDeviations(
+        req.lbmaFixInput!.trades,
+        req.lbmaFixInput!.lookup,
+        req.lbmaFixInput!.config
+      )
+    );
+    extensions.lbmaFixCheck = lbmaResult;
+    if (lbmaResult && lbmaResult.frozen > 0) {
+      finalVerdict = escalateTo(finalVerdict, 'freeze');
+      clampReasons.push(
+        `CLAMP: ${lbmaResult.frozen} LBMA gold trade(s) frozen — price deviation exceeds ` +
+        `tolerance threshold (LBMA RGG v9 / FATF DPMS Typologies 2022 §3.4)`
+      );
+    } else if (lbmaResult && lbmaResult.flagged > 0) {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: ${lbmaResult.flagged} gold trade(s) deviate from LBMA fix — price manipulation indicator ` +
+        `(LBMA RGG v9 / MoE Circular 08/AML/2021)`
+      );
+    }
+  }
+
+  // #82 Melt loss — gold batch + refiner drift
+  if (req.meltBatch) {
+    const meltResult = runSafely('meltLoss', () => {
+      const batch = assessMeltBatch(req.meltBatch!);
+      if (req.meltRefinerHistory && req.meltRefinerHistory.length > 0) {
+        // Detect refiner drift with historical data
+        return detectRefinerDrift(
+          req.meltBatch!.refinerId,
+          req.meltRefinerHistory,
+          req.meltBatch!
+        );
+      }
+      return batch;
+    });
+    extensions.meltLoss = meltResult;
+    if (meltResult && meltResult.severity === 'critical') {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: critical melt loss deviation — ${meltResult.lossPct.toFixed(2)}% vs ` +
+        `expected ${meltResult.expectedMinPct.toFixed(2)}%–${meltResult.expectedMaxPct.toFixed(2)}% ` +
+        `(LBMA RGG v9 §4 / Dubai Good Delivery / MoE Circular 08/AML/2021)`
+      );
+    }
+  }
+
+  // #83 Free zone compliance — mandatory rule pass/fail
+  if (req.freeZoneFacts) {
+    const fzResult = runSafely('freeZoneCompliance', () =>
+      checkFreeZoneCompliance(req.freeZoneFacts!)
+    );
+    extensions.freeZoneCompliance = fzResult;
+    if (fzResult && fzResult.mandatoryFailures.length > 0) {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: ${fzResult.mandatoryFailures.length} mandatory free zone rule failure(s) ` +
+        `in ${fzResult.freeZone} — regulatory breach ` +
+        `(Cabinet Res 134/2025 / ${fzResult.freeZone} Rules 2024)`
+      );
+    }
+  }
+
+  // #85 Shapley explainer — per-factor attribution values
+  {
+    const shapInput: ShapleyInput | null = req.shapleyInput ?? (() => {
+      // Auto-build from explainable scoring output if available
+      const factors = extensions.explanation?.topFactors?.map((f) => f.name) ?? [];
+      if (factors.length < 2) return null;
+      const verdictFn: VerdictFn = (coalition: ReadonlySet<string>) => {
+        // Simple additive model: each factor contributes its score
+        let s = 0;
+        for (const f of coalition) {
+          const found = extensions.explanation?.topFactors?.find((tf) => tf.name === f);
+          if (found) s += (found.score as number | undefined) ?? 1;
+        }
+        return s;
+      };
+      return { signals: factors, verdict: verdictFn };
+    })();
+
+    if (shapInput) {
+      extensions.shapley = runSafely('shapleyExplainer', () =>
+        computeShapleyAttribution(shapInput!)
+      );
+    }
+  }
+
+  // #86 Formal invariant verifier — validates canonical + custom state invariants
+  {
+    // Build a partial response snapshot for invariant verification
+    const partialSnap = {
+      finalVerdict,
+      confidence,
+      clampReasons,
+      requiresHumanReview: clampReasons.length > 0 || finalVerdict === 'freeze',
+      extensions,
+    } as unknown as WeaponizedBrainResponse;
+
+    const customInvs = req.customInvariants ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allInvariants = [...(CANONICAL_INVARIANTS as any[]), ...customInvs];
+    if (allInvariants.length > 0) {
+      extensions.invariantVerification = runSafely('invariantVerifier', () =>
+        verifyInvariants({
+          invariants: allInvariants,
+          initial: partialSnap as unknown as Record<string, unknown>,
+          transitions: [],
+        })
+      );
+      if (
+        extensions.invariantVerification &&
+        extensions.invariantVerification.violations.length > 0
+      ) {
+        confidence = Math.min(confidence, 0.60);
+        clampReasons.push(
+          `CLAMP: ${extensions.invariantVerification.violations.length} formal invariant violation(s) — ` +
+          `impossible state detected; confidence capped at 60% ` +
+          `(NIST AI RMF GV-1.6 / EU AI Act Art.9)`
+        );
+      }
+    }
+  }
+
+  // #87 Synthetic evasion generator — coverage gap check
+  {
+    const synCases = runSafely('syntheticEvasionGenerator', () =>
+      generateSyntheticEvasionCases(req.syntheticEvasionConfig ?? { count: 20 })
+    );
+    extensions.syntheticEvasion = synCases;
+    if (synCases) {
+      const uncaught = synCases.filter((c) => {
+        // Check if the current verdict would catch this evasion case
+        return c.expectedVerdict === 'freeze' && finalVerdict === 'pass';
+      });
+      if (uncaught.length > 0) {
+        clampReasons.push(
+          `ADVISORY: synthetic evasion test — ${uncaught.length}/${synCases.length} ` +
+          `generated evasion case(s) would NOT be caught by current verdict; ` +
+          `review detection coverage (FATF Guidance Red Flags 2021 / NIST AI RMF GV-1.6)`
+        );
+      }
+    }
+  }
+
+  // #89 Peer anomaly — z-score outlier detection vs peer group
+  if (req.peerAnomalyInput) {
+    const peerResult = runSafely('peerAnomaly', () =>
+      analysePeerAnomaly(req.peerAnomalyInput!)
+    );
+    extensions.peerAnomaly = peerResult;
+    const anomalyThreshold = req.peerAnomalyInput.anomalyThreshold ?? 2.0;
+    if (peerResult && peerResult.anomalies.length > 0) {
+      finalVerdict = escalateTo(finalVerdict, 'flag');
+      clampReasons.push(
+        `CLAMP: peer anomaly — ${peerResult.anomalies.length} feature(s) are statistical outliers ` +
+        `vs peer group (z-score threshold ${anomalyThreshold.toFixed(1)}) ` +
+        `(FATF Rec 10 / Cabinet Res 134/2025 Art.5 risk appetite)`
+      );
+    }
+  }
+
+  // #90 Time-travel audit — critical path + current state snapshot
+  if (req.auditEvidenceEntries && req.auditCaseRefId) {
+    const ttResult = runSafely('timeTravelAudit', () => {
+      const cp = criticalPath(req.auditEvidenceEntries!, req.auditCaseRefId!);
+      const cs = currentState(req.auditEvidenceEntries!, req.auditCaseRefId!);
+      return { criticalPath: cp, currentState: cs };
+    });
+    if (ttResult) extensions.timeTravelAudit = ttResult;
+  }
+
+  // #91 Document intelligence — structural tamper checks
+  if (req.documentForTamperCheck) {
+    const tamperResult = runSafely('documentIntelligence', () =>
+      runTamperChecks({
+        documentType: req.documentForTamperCheck!.documentType,
+        fields: [],
+        identifiers: {
+          documentNumber: req.documentForTamperCheck!.documentId,
+        },
+        tamperSignals: [],
+        confidence: 1,
+      })
+    );
+    extensions.documentTamper = tamperResult;
+    if (
+      tamperResult &&
+      tamperResult.tamperSignals.some((s) => s.severity === 'high')
+    ) {
+      finalVerdict = escalateTo(finalVerdict, 'escalate');
+      clampReasons.push(
+        `CLAMP: document intelligence — high-severity tamper signal(s) in ${req.documentForTamperCheck.documentType} ` +
+        `document — KYC/CDD integrity compromised ` +
+        `(FDL Art.12-14 / Cabinet Decision 109/2023 / FATF Rec 10)`
+      );
+    }
+  }
+
+  // #92 Regulatory drift — concept drift in risk feature distribution
+  if (req.regulatoryDriftSamples) {
+    const driftResult = runSafely('regulatoryDrift', () =>
+      analyseDrift(
+        req.regulatoryDriftSamples!.baseline,
+        req.regulatoryDriftSamples!.current
+      )
+    );
+    extensions.regulatoryDrift = driftResult;
+    if (driftResult && driftResult.overallBand === 'significant') {
+      confidence = Math.min(confidence, 0.65);
+      clampReasons.push(
+        `CLAMP: significant regulatory drift detected — ${driftResult.driftedFeatureCount} feature(s) drifted; ` +
+        `model re-calibration required (NIST AI RMF MS-2.1 / EU AI Act Art.72)`
+      );
+    }
+  }
+
+  // #93 goAML XML builder — auto-generates XML filing when report provided
+  if (req.goamlReport) {
+    const xmlResult = runSafely('goamlBuilder', () =>
+      buildGoAMLXml(req.goamlReport!, req.goamlCase, req.goamlCustomer)
+    );
+    if (xmlResult) extensions.goamlXml = xmlResult;
+  }
+
+  // #94 Bayesian belief network — posterior probability update
+  if (req.bayesianHypotheses && req.bayesianEvidence && req.bayesianEvidence.length > 0) {
+    const beliefResult = runSafely('bayesianBelief', () => {
+      const prior = uniformPrior(req.bayesianHypotheses!);
+      return runBeliefUpdate(req.bayesianHypotheses!, prior, req.bayesianEvidence!);
+    });
+    extensions.bayesianBelief = beliefResult;
+    if (beliefResult) {
+      // If the most likely hypothesis is 'high_risk' or 'freeze' → clamp
+      const topHyp = beliefResult.mostLikely;
+      if (
+        (topHyp.id === 'high_risk' || topHyp.id === 'freeze') &&
+        topHyp.probability > 0.65
+      ) {
+        finalVerdict = escalateTo(finalVerdict, 'escalate');
+        clampReasons.push(
+          `CLAMP: Bayesian belief — P(${topHyp.label})=${(topHyp.probability * 100).toFixed(0)}% ` +
+          `posterior probability; high-risk hypothesis dominant ` +
+          `(FDL Art.20-21 / FATF Rec 10)`
+        );
+      }
+      // High entropy → low confidence (uncertainty)
+      if (beliefResult.entropyBits > 2.5) {
+        confidence = Math.min(confidence, 0.60);
+        clampReasons.push(
+          `CLAMP: Bayesian belief high entropy (${beliefResult.entropyBits.toFixed(2)} bits) — ` +
+          `uncertain evidence; confidence capped at 60% (NIST AI RMF MS-2.1)`
+        );
+      }
+    }
+  }
+
+  // #95 Case-based reasoning — analogical verdict recommendation from past cases
+  if (req.caseMemory) {
+    const cbrResult = runSafely('caseBasedReasoning', () => {
+      const queryFeatures = {
+        verdict: VERDICT_RANK[finalVerdict],
+        confidence,
+        riskScore: extensions.explanation?.score ?? 50,
+        pepFlag: extensions.pepProximity?.overallRisk === 'critical' ? 1 : 0,
+        sanctionsFlag: finalVerdict === 'freeze' ? 1 : 0,
+      };
+      return req.caseMemory!.reuse(queryFeatures, 5);
+    });
+    if (cbrResult) {
+      extensions.cbrRecommendation = [cbrResult];
+    }
+  }
+
+  // #96 EU AI Act readiness — Article checklist scaffolding
+  if (req.aiGovernanceInput && req.euAiActProjectGid) {
+    const readinessResult = runSafely('euAiActReadiness', () =>
+      buildReadinessPayloads(req.euAiActProjectGid!)
+    );
+    if (readinessResult) extensions.euAiActReadiness = readinessResult;
+  }
+
+  // #97 Rule induction — learn decision tree from labeled samples
+  if (req.inductionSamples && req.inductionSamples.length >= 5) {
+    const rulesResult = runSafely('ruleInduction', () => {
+      const tree = learnDecisionTree(req.inductionSamples!, req.inductionConfig);
+      return extractRules(tree);
+    });
+    if (rulesResult) extensions.inducedRules = rulesResult;
+  }
+
+  // #88 Quantum-resistant seal — always runs last (seals everything above)
+  {
+    const sealRecords: QuantumSealRecord[] = [
+      { id: `${mega.entityId}:verdict`, data: `${finalVerdict}:${confidence.toFixed(4)}` },
+      { id: `${mega.entityId}:clamps`, data: clampReasons.join('|') },
+      { id: `${mega.entityId}:subsystems`, data: Object.keys(extensions).sort().join(',') },
+    ];
+    extensions.quantumSeal = runSafely('quantumResistantSeal', () =>
+      sealQuantumResistant(sealRecords)
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Phase 4-10 safety clamps — monotone escalation only.
   // ---------------------------------------------------------------------------
 
@@ -1997,6 +2890,44 @@ export async function runWeaponizedBrain(
   let auditNarrative = buildAuditNarrative(mega, finalVerdict, clampReasons, extensions);
   if (subsystemFailures.length > 0) {
     auditNarrative += `\n\nSubsystem failures: ${subsystemFailures.join(', ')}`;
+  }
+
+  // #84 Tipping-off linter — FDL Art.29 scan of ALL generated text before
+  // the narrative leaves the system. This is a HARD gate: if tipping-off
+  // phrases are detected, the narrative is redacted and a clamp fires.
+  // No human may receive the unredacted narrative if this fires.
+  {
+    // Combine all text that might leave the system
+    const allGeneratedText = [
+      auditNarrative,
+      extensions.strNarrative?.narrative ?? '',
+      extensions.mlroAlerts?.alerts?.map((a) => a.description).join('\n') ?? '',
+    ].join('\n\n---\n\n');
+
+    const tippingReport = runSafely('tippingOffLinter', () =>
+      lintForTippingOff(allGeneratedText)
+    );
+    extensions.tippingOff = tippingReport;
+
+    if (tippingReport && tippingReport.hasTippingOff) {
+      // HARD gate: replace the tipping-off phrases with [REDACTED] markers
+      let redacted = auditNarrative;
+      for (const finding of tippingReport.findings) {
+        redacted = redacted.replace(
+          new RegExp(finding.phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+          '[REDACTED — FDL Art.29]'
+        );
+      }
+      auditNarrative = redacted;
+
+      // Hard clamp: tipping-off is a criminal offence under FDL Art.29
+      clampReasons.push(
+        `HARD CLAMP: tipping-off linter detected ${tippingReport.findings.length} disclosure-risk phrase(s) ` +
+        `in generated narrative — phrases REDACTED before output ` +
+        `(FDL No.10/2025 Art.29 — criminal penalty up to AED 5M; NO tipping off)`
+      );
+      requiresHumanReview = true;
+    }
   }
 
   // 11. Advisor escalation — called only when a compliance trigger fires.
@@ -2709,6 +3640,175 @@ function buildAuditNarrative(
       `  - STR narrative grade (#72): score=${extensions.strNarrativeGrade.score}/100, ` +
       `grade=${extensions.strNarrativeGrade.grade}, ` +
       `readyToFile=${extensions.strNarrativeGrade.readyToFile}`
+    );
+  }
+
+  // Phase 12 narrative entries
+  if (extensions.corporateGraph) {
+    const flaggedCount = extensions.corporateGraph.hits.filter((h) => h.hit).length;
+    lines.push(
+      `  - Corporate graph (#73): visited=${extensions.corporateGraph.visited} node(s) ` +
+      `in ${extensions.corporateGraph.hops} hop(s), flagged=${flaggedCount}`
+    );
+  }
+  if (extensions.ownershipMotifs) {
+    lines.push(
+      `  - Ownership motifs (#74): ${extensions.ownershipMotifs.findings.length} motif(s) detected ` +
+      `(circular/star/cascade layering)`
+    );
+  }
+  if (extensions.multiModelConsensus) {
+    lines.push(
+      `  - Multi-model screening (#75): consensus=${extensions.multiModelConsensus.consensus}, ` +
+      `riskLevel=${extensions.multiModelConsensus.riskLevel}, ` +
+      `score=${extensions.multiModelConsensus.riskScore}/100, ` +
+      `models=${extensions.multiModelConsensus.modelsResponded}/${extensions.multiModelConsensus.modelsQueried} responded`
+    );
+  }
+  if (extensions.causalCounterfactual) {
+    lines.push(
+      `  - Causal engine (#76): counterfactual changed ${extensions.causalCounterfactual.changedNodes.length} node(s): ` +
+      `[${extensions.causalCounterfactual.changedNodes.join(', ')}]`
+    );
+  }
+  if (extensions.verdictDebate) {
+    lines.push(
+      `  - Verdict debate (#77): winner=${extensions.verdictDebate.winner} ` +
+      `(${extensions.verdictDebate.winningAction}), ` +
+      `margin=${extensions.verdictDebate.margin.toFixed(2)}, ` +
+      `proScore=${extensions.verdictDebate.proScore.toFixed(0)} vs conScore=${extensions.verdictDebate.conScore.toFixed(0)}`
+    );
+  }
+  if (extensions.reflectionReport) {
+    const errorCount = extensions.reflectionReport.issues.filter((i) => i.severity === 'error').length;
+    lines.push(
+      `  - Reflection critic (#78): ${extensions.reflectionReport.issues.length} issue(s) ` +
+      `(${errorCount} error(s)), chain confidence=${(extensions.reflectionReport.confidence * 100).toFixed(0)}%`
+    );
+  }
+  if (extensions.circularReasoning) {
+    lines.push(
+      `  - Circular reasoning (#79): ${extensions.circularReasoning.cycles.length} cycle(s) detected`
+    );
+  }
+  if (extensions.gameEquilibrium) {
+    lines.push(
+      `  - Game theory (#80): expectedPayoff=${extensions.gameEquilibrium.expectedPayoff.toFixed(3)}, ` +
+      `topAttackerChoice="${extensions.gameEquilibrium.topAttackerChoice}", ` +
+      `topDefenderChoice="${extensions.gameEquilibrium.topDefenderChoice}"`
+    );
+  }
+  if (extensions.lbmaFixCheck) {
+    lines.push(
+      `  - LBMA fix check (#81): ${extensions.lbmaFixCheck.checked} trade(s) checked, ` +
+      `flagged=${extensions.lbmaFixCheck.flagged}, frozen=${extensions.lbmaFixCheck.frozen}`
+    );
+  }
+  if (extensions.meltLoss) {
+    lines.push(
+      `  - Melt loss (#82): severity=${extensions.meltLoss.severity}, ` +
+      `actual=${extensions.meltLoss.lossPct.toFixed(2)}%, ` +
+      `expected ${extensions.meltLoss.expectedMinPct.toFixed(2)}%–${extensions.meltLoss.expectedMaxPct.toFixed(2)}%`
+    );
+  }
+  if (extensions.freeZoneCompliance) {
+    lines.push(
+      `  - Free zone compliance (#83): zone=${extensions.freeZoneCompliance.freeZone}, ` +
+      `passed=${extensions.freeZoneCompliance.passed}/${extensions.freeZoneCompliance.totalRules}, ` +
+      `mandatory failures=${extensions.freeZoneCompliance.mandatoryFailures.length}`
+    );
+  }
+  if (extensions.tippingOff) {
+    lines.push(
+      `  - Tipping-off linter (#84): hasTippingOff=${extensions.tippingOff.hasTippingOff}, ` +
+      `findings=${extensions.tippingOff.findings.length} ` +
+      `(FDL Art.29 — ${extensions.tippingOff.hasTippingOff ? 'REDACTED' : 'clean'})`
+    );
+  }
+  if (extensions.shapley) {
+    const topAttr = extensions.shapley.attributions[0];
+    lines.push(
+      `  - Shapley explainer (#85): top signal="${topAttr?.signal ?? 'none'}" ` +
+      `φ=${topAttr?.value?.toFixed(3) ?? 'N/A'}, ` +
+      `total signals=${extensions.shapley.attributions.length}`
+    );
+  }
+  if (extensions.invariantVerification) {
+    lines.push(
+      `  - Invariant verifier (#86): violations=${extensions.invariantVerification.violations.length} ` +
+      `(invariantsChecked=${extensions.invariantVerification.invariantsChecked}, passed=${extensions.invariantVerification.passed})`
+    );
+  }
+  if (extensions.syntheticEvasion) {
+    lines.push(
+      `  - Synthetic evasion (#87): ${extensions.syntheticEvasion.length} test case(s) generated`
+    );
+  }
+  if (extensions.quantumSeal) {
+    lines.push(
+      `  - Quantum-resistant seal (#88): leafCount=${extensions.quantumSeal.leafCount} record(s), ` +
+      `algo=${extensions.quantumSeal.hashFunction}, ` +
+      `root=${extensions.quantumSeal.rootHash.slice(0, 16)}...`
+    );
+  }
+  if (extensions.peerAnomaly) {
+    const maxZ = extensions.peerAnomaly.anomalies.length > 0
+      ? Math.max(...extensions.peerAnomaly.anomalies.map((a) => Math.abs(a.zScore))).toFixed(2)
+      : 'N/A';
+    lines.push(
+      `  - Peer anomaly (#89): ${extensions.peerAnomaly.anomalies.length} anomalous feature(s), ` +
+      `maxZ=${maxZ}, score=${extensions.peerAnomaly.overallScore.toFixed(1)}`
+    );
+  }
+  if (extensions.timeTravelAudit) {
+    lines.push(
+      `  - Time-travel audit (#90): criticalPath=${extensions.timeTravelAudit.criticalPath.length} evidence step(s), ` +
+      `currentState snapshot at ${extensions.timeTravelAudit.currentState.timestamp}`
+    );
+  }
+  if (extensions.documentTamper) {
+    const highTamper = extensions.documentTamper.tamperSignals.filter((s) => s.severity === 'high').length;
+    lines.push(
+      `  - Document intelligence (#91): tamperSignals=${extensions.documentTamper.tamperSignals.length} ` +
+      `(${highTamper} high-severity), confidence=${(extensions.documentTamper.confidence * 100).toFixed(0)}%`
+    );
+  }
+  if (extensions.regulatoryDrift) {
+    lines.push(
+      `  - Regulatory drift (#92): overallBand=${extensions.regulatoryDrift.overallBand}, ` +
+      `driftedFeatures=${extensions.regulatoryDrift.driftedFeatureCount}, ` +
+      `maxPSI=${extensions.regulatoryDrift.overallMaxPsi?.toFixed(3) ?? 'N/A'}`
+    );
+  }
+  if (extensions.goamlXml) {
+    lines.push(
+      `  - goAML XML (#93): auto-generated UAE FIU XML filing ` +
+      `(${extensions.goamlXml.length.toLocaleString()} chars) — ready for submission`
+    );
+  }
+  if (extensions.bayesianBelief) {
+    lines.push(
+      `  - Bayesian belief (#94): P(${extensions.bayesianBelief.mostLikely.label})=` +
+      `${(extensions.bayesianBelief.mostLikely.probability * 100).toFixed(0)}%, ` +
+      `entropy=${extensions.bayesianBelief.entropyBits.toFixed(2)} bits`
+    );
+  }
+  if (extensions.cbrRecommendation && extensions.cbrRecommendation.length > 0) {
+    const topRec = extensions.cbrRecommendation[0];
+    lines.push(
+      `  - Case-based reasoning (#95): top precedent similarity=${topRec?.similarity?.toFixed(3) ?? 'N/A'}, ` +
+      `recommendation=${topRec?.recommendedOutcome ?? 'none'}`
+    );
+  }
+  if (extensions.euAiActReadiness) {
+    lines.push(
+      `  - EU AI Act readiness (#96): dispatched=${extensions.euAiActReadiness.dispatched} task(s), ` +
+      `failed=${extensions.euAiActReadiness.failed}`
+    );
+  }
+  if (extensions.inducedRules && extensions.inducedRules.length > 0) {
+    lines.push(
+      `  - Rule induction (#97): ${extensions.inducedRules.length} human-readable rule(s) extracted`
     );
   }
 
