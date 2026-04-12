@@ -44,7 +44,7 @@ export const SELF_AUDIT_EVIDENCE: Readonly<GovernanceEvidence> = Object.freeze({
   // Data governance
   hasDataGovernancePolicy: true, // CLAUDE.md "Seguridad" section
   hasTrainingDataLineage: false, // no centralised training data (no ML training happens in-app)
-  hasBiasAssessment: false, //     TODO: needs explicit bias testing for name-matching / jurisdictions
+  hasBiasAssessment: true, //      src/services/nameMatchingBiasAssessment.ts + tests/nameMatchingBiasAssessment.test.ts (EU AI Act Art.10, NIST AI RMF Measure 2.11)
   hasDataQualityChecks: true, //   src/domain/constants.ts + zod schemas
 
   // Transparency / XAI

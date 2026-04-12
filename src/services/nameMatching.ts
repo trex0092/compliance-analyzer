@@ -347,13 +347,54 @@ function tokenise(s: string): string[] {
  * best matches. Handles surname-first ↔ surname-last permutations.
  */
 export function tokenSetSimilarity(a: string, b: string): number {
+  return tokenSetBreakdown(a, b).mean;
+}
+
+/**
+ * Token-set breakdown — exposes the mean, min, and max of per-token
+ * best matches plus structural metadata. Used by the bias-aware
+ * composite score in matchScore() to detect the "shared one token,
+ * distinct other token" pattern that signals two different people
+ * (e.g. "Wang Wei" vs "Wang Lei", "Imran Khan" vs "Imran Ahmed",
+ * "Rajesh Kumar" vs "Anil Kumar").
+ *
+ * This helper is the foundation of the fairness fix that brings
+ * Chinese / South Asian / Arabic / Persian false-positive rates in
+ * line with Anglo names — the previous arithmetic-mean-only formula
+ * over-flagged demographics whose name distributions naturally share
+ * common tokens.
+ *
+ * See `nameMatchingBiasAssessment.ts` for the regression harness.
+ */
+export interface TokenSetBreakdown {
+  /** Arithmetic mean of per-token best matches. */
+  mean: number;
+  /** Minimum per-token best match — the worst-matched token-pair. */
+  min: number;
+  /** Maximum per-token best match — the best-matched token-pair. */
+  max: number;
+  /** True if both inputs have the same token count. */
+  sameTokenCount: boolean;
+  /** Number of tokens on the shorter side. */
+  shortLen: number;
+  /** Number of tokens on the longer side. */
+  longLen: number;
+}
+
+export function tokenSetBreakdown(a: string, b: string): TokenSetBreakdown {
   const tokensA = tokenise(a);
   const tokensB = tokenise(b);
-  if (tokensA.length === 0 || tokensB.length === 0) return 0;
+  if (tokensA.length === 0 || tokensB.length === 0) {
+    return { mean: 0, min: 0, max: 0, sameTokenCount: false, shortLen: 0, longLen: 0 };
+  }
 
-  const [short, long] = tokensA.length <= tokensB.length ? [tokensA, tokensB] : [tokensB, tokensA];
+  const sameTokenCount = tokensA.length === tokensB.length;
+  const [short, long] =
+    tokensA.length <= tokensB.length ? [tokensA, tokensB] : [tokensB, tokensA];
 
   let total = 0;
+  let minBest = Infinity;
+  let maxBest = -Infinity;
   for (const s of short) {
     let best = 0;
     for (const l of long) {
@@ -362,8 +403,17 @@ export function tokenSetSimilarity(a: string, b: string): number {
       if (best === 1) break;
     }
     total += best;
+    if (best < minBest) minBest = best;
+    if (best > maxBest) maxBest = best;
   }
-  return total / short.length;
+  return {
+    mean: total / short.length,
+    min: minBest,
+    max: maxBest,
+    sameTokenCount,
+    shortLen: short.length,
+    longLen: long.length,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -412,10 +462,56 @@ export function matchScore(rawA: string, rawB: string): MatchBreakdown {
   const normB = normalise(b);
 
   const jw = jaroWinkler(normA, normB);
-  const token = tokenSetSimilarity(normA, normB);
+  const tsb = tokenSetBreakdown(normA, normB);
   const metaA = metaphone(normA);
   const metaB = metaphone(normB);
   const phonetic = metaA.length > 0 && metaA === metaB ? 1 : 0;
+
+  // Distinct-token penalty — fairness fix.
+  //
+  // The arithmetic mean of best-match scores systematically over-
+  // flags multi-token names where ONE token is identical and the
+  // OTHER token is structurally distinct. This pattern dominates
+  // false positives on demographics whose name distributions
+  // naturally share common tokens:
+  //
+  //   - "Wang Wei" vs "Wang Lei"     (Han surname collisions)
+  //   - "Imran Khan" vs "Imran Ahmed" (shared first name)
+  //   - "Rajesh Kumar" vs "Anil Kumar"
+  //   - "Ahmed Ali" vs "Ahmed Hassan"
+  //
+  // Two triggers:
+  //   1. Heavy-distinct: any best-match below 0.6 means the token-
+  //      pair carries no useful similarity → square the min as
+  //      the token signal (catches unrelated names of any token
+  //      count, including the asymmetric "Imran Khan" vs
+  //      "Shah Rukh Khan" pattern).
+  //   2. Shared-single-token: one pair matches perfectly
+  //      (max ≥ 0.999) and the worst pair is below 0.8 → square
+  //      the min. This is the "Wang Wei" / "Imran Khan" vs
+  //      "Shah Rukh Khan" pattern that arithmetic mean alone
+  //      cannot distinguish from a real match. Applies regardless
+  //      of token count, so it catches both same-count cases
+  //      ("Wang Wei" vs "Wang Lei") and asymmetric cases
+  //      ("Imran Khan" vs "Shah Rukh Khan").
+  //
+  // The penalty preserves real matches because it requires either
+  // a clearly weak token-pair (< 0.6) or a structural shared-one-
+  // token signature with a distinct other pair (< 0.8). Cross-
+  // script transliteration matches (e.g. "محمد بن سلمان" /
+  // "Mohammed bin Salman") have NO exact-token match (max < 1.0),
+  // so trigger 2 does not fire, and their min stays above 0.6,
+  // so trigger 1 does not fire either. They route through the
+  // unmodified arithmetic-mean path and remain flagged.
+  //
+  // Regulatory basis: EU AI Act Art.10 (bias mitigation), NIST AI
+  // RMF Measure 2.11 (fairness), UAE AI Charter Principle 3.
+  let token = tsb.mean;
+  const heavilyDistinctToken = tsb.min < 0.6;
+  const sharedSingleTokenWithDistinctOther = tsb.max >= 0.999 && tsb.min < 0.8;
+  if (heavilyDistinctToken || sharedSingleTokenWithDistinctOther) {
+    token = tsb.min * tsb.min;
+  }
 
   // Composite: token-set is the dominant signal because it handles
   // surname-first vs surname-last, middle-name omission, and legal-
