@@ -3,28 +3,35 @@
 // and macro signals into a unified trading decision with confidence scoring.
 
 import type {
-  Metal, TradeSide, MarketRegime, SignalStrength,
-  TradingSignal, FusedDecision, TAIndicators, FlowMetrics,
-  ArbitrageOpportunity, PatternDetection, PriceQuote, RiskMetrics,
+  Metal,
+  TradeSide,
+  MarketRegime,
+  SignalStrength,
+  TradingSignal,
+  FusedDecision,
+  TAIndicators,
+  FlowMetrics,
+  PatternDetection,
+  RiskMetrics,
 } from './types';
 
 // ─── Signal Weights (configurable) ─────────────────────────────────────────
 
 const DEFAULT_WEIGHTS: Record<TradingSignal['source'], number> = {
-  TECHNICAL:      0.25,
-  MICROSTRUCTURE: 0.20,
-  FLOW:           0.15,
-  PATTERN:        0.15,
-  ARBITRAGE:      0.10,
-  SENTIMENT:      0.05,
-  SEASONAL:       0.05,
-  MACRO:          0.05,
+  TECHNICAL: 0.25,
+  MICROSTRUCTURE: 0.2,
+  FLOW: 0.15,
+  PATTERN: 0.15,
+  ARBITRAGE: 0.1,
+  SENTIMENT: 0.05,
+  SEASONAL: 0.05,
+  MACRO: 0.05,
 };
 
 // ─── Regime Detection ───────────────────────────────────────────────────────
 
 export function detectRegime(indicators: TAIndicators, prices: number[]): MarketRegime {
-  const { adx14, bollingerBands, atr14, rsi14 } = indicators;
+  const { adx14, bollingerBands, rsi14 } = indicators;
   const lastPrice = prices[prices.length - 1] ?? 0;
 
   // Volatility expansion
@@ -58,29 +65,51 @@ export function detectRegime(indicators: TAIndicators, prices: number[]): Market
 // ─── Signal Generation ──────────────────────────────────────────────────────
 
 export function generateTechnicalSignal(
-  metal: Metal, indicators: TAIndicators, currentPrice: number,
+  metal: Metal,
+  indicators: TAIndicators,
+  currentPrice: number
 ): TradingSignal | null {
   let score = 0;
   const reasons: string[] = [];
 
   // Trend alignment
-  if (currentPrice > indicators.sma[200]) { score += 2; reasons.push('Above SMA200'); }
-  else { score -= 2; reasons.push('Below SMA200'); }
+  if (currentPrice > indicators.sma[200]) {
+    score += 2;
+    reasons.push('Above SMA200');
+  } else {
+    score -= 2;
+    reasons.push('Below SMA200');
+  }
 
   if (currentPrice > indicators.sma[50]) score += 1;
   else score -= 1;
 
   // RSI
-  if (indicators.rsi14 < 30) { score += 2; reasons.push('RSI oversold'); }
-  else if (indicators.rsi14 > 70) { score -= 2; reasons.push('RSI overbought'); }
+  if (indicators.rsi14 < 30) {
+    score += 2;
+    reasons.push('RSI oversold');
+  } else if (indicators.rsi14 > 70) {
+    score -= 2;
+    reasons.push('RSI overbought');
+  }
 
   // MACD
-  if (indicators.macd.histogram > 0) { score += 1; reasons.push('MACD bullish'); }
-  else { score -= 1; reasons.push('MACD bearish'); }
+  if (indicators.macd.histogram > 0) {
+    score += 1;
+    reasons.push('MACD bullish');
+  } else {
+    score -= 1;
+    reasons.push('MACD bearish');
+  }
 
   // Bollinger
-  if (currentPrice <= indicators.bollingerBands.lower) { score += 1.5; reasons.push('At lower BB'); }
-  else if (currentPrice >= indicators.bollingerBands.upper) { score -= 1.5; reasons.push('At upper BB'); }
+  if (currentPrice <= indicators.bollingerBands.lower) {
+    score += 1.5;
+    reasons.push('At lower BB');
+  } else if (currentPrice >= indicators.bollingerBands.upper) {
+    score -= 1.5;
+    reasons.push('At upper BB');
+  }
 
   const direction: TradeSide = score >= 0 ? 'BUY' : 'SELL';
   const confidence = Math.min(Math.abs(score) / 8, 1);
@@ -97,12 +126,11 @@ export function generateTechnicalSignal(
     confidence,
     weight: DEFAULT_WEIGHTS.TECHNICAL,
     entryPrice: currentPrice,
-    targetPrice: direction === 'BUY'
-      ? currentPrice + indicators.atr14 * 3
-      : currentPrice - indicators.atr14 * 3,
-    stopLoss: direction === 'BUY'
-      ? currentPrice - stopDistance
-      : currentPrice + stopDistance,
+    targetPrice:
+      direction === 'BUY'
+        ? currentPrice + indicators.atr14 * 3
+        : currentPrice - indicators.atr14 * 3,
+    stopLoss: direction === 'BUY' ? currentPrice - stopDistance : currentPrice + stopDistance,
     riskReward: 1.5,
     timeHorizon: '4h',
     reasoning: reasons.join(', '),
@@ -112,14 +140,22 @@ export function generateTechnicalSignal(
 }
 
 export function generateFlowSignal(
-  metal: Metal, flow: FlowMetrics, currentPrice: number, atr: number,
+  metal: Metal,
+  flow: FlowMetrics,
+  currentPrice: number,
+  atr: number
 ): TradingSignal | null {
   let score = 0;
   const reasons: string[] = [];
 
   // Smart money direction
-  if (flow.smartMoneyDirection === 'BUY') { score += 3; reasons.push('Smart money buying'); }
-  else if (flow.smartMoneyDirection === 'SELL') { score -= 3; reasons.push('Smart money selling'); }
+  if (flow.smartMoneyDirection === 'BUY') {
+    score += 3;
+    reasons.push('Smart money buying');
+  } else if (flow.smartMoneyDirection === 'SELL') {
+    score -= 3;
+    reasons.push('Smart money selling');
+  }
 
   // Flow imbalance
   if (Math.abs(flow.tradeFlowImbalance) > 0.3) {
@@ -134,8 +170,11 @@ export function generateFlowSignal(
   }
 
   // Smart vs retail divergence
-  if (flow.smartMoneyDirection !== 'NEUTRAL' && flow.retailDirection !== 'NEUTRAL' &&
-      flow.smartMoneyDirection !== flow.retailDirection) {
+  if (
+    flow.smartMoneyDirection !== 'NEUTRAL' &&
+    flow.retailDirection !== 'NEUTRAL' &&
+    flow.smartMoneyDirection !== flow.retailDirection
+  ) {
     score += flow.smartMoneyDirection === 'BUY' ? 1.5 : -1.5;
     reasons.push('Smart/retail divergence');
   }
@@ -164,8 +203,11 @@ export function generateFlowSignal(
 }
 
 export function generateMicrostructureSignal(
-  metal: Metal, flow: FlowMetrics, bookImbalance: number,
-  currentPrice: number, atr: number,
+  metal: Metal,
+  flow: FlowMetrics,
+  bookImbalance: number,
+  currentPrice: number,
+  atr: number
 ): TradingSignal | null {
   let score = 0;
   const reasons: string[] = [];
@@ -215,12 +257,14 @@ export function generateMicrostructureSignal(
 }
 
 export function generatePatternSignal(
-  metal: Metal, patterns: PatternDetection[], currentPrice: number,
+  metal: Metal,
+  patterns: PatternDetection[],
+  _currentPrice: number
 ): TradingSignal | null {
   if (patterns.length === 0) return null;
 
   // Take highest confidence pattern
-  const best = patterns.reduce((a, b) => a.confidence > b.confidence ? a : b);
+  const best = patterns.reduce((a, b) => (a.confidence > b.confidence ? a : b));
 
   return {
     id: `SIG-PAT-${metal}-${Date.now()}`,
@@ -249,7 +293,7 @@ export function fuseSignals(
   regime: MarketRegime,
   riskMetrics: RiskMetrics,
   currentPrice: number,
-  weights: Record<TradingSignal['source'], number> = DEFAULT_WEIGHTS,
+  weights: Record<TradingSignal['source'], number> = DEFAULT_WEIGHTS
 ): FusedDecision {
   if (signals.length === 0) {
     return emptyDecision(metal, regime, currentPrice);
@@ -307,24 +351,22 @@ export function fuseSignals(
   }
 
   const direction: TradeSide = buyScore >= sellScore ? 'BUY' : 'SELL';
-  const conviction = totalSignalWeight > 0
-    ? Math.abs(buyScore - sellScore) / totalSignalWeight
-    : 0;
+  const conviction = totalSignalWeight > 0 ? Math.abs(buyScore - sellScore) / totalSignalWeight : 0;
 
   // Signal alignment (do they agree?)
-  const buySignals = signals.filter(s => s.direction === 'BUY').length;
-  const sellSignals = signals.filter(s => s.direction === 'SELL').length;
-  const signalAlignment = signals.length > 0
-    ? Math.max(buySignals, sellSignals) / signals.length
-    : 0;
+  const buySignals = signals.filter((s) => s.direction === 'BUY').length;
+  const sellSignals = signals.filter((s) => s.direction === 'SELL').length;
+  const signalAlignment =
+    signals.length > 0 ? Math.max(buySignals, sellSignals) / signals.length : 0;
 
   const entryPrice = totalSignalWeight > 0 ? weightedEntry / totalSignalWeight : currentPrice;
   const targetPrice = totalSignalWeight > 0 ? weightedTarget / totalSignalWeight : currentPrice;
   const stopLoss = totalSignalWeight > 0 ? weightedStop / totalSignalWeight : currentPrice;
 
-  const riskReward = Math.abs(entryPrice - stopLoss) > 0
-    ? Math.abs(targetPrice - entryPrice) / Math.abs(entryPrice - stopLoss)
-    : 0;
+  const riskReward =
+    Math.abs(entryPrice - stopLoss) > 0
+      ? Math.abs(targetPrice - entryPrice) / Math.abs(entryPrice - stopLoss)
+      : 0;
 
   // Position sizing via Kelly or adjusted
   const kellySize = riskMetrics.kellyFraction * riskMetrics.optimalPositionSize;
@@ -341,7 +383,9 @@ export function fuseSignals(
     `Signals: ${buySignals} BUY / ${sellSignals} SELL (alignment: ${(signalAlignment * 100).toFixed(0)}%)`,
     `Conviction: ${(conviction * 100).toFixed(1)}%`,
     `R:R ${riskReward.toFixed(2)}, EV: $${expectedValue.toFixed(2)}`,
-    ...signals.map(s => `[${s.source}] ${s.direction} (${(s.confidence * 100).toFixed(0)}%): ${s.reasoning}`),
+    ...signals.map(
+      (s) => `[${s.source}] ${s.direction} (${(s.confidence * 100).toFixed(0)}%): ${s.reasoning}`
+    ),
   ];
 
   return {

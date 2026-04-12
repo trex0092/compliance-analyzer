@@ -4,9 +4,15 @@
 // SignalFusion, TradingEngine. Produces unified trading decisions.
 
 import type {
-  Metal, TradingSession, TradingConfig, MetalsBrainResponse,
-  PriceQuote, OHLCV, TradingAlert, FusedDecision, RiskMetrics,
-  Portfolio, MarketRegime, TradingSignal,
+  Metal,
+  TradingSession,
+  TradingConfig,
+  MetalsBrainResponse,
+  PriceQuote,
+  OHLCV,
+  FusedDecision,
+  MarketRegime,
+  TradingSignal,
 } from './types';
 import { PriceOracle, generateSimulatedPrices } from './priceOracle';
 import { computeAllIndicators, detectPatterns } from './technicalAnalysis';
@@ -16,8 +22,12 @@ import { AlertWeapon } from './alertWeapon';
 import { PositionManager } from './positionManager';
 import { CircuitBreakerEngine, DEFAULT_RISK_LIMITS } from './riskMatrix';
 import {
-  detectRegime, generateTechnicalSignal, generateFlowSignal,
-  generateMicrostructureSignal, generatePatternSignal, fuseSignals,
+  detectRegime,
+  generateTechnicalSignal,
+  generateFlowSignal,
+  generateMicrostructureSignal,
+  generatePatternSignal,
+  fuseSignals,
 } from './signalFusion';
 import { TradingEngine } from './tradingEngine';
 
@@ -42,10 +52,10 @@ const DEFAULT_CONFIG: TradingConfig = {
   alertPreferences: {} as TradingConfig['alertPreferences'],
   signalWeights: {
     TECHNICAL: 0.25,
-    MICROSTRUCTURE: 0.20,
+    MICROSTRUCTURE: 0.2,
     FLOW: 0.15,
     PATTERN: 0.15,
-    ARBITRAGE: 0.10,
+    ARBITRAGE: 0.1,
     SENTIMENT: 0.05,
     SEASONAL: 0.05,
     MACRO: 0.05,
@@ -141,13 +151,11 @@ export class MetalsTradingBrain {
 
     // 2. Compute technicals
     const candles = this.getCandles(metal);
-    const indicators = candles.length >= 20
-      ? computeAllIndicators(candles, metal)
-      : null;
+    const indicators = candles.length >= 20 ? computeAllIndicators(candles, metal) : null;
 
     // 3. Flow analysis
     const flowAnalyzer = this.flowAnalyzers.get(metal);
-    const side = Math.random() > 0.5 ? 'BUY' as const : 'SELL' as const;
+    const side = Math.random() > 0.5 ? ('BUY' as const) : ('SELL' as const);
     flowAnalyzer?.addTrade({
       price: quote.mid,
       volume: Math.floor(Math.random() * 100) + 1,
@@ -164,8 +172,11 @@ export class MetalsTradingBrain {
 
     // 6. Regime detection
     const regime = indicators
-      ? detectRegime(indicators, candles.map(c => c.close))
-      : 'RANGING' as MarketRegime;
+      ? detectRegime(
+          indicators,
+          candles.map((c) => c.close)
+        )
+      : ('RANGING' as MarketRegime);
     this.latestRegimes.set(metal, regime);
 
     // 7. Generate signals
@@ -177,11 +188,20 @@ export class MetalsTradingBrain {
     }
 
     if (flowMetrics) {
-      const flowSignal = generateFlowSignal(metal, flowMetrics, quote.mid, indicators?.atr14 ?? quote.mid * 0.01);
+      const flowSignal = generateFlowSignal(
+        metal,
+        flowMetrics,
+        quote.mid,
+        indicators?.atr14 ?? quote.mid * 0.01
+      );
       if (flowSignal) signals.push(flowSignal);
 
       const microSignal = generateMicrostructureSignal(
-        metal, flowMetrics, book.imbalance, quote.mid, indicators?.atr14 ?? quote.mid * 0.01,
+        metal,
+        flowMetrics,
+        book.imbalance,
+        quote.mid,
+        indicators?.atr14 ?? quote.mid * 0.01
       );
       if (microSignal) signals.push(microSignal);
     }
@@ -193,7 +213,14 @@ export class MetalsTradingBrain {
 
     // 8. Fuse signals into decision
     const riskMetrics = this.positions.computeRiskMetrics([]);
-    const decision = fuseSignals(metal, signals, regime, riskMetrics, quote.mid, this.config.signalWeights);
+    const decision = fuseSignals(
+      metal,
+      signals,
+      regime,
+      riskMetrics,
+      quote.mid,
+      this.config.signalWeights
+    );
     this.latestDecisions.set(metal, decision);
 
     // 9. Arbitrage scan
@@ -207,7 +234,7 @@ export class MetalsTradingBrain {
       flow: flowMetrics,
       book,
       arbitrage: arbOpps,
-      positions: this.positions.getAllPositions().filter(p => p.metal === metal),
+      positions: this.positions.getAllPositions().filter((p) => p.metal === metal),
       riskMetrics,
       circuitBreakers: this.circuitBreakers.getAll(),
       regime,
@@ -276,7 +303,10 @@ export class MetalsTradingBrain {
     for (const metal of this.config.activeMetal as Metal[]) {
       const candles: OHLCV[] = [];
       const basePrices: Record<Metal, number> = {
-        XAU: 2340.50, XAG: 29.85, XPT: 985.00, XPD: 1025.00,
+        XAU: 2340.5,
+        XAG: 29.85,
+        XPT: 985.0,
+        XPD: 1025.0,
       };
       let price = basePrices[metal];
 
@@ -349,23 +379,38 @@ export class MetalsTradingBrain {
     const asks = [];
     for (let i = 0; i < levels; i++) {
       const offset = quote.spread * (i + 1) * 0.5;
-      bids.push({ price: quote.bid - offset, quantity: Math.floor(Math.random() * 500) + 50, orderCount: Math.floor(Math.random() * 10) + 1 });
-      asks.push({ price: quote.ask + offset, quantity: Math.floor(Math.random() * 500) + 50, orderCount: Math.floor(Math.random() * 10) + 1 });
+      bids.push({
+        price: quote.bid - offset,
+        quantity: Math.floor(Math.random() * 500) + 50,
+        orderCount: Math.floor(Math.random() * 10) + 1,
+      });
+      asks.push({
+        price: quote.ask + offset,
+        quantity: Math.floor(Math.random() * 500) + 50,
+        orderCount: Math.floor(Math.random() * 10) + 1,
+      });
     }
     return analyzeOrderBook(bids, asks, metal, quote.venue);
   }
 
   private generateCommentary(
-    metal: Metal, quote: PriceQuote, regime: MarketRegime,
-    decision: FusedDecision, signals: TradingSignal[],
+    metal: Metal,
+    quote: PriceQuote,
+    regime: MarketRegime,
+    decision: FusedDecision,
+    signals: TradingSignal[]
   ): string {
     const parts: string[] = [];
     parts.push(`${metal} @ $${quote.mid.toFixed(2)} (${regime})`);
 
     if (decision.conviction > 0.6) {
-      parts.push(`Strong ${decision.direction} signal (${(decision.conviction * 100).toFixed(0)}% conviction)`);
+      parts.push(
+        `Strong ${decision.direction} signal (${(decision.conviction * 100).toFixed(0)}% conviction)`
+      );
     } else if (decision.conviction > 0.3) {
-      parts.push(`Moderate ${decision.direction} lean (${(decision.conviction * 100).toFixed(0)}% conviction)`);
+      parts.push(
+        `Moderate ${decision.direction} lean (${(decision.conviction * 100).toFixed(0)}% conviction)`
+      );
     } else {
       parts.push('No clear direction — stand aside');
     }

@@ -54,24 +54,24 @@ export interface GoldLot {
   lotId: string;
   weightTroyOz: number;
   miningType: keyof typeof GOLD_EMISSION_BENCHMARKS;
-  recycledFraction: number;           // 0–1; if >0, blends recycled EF
-  refiningEnergyKwh?: number;          // optional known refinery energy
+  recycledFraction: number; // 0–1; if >0, blends recycled EF
+  refiningEnergyKwh?: number; // optional known refinery energy
   supplyChainLegs?: SupplyChainLeg[];
 }
 
 export interface OperationalData {
-  facilityElectricityKwh: number;     // Scope 2 — purchased electricity
-  naturalGasM3?: number;               // Scope 1 — combustion
-  dieselLitres?: number;               // Scope 1 — combustion
-  lpgKg?: number;                      // Scope 1 — combustion
-  businessFlightKm?: number;           // Scope 3 — staff travel
-  wasteKg?: number;                    // Scope 3 — waste disposal
-  waterM3?: number;                    // Scope 3 — water usage
+  facilityElectricityKwh: number; // Scope 2 — purchased electricity
+  naturalGasM3?: number; // Scope 1 — combustion
+  dieselLitres?: number; // Scope 1 — combustion
+  lpgKg?: number; // Scope 1 — combustion
+  businessFlightKm?: number; // Scope 3 — staff travel
+  wasteKg?: number; // Scope 3 — waste disposal
+  waterM3?: number; // Scope 3 — water usage
 }
 
 export interface CarbonFootprintInput {
   entityId: string;
-  reportingPeriod: string;             // ISO 8601 period (e.g. "2025")
+  reportingPeriod: string; // ISO 8601 period (e.g. "2025")
   goldLots: GoldLot[];
   operational: OperationalData;
   /** Optional: country-specific grid EF override (kgCO2e/kWh) */
@@ -79,10 +79,10 @@ export interface CarbonFootprintInput {
 }
 
 export interface ScopeBreakdown {
-  scope1_tCO2e: number;               // Direct combustion
-  scope2_tCO2e: number;               // Purchased energy
-  scope3_upstream_tCO2e: number;      // Mining + transport + refining
-  scope3_downstream_tCO2e: number;    // Staff travel + waste + water
+  scope1_tCO2e: number; // Direct combustion
+  scope2_tCO2e: number; // Purchased energy
+  scope3_upstream_tCO2e: number; // Mining + transport + refining
+  scope3_downstream_tCO2e: number; // Staff travel + waste + water
   total_tCO2e: number;
 }
 
@@ -112,7 +112,7 @@ export interface CarbonFootprintReport {
   carbonRisk: CarbonRiskRating;
   tcfdAligned: boolean;
   ifrss2Compliant: boolean;
-  netZeroGap_tCO2e: number;           // emissions beyond UAE NZ2050 target
+  netZeroGap_tCO2e: number; // emissions beyond UAE NZ2050 target
   recommendedOffsets_tCO2e: number;
   narrativeSummary: string;
   flags: string[];
@@ -122,12 +122,12 @@ export interface CarbonFootprintReport {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** Combustion emission factors (kgCO2e per unit) */
-const EF_NATURAL_GAS_M3 = 2.04;     // IPCC AR6
-const EF_DIESEL_L = 2.68;            // IPCC AR6
-const EF_LPG_KG = 2.98;             // IPCC AR6
-const EF_AIR_TRAVEL_KM = 0.255;     // DEFRA 2023 (economy class per passenger-km)
-const EF_WASTE_KG = 0.467;          // DEFRA 2023 landfill EF
-const EF_WATER_M3 = 0.344;          // Water UK / lifecycle
+const EF_NATURAL_GAS_M3 = 2.04; // IPCC AR6
+const EF_DIESEL_L = 2.68; // IPCC AR6
+const EF_LPG_KG = 2.98; // IPCC AR6
+const EF_AIR_TRAVEL_KM = 0.255; // DEFRA 2023 (economy class per passenger-km)
+const EF_WASTE_KG = 0.467; // DEFRA 2023 landfill EF
+const EF_WATER_M3 = 0.344; // Water UK / lifecycle
 
 /** UAE Net Zero 2050 interim target: 70% reduction from 2019 baseline.
  *  Industry average DPMS carbon intensity: ~16 kgCO2e/oz.
@@ -140,7 +140,8 @@ const INDUSTRY_MEDIAN_KG_PER_OZ = 16.2;
 // ─── Core Estimation Logic ────────────────────────────────────────────────────
 
 function estimateLotFootprint(lot: GoldLot): GoldLotFootprint {
-  const pureEF = GOLD_EMISSION_BENCHMARKS[lot.miningType] ?? GOLD_EMISSION_BENCHMARKS.large_scale_open_pit;
+  const pureEF =
+    GOLD_EMISSION_BENCHMARKS[lot.miningType] ?? GOLD_EMISSION_BENCHMARKS.large_scale_open_pit;
   const recycledEF = GOLD_EMISSION_BENCHMARKS.recycled;
   const blendedEF = pureEF * (1 - lot.recycledFraction) + recycledEF * lot.recycledFraction;
 
@@ -157,13 +158,15 @@ function estimateLotFootprint(lot: GoldLot): GoldLotFootprint {
     transportEmissions_kgCO2e += ef * leg.weightKg * (leg.distanceKm / 1000);
   }
 
-  const total_kgCO2e = miningEmissions_kgCO2e + refiningEmissions_kgCO2e + transportEmissions_kgCO2e;
+  const total_kgCO2e =
+    miningEmissions_kgCO2e + refiningEmissions_kgCO2e + transportEmissions_kgCO2e;
   const total_tCO2e = total_kgCO2e / 1000;
   const intensityKgPerOz = lot.weightTroyOz > 0 ? total_kgCO2e / lot.weightTroyOz : 0;
   const benchmarkIntensityKgPerOz = blendedEF;
-  const pctAboveBenchmark = benchmarkIntensityKgPerOz > 0
-    ? ((intensityKgPerOz - benchmarkIntensityKgPerOz) / benchmarkIntensityKgPerOz) * 100
-    : 0;
+  const pctAboveBenchmark =
+    benchmarkIntensityKgPerOz > 0
+      ? ((intensityKgPerOz - benchmarkIntensityKgPerOz) / benchmarkIntensityKgPerOz) * 100
+      : 0;
 
   return {
     lotId: lot.lotId,
@@ -230,24 +233,33 @@ export function estimateCarbonFootprint(input: CarbonFootprintInput): CarbonFoot
     total_tCO2e,
   };
 
-  const portfolioIntensityKgPerOz = totalGoldTroyOz > 0
-    ? (scope3Upstream_tCO2e * 1000) / totalGoldTroyOz
-    : 0;
+  const portfolioIntensityKgPerOz =
+    totalGoldTroyOz > 0 ? (scope3Upstream_tCO2e * 1000) / totalGoldTroyOz : 0;
 
-  const deviationFromMedianPct = ((portfolioIntensityKgPerOz - INDUSTRY_MEDIAN_KG_PER_OZ) / INDUSTRY_MEDIAN_KG_PER_OZ) * 100;
+  const deviationFromMedianPct =
+    ((portfolioIntensityKgPerOz - INDUSTRY_MEDIAN_KG_PER_OZ) / INDUSTRY_MEDIAN_KG_PER_OZ) * 100;
 
   const carbonRisk = deriveCarbonRisk(portfolioIntensityKgPerOz);
 
   // Net Zero gap
-  const targetTotal_tCO2e = totalGoldTroyOz * NZ2050_TARGET_KG_PER_OZ / 1000;
+  const targetTotal_tCO2e = (totalGoldTroyOz * NZ2050_TARGET_KG_PER_OZ) / 1000;
   const netZeroGap_tCO2e = Math.max(0, total_tCO2e - targetTotal_tCO2e);
 
   // Compliance flags
-  if (carbonRisk === 'critical') flags.push('CRITICAL: Emissions >30% above industry median — LBMA RGG v9 §6.2 requires improvement plan');
-  if (portfolioIntensityKgPerOz > NZ2050_TARGET_KG_PER_OZ * 3) flags.push('WARNING: More than 3× UAE NZ2050 interim target — disclose under IFRS S2');
-  if (input.goldLots.some(l => l.miningType === 'asm_open_pit')) flags.push('INFO: ASM open-pit lots — EDD required per OECD DDG 2016 Annex II');
-  if (deviationFromMedianPct > 50) flags.push('HIGH: Portfolio intensity 50% above industry median — escalate to sustainability committee');
-  if (input.goldLots.some(l => l.recycledFraction < 0.1)) flags.push('INFO: <10% recycled gold — consider secondary sourcing to reduce Scope 3');
+  if (carbonRisk === 'critical')
+    flags.push(
+      'CRITICAL: Emissions >30% above industry median — LBMA RGG v9 §6.2 requires improvement plan'
+    );
+  if (portfolioIntensityKgPerOz > NZ2050_TARGET_KG_PER_OZ * 3)
+    flags.push('WARNING: More than 3× UAE NZ2050 interim target — disclose under IFRS S2');
+  if (input.goldLots.some((l) => l.miningType === 'asm_open_pit'))
+    flags.push('INFO: ASM open-pit lots — EDD required per OECD DDG 2016 Annex II');
+  if (deviationFromMedianPct > 50)
+    flags.push(
+      'HIGH: Portfolio intensity 50% above industry median — escalate to sustainability committee'
+    );
+  if (input.goldLots.some((l) => l.recycledFraction < 0.1))
+    flags.push('INFO: <10% recycled gold — consider secondary sourcing to reduce Scope 3');
 
   const tcfdAligned = input.operational.facilityElectricityKwh > 0;
   const ifrss2Compliant = total_tCO2e > 0 && totalGoldTroyOz > 0;

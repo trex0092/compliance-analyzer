@@ -17,11 +17,7 @@
  */
 
 import type { WeaponizedBrainResponse } from './weaponizedBrain';
-import {
-  createAsanaTask,
-  isAsanaConfigured,
-  type AsanaTaskPayload,
-} from './asanaClient';
+import { createAsanaTask, isAsanaConfigured, type AsanaTaskPayload } from './asanaClient';
 import { enqueueRetry } from './asanaQueue';
 import { buildComplianceCustomFields } from './asanaCustomFields';
 import { buildHawkeyeAsanaTask } from './hawkeyeReportGenerator';
@@ -61,7 +57,7 @@ const PRIORITY_EMOJI: Record<string, string> = {
 };
 
 const URGENCY_DAYS: Record<string, number> = {
-  freeze: 0,    // due today
+  freeze: 0, // due today
   escalate: 1,
   flag: 3,
   pass: 7,
@@ -75,7 +71,7 @@ function dueDateFromVerdict(verdict: string): string {
 
 function buildParentTask(
   brain: WeaponizedBrainResponse,
-  cfg: AsanaOrchestratorConfig,
+  cfg: AsanaOrchestratorConfig
 ): AsanaTaskPayload {
   const v = brain.finalVerdict;
   const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
@@ -94,23 +90,30 @@ function buildParentTask(
   // Use Hawkeye Sterling V2 report as the task notes when available —
   // far more comprehensive than a plain-text summary.
   const hawkeyeTask = brain.extensions.hawkeyeReport
-    ? buildHawkeyeAsanaTask(brain.extensions.hawkeyeReport, cfg.projectGid, v === 'freeze' || v === 'escalate' ? cfg.mlroGid : cfg.coGid)
+    ? buildHawkeyeAsanaTask(
+        brain.extensions.hawkeyeReport,
+        cfg.projectGid,
+        v === 'freeze' || v === 'escalate' ? cfg.mlroGid : cfg.coGid
+      )
     : null;
 
-  const taskName = hawkeyeTask?.name ??
+  const taskName =
+    hawkeyeTask?.name ??
     `${emoji} [${v.toUpperCase()}] Compliance Screening — ${entityName} — ${new Date().toISOString().split('T')[0]}`;
 
-  const taskNotes = hawkeyeTask?.notes ?? [
-    `**Entity:** ${entityName} (${entityId})`,
-    `**Verdict:** ${v.toUpperCase()}`,
-    `**Confidence:** ${(brain.confidence * 100).toFixed(1)}%`,
-    `**Clamp Reasons:** ${brain.clampReasons.length > 0 ? brain.clampReasons.join(' | ') : 'none'}`,
-    `**Subsystem Failures:** ${brain.subsystemFailures.length > 0 ? brain.subsystemFailures.join(', ') : 'none'}`,
-    `**Requires Human Review:** ${brain.requiresHumanReview}`,
-    '',
-    '**Audit Narrative:**',
-    brain.auditNarrative,
-  ].join('\n');
+  const taskNotes =
+    hawkeyeTask?.notes ??
+    [
+      `**Entity:** ${entityName} (${entityId})`,
+      `**Verdict:** ${v.toUpperCase()}`,
+      `**Confidence:** ${(brain.confidence * 100).toFixed(1)}%`,
+      `**Clamp Reasons:** ${brain.clampReasons.length > 0 ? brain.clampReasons.join(' | ') : 'none'}`,
+      `**Subsystem Failures:** ${brain.subsystemFailures.length > 0 ? brain.subsystemFailures.join(', ') : 'none'}`,
+      `**Requires Human Review:** ${brain.requiresHumanReview}`,
+      '',
+      '**Audit Narrative:**',
+      brain.auditNarrative,
+    ].join('\n');
 
   return {
     name: taskName,
@@ -125,7 +128,7 @@ function buildParentTask(
 
 function buildManagedAgentsSubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   if (!brain.managedAgentPlan || brain.managedAgentPlan.length === 0) return null;
   const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
@@ -137,8 +140,9 @@ function buildManagedAgentsSubtask(
     '',
     `| # | Agent Type | Priority | Deadline | Sandbox | Guardrails |`,
     `|---|-----------|----------|----------|---------|-----------|`,
-    ...brain.managedAgentPlan.map((a, i) =>
-      `| ${i + 1} | ${a.agentType} | ${a.priority.toUpperCase()} | ${a.deadline?.split('T')[0] ?? 'N/A'} | ${a.sandboxIsolated ? '🔒 YES' : 'No'} | ${a.guardrails.length} active |`
+    ...brain.managedAgentPlan.map(
+      (a, i) =>
+        `| ${i + 1} | ${a.agentType} | ${a.priority.toUpperCase()} | ${a.deadline?.split('T')[0] ?? 'N/A'} | ${a.sandboxIsolated ? '🔒 YES' : 'No'} | ${a.guardrails.length} active |`
     ),
     '',
     '*NIST AI RMF GV-1.6 | FDL No.10/2025 Art.20-21 | Cabinet Res 74/2020 Art.4*',
@@ -154,7 +158,7 @@ function buildManagedAgentsSubtask(
 
 function buildPenaltyVarSubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   const pv = brain.extensions.penaltyVar;
   if (!pv) return null;
@@ -181,7 +185,7 @@ function buildPenaltyVarSubtask(
 
 function buildStrNarrativeSubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   const sn = brain.extensions.strNarrative;
   const sg = brain.extensions.strNarrativeGrade;
@@ -202,7 +206,9 @@ function buildStrNarrativeSubtask(
       sn.narrative.length > 3000 ? '\n*[Truncated — see full report]*' : '',
       '',
       '*FDL No.10/2025 Art.26-27 | EOCN goAML STR Guidelines v3 | FATF Rec 20*',
-    ].filter(Boolean).join('\n'),
+    ]
+      .filter(Boolean)
+      .join('\n'),
     due_on: dueDateFromVerdict('escalate'),
     assignee: mlroGid,
     tags: ['str-narrative', sn.filingType.toLowerCase(), entityId],
@@ -215,7 +221,7 @@ function buildStrNarrativeSubtask(
 
 function buildQuantumSealSubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   const qs = brain.extensions.quantumSeal;
   if (!qs) return null;
@@ -247,7 +253,7 @@ function buildQuantumSealSubtask(
 
 function buildGoAMLXmlSubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   const xml = brain.extensions.goamlXml;
   if (!xml) return null;
@@ -277,7 +283,10 @@ function buildGoAMLXmlSubtask(
       '```',
       '',
       '*UAE FIU goAML Schema v3 | MoE Circular 08/AML/2021 | FDL No.10/2025 Art.26-27*',
-    ].filter(Boolean).join('\n').slice(0, 8000),
+    ]
+      .filter(Boolean)
+      .join('\n')
+      .slice(0, 8000),
     due_on: dueDateFromVerdict('escalate'),
     assignee: mlroGid,
     tags: ['goaml-xml', 'str-filing', 'fiu-submission', entityId],
@@ -286,7 +295,7 @@ function buildGoAMLXmlSubtask(
 
 function buildBayesianVerdictSubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   const bb = brain.extensions.bayesianBelief;
   if (!bb) return null;
@@ -322,7 +331,7 @@ function buildBayesianVerdictSubtask(
 
 function buildCorporateGraphSubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   const cg = brain.extensions.corporateGraph;
   if (!cg) return null;
@@ -357,7 +366,9 @@ function buildCorporateGraphSubtask(
       '- Apply EDD to entity if any affiliate is confirmed sanctioned',
       '',
       '*FATF Rec 10 — CDD on beneficial ownership | Cabinet Decision 109/2023 UBO Register*',
-    ].filter(Boolean).join('\n'),
+    ]
+      .filter(Boolean)
+      .join('\n'),
     due_on: dueDateFromVerdict('escalate'),
     assignee: mlroGid,
     tags: ['corporate-graph', 'ubo', 'affiliate-risk', entityId],
@@ -366,7 +377,7 @@ function buildCorporateGraphSubtask(
 
 function buildGameTheorySubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   const ge = brain.extensions.gameEquilibrium;
   if (!ge || ge.expectedPayoff >= 0) return null;
@@ -413,14 +424,17 @@ function buildGameTheorySubtask(
 
 function buildInducedRulesSubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   const rules = brain.extensions.inducedRules;
   if (!rules || rules.length === 0) return null;
   const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
   const ruleText = rules
     .slice(0, 15)
-    .map((r, i) => `${i + 1}. **IF** ${r.conditions.map((c) => `${c.feature}=${c.value}`).join(' AND ')} **THEN** ${r.label} (support=${r.support}, purity=${(r.purity * 100).toFixed(0)}%)`)
+    .map(
+      (r, i) =>
+        `${i + 1}. **IF** ${r.conditions.map((c) => `${c.feature}=${c.value}`).join(' AND ')} **THEN** ${r.label} (support=${r.support}, purity=${(r.purity * 100).toFixed(0)}%)`
+    )
     .join('\n');
   return {
     name: `📐 Induced Decision Rules — ${entityId} — ${rules.length} rule(s)`,
@@ -446,7 +460,7 @@ function buildInducedRulesSubtask(
 
 function buildFreeZoneSubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   const fz = brain.extensions.freeZoneCompliance;
   if (!fz || fz.mandatoryFailures.length === 0) return null;
@@ -486,7 +500,7 @@ function buildFreeZoneSubtask(
 
 function buildLbmaFixSubtask(
   brain: WeaponizedBrainResponse,
-  mlroGid?: string,
+  mlroGid?: string
 ): AsanaTaskPayload | null {
   const lf = brain.extensions.lbmaFixCheck;
   if (!lf || (lf.flagged === 0 && lf.frozen === 0)) return null;
@@ -495,7 +509,10 @@ function buildLbmaFixSubtask(
   const tradeTable = lf.results
     .filter((r) => r.severity !== 'ok')
     .slice(0, 10)
-    .map((r) => `| ${r.tradeId} | ${r.metalCode} | ${r.tradePriceUsd.toLocaleString()} | ${r.fixPriceUsd.toLocaleString()} | ${r.deviationPct.toFixed(2)}% | ${r.severity} |`)
+    .map(
+      (r) =>
+        `| ${r.tradeId} | ${r.metalCode} | ${r.tradePriceUsd.toLocaleString()} | ${r.fixPriceUsd.toLocaleString()} | ${r.deviationPct.toFixed(2)}% | ${r.severity} |`
+    )
     .join('\n');
   return {
     name: `⚖️ LBMA Fix Deviation [${severity}] — ${entityId} — ${lf.flagged} flagged, ${lf.frozen} frozen`,
@@ -570,7 +587,12 @@ function buildEddSubtask(entityId: string, cddLevel: string, coGid?: string): As
   };
 }
 
-function buildStrSubtask(entityId: string, classification: string, dueDate: string | null, mlroGid?: string): AsanaTaskPayload {
+function buildStrSubtask(
+  entityId: string,
+  classification: string,
+  dueDate: string | null,
+  mlroGid?: string
+): AsanaTaskPayload {
   return {
     name: `📤 ${classification} Filing Required — ${entityId}`,
     notes: [
@@ -592,7 +614,12 @@ function buildStrSubtask(entityId: string, classification: string, dueDate: stri
   };
 }
 
-function buildEsgSubtask(entityId: string, grade: string, riskLevel: string, coGid?: string): AsanaTaskPayload {
+function buildEsgSubtask(
+  entityId: string,
+  grade: string,
+  riskLevel: string,
+  coGid?: string
+): AsanaTaskPayload {
   return {
     name: `🌱 ESG Risk — ${entityId} — Grade ${grade} (${riskLevel.toUpperCase()})`,
     notes: [
@@ -612,7 +639,11 @@ function buildEsgSubtask(entityId: string, grade: string, riskLevel: string, coG
   };
 }
 
-function buildClampSubtask(clampReason: string, entityId: string, mlroGid?: string): AsanaTaskPayload {
+function buildClampSubtask(
+  clampReason: string,
+  entityId: string,
+  mlroGid?: string
+): AsanaTaskPayload {
   const isFreeze = clampReason.includes('freeze') || clampReason.includes('FREEZE');
   return {
     name: `⚠ Safety Clamp Fired — ${entityId} — ${clampReason.slice(7, 70)}...`,
@@ -633,7 +664,7 @@ function buildClampSubtask(clampReason: string, entityId: string, mlroGid?: stri
 
 export async function orchestrateBrainToAsana(
   brain: WeaponizedBrainResponse,
-  cfg: AsanaOrchestratorConfig,
+  cfg: AsanaOrchestratorConfig
 ): Promise<OrchestratorResult> {
   const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
   const v = brain.finalVerdict;
@@ -666,25 +697,26 @@ export async function orchestrateBrainToAsana(
   }
 
   // STR/SAR/CTR classification subtask
-  if (brain.extensions.filingClassification &&
-      brain.extensions.filingClassification.primaryCategory !== 'NONE') {
+  if (
+    brain.extensions.filingClassification &&
+    brain.extensions.filingClassification.primaryCategory !== 'NONE'
+  ) {
     const fc = brain.extensions.filingClassification;
-    subtaskPayloads.push(buildStrSubtask(
-      entityId,
-      fc.primaryCategory,
-      fc.deadlineDueDate,
-      cfg.mlroGid,
-    ));
+    subtaskPayloads.push(
+      buildStrSubtask(entityId, fc.primaryCategory, fc.deadlineDueDate, cfg.mlroGid)
+    );
   }
 
   // ESG risk subtask
   if (brain.extensions.esgScore && brain.extensions.esgScore.riskLevel !== 'low') {
-    subtaskPayloads.push(buildEsgSubtask(
-      entityId,
-      brain.extensions.esgScore.grade,
-      brain.extensions.esgScore.riskLevel,
-      cfg.coGid,
-    ));
+    subtaskPayloads.push(
+      buildEsgSubtask(
+        entityId,
+        brain.extensions.esgScore.grade,
+        brain.extensions.esgScore.riskLevel,
+        cfg.coGid
+      )
+    );
   }
 
   // Clamp reason subtasks (max 5 most critical)

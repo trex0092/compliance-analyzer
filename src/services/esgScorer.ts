@@ -106,8 +106,8 @@ export interface EsgInput {
 
 export interface EsgPillarScore {
   pillar: 'E' | 'S' | 'G';
-  score: number;       // 0-33.3
-  maxScore: number;    // 33.3
+  score: number; // 0-33.3
+  maxScore: number; // 33.3
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
   gaps: string[];
   strengths: string[];
@@ -118,7 +118,7 @@ export type EsgRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export interface EsgScore {
   entityId: string;
-  totalScore: number;      // 0-100
+  totalScore: number; // 0-100
   grade: EsgGrade;
   riskLevel: EsgRiskLevel;
   pillars: { E: EsgPillarScore; S: EsgPillarScore; G: EsgPillarScore };
@@ -164,25 +164,43 @@ function scoreEnvironmental(e: EnvironmentalInput): EsgPillarScore {
   const benchmark = e.carbonBenchmark ?? 20;
   if (e.carbonIntensity !== undefined) {
     const ratio = e.carbonIntensity / benchmark;
-    if (ratio <= 0.5) { score += pts; strengths.push('Carbon intensity ≤50% of sector benchmark'); }
-    else if (ratio <= 1.0) { score += pts * 0.6; }
-    else if (ratio <= 2.0) { score += pts * 0.2; gaps.push(`Carbon intensity ${e.carbonIntensity.toFixed(1)} = ${(ratio * 100).toFixed(0)}% of benchmark (ISSB S2)`); }
-    else { gaps.push(`Carbon intensity ${e.carbonIntensity.toFixed(1)} = ${(ratio * 100).toFixed(0)}% of benchmark — critical (ISSB S2)`); }
+    if (ratio <= 0.5) {
+      score += pts;
+      strengths.push('Carbon intensity ≤50% of sector benchmark');
+    } else if (ratio <= 1.0) {
+      score += pts * 0.6;
+    } else if (ratio <= 2.0) {
+      score += pts * 0.2;
+      gaps.push(
+        `Carbon intensity ${e.carbonIntensity.toFixed(1)} = ${(ratio * 100).toFixed(0)}% of benchmark (ISSB S2)`
+      );
+    } else {
+      gaps.push(
+        `Carbon intensity ${e.carbonIntensity.toFixed(1)} = ${(ratio * 100).toFixed(0)}% of benchmark — critical (ISSB S2)`
+      );
+    }
   } else {
     gaps.push('Carbon intensity not disclosed (ISSB IFRS S2 mandatory)');
   }
 
   // Environmental incidents
   const incidents = e.environmentalIncidents ?? 0;
-  if (incidents === 0) { score += pts; strengths.push('Zero material environmental incidents'); }
-  else if (incidents <= 2) { score += pts * 0.4; gaps.push(`${incidents} environmental incident(s) — review root cause`); }
-  else { gaps.push(`${incidents} environmental incidents — material (GRI 302)`); }
+  if (incidents === 0) {
+    score += pts;
+    strengths.push('Zero material environmental incidents');
+  } else if (incidents <= 2) {
+    score += pts * 0.4;
+    gaps.push(`${incidents} environmental incident(s) — review root cause`);
+  } else {
+    gaps.push(`${incidents} environmental incidents — material (GRI 302)`);
+  }
 
   // Renewable energy
   if (e.renewableEnergyPct !== undefined) {
     score += pts * Math.min(e.renewableEnergyPct / 100, 1);
     if (e.renewableEnergyPct >= 50) strengths.push(`${e.renewableEnergyPct}% renewable energy`);
-    else if (e.renewableEnergyPct < 20) gaps.push(`Only ${e.renewableEnergyPct}% renewable energy (UAE Net Zero 2050)`);
+    else if (e.renewableEnergyPct < 20)
+      gaps.push(`Only ${e.renewableEnergyPct}% renewable energy (UAE Net Zero 2050)`);
   } else {
     gaps.push('Renewable energy share not disclosed (UAE Net Zero 2050)');
   }
@@ -196,14 +214,29 @@ function scoreEnvironmental(e: EnvironmentalInput): EsgPillarScore {
   }
 
   // Environmental certification
-  if (e.hasEnvironmentalCertification) { score += pts; strengths.push('ISO 14001 or equivalent certification'); }
-  else { gaps.push('No third-party environmental certification (ISO 14001 recommended)'); }
+  if (e.hasEnvironmentalCertification) {
+    score += pts;
+    strengths.push('ISO 14001 or equivalent certification');
+  } else {
+    gaps.push('No third-party environmental certification (ISO 14001 recommended)');
+  }
 
   // Scope 3 disclosure
-  if (e.scope3Disclosed) { score += pts; strengths.push('Scope 3 emissions disclosed'); }
-  else { gaps.push('Scope 3 emissions not disclosed (ISSB IFRS S2 / GHG Protocol)'); }
+  if (e.scope3Disclosed) {
+    score += pts;
+    strengths.push('Scope 3 emissions disclosed');
+  } else {
+    gaps.push('Scope 3 emissions not disclosed (ISSB IFRS S2 / GHG Protocol)');
+  }
 
-  return { pillar: 'E', score, maxScore: MAX_PILLAR, grade: grade(score, MAX_PILLAR), gaps, strengths };
+  return {
+    pillar: 'E',
+    score,
+    maxScore: MAX_PILLAR,
+    grade: grade(score, MAX_PILLAR),
+    gaps,
+    strengths,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -220,7 +253,10 @@ function scoreSocial(s: SocialInput): EsgPillarScore {
   if (s.labourRightsScore !== undefined) {
     score += pts * (s.labourRightsScore / 100);
     if (s.labourRightsScore >= 80) strengths.push(`Labour rights score ${s.labourRightsScore}/100`);
-    else if (s.labourRightsScore < 50) gaps.push(`Labour rights score ${s.labourRightsScore}/100 — below threshold (ILO C29, C87, C98)`);
+    else if (s.labourRightsScore < 50)
+      gaps.push(
+        `Labour rights score ${s.labourRightsScore}/100 — below threshold (ILO C29, C87, C98)`
+      );
   } else {
     gaps.push('Labour rights audit score not available (ILO core conventions)');
   }
@@ -229,18 +265,31 @@ function scoreSocial(s: SocialInput): EsgPillarScore {
   const ltifrBench = s.ltifrBenchmark ?? 2.5;
   if (s.ltifr !== undefined) {
     const ratio = s.ltifr / ltifrBench;
-    if (ratio <= 0.5) { score += pts; strengths.push(`LTIFR ${s.ltifr} (≤50% of benchmark)`); }
-    else if (ratio <= 1.0) { score += pts * 0.6; }
-    else { gaps.push(`LTIFR ${s.ltifr} exceeds benchmark ${ltifrBench} (GRI 403)`); }
+    if (ratio <= 0.5) {
+      score += pts;
+      strengths.push(`LTIFR ${s.ltifr} (≤50% of benchmark)`);
+    } else if (ratio <= 1.0) {
+      score += pts * 0.6;
+    } else {
+      gaps.push(`LTIFR ${s.ltifr} exceeds benchmark ${ltifrBench} (GRI 403)`);
+    }
   } else {
     gaps.push('Safety LTIFR not disclosed (GRI 403)');
   }
 
   // Gender pay gap
   if (s.genderPayGapPct !== undefined) {
-    if (s.genderPayGapPct <= 5) { score += pts; strengths.push(`Gender pay gap ${s.genderPayGapPct}% (near parity)`); }
-    else if (s.genderPayGapPct <= 15) { score += pts * 0.5; gaps.push(`Gender pay gap ${s.genderPayGapPct}% (target <5%, GRI 405)`); }
-    else { gaps.push(`Gender pay gap ${s.genderPayGapPct}% — material (GRI 405 / UAE Gender Balance Council)`); }
+    if (s.genderPayGapPct <= 5) {
+      score += pts;
+      strengths.push(`Gender pay gap ${s.genderPayGapPct}% (near parity)`);
+    } else if (s.genderPayGapPct <= 15) {
+      score += pts * 0.5;
+      gaps.push(`Gender pay gap ${s.genderPayGapPct}% (target <5%, GRI 405)`);
+    } else {
+      gaps.push(
+        `Gender pay gap ${s.genderPayGapPct}% — material (GRI 405 / UAE Gender Balance Council)`
+      );
+    }
   } else {
     gaps.push('Gender pay gap not disclosed (GRI 405)');
   }
@@ -248,19 +297,33 @@ function scoreSocial(s: SocialInput): EsgPillarScore {
   // Supplier code-of-conduct coverage
   if (s.supplierCocCoveragePct !== undefined) {
     score += pts * Math.min(s.supplierCocCoveragePct / 100, 1);
-    if (s.supplierCocCoveragePct >= 80) strengths.push(`${s.supplierCocCoveragePct}% supplier CoC coverage`);
-    else if (s.supplierCocCoveragePct < 50) gaps.push(`Only ${s.supplierCocCoveragePct}% of suppliers covered by Code of Conduct (OECD DDG 2016)`);
+    if (s.supplierCocCoveragePct >= 80)
+      strengths.push(`${s.supplierCocCoveragePct}% supplier CoC coverage`);
+    else if (s.supplierCocCoveragePct < 50)
+      gaps.push(
+        `Only ${s.supplierCocCoveragePct}% of suppliers covered by Code of Conduct (OECD DDG 2016)`
+      );
   } else {
     gaps.push('Supplier CoC coverage not disclosed (OECD DDG 2016)');
   }
 
   // Community grievance mechanism
-  if (s.hasCommunityGrievanceMechanism) { score += pts; strengths.push('Formal community grievance mechanism in place'); }
-  else { gaps.push('No community grievance mechanism (GRI 413 / UN Guiding Principles)'); }
+  if (s.hasCommunityGrievanceMechanism) {
+    score += pts;
+    strengths.push('Formal community grievance mechanism in place');
+  } else {
+    gaps.push('No community grievance mechanism (GRI 413 / UN Guiding Principles)');
+  }
 
   // Modern slavery statement
-  if (s.modernSlaveryStatementCompliant) { score += pts; strengths.push('Modern slavery statement compliant'); }
-  else { gaps.push('Modern slavery statement absent or non-compliant (UAE Fed Law 51/2006 / UK MSA 2015)'); }
+  if (s.modernSlaveryStatementCompliant) {
+    score += pts;
+    strengths.push('Modern slavery statement compliant');
+  } else {
+    gaps.push(
+      'Modern slavery statement absent or non-compliant (UAE Fed Law 51/2006 / UK MSA 2015)'
+    );
+  }
 
   // Local employment
   if (s.localEmploymentPct !== undefined) {
@@ -270,7 +333,14 @@ function scoreSocial(s: SocialInput): EsgPillarScore {
     gaps.push('Local employment ratio not disclosed (GRI 202)');
   }
 
-  return { pillar: 'S', score, maxScore: MAX_PILLAR, grade: grade(score, MAX_PILLAR), gaps, strengths };
+  return {
+    pillar: 'S',
+    score,
+    maxScore: MAX_PILLAR,
+    grade: grade(score, MAX_PILLAR),
+    gaps,
+    strengths,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -286,23 +356,38 @@ function scoreGovernance(g: GovernanceInput): EsgPillarScore {
   // Board independence
   if (g.boardIndependencePct !== undefined) {
     score += pts * Math.min(g.boardIndependencePct / 50, 1); // full credit at 50%+
-    if (g.boardIndependencePct >= 50) strengths.push(`${g.boardIndependencePct}% board independence`);
-    else if (g.boardIndependencePct < 30) gaps.push(`Only ${g.boardIndependencePct}% board independent (target ≥50%, GRI 2-9)`);
+    if (g.boardIndependencePct >= 50)
+      strengths.push(`${g.boardIndependencePct}% board independence`);
+    else if (g.boardIndependencePct < 30)
+      gaps.push(`Only ${g.boardIndependencePct}% board independent (target ≥50%, GRI 2-9)`);
   } else {
     gaps.push('Board composition not disclosed (GRI 2-9)');
   }
 
   // Anti-corruption
-  if (g.hasAntiCorruptionProgramme) { score += pts; strengths.push('Formal anti-corruption programme (ISO 37001 / FCPA)'); }
-  else { gaps.push('No anti-corruption programme (ISO 37001 / UAE Federal Law 4/2012 / FCPA)'); }
+  if (g.hasAntiCorruptionProgramme) {
+    score += pts;
+    strengths.push('Formal anti-corruption programme (ISO 37001 / FCPA)');
+  } else {
+    gaps.push('No anti-corruption programme (ISO 37001 / UAE Federal Law 4/2012 / FCPA)');
+  }
 
   // Whistleblower
-  if (g.hasWhistleblowerChannel) { score += pts; strengths.push('Whistleblower channel operational'); }
-  else { gaps.push('No whistleblower channel (GRI 2-26 / UAE Labour Law)'); }
+  if (g.hasWhistleblowerChannel) {
+    score += pts;
+    strengths.push('Whistleblower channel operational');
+  } else {
+    gaps.push('No whistleblower channel (GRI 2-26 / UAE Labour Law)');
+  }
 
   // Disclosure standard
   const disclosureScores: Record<string, number> = {
-    integrated: 1.0, ISSB: 1.0, GRI: 0.85, SASB: 0.80, TCFD: 0.75, none: 0,
+    integrated: 1.0,
+    ISSB: 1.0,
+    GRI: 0.85,
+    SASB: 0.8,
+    TCFD: 0.75,
+    none: 0,
   };
   const discStd = g.disclosureStandard ?? 'none';
   score += pts * (disclosureScores[discStd] ?? 0);
@@ -311,22 +396,43 @@ function scoreGovernance(g: GovernanceInput): EsgPillarScore {
 
   // CEO pay ratio
   if (g.ceToMedianPayRatio !== undefined) {
-    if (g.ceToMedianPayRatio <= 20) { score += pts; strengths.push(`CEO/median pay ratio ${g.ceToMedianPayRatio}× (within range)`); }
-    else if (g.ceToMedianPayRatio <= 50) { score += pts * 0.5; gaps.push(`CEO/median pay ratio ${g.ceToMedianPayRatio}× — elevated (GRI 2-21)`); }
-    else { gaps.push(`CEO/median pay ratio ${g.ceToMedianPayRatio}× — excessive (GRI 2-21)`); }
+    if (g.ceToMedianPayRatio <= 20) {
+      score += pts;
+      strengths.push(`CEO/median pay ratio ${g.ceToMedianPayRatio}× (within range)`);
+    } else if (g.ceToMedianPayRatio <= 50) {
+      score += pts * 0.5;
+      gaps.push(`CEO/median pay ratio ${g.ceToMedianPayRatio}× — elevated (GRI 2-21)`);
+    } else {
+      gaps.push(`CEO/median pay ratio ${g.ceToMedianPayRatio}× — excessive (GRI 2-21)`);
+    }
   } else {
     gaps.push('CEO-to-median pay ratio not disclosed (GRI 2-21)');
   }
 
   // Tax transparency
-  if (g.taxTransparencyReport) { score += pts; strengths.push('Country-by-country tax transparency published'); }
-  else { gaps.push('No country-by-country tax report (GRI 207 / GloBE Pillar 2)'); }
+  if (g.taxTransparencyReport) {
+    score += pts;
+    strengths.push('Country-by-country tax transparency published');
+  } else {
+    gaps.push('No country-by-country tax report (GRI 207 / GloBE Pillar 2)');
+  }
 
   // UBO register
-  if (g.uboRegisterCurrent) { score += pts; strengths.push('UBO register current (Cabinet Decision 109/2023)'); }
-  else { gaps.push('UBO register not current (Cabinet Decision 109/2023 — 15-day re-verification)'); }
+  if (g.uboRegisterCurrent) {
+    score += pts;
+    strengths.push('UBO register current (Cabinet Decision 109/2023)');
+  } else {
+    gaps.push('UBO register not current (Cabinet Decision 109/2023 — 15-day re-verification)');
+  }
 
-  return { pillar: 'G', score, maxScore: MAX_PILLAR, grade: grade(score, MAX_PILLAR), gaps, strengths };
+  return {
+    pillar: 'G',
+    score,
+    maxScore: MAX_PILLAR,
+    grade: grade(score, MAX_PILLAR),
+    gaps,
+    strengths,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -336,18 +442,36 @@ function scoreGovernance(g: GovernanceInput): EsgPillarScore {
 export function calculateEsgScore(input: EsgInput): EsgScore {
   const eScore = input.environmental
     ? scoreEnvironmental(input.environmental)
-    : { pillar: 'E' as const, score: 0, maxScore: MAX_PILLAR, grade: 'F' as EsgGrade,
-        gaps: ['No Environmental data provided'], strengths: [] };
+    : {
+        pillar: 'E' as const,
+        score: 0,
+        maxScore: MAX_PILLAR,
+        grade: 'F' as EsgGrade,
+        gaps: ['No Environmental data provided'],
+        strengths: [],
+      };
 
   const sScore = input.social
     ? scoreSocial(input.social)
-    : { pillar: 'S' as const, score: 0, maxScore: MAX_PILLAR, grade: 'F' as EsgGrade,
-        gaps: ['No Social data provided'], strengths: [] };
+    : {
+        pillar: 'S' as const,
+        score: 0,
+        maxScore: MAX_PILLAR,
+        grade: 'F' as EsgGrade,
+        gaps: ['No Social data provided'],
+        strengths: [],
+      };
 
   const gScore = input.governance
     ? scoreGovernance(input.governance)
-    : { pillar: 'G' as const, score: 0, maxScore: MAX_PILLAR, grade: 'F' as EsgGrade,
-        gaps: ['No Governance data provided'], strengths: [] };
+    : {
+        pillar: 'G' as const,
+        score: 0,
+        maxScore: MAX_PILLAR,
+        grade: 'F' as EsgGrade,
+        gaps: ['No Governance data provided'],
+        strengths: [],
+      };
 
   const totalScore = Math.round((eScore.score + sScore.score + gScore.score) * 10) / 10;
   const totalGrade = grade(totalScore, 100);

@@ -3,31 +3,29 @@
 // the signal fusion + execution engine and measures performance.
 // Supports: walk-forward analysis, Monte Carlo, parameter optimization.
 
-import type {
-  Metal, TradeSide, OHLCV, TradeRecord, PerformanceStats,
-} from './types';
+import type { Metal, TradeSide, OHLCV, TradeRecord } from './types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface BacktestConfig {
   name: string;
   metal: Metal;
-  startDate: number;        // timestamp
+  startDate: number; // timestamp
   endDate: number;
   initialCapital: number;
   strategy: StrategyDef;
-  commissionBps: number;    // round-trip cost in bps
+  commissionBps: number; // round-trip cost in bps
   slippageBps: number;
-  maxPositionSize: number;  // troy oz
-  riskPerTradePct: number;  // % of capital risked
+  maxPositionSize: number; // troy oz
+  riskPerTradePct: number; // % of capital risked
 }
 
 export interface StrategyDef {
   name: string;
   entryCondition: (ctx: BarContext) => { enter: boolean; side: TradeSide } | null;
   exitCondition: (ctx: BarContext, position: BacktestPosition) => boolean;
-  stopLossAtr: number;      // multiple of ATR for stop
-  takeProfitAtr: number;    // multiple of ATR for target
+  stopLossAtr: number; // multiple of ATR for stop
+  takeProfitAtr: number; // multiple of ATR for target
 }
 
 export interface BarContext {
@@ -85,8 +83,8 @@ export interface BacktestStats {
   longestLossStreak: number;
   calmarRatio: number;
   recoveryFactor: number;
-  expectancy: number;       // avg $ per trade
-  sqn: number;              // System Quality Number (Van Tharp)
+  expectancy: number; // avg $ per trade
+  sqn: number; // System Quality Number (Van Tharp)
 }
 
 // ─── Indicator Helpers (lightweight, self-contained) ────────────────────────
@@ -100,7 +98,8 @@ function calcSMA(closes: number[], period: number, index: number): number {
 
 function calcRSI(closes: number[], period: number, index: number): number {
   if (index < period) return 50;
-  let avgGain = 0, avgLoss = 0;
+  let avgGain = 0,
+    avgLoss = 0;
   for (let i = index - period + 1; i <= index; i++) {
     const change = closes[i] - closes[i - 1];
     if (change > 0) avgGain += change;
@@ -120,14 +119,19 @@ function calcATR(candles: OHLCV[], period: number, index: number): number {
     const tr = Math.max(
       candles[i].high - candles[i].low,
       Math.abs(candles[i].high - candles[i - 1].close),
-      Math.abs(candles[i].low - candles[i - 1].close),
+      Math.abs(candles[i].low - candles[i - 1].close)
     );
     sum += tr;
   }
   return sum / (index - start + 1);
 }
 
-function calcBB(closes: number[], period: number, index: number, mult: number): { upper: number; lower: number } {
+function calcBB(
+  closes: number[],
+  period: number,
+  index: number,
+  mult: number
+): { upper: number; lower: number } {
   const sma = calcSMA(closes, period, index);
   if (index < period - 1) return { upper: sma, lower: sma };
   let sumSq = 0;
@@ -139,14 +143,17 @@ function calcBB(closes: number[], period: number, index: number, mult: number): 
 // ─── Backtest Runner ────────────────────────────────────────────────────────
 
 export function runBacktest(config: BacktestConfig, candles: OHLCV[]): BacktestResult {
-  const { strategy, initialCapital, commissionBps, slippageBps, riskPerTradePct, maxPositionSize } = config;
+  const { strategy, initialCapital, commissionBps, slippageBps, riskPerTradePct, maxPositionSize } =
+    config;
 
-  const closes = candles.map(c => c.close);
+  const closes = candles.map((c) => c.close);
   let equity = initialCapital;
   let peakEquity = initialCapital;
   let position: BacktestPosition | null = null;
   const trades: TradeRecord[] = [];
-  const equityCurve: { timestamp: number; equity: number }[] = [{ timestamp: candles[0]?.timestamp ?? 0, equity }];
+  const equityCurve: { timestamp: number; equity: number }[] = [
+    { timestamp: candles[0]?.timestamp ?? 0, equity },
+  ];
   const drawdownCurve: { timestamp: number; drawdown: number }[] = [];
 
   for (let i = 200; i < candles.length; i++) {
@@ -172,32 +179,29 @@ export function runBacktest(config: BacktestConfig, candles: OHLCV[]): BacktestR
 
     if (position) {
       // Update MFE/MAE
-      const unrealizedPnL = position.side === 'BUY'
-        ? bar.close - position.entryPrice
-        : position.entryPrice - bar.close;
+      const unrealizedPnL =
+        position.side === 'BUY' ? bar.close - position.entryPrice : position.entryPrice - bar.close;
       position.maxFavorable = Math.max(position.maxFavorable, unrealizedPnL);
       position.maxAdverse = Math.min(position.maxAdverse, unrealizedPnL);
 
       // Check stops
-      const hitStop = position.side === 'BUY'
-        ? bar.low <= position.stopLoss
-        : bar.high >= position.stopLoss;
-      const hitTarget = position.side === 'BUY'
-        ? bar.high >= position.takeProfit
-        : bar.low <= position.takeProfit;
+      const hitStop =
+        position.side === 'BUY' ? bar.low <= position.stopLoss : bar.high >= position.stopLoss;
+      const hitTarget =
+        position.side === 'BUY' ? bar.high >= position.takeProfit : bar.low <= position.takeProfit;
 
       const exitSignal = strategy.exitCondition(ctx, position);
 
       if (hitStop || hitTarget || exitSignal) {
-        const exitPrice = hitStop ? position.stopLoss
-          : hitTarget ? position.takeProfit
-          : bar.close;
+        const exitPrice = hitStop ? position.stopLoss : hitTarget ? position.takeProfit : bar.close;
 
-        const pnlPerUnit = position.side === 'BUY'
-          ? exitPrice - position.entryPrice
-          : position.entryPrice - exitPrice;
+        const pnlPerUnit =
+          position.side === 'BUY'
+            ? exitPrice - position.entryPrice
+            : position.entryPrice - exitPrice;
         const grossPnL = pnlPerUnit * position.quantity;
-        const costs = position.entryPrice * position.quantity * (commissionBps + slippageBps) / 10_000;
+        const costs =
+          (position.entryPrice * position.quantity * (commissionBps + slippageBps)) / 10_000;
         const netPnL = grossPnL - costs;
 
         equity += netPnL;
@@ -232,7 +236,7 @@ export function runBacktest(config: BacktestConfig, candles: OHLCV[]): BacktestR
         const stopDistance = atr * strategy.stopLossAtr;
         const quantity = Math.min(
           stopDistance > 0 ? Math.floor(riskAmount / stopDistance) : 0,
-          maxPositionSize,
+          maxPositionSize
         );
 
         if (quantity > 0 && equity > 0) {
@@ -241,12 +245,11 @@ export function runBacktest(config: BacktestConfig, candles: OHLCV[]): BacktestR
             entryPrice: bar.close,
             entryBar: i,
             quantity,
-            stopLoss: signal.side === 'BUY'
-              ? bar.close - stopDistance
-              : bar.close + stopDistance,
-            takeProfit: signal.side === 'BUY'
-              ? bar.close + atr * strategy.takeProfitAtr
-              : bar.close - atr * strategy.takeProfitAtr,
+            stopLoss: signal.side === 'BUY' ? bar.close - stopDistance : bar.close + stopDistance,
+            takeProfit:
+              signal.side === 'BUY'
+                ? bar.close + atr * strategy.takeProfitAtr
+                : bar.close - atr * strategy.takeProfitAtr,
             maxFavorable: 0,
             maxAdverse: 0,
           };
@@ -268,29 +271,47 @@ export function runBacktest(config: BacktestConfig, candles: OHLCV[]): BacktestR
 // ─── Stats Calculation ──────────────────────────────────────────────────────
 
 function calculateBacktestStats(
-  trades: TradeRecord[], equityCurve: { timestamp: number; equity: number }[],
-  initialCapital: number,
+  trades: TradeRecord[],
+  equityCurve: { timestamp: number; equity: number }[],
+  initialCapital: number
 ): BacktestStats {
   if (trades.length === 0) {
     return {
-      totalTrades: 0, winRate: 0, profitFactor: 0, sharpeRatio: 0,
-      sortinoRatio: 0, maxDrawdown: 0, maxDrawdownPct: 0, avgReturn: 0,
-      totalReturn: 0, totalReturnPct: 0, avgHoldingBars: 0, avgWin: 0,
-      avgLoss: 0, avgWinLossRatio: 0, longestWinStreak: 0, longestLossStreak: 0,
-      calmarRatio: 0, recoveryFactor: 0, expectancy: 0, sqn: 0,
+      totalTrades: 0,
+      winRate: 0,
+      profitFactor: 0,
+      sharpeRatio: 0,
+      sortinoRatio: 0,
+      maxDrawdown: 0,
+      maxDrawdownPct: 0,
+      avgReturn: 0,
+      totalReturn: 0,
+      totalReturnPct: 0,
+      avgHoldingBars: 0,
+      avgWin: 0,
+      avgLoss: 0,
+      avgWinLossRatio: 0,
+      longestWinStreak: 0,
+      longestLossStreak: 0,
+      calmarRatio: 0,
+      recoveryFactor: 0,
+      expectancy: 0,
+      sqn: 0,
     };
   }
 
-  const wins = trades.filter(t => t.pnl > 0);
-  const losses = trades.filter(t => t.pnl <= 0);
+  const wins = trades.filter((t) => t.pnl > 0);
+  const losses = trades.filter((t) => t.pnl <= 0);
   const totalReturn = trades.reduce((s, t) => s + t.pnl, 0);
   const avgWin = wins.length > 0 ? wins.reduce((s, t) => s + t.pnl, 0) / wins.length : 0;
-  const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((s, t) => s + t.pnl, 0) / losses.length) : 0;
+  const avgLoss =
+    losses.length > 0 ? Math.abs(losses.reduce((s, t) => s + t.pnl, 0) / losses.length) : 0;
   const grossProfit = wins.reduce((s, t) => s + t.pnl, 0);
   const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnl, 0));
 
   // Drawdown
-  let peak = initialCapital, maxDD = 0;
+  let peak = initialCapital,
+    maxDD = 0;
   for (const pt of equityCurve) {
     if (pt.equity > peak) peak = pt.equity;
     const dd = peak - pt.equity;
@@ -298,7 +319,9 @@ function calculateBacktestStats(
   }
 
   // Streaks
-  let currentStreak = 0, longestWin = 0, longestLoss = 0;
+  let currentStreak = 0,
+    longestWin = 0,
+    longestLoss = 0;
   for (const t of trades) {
     if (t.pnl > 0) {
       currentStreak = currentStreak > 0 ? currentStreak + 1 : 1;
@@ -310,12 +333,14 @@ function calculateBacktestStats(
   }
 
   // Returns for Sharpe/Sortino
-  const returns = trades.map(t => t.pnlPct);
+  const returns = trades.map((t) => t.pnlPct);
   const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
   const stdDev = Math.sqrt(returns.reduce((s, r) => s + (r - meanReturn) ** 2, 0) / returns.length);
-  const negReturns = returns.filter(r => r < 0);
-  const downsideDev = negReturns.length > 0
-    ? Math.sqrt(negReturns.reduce((s, r) => s + r ** 2, 0) / negReturns.length) : 0;
+  const negReturns = returns.filter((r) => r < 0);
+  const downsideDev =
+    negReturns.length > 0
+      ? Math.sqrt(negReturns.reduce((s, r) => s + r ** 2, 0) / negReturns.length)
+      : 0;
 
   const expectancy = totalReturn / trades.length;
   const sqn = stdDev > 0 ? (meanReturn / stdDev) * Math.sqrt(trades.length) : 0;
@@ -344,7 +369,9 @@ function calculateBacktestStats(
   };
 }
 
-function calculateMonthlyReturns(equityCurve: { timestamp: number; equity: number }[]): { month: string; returnPct: number }[] {
+function calculateMonthlyReturns(
+  equityCurve: { timestamp: number; equity: number }[]
+): { month: string; returnPct: number }[] {
   const monthly: { month: string; returnPct: number }[] = [];
   if (equityCurve.length < 2) return monthly;
 
@@ -356,7 +383,8 @@ function calculateMonthlyReturns(equityCurve: { timestamp: number; equity: numbe
     if (month !== prevMonth) {
       monthly.push({
         month: prevMonth,
-        returnPct: prevMonthEquity > 0 ? ((pt.equity - prevMonthEquity) / prevMonthEquity) * 100 : 0,
+        returnPct:
+          prevMonthEquity > 0 ? ((pt.equity - prevMonthEquity) / prevMonthEquity) * 100 : 0,
       });
       prevMonthEquity = pt.equity;
       prevMonth = month;
@@ -412,8 +440,12 @@ export const STRATEGIES: Record<string, StrategyDef> = {
   BREAKOUT: {
     name: 'Breakout (20-bar)',
     entryCondition: (ctx) => {
-      const high20 = Math.max(...ctx.bars.slice(Math.max(0, ctx.index - 20), ctx.index).map(b => b.high));
-      const low20 = Math.min(...ctx.bars.slice(Math.max(0, ctx.index - 20), ctx.index).map(b => b.low));
+      const high20 = Math.max(
+        ...ctx.bars.slice(Math.max(0, ctx.index - 20), ctx.index).map((b) => b.high)
+      );
+      const low20 = Math.min(
+        ...ctx.bars.slice(Math.max(0, ctx.index - 20), ctx.index).map((b) => b.low)
+      );
       if (ctx.bar.close > high20 && ctx.volume > ctx.bars[ctx.index - 1]?.volume * 1.5) {
         return { enter: true, side: 'BUY' };
       }
@@ -435,19 +467,28 @@ export const STRATEGIES: Record<string, StrategyDef> = {
 // ─── Monte Carlo Simulation ─────────────────────────────────────────────────
 
 export function monteCarloSimulation(
-  trades: TradeRecord[], initialCapital: number, simulations: number = 1000,
+  trades: TradeRecord[],
+  initialCapital: number,
+  simulations: number = 1000
 ): { median: number; p5: number; p95: number; worstCase: number; bestCase: number } {
-  if (trades.length === 0) return { median: initialCapital, p5: initialCapital, p95: initialCapital, worstCase: initialCapital, bestCase: initialCapital };
+  if (trades.length === 0)
+    return {
+      median: initialCapital,
+      p5: initialCapital,
+      p95: initialCapital,
+      worstCase: initialCapital,
+      bestCase: initialCapital,
+    };
 
   const finalEquities: number[] = [];
-  const returns = trades.map(t => t.pnlPct);
+  const returns = trades.map((t) => t.pnlPct);
 
   for (let sim = 0; sim < simulations; sim++) {
     let equity = initialCapital;
     // Randomly shuffle trade returns
     const shuffled = [...returns].sort(() => Math.random() - 0.5);
     for (const r of shuffled) {
-      equity *= (1 + r / 100);
+      equity *= 1 + r / 100;
     }
     finalEquities.push(equity);
   }
@@ -456,7 +497,7 @@ export function monteCarloSimulation(
   const idx = (pct: number) => Math.floor(finalEquities.length * pct);
 
   return {
-    median: finalEquities[idx(0.50)],
+    median: finalEquities[idx(0.5)],
     p5: finalEquities[idx(0.05)],
     p95: finalEquities[idx(0.95)],
     worstCase: finalEquities[0],

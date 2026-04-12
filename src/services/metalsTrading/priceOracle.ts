@@ -3,8 +3,14 @@
 // Detects stale feeds, calculates VWAP, identifies manipulation signals.
 
 import type {
-  Metal, Currency, Venue, PriceQuote, LBMAFix, SpotSnapshot,
-  OHLCV, PriceFeed,
+  Metal,
+  Currency,
+  Venue,
+  PriceQuote,
+  LBMAFix,
+  SpotSnapshot,
+  OHLCV,
+  PriceFeed,
 } from './types';
 
 // ─── Price Source Registry ──────────────────────────────────────────────────
@@ -20,19 +26,22 @@ interface PriceSource {
   status: 'ACTIVE' | 'STALE' | 'FAILED';
 }
 
-const SOURCE_CONFIG: Record<Venue, Omit<PriceSource, 'lastQuote' | 'lastFetchMs' | 'failureCount' | 'status'>> = {
-  LBMA:     { venue: 'LBMA',     priority: 1, staleLimitMs: 60_000,   weight: 0.30 },
-  COMEX:    { venue: 'COMEX',    priority: 2, staleLimitMs: 5_000,    weight: 0.25 },
-  SGE:      { venue: 'SGE',      priority: 3, staleLimitMs: 10_000,   weight: 0.15 },
-  DMCC:     { venue: 'DMCC',     priority: 4, staleLimitMs: 15_000,   weight: 0.15 },
-  OTC_SPOT: { venue: 'OTC_SPOT', priority: 5, staleLimitMs: 3_000,    weight: 0.10 },
-  PHYSICAL: { venue: 'PHYSICAL', priority: 6, staleLimitMs: 300_000,  weight: 0.05 },
+const SOURCE_CONFIG: Record<
+  Venue,
+  Omit<PriceSource, 'lastQuote' | 'lastFetchMs' | 'failureCount' | 'status'>
+> = {
+  LBMA: { venue: 'LBMA', priority: 1, staleLimitMs: 60_000, weight: 0.3 },
+  COMEX: { venue: 'COMEX', priority: 2, staleLimitMs: 5_000, weight: 0.25 },
+  SGE: { venue: 'SGE', priority: 3, staleLimitMs: 10_000, weight: 0.15 },
+  DMCC: { venue: 'DMCC', priority: 4, staleLimitMs: 15_000, weight: 0.15 },
+  OTC_SPOT: { venue: 'OTC_SPOT', priority: 5, staleLimitMs: 3_000, weight: 0.1 },
+  PHYSICAL: { venue: 'PHYSICAL', priority: 6, staleLimitMs: 300_000, weight: 0.05 },
 };
 
 // ─── Historical Data Store ──────────────────────────────────────────────────
 
 interface PriceHistory {
-  candles: Map<string, OHLCV[]>;   // key: `${metal}/${interval}`
+  candles: Map<string, OHLCV[]>; // key: `${metal}/${interval}`
   ticks: Map<Metal, PriceQuote[]>; // rolling tick buffer
   maxTicks: number;
   maxCandles: number;
@@ -139,7 +148,9 @@ export class PriceOracle {
     if (activeSources.length === 0) return;
 
     // Volume-weighted average price across sources
-    let weightedBid = 0, weightedAsk = 0, totalVolume = 0;
+    let weightedBid = 0,
+      weightedAsk = 0,
+      totalVolume = 0;
     for (const { quote, weight } of activeSources) {
       const normalizedWeight = weight / totalWeight;
       weightedBid += quote.bid * normalizedWeight;
@@ -187,7 +198,7 @@ export class PriceOracle {
   }
 
   getLatestFix(metal: Metal = 'XAU'): LBMAFix | undefined {
-    return [...this.lbmaFixes].reverse().find(f => f.metal === metal);
+    return [...this.lbmaFixes].reverse().find((f) => f.metal === metal);
   }
 
   getCandles(metal: Metal, interval: OHLCV['interval'], count?: number): OHLCV[] {
@@ -206,7 +217,7 @@ export class PriceOracle {
     if (!quote) return null;
 
     const ticks = this.getTicks(metal);
-    const ticks24h = ticks.filter(t => t.timestamp > Date.now() - 86_400_000);
+    const ticks24h = ticks.filter((t) => t.timestamp > Date.now() - 86_400_000);
     const oldestPrice = ticks24h[0]?.mid ?? quote.mid;
 
     return {
@@ -214,8 +225,8 @@ export class PriceOracle {
       spotUSD: quote.mid,
       change24h: quote.mid - oldestPrice,
       changePct24h: oldestPrice > 0 ? ((quote.mid - oldestPrice) / oldestPrice) * 100 : 0,
-      high24h: ticks24h.length > 0 ? Math.max(...ticks24h.map(t => t.ask)) : quote.ask,
-      low24h: ticks24h.length > 0 ? Math.min(...ticks24h.map(t => t.bid)) : quote.bid,
+      high24h: ticks24h.length > 0 ? Math.max(...ticks24h.map((t) => t.ask)) : quote.ask,
+      low24h: ticks24h.length > 0 ? Math.min(...ticks24h.map((t) => t.bid)) : quote.bid,
       volume24h: quote.volume24h,
       openInterest: 0,
       timestamp: quote.timestamp,
@@ -248,7 +259,7 @@ export class PriceOracle {
 
   calculateVWAP(metal: Metal, periodMs: number = 86_400_000): number {
     const now = Date.now();
-    const ticks = this.getTicks(metal).filter(t => t.timestamp > now - periodMs);
+    const ticks = this.getTicks(metal).filter((t) => t.timestamp > now - periodMs);
     if (ticks.length === 0) return 0;
 
     let totalPriceVolume = 0;
@@ -278,9 +289,15 @@ export class PriceOracle {
     description: string;
   } {
     const quotes = this.getAllQuotes(metal);
-    if (quotes.length < 2) return { isAnomaly: false, deviationPct: 0, outlierVenue: null, description: 'Insufficient sources' };
+    if (quotes.length < 2)
+      return {
+        isAnomaly: false,
+        deviationPct: 0,
+        outlierVenue: null,
+        description: 'Insufficient sources',
+      };
 
-    const prices = quotes.map(q => q.mid);
+    const prices = quotes.map((q) => q.mid);
     const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
     const stdDev = Math.sqrt(prices.reduce((sum, p) => sum + (p - mean) ** 2, 0) / prices.length);
 
@@ -302,9 +319,10 @@ export class PriceOracle {
       isAnomaly: deviationPct > threshold,
       deviationPct,
       outlierVenue: deviationPct > threshold ? outlierVenue : null,
-      description: deviationPct > threshold
-        ? `${outlierVenue} deviates ${deviationPct.toFixed(2)}% from consensus (stddev: ${stdDev.toFixed(2)})`
-        : 'All sources within normal range',
+      description:
+        deviationPct > threshold
+          ? `${outlierVenue} deviates ${deviationPct.toFixed(2)}% from consensus (stddev: ${stdDev.toFixed(2)})`
+          : 'All sources within normal range',
     };
   }
 
@@ -333,10 +351,10 @@ export class PriceOracle {
 
 export function generateSimulatedPrices(metal: Metal): PriceQuote {
   const basePrices: Record<Metal, number> = {
-    XAU: 2340.50,
+    XAU: 2340.5,
     XAG: 29.85,
-    XPT: 985.00,
-    XPD: 1025.00,
+    XPT: 985.0,
+    XPD: 1025.0,
   };
 
   const base = basePrices[metal];

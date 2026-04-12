@@ -24,19 +24,19 @@ import { addBusinessDays } from '../utils/businessDays';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type FilingCategory =
-  | 'STR'           // Suspicious Transaction Report — primary AML
-  | 'SAR'           // Suspicious Activity Report — where no completed transaction
-  | 'CTR'           // Cash Transaction Report — AED 55K threshold (DPMS)
-  | 'DPMSR'         // DPMS Report — quarterly DPMS sector obligation
-  | 'CNMR'          // Counter-Narcotics Money Report — drug-related proceeds
-  | 'EOCN_FREEZE'   // EOCN / TFS Asset Freeze notification
-  | 'NONE';         // Insufficient grounds for any filing
+  | 'STR' // Suspicious Transaction Report — primary AML
+  | 'SAR' // Suspicious Activity Report — where no completed transaction
+  | 'CTR' // Cash Transaction Report — AED 55K threshold (DPMS)
+  | 'DPMSR' // DPMS Report — quarterly DPMS sector obligation
+  | 'CNMR' // Counter-Narcotics Money Report — drug-related proceeds
+  | 'EOCN_FREEZE' // EOCN / TFS Asset Freeze notification
+  | 'NONE'; // Insufficient grounds for any filing
 
 export type FilingUrgency = 'immediate' | 'urgent' | 'standard' | 'periodic';
 
 export interface FilingDeadline {
-  businessDays?: number;   // null for clock-hour deadlines
-  clockHours?: number;     // for EOCN freeze (24h)
+  businessDays?: number; // null for clock-hour deadlines
+  clockHours?: number; // for EOCN freeze (24h)
   description: string;
   regulatoryRef: string;
 }
@@ -52,12 +52,14 @@ export interface FilingDeadline {
 export const FILING_DEADLINES: Record<Exclude<FilingCategory, 'NONE'>, FilingDeadline> = {
   STR: {
     businessDays: STR_FILING_DEADLINE_BUSINESS_DAYS,
-    description: 'STR must be filed WITHOUT DELAY upon suspicion formation (FIU: absolute immediacy)',
+    description:
+      'STR must be filed WITHOUT DELAY upon suspicion formation (FIU: absolute immediacy)',
     regulatoryRef: 'FDL No.10/2025 Art.26-27; UAE FIU goAML Filing Guidelines 2024',
   },
   SAR: {
     businessDays: STR_FILING_DEADLINE_BUSINESS_DAYS,
-    description: 'SAR must be filed WITHOUT DELAY upon suspicion formation (FIU: absolute immediacy)',
+    description:
+      'SAR must be filed WITHOUT DELAY upon suspicion formation (FIU: absolute immediacy)',
     regulatoryRef: 'FDL No.10/2025 Art.26-27; UAE FIU goAML Filing Guidelines 2024',
   },
   CTR: {
@@ -90,7 +92,7 @@ export interface ClassificationInput {
   /** Was the transaction actually completed? (false → SAR not STR) */
   transactionCompleted: boolean;
   /** Is there a confirmed or potential sanctions match? */
-  sanctionsMatchConfidence: number;   // 0–1
+  sanctionsMatchConfidence: number; // 0–1
   /** Involves drug proceeds or CNMR-listed substances? */
   narcoticsProceedsIndicated: boolean;
   /** Is the entity a DPMS dealer subject to sector reporting? */
@@ -108,10 +110,10 @@ export interface ClassificationResult {
   additionalCategories: FilingCategory[];
   urgency: FilingUrgency;
   deadline: FilingDeadline | null;
-  deadlineDueDate: string | null;      // ISO date string
+  deadlineDueDate: string | null; // ISO date string
   rationale: string;
   goamlFormCode: string;
-  tipOffProhibited: boolean;          // FDL Art.29
+  tipOffProhibited: boolean; // FDL Art.29
   requiresFourEyes: boolean;
   regulatoryRefs: string[];
   filingInstructions: string[];
@@ -126,11 +128,11 @@ function computeDueDate(eventDate: string, deadline: FilingDeadline): string | n
   const event = new Date(eventDate);
   if (isNaN(event.getTime())) return null;
 
-  if (deadline.clockHours != null) {
+  if (deadline.clockHours !== null && deadline.clockHours !== undefined) {
     const due = new Date(event.getTime() + deadline.clockHours * 3_600_000);
     return due.toISOString();
   }
-  if (deadline.businessDays != null) {
+  if (deadline.businessDays !== null && deadline.businessDays !== undefined) {
     return addBusinessDays(event, deadline.businessDays).toISOString().split('T')[0];
   }
   return null;
@@ -146,8 +148,12 @@ export function classifyFiling(input: ClassificationInput): ClassificationResult
   // ── EOCN_FREEZE — highest priority ──────────────────────────────────────────
   if (input.sanctionsMatchConfidence >= 0.9) {
     categories.push('EOCN_FREEZE');
-    rationale.push(`Sanctions match confidence ${(input.sanctionsMatchConfidence * 100).toFixed(0)}% ≥ 90% — immediate asset freeze required (Cabinet Res 74/2020 Art.4)`);
-    filingInstructions.push('IMMEDIATE: Execute asset freeze. Notify EOCN within 24 clock hours. File CNMR within 5 business days. DO NOT notify subject (Art.29).');
+    rationale.push(
+      `Sanctions match confidence ${(input.sanctionsMatchConfidence * 100).toFixed(0)}% ≥ 90% — immediate asset freeze required (Cabinet Res 74/2020 Art.4)`
+    );
+    filingInstructions.push(
+      'IMMEDIATE: Execute asset freeze. Notify EOCN within 24 clock hours. File CNMR within 5 business days. DO NOT notify subject (Art.29).'
+    );
   }
 
   // ── CNMR ────────────────────────────────────────────────────────────────────
@@ -215,7 +221,7 @@ export function classifyFiling(input: ClassificationInput): ClassificationResult
     NONE: 'standard',
   };
 
-  const deadline = primaryCategory !== 'NONE' ? FILING_DEADLINES[primaryCategory] ?? null : null;
+  const deadline = primaryCategory !== 'NONE' ? (FILING_DEADLINES[primaryCategory] ?? null) : null;
   const deadlineDueDate = deadline ? computeDueDate(input.eventDate, deadline) : null;
 
   // goAML form codes (UAE FIU schema)

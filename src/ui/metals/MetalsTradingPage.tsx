@@ -3,11 +3,21 @@
 // Panels: Price Ticker, Signals, Alerts, Portfolio, Order Entry, Performance.
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { MetalsTradingBrain, createTradingBrain } from '../../services/metalsTrading/metalsTradingBrain';
+import {
+  MetalsTradingBrain,
+  createTradingBrain,
+} from '../../services/metalsTrading/metalsTradingBrain';
 import type {
-  Metal, TradeSide, OrderType, TradingAlert, FusedDecision,
-  Position, Portfolio, RiskMetrics, MarketRegime,
-  MetalsBrainResponse, SpotSnapshot, ArbitrageOpportunity,
+  Metal,
+  TradeSide,
+  OrderType,
+  TradingAlert,
+  FusedDecision,
+  Portfolio,
+  RiskMetrics,
+  MarketRegime,
+  SpotSnapshot,
+  ArbitrageOpportunity,
 } from '../../services/metalsTrading/types';
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
@@ -16,25 +26,43 @@ const S = {
   page: { display: 'flex', flexDirection: 'column' as const, gap: 16, width: '100%' },
 
   topBar: {
-    display: 'flex', gap: 12, alignItems: 'center', padding: '12px 16px',
-    background: '#010409', borderRadius: 8, border: '1px solid #21262d',
+    display: 'flex',
+    gap: 12,
+    alignItems: 'center',
+    padding: '12px 16px',
+    background: '#010409',
+    borderRadius: 8,
+    border: '1px solid #21262d',
     flexWrap: 'wrap' as const,
   },
 
-  metalTab: (active: boolean) => ({
-    padding: '8px 18px', borderRadius: 6, fontSize: 13, fontWeight: 700,
-    cursor: 'pointer', transition: 'all 0.15s', border: 'none',
-    background: active ? '#d4a843' : '#161b22',
-    color: active ? '#0d1117' : '#8b949e',
-    letterSpacing: 0.5,
-  } as React.CSSProperties),
+  metalTab: (active: boolean) =>
+    ({
+      padding: '8px 18px',
+      borderRadius: 6,
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: 'pointer',
+      transition: 'all 0.15s',
+      border: 'none',
+      background: active ? '#d4a843' : '#161b22',
+      color: active ? '#0d1117' : '#8b949e',
+      letterSpacing: 0.5,
+    }) as React.CSSProperties,
 
-  liveBtn: (running: boolean) => ({
-    marginLeft: 'auto', padding: '8px 20px', borderRadius: 6, fontSize: 12,
-    fontWeight: 700, cursor: 'pointer', border: 'none', letterSpacing: 1,
-    background: running ? '#D94F4F' : '#238636',
-    color: '#fff',
-  } as React.CSSProperties),
+  liveBtn: (running: boolean) =>
+    ({
+      marginLeft: 'auto',
+      padding: '8px 20px',
+      borderRadius: 6,
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: 'pointer',
+      border: 'none',
+      letterSpacing: 1,
+      background: running ? '#D94F4F' : '#238636',
+      color: '#fff',
+    }) as React.CSSProperties,
 
   grid: {
     display: 'grid',
@@ -43,22 +71,35 @@ const S = {
   },
 
   panel: {
-    background: '#0d1117', border: '1px solid #21262d', borderRadius: 8,
-    padding: 16, display: 'flex', flexDirection: 'column' as const, gap: 10,
+    background: '#0d1117',
+    border: '1px solid #21262d',
+    borderRadius: 8,
+    padding: 16,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 10,
   } as React.CSSProperties,
 
   panelTitle: {
-    fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
-    color: '#d4a843', textTransform: 'uppercase' as const,
-    borderBottom: '1px solid #21262d', paddingBottom: 8,
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 1.5,
+    color: '#d4a843',
+    textTransform: 'uppercase' as const,
+    borderBottom: '1px solid #21262d',
+    paddingBottom: 8,
   } as React.CSSProperties,
 
   priceMain: {
-    fontSize: 32, fontWeight: 700, color: '#e6edf3', lineHeight: 1,
+    fontSize: 32,
+    fontWeight: 700,
+    color: '#e6edf3',
+    lineHeight: 1,
   },
 
   priceSub: (positive: boolean) => ({
-    fontSize: 13, fontWeight: 600,
+    fontSize: 13,
+    fontWeight: 600,
     color: positive ? '#3fb950' : '#f85149',
   }),
 
@@ -68,63 +109,111 @@ const S = {
   value: { color: '#e6edf3', fontSize: 12, fontWeight: 600 },
 
   badge: (color: string) => ({
-    display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 10,
-    fontWeight: 700, background: color + '22', color, letterSpacing: 0.5,
+    display: 'inline-block',
+    padding: '2px 8px',
+    borderRadius: 4,
+    fontSize: 10,
+    fontWeight: 700,
+    background: color + '22',
+    color,
+    letterSpacing: 0.5,
   }),
 
-  alertItem: (severity: string) => ({
-    padding: '8px 10px', borderRadius: 6, fontSize: 11, lineHeight: 1.5,
-    borderLeft: `3px solid ${
-      severity === 'CRITICAL' ? '#f85149' :
-      severity === 'HIGH' ? '#E8A030' :
-      severity === 'MEDIUM' ? '#d4a843' : '#3fb950'
-    }`,
-    background: '#161b22',
-  } as React.CSSProperties),
+  alertItem: (severity: string) =>
+    ({
+      padding: '8px 10px',
+      borderRadius: 6,
+      fontSize: 11,
+      lineHeight: 1.5,
+      borderLeft: `3px solid ${
+        severity === 'CRITICAL'
+          ? '#f85149'
+          : severity === 'HIGH'
+            ? '#E8A030'
+            : severity === 'MEDIUM'
+              ? '#d4a843'
+              : '#3fb950'
+      }`,
+      background: '#161b22',
+    }) as React.CSSProperties,
 
   signalBar: (direction: string, strength: number) => ({
-    height: 6, borderRadius: 3,
-    background: direction === 'BUY'
-      ? `linear-gradient(90deg, #238636 0%, #3fb950 ${strength * 100}%, #21262d ${strength * 100}%)`
-      : `linear-gradient(90deg, #D94F4F 0%, #f85149 ${strength * 100}%, #21262d ${strength * 100}%)`,
+    height: 6,
+    borderRadius: 3,
+    background:
+      direction === 'BUY'
+        ? `linear-gradient(90deg, #238636 0%, #3fb950 ${strength * 100}%, #21262d ${strength * 100}%)`
+        : `linear-gradient(90deg, #D94F4F 0%, #f85149 ${strength * 100}%, #21262d ${strength * 100}%)`,
     width: '100%',
   }),
 
   posRow: (pnl: number) => ({
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '6px 8px', borderRadius: 4, fontSize: 11,
-    background: '#161b22', borderLeft: `3px solid ${pnl >= 0 ? '#3fb950' : '#f85149'}`,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '6px 8px',
+    borderRadius: 4,
+    fontSize: 11,
+    background: '#161b22',
+    borderLeft: `3px solid ${pnl >= 0 ? '#3fb950' : '#f85149'}`,
   }),
 
   input: {
-    background: '#010409', border: '1px solid #30363d', borderRadius: 4,
-    color: '#e6edf3', padding: '6px 8px', fontSize: 12, width: '100%',
+    background: '#010409',
+    border: '1px solid #30363d',
+    borderRadius: 4,
+    color: '#e6edf3',
+    padding: '6px 8px',
+    fontSize: 12,
+    width: '100%',
     outline: 'none',
   } as React.CSSProperties,
 
   select: {
-    background: '#010409', border: '1px solid #30363d', borderRadius: 4,
-    color: '#e6edf3', padding: '6px 8px', fontSize: 12,
+    background: '#010409',
+    border: '1px solid #30363d',
+    borderRadius: 4,
+    color: '#e6edf3',
+    padding: '6px 8px',
+    fontSize: 12,
     outline: 'none',
   } as React.CSSProperties,
 
-  btn: (variant: 'buy' | 'sell' | 'neutral') => ({
-    padding: '10px 0', borderRadius: 6, fontSize: 13, fontWeight: 700,
-    cursor: 'pointer', border: 'none', width: '100%', letterSpacing: 0.5,
-    background: variant === 'buy' ? '#238636' : variant === 'sell' ? '#D94F4F' : '#30363d',
-    color: '#fff', transition: 'opacity 0.15s',
-  } as React.CSSProperties),
+  btn: (variant: 'buy' | 'sell' | 'neutral') =>
+    ({
+      padding: '10px 0',
+      borderRadius: 6,
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: 'pointer',
+      border: 'none',
+      width: '100%',
+      letterSpacing: 0.5,
+      background: variant === 'buy' ? '#238636' : variant === 'sell' ? '#D94F4F' : '#30363d',
+      color: '#fff',
+      transition: 'opacity 0.15s',
+    }) as React.CSSProperties,
 
   stat: {
-    display: 'flex', flexDirection: 'column' as const, alignItems: 'center',
-    padding: '8px 4px', flex: 1, gap: 2,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    padding: '8px 4px',
+    flex: 1,
+    gap: 2,
   } as React.CSSProperties,
 
   statValue: { fontSize: 16, fontWeight: 700, color: '#e6edf3' },
-  statLabel: { fontSize: 9, color: '#8b949e', textTransform: 'uppercase' as const, letterSpacing: 0.8 },
+  statLabel: {
+    fontSize: 9,
+    color: '#8b949e',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.8,
+  },
 
   equityBar: (pct: number, positive: boolean) => ({
-    height: 4, borderRadius: 2,
+    height: 4,
+    borderRadius: 2,
     background: positive
       ? `linear-gradient(90deg, #238636 0%, #3fb950 ${Math.min(pct, 100)}%, #21262d ${Math.min(pct, 100)}%)`
       : `linear-gradient(90deg, #D94F4F 0%, #f85149 ${Math.min(Math.abs(pct), 100)}%, #21262d ${Math.min(Math.abs(pct), 100)}%)`,
@@ -132,32 +221,54 @@ const S = {
   }),
 
   arbCard: {
-    padding: '8px 10px', borderRadius: 6, fontSize: 11, background: '#161b22',
+    padding: '8px 10px',
+    borderRadius: 6,
+    fontSize: 11,
+    background: '#161b22',
     borderLeft: '3px solid #d4a843',
   } as React.CSSProperties,
 
   regimeBadge: (regime: MarketRegime) => {
     const colors: Record<MarketRegime, string> = {
-      TRENDING_UP: '#3fb950', TRENDING_DOWN: '#f85149', RANGING: '#8b949e',
-      HIGH_VOLATILITY: '#E8A030', BREAKOUT: '#d4a843', MEAN_REVERSION: '#a371f7',
+      TRENDING_UP: '#3fb950',
+      TRENDING_DOWN: '#f85149',
+      RANGING: '#8b949e',
+      HIGH_VOLATILITY: '#E8A030',
+      BREAKOUT: '#d4a843',
+      MEAN_REVERSION: '#a371f7',
     };
     return {
-      display: 'inline-block', padding: '3px 10px', borderRadius: 4, fontSize: 10,
-      fontWeight: 700, background: (colors[regime] ?? '#8b949e') + '22',
-      color: colors[regime] ?? '#8b949e', letterSpacing: 0.5,
+      display: 'inline-block',
+      padding: '3px 10px',
+      borderRadius: 4,
+      fontSize: 10,
+      fontWeight: 700,
+      background: (colors[regime] ?? '#8b949e') + '22',
+      color: colors[regime] ?? '#8b949e',
+      letterSpacing: 0.5,
     };
   },
 
   simTag: {
-    padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700,
-    background: '#E8A03022', color: '#E8A030', letterSpacing: 1,
+    padding: '3px 8px',
+    borderRadius: 4,
+    fontSize: 9,
+    fontWeight: 700,
+    background: '#E8A03022',
+    color: '#E8A030',
+    letterSpacing: 1,
   },
 };
 
 // ─── Formatting Helpers ─────────────────────────────────────────────────────
 
 function fmtUSD(n: number, decimals = 2): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return n.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }
 
 function fmtPct(n: number): string {
@@ -177,7 +288,10 @@ function timeAgo(ts: number): string {
 }
 
 const METAL_NAMES: Record<Metal, string> = {
-  XAU: 'GOLD', XAG: 'SILVER', XPT: 'PLATINUM', XPD: 'PALLADIUM',
+  XAU: 'GOLD',
+  XAG: 'SILVER',
+  XPT: 'PLATINUM',
+  XPD: 'PALLADIUM',
 };
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -218,7 +332,7 @@ export default function MetalsTradingPage() {
     if (!brain) return;
 
     const responses = brain.tick();
-    const resp = responses.find(r => r.decision.metal === activeMetal);
+    const resp = responses.find((r) => r.decision.metal === activeMetal);
 
     setSnapshot(brain.oracle.getSnapshot(activeMetal));
     setDecision(resp?.decision ?? brain.getDecision(activeMetal) ?? null);
@@ -229,7 +343,7 @@ export default function MetalsTradingPage() {
     setRegime(brain.getRegime(activeMetal));
     setCommentary(resp?.marketCommentary ?? '');
     setGsRatio(brain.oracle.getGoldSilverRatio());
-    setTickCount(c => c + 1);
+    setTickCount((c) => c + 1);
   }, [activeMetal]);
 
   // Auto-tick when running
@@ -279,7 +393,7 @@ export default function MetalsTradingPage() {
     <div style={S.page}>
       {/* ── Top Bar: Metal Tabs + Controls ── */}
       <div style={S.topBar}>
-        {metals.map(m => (
+        {metals.map((m) => (
           <button key={m} style={S.metalTab(activeMetal === m)} onClick={() => setActiveMetal(m)}>
             {METAL_NAMES[m]}
           </button>
@@ -311,12 +425,24 @@ export default function MetalsTradingPage() {
               </div>
               <div style={S.regimeBadge(regime)}>{regime.replace(/_/g, ' ')}</div>
               <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
-                <div><span style={S.label}>24h High </span><span style={S.value}>{fmtUSD(snapshot.high24h)}</span></div>
-                <div><span style={S.label}>24h Low </span><span style={S.value}>{fmtUSD(snapshot.low24h)}</span></div>
+                <div>
+                  <span style={S.label}>24h High </span>
+                  <span style={S.value}>{fmtUSD(snapshot.high24h)}</span>
+                </div>
+                <div>
+                  <span style={S.label}>24h Low </span>
+                  <span style={S.value}>{fmtUSD(snapshot.low24h)}</span>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 16 }}>
-                <div><span style={S.label}>Volume </span><span style={S.value}>{fmtNum(snapshot.volume24h, 0)} oz</span></div>
-                <div><span style={S.label}>Change </span><span style={S.value}>{fmtUSD(snapshot.change24h)}</span></div>
+                <div>
+                  <span style={S.label}>Volume </span>
+                  <span style={S.value}>{fmtNum(snapshot.volume24h, 0)} oz</span>
+                </div>
+                <div>
+                  <span style={S.label}>Change </span>
+                  <span style={S.value}>{fmtUSD(snapshot.change24h)}</span>
+                </div>
               </div>
             </>
           ) : (
@@ -339,15 +465,35 @@ export default function MetalsTradingPage() {
               </div>
               <div style={S.signalBar(decision.direction, decision.conviction)} />
               <div style={{ display: 'flex', gap: 16, fontSize: 11 }}>
-                <div><span style={S.label}>Entry </span><span style={S.value}>{fmtUSD(decision.entryPrice)}</span></div>
-                <div><span style={S.label}>Target </span><span style={{ ...S.value, color: '#3fb950' }}>{fmtUSD(decision.targetPrice)}</span></div>
-                <div><span style={S.label}>Stop </span><span style={{ ...S.value, color: '#f85149' }}>{fmtUSD(decision.stopLoss)}</span></div>
+                <div>
+                  <span style={S.label}>Entry </span>
+                  <span style={S.value}>{fmtUSD(decision.entryPrice)}</span>
+                </div>
+                <div>
+                  <span style={S.label}>Target </span>
+                  <span style={{ ...S.value, color: '#3fb950' }}>
+                    {fmtUSD(decision.targetPrice)}
+                  </span>
+                </div>
+                <div>
+                  <span style={S.label}>Stop </span>
+                  <span style={{ ...S.value, color: '#f85149' }}>{fmtUSD(decision.stopLoss)}</span>
+                </div>
               </div>
               <div style={{ fontSize: 10, color: '#8b949e' }}>
-                R:R {decision.riskReward.toFixed(2)} | Alignment {(decision.signalAlignment * 100).toFixed(0)}% | {decision.signals.length} signals
+                R:R {decision.riskReward.toFixed(2)} | Alignment{' '}
+                {(decision.signalAlignment * 100).toFixed(0)}% | {decision.signals.length} signals
               </div>
               {decision.signals.map((sig, i) => (
-                <div key={i} style={{ fontSize: 10, color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}>
+                <div
+                  key={i}
+                  style={{
+                    fontSize: 10,
+                    color: '#8b949e',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                  }}
+                >
                   <span style={S.badge(sig.direction === 'BUY' ? '#3fb950' : '#f85149')}>
                     {sig.source}
                   </span>
@@ -364,12 +510,32 @@ export default function MetalsTradingPage() {
         <div style={S.panel}>
           <div style={S.panelTitle}>ORDER ENTRY</div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button style={S.btn(orderSide === 'BUY' ? 'buy' : 'neutral')} onClick={() => setOrderSide('BUY')}>BUY</button>
-            <button style={S.btn(orderSide === 'SELL' ? 'sell' : 'neutral')} onClick={() => setOrderSide('SELL')}>SELL</button>
+            <button
+              style={S.btn(orderSide === 'BUY' ? 'buy' : 'neutral')}
+              onClick={() => setOrderSide('BUY')}
+            >
+              BUY
+            </button>
+            <button
+              style={S.btn(orderSide === 'SELL' ? 'sell' : 'neutral')}
+              onClick={() => setOrderSide('SELL')}
+            >
+              SELL
+            </button>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            {(['MARKET', 'LIMIT', 'STOP', 'TWAP', 'VWAP', 'ICEBERG'] as OrderType[]).map(t => (
-              <button key={t} style={{ ...S.select, cursor: 'pointer', fontWeight: orderType === t ? 700 : 400, color: orderType === t ? '#d4a843' : '#8b949e', background: orderType === t ? '#21262d' : '#010409' }} onClick={() => setOrderType(t)}>
+            {(['MARKET', 'LIMIT', 'STOP', 'TWAP', 'VWAP', 'ICEBERG'] as OrderType[]).map((t) => (
+              <button
+                key={t}
+                style={{
+                  ...S.select,
+                  cursor: 'pointer',
+                  fontWeight: orderType === t ? 700 : 400,
+                  color: orderType === t ? '#d4a843' : '#8b949e',
+                  background: orderType === t ? '#21262d' : '#010409',
+                }}
+                onClick={() => setOrderType(t)}
+              >
                 {t}
               </button>
             ))}
@@ -377,12 +543,24 @@ export default function MetalsTradingPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: 1 }}>
               <div style={S.label}>Quantity (oz)</div>
-              <input style={S.input} type="number" value={orderQty} onChange={e => setOrderQty(e.target.value)} min="1" />
+              <input
+                style={S.input}
+                type="number"
+                value={orderQty}
+                onChange={(e) => setOrderQty(e.target.value)}
+                min="1"
+              />
             </div>
             {(orderType === 'LIMIT' || orderType === 'STOP') && (
               <div style={{ flex: 1 }}>
                 <div style={S.label}>Price (USD)</div>
-                <input style={S.input} type="number" value={orderPrice} onChange={e => setOrderPrice(e.target.value)} step="0.01" />
+                <input
+                  style={S.input}
+                  type="number"
+                  value={orderPrice}
+                  onChange={(e) => setOrderPrice(e.target.value)}
+                  step="0.01"
+                />
               </div>
             )}
           </div>
@@ -391,7 +569,8 @@ export default function MetalsTradingPage() {
           </button>
           {decision && decision.conviction > 0.4 && (
             <div style={{ fontSize: 10, color: '#d4a843', textAlign: 'center' }}>
-              AI suggests: {decision.direction} with {(decision.conviction * 100).toFixed(0)}% conviction
+              AI suggests: {decision.direction} with {(decision.conviction * 100).toFixed(0)}%
+              conviction
             </div>
           )}
         </div>
@@ -411,29 +590,45 @@ export default function MetalsTradingPage() {
                   <span style={S.statLabel}>Exposure</span>
                 </div>
                 <div style={S.stat}>
-                  <span style={{ ...S.statValue, color: portfolio.totalPnL >= 0 ? '#3fb950' : '#f85149' }}>
+                  <span
+                    style={{
+                      ...S.statValue,
+                      color: portfolio.totalPnL >= 0 ? '#3fb950' : '#f85149',
+                    }}
+                  >
                     {fmtUSD(portfolio.totalPnL, 0)}
                   </span>
                   <span style={S.statLabel}>P&L</span>
                 </div>
               </div>
-              <div style={S.equityBar(Math.abs(portfolio.totalPnLPct) * 5, portfolio.totalPnL >= 0)} />
+              <div
+                style={S.equityBar(Math.abs(portfolio.totalPnLPct) * 5, portfolio.totalPnL >= 0)}
+              />
               {portfolio.positions.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {portfolio.positions.map((pos, i) => (
                     <div key={i} style={S.posRow(pos.unrealizedPnL)}>
                       <span>
-                        <span style={S.badge(pos.side === 'BUY' ? '#3fb950' : '#f85149')}>{pos.side}</span>
-                        {' '}{pos.quantity} oz {pos.metal}
+                        <span style={S.badge(pos.side === 'BUY' ? '#3fb950' : '#f85149')}>
+                          {pos.side}
+                        </span>{' '}
+                        {pos.quantity} oz {pos.metal}
                       </span>
-                      <span style={{ color: pos.unrealizedPnL >= 0 ? '#3fb950' : '#f85149', fontWeight: 600 }}>
+                      <span
+                        style={{
+                          color: pos.unrealizedPnL >= 0 ? '#3fb950' : '#f85149',
+                          fontWeight: 600,
+                        }}
+                      >
                         {fmtUSD(pos.unrealizedPnL)} ({fmtPct(pos.unrealizedPnLPct)})
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div style={{ color: '#484f58', fontSize: 11, textAlign: 'center' }}>No open positions</div>
+                <div style={{ color: '#484f58', fontSize: 11, textAlign: 'center' }}>
+                  No open positions
+                </div>
               )}
             </>
           ) : (
@@ -466,7 +661,11 @@ export default function MetalsTradingPage() {
                   <span style={S.statLabel}>Sharpe</span>
                 </div>
                 <div style={S.stat}>
-                  <span style={S.statValue}>{riskMetrics.profitFactor === Infinity ? '---' : riskMetrics.profitFactor.toFixed(2)}</span>
+                  <span style={S.statValue}>
+                    {riskMetrics.profitFactor === Infinity
+                      ? '---'
+                      : riskMetrics.profitFactor.toFixed(2)}
+                  </span>
                   <span style={S.statLabel}>Profit Factor</span>
                 </div>
                 <div style={S.stat}>
@@ -475,8 +674,25 @@ export default function MetalsTradingPage() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 16, fontSize: 11 }}>
-                <div><span style={S.label}>Daily P&L </span><span style={{ ...S.value, color: riskMetrics.dailyPnL >= 0 ? '#3fb950' : '#f85149' }}>{fmtUSD(riskMetrics.dailyPnL)}</span></div>
-                <div><span style={S.label}>Weekly </span><span style={{ ...S.value, color: riskMetrics.weeklyPnL >= 0 ? '#3fb950' : '#f85149' }}>{fmtUSD(riskMetrics.weeklyPnL)}</span></div>
+                <div>
+                  <span style={S.label}>Daily P&L </span>
+                  <span
+                    style={{ ...S.value, color: riskMetrics.dailyPnL >= 0 ? '#3fb950' : '#f85149' }}
+                  >
+                    {fmtUSD(riskMetrics.dailyPnL)}
+                  </span>
+                </div>
+                <div>
+                  <span style={S.label}>Weekly </span>
+                  <span
+                    style={{
+                      ...S.value,
+                      color: riskMetrics.weeklyPnL >= 0 ? '#3fb950' : '#f85149',
+                    }}
+                  >
+                    {fmtUSD(riskMetrics.weeklyPnL)}
+                  </span>
+                </div>
               </div>
             </>
           ) : (
@@ -488,26 +704,52 @@ export default function MetalsTradingPage() {
         <div style={S.panel}>
           <div style={S.panelTitle}>WEAPONIZED ALERTS ({alerts.length})</div>
           {alerts.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
-              {alerts.slice().reverse().map(alert => (
-                <div key={alert.id} style={S.alertItem(alert.severity)}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontWeight: 700, color: '#e6edf3' }}>{alert.title}</span>
-                    <span style={S.badge(
-                      alert.severity === 'CRITICAL' ? '#f85149' :
-                      alert.severity === 'HIGH' ? '#E8A030' : '#d4a843'
-                    )}>{alert.severity}</span>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                maxHeight: 260,
+                overflowY: 'auto',
+              }}
+            >
+              {alerts
+                .slice()
+                .reverse()
+                .map((alert) => (
+                  <div key={alert.id} style={S.alertItem(alert.severity)}>
+                    <div
+                      style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}
+                    >
+                      <span style={{ fontWeight: 700, color: '#e6edf3' }}>{alert.title}</span>
+                      <span
+                        style={S.badge(
+                          alert.severity === 'CRITICAL'
+                            ? '#f85149'
+                            : alert.severity === 'HIGH'
+                              ? '#E8A030'
+                              : '#d4a843'
+                        )}
+                      >
+                        {alert.severity}
+                      </span>
+                    </div>
+                    <div style={{ color: '#8b949e' }}>{alert.message}</div>
+                    {alert.suggestedAction && (
+                      <div style={{ color: '#d4a843', marginTop: 4, fontWeight: 600 }}>
+                        {alert.suggestedAction}
+                      </div>
+                    )}
+                    <div style={{ color: '#484f58', fontSize: 9, marginTop: 2 }}>
+                      {timeAgo(alert.createdAt)}
+                    </div>
                   </div>
-                  <div style={{ color: '#8b949e' }}>{alert.message}</div>
-                  {alert.suggestedAction && (
-                    <div style={{ color: '#d4a843', marginTop: 4, fontWeight: 600 }}>{alert.suggestedAction}</div>
-                  )}
-                  <div style={{ color: '#484f58', fontSize: 9, marginTop: 2 }}>{timeAgo(alert.createdAt)}</div>
-                </div>
-              ))}
+                ))}
             </div>
           ) : (
-            <div style={{ color: '#484f58', fontSize: 11, textAlign: 'center' }}>No active alerts</div>
+            <div style={{ color: '#484f58', fontSize: 11, textAlign: 'center' }}>
+              No active alerts
+            </div>
           )}
         </div>
 
@@ -516,23 +758,32 @@ export default function MetalsTradingPage() {
           <div style={S.panelTitle}>ARBITRAGE SCANNER</div>
           {arbOpps.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {arbOpps.map(arb => (
+              {arbOpps.map((arb) => (
                 <div key={arb.id} style={S.arbCard}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontWeight: 700, color: '#e6edf3' }}>{arb.type.replace(/_/g, ' ')}</span>
-                    <span style={{ color: '#3fb950', fontWeight: 700 }}>{fmtUSD(arb.netProfit, 0)}</span>
+                  <div
+                    style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}
+                  >
+                    <span style={{ fontWeight: 700, color: '#e6edf3' }}>
+                      {arb.type.replace(/_/g, ' ')}
+                    </span>
+                    <span style={{ color: '#3fb950', fontWeight: 700 }}>
+                      {fmtUSD(arb.netProfit, 0)}
+                    </span>
                   </div>
                   <div style={{ color: '#8b949e' }}>
                     {arb.venueA} → {arb.venueB} | Spread: {arb.spreadPct.toFixed(2)}%
                   </div>
                   <div style={{ color: '#484f58', fontSize: 9 }}>
-                    Conf: {(arb.confidence * 100).toFixed(0)}% | Costs: {fmtUSD(arb.estimatedCosts, 0)}
+                    Conf: {(arb.confidence * 100).toFixed(0)}% | Costs:{' '}
+                    {fmtUSD(arb.estimatedCosts, 0)}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ color: '#484f58', fontSize: 11, textAlign: 'center' }}>Scanning for opportunities...</div>
+            <div style={{ color: '#484f58', fontSize: 11, textAlign: 'center' }}>
+              Scanning for opportunities...
+            </div>
           )}
         </div>
 
@@ -542,7 +793,11 @@ export default function MetalsTradingPage() {
           {(() => {
             const stats = brainRef.current?.positions.getPerformanceStats();
             if (!stats || stats.totalTrades === 0) {
-              return <div style={{ color: '#484f58', fontSize: 11, textAlign: 'center' }}>Execute trades to see performance</div>;
+              return (
+                <div style={{ color: '#484f58', fontSize: 11, textAlign: 'center' }}>
+                  Execute trades to see performance
+                </div>
+              );
             }
             return (
               <>
@@ -556,21 +811,50 @@ export default function MetalsTradingPage() {
                     <span style={S.statLabel}>Win Rate</span>
                   </div>
                   <div style={S.stat}>
-                    <span style={{ ...S.statValue, color: stats.totalReturn >= 0 ? '#3fb950' : '#f85149' }}>
+                    <span
+                      style={{
+                        ...S.statValue,
+                        color: stats.totalReturn >= 0 ? '#3fb950' : '#f85149',
+                      }}
+                    >
                       {fmtUSD(stats.totalReturn, 0)}
                     </span>
                     <span style={S.statLabel}>Total Return</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
-                  <div><span style={S.label}>Best </span><span style={{ color: '#3fb950', fontWeight: 600 }}>{fmtUSD(stats.bestTrade?.pnl ?? 0)}</span></div>
-                  <div><span style={S.label}>Worst </span><span style={{ color: '#f85149', fontWeight: 600 }}>{fmtUSD(stats.worstTrade?.pnl ?? 0)}</span></div>
-                  <div><span style={S.label}>Avg </span><span style={S.value}>{fmtUSD(stats.avgReturn)}</span></div>
+                  <div>
+                    <span style={S.label}>Best </span>
+                    <span style={{ color: '#3fb950', fontWeight: 600 }}>
+                      {fmtUSD(stats.bestTrade?.pnl ?? 0)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={S.label}>Worst </span>
+                    <span style={{ color: '#f85149', fontWeight: 600 }}>
+                      {fmtUSD(stats.worstTrade?.pnl ?? 0)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={S.label}>Avg </span>
+                    <span style={S.value}>{fmtUSD(stats.avgReturn)}</span>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
-                  <div><span style={S.label}>Streak W </span><span style={S.value}>{stats.streaks.currentWin}</span></div>
-                  <div><span style={S.label}>Streak L </span><span style={S.value}>{stats.streaks.currentLoss}</span></div>
-                  <div><span style={S.label}>P.Factor </span><span style={S.value}>{stats.profitFactor === Infinity ? '---' : stats.profitFactor.toFixed(2)}</span></div>
+                  <div>
+                    <span style={S.label}>Streak W </span>
+                    <span style={S.value}>{stats.streaks.currentWin}</span>
+                  </div>
+                  <div>
+                    <span style={S.label}>Streak L </span>
+                    <span style={S.value}>{stats.streaks.currentLoss}</span>
+                  </div>
+                  <div>
+                    <span style={S.label}>P.Factor </span>
+                    <span style={S.value}>
+                      {stats.profitFactor === Infinity ? '---' : stats.profitFactor.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </>
             );

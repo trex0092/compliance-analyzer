@@ -47,17 +47,17 @@ export type ManagedAgentType =
 export type AgentStatus =
   | 'pending'
   | 'running'
-  | 'awaiting_approval'    // four-eyes gate
+  | 'awaiting_approval' // four-eyes gate
   | 'completed'
   | 'failed'
   | 'escalated';
 
 export type GuardrailType =
-  | 'no_tipping_off'        // FDL Art.29
-  | 'four_eyes_required'    // high-stakes decisions
+  | 'no_tipping_off' // FDL Art.29
+  | 'four_eyes_required' // high-stakes decisions
   | 'audit_trail_mandatory' // FDL Art.24
-  | 'human_in_the_loop'     // freeze + STR verdicts
-  | 'rate_limit'            // 100 req/15min
+  | 'human_in_the_loop' // freeze + STR verdicts
+  | 'rate_limit' // 100 req/15min
   | 'sanctions_list_check'; // all 6 lists mandatory
 
 export interface AgentGuardrail {
@@ -73,13 +73,13 @@ export interface ManagedAgentTask {
   entityId: string;
   entityName: string;
   priority: 'critical' | 'high' | 'medium' | 'low';
-  triggeredBy: string;         // verdict/event that spawned this agent
-  triggeredAt: string;         // ISO datetime
-  deadline?: string;           // ISO datetime (24h for freeze, 10bd for STR)
+  triggeredBy: string; // verdict/event that spawned this agent
+  triggeredAt: string; // ISO datetime
+  deadline?: string; // ISO datetime (24h for freeze, 10bd for STR)
   guardrails: AgentGuardrail[];
   toolsAllowed: string[];
   sessionId?: string;
-  sandboxIsolated: boolean;    // true for STR/freeze — prevents data leakage
+  sandboxIsolated: boolean; // true for STR/freeze — prevents data leakage
   status: AgentStatus;
   result?: AgentResult;
 }
@@ -89,7 +89,7 @@ export interface AgentResult {
   status: AgentStatus;
   summary: string;
   actionsPerformed: string[];
-  filingRefs?: string[];       // goAML reference numbers
+  filingRefs?: string[]; // goAML reference numbers
   asanaTaskGids?: string[];
   regulatoryRefs: string[];
   requiresFollowUp: boolean;
@@ -154,13 +154,16 @@ const HIGH_STAKES_GUARDRAILS: AgentGuardrail[] = [
 
 // ─── Agent Definitions ────────────────────────────────────────────────────────
 
-const AGENT_DEFINITIONS: Record<ManagedAgentType, {
-  priority: ManagedAgentTask['priority'];
-  guardrails: AgentGuardrail[];
-  toolsAllowed: string[];
-  sandboxIsolated: boolean;
-  deadlineHours?: number;
-}> = {
+const AGENT_DEFINITIONS: Record<
+  ManagedAgentType,
+  {
+    priority: ManagedAgentTask['priority'];
+    guardrails: AgentGuardrail[];
+    toolsAllowed: string[];
+    sandboxIsolated: boolean;
+    deadlineHours?: number;
+  }
+> = {
   SCREENING_AGENT: {
     priority: 'high',
     guardrails: STANDARD_GUARDRAILS,
@@ -173,7 +176,7 @@ const AGENT_DEFINITIONS: Record<ManagedAgentType, {
     guardrails: HIGH_STAKES_GUARDRAILS,
     toolsAllowed: ['goaml_submit', 'str_classifier', 'four_eyes_enforcer', 'asana_write'],
     sandboxIsolated: true,
-    deadlineHours: 240,   // 10 business days
+    deadlineHours: 240, // 10 business days
   },
   EDD_AGENT: {
     priority: 'high',
@@ -187,7 +190,7 @@ const AGENT_DEFINITIONS: Record<ManagedAgentType, {
     guardrails: HIGH_STAKES_GUARDRAILS,
     toolsAllowed: ['asset_freeze_execute', 'eocn_notify', 'goaml_submit', 'asana_write'],
     sandboxIsolated: true,
-    deadlineHours: 24,    // Cabinet Res 74/2020 Art.4
+    deadlineHours: 24, // Cabinet Res 74/2020 Art.4
   },
   KYC_RENEWAL_AGENT: {
     priority: 'medium',
@@ -199,7 +202,14 @@ const AGENT_DEFINITIONS: Record<ManagedAgentType, {
   ESG_AUDIT_AGENT: {
     priority: 'medium',
     guardrails: STANDARD_GUARDRAILS,
-    toolsAllowed: ['esg_scorer', 'carbon_estimator', 'tcfd_checker', 'sdg_scorer', 'conflict_minerals', 'asana_write'],
+    toolsAllowed: [
+      'esg_scorer',
+      'carbon_estimator',
+      'tcfd_checker',
+      'sdg_scorer',
+      'conflict_minerals',
+      'asana_write',
+    ],
     sandboxIsolated: false,
     deadlineHours: 72,
   },
@@ -239,7 +249,7 @@ export function spawnManagedAgent(
   session: OrchestratorSession,
   agentType: ManagedAgentType,
   entityName: string,
-  triggeredBy: string,
+  triggeredBy: string
 ): ManagedAgentTask {
   const def = AGENT_DEFINITIONS[agentType];
   const now = new Date().toISOString();
@@ -264,7 +274,9 @@ export function spawnManagedAgent(
   };
 
   session.activeAgents.push(task);
-  session.auditLog.push(`[${now}] Agent ${agentType} spawned for ${session.entityId} — triggered by: ${triggeredBy}`);
+  session.auditLog.push(
+    `[${now}] Agent ${agentType} spawned for ${session.entityId} — triggered by: ${triggeredBy}`
+  );
 
   return task;
 }
@@ -281,15 +293,15 @@ export function resolveAgentsForVerdict(
     esgScore?: { riskLevel: string };
     hawala?: { requiresCbuaeReport: boolean };
     crossBorderCash?: { structuringDetected: boolean };
-  },
+  }
 ): ManagedAgentType[] {
   const agents: ManagedAgentType[] = [];
 
   // FREEZE → spawn in strict priority order
   if (verdict === 'freeze') {
-    agents.push('FREEZE_AGENT');         // 24h EOCN — highest priority
-    agents.push('STR_FILING_AGENT');     // CNMR filing
-    agents.push('ASANA_SYNC_AGENT');     // task tree
+    agents.push('FREEZE_AGENT'); // 24h EOCN — highest priority
+    agents.push('STR_FILING_AGENT'); // CNMR filing
+    agents.push('ASANA_SYNC_AGENT'); // task tree
     agents.push('REPORT_AGENT');
     return agents;
   }
@@ -297,8 +309,10 @@ export function resolveAgentsForVerdict(
   // ESCALATE
   if (verdict === 'escalate') {
     agents.push('EDD_AGENT');
-    if (extensions.filingClassification?.primaryCategory &&
-        extensions.filingClassification.primaryCategory !== 'NONE') {
+    if (
+      extensions.filingClassification?.primaryCategory &&
+      extensions.filingClassification.primaryCategory !== 'NONE'
+    ) {
       agents.push('STR_FILING_AGENT');
     }
     if (extensions.pepProximity?.requiresBoardApproval) {
@@ -312,7 +326,10 @@ export function resolveAgentsForVerdict(
   // FLAG
   if (verdict === 'flag') {
     agents.push('SCREENING_AGENT');
-    if (extensions.esgScore?.riskLevel === 'critical' || extensions.esgScore?.riskLevel === 'high') {
+    if (
+      extensions.esgScore?.riskLevel === 'critical' ||
+      extensions.esgScore?.riskLevel === 'high'
+    ) {
       agents.push('ESG_AUDIT_AGENT');
     }
     if (extensions.hawala?.requiresCbuaeReport || extensions.crossBorderCash?.structuringDetected) {
@@ -334,7 +351,7 @@ export function resolveAgentsForVerdict(
  */
 export function buildManagedAgentSystemPrompt(task: ManagedAgentTask): string {
   const guardrailBlock = task.guardrails
-    .map(g => `- ${g.type.replace(/_/g, ' ').toUpperCase()}: ${g.regulatoryRef}`)
+    .map((g) => `- ${g.type.replace(/_/g, ' ').toUpperCase()}: ${g.regulatoryRef}`)
     .join('\n');
 
   return `You are a UAE AML/CFT compliance managed agent (${task.agentType}).
@@ -351,7 +368,7 @@ SANDBOX ISOLATED: ${task.sandboxIsolated}
 ${guardrailBlock}
 
 ## TOOLS AVAILABLE
-${task.toolsAllowed.map(t => `- ${t}`).join('\n')}
+${task.toolsAllowed.map((t) => `- ${t}`).join('\n')}
 
 ## COMPLIANCE RULES
 1. NEVER tip off the subject of an investigation (FDL No.10/2025 Art.29 — criminal offence)

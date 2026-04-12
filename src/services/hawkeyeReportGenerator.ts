@@ -51,7 +51,7 @@ export interface HawkeyeReportInput {
   brain: WeaponizedBrainResponse;
   /** ISO country code of subject (e.g. "AE", "PAK") */
   subjectJurisdiction?: string;
-  subjectDob?: string;              // dd/mm/yyyy
+  subjectDob?: string; // dd/mm/yyyy
   subjectGender?: 'Male' | 'Female' | 'Unknown';
   subjectIdNumbers?: string[];
   /** Name of the screening officer / system user */
@@ -88,10 +88,14 @@ export interface HawkeyeReport {
 
 const BRAND = 'HAWKEYE STERLING V2';
 const BRAND_TAGLINE = 'Screening Intelligence Platform';
-const SANCTIONS_LISTS = ['UN Security Council', 'OFAC SDN', 'EU Consolidated', 'UK HM Treasury', 'UAE Local List', 'EOCN TFS'];
-const DIVIDER_HEAVY = '═'.repeat(76);
-const DIVIDER_LIGHT = '─'.repeat(76);
-
+const SANCTIONS_LISTS = [
+  'UN Security Council',
+  'OFAC SDN',
+  'EU Consolidated',
+  'UK HM Treasury',
+  'UAE Local List',
+  'EOCN TFS',
+];
 let reportSeq = 0;
 function nextReportId(entityId: string): string {
   return `HSV2-${entityId.replace(/\W/g, '').slice(0, 8).toUpperCase()}-${Date.now()}-${++reportSeq}`;
@@ -112,28 +116,32 @@ function riskBadgeEmoji(badge: RiskBadge): string {
 
 // ─── Section Builders ─────────────────────────────────────────────────────────
 
-function buildSanctionsResults(
-  input: HawkeyeReportInput,
-): { results: SanctionsListResult[]; totals: { total: number; confirmed: number; possible: number; false: number; unresolved: number } } {
+function buildSanctionsResults(input: HawkeyeReportInput): {
+  results: SanctionsListResult[];
+  totals: { total: number; confirmed: number; possible: number; false: number; unresolved: number };
+} {
   // Use provided data if available; otherwise infer from brain verdict
   const brain = input.brain;
-  const verdictIsFreezeOrEscalate = brain.finalVerdict === 'freeze' || brain.finalVerdict === 'escalate';
+  const verdictIsFreezeOrEscalate =
+    brain.finalVerdict === 'freeze' || brain.finalVerdict === 'escalate';
 
-  const results: SanctionsListResult[] = input.sanctionsListResults ?? SANCTIONS_LISTS.map((list) => ({
-    list,
-    screened: true,
-    totalMatches: 0,
-    confirmed: 0,
-    possible: 0,
-    falsePositive: 0,
-    unresolved: 0,
-    lastUpdated: new Date().toISOString().split('T')[0],
-  }));
+  const results: SanctionsListResult[] =
+    input.sanctionsListResults ??
+    SANCTIONS_LISTS.map((list) => ({
+      list,
+      screened: true,
+      totalMatches: 0,
+      confirmed: 0,
+      possible: 0,
+      falsePositive: 0,
+      unresolved: 0,
+      lastUpdated: new Date().toISOString().split('T')[0],
+    }));
 
   // If brain verdict is freeze and no explicit results were provided, surface
   // at least one unresolved match to be consistent with the verdict.
   if (input.sanctionsListResults === undefined && verdictIsFreezeOrEscalate) {
-    const eocnEntry = results.find(r => r.list === 'EOCN TFS') ?? results[0];
+    const eocnEntry = results.find((r) => r.list === 'EOCN TFS') ?? results[0];
     eocnEntry.totalMatches = 1;
     eocnEntry.unresolved = 1;
   }
@@ -146,7 +154,7 @@ function buildSanctionsResults(
       false: acc.false + r.falsePositive,
       unresolved: acc.unresolved + r.unresolved,
     }),
-    { total: 0, confirmed: 0, possible: 0, false: 0, unresolved: 0 },
+    { total: 0, confirmed: 0, possible: 0, false: 0, unresolved: 0 }
   );
 
   return { results, totals };
@@ -156,30 +164,35 @@ function buildSanctionsResults(
 
 function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: string): string {
   const { brain } = input;
-  const entityId   = brain.mega.entity?.id   ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name  ?? entityId;
-  const verdict    = brain.finalVerdict;
-  const badge      = verdictToRiskBadge(verdict, brain.confidence);
-  const emoji      = riskBadgeEmoji(badge);
-  const ext        = brain.extensions;
-  const cls        = input.classification ?? 'CONFIDENTIAL';
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityName = brain.mega.entity?.name ?? entityId;
+  const verdict = brain.finalVerdict;
+  const badge = verdictToRiskBadge(verdict, brain.confidence);
+  const emoji = riskBadgeEmoji(badge);
+  const ext = brain.extensions;
+  const cls = input.classification ?? 'CONFIDENTIAL';
   const { results: listsResults, totals } = buildSanctionsResults(input);
-  const fc         = ext.filingClassification;
+  const fc = ext.filingClassification;
 
   // Derived display values
   const nowDisplay = now.replace('T', ' ').slice(0, 16) + ' UTC';
-  const dateOnly   = now.split('T')[0];
-  const cddLevel   = ext.explanation?.cddLevel ?? 'CDD';
+  const dateOnly = now.split('T')[0];
+  const cddLevel = ext.explanation?.cddLevel ?? 'CDD';
   const nextReview = (() => {
     const months = cddLevel === 'EDD' ? 3 : cddLevel === 'CDD' ? 6 : 12;
-    const d = new Date(); d.setMonth(d.getMonth() + months);
+    const d = new Date();
+    d.setMonth(d.getMonth() + months);
     return d.toISOString().split('T')[0];
   })();
-  const totalResolved  = totals.confirmed + totals.possible + totals.false;
-  const overallStatus  =
-    totals.confirmed  > 0 ? `${emoji} MATCH CONFIRMED` :
-    totals.unresolved > 0 ? '🟠 MATCH — PENDING REVIEW' :
-    totals.possible   > 0 ? '🟡 POSSIBLE MATCH' : '🟢 CLEAR — NO ADVERSE FINDINGS';
+  const totalResolved = totals.confirmed + totals.possible + totals.false;
+  const overallStatus =
+    totals.confirmed > 0
+      ? `${emoji} MATCH CONFIRMED`
+      : totals.unresolved > 0
+        ? '🟠 MATCH — PENDING REVIEW'
+        : totals.possible > 0
+          ? '🟡 POSSIBLE MATCH'
+          : '🟢 CLEAR — NO ADVERSE FINDINGS';
 
   const lines: string[] = [];
 
@@ -189,7 +202,9 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   lines.push(`# ${BRAND}`);
   lines.push(`## CASE REPORT`);
   lines.push('');
-  lines.push(`> **${cls}** &nbsp;&nbsp;|&nbsp;&nbsp; ${BRAND_TAGLINE} &nbsp;&nbsp;|&nbsp;&nbsp; UAE Jurisdiction &nbsp;&nbsp;|&nbsp;&nbsp; Report ID: \`${reportId}\``);
+  lines.push(
+    `> **${cls}** &nbsp;&nbsp;|&nbsp;&nbsp; ${BRAND_TAGLINE} &nbsp;&nbsp;|&nbsp;&nbsp; UAE Jurisdiction &nbsp;&nbsp;|&nbsp;&nbsp; Report ID: \`${reportId}\``
+  );
   lines.push('');
   lines.push('---');
   lines.push('');
@@ -206,7 +221,9 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   lines.push(`| **Case Rating** | ${emoji} **${badge}** |`);
   lines.push(`| **Total Matches (All Lists)** | **${totals.total}** |`);
   lines.push(`| **Case ID** | \`${reportId}\` |`);
-  lines.push(`| **Screening Group** | ${input.screeningGroup ?? 'Compliance Screening — UAE DPMS'} |`);
+  lines.push(
+    `| **Screening Group** | ${input.screeningGroup ?? 'Compliance Screening — UAE DPMS'} |`
+  );
   if (input.asanaRef) lines.push(`| **Asana Reference** | ${input.asanaRef} |`);
   lines.push('');
 
@@ -215,12 +232,22 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   // ══════════════════════════════════════════════════════════════════════════
   lines.push(`| | | | |`);
   lines.push(`|---|---|---|---|`);
-  lines.push(`| **Gender** | ${input.subjectGender ?? 'Not specified'} | **Date of Birth** | ${input.subjectDob ?? 'Not specified'} |`);
-  lines.push(`| **Citizenship** | ${input.subjectJurisdiction ?? 'Not specified'} | **Last Screened** | ${nowDisplay} |`);
-  lines.push(`| **Case Created** | ${dateOnly} | **Entity Type** | ${brain.mega.entity?.type ?? 'Individual'} |`);
+  lines.push(
+    `| **Gender** | ${input.subjectGender ?? 'Not specified'} | **Date of Birth** | ${input.subjectDob ?? 'Not specified'} |`
+  );
+  lines.push(
+    `| **Citizenship** | ${input.subjectJurisdiction ?? 'Not specified'} | **Last Screened** | ${nowDisplay} |`
+  );
+  lines.push(
+    `| **Case Created** | ${dateOnly} | **Entity Type** | ${brain.mega.entity?.type ?? 'Individual'} |`
+  );
   lines.push(`| **Ongoing Screening** | Yes | **Archived** | No |`);
-  lines.push(`| **Name Transposition** | ${ext.nameVariants ? `Yes — ${ext.nameVariants.variants.length} variant(s)` : 'Standard'} | **CDD Level** | **${cddLevel}** |`);
-  lines.push(`| **Next Review Due** | ${nextReview} | **Screened By** | ${input.screenedBy ?? 'Hawkeye V2 (Automated)'} |`);
+  lines.push(
+    `| **Name Transposition** | ${ext.nameVariants ? `Yes — ${ext.nameVariants.variants.length} variant(s)` : 'Standard'} | **CDD Level** | **${cddLevel}** |`
+  );
+  lines.push(
+    `| **Next Review Due** | ${nextReview} | **Screened By** | ${input.screenedBy ?? 'Hawkeye V2 (Automated)'} |`
+  );
   lines.push('');
   lines.push('---');
   lines.push('');
@@ -233,9 +260,13 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   lines.push(`| | |`);
   lines.push(`|---|---|`);
   lines.push(`| **Total Matches** | **${totals.total}** |`);
-  lines.push(`| **Resolved Matches** | ${totalResolved} &nbsp;&nbsp; Confirmed: **${totals.confirmed}** &nbsp;&nbsp; Possible: **${totals.possible}** &nbsp;&nbsp; False Positive: **${totals.false}** &nbsp;&nbsp; Unresolved: **${totals.unresolved}** |`);
+  lines.push(
+    `| **Resolved Matches** | ${totalResolved} &nbsp;&nbsp; Confirmed: **${totals.confirmed}** &nbsp;&nbsp; Possible: **${totals.possible}** &nbsp;&nbsp; False Positive: **${totals.false}** &nbsp;&nbsp; Unresolved: **${totals.unresolved}** |`
+  );
   lines.push(`| **Unresolved Matches** | **${totals.unresolved}** |`);
-  lines.push(`| **Lists Screened** | ${listsResults.filter(r => r.screened).length} of ${SANCTIONS_LISTS.length} — UN \\| OFAC \\| EU \\| UK \\| UAE \\| EOCN |`);
+  lines.push(
+    `| **Lists Screened** | ${listsResults.filter((r) => r.screened).length} of ${SANCTIONS_LISTS.length} — UN \\| OFAC \\| EU \\| UK \\| UAE \\| EOCN |`
+  );
   lines.push(`| **Overall Screening Result** | ${overallStatus} |`);
   lines.push('');
 
@@ -245,14 +276,16 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   for (const r of listsResults) {
     const s = r.screened ? '✅ Screened' : '❌ Not screened';
     const rowEmoji =
-      r.confirmed  > 0 ? '🔴' :
-      r.unresolved > 0 ? '🟠' :
-      r.possible   > 0 ? '🟡' : '🟢';
-    lines.push(`| ${r.list} | ${s} | ${rowEmoji} ${r.totalMatches} | ${r.confirmed} | ${r.possible} | ${r.falsePositive} | ${r.unresolved} |`);
+      r.confirmed > 0 ? '🔴' : r.unresolved > 0 ? '🟠' : r.possible > 0 ? '🟡' : '🟢';
+    lines.push(
+      `| ${r.list} | ${s} | ${rowEmoji} ${r.totalMatches} | ${r.confirmed} | ${r.possible} | ${r.falsePositive} | ${r.unresolved} |`
+    );
   }
-  if (!listsResults.every(r => r.screened)) {
+  if (!listsResults.every((r) => r.screened)) {
     lines.push('');
-    lines.push('> ⚠ **INCOMPLETE SCREENING** — Not all mandatory lists were checked. Escalate to CO immediately. (FATF Rec 1; Cabinet Res 74/2020 Art.3)');
+    lines.push(
+      '> ⚠ **INCOMPLETE SCREENING** — Not all mandatory lists were checked. Escalate to CO immediately. (FATF Rec 1; Cabinet Res 74/2020 Art.3)'
+    );
   }
   lines.push('');
   lines.push('---');
@@ -265,37 +298,63 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   lines.push('');
   lines.push(`| Risk Dimension | Rating | Score | Regulatory Reference |`);
   lines.push(`|---|---|---|---|`);
-  lines.push(`| **Overall Verdict** | ${emoji} **${verdict.toUpperCase()}** | Confidence: ${(brain.confidence * 100).toFixed(1)}% | FDL No.10/2025 Art.20-21 |`);
-  lines.push(`| **Composite Risk Score** | ${badge} | ${ext.explanation?.score?.toFixed(0) ?? 'N/A'} / 100 | Weaponized Brain v2 |`);
+  lines.push(
+    `| **Overall Verdict** | ${emoji} **${verdict.toUpperCase()}** | Confidence: ${(brain.confidence * 100).toFixed(1)}% | FDL No.10/2025 Art.20-21 |`
+  );
+  lines.push(
+    `| **Composite Risk Score** | ${badge} | ${ext.explanation?.score?.toFixed(0) ?? 'N/A'} / 100 | Weaponized Brain v2 |`
+  );
   lines.push(`| **CDD Level Required** | **${cddLevel}** | — | Cabinet Res 134/2025 Art.7-10 |`);
-  lines.push(`| **Human Review** | ${brain.requiresHumanReview ? '⚠ REQUIRED' : 'Not required'} | — | Cabinet Res 134/2025 Art.19 |`);
-  lines.push(`| **Four-Eyes Approval** | ${(verdict === 'freeze' || verdict === 'escalate') ? '✅ REQUIRED' : 'Not required'} | — | FDL No.10/2025 Art.20-21 |`);
+  lines.push(
+    `| **Human Review** | ${brain.requiresHumanReview ? '⚠ REQUIRED' : 'Not required'} | — | Cabinet Res 134/2025 Art.19 |`
+  );
+  lines.push(
+    `| **Four-Eyes Approval** | ${verdict === 'freeze' || verdict === 'escalate' ? '✅ REQUIRED' : 'Not required'} | — | FDL No.10/2025 Art.20-21 |`
+  );
   if (ext.pepProximity) {
-    lines.push(`| **PEP Proximity** | ${ext.pepProximity.overallRisk.toUpperCase()} | ${ext.pepProximity.maxProximityScore.toFixed(0)} / 100 | Cabinet Res 134/2025 Art.14 |`);
+    lines.push(
+      `| **PEP Proximity** | ${ext.pepProximity.overallRisk.toUpperCase()} | ${ext.pepProximity.maxProximityScore.toFixed(0)} / 100 | Cabinet Res 134/2025 Art.14 |`
+    );
   }
   if (ext.tbml) {
-    lines.push(`| **Trade-Based ML (TBML)** | ${ext.tbml.overallRisk.toUpperCase()} | ${ext.tbml.compositeScore} / 100 | FATF TBML Typologies 2020 |`);
+    lines.push(
+      `| **Trade-Based ML (TBML)** | ${ext.tbml.overallRisk.toUpperCase()} | ${ext.tbml.compositeScore} / 100 | FATF TBML Typologies 2020 |`
+    );
   }
   if (ext.hawala) {
-    lines.push(`| **Hawala / IVTS** | ${ext.hawala.riskLevel.toUpperCase()} | ${ext.hawala.score} / 100 | CBUAE Hawala Regs; FATF Rec 14 |`);
+    lines.push(
+      `| **Hawala / IVTS** | ${ext.hawala.riskLevel.toUpperCase()} | ${ext.hawala.score} / 100 | CBUAE Hawala Regs; FATF Rec 14 |`
+    );
   }
   if (ext.crossBorderCash) {
-    lines.push(`| **Cross-Border Cash** | ${ext.crossBorderCash.overallRisk.toUpperCase()} | AED ${ext.crossBorderCash.cumulativeAmountAED.toLocaleString()} | Cabinet Res 134/2025 Art.16 |`);
+    lines.push(
+      `| **Cross-Border Cash** | ${ext.crossBorderCash.overallRisk.toUpperCase()} | AED ${ext.crossBorderCash.cumulativeAmountAED.toLocaleString()} | Cabinet Res 134/2025 Art.16 |`
+    );
   }
   if (ext.anomalyEnsemble) {
-    lines.push(`| **Anomaly Ensemble (BMA)** | ${ext.anomalyEnsemble.anomalyLevel.toUpperCase()} | ${ext.anomalyEnsemble.aggregatedScore.toFixed(0)} / 100 | NIST AI RMF GV-1.6 |`);
+    lines.push(
+      `| **Anomaly Ensemble (BMA)** | ${ext.anomalyEnsemble.anomalyLevel.toUpperCase()} | ${ext.anomalyEnsemble.aggregatedScore.toFixed(0)} / 100 | NIST AI RMF GV-1.6 |`
+    );
   }
   if (ext.esgScore) {
-    lines.push(`| **ESG Grade** | Grade ${ext.esgScore.grade} — ${ext.esgScore.riskLevel.toUpperCase()} | ${ext.esgScore.composite.toFixed(0)} / 100 | ISSB IFRS S1/S2; LBMA RGG v9 |`);
+    lines.push(
+      `| **ESG Grade** | Grade ${ext.esgScore.grade} — ${ext.esgScore.riskLevel.toUpperCase()} | ${ext.esgScore.composite.toFixed(0)} / 100 | ISSB IFRS S1/S2; LBMA RGG v9 |`
+    );
   }
   if (ext.goldOrigin) {
-    lines.push(`| **Gold Origin Risk** | ${ext.goldOrigin.overallRisk.toUpperCase()} | ${ext.goldOrigin.totalShipments} shipment(s) | LBMA RGG v9; OECD DDG 2016 |`);
+    lines.push(
+      `| **Gold Origin Risk** | ${ext.goldOrigin.overallRisk.toUpperCase()} | ${ext.goldOrigin.totalShipments} shipment(s) | LBMA RGG v9; OECD DDG 2016 |`
+    );
   }
   if (ext.lbmaFixCheck && (ext.lbmaFixCheck.flagged > 0 || ext.lbmaFixCheck.frozen > 0)) {
-    lines.push(`| **LBMA Fix Deviation** | ${ext.lbmaFixCheck.frozen > 0 ? '🔴 FROZEN' : '🟠 FLAGGED'} | ${ext.lbmaFixCheck.flagged} flagged / ${ext.lbmaFixCheck.frozen} frozen | LBMA RGG v9; FATF DPMS |`);
+    lines.push(
+      `| **LBMA Fix Deviation** | ${ext.lbmaFixCheck.frozen > 0 ? '🔴 FROZEN' : '🟠 FLAGGED'} | ${ext.lbmaFixCheck.flagged} flagged / ${ext.lbmaFixCheck.frozen} frozen | LBMA RGG v9; FATF DPMS |`
+    );
   }
   if (ext.penaltyVar) {
-    lines.push(`| **Penalty VaR (AED)** | AED ${ext.penaltyVar.varAed.toLocaleString()} VaR-95 | Expected: AED ${ext.penaltyVar.expectedPenaltyAed.toLocaleString()} | Cabinet Res 71/2024 |`);
+    lines.push(
+      `| **Penalty VaR (AED)** | AED ${ext.penaltyVar.varAed.toLocaleString()} VaR-95 | Expected: AED ${ext.penaltyVar.expectedPenaltyAed.toLocaleString()} | Cabinet Res 71/2024 |`
+    );
   }
   lines.push('');
   lines.push('---');
@@ -311,10 +370,11 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
     lines.push('**Safety Clamps Triggered:**');
     lines.push('');
     for (const clamp of brain.clampReasons) {
-      const isCrit = clamp.toLowerCase().includes('freeze') ||
-                     clamp.toLowerCase().includes('tipping') ||
-                     clamp.toLowerCase().includes('structuring') ||
-                     clamp.toLowerCase().includes('hard clamp');
+      const isCrit =
+        clamp.toLowerCase().includes('freeze') ||
+        clamp.toLowerCase().includes('tipping') ||
+        clamp.toLowerCase().includes('structuring') ||
+        clamp.toLowerCase().includes('hard clamp');
       lines.push(`- ${isCrit ? '🔴' : '🟠'} ${clamp}`);
     }
     lines.push('');
@@ -324,18 +384,27 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
     lines.push(`| Severity | Alert | Deadline | Action Required |`);
     lines.push(`|---|---|---|---|`);
     for (const alert of ext.mlroAlerts.alerts.slice(0, 12)) {
-      const sev   = { CRITICAL: '🔴 CRITICAL', HIGH: '🟠 HIGH', MEDIUM: '🟡 MEDIUM', INFO: 'ℹ INFO' }[alert.severity] ?? alert.severity;
+      const sev =
+        { CRITICAL: '🔴 CRITICAL', HIGH: '🟠 HIGH', MEDIUM: '🟡 MEDIUM', INFO: 'ℹ INFO' }[
+          alert.severity
+        ] ?? alert.severity;
       const feStr = alert.fourEyesRequired ? ' ✅ Four-eyes required.' : '';
       const toStr = alert.tipOffProhibited ? ' ⚠ Tip-off prohibited (Art.29).' : '';
-      lines.push(`| ${sev} | ${alert.title.slice(0, 70)} | ${alert.deadline.split('T')[0]} | ${alert.requiredAction.slice(0, 80)}${feStr}${toStr} |`);
+      lines.push(
+        `| ${sev} | ${alert.title.slice(0, 70)} | ${alert.deadline.split('T')[0]} | ${alert.requiredAction.slice(0, 80)}${feStr}${toStr} |`
+      );
     }
     lines.push('');
-    if (ext.mlroAlerts.alerts.some(a => a.tipOffProhibited)) {
-      lines.push('> 🔴 **TIP-OFF PROHIBITION ACTIVE** — Do NOT inform the subject of this screening, report, or any related filing. Criminal offence under FDL No.10/2025 Art.29. Penalty up to AED 5,000,000.');
+    if (ext.mlroAlerts.alerts.some((a) => a.tipOffProhibited)) {
+      lines.push(
+        '> 🔴 **TIP-OFF PROHIBITION ACTIVE** — Do NOT inform the subject of this screening, report, or any related filing. Criminal offence under FDL No.10/2025 Art.29. Penalty up to AED 5,000,000.'
+      );
       lines.push('');
     }
   } else if (verdict === 'pass') {
-    lines.push('> ✅ No adverse findings. Entity screened clear across all 6 mandatory sanctions lists.');
+    lines.push(
+      '> ✅ No adverse findings. Entity screened clear across all 6 mandatory sanctions lists.'
+    );
     lines.push('');
   }
   lines.push('---');
@@ -353,9 +422,15 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
     lines.push(`| **goAML Form Code** | \`${fc.goamlFormCode ?? 'N/A'}\` |`);
     lines.push(`| **Deadline** | **${fc.deadlineDueDate ?? 'See regulatory calendar'}** |`);
     lines.push(`| **Urgency** | ${fc.urgency.toUpperCase()} |`);
-    lines.push(`| **Four-Eyes Required** | ${fc.requiresFourEyes ? '✅ YES — obtain dual approval before filing' : 'No'} |`);
-    lines.push(`| **Tip-Off Prohibited** | ${fc.tipOffProhibited ? '⚠ YES — FDL No.10/2025 Art.29' : 'No'} |`);
-    lines.push(`| **goAML XML Auto-Generated** | ${ext.goamlXml ? `✅ YES — ${ext.goamlXml.length.toLocaleString()} chars ready for submission` : 'No — run /goaml skill'} |`);
+    lines.push(
+      `| **Four-Eyes Required** | ${fc.requiresFourEyes ? '✅ YES — obtain dual approval before filing' : 'No'} |`
+    );
+    lines.push(
+      `| **Tip-Off Prohibited** | ${fc.tipOffProhibited ? '⚠ YES — FDL No.10/2025 Art.29' : 'No'} |`
+    );
+    lines.push(
+      `| **goAML XML Auto-Generated** | ${ext.goamlXml ? `✅ YES — ${ext.goamlXml.length.toLocaleString()} chars ready for submission` : 'No — run /goaml skill'} |`
+    );
     lines.push(`| **Regulatory References** | ${fc.regulatoryRefs.join(' \\| ')} |`);
     lines.push('');
     lines.push('**Filing Instructions:**');
@@ -378,37 +453,66 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
     lines.push(`| ESG Dimension | Rating | Score | Standard |`);
     lines.push(`|---|---|---|---|`);
     if (ext.esgScore) {
-      lines.push(`| **ESG Composite** | Grade **${ext.esgScore.grade}** — ${ext.esgScore.riskLevel.toUpperCase()} | ${ext.esgScore.composite.toFixed(0)} / 100 | ISSB IFRS S1/S2 (2023) |`);
-      if (ext.esgScore.environment !== undefined) lines.push(`| Environmental (E) | — | ${ext.esgScore.environment.toFixed(0)} / 100 | GRI 2021 Standards |`);
-      if (ext.esgScore.social !== undefined)      lines.push(`| Social (S) | — | ${ext.esgScore.social.toFixed(0)} / 100 | ILO Conventions 29, 105 |`);
-      if (ext.esgScore.governance !== undefined)  lines.push(`| Governance (G) | — | ${ext.esgScore.governance.toFixed(0)} / 100 | OECD CG Principles 2023 |`);
+      lines.push(
+        `| **ESG Composite** | Grade **${ext.esgScore.grade}** — ${ext.esgScore.riskLevel.toUpperCase()} | ${ext.esgScore.composite.toFixed(0)} / 100 | ISSB IFRS S1/S2 (2023) |`
+      );
+      if (ext.esgScore.environment !== undefined)
+        lines.push(
+          `| Environmental (E) | — | ${ext.esgScore.environment.toFixed(0)} / 100 | GRI 2021 Standards |`
+        );
+      if (ext.esgScore.social !== undefined)
+        lines.push(
+          `| Social (S) | — | ${ext.esgScore.social.toFixed(0)} / 100 | ILO Conventions 29, 105 |`
+        );
+      if (ext.esgScore.governance !== undefined)
+        lines.push(
+          `| Governance (G) | — | ${ext.esgScore.governance.toFixed(0)} / 100 | OECD CG Principles 2023 |`
+        );
     }
     if (ext.carbonFootprint) {
-      lines.push(`| **Carbon Footprint** | ${ext.carbonFootprint.netZeroAligned ? '✅ NZ-Aligned' : '❌ Not Aligned'} | ${ext.carbonFootprint.totalKgCo2ePerOz?.toFixed(1) ?? 'N/A'} kgCO₂e/oz | LBMA RGG v9; UAE NZ2050 |`);
+      lines.push(
+        `| **Carbon Footprint** | ${ext.carbonFootprint.netZeroAligned ? '✅ NZ-Aligned' : '❌ Not Aligned'} | ${ext.carbonFootprint.totalKgCo2ePerOz?.toFixed(1) ?? 'N/A'} kgCO₂e/oz | LBMA RGG v9; UAE NZ2050 |`
+      );
     }
     if (ext.tcfdAlignment) {
-      lines.push(`| **TCFD Alignment** | ${ext.tcfdAlignment.maturityLevel} | ${ext.tcfdAlignment.overallScore.toFixed(0)} / 100 | TCFD / ISSB IFRS S2 |`);
+      lines.push(
+        `| **TCFD Alignment** | ${ext.tcfdAlignment.maturityLevel} | ${ext.tcfdAlignment.overallScore.toFixed(0)} / 100 | TCFD / ISSB IFRS S2 |`
+      );
     }
     if (ext.esgAdvanced?.csrd) {
-      lines.push(`| **CSRD Compliance** | ${ext.esgAdvanced.csrd.status.toUpperCase()} | ESRS score: ${ext.esgAdvanced.csrd.esrsAlignmentScore} / 100 | EU CSRD 2023 / ESRS |`);
+      lines.push(
+        `| **CSRD Compliance** | ${ext.esgAdvanced.csrd.status.toUpperCase()} | ESRS score: ${ext.esgAdvanced.csrd.esrsAlignmentScore} / 100 | EU CSRD 2023 / ESRS |`
+      );
     }
     if (ext.esgAdvanced?.climateVar) {
-      lines.push(`| **Climate VAR** | ${ext.esgAdvanced.overallRisk.toUpperCase()} | ${ext.esgAdvanced.climateVar.combinedVarPct.toFixed(1)}% combined VAR | NGFS Scenarios 2023 |`);
+      lines.push(
+        `| **Climate VAR** | ${ext.esgAdvanced.overallRisk.toUpperCase()} | ${ext.esgAdvanced.climateVar.combinedVarPct.toFixed(1)}% combined VAR | NGFS Scenarios 2023 |`
+      );
     }
     if (ext.greenwashing) {
-      lines.push(`| **Greenwashing Risk** | ${(ext.greenwashing.overallRisk ?? 'low').toUpperCase()} | ${ext.greenwashing.criticalFindings} critical finding(s) | ISSB S1 §B10; IOSCO |`);
+      lines.push(
+        `| **Greenwashing Risk** | ${(ext.greenwashing.overallRisk ?? 'low').toUpperCase()} | ${ext.greenwashing.criticalFindings} critical finding(s) | ISSB S1 §B10; IOSCO |`
+      );
     }
     if (ext.conflictMinerals) {
-      lines.push(`| **Conflict Minerals** | ${ext.conflictMinerals.overallRisk.toUpperCase()} | ${ext.conflictMinerals.criticalSupplierCount} critical supplier(s) | OECD DDG 2016; EU CMR |`);
+      lines.push(
+        `| **Conflict Minerals** | ${ext.conflictMinerals.overallRisk.toUpperCase()} | ${ext.conflictMinerals.criticalSupplierCount} critical supplier(s) | OECD DDG 2016; EU CMR |`
+      );
     }
     if (ext.modernSlavery) {
-      lines.push(`| **Modern Slavery** | ${ext.modernSlavery.overallRisk.toUpperCase()} | ${ext.modernSlavery.riskScore} / 100 | ILO Conv. 29/105; UAE Fed. Law 51/2006 |`);
+      lines.push(
+        `| **Modern Slavery** | ${ext.modernSlavery.overallRisk.toUpperCase()} | ${ext.modernSlavery.riskScore} / 100 | ILO Conv. 29/105; UAE Fed. Law 51/2006 |`
+      );
     }
     if (ext.sdgAlignment) {
-      lines.push(`| **UN SDG Alignment** | — | ${ext.sdgAlignment.overallScore.toFixed(0)} / 100 | UN SDG 8, 12, 13, 15, 16 |`);
+      lines.push(
+        `| **UN SDG Alignment** | — | ${ext.sdgAlignment.overallScore.toFixed(0)} / 100 | UN SDG 8, 12, 13, 15, 16 |`
+      );
     }
   } else {
-    lines.push('> ℹ ESG data not provided for this screening. Submit ESG inputs to unlock full sustainability assessment.');
+    lines.push(
+      '> ℹ ESG data not provided for this screening. Submit ESG inputs to unlock full sustainability assessment.'
+    );
   }
   lines.push('');
   lines.push('---');
@@ -422,27 +526,49 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   lines.push('');
   lines.push(`| Timestamp (UTC) | Action | Actor | Regulatory Reference |`);
   lines.push(`|---|---|---|---|`);
-  lines.push(`| ${nowDisplay} | Screening request initiated | ${input.screenedBy ?? 'Hawkeye V2 (Automated)'} | FDL No.10/2025 Art.12-14 |`);
-  lines.push(`| ${nowDisplay} | Sanctions check — 6 mandatory lists | Hawkeye Engine | Cabinet Res 74/2020 Art.3 |`);
-  lines.push(`| ${nowDisplay} | Weaponized Brain v2 — 97 subsystems | Weaponized Brain | FDL No.10/2025 Art.20-21 |`);
-  lines.push(`| ${nowDisplay} | Verdict rendered: **${verdict.toUpperCase()}** (confidence ${(brain.confidence * 100).toFixed(1)}%) | Hawkeye Engine | FDL No.10/2025 Art.20 |`);
+  lines.push(
+    `| ${nowDisplay} | Screening request initiated | ${input.screenedBy ?? 'Hawkeye V2 (Automated)'} | FDL No.10/2025 Art.12-14 |`
+  );
+  lines.push(
+    `| ${nowDisplay} | Sanctions check — 6 mandatory lists | Hawkeye Engine | Cabinet Res 74/2020 Art.3 |`
+  );
+  lines.push(
+    `| ${nowDisplay} | Weaponized Brain v2 — 97 subsystems | Weaponized Brain | FDL No.10/2025 Art.20-21 |`
+  );
+  lines.push(
+    `| ${nowDisplay} | Verdict rendered: **${verdict.toUpperCase()}** (confidence ${(brain.confidence * 100).toFixed(1)}%) | Hawkeye Engine | FDL No.10/2025 Art.20 |`
+  );
   if (brain.clampReasons.length > 0) {
-    lines.push(`| ${nowDisplay} | ${brain.clampReasons.length} safety clamp(s) applied | Weaponized Brain | NIST AI RMF GV-1.6 |`);
+    lines.push(
+      `| ${nowDisplay} | ${brain.clampReasons.length} safety clamp(s) applied | Weaponized Brain | NIST AI RMF GV-1.6 |`
+    );
   }
   if (verdict === 'freeze') {
-    lines.push(`| ${nowDisplay} | Asset freeze obligation triggered | System | Cabinet Res 74/2020 Art.4 |`);
-    lines.push(`| ${nowDisplay} | EOCN 24h countdown started | System | Cabinet Res 74/2020 Art.4-7 |`);
+    lines.push(
+      `| ${nowDisplay} | Asset freeze obligation triggered | System | Cabinet Res 74/2020 Art.4 |`
+    );
+    lines.push(
+      `| ${nowDisplay} | EOCN 24h countdown started | System | Cabinet Res 74/2020 Art.4-7 |`
+    );
   }
   if (fc && fc.primaryCategory !== 'NONE') {
-    lines.push(`| ${nowDisplay} | Filing obligation identified: ${fc.primaryCategory} | Hawkeye Engine | FDL No.10/2025 Art.26-27 |`);
+    lines.push(
+      `| ${nowDisplay} | Filing obligation identified: ${fc.primaryCategory} | Hawkeye Engine | FDL No.10/2025 Art.26-27 |`
+    );
   }
   if (ext.quantumSeal) {
-    lines.push(`| ${nowDisplay} | Quantum-resistant audit seal applied | SHA-3/512 | FDL Art.24; NIST PQC Framework |`);
+    lines.push(
+      `| ${nowDisplay} | Quantum-resistant audit seal applied | SHA-3/512 | FDL Art.24; NIST PQC Framework |`
+    );
   }
   if (ext.asanaSync?.parentTaskGid) {
-    lines.push(`| ${nowDisplay} | Asana task created: \`${ext.asanaSync.parentTaskGid}\` | Asana Orchestrator | FDL No.10/2025 Art.24 |`);
+    lines.push(
+      `| ${nowDisplay} | Asana task created: \`${ext.asanaSync.parentTaskGid}\` | Asana Orchestrator | FDL No.10/2025 Art.24 |`
+    );
   }
-  lines.push(`| ${nowDisplay} | Case report generated: \`${reportId}\` | Hawkeye Sterling V2 | FDL No.10/2025 Art.24 — 10yr retention |`);
+  lines.push(
+    `| ${nowDisplay} | Case report generated: \`${reportId}\` | Hawkeye Sterling V2 | FDL No.10/2025 Art.24 — 10yr retention |`
+  );
   lines.push('');
   lines.push('---');
   lines.push('');
@@ -465,7 +591,9 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   lines.push(`> or to any unauthorised party, is a criminal offence under FDL No.10/2025 Art.29`);
   lines.push(`> (no tipping off). Maximum penalty: AED 5,000,000. Retain for 10 years per Art.24.`);
   lines.push('');
-  lines.push(`*Page 1 of 1 &nbsp;|&nbsp; Report ID: \`${reportId}\` &nbsp;|&nbsp; ${nowDisplay} &nbsp;|&nbsp; UAE Jurisdiction*`);
+  lines.push(
+    `*Page 1 of 1 &nbsp;|&nbsp; Report ID: \`${reportId}\` &nbsp;|&nbsp; ${nowDisplay} &nbsp;|&nbsp; UAE Jurisdiction*`
+  );
 
   return lines.join('\n');
 }
@@ -476,45 +604,48 @@ function buildSummaryCard(
   input: HawkeyeReportInput,
   reportId: string,
   now: string,
-  totals: { total: number; confirmed: number; possible: number; false: number; unresolved: number },
+  totals: { total: number; confirmed: number; possible: number; false: number; unresolved: number }
 ): string {
   const { brain } = input;
-  const entityId   = brain.mega.entity?.id   ?? 'UNKNOWN';
-  const entityName = brain.mega.entity?.name  ?? entityId;
-  const verdict    = brain.finalVerdict;
-  const badge      = verdictToRiskBadge(verdict, brain.confidence);
-  const emoji      = riskBadgeEmoji(badge);
-  const ext        = brain.extensions;
+  const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
+  const entityName = brain.mega.entity?.name ?? entityId;
+  const verdict = brain.finalVerdict;
+  const badge = verdictToRiskBadge(verdict, brain.confidence);
+  const emoji = riskBadgeEmoji(badge);
+  const ext = brain.extensions;
 
   // ── derived values ──────────────────────────────────────────────────────────
-  const nowShort      = now.replace('T', ' ').slice(0, 16) + ' UTC';
-  const cddLevel      = ext.explanation?.cddLevel ?? 'CDD';
-  const nextReview    = (() => {
+  const nowShort = now.replace('T', ' ').slice(0, 16) + ' UTC';
+  const cddLevel = ext.explanation?.cddLevel ?? 'CDD';
+  const nextReview = (() => {
     const months = cddLevel === 'EDD' ? 3 : cddLevel === 'CDD' ? 6 : 12;
-    const d = new Date(); d.setMonth(d.getMonth() + months);
+    const d = new Date();
+    d.setMonth(d.getMonth() + months);
     return d.toISOString().split('T')[0];
   })();
-  const subsysCount   = Object.keys(ext).length;
-  const qSealShort    = ext.quantumSeal
+  const subsysCount = Object.keys(ext).length;
+  const qSealShort = ext.quantumSeal
     ? `SHA-3/512 · ${ext.quantumSeal.rootHash.slice(0, 16)}…`
     : 'NOT APPLIED';
-  const clampCount    = brain.clampReasons.length;
-  const filingLine    = (ext.filingClassification?.primaryCategory && ext.filingClassification.primaryCategory !== 'NONE')
-    ? `${ext.filingClassification.primaryCategory} · due ${ext.filingClassification.deadlineDueDate ?? 'TBD'} · ${ext.filingClassification.urgency.toUpperCase()}`
-    : 'None triggered';
-  const esgLine       = ext.esgScore
+  const clampCount = brain.clampReasons.length;
+  const filingLine =
+    ext.filingClassification?.primaryCategory && ext.filingClassification.primaryCategory !== 'NONE'
+      ? `${ext.filingClassification.primaryCategory} · due ${ext.filingClassification.deadlineDueDate ?? 'TBD'} · ${ext.filingClassification.urgency.toUpperCase()}`
+      : 'None triggered';
+  const esgLine = ext.esgScore
     ? `Grade ${ext.esgScore.grade} (${ext.esgScore.composite.toFixed(0)}/100) — ${ext.esgScore.riskLevel.toUpperCase()}`
     : 'N/A';
-  const pepLine       = ext.pepProximity
+  const pepLine = ext.pepProximity
     ? `${ext.pepProximity.overallRisk.toUpperCase()} (score ${ext.pepProximity.maxProximityScore.toFixed(0)}/100)`
     : 'None detected';
-  const adversaryLine = ext.gameEquilibrium && ext.gameEquilibrium.expectedPayoff < 0
-    ? `⚠ ADVERSARY EDGE (payoff ${ext.gameEquilibrium.expectedPayoff.toFixed(2)}) — harden controls`
-    : 'No adversary advantage';
-  const peerLine      = ext.peerAnomaly
-    ? (ext.peerAnomaly.anomalies.length > 0
-        ? `⚠ ${ext.peerAnomaly.anomalies.length} anomaly(ies) detected (z-score ${ext.peerAnomaly.overallScore.toFixed(1)})`
-        : 'No peer anomalies')
+  const adversaryLine =
+    ext.gameEquilibrium && ext.gameEquilibrium.expectedPayoff < 0
+      ? `⚠ ADVERSARY EDGE (payoff ${ext.gameEquilibrium.expectedPayoff.toFixed(2)}) — harden controls`
+      : 'No adversary advantage';
+  const peerLine = ext.peerAnomaly
+    ? ext.peerAnomaly.anomalies.length > 0
+      ? `⚠ ${ext.peerAnomaly.anomalies.length} anomaly(ies) detected (z-score ${ext.peerAnomaly.overallScore.toFixed(1)})`
+      : 'No peer anomalies'
     : 'N/A';
 
   // ── box width: 72 chars inner, 74 total (│...│) ───────────────────────────
@@ -535,46 +666,54 @@ function buildSummaryCard(
     `│${pad(`  ${BRAND}  ·  CASE SUMMARY CARD`)}│`,
     `│${pad(`  ${BRAND_TAGLINE}  ·  UAE Jurisdiction  ·  Confidential`)}│`,
     sep,
-    row('Report ID',   reportId),
-    row('Generated',   nowShort),
+    row('Report ID', reportId),
+    row('Generated', nowShort),
     row('Screened By', input.screenedBy ?? 'Hawkeye V2 (Automated)'),
     sep,
     hdr('SUBJECT'),
-    row('Name',        entityName),
-    row('Entity ID',   entityId),
+    row('Name', entityName),
+    row('Entity ID', entityId),
     row('Entity Type', brain.mega.entity?.type ?? 'Individual'),
     row('Jurisdiction', input.subjectJurisdiction ?? 'Not specified'),
     row('Date of Birth', input.subjectDob ?? 'Not specified'),
     sep,
     hdr('SANCTIONS SCREENING  —  6 of 6 Lists'),
-    row('Total Matches',   String(totals.total)),
-    row('  Confirmed',     String(totals.confirmed)),
-    row('  Possible',      String(totals.possible)),
-    row('  False Positive',String(totals.false)),
-    row('  Unresolved',    String(totals.unresolved)),
-    row('Lists',           'UN | OFAC | EU | UK | UAE | EOCN'),
+    row('Total Matches', String(totals.total)),
+    row('  Confirmed', String(totals.confirmed)),
+    row('  Possible', String(totals.possible)),
+    row('  False Positive', String(totals.false)),
+    row('  Unresolved', String(totals.unresolved)),
+    row('Lists', 'UN | OFAC | EU | UK | UAE | EOCN'),
     sep,
     hdr('RISK VERDICT'),
-    row('Verdict',      `${emoji} ${badge}  —  ${verdict.toUpperCase()}`),
-    row('Confidence',   `${(brain.confidence * 100).toFixed(1)}%`),
-    row('CDD Level',    cddLevel),
-    row('Next Review',  nextReview),
+    row('Verdict', `${emoji} ${badge}  —  ${verdict.toUpperCase()}`),
+    row('Confidence', `${(brain.confidence * 100).toFixed(1)}%`),
+    row('CDD Level', cddLevel),
+    row('Next Review', nextReview),
     row('PEP Exposure', pepLine),
     row('Peer Anomaly', peerLine),
-    row('Adversary',    adversaryLine),
-    row('ESG Grade',    esgLine),
+    row('Adversary', adversaryLine),
+    row('ESG Grade', esgLine),
     sep,
     hdr('COMPLIANCE ACTIONS'),
-    row('Human Review',  brain.requiresHumanReview ? '⚠ REQUIRED  (Cabinet Res 134/2025 Art.19)' : 'Not required'),
-    row('Four-Eyes',     (verdict === 'freeze' || verdict === 'escalate') ? '⚠ REQUIRED  (FDL No.10/2025 Art.20-21)' : 'Not required'),
-    row('Filing',        filingLine),
-    row('Clamps Fired',  `${clampCount} safety clamp(s)`),
+    row(
+      'Human Review',
+      brain.requiresHumanReview ? '⚠ REQUIRED  (Cabinet Res 134/2025 Art.19)' : 'Not required'
+    ),
+    row(
+      'Four-Eyes',
+      verdict === 'freeze' || verdict === 'escalate'
+        ? '⚠ REQUIRED  (FDL No.10/2025 Art.20-21)'
+        : 'Not required'
+    ),
+    row('Filing', filingLine),
+    row('Clamps Fired', `${clampCount} safety clamp(s)`),
     sep,
     hdr('INTEGRITY'),
-    row('Subsystems',   `${subsysCount} active (Weaponized Brain v2 — 97 total)`),
-    row('Quantum Seal',  qSealShort),
-    row('Tip-Off',      '⚠ PROHIBITED  (FDL No.10/2025 Art.29  —  AED 5M penalty)'),
-    row('Retention',    '10 years  (FDL No.10/2025 Art.24)'),
+    row('Subsystems', `${subsysCount} active (Weaponized Brain v2 — 97 total)`),
+    row('Quantum Seal', qSealShort),
+    row('Tip-Off', '⚠ PROHIBITED  (FDL No.10/2025 Art.29  —  AED 5M penalty)'),
+    row('Retention', '10 years  (FDL No.10/2025 Art.24)'),
     `└${'─'.repeat(W)}┘`,
   ];
 
@@ -583,11 +722,7 @@ function buildSummaryCard(
 
 // ─── Audit Block Builder ──────────────────────────────────────────────────────
 
-function buildAuditBlock(
-  input: HawkeyeReportInput,
-  reportId: string,
-  now: string,
-): string {
+function buildAuditBlock(input: HawkeyeReportInput, reportId: string, now: string): string {
   const { brain } = input;
   const entityId = brain.mega.entity?.id ?? 'UNKNOWN';
   const entityName = brain.mega.entity?.name ?? entityId;
@@ -654,7 +789,11 @@ export function generateHawkeyeReport(input: HawkeyeReportInput): HawkeyeReport 
     markdownReport,
     summaryCard,
     auditBlock,
-    jsonPayload: JSON.stringify({ ...reportData, markdownReport: '[see markdownReport field]' }, null, 2),
+    jsonPayload: JSON.stringify(
+      { ...reportData, markdownReport: '[see markdownReport field]' },
+      null,
+      2
+    ),
   };
 }
 
@@ -666,11 +805,24 @@ export function generateHawkeyeReport(input: HawkeyeReportInput): HawkeyeReport 
 export function buildHawkeyeAsanaTask(
   report: HawkeyeReport,
   asanaProjectGid: string,
-  assigneeGid?: string,
-): { name: string; notes: string; due_on: string; projects: string[]; assignee?: string; tags: string[] } {
+  assigneeGid?: string
+): {
+  name: string;
+  notes: string;
+  due_on: string;
+  projects: string[];
+  assignee?: string;
+  tags: string[];
+} {
   const badge = riskBadgeEmoji(report.riskBadge);
   const today = new Date().toISOString().split('T')[0];
-  const urgencyDays: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 3, LOW: 7, CLEAR: 14 };
+  const urgencyDays: Record<string, number> = {
+    CRITICAL: 0,
+    HIGH: 1,
+    MEDIUM: 3,
+    LOW: 7,
+    CLEAR: 14,
+  };
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + (urgencyDays[report.riskBadge] ?? 3));
 

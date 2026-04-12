@@ -235,16 +235,8 @@ import {
   type WorkforceProfile,
   type ModernSlaveryReport,
 } from './modernSlaveryDetector';
-import {
-  detectTbml,
-  type TbmlTransaction,
-  type TbmlAssessment,
-} from './tradeBasedMLDetector';
-import {
-  enforceFourEyes,
-  type ApprovalSubmission,
-  type FourEyesResult,
-} from './fourEyesEnforcer';
+import { detectTbml, type TbmlTransaction, type TbmlAssessment } from './tradeBasedMLDetector';
+import { enforceFourEyes, type ApprovalSubmission, type FourEyesResult } from './fourEyesEnforcer';
 import {
   classifyFiling,
   type ClassificationInput,
@@ -255,16 +247,8 @@ import {
   type PepProximityInput,
   type PepProximityScore,
 } from './pepProximityScorer';
-import {
-  detectHawala,
-  type HawalaTransaction,
-  type HawalaDetectionResult,
-} from './hawalaDetector';
-import {
-  runAnomalyEnsemble,
-  buildSignal,
-  type EnsembleResult,
-} from './anomalyEnsemble';
+import { detectHawala, type HawalaTransaction, type HawalaDetectionResult } from './hawalaDetector';
+import { runAnomalyEnsemble, buildSignal, type EnsembleResult } from './anomalyEnsemble';
 import {
   monitorCrossBorderCash,
   type CrossBorderRiskInput,
@@ -275,14 +259,8 @@ import {
   type AsanaOrchestratorConfig,
   type OrchestratorResult,
 } from './brainToAsanaOrchestrator';
-import {
-  generateMlroAlerts,
-  type MlroAlertBundle,
-} from './mlroAlertGenerator';
-import {
-  buildKpiReport,
-  type KpiReport,
-} from './complianceMetricsDashboard';
+import { generateMlroAlerts, type MlroAlertBundle } from './mlroAlertGenerator';
+import { buildKpiReport, type KpiReport } from './complianceMetricsDashboard';
 import {
   generateHawkeyeReport,
   type HawkeyeReport,
@@ -300,10 +278,7 @@ import {
 } from './esgAdvancedFrameworkScorer';
 
 // --- Phase 11 imports: Security, Deduplication, STR Narrative, Predictive, Penalty, Gold ---
-import {
-  detectPromptInjection,
-  type InjectionReport,
-} from './adversarialPromptInjectionDetector';
+import { detectPromptInjection, type InjectionReport } from './adversarialPromptInjectionDetector';
 import {
   detectDeepfakeDocument,
   type DocumentEvidence,
@@ -319,22 +294,9 @@ import {
   type StrNarrativeInput,
   type StrNarrative,
 } from './strNarrativeBuilder';
-import {
-  predictStr,
-  type StrFeatures,
-  type StrPrediction,
-} from './predictiveStr';
-import {
-  runPenaltyVaR,
-  UAE_DPMS_VIOLATIONS,
-  type VaRReport,
-  type VaRConfig,
-} from './penaltyVaR';
-import {
-  traceGoldOrigin,
-  type GoldShipment,
-  type OriginTraceReport,
-} from './goldOriginTracer';
+import { predictStr, type StrFeatures, type StrPrediction } from './predictiveStr';
+import { runPenaltyVaR, UAE_DPMS_VIOLATIONS, type VaRReport, type VaRConfig } from './penaltyVaR';
+import { traceGoldOrigin, type GoldShipment, type OriginTraceReport } from './goldOriginTracer';
 import {
   matchAssayCertificates,
   type AssayCertificateClaim,
@@ -355,14 +317,8 @@ import {
   type DormancyTransaction,
   type DormancyReport,
 } from './dormancyActivityDetector';
-import {
-  expandNameVariants,
-  type NameVariantReport,
-} from './nameVariantExpander';
-import {
-  gradeStrNarrative,
-  type StrGradeReport,
-} from './strNarrativeGrader';
+import { expandNameVariants, type NameVariantReport } from './nameVariantExpander';
+import { gradeStrNarrative, type StrGradeReport } from './strNarrativeGrader';
 import {
   resolveAgentsForVerdict,
   spawnManagedAgent,
@@ -398,19 +354,10 @@ import {
   simulate,
   runCounterfactual,
   type CausalNode,
-  type CausalGraph,
   type Assignment,
 } from './causalEngine';
-import {
-  runDebate,
-  type DebateInput,
-  type DebateVerdict,
-} from './debateArbiter';
-import {
-  reviewReasoningChain,
-  type CriticConfig,
-  type ReflectionReport,
-} from './reflectionCritic';
+import { runDebate, type DebateInput, type DebateVerdict } from './debateArbiter';
+import { reviewReasoningChain, type CriticConfig, type ReflectionReport } from './reflectionCritic';
 import {
   detectCircularReasoning,
   type DependencyEdge,
@@ -440,10 +387,7 @@ import {
   type EntityFacts as FreeZoneEntityFacts,
   type FreeZoneCheckResult,
 } from './freeZoneRules';
-import {
-  lintForTippingOff,
-  type TippingOffReport,
-} from './tippingOffLinter';
+import { lintForTippingOff, type TippingOffReport } from './tippingOffLinter';
 import {
   computeShapleyAttribution,
   type VerdictFn,
@@ -453,7 +397,6 @@ import {
 import {
   verifyInvariants,
   CANONICAL_INVARIANTS,
-  type VerifyConfig,
   type VerifyReport as InvariantVerifyReport,
 } from './formalInvariantVerifier';
 import {
@@ -461,21 +404,14 @@ import {
   type QuantumSealRecord,
   type QuantumSealBundle,
 } from './quantumResistantSeal';
+import { analysePeerAnomaly, type PeerAnomalyInput, type PeerAnomalyReport } from './peerAnomaly';
 import {
-  analysePeerAnomaly,
-  type PeerAnomalyInput,
-  type PeerAnomalyReport,
-} from './peerAnomaly';
-import {
-  replayUntil,
   currentState,
   criticalPath,
   type EvidenceEntry,
   type CaseSnapshot,
 } from './timeTravelAudit';
-import {
-  buildGoAMLXml,
-} from './goamlBuilder';
+import { buildGoAMLXml } from './goamlBuilder';
 import {
   runBeliefUpdate,
   uniformPrior,
@@ -490,27 +426,10 @@ import {
   type LearnedRule,
   type InductionConfig,
 } from './ruleInduction';
-import {
-  runTamperChecks,
-  type TamperSignal,
-  type DocumentExtractionResult,
-} from './documentIntelligence';
-import {
-  analyseDrift,
-  type DriftSample,
-  type PortfolioDriftReport,
-} from './regulatoryDrift';
-import {
-  buildReadinessPayloads,
-  type ReadinessScaffoldResult,
-} from './euAiActReadinessProject';
-import {
-  CaseMemory,
-  cosineSimilarity,
-  type PastCase,
-  type RetrievalResult,
-  type ReuseRecommendation,
-} from './caseBasedReasoning';
+import { runTamperChecks, type DocumentExtractionResult } from './documentIntelligence';
+import { analyseDrift, type DriftSample, type PortfolioDriftReport } from './regulatoryDrift';
+import { buildReadinessPayloads, type ReadinessScaffoldResult } from './euAiActReadinessProject';
+import { CaseMemory, type ReuseRecommendation } from './caseBasedReasoning';
 import {
   generateSyntheticEvasionCases,
   type SyntheticCase,
@@ -1228,7 +1147,11 @@ export interface WeaponizedExtensions {
   /** #75 Multi-model screening (async) — consensus across multiple AI screeners. */
   multiModelConsensus?: MultiModelConsensusResult;
   /** #76 Causal engine — counterfactual reasoning: what would flip the verdict. */
-  causalCounterfactual?: { original: Record<string, number>; flipped: Record<string, number>; changedNodes: string[] };
+  causalCounterfactual?: {
+    original: Record<string, number>;
+    flipped: Record<string, number>;
+    changedNodes: string[];
+  };
   /** #77 Debate arbiter — pro/con structured argument with winning action. */
   verdictDebate?: DebateVerdict;
   /** #78 Reflection critic — reasoning chain coverage + structural issue analysis. */
@@ -1358,6 +1281,11 @@ export async function runWeaponizedBrain(
   const clampReasons: string[] = [];
   const subsystemFailures: string[] = [];
   let finalVerdict: Verdict = mega.verdict;
+  // Hoisted to the top of the function so the new subsystems added in
+  // commit faf0f7a3 (Phase 12) can clamp it before the final
+  // augmentation pass below. Without this hoist, references on lines
+  // ~2200-2700 hit a temporal-dead-zone ReferenceError.
+  let confidence = mega.confidence;
 
   // Partial-success helper: every extension runs inside this wrapper so that
   // a failure in one subsystem never loses the decision from the others.
@@ -1765,9 +1693,7 @@ export async function runWeaponizedBrain(
     req.buyBackTransactions && req.buyBackTransactions.length > 0
       ? Promise.resolve(
           runSafely('buyBackRisk', () =>
-            req.buyBackTransactions!.map((tx) =>
-              assessBuyBackRisk(tx, req.buyBackTransactions!)
-            )
+            req.buyBackTransactions!.map((tx) => assessBuyBackRisk(tx, req.buyBackTransactions!))
           )
         )
       : Promise.resolve(undefined),
@@ -1815,8 +1741,7 @@ export async function runWeaponizedBrain(
         if (extensions.teacherExtension) {
           votes.push({
             source: 'teacherExtension',
-            value:
-              extensions.teacherExtension.verdict === 'contested' ? 'escalate' : finalVerdict,
+            value: extensions.teacherExtension.verdict === 'contested' ? 'escalate' : finalVerdict,
           });
         }
 
@@ -1868,8 +1793,7 @@ export async function runWeaponizedBrain(
   if (extensions.taint && req.taintGraph) {
     const taintThreshold = policy.walletConfirmedConfidenceCap;
     const entityTainted = extensions.taint.tainted.filter(
-      (node) =>
-        req.taintGraph!.entityWallets.includes(node.wallet) && node.taint >= taintThreshold
+      (node) => req.taintGraph!.entityWallets.includes(node.wallet) && node.taint >= taintThreshold
     );
     if (entityTainted.length > 0) {
       finalVerdict = escalateTo(finalVerdict, 'freeze');
@@ -1978,7 +1902,9 @@ export async function runWeaponizedBrain(
 
     // #42 Carbon footprint
     req.carbonInput
-      ? Promise.resolve(runSafely('carbonFootprintEstimator', () => estimateCarbonFootprint(req.carbonInput!)))
+      ? Promise.resolve(
+          runSafely('carbonFootprintEstimator', () => estimateCarbonFootprint(req.carbonInput!))
+        )
       : Promise.resolve(undefined),
 
     // #43 TCFD alignment
@@ -1988,29 +1914,47 @@ export async function runWeaponizedBrain(
 
     // #44 UN SDG alignment
     req.sdgEvidence
-      ? Promise.resolve(runSafely('unSdgAlignmentScorer', () =>
-          scoreUnSdgAlignment(req.sdgEvidence!.entityId, req.sdgEvidence!.reportingYear, req.sdgEvidence!.evidence)
-        ))
+      ? Promise.resolve(
+          runSafely('unSdgAlignmentScorer', () =>
+            scoreUnSdgAlignment(
+              req.sdgEvidence!.entityId,
+              req.sdgEvidence!.reportingYear,
+              req.sdgEvidence!.evidence
+            )
+          )
+        )
       : Promise.resolve(undefined),
 
     // #45 Conflict minerals
     req.conflictMineralSuppliers && req.conflictMineralSuppliers.length > 0
-      ? Promise.resolve(runSafely('conflictMineralsScreener', () => screenConflictMinerals(req.conflictMineralSuppliers!)))
+      ? Promise.resolve(
+          runSafely('conflictMineralsScreener', () =>
+            screenConflictMinerals(req.conflictMineralSuppliers!)
+          )
+        )
       : Promise.resolve(undefined),
 
     // #46 Greenwashing
     req.esgDisclosure
-      ? Promise.resolve(runSafely('greenwashingDetector', () => detectGreenwashing(req.esgDisclosure!)))
+      ? Promise.resolve(
+          runSafely('greenwashingDetector', () => detectGreenwashing(req.esgDisclosure!))
+        )
       : Promise.resolve(undefined),
 
     // #47 ESG adverse media
     req.esgAdverseMediaHits && req.esgAdverseMediaHits.length > 0
-      ? Promise.resolve(runSafely('esgAdverseMediaClassifier', () => classifyEsgAdverseMedia(req.esgAdverseMediaHits!)))
+      ? Promise.resolve(
+          runSafely('esgAdverseMediaClassifier', () =>
+            classifyEsgAdverseMedia(req.esgAdverseMediaHits!)
+          )
+        )
       : Promise.resolve(undefined),
 
     // #48 Modern slavery
     req.workforceProfile
-      ? Promise.resolve(runSafely('modernSlaveryDetector', () => assessModernSlaveryRisk(req.workforceProfile!)))
+      ? Promise.resolve(
+          runSafely('modernSlaveryDetector', () => assessModernSlaveryRisk(req.workforceProfile!))
+        )
       : Promise.resolve(undefined),
 
     // #49 TBML
@@ -2020,17 +1964,23 @@ export async function runWeaponizedBrain(
 
     // #50 Four-eyes enforcer
     req.fourEyesSubmission
-      ? Promise.resolve(runSafely('fourEyesEnforcer', () => enforceFourEyes(req.fourEyesSubmission!)))
+      ? Promise.resolve(
+          runSafely('fourEyesEnforcer', () => enforceFourEyes(req.fourEyesSubmission!))
+        )
       : Promise.resolve(undefined),
 
     // #51 STR/SAR/CTR auto-classifier
     req.filingClassificationInput
-      ? Promise.resolve(runSafely('strAutoClassifier', () => classifyFiling(req.filingClassificationInput!)))
+      ? Promise.resolve(
+          runSafely('strAutoClassifier', () => classifyFiling(req.filingClassificationInput!))
+        )
       : Promise.resolve(undefined),
 
     // #52 PEP proximity scorer
     req.pepProximityInput
-      ? Promise.resolve(runSafely('pepProximityScorer', () => scorePepProximity(req.pepProximityInput!)))
+      ? Promise.resolve(
+          runSafely('pepProximityScorer', () => scorePepProximity(req.pepProximityInput!))
+        )
       : Promise.resolve(undefined),
 
     // #53 Hawala detector
@@ -2040,7 +1990,11 @@ export async function runWeaponizedBrain(
 
     // #54 Cross-border cash monitor
     req.crossBorderMovement
-      ? Promise.resolve(runSafely('crossBorderCashMonitor', () => monitorCrossBorderCash(req.crossBorderMovement!)))
+      ? Promise.resolve(
+          runSafely('crossBorderCashMonitor', () =>
+            monitorCrossBorderCash(req.crossBorderMovement!)
+          )
+        )
       : Promise.resolve(undefined),
   ]);
 
@@ -2061,34 +2015,63 @@ export async function runWeaponizedBrain(
   extensions.crossBorderCash = p4crossBorder ?? undefined;
 
   // #55 Anomaly Ensemble — runs AFTER all other subsystems resolve (needs their outputs).
-  extensions.anomalyEnsemble = runSafely('anomalyEnsemble', () => {
-    const signals = [
-      extensions.benford && buildSignal('benford',
-        extensions.benford.verdict === 'non-conformity' ? 80 : 20,
-        0.85, extensions.benford.verdict === 'non-conformity'),
-      extensions.priceAnomalies && buildSignal('price_anomaly',
-        extensions.priceAnomalies.filter(p => p.severity === 'critical').length > 0 ? 85 : 30,
-        0.9, extensions.priceAnomalies.some(p => p.severity === 'critical')),
-      extensions.tbml && buildSignal('tbml',
-        extensions.tbml.compositeScore,
-        0.88, extensions.tbml.overallRisk === 'high' || extensions.tbml.overallRisk === 'critical'),
-      extensions.hawala && buildSignal('hawala',
-        extensions.hawala.score,
-        0.82, extensions.hawala.riskLevel === 'high' || extensions.hawala.riskLevel === 'critical'),
-      extensions.buyBackRisks && buildSignal('buy_back',
-        extensions.buyBackRisks.reduce((m, r) => Math.max(m, r.score), 0),
-        0.85, extensions.buyBackRisks.some(r => r.level === 'critical')),
-      extensions.adversarialInput && buildSignal('adversarial_ml',
-        extensions.adversarialInput.topSeverity === 'critical' ? 90 : 20,
-        0.9, !extensions.adversarialInput.clean),
-      extensions.verdictDrift && buildSignal('verdict_drift',
-        extensions.verdictDrift.hasDrift ? 70 : 10,
-        0.75, extensions.verdictDrift.hasDrift),
-    ].filter((s): s is NonNullable<typeof s> => s !== undefined && s !== null);
+  extensions.anomalyEnsemble =
+    runSafely('anomalyEnsemble', () => {
+      const signals = [
+        extensions.benford &&
+          buildSignal(
+            'benford',
+            extensions.benford.verdict === 'non-conformity' ? 80 : 20,
+            0.85,
+            extensions.benford.verdict === 'non-conformity'
+          ),
+        extensions.priceAnomalies &&
+          buildSignal(
+            'price_anomaly',
+            extensions.priceAnomalies.filter((p) => p.severity === 'critical').length > 0 ? 85 : 30,
+            0.9,
+            extensions.priceAnomalies.some((p) => p.severity === 'critical')
+          ),
+        extensions.tbml &&
+          buildSignal(
+            'tbml',
+            extensions.tbml.compositeScore,
+            0.88,
+            extensions.tbml.overallRisk === 'high' || extensions.tbml.overallRisk === 'critical'
+          ),
+        extensions.hawala &&
+          buildSignal(
+            'hawala',
+            extensions.hawala.score,
+            0.82,
+            extensions.hawala.riskLevel === 'high' || extensions.hawala.riskLevel === 'critical'
+          ),
+        extensions.buyBackRisks &&
+          buildSignal(
+            'buy_back',
+            extensions.buyBackRisks.reduce((m, r) => Math.max(m, r.score), 0),
+            0.85,
+            extensions.buyBackRisks.some((r) => r.level === 'critical')
+          ),
+        extensions.adversarialInput &&
+          buildSignal(
+            'adversarial_ml',
+            extensions.adversarialInput.topSeverity === 'critical' ? 90 : 20,
+            0.9,
+            !extensions.adversarialInput.clean
+          ),
+        extensions.verdictDrift &&
+          buildSignal(
+            'verdict_drift',
+            extensions.verdictDrift.hasDrift ? 70 : 10,
+            0.75,
+            extensions.verdictDrift.hasDrift
+          ),
+      ].filter((s): s is NonNullable<typeof s> => s !== undefined && s !== null);
 
-    if (signals.length === 0) return undefined;
-    return runAnomalyEnsemble(req.mega.entity.id, signals);
-  }) ?? undefined;
+      if (signals.length === 0) return undefined;
+      return runAnomalyEnsemble(req.mega.entity.id, signals);
+    }) ?? undefined;
 
   // ---------------------------------------------------------------------------
   // Phase 11 — Security, Deduplication, STR Narrative, Predictive, Gold (#59-#72)
@@ -2110,105 +2093,120 @@ export async function runWeaponizedBrain(
     p11dormancy,
   ] = await Promise.all([
     // #71 Name variant expander — always-on; entity name is always available
-    Promise.resolve(runSafely('nameVariantExpander', () =>
-      expandNameVariants(req.mega.entity?.name ?? mega.entityId)
-    )),
+    Promise.resolve(
+      runSafely('nameVariantExpander', () =>
+        expandNameVariants(req.mega.entity?.name ?? mega.entityId)
+      )
+    ),
     // #59 Prompt injection — always-on; scan entity name + audit narrative for injection
-    Promise.resolve(runSafely('promptInjection', () =>
-      detectPromptInjection(`${req.mega.entity?.name ?? ''} ${mega.auditNarrative ?? ''}`)
-    )),
+    Promise.resolve(
+      runSafely('promptInjection', () =>
+        detectPromptInjection(`${req.mega.entity?.name ?? ''} ${mega.auditNarrative ?? ''}`)
+      )
+    ),
     // #60 Deepfake document detector — conditional
     req.documentEvidence
-      ? Promise.resolve(runSafely('deepfakeDoc', () =>
-          detectDeepfakeDocument(req.documentEvidence!)
-        ))
+      ? Promise.resolve(
+          runSafely('deepfakeDoc', () => detectDeepfakeDocument(req.documentEvidence!))
+        )
       : Promise.resolve(undefined),
     // #61 Cross-list sanctions dedupe — conditional on raw hits
     req.rawSanctionsHits && req.rawSanctionsHits.length > 0
-      ? Promise.resolve(runSafely('sanctionsDedupe', () =>
-          dedupeCrossListHits(req.rawSanctionsHits!)
-        ))
+      ? Promise.resolve(
+          runSafely('sanctionsDedupe', () => dedupeCrossListHits(req.rawSanctionsHits!))
+        )
       : Promise.resolve(undefined),
     // #62 STR narrative builder — runs when filing is required AND input provided
     req.strNarrativeInput && extensions.filingClassification?.primaryCategory !== 'NONE'
-      ? Promise.resolve(runSafely('strNarrative', () =>
-          buildStrNarrative(req.strNarrativeInput!)
-        ))
+      ? Promise.resolve(runSafely('strNarrative', () => buildStrNarrative(req.strNarrativeInput!)))
       : Promise.resolve(undefined),
     // #63 Predictive STR — conditional on feature vector; auto-derive from mega if not supplied
-    Promise.resolve(runSafely('strPrediction', () => {
-      const features: StrFeatures = req.strFeatures ?? {
-        priorAlerts90d: 0,
-        txValue30dAED: 0,
-        nearThresholdCount30d: 0,
-        crossBorderRatio30d: extensions.crossBorderCash?.cumulativeAmountAED ? 0.5 : 0,
-        pepFlag: (extensions.pepProximity?.overallRisk === 'critical' || extensions.pepProximity?.overallRisk === 'high') ? 1 : 0,
-        adverseMediaFlag: extensions.adverseMedia?.topCategory === 'critical' ? 1 : 0,
-        sanctionsHit: finalVerdict === 'freeze' ? 1 : 0,
-        tbmlFlag: extensions.tbml?.overallRisk === 'critical' ? 1 : 0,
-        hawalaFlag: extensions.hawala?.riskLevel === 'critical' ? 1 : 0,
-        cashIntensity: 0,
-        jurisdictionRisk: 0,
-        dormancyFlag: 0,
-      };
-      return predictStr(features);
-    })),
+    Promise.resolve(
+      runSafely('strPrediction', () => {
+        const features: StrFeatures = req.strFeatures ?? {
+          priorAlerts90d: 0,
+          txValue30dAED: 0,
+          nearThresholdCount30d: 0,
+          crossBorderRatio30d: extensions.crossBorderCash?.cumulativeAmountAED ? 0.5 : 0,
+          pepFlag:
+            extensions.pepProximity?.overallRisk === 'critical' ||
+            extensions.pepProximity?.overallRisk === 'high'
+              ? 1
+              : 0,
+          adverseMediaFlag: extensions.adverseMedia?.topCategory === 'critical' ? 1 : 0,
+          sanctionsHit: finalVerdict === 'freeze' ? 1 : 0,
+          tbmlFlag: extensions.tbml?.overallRisk === 'critical' ? 1 : 0,
+          hawalaFlag: extensions.hawala?.riskLevel === 'critical' ? 1 : 0,
+          cashIntensity: 0,
+          jurisdictionRisk: 0,
+          dormancyFlag: 0,
+        };
+        return predictStr(features);
+      })
+    ),
     // #64 Penalty VaR — always-on; uses standard UAE DPMS violation list
-    Promise.resolve(runSafely('penaltyVar', () => {
-      const config: VaRConfig = req.penaltyVarConfig ?? { confidenceLevel: 0.95, monteCarloRuns: 10_000 };
-      const violations = req.penaltyViolations?.length
-        ? req.penaltyViolations
-        : UAE_DPMS_VIOLATIONS.filter((v) =>
-            (finalVerdict === 'freeze' && v.severity === 'criminal') ||
-            (finalVerdict === 'escalate' && (v.severity === 'major' || v.severity === 'criminal')) ||
-            (finalVerdict === 'flag' && v.severity === 'major')
-          );
-      return violations.length > 0 ? runPenaltyVaR(violations, config) : undefined;
-    })),
+    Promise.resolve(
+      runSafely('penaltyVar', () => {
+        const config: VaRConfig = req.penaltyVarConfig ?? {
+          confidenceLevel: 0.95,
+          monteCarloRuns: 10_000,
+        };
+        const violations = req.penaltyViolations?.length
+          ? req.penaltyViolations
+          : UAE_DPMS_VIOLATIONS.filter(
+              (v) =>
+                (finalVerdict === 'freeze' && v.severity === 'criminal') ||
+                (finalVerdict === 'escalate' &&
+                  (v.severity === 'major' || v.severity === 'criminal')) ||
+                (finalVerdict === 'flag' && v.severity === 'major')
+            );
+        return violations.length > 0 ? runPenaltyVaR(violations, config) : undefined;
+      })
+    ),
     // #65 Gold origin tracer — conditional on shipment data
     req.goldShipments && req.goldShipments.length > 0
-      ? Promise.resolve(runSafely('goldOrigin', () =>
-          traceGoldOrigin(req.goldShipments!)
-        ))
+      ? Promise.resolve(runSafely('goldOrigin', () => traceGoldOrigin(req.goldShipments!)))
       : Promise.resolve(undefined),
     // #66 Assay certificate matcher — conditional
     req.assayCertificateClaims && req.assayCertificateClaims.length > 0
-      ? Promise.resolve(runSafely('assayMatch', () =>
-          matchAssayCertificates(req.assayCertificateClaims!, undefined)
-        ))
+      ? Promise.resolve(
+          runSafely('assayMatch', () =>
+            matchAssayCertificates(req.assayCertificateClaims!, undefined)
+          )
+        )
       : Promise.resolve(undefined),
     // #67 Fineness anomaly — conditional
     req.finenessClaims && req.finenessClaims.length > 0
-      ? Promise.resolve(runSafely('finenessAnomaly', () =>
-          detectFinenessAnomalies(req.finenessClaims!, [])
-        ))
+      ? Promise.resolve(
+          runSafely('finenessAnomaly', () => detectFinenessAnomalies(req.finenessClaims!, []))
+        )
       : Promise.resolve(undefined),
     // #68 Cross-border arbitrage — conditional
     req.customerFootprint
-      ? Promise.resolve(runSafely('arbitrage', () =>
-          detectCrossBorderArbitrage(req.customerFootprint!, [])
-        ))
+      ? Promise.resolve(
+          runSafely('arbitrage', () => detectCrossBorderArbitrage(req.customerFootprint!, []))
+        )
       : Promise.resolve(undefined),
     // #70 Dormancy activity — conditional
     req.dormancyTransactions && req.dormancyTransactions.length > 0
-      ? Promise.resolve(runSafely('dormancy', () =>
-          detectDormancyActivity(req.dormancyTransactions!, {})
-        ))
+      ? Promise.resolve(
+          runSafely('dormancy', () => detectDormancyActivity(req.dormancyTransactions!, {}))
+        )
       : Promise.resolve(undefined),
   ]);
 
-  extensions.nameVariants    = p11nameVariants   ?? undefined;
+  extensions.nameVariants = p11nameVariants ?? undefined;
   extensions.promptInjection = p11promptInjection ?? undefined;
-  extensions.deepfakeDoc     = p11deepfake        ?? undefined;
-  extensions.sanctionsDedupe = p11dedupe          ?? undefined;
-  extensions.strNarrative    = p11strNarrative    ?? undefined;
-  extensions.strPrediction   = p11strPredict      ?? undefined;
-  extensions.penaltyVar      = p11penaltyVar      ?? undefined;
-  extensions.goldOrigin      = p11goldOrigin      ?? undefined;
-  extensions.assayMatch      = p11assay           ?? undefined;
-  extensions.finenessAnomaly = p11fineness        ?? undefined;
-  extensions.arbitrage       = p11arbitrage       ?? undefined;
-  extensions.dormancy        = p11dormancy        ?? undefined;
+  extensions.deepfakeDoc = p11deepfake ?? undefined;
+  extensions.sanctionsDedupe = p11dedupe ?? undefined;
+  extensions.strNarrative = p11strNarrative ?? undefined;
+  extensions.strPrediction = p11strPredict ?? undefined;
+  extensions.penaltyVar = p11penaltyVar ?? undefined;
+  extensions.goldOrigin = p11goldOrigin ?? undefined;
+  extensions.assayMatch = p11assay ?? undefined;
+  extensions.finenessAnomaly = p11fineness ?? undefined;
+  extensions.arbitrage = p11arbitrage ?? undefined;
+  extensions.dormancy = p11dormancy ?? undefined;
 
   // #72 STR narrative grader — runs synchronously after narrative is built
   if (extensions.strNarrative) {
@@ -2222,7 +2220,7 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: prompt injection detected in entity input — input integrity compromised; ` +
-      `(NIST AI RMF MANAGE-4.2 / OWASP ML Top 10)`
+        `(NIST AI RMF MANAGE-4.2 / OWASP ML Top 10)`
     );
     confidence = Math.min(confidence, 0.45);
   }
@@ -2230,36 +2228,36 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: deepfake/forged document detected — KYC integrity compromised ` +
-      `(FDL No.10/2025 Art.12-14; Cabinet Decision 109/2023)`
+        `(FDL No.10/2025 Art.12-14; Cabinet Decision 109/2023)`
     );
-    confidence = Math.min(confidence, 0.40);
+    confidence = Math.min(confidence, 0.4);
   }
   if (extensions.finenessAnomaly?.anomalyDetected) {
     finalVerdict = escalateTo(finalVerdict, 'flag');
     clampReasons.push(
       `CLAMP: gold fineness anomaly — claimed purity exceeds refiner capability ` +
-      `(LBMA RGG v9 §4; DGD hallmark requirements; MoE Circular 08/AML/2021)`
+        `(LBMA RGG v9 §4; DGD hallmark requirements; MoE Circular 08/AML/2021)`
     );
   }
   if (extensions.arbitrage?.arbitrageDetected) {
     finalVerdict = escalateTo(finalVerdict, 'flag');
     clampReasons.push(
       `CLAMP: cross-border price arbitrage detected — TBML indicator ` +
-      `(FATF TBML 2020; Cabinet Res 134/2025 Art.16)`
+        `(FATF TBML 2020; Cabinet Res 134/2025 Art.16)`
     );
   }
   if (extensions.dormancy?.hits && extensions.dormancy.hits.length > 0) {
     finalVerdict = escalateTo(finalVerdict, 'flag');
     clampReasons.push(
       `CLAMP: dormancy-to-activity pattern — ${extensions.dormancy.hits.length} customer(s) reactivated; ` +
-      `layering indicator (FATF Rec 10; Cabinet Res 134/2025 Art.7-10)`
+        `layering indicator (FATF Rec 10; Cabinet Res 134/2025 Art.7-10)`
     );
   }
   if (extensions.strPrediction && extensions.strPrediction.strProbability > 0.7) {
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: predictive STR model — ${(extensions.strPrediction.strProbability * 100).toFixed(0)}% ` +
-      `probability of STR trigger within 30 days (FDL No.10/2025 Art.26-27; FATF Rec 20)`
+        `probability of STR trigger within 30 days (FDL No.10/2025 Art.26-27; FATF Rec 20)`
     );
   }
 
@@ -2284,8 +2282,8 @@ export async function runWeaponizedBrain(
       finalVerdict = escalateTo(finalVerdict, 'escalate');
       clampReasons.push(
         `CLAMP: corporate graph walk found ${cgReport.hits.length} flagged node(s) ` +
-        `within ${cgReport.hops} hops — subsidiary/affiliate risk ` +
-        `(FATF Rec 10 / Cabinet Decision 109/2023 UBO register)`
+          `within ${cgReport.hops} hops — subsidiary/affiliate risk ` +
+          `(FATF Rec 10 / Cabinet Decision 109/2023 UBO register)`
       );
     }
   }
@@ -2300,8 +2298,8 @@ export async function runWeaponizedBrain(
       finalVerdict = escalateTo(finalVerdict, 'escalate');
       clampReasons.push(
         `CLAMP: ${motifReport.findings.length} ownership motif(s) detected ` +
-        `(circular/cascade layering) — UBO obfuscation indicator ` +
-        `(Cabinet Decision 109/2023 / FATF Rec 10)`
+          `(circular/cascade layering) — UBO obfuscation indicator ` +
+          `(Cabinet Decision 109/2023 / FATF Rec 10)`
       );
     }
   }
@@ -2320,14 +2318,14 @@ export async function runWeaponizedBrain(
         confidence = Math.min(confidence, 1 - mmResult.consensusConfidence + 0.05);
         clampReasons.push(
           `CLAMP: multi-model consensus CONFIRMED MATCH — ${mmResult.modelsResponded}/${mmResult.modelsQueried} models agree ` +
-          `(confidence ${(mmResult.consensusConfidence * 100).toFixed(0)}%) ` +
-          `(Cabinet Res 134/2025 Art.5 / FATF Rec 1 risk appetite)`
+            `(confidence ${(mmResult.consensusConfidence * 100).toFixed(0)}%) ` +
+            `(Cabinet Res 134/2025 Art.5 / FATF Rec 1 risk appetite)`
         );
       } else if (mmResult.riskLevel === 'critical') {
         finalVerdict = escalateTo(finalVerdict, 'escalate');
         clampReasons.push(
           `CLAMP: multi-model screening critical risk score ${mmResult.riskScore}/100 ` +
-          `(Cabinet Res 134/2025 Art.5)`
+            `(Cabinet Res 134/2025 Art.5)`
         );
       }
     } catch (err) {
@@ -2355,15 +2353,13 @@ export async function runWeaponizedBrain(
 
   // #77 Debate arbiter — structured two-sided argument analysis
   if (req.debateInput) {
-    const debateResult = runSafely('debateArbiter', () =>
-      runDebate(req.debateInput!)
-    );
+    const debateResult = runSafely('debateArbiter', () => runDebate(req.debateInput!));
     extensions.verdictDebate = debateResult;
     if (debateResult && debateResult.winner === 'con' && debateResult.margin > 0.4) {
       clampReasons.push(
         `ADVISORY: debate arbiter — CON side wins with margin ${debateResult.margin.toFixed(2)}; ` +
-        `MLRO should review counter-verdict "${debateResult.winningAction}" ` +
-        `before finalising (FDL Art.20-21 / Cabinet Res 134/2025 Art.19)`
+          `MLRO should review counter-verdict "${debateResult.winningAction}" ` +
+          `before finalising (FDL Art.20-21 / Cabinet Res 134/2025 Art.19)`
       );
     }
   }
@@ -2378,8 +2374,8 @@ export async function runWeaponizedBrain(
       confidence = Math.min(confidence, 0.65);
       clampReasons.push(
         `CLAMP: reflection critic found ${reflectResult.issues.filter((i) => i.severity === 'error').length} ` +
-        `structural error(s) in reasoning chain — confidence capped at 65% ` +
-        `(NIST AI RMF MS-2.2 / EU AI Act Art.72)`
+          `structural error(s) in reasoning chain — confidence capped at 65% ` +
+          `(NIST AI RMF MS-2.2 / EU AI Act Art.72)`
       );
     }
   }
@@ -2391,10 +2387,10 @@ export async function runWeaponizedBrain(
     );
     extensions.circularReasoning = circularResult;
     if (circularResult && circularResult.cycles.length > 0) {
-      confidence = Math.min(confidence, 0.70);
+      confidence = Math.min(confidence, 0.7);
       clampReasons.push(
         `CLAMP: ${circularResult.cycles.length} circular dependency cycle(s) in subsystem conclusions — ` +
-        `confidence capped at 70% (NIST AI RMF GV-1.6 / FDL Art.20-21)`
+          `confidence capped at 70% (NIST AI RMF GV-1.6 / FDL Art.20-21)`
       );
     }
   }
@@ -2405,16 +2401,16 @@ export async function runWeaponizedBrain(
       solveAdversaryGame(
         req.gameTheoryStrategies!.detectionStrategies,
         req.gameTheoryStrategies!.evasionStrategies,
-        (d, e) => d.cost - e.cost   // default payoff: detection cost minus evasion cost
+        (d, e) => d.cost - e.cost // default payoff: detection cost minus evasion cost
       )
     );
     extensions.gameEquilibrium = gameResult;
     if (gameResult && gameResult.expectedPayoff < 0) {
       clampReasons.push(
         `ADVISORY: game theory — adversary has expected payoff advantage (${gameResult.expectedPayoff.toFixed(2)}); ` +
-        `top evasion tactic: "${gameResult.topAttackerChoice}"; ` +
-        `recommend strengthening "${gameResult.topDefenderChoice}" detection ` +
-        `(FATF Rec 1 risk-based approach)`
+          `top evasion tactic: "${gameResult.topAttackerChoice}"; ` +
+          `recommend strengthening "${gameResult.topDefenderChoice}" detection ` +
+          `(FATF Rec 1 risk-based approach)`
       );
     }
   }
@@ -2433,13 +2429,13 @@ export async function runWeaponizedBrain(
       finalVerdict = escalateTo(finalVerdict, 'freeze');
       clampReasons.push(
         `CLAMP: ${lbmaResult.frozen} LBMA gold trade(s) frozen — price deviation exceeds ` +
-        `tolerance threshold (LBMA RGG v9 / FATF DPMS Typologies 2022 §3.4)`
+          `tolerance threshold (LBMA RGG v9 / FATF DPMS Typologies 2022 §3.4)`
       );
     } else if (lbmaResult && lbmaResult.flagged > 0) {
       finalVerdict = escalateTo(finalVerdict, 'escalate');
       clampReasons.push(
         `CLAMP: ${lbmaResult.flagged} gold trade(s) deviate from LBMA fix — price manipulation indicator ` +
-        `(LBMA RGG v9 / MoE Circular 08/AML/2021)`
+          `(LBMA RGG v9 / MoE Circular 08/AML/2021)`
       );
     }
   }
@@ -2450,11 +2446,7 @@ export async function runWeaponizedBrain(
       const batch = assessMeltBatch(req.meltBatch!);
       if (req.meltRefinerHistory && req.meltRefinerHistory.length > 0) {
         // Detect refiner drift with historical data
-        return detectRefinerDrift(
-          req.meltBatch!.refinerId,
-          req.meltRefinerHistory,
-          req.meltBatch!
-        );
+        return detectRefinerDrift(req.meltBatch!.refinerId, req.meltRefinerHistory, req.meltBatch!);
       }
       return batch;
     });
@@ -2463,8 +2455,8 @@ export async function runWeaponizedBrain(
       finalVerdict = escalateTo(finalVerdict, 'escalate');
       clampReasons.push(
         `CLAMP: critical melt loss deviation — ${meltResult.lossPct.toFixed(2)}% vs ` +
-        `expected ${meltResult.expectedMinPct.toFixed(2)}%–${meltResult.expectedMaxPct.toFixed(2)}% ` +
-        `(LBMA RGG v9 §4 / Dubai Good Delivery / MoE Circular 08/AML/2021)`
+          `expected ${meltResult.expectedMinPct.toFixed(2)}%–${meltResult.expectedMaxPct.toFixed(2)}% ` +
+          `(LBMA RGG v9 §4 / Dubai Good Delivery / MoE Circular 08/AML/2021)`
       );
     }
   }
@@ -2479,29 +2471,31 @@ export async function runWeaponizedBrain(
       finalVerdict = escalateTo(finalVerdict, 'escalate');
       clampReasons.push(
         `CLAMP: ${fzResult.mandatoryFailures.length} mandatory free zone rule failure(s) ` +
-        `in ${fzResult.freeZone} — regulatory breach ` +
-        `(Cabinet Res 134/2025 / ${fzResult.freeZone} Rules 2024)`
+          `in ${fzResult.freeZone} — regulatory breach ` +
+          `(Cabinet Res 134/2025 / ${fzResult.freeZone} Rules 2024)`
       );
     }
   }
 
   // #85 Shapley explainer — per-factor attribution values
   {
-    const shapInput: ShapleyInput | null = req.shapleyInput ?? (() => {
-      // Auto-build from explainable scoring output if available
-      const factors = extensions.explanation?.topFactors?.map((f) => f.name) ?? [];
-      if (factors.length < 2) return null;
-      const verdictFn: VerdictFn = (coalition: ReadonlySet<string>) => {
-        // Simple additive model: each factor contributes its score
-        let s = 0;
-        for (const f of coalition) {
-          const found = extensions.explanation?.topFactors?.find((tf) => tf.name === f);
-          if (found) s += (found.score as number | undefined) ?? 1;
-        }
-        return s;
-      };
-      return { signals: factors, verdict: verdictFn };
-    })();
+    const shapInput: ShapleyInput | null =
+      req.shapleyInput ??
+      (() => {
+        // Auto-build from explainable scoring output if available
+        const factors = extensions.explanation?.topFactors?.map((f) => f.name) ?? [];
+        if (factors.length < 2) return null;
+        const verdictFn: VerdictFn = (coalition: ReadonlySet<string>) => {
+          // Simple additive model: each factor contributes its score
+          let s = 0;
+          for (const f of coalition) {
+            const found = extensions.explanation?.topFactors?.find((tf) => tf.name === f);
+            if (found) s += (found.score as number | undefined) ?? 1;
+          }
+          return s;
+        };
+        return { signals: factors, verdict: verdictFn };
+      })();
 
     if (shapInput) {
       extensions.shapley = runSafely('shapleyExplainer', () =>
@@ -2512,12 +2506,21 @@ export async function runWeaponizedBrain(
 
   // #86 Formal invariant verifier — validates canonical + custom state invariants
   {
-    // Build a partial response snapshot for invariant verification
+    // Build a partial state snapshot in the shape the canonical
+    // invariants read (BrainStateForVerification), not the full
+    // WeaponizedBrainResponse. The invariants check `verdict`,
+    // `requiresHumanReview`, `auditLogLength`, and
+    // `outboundMessageContainsTippingOff`; mapping `finalVerdict`
+    // to `verdict` here keeps the verifier honest. Custom invariants
+    // get the same shape plus `extensions` for richer checks.
     const partialSnap = {
+      verdict: finalVerdict,
       finalVerdict,
       confidence,
       clampReasons,
       requiresHumanReview: clampReasons.length > 0 || finalVerdict === 'freeze',
+      auditLogLength: 0,
+      outboundMessageContainsTippingOff: false,
       extensions,
     } as unknown as WeaponizedBrainResponse;
 
@@ -2536,20 +2539,26 @@ export async function runWeaponizedBrain(
         extensions.invariantVerification &&
         extensions.invariantVerification.violations.length > 0
       ) {
-        confidence = Math.min(confidence, 0.60);
+        confidence = Math.min(confidence, 0.6);
         clampReasons.push(
           `CLAMP: ${extensions.invariantVerification.violations.length} formal invariant violation(s) — ` +
-          `impossible state detected; confidence capped at 60% ` +
-          `(NIST AI RMF GV-1.6 / EU AI Act Art.9)`
+            `impossible state detected; confidence capped at 60% ` +
+            `(NIST AI RMF GV-1.6 / EU AI Act Art.9)`
         );
       }
     }
   }
 
-  // #87 Synthetic evasion generator — coverage gap check
-  {
+  // #87 Synthetic evasion generator — coverage gap check.
+  // Opt-in only: gated on syntheticEvasionConfig so a clean default
+  // call does not get a spurious "ADVISORY" pushed onto clampReasons.
+  // (Matches the gating pattern of peerAnomalyInput, shapleyInput,
+  // etc. Previously this ran unconditionally but the upstream
+  // formal-verifier TDZ bug meant the code never reached it on
+  // clean paths, so the always-on behaviour was masked.)
+  if (req.syntheticEvasionConfig) {
     const synCases = runSafely('syntheticEvasionGenerator', () =>
-      generateSyntheticEvasionCases(req.syntheticEvasionConfig ?? { count: 20 })
+      generateSyntheticEvasionCases(req.syntheticEvasionConfig!)
     );
     extensions.syntheticEvasion = synCases;
     if (synCases) {
@@ -2560,8 +2569,8 @@ export async function runWeaponizedBrain(
       if (uncaught.length > 0) {
         clampReasons.push(
           `ADVISORY: synthetic evasion test — ${uncaught.length}/${synCases.length} ` +
-          `generated evasion case(s) would NOT be caught by current verdict; ` +
-          `review detection coverage (FATF Guidance Red Flags 2021 / NIST AI RMF GV-1.6)`
+            `generated evasion case(s) would NOT be caught by current verdict; ` +
+            `review detection coverage (FATF Guidance Red Flags 2021 / NIST AI RMF GV-1.6)`
         );
       }
     }
@@ -2569,17 +2578,15 @@ export async function runWeaponizedBrain(
 
   // #89 Peer anomaly — z-score outlier detection vs peer group
   if (req.peerAnomalyInput) {
-    const peerResult = runSafely('peerAnomaly', () =>
-      analysePeerAnomaly(req.peerAnomalyInput!)
-    );
+    const peerResult = runSafely('peerAnomaly', () => analysePeerAnomaly(req.peerAnomalyInput!));
     extensions.peerAnomaly = peerResult;
     const anomalyThreshold = req.peerAnomalyInput.anomalyThreshold ?? 2.0;
     if (peerResult && peerResult.anomalies.length > 0) {
       finalVerdict = escalateTo(finalVerdict, 'flag');
       clampReasons.push(
         `CLAMP: peer anomaly — ${peerResult.anomalies.length} feature(s) are statistical outliers ` +
-        `vs peer group (z-score threshold ${anomalyThreshold.toFixed(1)}) ` +
-        `(FATF Rec 10 / Cabinet Res 134/2025 Art.5 risk appetite)`
+          `vs peer group (z-score threshold ${anomalyThreshold.toFixed(1)}) ` +
+          `(FATF Rec 10 / Cabinet Res 134/2025 Art.5 risk appetite)`
       );
     }
   }
@@ -2608,15 +2615,12 @@ export async function runWeaponizedBrain(
       })
     );
     extensions.documentTamper = tamperResult;
-    if (
-      tamperResult &&
-      tamperResult.tamperSignals.some((s) => s.severity === 'high')
-    ) {
+    if (tamperResult && tamperResult.tamperSignals.some((s) => s.severity === 'high')) {
       finalVerdict = escalateTo(finalVerdict, 'escalate');
       clampReasons.push(
         `CLAMP: document intelligence — high-severity tamper signal(s) in ${req.documentForTamperCheck.documentType} ` +
-        `document — KYC/CDD integrity compromised ` +
-        `(FDL Art.12-14 / Cabinet Decision 109/2023 / FATF Rec 10)`
+          `document — KYC/CDD integrity compromised ` +
+          `(FDL Art.12-14 / Cabinet Decision 109/2023 / FATF Rec 10)`
       );
     }
   }
@@ -2624,17 +2628,14 @@ export async function runWeaponizedBrain(
   // #92 Regulatory drift — concept drift in risk feature distribution
   if (req.regulatoryDriftSamples) {
     const driftResult = runSafely('regulatoryDrift', () =>
-      analyseDrift(
-        req.regulatoryDriftSamples!.baseline,
-        req.regulatoryDriftSamples!.current
-      )
+      analyseDrift(req.regulatoryDriftSamples!.baseline, req.regulatoryDriftSamples!.current)
     );
     extensions.regulatoryDrift = driftResult;
     if (driftResult && driftResult.overallBand === 'significant') {
       confidence = Math.min(confidence, 0.65);
       clampReasons.push(
         `CLAMP: significant regulatory drift detected — ${driftResult.driftedFeatureCount} feature(s) drifted; ` +
-        `model re-calibration required (NIST AI RMF MS-2.1 / EU AI Act Art.72)`
+          `model re-calibration required (NIST AI RMF MS-2.1 / EU AI Act Art.72)`
       );
     }
   }
@@ -2657,23 +2658,20 @@ export async function runWeaponizedBrain(
     if (beliefResult) {
       // If the most likely hypothesis is 'high_risk' or 'freeze' → clamp
       const topHyp = beliefResult.mostLikely;
-      if (
-        (topHyp.id === 'high_risk' || topHyp.id === 'freeze') &&
-        topHyp.probability > 0.65
-      ) {
+      if ((topHyp.id === 'high_risk' || topHyp.id === 'freeze') && topHyp.probability > 0.65) {
         finalVerdict = escalateTo(finalVerdict, 'escalate');
         clampReasons.push(
           `CLAMP: Bayesian belief — P(${topHyp.label})=${(topHyp.probability * 100).toFixed(0)}% ` +
-          `posterior probability; high-risk hypothesis dominant ` +
-          `(FDL Art.20-21 / FATF Rec 10)`
+            `posterior probability; high-risk hypothesis dominant ` +
+            `(FDL Art.20-21 / FATF Rec 10)`
         );
       }
       // High entropy → low confidence (uncertainty)
       if (beliefResult.entropyBits > 2.5) {
-        confidence = Math.min(confidence, 0.60);
+        confidence = Math.min(confidence, 0.6);
         clampReasons.push(
           `CLAMP: Bayesian belief high entropy (${beliefResult.entropyBits.toFixed(2)} bits) — ` +
-          `uncertain evidence; confidence capped at 60% (NIST AI RMF MS-2.1)`
+            `uncertain evidence; confidence capped at 60% (NIST AI RMF MS-2.1)`
         );
       }
     }
@@ -2734,7 +2732,7 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: ESG composite score ${extensions.esgScore.composite.toFixed(0)}/100 (${extensions.esgScore.grade}) ` +
-      `— critical ESG risk level; escalate per LBMA RGG v9 §6 / ISSB IFRS S1`
+        `— critical ESG risk level; escalate per LBMA RGG v9 §6 / ISSB IFRS S1`
     );
   }
 
@@ -2743,7 +2741,7 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: conflict minerals critical risk — ${extensions.conflictMinerals.criticalSupplierCount} critical supplier(s) ` +
-      `in CAHRA zones (OECD DDG 2016 Step 3 / Dodd-Frank §1502 / EU CMR 2017/821)`
+        `in CAHRA zones (OECD DDG 2016 Step 3 / Dodd-Frank §1502 / EU CMR 2017/821)`
     );
   }
 
@@ -2752,7 +2750,7 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: critical greenwashing detected — ${extensions.greenwashing.criticalFindings} critical finding(s); ` +
-      `material ESG misrepresentation (ISSB IFRS S1 / EU SFDR Art.4)`
+        `material ESG misrepresentation (ISSB IFRS S1 / EU SFDR Art.4)`
     );
   }
 
@@ -2761,7 +2759,7 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: modern slavery critical risk — ${extensions.modernSlavery.indicatorsTriggered} ILO indicator(s) ` +
-      `(UAE Federal Law 51/2006 / ILO Conv. 29/105 / LBMA RGG v9 §5)`
+        `(UAE Federal Law 51/2006 / ILO Conv. 29/105 / LBMA RGG v9 §5)`
     );
   }
 
@@ -2770,19 +2768,22 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: TBML critical — ${extensions.tbml.patterns.length} pattern(s) detected ` +
-      `(score ${extensions.tbml.compositeScore}/100); STR required ` +
-      `(FATF TBML Guidance 2020 / FDL No.10/2025 Art.12)`
+        `(score ${extensions.tbml.compositeScore}/100); STR required ` +
+        `(FATF TBML Guidance 2020 / FDL No.10/2025 Art.12)`
     );
   }
 
   // #50 Four-eyes violation → freeze (compliance decision without proper approval).
-  if (extensions.fourEyes && !extensions.fourEyes.meetsRequirements &&
-      extensions.fourEyes.decisionType === 'sanctions_freeze') {
+  if (
+    extensions.fourEyes &&
+    !extensions.fourEyes.meetsRequirements &&
+    extensions.fourEyes.decisionType === 'sanctions_freeze'
+  ) {
     finalVerdict = escalateTo(finalVerdict, 'freeze');
     clampReasons.push(
       `CLAMP: four-eyes violated for sanctions freeze decision — ` +
-      `${extensions.fourEyes.violations.join('; ')} ` +
-      `(Cabinet Res 74/2020 Art.4 / FDL No.10/2025 Art.20-21)`
+        `${extensions.fourEyes.violations.join('; ')} ` +
+        `(Cabinet Res 74/2020 Art.4 / FDL No.10/2025 Art.20-21)`
     );
   }
 
@@ -2791,7 +2792,7 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: PEP proximity critical (score ${extensions.pepProximity.maxProximityScore.toFixed(0)}/100) — ` +
-      `board approval required (Cabinet Res 134/2025 Art.14)`
+        `board approval required (Cabinet Res 134/2025 Art.14)`
     );
   }
 
@@ -2800,8 +2801,8 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: Hawala/IVTS critical risk (score ${extensions.hawala.score}/100) — ` +
-      `${extensions.hawala.indicators.length} indicator(s) ` +
-      `(UAE CBUAE Hawala Registration Requirement 2022 / FATF Rec 14)`
+        `${extensions.hawala.indicators.length} indicator(s) ` +
+        `(UAE CBUAE Hawala Registration Requirement 2022 / FATF Rec 14)`
     );
   }
 
@@ -2810,14 +2811,14 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'freeze');
     clampReasons.push(
       `CLAMP: cross-border cash structuring detected — cumulative AED ` +
-      `${extensions.crossBorderCash.cumulativeAmountAED.toLocaleString()} ` +
-      `across sub-threshold movements (Cabinet Res 134/2025 Art.16 / FATF Rec 32)`
+        `${extensions.crossBorderCash.cumulativeAmountAED.toLocaleString()} ` +
+        `across sub-threshold movements (Cabinet Res 134/2025 Art.16 / FATF Rec 32)`
     );
   } else if (extensions.crossBorderCash?.overallRisk === 'critical') {
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: cross-border cash critical risk (score ${extensions.crossBorderCash.riskScore}/100) ` +
-      `(Cabinet Res 134/2025 Art.16)`
+        `(Cabinet Res 134/2025 Art.16)`
     );
   }
 
@@ -2826,13 +2827,14 @@ export async function runWeaponizedBrain(
     finalVerdict = escalateTo(finalVerdict, 'escalate');
     clampReasons.push(
       `CLAMP: anomaly ensemble score ${extensions.anomalyEnsemble.aggregatedScore.toFixed(0)}/100 (critical) — ` +
-      `dominant signal: ${extensions.anomalyEnsemble.dominantSignal ?? 'multi-source'}; ` +
-      `Bayesian BMA confidence ${(extensions.anomalyEnsemble.confidence * 100).toFixed(0)}%`
+        `dominant signal: ${extensions.anomalyEnsemble.dominantSignal ?? 'multi-source'}; ` +
+        `Bayesian BMA confidence ${(extensions.anomalyEnsemble.confidence * 100).toFixed(0)}%`
     );
   }
 
   // 8. Augmented confidence — take MIN across MegaBrain + new signals.
-  let confidence = mega.confidence;
+  // (`confidence` is hoisted at the top of the function alongside
+  // `finalVerdict` so the Phase 12 subsystems can clamp it earlier.)
   if (extensions.adverseMedia?.topCategory === 'critical') {
     confidence = Math.min(confidence, policy.adverseMediaCriticalConfidenceCap);
   }
@@ -2865,8 +2867,11 @@ export async function runWeaponizedBrain(
     confidence = Math.min(confidence, 0.55);
   }
   // BFT no consensus: sources disagree — cap at 0.65.
-  if (extensions.bftConsensus !== undefined && extensions.bftConsensus !== null &&
-      !extensions.bftConsensus.sufficientConsensus) {
+  if (
+    extensions.bftConsensus !== undefined &&
+    extensions.bftConsensus !== null &&
+    !extensions.bftConsensus.sufficientConsensus
+  ) {
     confidence = Math.min(confidence, 0.65);
   }
 
@@ -2877,7 +2882,8 @@ export async function runWeaponizedBrain(
   if (extensions.modernSlavery?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
   if (extensions.pepProximity?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
   if (extensions.esgScore?.riskLevel === 'critical') confidence = Math.min(confidence, 0.65);
-  if (extensions.conflictMinerals?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
+  if (extensions.conflictMinerals?.overallRisk === 'critical')
+    confidence = Math.min(confidence, 0.6);
 
   // 9. Augmented human-review flag.
   let requiresHumanReview =
@@ -2905,9 +2911,7 @@ export async function runWeaponizedBrain(
       extensions.mlroAlerts?.alerts?.map((a) => a.narrative).join('\n') ?? '',
     ].join('\n\n---\n\n');
 
-    const tippingReport = runSafely('tippingOffLinter', () =>
-      lintForTippingOff(allGeneratedText)
-    );
+    const tippingReport = runSafely('tippingOffLinter', () => lintForTippingOff(allGeneratedText));
     extensions.tippingOff = tippingReport;
 
     if (tippingReport && !tippingReport.clean) {
@@ -2924,8 +2928,8 @@ export async function runWeaponizedBrain(
       // Hard clamp: tipping-off is a criminal offence under FDL Art.29
       clampReasons.push(
         `HARD CLAMP: tipping-off linter detected ${tippingReport.findings.length} disclosure-risk phrase(s) ` +
-        `in generated narrative — phrases REDACTED before output ` +
-        `(FDL No.10/2025 Art.29 — criminal penalty up to AED 5M; NO tipping off)`
+          `in generated narrative — phrases REDACTED before output ` +
+          `(FDL No.10/2025 Art.29 — criminal penalty up to AED 5M; NO tipping off)`
       );
       requiresHumanReview = true;
     }
@@ -3024,9 +3028,7 @@ export async function runWeaponizedBrain(
     pepProximity: extensions.pepProximity
       ? { requiresBoardApproval: extensions.pepProximity.requiresBoardApproval }
       : undefined,
-    esgScore: extensions.esgScore
-      ? { riskLevel: extensions.esgScore.riskLevel }
-      : undefined,
+    esgScore: extensions.esgScore ? { riskLevel: extensions.esgScore.riskLevel } : undefined,
     hawala: extensions.hawala
       ? { requiresCbuaeReport: extensions.hawala.requiresCbuaeReport }
       : undefined,
@@ -3035,7 +3037,12 @@ export async function runWeaponizedBrain(
       : undefined,
   });
   const managedAgentPlan: ManagedAgentTask[] = agentTypes.map((agentType) =>
-    spawnManagedAgent(orchestratorSession, agentType, req.mega.entity?.name ?? mega.entityId, finalVerdict)
+    spawnManagedAgent(
+      orchestratorSession,
+      agentType,
+      req.mega.entity?.name ?? mega.entityId,
+      finalVerdict
+    )
   );
 
   // Build the partial response object for the synthesis layer to consume.
@@ -3355,8 +3362,8 @@ function buildAuditNarrative(
     );
   }
   if (extensions.buyBackRisks && extensions.buyBackRisks.length > 0) {
-    const worstBuyBack = extensions.buyBackRisks.reduce(
-      (prev, curr) => (curr.score > prev.score ? curr : prev)
+    const worstBuyBack = extensions.buyBackRisks.reduce((prev, curr) =>
+      curr.score > prev.score ? curr : prev
     );
     lines.push(
       `  - Buy-back risk (#38): ${extensions.buyBackRisks.length} transaction(s), ` +
@@ -3388,117 +3395,117 @@ function buildAuditNarrative(
   if (extensions.esgScore) {
     lines.push(
       `  - ESG composite (#41): score=${extensions.esgScore.composite.toFixed(1)}/100 ` +
-      `grade=${extensions.esgScore.grade}, risk=${extensions.esgScore.riskLevel}, ` +
-      `E=${extensions.esgScore.environmental.score.toFixed(0)} ` +
-      `S=${extensions.esgScore.social.score.toFixed(0)} ` +
-      `G=${extensions.esgScore.governance.score.toFixed(0)}`
+        `grade=${extensions.esgScore.grade}, risk=${extensions.esgScore.riskLevel}, ` +
+        `E=${extensions.esgScore.environmental.score.toFixed(0)} ` +
+        `S=${extensions.esgScore.social.score.toFixed(0)} ` +
+        `G=${extensions.esgScore.governance.score.toFixed(0)}`
     );
   }
   if (extensions.carbonFootprint) {
     lines.push(
       `  - Carbon footprint (#42): ${extensions.carbonFootprint.scopeBreakdown.total_tCO2e.toFixed(2)} tCO2e total, ` +
-      `intensity=${extensions.carbonFootprint.portfolioIntensityKgPerOz.toFixed(1)} kgCO2e/oz, ` +
-      `risk=${extensions.carbonFootprint.carbonRisk}, NZ2050 gap=${extensions.carbonFootprint.netZeroGap_tCO2e.toFixed(2)} tCO2e`
+        `intensity=${extensions.carbonFootprint.portfolioIntensityKgPerOz.toFixed(1)} kgCO2e/oz, ` +
+        `risk=${extensions.carbonFootprint.carbonRisk}, NZ2050 gap=${extensions.carbonFootprint.netZeroGap_tCO2e.toFixed(2)} tCO2e`
     );
   }
   if (extensions.tcfdAlignment) {
     lines.push(
       `  - TCFD alignment (#43): score=${extensions.tcfdAlignment.overallScore.toFixed(0)}/100, ` +
-      `level=${extensions.tcfdAlignment.complianceLevel}, IFRS S2=${extensions.tcfdAlignment.ifrss2Compliant}, ` +
-      `NZ2050=${extensions.tcfdAlignment.uaeNZ2050Aligned}`
+        `level=${extensions.tcfdAlignment.complianceLevel}, IFRS S2=${extensions.tcfdAlignment.ifrss2Compliant}, ` +
+        `NZ2050=${extensions.tcfdAlignment.uaeNZ2050Aligned}`
     );
   }
   if (extensions.sdgAlignment) {
     lines.push(
       `  - UN SDG alignment (#44): score=${extensions.sdgAlignment.overallScore.toFixed(0)}/100, ` +
-      `core DPMS goals=${extensions.sdgAlignment.coreGoalsScore.toFixed(0)}/100, ` +
-      `OECD 5-step level=${extensions.sdgAlignment.oecd5StepLevel}/5, ` +
-      `critical gap SDGs: ${extensions.sdgAlignment.criticalGapSdgs.join(',') || 'none'}`
+        `core DPMS goals=${extensions.sdgAlignment.coreGoalsScore.toFixed(0)}/100, ` +
+        `OECD 5-step level=${extensions.sdgAlignment.oecd5StepLevel}/5, ` +
+        `critical gap SDGs: ${extensions.sdgAlignment.criticalGapSdgs.join(',') || 'none'}`
     );
   }
   if (extensions.conflictMinerals) {
     lines.push(
       `  - Conflict minerals (#45): overall=${extensions.conflictMinerals.overallRisk}, ` +
-      `suppliers=${extensions.conflictMinerals.totalSuppliers}, ` +
-      `critical=${extensions.conflictMinerals.criticalSupplierCount}, ` +
-      `CAHRA=${extensions.conflictMinerals.cahraSupplierCount}`
+        `suppliers=${extensions.conflictMinerals.totalSuppliers}, ` +
+        `critical=${extensions.conflictMinerals.criticalSupplierCount}, ` +
+        `CAHRA=${extensions.conflictMinerals.cahraSupplierCount}`
     );
   }
   if (extensions.greenwashing) {
     lines.push(
       `  - Greenwashing (#46): risk=${extensions.greenwashing.overallRisk}, ` +
-      `findings=${extensions.greenwashing.totalFindings}, ` +
-      `critical=${extensions.greenwashing.criticalFindings}`
+        `findings=${extensions.greenwashing.totalFindings}, ` +
+        `critical=${extensions.greenwashing.criticalFindings}`
     );
   }
   if (extensions.esgAdverseMedia) {
     lines.push(
       `  - ESG adverse media (#47): hits=${extensions.esgAdverseMedia.totalHits}, ` +
-      `dominant=${extensions.esgAdverseMedia.dominantCategory ?? 'none'}, ` +
-      `overallRisk=${extensions.esgAdverseMedia.overallEsgRisk}`
+        `dominant=${extensions.esgAdverseMedia.dominantCategory ?? 'none'}, ` +
+        `overallRisk=${extensions.esgAdverseMedia.overallEsgRisk}`
     );
   }
   if (extensions.modernSlavery) {
     lines.push(
       `  - Modern slavery (#48): risk=${extensions.modernSlavery.overallRisk}, ` +
-      `ILO indicators=${extensions.modernSlavery.indicatorsTriggered}/${extensions.modernSlavery.totalIndicatorsChecked}, ` +
-      `score=${extensions.modernSlavery.riskScore}/100`
+        `ILO indicators=${extensions.modernSlavery.indicatorsTriggered}/${extensions.modernSlavery.totalIndicatorsChecked}, ` +
+        `score=${extensions.modernSlavery.riskScore}/100`
     );
   }
   if (extensions.tbml) {
     lines.push(
       `  - TBML (#49): risk=${extensions.tbml.overallRisk}, score=${extensions.tbml.compositeScore}/100, ` +
-      `patterns=${extensions.tbml.patterns.length}, STR=${extensions.tbml.requiresStr}, ` +
-      `price deviation=${extensions.tbml.priceDeviationPct.toFixed(1)}%`
+        `patterns=${extensions.tbml.patterns.length}, STR=${extensions.tbml.requiresStr}, ` +
+        `price deviation=${extensions.tbml.priceDeviationPct.toFixed(1)}%`
     );
   }
   if (extensions.fourEyes) {
     lines.push(
       `  - Four-eyes (#50): status=${extensions.fourEyes.status}, ` +
-      `meetsRequirements=${extensions.fourEyes.meetsRequirements}, ` +
-      `approvals=${extensions.fourEyes.approvalCount}/${extensions.fourEyes.requiredCount}, ` +
-      `decisionType=${extensions.fourEyes.decisionType}`
+        `meetsRequirements=${extensions.fourEyes.meetsRequirements}, ` +
+        `approvals=${extensions.fourEyes.approvalCount}/${extensions.fourEyes.requiredCount}, ` +
+        `decisionType=${extensions.fourEyes.decisionType}`
     );
   }
   if (extensions.filingClassification) {
     lines.push(
       `  - STR classifier (#51): category=${extensions.filingClassification.primaryCategory}, ` +
-      `urgency=${extensions.filingClassification.urgency}, ` +
-      `due=${extensions.filingClassification.deadlineDueDate ?? 'N/A'}, ` +
-      `tipOffProhibited=${extensions.filingClassification.tipOffProhibited}`
+        `urgency=${extensions.filingClassification.urgency}, ` +
+        `due=${extensions.filingClassification.deadlineDueDate ?? 'N/A'}, ` +
+        `tipOffProhibited=${extensions.filingClassification.tipOffProhibited}`
     );
   }
   if (extensions.pepProximity) {
     lines.push(
       `  - PEP proximity (#52): risk=${extensions.pepProximity.overallRisk}, ` +
-      `maxScore=${extensions.pepProximity.maxProximityScore.toFixed(0)}/100, ` +
-      `links=${extensions.pepProximity.pepLinks.length}, CDD=${extensions.pepProximity.cddLevel}, ` +
-      `boardApproval=${extensions.pepProximity.requiresBoardApproval}`
+        `maxScore=${extensions.pepProximity.maxProximityScore.toFixed(0)}/100, ` +
+        `links=${extensions.pepProximity.pepLinks.length}, CDD=${extensions.pepProximity.cddLevel}, ` +
+        `boardApproval=${extensions.pepProximity.requiresBoardApproval}`
     );
   }
   if (extensions.hawala) {
     lines.push(
       `  - Hawala (#53): risk=${extensions.hawala.riskLevel}, score=${extensions.hawala.score}/100, ` +
-      `indicators=${extensions.hawala.indicators.length}, STR=${extensions.hawala.requiresStr}, ` +
-      `CBUAE report=${extensions.hawala.requiresCbuaeReport}`
+        `indicators=${extensions.hawala.indicators.length}, STR=${extensions.hawala.requiresStr}, ` +
+        `CBUAE report=${extensions.hawala.requiresCbuaeReport}`
     );
   }
   if (extensions.anomalyEnsemble) {
     lines.push(
       `  - Anomaly ensemble (#54): level=${extensions.anomalyEnsemble.anomalyLevel}, ` +
-      `score=${extensions.anomalyEnsemble.aggregatedScore.toFixed(0)}/100, ` +
-      `confidence=${(extensions.anomalyEnsemble.confidence * 100).toFixed(0)}%, ` +
-      `dominant=${extensions.anomalyEnsemble.dominantSignal ?? 'none'}, ` +
-      `active signals=${extensions.anomalyEnsemble.activeSignals.length}`
+        `score=${extensions.anomalyEnsemble.aggregatedScore.toFixed(0)}/100, ` +
+        `confidence=${(extensions.anomalyEnsemble.confidence * 100).toFixed(0)}%, ` +
+        `dominant=${extensions.anomalyEnsemble.dominantSignal ?? 'none'}, ` +
+        `active signals=${extensions.anomalyEnsemble.activeSignals.length}`
     );
   }
   if (extensions.crossBorderCash) {
     lines.push(
       `  - Cross-border cash (#55): risk=${extensions.crossBorderCash.overallRisk}, ` +
-      `score=${extensions.crossBorderCash.riskScore}/100, ` +
-      `structuring=${extensions.crossBorderCash.structuringDetected}, ` +
-      `cumulative AED ${extensions.crossBorderCash.cumulativeAmountAED.toLocaleString()}, ` +
-      `STR=${extensions.crossBorderCash.requiresStr}`
+        `score=${extensions.crossBorderCash.riskScore}/100, ` +
+        `structuring=${extensions.crossBorderCash.structuringDetected}, ` +
+        `cumulative AED ${extensions.crossBorderCash.cumulativeAmountAED.toLocaleString()}, ` +
+        `STR=${extensions.crossBorderCash.requiresStr}`
     );
   }
 
@@ -3506,141 +3513,141 @@ function buildAuditNarrative(
   if (extensions.mlroAlerts) {
     lines.push(
       `  - MLRO alerts: ${extensions.mlroAlerts.criticalCount} CRITICAL, ` +
-      `${extensions.mlroAlerts.highCount} HIGH — ` +
-      `${extensions.mlroAlerts.alerts.length} total alert(s) generated`
+        `${extensions.mlroAlerts.highCount} HIGH — ` +
+        `${extensions.mlroAlerts.alerts.length} total alert(s) generated`
     );
   }
   if (extensions.asanaSync) {
     lines.push(
       `  - Asana sync: ${extensions.asanaSync.status} — ` +
-      `parent=${extensions.asanaSync.parentTaskGid ?? 'queued'}, ` +
-      `${extensions.asanaSync.subtasksCreated} subtask(s), ` +
-      `${extensions.asanaSync.tasksQueued} queued`
+        `parent=${extensions.asanaSync.parentTaskGid ?? 'queued'}, ` +
+        `${extensions.asanaSync.subtasksCreated} subtask(s), ` +
+        `${extensions.asanaSync.tasksQueued} queued`
     );
   }
   if (extensions.kpiDashboard) {
     lines.push(
       `  - KPI dashboard: score=${extensions.kpiDashboard.overallScore}/100, ` +
-      `green=${extensions.kpiDashboard.greenCount}, ` +
-      `amber=${extensions.kpiDashboard.amberCount}, ` +
-      `red=${extensions.kpiDashboard.redCount}, ` +
-      `regulatory risk=${extensions.kpiDashboard.regulatoryRisk}`
+        `green=${extensions.kpiDashboard.greenCount}, ` +
+        `amber=${extensions.kpiDashboard.amberCount}, ` +
+        `red=${extensions.kpiDashboard.redCount}, ` +
+        `regulatory risk=${extensions.kpiDashboard.regulatoryRisk}`
     );
   }
   if (extensions.hawkeyeReport) {
     lines.push(
       `  - Hawkeye Sterling V2 (#56): reportId=${extensions.hawkeyeReport.reportId}, ` +
-      `badge=${extensions.hawkeyeReport.riskBadge}, ` +
-      `lists=6/6 screened, ` +
-      `matches=${extensions.hawkeyeReport.totalMatches} ` +
-      `(confirmed=${extensions.hawkeyeReport.confirmedMatches}, unresolved=${extensions.hawkeyeReport.unresolvedMatches})`
+        `badge=${extensions.hawkeyeReport.riskBadge}, ` +
+        `lists=6/6 screened, ` +
+        `matches=${extensions.hawkeyeReport.totalMatches} ` +
+        `(confirmed=${extensions.hawkeyeReport.confirmedMatches}, unresolved=${extensions.hawkeyeReport.unresolvedMatches})`
     );
   }
   if (extensions.aiGovernance) {
     lines.push(
       `  - AI governance (#57): score=${extensions.aiGovernance.overallScore}/100, ` +
-      `readiness=${extensions.aiGovernance.readiness}, ` +
-      `deploymentApproved=${extensions.aiGovernance.deploymentApproved}, ` +
-      `criticalFailures=${extensions.aiGovernance.criticalFailures.length}, ` +
-      `regulatoryRisk=${extensions.aiGovernance.regulatoryRisk}`
+        `readiness=${extensions.aiGovernance.readiness}, ` +
+        `deploymentApproved=${extensions.aiGovernance.deploymentApproved}, ` +
+        `criticalFailures=${extensions.aiGovernance.criticalFailures.length}, ` +
+        `regulatoryRisk=${extensions.aiGovernance.regulatoryRisk}`
     );
   }
   if (extensions.esgAdvanced) {
     lines.push(
       `  - ESG advanced framework (#58): score=${extensions.esgAdvanced.overallAdvancedEsgScore}/100, ` +
-      `risk=${extensions.esgAdvanced.overallRisk}, ` +
-      `CSRD=${extensions.esgAdvanced.csrd.status}, ` +
-      `climateVAR=${extensions.esgAdvanced.climateVar.combinedVarPct.toFixed(1)}%, ` +
-      `strandedAssets=${extensions.esgAdvanced.strandedAssets.strandingRiskScore}/100, ` +
-      `greenBond=${extensions.esgAdvanced.greenBond.status}, ` +
-      `carbonCredit=${extensions.esgAdvanced.carbonCredit.qualityScore}/100`
+        `risk=${extensions.esgAdvanced.overallRisk}, ` +
+        `CSRD=${extensions.esgAdvanced.csrd.status}, ` +
+        `climateVAR=${extensions.esgAdvanced.climateVar.combinedVarPct.toFixed(1)}%, ` +
+        `strandedAssets=${extensions.esgAdvanced.strandedAssets.strandingRiskScore}/100, ` +
+        `greenBond=${extensions.esgAdvanced.greenBond.status}, ` +
+        `carbonCredit=${extensions.esgAdvanced.carbonCredit.qualityScore}/100`
     );
   }
   // Phase 11 narrative entries
   if (extensions.nameVariants) {
     lines.push(
       `  - Name variants (#71): ${extensions.nameVariants.variants.length} variant(s) expanded ` +
-      `from "${extensions.nameVariants.original}" for enhanced sanctions coverage`
+        `from "${extensions.nameVariants.original}" for enhanced sanctions coverage`
     );
   }
   if (extensions.promptInjection?.injectionDetected) {
     lines.push(
       `  - Prompt injection (#59): DETECTED — ` +
-      `${extensions.promptInjection.findings.length} finding(s), ` +
-      `severity=${extensions.promptInjection.highestSeverity ?? 'unknown'}`
+        `${extensions.promptInjection.findings.length} finding(s), ` +
+        `severity=${extensions.promptInjection.highestSeverity ?? 'unknown'}`
     );
   }
   if (extensions.deepfakeDoc) {
     lines.push(
       `  - Deepfake doc (#60): detected=${extensions.deepfakeDoc.deepfakeDetected}, ` +
-      `confidence=${(extensions.deepfakeDoc.confidence * 100).toFixed(0)}%`
+        `confidence=${(extensions.deepfakeDoc.confidence * 100).toFixed(0)}%`
     );
   }
   if (extensions.sanctionsDedupe) {
     lines.push(
       `  - Sanctions dedupe (#61): ${extensions.sanctionsDedupe.inputCount} raw hits → ` +
-      `${extensions.sanctionsDedupe.deduplicatedCount} unique (removed ${extensions.sanctionsDedupe.duplicatesRemoved} duplicates)`
+        `${extensions.sanctionsDedupe.deduplicatedCount} unique (removed ${extensions.sanctionsDedupe.duplicatesRemoved} duplicates)`
     );
   }
   if (extensions.strNarrative) {
     lines.push(
       `  - STR narrative (#62): ready=${extensions.strNarrative.isFilingReady}, ` +
-      `length=${extensions.strNarrative.narrative.length} chars, ` +
-      `filingType=${extensions.strNarrative.filingType}`
+        `length=${extensions.strNarrative.narrative.length} chars, ` +
+        `filingType=${extensions.strNarrative.filingType}`
     );
   }
   if (extensions.strPrediction) {
     lines.push(
       `  - Predictive STR (#63): probability=${(extensions.strPrediction.strProbability * 100).toFixed(1)}%, ` +
-      `risk=${extensions.strPrediction.riskLevel}, ` +
-      `topFactor=${extensions.strPrediction.topFactors[0]?.factor ?? 'none'}`
+        `risk=${extensions.strPrediction.riskLevel}, ` +
+        `topFactor=${extensions.strPrediction.topFactors?.[0]?.factor ?? 'none'}`
     );
   }
   if (extensions.penaltyVar) {
     lines.push(
       `  - Penalty VaR (#64): expected AED ${extensions.penaltyVar.expectedPenaltyAed.toLocaleString()}, ` +
-      `VaR-95 AED ${extensions.penaltyVar.varAed.toLocaleString()}, ` +
-      `violations=${extensions.penaltyVar.violationCount}`
+        `VaR-95 AED ${extensions.penaltyVar.varAed.toLocaleString()}, ` +
+        `violations=${extensions.penaltyVar.violationCount}`
     );
   }
   if (extensions.goldOrigin) {
     lines.push(
       `  - Gold origin (#65): ${extensions.goldOrigin.totalShipments} shipment(s), ` +
-      `cahra=${extensions.goldOrigin.cahraExposure}, ` +
-      `riskLevel=${extensions.goldOrigin.overallRisk}`
+        `cahra=${extensions.goldOrigin.cahraExposure}, ` +
+        `riskLevel=${extensions.goldOrigin.overallRisk}`
     );
   }
   if (extensions.assayMatch) {
     lines.push(
       `  - Assay certificates (#66): ${extensions.assayMatch.totalCertificates} cert(s), ` +
-      `passed=${extensions.assayMatch.passedCount}, ` +
-      `failed=${extensions.assayMatch.failedCount}`
+        `passed=${extensions.assayMatch.passedCount}, ` +
+        `failed=${extensions.assayMatch.failedCount}`
     );
   }
   if (extensions.finenessAnomaly) {
     lines.push(
       `  - Fineness anomaly (#67): detected=${extensions.finenessAnomaly.anomalyDetected}, ` +
-      `findings=${extensions.finenessAnomaly.findings.length}`
+        `findings=${extensions.finenessAnomaly.findings.length}`
     );
   }
   if (extensions.arbitrage) {
     lines.push(
       `  - Cross-border arbitrage (#68): detected=${extensions.arbitrage.arbitrageDetected}, ` +
-      `hits=${extensions.arbitrage.hits.length}, ` +
-      `maxSpreadPct=${extensions.arbitrage.maxSpreadPct?.toFixed(1) ?? 'N/A'}%`
+        `hits=${extensions.arbitrage.hits.length}, ` +
+        `maxSpreadPct=${extensions.arbitrage.maxSpreadPct?.toFixed(1) ?? 'N/A'}%`
     );
   }
   if (extensions.dormancy) {
     lines.push(
       `  - Dormancy activity (#70): hits=${extensions.dormancy.hits.length}, ` +
-      `maxGapDays=${extensions.dormancy.maxGapDays ?? 0}`
+        `maxGapDays=${extensions.dormancy.maxGapDays ?? 0}`
     );
   }
   if (extensions.strNarrativeGrade) {
     lines.push(
       `  - STR narrative grade (#72): score=${extensions.strNarrativeGrade.score}/100, ` +
-      `grade=${extensions.strNarrativeGrade.grade}, ` +
-      `readyToFile=${extensions.strNarrativeGrade.readyToFile}`
+        `grade=${extensions.strNarrativeGrade.grade}, ` +
+        `readyToFile=${extensions.strNarrativeGrade.readyToFile}`
     );
   }
 
@@ -3649,42 +3656,44 @@ function buildAuditNarrative(
     const flaggedCount = extensions.corporateGraph.hits.length;
     lines.push(
       `  - Corporate graph (#73): visited=${extensions.corporateGraph.visited} node(s) ` +
-      `in ${extensions.corporateGraph.hops} hop(s), flagged=${flaggedCount}`
+        `in ${extensions.corporateGraph.hops} hop(s), flagged=${flaggedCount}`
     );
   }
   if (extensions.ownershipMotifs) {
     lines.push(
       `  - Ownership motifs (#74): ${extensions.ownershipMotifs.findings.length} motif(s) detected ` +
-      `(circular/star/cascade layering)`
+        `(circular/star/cascade layering)`
     );
   }
   if (extensions.multiModelConsensus) {
     lines.push(
       `  - Multi-model screening (#75): consensus=${extensions.multiModelConsensus.consensus}, ` +
-      `riskLevel=${extensions.multiModelConsensus.riskLevel}, ` +
-      `score=${extensions.multiModelConsensus.riskScore}/100, ` +
-      `models=${extensions.multiModelConsensus.modelsResponded}/${extensions.multiModelConsensus.modelsQueried} responded`
+        `riskLevel=${extensions.multiModelConsensus.riskLevel}, ` +
+        `score=${extensions.multiModelConsensus.riskScore}/100, ` +
+        `models=${extensions.multiModelConsensus.modelsResponded}/${extensions.multiModelConsensus.modelsQueried} responded`
     );
   }
   if (extensions.causalCounterfactual) {
     lines.push(
       `  - Causal engine (#76): counterfactual changed ${extensions.causalCounterfactual.changedNodes.length} node(s): ` +
-      `[${extensions.causalCounterfactual.changedNodes.join(', ')}]`
+        `[${extensions.causalCounterfactual.changedNodes.join(', ')}]`
     );
   }
   if (extensions.verdictDebate) {
     lines.push(
       `  - Verdict debate (#77): winner=${extensions.verdictDebate.winner} ` +
-      `(${extensions.verdictDebate.winningAction}), ` +
-      `margin=${extensions.verdictDebate.margin.toFixed(2)}, ` +
-      `proScore=${extensions.verdictDebate.proScore.toFixed(0)} vs conScore=${extensions.verdictDebate.conScore.toFixed(0)}`
+        `(${extensions.verdictDebate.winningAction}), ` +
+        `margin=${extensions.verdictDebate.margin.toFixed(2)}, ` +
+        `proScore=${extensions.verdictDebate.proScore.toFixed(0)} vs conScore=${extensions.verdictDebate.conScore.toFixed(0)}`
     );
   }
   if (extensions.reflectionReport) {
-    const errorCount = extensions.reflectionReport.issues.filter((i) => i.severity === 'error').length;
+    const errorCount = extensions.reflectionReport.issues.filter(
+      (i) => i.severity === 'error'
+    ).length;
     lines.push(
       `  - Reflection critic (#78): ${extensions.reflectionReport.issues.length} issue(s) ` +
-      `(${errorCount} error(s)), chain confidence=${(extensions.reflectionReport.confidence * 100).toFixed(0)}%`
+        `(${errorCount} error(s)), chain confidence=${(extensions.reflectionReport.confidence * 100).toFixed(0)}%`
     );
   }
   if (extensions.circularReasoning) {
@@ -3695,49 +3704,49 @@ function buildAuditNarrative(
   if (extensions.gameEquilibrium) {
     lines.push(
       `  - Game theory (#80): expectedPayoff=${extensions.gameEquilibrium.expectedPayoff.toFixed(3)}, ` +
-      `topAttackerChoice="${extensions.gameEquilibrium.topAttackerChoice}", ` +
-      `topDefenderChoice="${extensions.gameEquilibrium.topDefenderChoice}"`
+        `topAttackerChoice="${extensions.gameEquilibrium.topAttackerChoice}", ` +
+        `topDefenderChoice="${extensions.gameEquilibrium.topDefenderChoice}"`
     );
   }
   if (extensions.lbmaFixCheck) {
     lines.push(
       `  - LBMA fix check (#81): ${extensions.lbmaFixCheck.checked} trade(s) checked, ` +
-      `flagged=${extensions.lbmaFixCheck.flagged}, frozen=${extensions.lbmaFixCheck.frozen}`
+        `flagged=${extensions.lbmaFixCheck.flagged}, frozen=${extensions.lbmaFixCheck.frozen}`
     );
   }
   if (extensions.meltLoss) {
     lines.push(
       `  - Melt loss (#82): severity=${extensions.meltLoss.severity}, ` +
-      `actual=${extensions.meltLoss.lossPct.toFixed(2)}%, ` +
-      `expected ${extensions.meltLoss.expectedMinPct.toFixed(2)}%–${extensions.meltLoss.expectedMaxPct.toFixed(2)}%`
+        `actual=${extensions.meltLoss.lossPct.toFixed(2)}%, ` +
+        `expected ${extensions.meltLoss.expectedMinPct.toFixed(2)}%–${extensions.meltLoss.expectedMaxPct.toFixed(2)}%`
     );
   }
   if (extensions.freeZoneCompliance) {
     lines.push(
       `  - Free zone compliance (#83): zone=${extensions.freeZoneCompliance.freeZone}, ` +
-      `passed=${extensions.freeZoneCompliance.passed}/${extensions.freeZoneCompliance.totalRules}, ` +
-      `mandatory failures=${extensions.freeZoneCompliance.mandatoryFailures.length}`
+        `passed=${extensions.freeZoneCompliance.passed}/${extensions.freeZoneCompliance.totalRules}, ` +
+        `mandatory failures=${extensions.freeZoneCompliance.mandatoryFailures.length}`
     );
   }
   if (extensions.tippingOff) {
     lines.push(
       `  - Tipping-off linter (#84): clean=${extensions.tippingOff.clean}, ` +
-      `findings=${extensions.tippingOff.findings.length} ` +
-      `(FDL Art.29 — ${!extensions.tippingOff.clean ? 'REDACTED' : 'clean'})`
+        `findings=${extensions.tippingOff.findings.length} ` +
+        `(FDL Art.29 — ${!extensions.tippingOff.clean ? 'REDACTED' : 'clean'})`
     );
   }
   if (extensions.shapley) {
     const topAttr = extensions.shapley.attributions[0];
     lines.push(
       `  - Shapley explainer (#85): top signal="${topAttr?.signal ?? 'none'}" ` +
-      `φ=${topAttr?.value?.toFixed(3) ?? 'N/A'}, ` +
-      `total signals=${extensions.shapley.attributions.length}`
+        `φ=${topAttr?.value?.toFixed(3) ?? 'N/A'}, ` +
+        `total signals=${extensions.shapley.attributions.length}`
     );
   }
   if (extensions.invariantVerification) {
     lines.push(
       `  - Invariant verifier (#86): violations=${extensions.invariantVerification.violations.length} ` +
-      `(invariantsChecked=${extensions.invariantVerification.invariantsChecked}, passed=${extensions.invariantVerification.passed})`
+        `(invariantsChecked=${extensions.invariantVerification.invariantsChecked}, passed=${extensions.invariantVerification.passed})`
     );
   }
   if (extensions.syntheticEvasion) {
@@ -3748,63 +3757,66 @@ function buildAuditNarrative(
   if (extensions.quantumSeal) {
     lines.push(
       `  - Quantum-resistant seal (#88): leafCount=${extensions.quantumSeal.leafCount} record(s), ` +
-      `algo=${extensions.quantumSeal.hashFunction}, ` +
-      `root=${extensions.quantumSeal.rootHash.slice(0, 16)}...`
+        `algo=${extensions.quantumSeal.hashFunction}, ` +
+        `root=${extensions.quantumSeal.rootHash.slice(0, 16)}...`
     );
   }
   if (extensions.peerAnomaly) {
-    const maxZ = extensions.peerAnomaly.anomalies.length > 0
-      ? Math.max(...extensions.peerAnomaly.anomalies.map((a) => Math.abs(a.zScore))).toFixed(2)
-      : 'N/A';
+    const maxZ =
+      extensions.peerAnomaly.anomalies.length > 0
+        ? Math.max(...extensions.peerAnomaly.anomalies.map((a) => Math.abs(a.zScore))).toFixed(2)
+        : 'N/A';
     lines.push(
       `  - Peer anomaly (#89): ${extensions.peerAnomaly.anomalies.length} anomalous feature(s), ` +
-      `maxZ=${maxZ}, score=${extensions.peerAnomaly.overallScore.toFixed(1)}`
+        `maxZ=${maxZ}, score=${extensions.peerAnomaly.overallScore.toFixed(1)}`
     );
   }
   if (extensions.timeTravelAudit) {
     lines.push(
       `  - Time-travel audit (#90): criticalPath=${extensions.timeTravelAudit.criticalPath.length} evidence step(s), ` +
-      `currentState snapshot at ${extensions.timeTravelAudit.currentState.timestamp}`
+        `currentState snapshot at ${extensions.timeTravelAudit.currentState.timestamp}`
     );
   }
   if (extensions.documentTamper) {
-    const highTamper = extensions.documentTamper.tamperSignals.filter((s) => s.severity === 'high').length;
+    const highTamper = extensions.documentTamper.tamperSignals.filter(
+      (s) => s.severity === 'high'
+    ).length;
     lines.push(
       `  - Document intelligence (#91): tamperSignals=${extensions.documentTamper.tamperSignals.length} ` +
-      `(${highTamper} high-severity), confidence=${(extensions.documentTamper.confidence * 100).toFixed(0)}%`
+        `(${highTamper} high-severity), confidence=${(extensions.documentTamper.confidence * 100).toFixed(0)}%`
     );
   }
   if (extensions.regulatoryDrift) {
     lines.push(
       `  - Regulatory drift (#92): overallBand=${extensions.regulatoryDrift.overallBand}, ` +
-      `driftedFeatures=${extensions.regulatoryDrift.driftedFeatureCount}, ` +
-      `maxPSI=${extensions.regulatoryDrift.overallMaxPsi?.toFixed(3) ?? 'N/A'}`
+        `driftedFeatures=${extensions.regulatoryDrift.driftedFeatureCount}, ` +
+        `maxPSI=${extensions.regulatoryDrift.overallMaxPsi?.toFixed(3) ?? 'N/A'}`
     );
   }
   if (extensions.goamlXml) {
     lines.push(
       `  - goAML XML (#93): auto-generated UAE FIU XML filing ` +
-      `(${extensions.goamlXml.length.toLocaleString()} chars) — ready for submission`
+        `(${extensions.goamlXml.length.toLocaleString()} chars) — ready for submission`
     );
   }
   if (extensions.bayesianBelief) {
     lines.push(
       `  - Bayesian belief (#94): P(${extensions.bayesianBelief.mostLikely.label})=` +
-      `${(extensions.bayesianBelief.mostLikely.probability * 100).toFixed(0)}%, ` +
-      `entropy=${extensions.bayesianBelief.entropyBits.toFixed(2)} bits`
+        `${(extensions.bayesianBelief.mostLikely.probability * 100).toFixed(0)}%, ` +
+        `entropy=${extensions.bayesianBelief.entropyBits.toFixed(2)} bits`
     );
   }
   if (extensions.cbrRecommendation && extensions.cbrRecommendation.length > 0) {
     const topRec = extensions.cbrRecommendation[0];
     lines.push(
       `  - Case-based reasoning (#95): top precedent similarity=${topRec?.similarity?.toFixed(3) ?? 'N/A'}, ` +
-      `recommendation=${topRec?.recommendedOutcome ?? 'none'}`
+        `recommendation=${topRec?.recommendedOutcome ?? 'none'}`
     );
   }
   if (extensions.euAiActReadiness) {
     lines.push(
       `  - EU AI Act readiness (#96): dispatched=${extensions.euAiActReadiness.dispatched} task(s), ` +
-      `failed=${extensions.euAiActReadiness.failed}`
+        `failed=${extensions.euAiActReadiness.failed}`
     );
   }
   if (extensions.inducedRules && extensions.inducedRules.length > 0) {

@@ -66,7 +66,12 @@ export function rsi(closes: number[], period: number = 14): number {
 
 // ─── MACD ───────────────────────────────────────────────────────────────────
 
-export function macd(closes: number[], fast = 12, slow = 26, signal = 9): { value: number; signal: number; histogram: number } {
+export function macd(
+  closes: number[],
+  fast = 12,
+  slow = 26,
+  signal = 9
+): { value: number; signal: number; histogram: number } {
   const fastEma = ema(closes, fast);
   const slowEma = ema(closes, slow);
   const macdLine = fastEma - slowEma;
@@ -85,7 +90,11 @@ export function macd(closes: number[], fast = 12, slow = 26, signal = 9): { valu
 
 // ─── Bollinger Bands ────────────────────────────────────────────────────────
 
-export function bollingerBands(closes: number[], period = 20, stdDevMultiplier = 2): { upper: number; middle: number; lower: number; width: number } {
+export function bollingerBands(
+  closes: number[],
+  period = 20,
+  stdDevMultiplier = 2
+): { upper: number; middle: number; lower: number; width: number } {
   const middle = sma(closes, period);
   const slice = closes.slice(-period);
   const stdDev = Math.sqrt(slice.reduce((sum, v) => sum + (v - middle) ** 2, 0) / period);
@@ -97,7 +106,13 @@ export function bollingerBands(closes: number[], period = 20, stdDevMultiplier =
 
 // ─── Stochastic Oscillator ──────────────────────────────────────────────────
 
-export function stochastic(highs: number[], lows: number[], closes: number[], kPeriod = 14, dPeriod = 3): { k: number; d: number } {
+export function stochastic(
+  highs: number[],
+  lows: number[],
+  closes: number[],
+  kPeriod = 14,
+  dPeriod = 3
+): { k: number; d: number } {
   if (closes.length < kPeriod) return { k: 50, d: 50 };
 
   const kValues: number[] = [];
@@ -125,7 +140,7 @@ export function atr(highs: number[], lows: number[], closes: number[], period = 
     const tr = Math.max(
       highs[i] - lows[i],
       Math.abs(highs[i] - closes[i - 1]),
-      Math.abs(lows[i] - closes[i - 1]),
+      Math.abs(lows[i] - closes[i - 1])
     );
     trueRanges.push(tr);
   }
@@ -147,11 +162,13 @@ export function adx(highs: number[], lows: number[], closes: number[], period = 
     const downMove = lows[i - 1] - lows[i];
     plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
     minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
-    trueRanges.push(Math.max(
-      highs[i] - lows[i],
-      Math.abs(highs[i] - closes[i - 1]),
-      Math.abs(lows[i] - closes[i - 1]),
-    ));
+    trueRanges.push(
+      Math.max(
+        highs[i] - lows[i],
+        Math.abs(highs[i] - closes[i - 1]),
+        Math.abs(lows[i] - closes[i - 1])
+      )
+    );
   }
 
   const smoothedPlusDM = ema(plusDM, period);
@@ -179,7 +196,11 @@ export function obv(closes: number[], volumes: number[]): number {
 
 // ─── Ichimoku Cloud ─────────────────────────────────────────────────────────
 
-export function ichimoku(highs: number[], lows: number[], closes: number[]): { tenkan: number; kijun: number; senkouA: number; senkouB: number; chikou: number } {
+export function ichimoku(
+  highs: number[],
+  lows: number[],
+  closes: number[]
+): { tenkan: number; kijun: number; senkouA: number; senkouB: number; chikou: number } {
   const midpoint = (arr: number[], period: number) => {
     const slice = arr.slice(-period);
     return (Math.max(...slice) + Math.min(...slice)) / 2;
@@ -196,7 +217,10 @@ export function ichimoku(highs: number[], lows: number[], closes: number[]): { t
 
 // ─── Fibonacci Retracement ──────────────────────────────────────────────────
 
-export function fibonacci(highs: number[], lows: number[]): { levels: number[]; trend: 'UP' | 'DOWN' } {
+export function fibonacci(
+  highs: number[],
+  lows: number[]
+): { levels: number[]; trend: 'UP' | 'DOWN' } {
   const recentHigh = Math.max(...highs.slice(-50));
   const recentLow = Math.min(...lows.slice(-50));
   const lastClose = highs[highs.length - 1];
@@ -204,16 +228,21 @@ export function fibonacci(highs: number[], lows: number[]): { levels: number[]; 
   const range = recentHigh - recentLow;
 
   const fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
-  const levels = trend === 'UP'
-    ? fibLevels.map(f => recentHigh - range * f)
-    : fibLevels.map(f => recentLow + range * f);
+  const levels =
+    trend === 'UP'
+      ? fibLevels.map((f) => recentHigh - range * f)
+      : fibLevels.map((f) => recentLow + range * f);
 
   return { levels, trend };
 }
 
 // ─── Pivot Points ───────────────────────────────────────────────────────────
 
-export function pivotPoints(high: number, low: number, close: number): { pivot: number; r1: number; r2: number; r3: number; s1: number; s2: number; s3: number } {
+export function pivotPoints(
+  high: number,
+  low: number,
+  close: number
+): { pivot: number; r1: number; r2: number; r3: number; s1: number; s2: number; s3: number } {
   const pivot = (high + low + close) / 3;
   return {
     pivot,
@@ -228,10 +257,13 @@ export function pivotPoints(high: number, low: number, close: number): { pivot: 
 
 // ─── Volume Profile ─────────────────────────────────────────────────────────
 
-export function volumeProfile(candles: OHLCV[], bins = 50): { poc: number; valueAreaHigh: number; valueAreaLow: number } {
+export function volumeProfile(
+  candles: OHLCV[],
+  bins = 50
+): { poc: number; valueAreaHigh: number; valueAreaLow: number } {
   if (candles.length === 0) return { poc: 0, valueAreaHigh: 0, valueAreaLow: 0 };
 
-  const allPrices = candles.flatMap(c => [c.high, c.low]);
+  const allPrices = candles.flatMap((c) => [c.high, c.low]);
   const priceHigh = Math.max(...allPrices);
   const priceLow = Math.min(...allPrices);
   const binSize = (priceHigh - priceLow) / bins;
@@ -250,14 +282,19 @@ export function volumeProfile(candles: OHLCV[], bins = 50): { poc: number; value
   const totalVolume = volumeByBin.reduce((a, b) => a + b, 0);
   const targetVolume = totalVolume * 0.7;
   let areaVolume = volumeByBin[pocBin];
-  let lower = pocBin, upper = pocBin;
+  let lower = pocBin,
+    upper = pocBin;
 
   while (areaVolume < targetVolume && (lower > 0 || upper < bins - 1)) {
     const addLower = lower > 0 ? volumeByBin[lower - 1] : 0;
     const addUpper = upper < bins - 1 ? volumeByBin[upper + 1] : 0;
-    if (addLower >= addUpper && lower > 0) { lower--; areaVolume += addLower; }
-    else if (upper < bins - 1) { upper++; areaVolume += addUpper; }
-    else break;
+    if (addLower >= addUpper && lower > 0) {
+      lower--;
+      areaVolume += addLower;
+    } else if (upper < bins - 1) {
+      upper++;
+      areaVolume += addUpper;
+    } else break;
   }
 
   return {
@@ -269,7 +306,10 @@ export function volumeProfile(candles: OHLCV[], bins = 50): { poc: number; value
 
 // ─── Support & Resistance Detection ─────────────────────────────────────────
 
-export function detectSupportResistance(candles: OHLCV[], sensitivity = 3): { support: number[]; resistance: number[] } {
+export function detectSupportResistance(
+  candles: OHLCV[],
+  sensitivity = 3
+): { support: number[]; resistance: number[] } {
   if (candles.length < sensitivity * 2 + 1) return { support: [], resistance: [] };
 
   const support: number[] = [];
@@ -310,9 +350,9 @@ export function detectPatterns(candles: OHLCV[]): PatternDetection[] {
   const patterns: PatternDetection[] = [];
   if (candles.length < 20) return patterns;
 
-  const closes = candles.map(c => c.close);
-  const highs = candles.map(c => c.high);
-  const lows = candles.map(c => c.low);
+  const closes = candles.map((c) => c.close);
+  const highs = candles.map((c) => c.high);
+  const lows = candles.map((c) => c.low);
   const lastClose = closes[closes.length - 1];
   const atrVal = atr(highs, lows, closes);
 
@@ -320,7 +360,10 @@ export function detectPatterns(candles: OHLCV[]): PatternDetection[] {
   const recentLows = lows.slice(-30);
   const minIdx1 = recentLows.indexOf(Math.min(...recentLows.slice(0, 15)));
   const minIdx2 = recentLows.indexOf(Math.min(...recentLows.slice(15)));
-  if (minIdx2 > minIdx1 && Math.abs(recentLows[minIdx1] - recentLows[minIdx2]) / recentLows[minIdx1] < 0.02) {
+  if (
+    minIdx2 > minIdx1 &&
+    Math.abs(recentLows[minIdx1] - recentLows[minIdx2]) / recentLows[minIdx1] < 0.02
+  ) {
     const neckline = Math.max(...highs.slice(-30).slice(minIdx1, minIdx2));
     if (lastClose > neckline * 0.99) {
       patterns.push({
@@ -373,12 +416,17 @@ export function detectPatterns(candles: OHLCV[]): PatternDetection[] {
   if (candles.length >= 2) {
     const prev = candles[candles.length - 2];
     const curr = candles[candles.length - 1];
-    if (prev.close < prev.open && curr.close > curr.open && curr.open <= prev.close && curr.close >= prev.open) {
+    if (
+      prev.close < prev.open &&
+      curr.close > curr.open &&
+      curr.open <= prev.close &&
+      curr.close >= prev.open
+    ) {
       patterns.push({
         pattern: 'BULLISH_ENGULFING',
         type: 'REVERSAL',
         direction: 'BULLISH',
-        confidence: 0.60,
+        confidence: 0.6,
         entryPrice: curr.close,
         targetPrice: curr.close + atrVal * 2,
         stopPrice: curr.low - atrVal * 0.5,
@@ -386,12 +434,17 @@ export function detectPatterns(candles: OHLCV[]): PatternDetection[] {
         detectedAt: Date.now(),
       });
     }
-    if (prev.close > prev.open && curr.close < curr.open && curr.open >= prev.close && curr.close <= prev.open) {
+    if (
+      prev.close > prev.open &&
+      curr.close < curr.open &&
+      curr.open >= prev.close &&
+      curr.close <= prev.open
+    ) {
       patterns.push({
         pattern: 'BEARISH_ENGULFING',
         type: 'REVERSAL',
         direction: 'BEARISH',
-        confidence: 0.60,
+        confidence: 0.6,
         entryPrice: curr.close,
         targetPrice: curr.close - atrVal * 2,
         stopPrice: curr.high + atrVal * 0.5,
@@ -407,10 +460,10 @@ export function detectPatterns(candles: OHLCV[]): PatternDetection[] {
 // ─── Full Indicator Suite ───────────────────────────────────────────────────
 
 export function computeAllIndicators(candles: OHLCV[], metal: Metal): TAIndicators {
-  const closes = candles.map(c => c.close);
-  const highs = candles.map(c => c.high);
-  const lows = candles.map(c => c.low);
-  const volumes = candles.map(c => c.volume);
+  const closes = candles.map((c) => c.close);
+  const highs = candles.map((c) => c.high);
+  const lows = candles.map((c) => c.low);
+  const volumes = candles.map((c) => c.volume);
 
   const lastCandle = candles[candles.length - 1];
   const sr = detectSupportResistance(candles);
@@ -442,7 +495,8 @@ export function computeAllIndicators(candles: OHLCV[], metal: Metal): TAIndicato
     atr14: atr(highs, lows, closes, 14),
     adx14: adx(highs, lows, closes, 14),
     obv: obv(closes, volumes),
-    vwap: volumes.reduce((s, v, i) => s + closes[i] * v, 0) / (volumes.reduce((a, b) => a + b, 0) || 1),
+    vwap:
+      volumes.reduce((s, v, i) => s + closes[i] * v, 0) / (volumes.reduce((a, b) => a + b, 0) || 1),
     fibonacci: fib,
     pivotPoints: pp,
     ichimoku: ichimoku(highs, lows, closes),
@@ -454,7 +508,10 @@ export function computeAllIndicators(candles: OHLCV[], metal: Metal): TAIndicato
 
 // ─── Signal Generation from TA ──────────────────────────────────────────────
 
-export function generateTASignals(indicators: TAIndicators, currentPrice: number): {
+export function generateTASignals(
+  indicators: TAIndicators,
+  currentPrice: number
+): {
   direction: TradeSide;
   strength: number;
   reasons: string[];
@@ -464,34 +521,47 @@ export function generateTASignals(indicators: TAIndicators, currentPrice: number
 
   // Moving average alignment
   if (currentPrice > indicators.sma[200] && currentPrice > indicators.sma[50]) {
-    score += 2; reasons.push('Price above SMA 50 & 200 — bullish trend');
+    score += 2;
+    reasons.push('Price above SMA 50 & 200 — bullish trend');
   } else if (currentPrice < indicators.sma[200] && currentPrice < indicators.sma[50]) {
-    score -= 2; reasons.push('Price below SMA 50 & 200 — bearish trend');
+    score -= 2;
+    reasons.push('Price below SMA 50 & 200 — bearish trend');
   }
 
   // RSI
-  if (indicators.rsi14 < 30) { score += 1.5; reasons.push(`RSI ${indicators.rsi14.toFixed(1)} — oversold`); }
-  else if (indicators.rsi14 > 70) { score -= 1.5; reasons.push(`RSI ${indicators.rsi14.toFixed(1)} — overbought`); }
+  if (indicators.rsi14 < 30) {
+    score += 1.5;
+    reasons.push(`RSI ${indicators.rsi14.toFixed(1)} — oversold`);
+  } else if (indicators.rsi14 > 70) {
+    score -= 1.5;
+    reasons.push(`RSI ${indicators.rsi14.toFixed(1)} — overbought`);
+  }
 
   // MACD
   if (indicators.macd.histogram > 0 && indicators.macd.value > indicators.macd.signal) {
-    score += 1; reasons.push('MACD bullish crossover');
+    score += 1;
+    reasons.push('MACD bullish crossover');
   } else if (indicators.macd.histogram < 0 && indicators.macd.value < indicators.macd.signal) {
-    score -= 1; reasons.push('MACD bearish crossover');
+    score -= 1;
+    reasons.push('MACD bearish crossover');
   }
 
   // Bollinger position
   if (currentPrice <= indicators.bollingerBands.lower) {
-    score += 1; reasons.push('Price at lower Bollinger Band — potential bounce');
+    score += 1;
+    reasons.push('Price at lower Bollinger Band — potential bounce');
   } else if (currentPrice >= indicators.bollingerBands.upper) {
-    score -= 1; reasons.push('Price at upper Bollinger Band — potential rejection');
+    score -= 1;
+    reasons.push('Price at upper Bollinger Band — potential rejection');
   }
 
   // Stochastic
   if (indicators.stochastic.k < 20 && indicators.stochastic.k > indicators.stochastic.d) {
-    score += 1; reasons.push('Stochastic bullish crossover in oversold');
+    score += 1;
+    reasons.push('Stochastic bullish crossover in oversold');
   } else if (indicators.stochastic.k > 80 && indicators.stochastic.k < indicators.stochastic.d) {
-    score -= 1; reasons.push('Stochastic bearish crossover in overbought');
+    score -= 1;
+    reasons.push('Stochastic bearish crossover in overbought');
   }
 
   // ADX trend strength
@@ -502,9 +572,14 @@ export function generateTASignals(indicators: TAIndicators, currentPrice: number
 
   // Ichimoku
   if (currentPrice > indicators.ichimoku.senkouA && currentPrice > indicators.ichimoku.senkouB) {
-    score += 0.5; reasons.push('Price above Ichimoku cloud — bullish');
-  } else if (currentPrice < indicators.ichimoku.senkouA && currentPrice < indicators.ichimoku.senkouB) {
-    score -= 0.5; reasons.push('Price below Ichimoku cloud — bearish');
+    score += 0.5;
+    reasons.push('Price above Ichimoku cloud — bullish');
+  } else if (
+    currentPrice < indicators.ichimoku.senkouA &&
+    currentPrice < indicators.ichimoku.senkouB
+  ) {
+    score -= 0.5;
+    reasons.push('Price below Ichimoku cloud — bearish');
   }
 
   const direction: TradeSide = score >= 0 ? 'BUY' : 'SELL';

@@ -29,9 +29,20 @@ export type ReportSection =
   | 'audit_trail'
   | 'recommendations';
 
-export type RegulatoryFramework = 'MoE' | 'FIU' | 'EOCN' | 'FATF' | 'OECD_DDG' | 'LBMA' | 'OECD_BEPS';
+export type RegulatoryFramework =
+  | 'MoE'
+  | 'FIU'
+  | 'EOCN'
+  | 'FATF'
+  | 'OECD_DDG'
+  | 'LBMA'
+  | 'OECD_BEPS';
 
-export type OverallComplianceStatus = 'compliant' | 'partially_compliant' | 'non_compliant' | 'critical_breach';
+export type OverallComplianceStatus =
+  | 'compliant'
+  | 'partially_compliant'
+  | 'non_compliant'
+  | 'critical_breach';
 
 export interface EntityProfile {
   entityId: string;
@@ -48,7 +59,7 @@ export interface EntityProfile {
 
 export interface SanctionsScreeningResult {
   screenedAt: string;
-  listsChecked: string[];            // UN, OFAC, EU, UK, UAE, EOCN
+  listsChecked: string[]; // UN, OFAC, EU, UK, UAE, EOCN
   matchFound: boolean;
   matchConfidence?: number;
   matchDetails?: string;
@@ -81,7 +92,7 @@ export interface TransactionMonitoringSummary {
 
 export interface PepExposureSummary {
   pepLinksCount: number;
-  highestDegree: number;            // 0 = entity IS PEP
+  highestDegree: number; // 0 = entity IS PEP
   requiresBoardApproval: boolean;
   boardApprovalObtained: boolean;
   lastPepReviewDate?: string;
@@ -138,7 +149,7 @@ export interface ScreeningComplianceReport {
   preparedBy: string;
   reviewedBy?: string;
   overallStatus: OverallComplianceStatus;
-  overallRiskScore: number;          // 0–100
+  overallRiskScore: number; // 0–100
   executiveSummary: string;
   sections: ReportSectionContent[];
   findings: ComplianceFinding[];
@@ -174,10 +185,13 @@ function buildEntityProfileSection(entity: EntityProfile): ReportSectionContent 
   };
 }
 
-function buildSanctionsSection(results: SanctionsScreeningResult[]): { section: ReportSectionContent; findings: ComplianceFinding[] } {
+function buildSanctionsSection(results: SanctionsScreeningResult[]): {
+  section: ReportSectionContent;
+  findings: ComplianceFinding[];
+} {
   const findings: ComplianceFinding[] = [];
   const latestResult = results[results.length - 1];
-  const allListsCovered = latestResult?.listsChecked.length >= 6;  // UN, OFAC, EU, UK, UAE, EOCN
+  const allListsCovered = latestResult?.listsChecked.length >= 6; // UN, OFAC, EU, UK, UAE, EOCN
 
   if (!allListsCovered) {
     findings.push({
@@ -191,7 +205,11 @@ function buildSanctionsSection(results: SanctionsScreeningResult[]): { section: 
     });
   }
 
-  if (latestResult?.matchFound && !latestResult.frozen && (latestResult.matchConfidence ?? 0) >= 0.9) {
+  if (
+    latestResult?.matchFound &&
+    !latestResult.frozen &&
+    (latestResult.matchConfidence ?? 0) >= 0.9
+  ) {
     findings.push({
       section: 'sanctions_screening',
       severity: 'critical',
@@ -203,8 +221,11 @@ function buildSanctionsSection(results: SanctionsScreeningResult[]): { section: 
     });
   }
 
-  const status = findings.some(f => f.severity === 'critical') ? 'non_compliant' :
-                 !allListsCovered ? 'partial' : 'compliant';
+  const status = findings.some((f) => f.severity === 'critical')
+    ? 'non_compliant'
+    : !allListsCovered
+      ? 'partial'
+      : 'compliant';
 
   return {
     section: {
@@ -218,9 +239,14 @@ function buildSanctionsSection(results: SanctionsScreeningResult[]): { section: 
   };
 }
 
-function buildFilingSection(records: FilingRecord[]): { section: ReportSectionContent; findings: ComplianceFinding[] } {
+function buildFilingSection(records: FilingRecord[]): {
+  section: ReportSectionContent;
+  findings: ComplianceFinding[];
+} {
   const findings: ComplianceFinding[] = [];
-  const overdue = records.filter(r => r.status === 'overdue' || (!r.deadlineMet && r.status === 'submitted'));
+  const overdue = records.filter(
+    (r) => r.status === 'overdue' || (!r.deadlineMet && r.status === 'submitted')
+  );
 
   for (const r of overdue) {
     findings.push({
@@ -240,7 +266,7 @@ function buildFilingSection(records: FilingRecord[]): { section: ReportSectionCo
       section: 'str_ctr_filing_status',
       title: 'STR / CTR Filing Status',
       status,
-      summary: `${records.length} filing(s) on record. Overdue: ${overdue.length}. Types: ${[...new Set(records.map(r => r.filingType))].join(', ')}.`,
+      summary: `${records.length} filing(s) on record. Overdue: ${overdue.length}. Types: ${[...new Set(records.map((r) => r.filingType))].join(', ')}.`,
       details: { filings: records },
     },
     findings,
@@ -260,7 +286,12 @@ function buildEsgSection(esg?: EsgScore): ReportSectionContent {
   return {
     section: 'esg_compliance',
     title: 'ESG Compliance (ISSB IFRS S1/S2, GRI 2021, LBMA RGG v9)',
-    status: esg.riskLevel === 'low' ? 'compliant' : esg.riskLevel === 'medium' ? 'partial' : 'non_compliant',
+    status:
+      esg.riskLevel === 'low'
+        ? 'compliant'
+        : esg.riskLevel === 'medium'
+          ? 'partial'
+          : 'non_compliant',
     summary: `Overall ESG score: ${esg.composite.toFixed(1)}/100 (${esg.grade}). Environmental: ${esg.environmental.score.toFixed(1)}. Social: ${esg.social.score.toFixed(1)}. Governance: ${esg.governance.score.toFixed(1)}. Risk level: ${esg.riskLevel.toUpperCase()}.`,
     details: { esgScore: esg },
   };
@@ -272,19 +303,24 @@ function buildAuditTrailSection(entries?: AuditEntry[]): ReportSectionContent {
     title: 'Audit Trail',
     status: (entries?.length ?? 0) > 0 ? 'compliant' : 'partial',
     summary: `${entries?.length ?? 0} audit entries recorded. FDL No.10/2025 Art.24 requires 10-year retention.`,
-    details: { entries: entries?.slice(-20) ?? [] },  // last 20 entries
+    details: { entries: entries?.slice(-20) ?? [] }, // last 20 entries
   };
 }
 
 function buildRecommendations(findings: ComplianceFinding[]): string[] {
   const recs: string[] = [];
-  const criticals = findings.filter(f => f.severity === 'critical');
-  const highs = findings.filter(f => f.severity === 'high');
+  const criticals = findings.filter((f) => f.severity === 'critical');
+  const highs = findings.filter((f) => f.severity === 'high');
 
-  if (criticals.length > 0) recs.push(`IMMEDIATE: Resolve ${criticals.length} critical finding(s): ${criticals.map(f => f.finding.slice(0, 60)).join('; ')}`);
+  if (criticals.length > 0)
+    recs.push(
+      `IMMEDIATE: Resolve ${criticals.length} critical finding(s): ${criticals.map((f) => f.finding.slice(0, 60)).join('; ')}`
+    );
   for (const h of highs.slice(0, 3)) recs.push(`HIGH PRIORITY: ${h.remediation}`);
 
-  recs.push('Ensure all 6 sanctions lists refreshed at minimum weekly (UN, OFAC, EU, UK, UAE, EOCN)');
+  recs.push(
+    'Ensure all 6 sanctions lists refreshed at minimum weekly (UN, OFAC, EU, UK, UAE, EOCN)'
+  );
   recs.push('Run /deploy-check before any code changes to compliance logic');
   recs.push('Verify next DPMSR quarterly submission date and goAML registration status');
 
@@ -292,15 +328,18 @@ function buildRecommendations(findings: ComplianceFinding[]): string[] {
 }
 
 function computeOverallStatus(findings: ComplianceFinding[]): OverallComplianceStatus {
-  if (findings.some(f => f.severity === 'critical' && f.framework === 'EOCN')) return 'critical_breach';
-  if (findings.some(f => f.severity === 'critical')) return 'non_compliant';
-  if (findings.some(f => f.severity === 'high')) return 'partially_compliant';
+  if (findings.some((f) => f.severity === 'critical' && f.framework === 'EOCN'))
+    return 'critical_breach';
+  if (findings.some((f) => f.severity === 'critical')) return 'non_compliant';
+  if (findings.some((f) => f.severity === 'high')) return 'partially_compliant';
   return 'compliant';
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
-export function generateScreeningComplianceReport(input: ComplianceReportInput): ScreeningComplianceReport {
+export function generateScreeningComplianceReport(
+  input: ComplianceReportInput
+): ScreeningComplianceReport {
   const reportId = `SCR-${input.entity.entityId}-${Date.now()}`;
   const generatedAt = new Date().toISOString();
 
@@ -345,8 +384,12 @@ export function generateScreeningComplianceReport(input: ComplianceReportInput):
   sections.push({
     section: 'pep_exposure',
     title: 'PEP Exposure',
-    status: input.pepExposure.pepLinksCount === 0 ? 'compliant' :
-            !input.pepExposure.boardApprovalObtained ? 'non_compliant' : 'partial',
+    status:
+      input.pepExposure.pepLinksCount === 0
+        ? 'compliant'
+        : !input.pepExposure.boardApprovalObtained
+          ? 'non_compliant'
+          : 'partial',
     summary: `PEP links: ${input.pepExposure.pepLinksCount}. Highest degree: ${input.pepExposure.highestDegree}. Board approval obtained: ${input.pepExposure.boardApprovalObtained}.`,
     details: { ...input.pepExposure },
   });
@@ -399,8 +442,8 @@ export function generateScreeningComplianceReport(input: ComplianceReportInput):
   const overallStatus = computeOverallStatus(allFindings);
 
   // Overall risk score (weighted across sections)
-  const criticals = allFindings.filter(f => f.severity === 'critical').length;
-  const highs = allFindings.filter(f => f.severity === 'high').length;
+  const criticals = allFindings.filter((f) => f.severity === 'critical').length;
+  const highs = allFindings.filter((f) => f.severity === 'high').length;
   const overallRiskScore = Math.min(100, criticals * 25 + highs * 10);
 
   const executiveSummary =
@@ -409,16 +452,20 @@ export function generateScreeningComplianceReport(input: ComplianceReportInput):
     `Overall Status: ${overallStatus.toUpperCase().replace('_', ' ')}\n` +
     `Risk Score: ${overallRiskScore}/100\n` +
     `Critical Findings: ${criticals} | High Findings: ${highs}\n` +
-    `Sanctions Match: ${input.sanctionsResults.some(r => r.matchFound) ? 'YES' : 'None'} | ` +
+    `Sanctions Match: ${input.sanctionsResults.some((r) => r.matchFound) ? 'YES' : 'None'} | ` +
     `PEP Links: ${input.pepExposure.pepLinksCount} | ` +
     `ESG Grade: ${input.esgScore?.grade ?? 'N/A'}\n` +
-    `Overdue Filings: ${input.filingRecords.filter(r => r.status === 'overdue').length}\n` +
+    `Overdue Filings: ${input.filingRecords.filter((r) => r.status === 'overdue').length}\n` +
     (overallStatus === 'critical_breach' || overallStatus === 'non_compliant'
-      ? '⚠ IMMEDIATE REGULATORY ACTION REQUIRED ⚠\n' : '') +
+      ? '⚠ IMMEDIATE REGULATORY ACTION REQUIRED ⚠\n'
+      : '') +
     `Prepared by: ${input.preparedBy}${input.reviewedBy ? ` | Reviewed by: ${input.reviewedBy}` : ''}`;
 
   const nextReviewDate = new Date();
-  nextReviewDate.setMonth(nextReviewDate.getMonth() + (input.entity.cddLevel === 'EDD' ? 3 : input.entity.cddLevel === 'CDD' ? 6 : 12));
+  nextReviewDate.setMonth(
+    nextReviewDate.getMonth() +
+      (input.entity.cddLevel === 'EDD' ? 3 : input.entity.cddLevel === 'CDD' ? 6 : 12)
+  );
 
   return {
     reportId,
@@ -435,8 +482,8 @@ export function generateScreeningComplianceReport(input: ComplianceReportInput):
     findings: allFindings,
     criticalFindingsCount: criticals,
     highFindingsCount: highs,
-    overdueFilings: input.filingRecords.filter(r => r.status === 'overdue'),
-    sanctionsExposure: input.sanctionsResults.some(r => r.matchFound),
+    overdueFilings: input.filingRecords.filter((r) => r.status === 'overdue'),
+    sanctionsExposure: input.sanctionsResults.some((r) => r.matchFound),
     pepExposure: input.pepExposure.pepLinksCount > 0,
     esgRiskLevel: input.esgScore?.riskLevel,
     recommendedActions: recommendations,

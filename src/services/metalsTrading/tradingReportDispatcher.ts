@@ -39,9 +39,7 @@ import type { TradingDailyReportData } from './tradingDailyReport';
  */
 function getTradingProjectGid(): string {
   const fromStorage =
-    typeof localStorage !== 'undefined'
-      ? localStorage.getItem('asanaTradingProjectId')
-      : null;
+    typeof localStorage !== 'undefined' ? localStorage.getItem('asanaTradingProjectId') : null;
 
   const fromEnv =
     typeof process !== 'undefined' && process.env?.ASANA_TRADING_PROJECT_GID
@@ -73,7 +71,7 @@ export interface DispatchResult {
  * so callers can display, store, or attach them independently.
  */
 export async function dispatchDailyTradingReport(
-  brain: MetalsTradingBrain,
+  brain: MetalsTradingBrain
 ): Promise<DispatchResult> {
   // 1. Generate report
   const report = generateDailyReport(brain);

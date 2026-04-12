@@ -3,9 +3,19 @@
 // Ties into compliance brain for sanctions/counterparty alerts.
 
 import type {
-  Metal, AlertType, AlertSeverity, TradingAlert, PriceQuote,
-  TAIndicators, FlowMetrics, OrderBook, ArbitrageOpportunity,
-  Position, RiskMetrics, CircuitBreaker, MarketRegime, Order,
+  Metal,
+  AlertType,
+  AlertSeverity,
+  TradingAlert,
+  PriceQuote,
+  TAIndicators,
+  FlowMetrics,
+  OrderBook,
+  ArbitrageOpportunity,
+  Position,
+  RiskMetrics,
+  CircuitBreaker,
+  MarketRegime,
 } from './types';
 
 // ─── Alert Rules ────────────────────────────────────────────────────────────
@@ -54,7 +64,11 @@ const RULES: AlertRule[] = [
             metal: ctx.metal,
             title: `${ctx.metal} BREAKOUT above ${r.toFixed(2)}`,
             message: `Price broke through resistance at ${r.toFixed(2)}. Momentum entry opportunity.`,
-            data: { resistance: r, currentPrice: price, breakoutPct: ((price - r) / r * 100).toFixed(3) },
+            data: {
+              resistance: r,
+              currentPrice: price,
+              breakoutPct: (((price - r) / r) * 100).toFixed(3),
+            },
             actionable: true,
             suggestedAction: 'BUY — breakout confirmed with volume',
             suggestedOrder: { metal: ctx.metal, side: 'BUY', type: 'MARKET' },
@@ -95,7 +109,7 @@ const RULES: AlertRule[] = [
     type: 'ARBITRAGE_WINDOW',
     evaluate: (ctx) => {
       if (!ctx.arbitrage?.length) return null;
-      const best = ctx.arbitrage.reduce((a, b) => a.netProfit > b.netProfit ? a : b);
+      const best = ctx.arbitrage.reduce((a, b) => (a.netProfit > b.netProfit ? a : b));
       if (best.netProfit <= 0) return null;
 
       return {
@@ -121,8 +135,7 @@ const RULES: AlertRule[] = [
     type: 'SPREAD_WIDENING',
     evaluate: (ctx) => {
       if (!ctx.book) return null;
-      const spreadBps = ctx.book.midPrice > 0
-        ? (ctx.book.spread / ctx.book.midPrice) * 10_000 : 0;
+      const spreadBps = ctx.book.midPrice > 0 ? (ctx.book.spread / ctx.book.midPrice) * 10_000 : 0;
 
       const thresholds: Record<Metal, number> = { XAU: 8, XAG: 15, XPT: 25, XPD: 30 };
       const threshold = thresholds[ctx.metal] ?? 15;
@@ -132,7 +145,8 @@ const RULES: AlertRule[] = [
       return {
         id: alertId('SPREAD_WIDENING', ctx.metal),
         type: 'SPREAD_WIDENING',
-        severity: spreadBps > threshold * 3 ? 'CRITICAL' : spreadBps > threshold * 2 ? 'HIGH' : 'MEDIUM',
+        severity:
+          spreadBps > threshold * 3 ? 'CRITICAL' : spreadBps > threshold * 2 ? 'HIGH' : 'MEDIUM',
         metal: ctx.metal,
         title: `${ctx.metal} spread widened to ${spreadBps.toFixed(1)} bps`,
         message: `Bid-ask spread is ${(spreadBps / threshold).toFixed(1)}x normal. Liquidity drying up. Avoid market orders.`,
@@ -164,9 +178,10 @@ const RULES: AlertRule[] = [
         message: `Unusual volume detected. ${ctx.flow.largeTradeCount} large trades in window. Smart money: ${ctx.flow.smartMoneyDirection}. Net flow: ${ctx.flow.netFlow > 0 ? '+' : ''}${ctx.flow.netFlow.toFixed(0)} oz.`,
         data: { flow: ctx.flow },
         actionable: true,
-        suggestedAction: ctx.flow.smartMoneyDirection !== 'NEUTRAL'
-          ? `Follow smart money — ${ctx.flow.smartMoneyDirection}`
-          : 'Monitor closely',
+        suggestedAction:
+          ctx.flow.smartMoneyDirection !== 'NEUTRAL'
+            ? `Follow smart money — ${ctx.flow.smartMoneyDirection}`
+            : 'Monitor closely',
         createdAt: Date.now(),
         acknowledged: false,
         autoExecute: false,
@@ -229,9 +244,12 @@ const RULES: AlertRule[] = [
       if (!ctx.riskMetrics) return null;
 
       const breaches: string[] = [];
-      if (ctx.riskMetrics.currentDrawdownPct > 5) breaches.push(`Drawdown: ${ctx.riskMetrics.currentDrawdownPct.toFixed(1)}%`);
-      if (ctx.riskMetrics.dailyPnL < -10_000) breaches.push(`Daily P&L: $${ctx.riskMetrics.dailyPnL.toFixed(0)}`);
-      if (ctx.riskMetrics.valueAtRisk1d > 50_000) breaches.push(`VaR(1d): $${ctx.riskMetrics.valueAtRisk1d.toFixed(0)}`);
+      if (ctx.riskMetrics.currentDrawdownPct > 5)
+        breaches.push(`Drawdown: ${ctx.riskMetrics.currentDrawdownPct.toFixed(1)}%`);
+      if (ctx.riskMetrics.dailyPnL < -10_000)
+        breaches.push(`Daily P&L: $${ctx.riskMetrics.dailyPnL.toFixed(0)}`);
+      if (ctx.riskMetrics.valueAtRisk1d > 50_000)
+        breaches.push(`VaR(1d): $${ctx.riskMetrics.valueAtRisk1d.toFixed(0)}`);
 
       if (breaches.length === 0) return null;
 
@@ -257,7 +275,7 @@ const RULES: AlertRule[] = [
     type: 'CIRCUIT_BREAKER',
     evaluate: (ctx) => {
       if (!ctx.circuitBreakers) return null;
-      const triggered = ctx.circuitBreakers.filter(cb => cb.triggered);
+      const triggered = ctx.circuitBreakers.filter((cb) => cb.triggered);
       if (triggered.length === 0) return null;
 
       return {
@@ -265,7 +283,7 @@ const RULES: AlertRule[] = [
         type: 'CIRCUIT_BREAKER',
         severity: 'CRITICAL',
         metal: ctx.metal,
-        title: `CIRCUIT BREAKER TRIGGERED — ${triggered.map(t => t.type).join(', ')}`,
+        title: `CIRCUIT BREAKER TRIGGERED — ${triggered.map((t) => t.type).join(', ')}`,
         message: `Trading halted. ${triggered.length} circuit breaker(s) fired. Action: ${triggered[0].action}`,
         data: { breakers: triggered },
         actionable: false,
@@ -291,14 +309,16 @@ const RULES: AlertRule[] = [
           severity: ratio > 95 || ratio < 55 ? 'CRITICAL' : 'HIGH',
           metal: ctx.metal,
           title: `G/S RATIO ${extreme}: ${ratio.toFixed(1)}`,
-          message: ratio > 85
-            ? `Gold/Silver ratio at ${ratio.toFixed(1)} — historically high. Silver undervalued relative to gold.`
-            : `Gold/Silver ratio at ${ratio.toFixed(1)} — historically low. Gold undervalued relative to silver.`,
+          message:
+            ratio > 85
+              ? `Gold/Silver ratio at ${ratio.toFixed(1)} — historically high. Silver undervalued relative to gold.`
+              : `Gold/Silver ratio at ${ratio.toFixed(1)} — historically low. Gold undervalued relative to silver.`,
           data: { ratio, mean: 75 },
           actionable: true,
-          suggestedAction: ratio > 85
-            ? 'BUY silver / SELL gold — mean reversion trade'
-            : 'BUY gold / SELL silver — mean reversion trade',
+          suggestedAction:
+            ratio > 85
+              ? 'BUY silver / SELL gold — mean reversion trade'
+              : 'BUY gold / SELL silver — mean reversion trade',
           createdAt: Date.now(),
           acknowledged: false,
           autoExecute: false,
@@ -329,11 +349,12 @@ const RULES: AlertRule[] = [
         message: `Market regime shifted to ${ctx.regime}. ADX: ${adx14.toFixed(1)}, BB Width: ${(bollingerBands.width * 100).toFixed(1)}%, ATR: ${atr14.toFixed(2)}`,
         data: { regime: ctx.regime, adx: adx14, bbWidth: bollingerBands.width },
         actionable: true,
-        suggestedAction: ctx.regime === 'HIGH_VOLATILITY'
-          ? 'Reduce position sizes, widen stops'
-          : ctx.regime === 'TRENDING_UP'
-            ? 'Trend following — ride winners, cut losers fast'
-            : 'Adjust strategy to current regime',
+        suggestedAction:
+          ctx.regime === 'HIGH_VOLATILITY'
+            ? 'Reduce position sizes, widen stops'
+            : ctx.regime === 'TRENDING_UP'
+              ? 'Trend following — ride winners, cut losers fast'
+              : 'Adjust strategy to current regime',
         createdAt: Date.now(),
         acknowledged: false,
         autoExecute: false,
@@ -347,7 +368,7 @@ const RULES: AlertRule[] = [
     evaluate: (ctx) => {
       if (!ctx.priceHistory || ctx.priceHistory.length < 10) return null;
 
-      const prices = ctx.priceHistory.slice(-20).map(p => p.mid);
+      const prices = ctx.priceHistory.slice(-20).map((p) => p.mid);
       const recent5 = prices.slice(-5);
       const prev5 = prices.slice(-10, -5);
       if (prev5.length === 0 || recent5.length === 0) return null;
@@ -356,8 +377,8 @@ const RULES: AlertRule[] = [
       const minRecent = Math.min(...recent5);
       const lastPrice = prices[prices.length - 1];
 
-      const downSpike = prevAvg > 0 ? (prevAvg - minRecent) / prevAvg * 100 : 0;
-      const recovery = prevAvg > 0 ? (lastPrice - minRecent) / prevAvg * 100 : 0;
+      const downSpike = prevAvg > 0 ? ((prevAvg - minRecent) / prevAvg) * 100 : 0;
+      const recovery = prevAvg > 0 ? ((lastPrice - minRecent) / prevAvg) * 100 : 0;
 
       if (downSpike > 0.3 && recovery > downSpike * 0.6) {
         return {
@@ -444,9 +465,7 @@ export class AlertWeapon {
     }
 
     // Prune expired
-    this.activeAlerts = this.activeAlerts.filter(
-      a => !a.expiresAt || a.expiresAt > now,
-    );
+    this.activeAlerts = this.activeAlerts.filter((a) => !a.expiresAt || a.expiresAt > now);
 
     // Prune history
     if (this.alertHistory.length > this.maxHistory) {
@@ -457,18 +476,16 @@ export class AlertWeapon {
   }
 
   evaluateAll(metals: Metal[], ctxBuilder: (m: Metal) => AlertContext): TradingAlert[] {
-    return metals.flatMap(m => this.evaluate(ctxBuilder(m)));
+    return metals.flatMap((m) => this.evaluate(ctxBuilder(m)));
   }
 
   acknowledge(alertId: string): void {
-    const alert = this.activeAlerts.find(a => a.id === alertId);
+    const alert = this.activeAlerts.find((a) => a.id === alertId);
     if (alert) alert.acknowledged = true;
   }
 
   getActive(metal?: Metal): TradingAlert[] {
-    return metal
-      ? this.activeAlerts.filter(a => a.metal === metal)
-      : this.activeAlerts;
+    return metal ? this.activeAlerts.filter((a) => a.metal === metal) : this.activeAlerts;
   }
 
   getHistory(limit = 100): TradingAlert[] {
@@ -476,7 +493,7 @@ export class AlertWeapon {
   }
 
   getBySeverity(severity: AlertSeverity): TradingAlert[] {
-    return this.activeAlerts.filter(a => a.severity === severity);
+    return this.activeAlerts.filter((a) => a.severity === severity);
   }
 
   clearAll(): void {
@@ -501,7 +518,7 @@ export class AlertWeapon {
       total: this.activeAlerts.length,
       bySeverity,
       byType,
-      unacknowledged: this.activeAlerts.filter(a => !a.acknowledged).length,
+      unacknowledged: this.activeAlerts.filter((a) => !a.acknowledged).length,
     };
   }
 }

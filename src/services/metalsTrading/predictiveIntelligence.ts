@@ -4,7 +4,7 @@
 // pressure prediction, and ensemble model fusion.
 // This is NOT reactive TA — this PREDICTS where price will be.
 
-import type { Metal, OHLCV, TradeSide, PriceQuote } from './types';
+import type { Metal, OHLCV, TradeSide } from './types';
 
 // ─── Prediction Types ───────────────────────────────────────────────────────
 
@@ -12,13 +12,13 @@ export interface PricePrediction {
   metal: Metal;
   currentPrice: number;
   predictions: {
-    horizon: string;         // '5m' | '1h' | '4h' | '1d' | '1w'
+    horizon: string; // '5m' | '1h' | '4h' | '1d' | '1w'
     predictedPrice: number;
-    confidence: number;      // 0-1
+    confidence: number; // 0-1
     direction: TradeSide;
-    expectedMove: number;    // absolute
+    expectedMove: number; // absolute
     expectedMovePct: number; // percentage
-    modelAgreement: number;  // how many models agree (0-1)
+    modelAgreement: number; // how many models agree (0-1)
   }[];
   dominantModel: string;
   regime: string;
@@ -48,7 +48,7 @@ export function hurstExponent(prices: number[]): number {
 
   // R/S analysis
   const mean = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
-  const deviations = logReturns.map(r => r - mean);
+  const deviations = logReturns.map((r) => r - mean);
 
   // Cumulative deviations
   const cumDev: number[] = [];
@@ -70,14 +70,15 @@ export function hurstExponent(prices: number[]): number {
 }
 
 export function momentumExtrapolation(candles: OHLCV[], horizonBars: number): ModelOutput {
-  const closes = candles.map(c => c.close);
+  const closes = candles.map((c) => c.close);
   const h = hurstExponent(closes);
   const currentPrice = closes[closes.length - 1];
 
   // Recent momentum (last 20 bars)
-  const recentMomentum = closes.length >= 20
-    ? (closes[closes.length - 1] - closes[closes.length - 20]) / closes[closes.length - 20]
-    : 0;
+  const recentMomentum =
+    closes.length >= 20
+      ? (closes[closes.length - 1] - closes[closes.length - 20]) / closes[closes.length - 20]
+      : 0;
 
   let extrapolatedMove: number;
   let confidence: number;
@@ -101,7 +102,7 @@ export function momentumExtrapolation(candles: OHLCV[], horizonBars: number): Mo
     name: `MOMENTUM (H=${h.toFixed(2)})`,
     predictedPrice: currentPrice * (1 + extrapolatedMove),
     confidence,
-    weight: h > 0.55 ? 0.35 : h < 0.45 ? 0.25 : 0.10,
+    weight: h > 0.55 ? 0.35 : h < 0.45 ? 0.25 : 0.1,
   };
 }
 
@@ -110,9 +111,14 @@ export function momentumExtrapolation(candles: OHLCV[], horizonBars: number): Mo
 // Extreme z-scores predict snapback.
 
 export function meanReversionModel(candles: OHLCV[], period: number = 50): ModelOutput {
-  const closes = candles.map(c => c.close);
+  const closes = candles.map((c) => c.close);
   if (closes.length < period) {
-    return { name: 'MEAN_REVERSION', predictedPrice: closes[closes.length - 1], confidence: 0, weight: 0 };
+    return {
+      name: 'MEAN_REVERSION',
+      predictedPrice: closes[closes.length - 1],
+      confidence: 0,
+      weight: 0,
+    };
   }
 
   const currentPrice = closes[closes.length - 1];
@@ -141,14 +147,14 @@ export function meanReversionModel(candles: OHLCV[], period: number = 50): Model
     predictedPrice = mean + stdDev * Math.sign(zScore) * 1.0;
     confidence = 0.35;
   } else {
-    confidence = 0.10;
+    confidence = 0.1;
   }
 
   return {
     name: `MEAN_REV (z=${zScore.toFixed(2)})`,
     predictedPrice,
     confidence,
-    weight: Math.abs(zScore) > 2 ? 0.30 : 0.15,
+    weight: Math.abs(zScore) > 2 ? 0.3 : 0.15,
   };
 }
 
@@ -163,7 +169,7 @@ export function volatilityForecast(candles: OHLCV[]): {
   volRegime: 'EXPANDING' | 'CONTRACTING' | 'STABLE';
   volPercentile: number;
 } {
-  const closes = candles.map(c => c.close);
+  const closes = candles.map((c) => c.close);
   if (closes.length < 30) {
     return { currentVol: 0, forecastedVol: 0, volRegime: 'STABLE', volPercentile: 50 };
   }
@@ -198,12 +204,11 @@ export function volatilityForecast(candles: OHLCV[]): {
     allVols.push(vol);
   }
   allVols.sort((a, b) => a - b);
-  const rank = allVols.filter(v => v <= shortVol).length;
+  const rank = allVols.filter((v) => v <= shortVol).length;
   const volPercentile = allVols.length > 0 ? (rank / allVols.length) * 100 : 50;
 
-  const volRegime = shortVol > longVol * 1.3 ? 'EXPANDING'
-    : shortVol < longVol * 0.7 ? 'CONTRACTING'
-    : 'STABLE';
+  const volRegime =
+    shortVol > longVol * 1.3 ? 'EXPANDING' : shortVol < longVol * 0.7 ? 'CONTRACTING' : 'STABLE';
 
   return { currentVol: shortVol, forecastedVol, volRegime, volPercentile };
 }
@@ -213,11 +218,18 @@ export function volatilityForecast(candles: OHLCV[]): {
 // near-term price direction. Divergence = reversal signal.
 
 export function orderFlowPredictor(
-  prices: number[], buyVolumes: number[], sellVolumes: number[],
+  prices: number[],
+  buyVolumes: number[],
+  sellVolumes: number[]
 ): ModelOutput {
   const n = Math.min(prices.length, buyVolumes.length, sellVolumes.length);
   if (n < 10) {
-    return { name: 'ORDER_FLOW', predictedPrice: prices[prices.length - 1] ?? 0, confidence: 0, weight: 0 };
+    return {
+      name: 'ORDER_FLOW',
+      predictedPrice: prices[prices.length - 1] ?? 0,
+      confidence: 0,
+      weight: 0,
+    };
   }
 
   const currentPrice = prices[n - 1];
@@ -255,21 +267,24 @@ export function orderFlowPredictor(
   } else {
     // Confirmation — momentum continues
     predictedMove = deltaSlope > 0 ? currentPrice * 0.001 : -currentPrice * 0.001;
-    confidence = 0.40;
+    confidence = 0.4;
   }
 
   return {
     name: isDivergent ? 'FLOW_DIVERGENCE' : 'FLOW_CONFIRM',
     predictedPrice: currentPrice + predictedMove,
     confidence,
-    weight: isDivergent ? 0.30 : 0.15,
+    weight: isDivergent ? 0.3 : 0.15,
   };
 }
 
 function linearRegSlope(data: number[]): number {
   const n = data.length;
   if (n < 2) return 0;
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  let sumX = 0,
+    sumY = 0,
+    sumXY = 0,
+    sumX2 = 0;
   for (let i = 0; i < n; i++) {
     sumX += i;
     sumY += data[i];
@@ -285,8 +300,11 @@ function linearRegSlope(data: number[]): number {
 // Predicts price will migrate toward nearest high-volume node.
 
 export function magnetModel(
-  currentPrice: number, poc: number, valueAreaHigh: number, valueAreaLow: number,
-  atr: number,
+  currentPrice: number,
+  poc: number,
+  valueAreaHigh: number,
+  valueAreaLow: number,
+  _atr: number
 ): ModelOutput {
   const distToPOC = poc - currentPrice;
   const distPct = Math.abs(distToPOC) / currentPrice;
@@ -299,11 +317,11 @@ export function magnetModel(
   if (currentPrice > valueAreaHigh) {
     // Above value area — gravity pulls back
     predictedPrice = valueAreaHigh;
-    confidence = 0.50;
+    confidence = 0.5;
   } else if (currentPrice < valueAreaLow) {
     // Below value area — gravity pulls back
     predictedPrice = valueAreaLow;
-    confidence = 0.50;
+    confidence = 0.5;
   } else if (distPct > 0.005) {
     // Inside value area but away from POC — drift toward POC
     predictedPrice = currentPrice + distToPOC * 0.3;
@@ -311,7 +329,7 @@ export function magnetModel(
   } else {
     // At POC — expect consolidation
     predictedPrice = currentPrice;
-    confidence = 0.20;
+    confidence = 0.2;
   }
 
   return {
@@ -328,10 +346,13 @@ export function ensemblePrediction(
   metal: Metal,
   candles: OHLCV[],
   horizonBars: number,
-  poc: number, vaHigh: number, vaLow: number,
-  buyVolumes?: number[], sellVolumes?: number[],
+  poc: number,
+  vaHigh: number,
+  vaLow: number,
+  buyVolumes?: number[],
+  sellVolumes?: number[]
 ): PricePrediction {
-  const closes = candles.map(c => c.close);
+  const closes = candles.map((c) => c.close);
   const currentPrice = closes[closes.length - 1] ?? 0;
 
   const models: ModelOutput[] = [];
@@ -366,7 +387,7 @@ export function ensemblePrediction(
   }
 
   const ensemblePrice = totalWeight > 0 ? weightedPrice / totalWeight : currentPrice;
-  const ensembleConfidence = Math.min(totalConfidence, 0.90);
+  const ensembleConfidence = Math.min(totalConfidence, 0.9);
   const direction: TradeSide = ensemblePrice >= currentPrice ? 'BUY' : 'SELL';
   const totalVotes = buyVotes + sellVotes;
   const modelAgreement = totalVotes > 0 ? Math.max(buyVotes, sellVotes) / totalVotes : 0;
@@ -376,7 +397,7 @@ export function ensemblePrediction(
 
   // Dominant model
   const dominant = models.reduce((a, b) =>
-    (a.weight * a.confidence) > (b.weight * b.confidence) ? a : b,
+    a.weight * a.confidence > b.weight * b.confidence ? a : b
   );
 
   const horizonMap: Record<number, string> = { 1: '5m', 12: '1h', 48: '4h', 288: '1d', 2016: '1w' };
@@ -385,15 +406,18 @@ export function ensemblePrediction(
   return {
     metal,
     currentPrice,
-    predictions: [{
-      horizon: horizonLabel,
-      predictedPrice: ensemblePrice,
-      confidence: ensembleConfidence,
-      direction,
-      expectedMove: ensemblePrice - currentPrice,
-      expectedMovePct: currentPrice > 0 ? ((ensemblePrice - currentPrice) / currentPrice) * 100 : 0,
-      modelAgreement,
-    }],
+    predictions: [
+      {
+        horizon: horizonLabel,
+        predictedPrice: ensemblePrice,
+        confidence: ensembleConfidence,
+        direction,
+        expectedMove: ensemblePrice - currentPrice,
+        expectedMovePct:
+          currentPrice > 0 ? ((ensemblePrice - currentPrice) / currentPrice) * 100 : 0,
+        modelAgreement,
+      },
+    ],
     dominantModel: dominant.name,
     regime: volForecast.volRegime,
     timestamp: Date.now(),
@@ -404,11 +428,13 @@ function calculateSimpleATR(candles: OHLCV[], period: number): number {
   if (candles.length < 2) return 0;
   const trs: number[] = [];
   for (let i = 1; i < candles.length; i++) {
-    trs.push(Math.max(
-      candles[i].high - candles[i].low,
-      Math.abs(candles[i].high - candles[i - 1].close),
-      Math.abs(candles[i].low - candles[i - 1].close),
-    ));
+    trs.push(
+      Math.max(
+        candles[i].high - candles[i].low,
+        Math.abs(candles[i].high - candles[i - 1].close),
+        Math.abs(candles[i].low - candles[i - 1].close)
+      )
+    );
   }
   const slice = trs.slice(-period);
   return slice.reduce((a, b) => a + b, 0) / slice.length;

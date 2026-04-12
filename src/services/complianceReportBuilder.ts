@@ -454,7 +454,9 @@ function buildMarkdown(input: ScreeningReportInput, integrityHash: string): stri
   lines.push(`Algorithm: SHA-256 over canonical JSON`);
   lines.push(`\`\`\``);
   lines.push('');
-  lines.push('_retain for 10 years per FDL No.10/2025 Art.24. Store with goAML XML + FIU receipt._');
+  lines.push(
+    '_retain for 10 years per FDL No.10/2025 Art.24. Store with goAML XML + FIU receipt._'
+  );
 
   return lines.join('\n');
 }
