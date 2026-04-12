@@ -283,6 +283,21 @@ import {
   buildKpiReport,
   type KpiReport,
 } from './complianceMetricsDashboard';
+import {
+  generateHawkeyeReport,
+  type HawkeyeReport,
+  type HawkeyeReportInput,
+} from './hawkeyeReportGenerator';
+import {
+  checkAiGovernance,
+  type AiGovernanceReport,
+  type AiGovernanceInput,
+} from './aiGovernanceChecker';
+import {
+  scoreEsgAdvancedFramework,
+  type EsgAdvancedReport,
+  type EsgAdvancedInput,
+} from './esgAdvancedFrameworkScorer';
 
 // ---------------------------------------------------------------------------
 // Verdict ordering — verdicts can only escalate under new clamps.
@@ -573,6 +588,24 @@ export interface WeaponizedBrainRequest {
   }>;
   /** Reporting period for KPI dashboard (ISO dates). */
   kpiPeriod?: { start: string; end: string };
+
+  /**
+   * Hawkeye Sterling V2 report metadata — enriches the generated report
+   * with screening officer, jurisdiction, DOB, ID numbers, group name.
+   */
+  hawkeyeReportMeta?: Omit<HawkeyeReportInput, 'brain'>;
+
+  /**
+   * AI Governance Checklist input — runs the 10-point pre-deployment
+   * governance assessment (NIST AI RMF + EU AI Act + UAE AI Ethics).
+   */
+  aiGovernanceInput?: AiGovernanceInput;
+
+  /**
+   * ESG Advanced Framework input — CSRD, SASB, Double Materiality,
+   * Stranded Assets, Climate VAR, Green Bond, SLL, Carbon Credits.
+   */
+  esgAdvancedInput?: EsgAdvancedInput;
 }
 
 export interface WeaponizedExtensions {
@@ -676,6 +709,12 @@ export interface WeaponizedExtensions {
   asanaSync?: OrchestratorResult;
   /** 30-KPI compliance metrics dashboard (MoE/FIU/FATF/LBMA aligned). */
   kpiDashboard?: KpiReport;
+  /** #56 Hawkeye Sterling V2 case report — professional branded screening report for Asana. */
+  hawkeyeReport?: HawkeyeReport;
+  /** #57 AI Governance Checklist — 10-point NIST AI RMF + EU AI Act + UAE AI Ethics assessment. */
+  aiGovernance?: AiGovernanceReport;
+  /** #58 ESG Advanced Framework — CSRD, SASB, Double Materiality, Stranded Assets, Climate VAR, Green/Social Bond, SLL, Carbon Credits. */
+  esgAdvanced?: EsgAdvancedReport;
 }
 
 export interface WeaponizedBrainResponse {
@@ -1772,6 +1811,28 @@ export async function runWeaponizedBrain(
     );
   }
 
+  // #56 Hawkeye Sterling V2 Report — always generated; uses optional meta for enrichment.
+  extensions.hawkeyeReport = runSafely('hawkeyeReportGenerator', () =>
+    generateHawkeyeReport({
+      brain: partialResponse,
+      ...(req.hawkeyeReportMeta ?? {}),
+    })
+  );
+
+  // #57 AI Governance Checklist — runs when aiGovernanceInput is supplied.
+  if (req.aiGovernanceInput) {
+    extensions.aiGovernance = runSafely('aiGovernanceChecker', () =>
+      checkAiGovernance(req.aiGovernanceInput!)
+    );
+  }
+
+  // #58 ESG Advanced Framework — CSRD/SASB/ClimateVAR/GreenBond/SLL/CarbonCredit.
+  if (req.esgAdvancedInput) {
+    extensions.esgAdvanced = runSafely('esgAdvancedFrameworkScorer', () =>
+      scoreEsgAdvancedFramework(req.esgAdvancedInput!)
+    );
+  }
+
   return {
     mega,
     extensions,
@@ -2195,6 +2256,35 @@ function buildAuditNarrative(
       `amber=${extensions.kpiDashboard.amberCount}, ` +
       `red=${extensions.kpiDashboard.redCount}, ` +
       `regulatory risk=${extensions.kpiDashboard.regulatoryRisk}`
+    );
+  }
+  if (extensions.hawkeyeReport) {
+    lines.push(
+      `  - Hawkeye Sterling V2 (#56): reportId=${extensions.hawkeyeReport.reportId}, ` +
+      `badge=${extensions.hawkeyeReport.riskBadge}, ` +
+      `lists=6/6 screened, ` +
+      `matches=${extensions.hawkeyeReport.totalMatches} ` +
+      `(confirmed=${extensions.hawkeyeReport.confirmedMatches}, unresolved=${extensions.hawkeyeReport.unresolvedMatches})`
+    );
+  }
+  if (extensions.aiGovernance) {
+    lines.push(
+      `  - AI governance (#57): score=${extensions.aiGovernance.overallScore}/100, ` +
+      `readiness=${extensions.aiGovernance.readiness}, ` +
+      `deploymentApproved=${extensions.aiGovernance.deploymentApproved}, ` +
+      `criticalFailures=${extensions.aiGovernance.criticalFailures.length}, ` +
+      `regulatoryRisk=${extensions.aiGovernance.regulatoryRisk}`
+    );
+  }
+  if (extensions.esgAdvanced) {
+    lines.push(
+      `  - ESG advanced framework (#58): score=${extensions.esgAdvanced.overallAdvancedEsgScore}/100, ` +
+      `risk=${extensions.esgAdvanced.overallRisk}, ` +
+      `CSRD=${extensions.esgAdvanced.csrd.status}, ` +
+      `climateVAR=${extensions.esgAdvanced.climateVar.combinedVarPct.toFixed(1)}%, ` +
+      `strandedAssets=${extensions.esgAdvanced.strandedAssets.strandingRiskScore}/100, ` +
+      `greenBond=${extensions.esgAdvanced.greenBond.status}, ` +
+      `carbonCredit=${extensions.esgAdvanced.carbonCredit.qualityScore}/100`
     );
   }
 
