@@ -198,6 +198,79 @@ import {
   type BftConsensusReport,
 } from './byzantineFaultTolerant';
 
+// --- Phase 4-10 imports: ESG, TBML, PEP, Hawala, STR, Cross-border, Ensemble ---
+import { calculateEsgScore, type EsgInput, type EsgScore } from './esgScorer';
+import {
+  estimateCarbonFootprint,
+  type CarbonFootprintInput,
+  type CarbonFootprintReport,
+} from './carbonFootprintEstimator';
+import {
+  checkTcfdAlignment,
+  type TcfdAlignmentInput,
+  type TcfdAlignmentReport,
+} from './tcfdAlignmentChecker';
+import {
+  scoreUnSdgAlignment,
+  type SdgEvidenceInput,
+  type UnSdgReport,
+} from './unSdgAlignmentScorer';
+import {
+  screenConflictMinerals,
+  type MineralSupplier,
+  type ConflictMineralsReport,
+} from './conflictMineralsScreener';
+import {
+  detectGreenwashing,
+  type EsgDisclosure,
+  type GreenwashingReport,
+} from './greenwashingDetector';
+import {
+  classifyEsgAdverseMedia,
+  type AdverseMediaHitInput,
+  type EsgAdverseMediaReport,
+} from './esgAdverseMediaClassifier';
+import {
+  assessModernSlaveryRisk,
+  type WorkforceProfile,
+  type ModernSlaveryReport,
+} from './modernSlaveryDetector';
+import {
+  detectTbml,
+  type TbmlTransaction,
+  type TbmlAssessment,
+} from './tradeBasedMLDetector';
+import {
+  enforceFourEyes,
+  type ApprovalSubmission,
+  type FourEyesResult,
+} from './fourEyesEnforcer';
+import {
+  classifyFiling,
+  type ClassificationInput,
+  type ClassificationResult,
+} from './strAutoClassifier';
+import {
+  scorePepProximity,
+  type PepProximityInput,
+  type PepProximityScore,
+} from './pepProximityScorer';
+import {
+  detectHawala,
+  type HawalaTransaction,
+  type HawalaDetectionResult,
+} from './hawalaDetector';
+import {
+  runAnomalyEnsemble,
+  buildSignal,
+  type EnsembleResult,
+} from './anomalyEnsemble';
+import {
+  monitorCrossBorderCash,
+  type CrossBorderRiskInput,
+  type CrossBorderAssessment,
+} from './crossBorderCashMonitor';
+
 // ---------------------------------------------------------------------------
 // Verdict ordering — verdicts can only escalate under new clamps.
 // ---------------------------------------------------------------------------
@@ -420,6 +493,50 @@ export interface WeaponizedBrainRequest {
    * (Cabinet Res 134/2025 Art.19 / NIST AI RMF GV-1.6 / FATF Rec 6)
    */
   sanctionsSourceVotes?: readonly BftVote<string>[];
+
+  // ─── Phase 4-10: ESG, TBML, PEP proximity, Hawala, STR, Cross-border ──────
+
+  /** #41 ESG composite score (ISSB IFRS S1/S2, GRI 2021, LBMA RGG v9). */
+  esgInput?: EsgInput;
+
+  /** #42 Carbon footprint — Scope 1/2/3 for gold supply chain (IFRS S2). */
+  carbonInput?: CarbonFootprintInput;
+
+  /** #43 TCFD alignment checker — 4-pillar disclosure completeness. */
+  tcfdInput?: TcfdAlignmentInput;
+
+  /** #44 UN SDG alignment scorer — 17 goals with DPMS sector weighting. */
+  sdgEvidence?: { entityId: string; reportingYear: number; evidence: SdgEvidenceInput };
+
+  /** #45 Conflict minerals screener — CAHRA/Dodd-Frank §1502/EU CMR/OECD DDG. */
+  conflictMineralSuppliers?: MineralSupplier[];
+
+  /** #46 Greenwashing detector — ESG disclosure integrity (ISSB S1/EU SFDR). */
+  esgDisclosure?: EsgDisclosure;
+
+  /** #47 ESG adverse media classifier — ESG signal extraction from adverse media. */
+  esgAdverseMediaHits?: AdverseMediaHitInput[];
+
+  /** #48 Modern slavery risk — ILO 11 indicators + UAE Federal Law 51/2006. */
+  workforceProfile?: WorkforceProfile;
+
+  /** #49 TBML detector — over/under-invoicing, phantom trades, round-trips. */
+  tbmlTransaction?: TbmlTransaction;
+
+  /** #50 Four-eyes enforcer — dual-approval for high-stakes decisions. */
+  fourEyesSubmission?: ApprovalSubmission;
+
+  /** #51 STR/SAR/CTR auto-classifier — derives filing category + deadline. */
+  filingClassificationInput?: ClassificationInput;
+
+  /** #52 PEP proximity scorer — 1st/2nd/3rd-degree PEP network links. */
+  pepProximityInput?: PepProximityInput;
+
+  /** #53 Hawala / IVTS detector — informal value transfer patterns. */
+  hawalaTransaction?: HawalaTransaction;
+
+  /** #54 Cross-border cash monitor — AED 60K threshold + structuring. */
+  crossBorderMovement?: CrossBorderRiskInput;
 }
 
 export interface WeaponizedExtensions {
@@ -482,6 +599,39 @@ export interface WeaponizedExtensions {
   priceAnomalies?: PriceAnomalyResult[];
   /** #40 BFT consensus — Byzantine fault-tolerant verdict voting (internal + external). */
   bftConsensus?: BftConsensusReport<string> | null;
+
+  // ─── Phase 4-10: ESG, TBML, PEP, Hawala, STR, Cross-border, Ensemble ──────
+
+  /** #41 ESG composite score (0-100, grade A-F, ISSB IFRS S1/S2). */
+  esgScore?: EsgScore;
+  /** #42 Carbon footprint — Scope 1/2/3 per troy oz. */
+  carbonFootprint?: CarbonFootprintReport;
+  /** #43 TCFD alignment — 4-pillar disclosure score. */
+  tcfdAlignment?: TcfdAlignmentReport;
+  /** #44 UN SDG alignment — 17-goal weighted score for DPMS sector. */
+  sdgAlignment?: UnSdgReport;
+  /** #45 Conflict minerals — CAHRA/OECD DDG supplier risk. */
+  conflictMinerals?: ConflictMineralsReport;
+  /** #46 Greenwashing — ESG disclosure integrity assessment. */
+  greenwashing?: GreenwashingReport;
+  /** #47 ESG adverse media — classified ESG signal from adverse media. */
+  esgAdverseMedia?: EsgAdverseMediaReport;
+  /** #48 Modern slavery — ILO forced-labour indicator risk. */
+  modernSlavery?: ModernSlaveryReport;
+  /** #49 TBML — trade-based money laundering detection. */
+  tbml?: TbmlAssessment;
+  /** #50 Four-eyes — dual-approval enforcement result. */
+  fourEyes?: FourEyesResult;
+  /** #51 STR/SAR/CTR filing classification + deadline. */
+  filingClassification?: ClassificationResult;
+  /** #52 PEP proximity — 1st/2nd/3rd-degree proximity score. */
+  pepProximity?: PepProximityScore;
+  /** #53 Hawala / IVTS detection result. */
+  hawala?: HawalaDetectionResult;
+  /** #54 Anomaly ensemble — Bayesian BMA across all anomaly signals. */
+  anomalyEnsemble?: EnsembleResult;
+  /** #55 Cross-border cash — AED 60K threshold + structuring detection. */
+  crossBorderCash?: CrossBorderAssessment;
 }
 
 export interface WeaponizedBrainResponse {
@@ -1148,6 +1298,252 @@ export async function runWeaponizedBrain(
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Phase 4-10 subsystems (#41-#55) — ESG, TBML, PEP, Hawala, STR, Cross-border,
+  // Anomaly Ensemble. All run in parallel. All optional (require caller input).
+  // ---------------------------------------------------------------------------
+
+  const [
+    p4esg,
+    p4carbon,
+    p4tcfd,
+    p4sdg,
+    p4conflict,
+    p4greenwash,
+    p4esgMedia,
+    p4slavery,
+    p4tbml,
+    p4fourEyes,
+    p4filing,
+    p4pep,
+    p4hawala,
+    p4crossBorder,
+  ] = await Promise.all([
+    // #41 ESG composite score
+    req.esgInput
+      ? Promise.resolve(runSafely('esgScorer', () => calculateEsgScore(req.esgInput!)))
+      : Promise.resolve(undefined),
+
+    // #42 Carbon footprint
+    req.carbonInput
+      ? Promise.resolve(runSafely('carbonFootprintEstimator', () => estimateCarbonFootprint(req.carbonInput!)))
+      : Promise.resolve(undefined),
+
+    // #43 TCFD alignment
+    req.tcfdInput
+      ? Promise.resolve(runSafely('tcfdAlignmentChecker', () => checkTcfdAlignment(req.tcfdInput!)))
+      : Promise.resolve(undefined),
+
+    // #44 UN SDG alignment
+    req.sdgEvidence
+      ? Promise.resolve(runSafely('unSdgAlignmentScorer', () =>
+          scoreUnSdgAlignment(req.sdgEvidence!.entityId, req.sdgEvidence!.reportingYear, req.sdgEvidence!.evidence)
+        ))
+      : Promise.resolve(undefined),
+
+    // #45 Conflict minerals
+    req.conflictMineralSuppliers && req.conflictMineralSuppliers.length > 0
+      ? Promise.resolve(runSafely('conflictMineralsScreener', () => screenConflictMinerals(req.conflictMineralSuppliers!)))
+      : Promise.resolve(undefined),
+
+    // #46 Greenwashing
+    req.esgDisclosure
+      ? Promise.resolve(runSafely('greenwashingDetector', () => detectGreenwashing(req.esgDisclosure!)))
+      : Promise.resolve(undefined),
+
+    // #47 ESG adverse media
+    req.esgAdverseMediaHits && req.esgAdverseMediaHits.length > 0
+      ? Promise.resolve(runSafely('esgAdverseMediaClassifier', () => classifyEsgAdverseMedia(req.esgAdverseMediaHits!)))
+      : Promise.resolve(undefined),
+
+    // #48 Modern slavery
+    req.workforceProfile
+      ? Promise.resolve(runSafely('modernSlaveryDetector', () => assessModernSlaveryRisk(req.workforceProfile!)))
+      : Promise.resolve(undefined),
+
+    // #49 TBML
+    req.tbmlTransaction
+      ? Promise.resolve(runSafely('tradeBasedMLDetector', () => detectTbml(req.tbmlTransaction!)))
+      : Promise.resolve(undefined),
+
+    // #50 Four-eyes enforcer
+    req.fourEyesSubmission
+      ? Promise.resolve(runSafely('fourEyesEnforcer', () => enforceFourEyes(req.fourEyesSubmission!)))
+      : Promise.resolve(undefined),
+
+    // #51 STR/SAR/CTR auto-classifier
+    req.filingClassificationInput
+      ? Promise.resolve(runSafely('strAutoClassifier', () => classifyFiling(req.filingClassificationInput!)))
+      : Promise.resolve(undefined),
+
+    // #52 PEP proximity scorer
+    req.pepProximityInput
+      ? Promise.resolve(runSafely('pepProximityScorer', () => scorePepProximity(req.pepProximityInput!)))
+      : Promise.resolve(undefined),
+
+    // #53 Hawala detector
+    req.hawalaTransaction
+      ? Promise.resolve(runSafely('hawalaDetector', () => detectHawala(req.hawalaTransaction!)))
+      : Promise.resolve(undefined),
+
+    // #54 Cross-border cash monitor
+    req.crossBorderMovement
+      ? Promise.resolve(runSafely('crossBorderCashMonitor', () => monitorCrossBorderCash(req.crossBorderMovement!)))
+      : Promise.resolve(undefined),
+  ]);
+
+  // Assign Phase 4-10 results.
+  extensions.esgScore = p4esg ?? undefined;
+  extensions.carbonFootprint = p4carbon ?? undefined;
+  extensions.tcfdAlignment = p4tcfd ?? undefined;
+  extensions.sdgAlignment = p4sdg ?? undefined;
+  extensions.conflictMinerals = p4conflict ?? undefined;
+  extensions.greenwashing = p4greenwash ?? undefined;
+  extensions.esgAdverseMedia = p4esgMedia ?? undefined;
+  extensions.modernSlavery = p4slavery ?? undefined;
+  extensions.tbml = p4tbml ?? undefined;
+  extensions.fourEyes = p4fourEyes ?? undefined;
+  extensions.filingClassification = p4filing ?? undefined;
+  extensions.pepProximity = p4pep ?? undefined;
+  extensions.hawala = p4hawala ?? undefined;
+  extensions.crossBorderCash = p4crossBorder ?? undefined;
+
+  // #55 Anomaly Ensemble — runs AFTER all other subsystems resolve (needs their outputs).
+  extensions.anomalyEnsemble = runSafely('anomalyEnsemble', () => {
+    const signals = [
+      extensions.benford && buildSignal('benford',
+        extensions.benford.verdict === 'non-conformity' ? 80 : 20,
+        0.85, extensions.benford.verdict === 'non-conformity'),
+      extensions.priceAnomalies && buildSignal('price_anomaly',
+        extensions.priceAnomalies.filter(p => p.severity === 'critical').length > 0 ? 85 : 30,
+        0.9, extensions.priceAnomalies.some(p => p.severity === 'critical')),
+      extensions.tbml && buildSignal('tbml',
+        extensions.tbml.compositeScore,
+        0.88, extensions.tbml.overallRisk === 'high' || extensions.tbml.overallRisk === 'critical'),
+      extensions.hawala && buildSignal('hawala',
+        extensions.hawala.score,
+        0.82, extensions.hawala.riskLevel === 'high' || extensions.hawala.riskLevel === 'critical'),
+      extensions.buyBackRisks && buildSignal('buy_back',
+        extensions.buyBackRisks.reduce((m, r) => Math.max(m, r.score), 0),
+        0.85, extensions.buyBackRisks.some(r => r.level === 'critical')),
+      extensions.adversarialInput && buildSignal('adversarial_ml',
+        extensions.adversarialInput.topSeverity === 'critical' ? 90 : 20,
+        0.9, !extensions.adversarialInput.clean),
+      extensions.verdictDrift && buildSignal('verdict_drift',
+        extensions.verdictDrift.hasDrift ? 70 : 10,
+        0.75, extensions.verdictDrift.hasDrift),
+    ].filter((s): s is NonNullable<typeof s> => s !== undefined && s !== null);
+
+    if (signals.length === 0) return undefined;
+    return runAnomalyEnsemble(req.mega.entity.id, signals);
+  }) ?? undefined;
+
+  // ---------------------------------------------------------------------------
+  // Phase 4-10 safety clamps — monotone escalation only.
+  // ---------------------------------------------------------------------------
+
+  // #41 ESG critical risk → escalate (LBMA RGG v9 §6 / ISSB S1 materiality).
+  if (extensions.esgScore?.riskLevel === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: ESG composite score ${extensions.esgScore.composite.toFixed(0)}/100 (${extensions.esgScore.grade}) ` +
+      `— critical ESG risk level; escalate per LBMA RGG v9 §6 / ISSB IFRS S1`
+    );
+  }
+
+  // #45 Conflict minerals critical supplier → escalate (OECD DDG / Dodd-Frank §1502).
+  if (extensions.conflictMinerals?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: conflict minerals critical risk — ${extensions.conflictMinerals.criticalSupplierCount} critical supplier(s) ` +
+      `in CAHRA zones (OECD DDG 2016 Step 3 / Dodd-Frank §1502 / EU CMR 2017/821)`
+    );
+  }
+
+  // #46 Greenwashing critical → escalate (ISSB S1 / EU SFDR — material misrepresentation).
+  if (extensions.greenwashing?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: critical greenwashing detected — ${extensions.greenwashing.criticalFindings} critical finding(s); ` +
+      `material ESG misrepresentation (ISSB IFRS S1 / EU SFDR Art.4)`
+    );
+  }
+
+  // #48 Modern slavery critical → escalate (UAE Federal Law 51/2006 / ILO Conv. 29/105).
+  if (extensions.modernSlavery?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: modern slavery critical risk — ${extensions.modernSlavery.indicatorsTriggered} ILO indicator(s) ` +
+      `(UAE Federal Law 51/2006 / ILO Conv. 29/105 / LBMA RGG v9 §5)`
+    );
+  }
+
+  // #49 TBML critical → escalate (FATF TBML Guidance 2020 / FDL Art.12).
+  if (extensions.tbml?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: TBML critical — ${extensions.tbml.patterns.length} pattern(s) detected ` +
+      `(score ${extensions.tbml.compositeScore}/100); STR required ` +
+      `(FATF TBML Guidance 2020 / FDL No.10/2025 Art.12)`
+    );
+  }
+
+  // #50 Four-eyes violation → freeze (compliance decision without proper approval).
+  if (extensions.fourEyes && !extensions.fourEyes.meetsRequirements &&
+      extensions.fourEyes.decisionType === 'sanctions_freeze') {
+    finalVerdict = escalateTo(finalVerdict, 'freeze');
+    clampReasons.push(
+      `CLAMP: four-eyes violated for sanctions freeze decision — ` +
+      `${extensions.fourEyes.violations.join('; ')} ` +
+      `(Cabinet Res 74/2020 Art.4 / FDL No.10/2025 Art.20-21)`
+    );
+  }
+
+  // #52 PEP proximity critical → escalate (board approval required).
+  if (extensions.pepProximity?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: PEP proximity critical (score ${extensions.pepProximity.maxProximityScore.toFixed(0)}/100) — ` +
+      `board approval required (Cabinet Res 134/2025 Art.14)`
+    );
+  }
+
+  // #53 Hawala critical → escalate (UAE CBUAE Hawala / FATF Rec 14).
+  if (extensions.hawala?.riskLevel === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: Hawala/IVTS critical risk (score ${extensions.hawala.score}/100) — ` +
+      `${extensions.hawala.indicators.length} indicator(s) ` +
+      `(UAE CBUAE Hawala Registration Requirement 2022 / FATF Rec 14)`
+    );
+  }
+
+  // #54 Cross-border structuring → freeze (Cabinet Res 134/2025 Art.16).
+  if (extensions.crossBorderCash?.structuringDetected) {
+    finalVerdict = escalateTo(finalVerdict, 'freeze');
+    clampReasons.push(
+      `CLAMP: cross-border cash structuring detected — cumulative AED ` +
+      `${extensions.crossBorderCash.cumulativeAmountAED.toLocaleString()} ` +
+      `across sub-threshold movements (Cabinet Res 134/2025 Art.16 / FATF Rec 32)`
+    );
+  } else if (extensions.crossBorderCash?.overallRisk === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: cross-border cash critical risk (score ${extensions.crossBorderCash.riskScore}/100) ` +
+      `(Cabinet Res 134/2025 Art.16)`
+    );
+  }
+
+  // #55 Anomaly ensemble critical → escalate (composite anomaly signal).
+  if (extensions.anomalyEnsemble?.anomalyLevel === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    clampReasons.push(
+      `CLAMP: anomaly ensemble score ${extensions.anomalyEnsemble.aggregatedScore.toFixed(0)}/100 (critical) — ` +
+      `dominant signal: ${extensions.anomalyEnsemble.dominantSignal ?? 'multi-source'}; ` +
+      `Bayesian BMA confidence ${(extensions.anomalyEnsemble.confidence * 100).toFixed(0)}%`
+    );
+  }
+
   // 8. Augmented confidence — take MIN across MegaBrain + new signals.
   let confidence = mega.confidence;
   if (extensions.adverseMedia?.topCategory === 'critical') {
@@ -1186,6 +1582,15 @@ export async function runWeaponizedBrain(
       !extensions.bftConsensus.sufficientConsensus) {
     confidence = Math.min(confidence, 0.65);
   }
+
+  // Phase 4-10 confidence adjustments.
+  if (extensions.tbml?.overallRisk === 'critical') confidence = Math.min(confidence, 0.55);
+  if (extensions.hawala?.riskLevel === 'critical') confidence = Math.min(confidence, 0.55);
+  if (extensions.crossBorderCash?.structuringDetected) confidence = Math.min(confidence, 0.5);
+  if (extensions.modernSlavery?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
+  if (extensions.pepProximity?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
+  if (extensions.esgScore?.riskLevel === 'critical') confidence = Math.min(confidence, 0.65);
+  if (extensions.conflictMinerals?.overallRisk === 'critical') confidence = Math.min(confidence, 0.6);
 
   // 9. Augmented human-review flag.
   let requiresHumanReview =
@@ -1558,6 +1963,124 @@ function buildAuditNarrative(
         `winner=${extensions.bftConsensus.winner ?? 'none'}, ` +
         `votes=${extensions.bftConsensus.votes}/${extensions.bftConsensus.totalVotes} ` +
         `(quorum=${extensions.bftConsensus.quorum})`
+    );
+  }
+
+  // Phase 4-10 subsystems (#41-#55)
+  if (extensions.esgScore) {
+    lines.push(
+      `  - ESG composite (#41): score=${extensions.esgScore.composite.toFixed(1)}/100 ` +
+      `grade=${extensions.esgScore.grade}, risk=${extensions.esgScore.riskLevel}, ` +
+      `E=${extensions.esgScore.environmental.score.toFixed(0)} ` +
+      `S=${extensions.esgScore.social.score.toFixed(0)} ` +
+      `G=${extensions.esgScore.governance.score.toFixed(0)}`
+    );
+  }
+  if (extensions.carbonFootprint) {
+    lines.push(
+      `  - Carbon footprint (#42): ${extensions.carbonFootprint.scopeBreakdown.total_tCO2e.toFixed(2)} tCO2e total, ` +
+      `intensity=${extensions.carbonFootprint.portfolioIntensityKgPerOz.toFixed(1)} kgCO2e/oz, ` +
+      `risk=${extensions.carbonFootprint.carbonRisk}, NZ2050 gap=${extensions.carbonFootprint.netZeroGap_tCO2e.toFixed(2)} tCO2e`
+    );
+  }
+  if (extensions.tcfdAlignment) {
+    lines.push(
+      `  - TCFD alignment (#43): score=${extensions.tcfdAlignment.overallScore.toFixed(0)}/100, ` +
+      `level=${extensions.tcfdAlignment.complianceLevel}, IFRS S2=${extensions.tcfdAlignment.ifrss2Compliant}, ` +
+      `NZ2050=${extensions.tcfdAlignment.uaeNZ2050Aligned}`
+    );
+  }
+  if (extensions.sdgAlignment) {
+    lines.push(
+      `  - UN SDG alignment (#44): score=${extensions.sdgAlignment.overallScore.toFixed(0)}/100, ` +
+      `core DPMS goals=${extensions.sdgAlignment.coreGoalsScore.toFixed(0)}/100, ` +
+      `OECD 5-step level=${extensions.sdgAlignment.oecd5StepLevel}/5, ` +
+      `critical gap SDGs: ${extensions.sdgAlignment.criticalGapSdgs.join(',') || 'none'}`
+    );
+  }
+  if (extensions.conflictMinerals) {
+    lines.push(
+      `  - Conflict minerals (#45): overall=${extensions.conflictMinerals.overallRisk}, ` +
+      `suppliers=${extensions.conflictMinerals.totalSuppliers}, ` +
+      `critical=${extensions.conflictMinerals.criticalSupplierCount}, ` +
+      `CAHRA=${extensions.conflictMinerals.cahraSupplierCount}`
+    );
+  }
+  if (extensions.greenwashing) {
+    lines.push(
+      `  - Greenwashing (#46): risk=${extensions.greenwashing.overallRisk}, ` +
+      `findings=${extensions.greenwashing.totalFindings}, ` +
+      `critical=${extensions.greenwashing.criticalFindings}`
+    );
+  }
+  if (extensions.esgAdverseMedia) {
+    lines.push(
+      `  - ESG adverse media (#47): hits=${extensions.esgAdverseMedia.totalHits}, ` +
+      `dominant=${extensions.esgAdverseMedia.dominantCategory ?? 'none'}, ` +
+      `overallRisk=${extensions.esgAdverseMedia.overallEsgRisk}`
+    );
+  }
+  if (extensions.modernSlavery) {
+    lines.push(
+      `  - Modern slavery (#48): risk=${extensions.modernSlavery.overallRisk}, ` +
+      `ILO indicators=${extensions.modernSlavery.indicatorsTriggered}/${extensions.modernSlavery.totalIndicatorsChecked}, ` +
+      `score=${extensions.modernSlavery.riskScore}/100`
+    );
+  }
+  if (extensions.tbml) {
+    lines.push(
+      `  - TBML (#49): risk=${extensions.tbml.overallRisk}, score=${extensions.tbml.compositeScore}/100, ` +
+      `patterns=${extensions.tbml.patterns.length}, STR=${extensions.tbml.requiresStr}, ` +
+      `price deviation=${extensions.tbml.priceDeviationPct.toFixed(1)}%`
+    );
+  }
+  if (extensions.fourEyes) {
+    lines.push(
+      `  - Four-eyes (#50): status=${extensions.fourEyes.status}, ` +
+      `meetsRequirements=${extensions.fourEyes.meetsRequirements}, ` +
+      `approvals=${extensions.fourEyes.approvalCount}/${extensions.fourEyes.requiredCount}, ` +
+      `decisionType=${extensions.fourEyes.decisionType}`
+    );
+  }
+  if (extensions.filingClassification) {
+    lines.push(
+      `  - STR classifier (#51): category=${extensions.filingClassification.primaryCategory}, ` +
+      `urgency=${extensions.filingClassification.urgency}, ` +
+      `due=${extensions.filingClassification.deadlineDueDate ?? 'N/A'}, ` +
+      `tipOffProhibited=${extensions.filingClassification.tipOffProhibited}`
+    );
+  }
+  if (extensions.pepProximity) {
+    lines.push(
+      `  - PEP proximity (#52): risk=${extensions.pepProximity.overallRisk}, ` +
+      `maxScore=${extensions.pepProximity.maxProximityScore.toFixed(0)}/100, ` +
+      `links=${extensions.pepProximity.pepLinks.length}, CDD=${extensions.pepProximity.cddLevel}, ` +
+      `boardApproval=${extensions.pepProximity.requiresBoardApproval}`
+    );
+  }
+  if (extensions.hawala) {
+    lines.push(
+      `  - Hawala (#53): risk=${extensions.hawala.riskLevel}, score=${extensions.hawala.score}/100, ` +
+      `indicators=${extensions.hawala.indicators.length}, STR=${extensions.hawala.requiresStr}, ` +
+      `CBUAE report=${extensions.hawala.requiresCbuaeReport}`
+    );
+  }
+  if (extensions.anomalyEnsemble) {
+    lines.push(
+      `  - Anomaly ensemble (#54): level=${extensions.anomalyEnsemble.anomalyLevel}, ` +
+      `score=${extensions.anomalyEnsemble.aggregatedScore.toFixed(0)}/100, ` +
+      `confidence=${(extensions.anomalyEnsemble.confidence * 100).toFixed(0)}%, ` +
+      `dominant=${extensions.anomalyEnsemble.dominantSignal ?? 'none'}, ` +
+      `active signals=${extensions.anomalyEnsemble.activeSignals.length}`
+    );
+  }
+  if (extensions.crossBorderCash) {
+    lines.push(
+      `  - Cross-border cash (#55): risk=${extensions.crossBorderCash.overallRisk}, ` +
+      `score=${extensions.crossBorderCash.riskScore}/100, ` +
+      `structuring=${extensions.crossBorderCash.structuringDetected}, ` +
+      `cumulative AED ${extensions.crossBorderCash.cumulativeAmountAED.toLocaleString()}, ` +
+      `STR=${extensions.crossBorderCash.requiresStr}`
     );
   }
 
