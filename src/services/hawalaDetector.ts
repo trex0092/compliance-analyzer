@@ -9,7 +9,12 @@
  *             2018 update), Cabinet Res 134/2025 Art.7-10, UAE Central
  *             Bank Hawala Registration Requirement (2022), MoE Circular
  *             08/AML/2021, FATF Rec 14 (Money or Value Transfer Services).
+ *
+ * All regulatory thresholds are imported from src/domain/constants.ts —
+ * the single source of truth. Never redefine locally.
  */
+
+import { CROSS_BORDER_CASH_THRESHOLD_AED } from '../domain/constants';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,8 +74,8 @@ export interface HawalaIndicatorDetail {
 }
 
 // ─── Indicator Definitions ────────────────────────────────────────────────────
-
-const CROSS_BORDER_THRESHOLD_AED = 60_000;  // Cabinet Res 134/2025 Art.16
+// Cross-border threshold comes from CROSS_BORDER_CASH_THRESHOLD_AED in
+// src/domain/constants.ts — Cabinet Res 134/2025 Art.16. Never hardcode here.
 
 function detectIndicators(tx: HawalaTransaction): HawalaIndicatorDetail[] {
   const found: HawalaIndicatorDetail[] = [];
@@ -136,13 +141,17 @@ function detectIndicators(tx: HawalaTransaction): HawalaIndicatorDetail[] {
   }
 
   // 6. Cross-border without declaration
-  if (tx.crossBorder && !tx.declaredForCustoms && tx.amountAED >= CROSS_BORDER_THRESHOLD_AED) {
+  if (
+    tx.crossBorder &&
+    !tx.declaredForCustoms &&
+    tx.amountAED >= CROSS_BORDER_CASH_THRESHOLD_AED
+  ) {
     found.push({
       indicator: 'cross_border_no_declaration',
       severity: 'critical',
       weight: 30,
-      description: `Cross-border transaction AED ${tx.amountAED.toLocaleString()} ≥ AED 60,000 not declared to customs`,
-      regulatoryRef: 'Cabinet Res 134/2025 Art.16 — AED 60K cross-border declaration',
+      description: `Cross-border transaction AED ${tx.amountAED.toLocaleString()} ≥ AED ${CROSS_BORDER_CASH_THRESHOLD_AED.toLocaleString()} not declared to customs`,
+      regulatoryRef: 'Cabinet Res 134/2025 Art.16 — cross-border cash declaration',
     });
   }
 
