@@ -5,7 +5,7 @@
 import type {
   Metal, TradeSide, MarketRegime, SignalStrength,
   TradingSignal, FusedDecision, TAIndicators, FlowMetrics,
-  ArbitrageOpportunity, PatternDetection, PriceQuote, RiskMetrics,
+  PatternDetection, RiskMetrics,
 } from './types';
 
 // ─── Signal Weights (configurable) ─────────────────────────────────────────
@@ -24,7 +24,7 @@ const DEFAULT_WEIGHTS: Record<TradingSignal['source'], number> = {
 // ─── Regime Detection ───────────────────────────────────────────────────────
 
 export function detectRegime(indicators: TAIndicators, prices: number[]): MarketRegime {
-  const { adx14, bollingerBands, atr14, rsi14 } = indicators;
+  const { adx14, bollingerBands, rsi14 } = indicators;
   const lastPrice = prices[prices.length - 1] ?? 0;
 
   // Volatility expansion
@@ -215,7 +215,7 @@ export function generateMicrostructureSignal(
 }
 
 export function generatePatternSignal(
-  metal: Metal, patterns: PatternDetection[], currentPrice: number,
+  metal: Metal, patterns: PatternDetection[], _currentPrice: number,
 ): TradingSignal | null {
   if (patterns.length === 0) return null;
 

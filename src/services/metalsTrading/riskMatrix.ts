@@ -3,8 +3,8 @@
 // management, circuit breakers, correlation monitoring, drawdown protection.
 
 import type {
-  Metal, RiskLimits, RiskMetrics, CircuitBreaker,
-  Position, Portfolio, TradeSide, PriceQuote,
+  Metal, RiskLimits, CircuitBreaker,
+  Portfolio, TradeSide,
 } from './types';
 
 // ─── Default Risk Limits ────────────────────────────────────────────────────

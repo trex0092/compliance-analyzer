@@ -398,7 +398,6 @@ import {
   simulate,
   runCounterfactual,
   type CausalNode,
-  type CausalGraph,
   type Assignment,
 } from './causalEngine';
 import {
@@ -453,7 +452,6 @@ import {
 import {
   verifyInvariants,
   CANONICAL_INVARIANTS,
-  type VerifyConfig,
   type VerifyReport as InvariantVerifyReport,
 } from './formalInvariantVerifier';
 import {
@@ -467,7 +465,6 @@ import {
   type PeerAnomalyReport,
 } from './peerAnomaly';
 import {
-  replayUntil,
   currentState,
   criticalPath,
   type EvidenceEntry,
@@ -492,7 +489,6 @@ import {
 } from './ruleInduction';
 import {
   runTamperChecks,
-  type TamperSignal,
   type DocumentExtractionResult,
 } from './documentIntelligence';
 import {
@@ -506,9 +502,6 @@ import {
 } from './euAiActReadinessProject';
 import {
   CaseMemory,
-  cosineSimilarity,
-  type PastCase,
-  type RetrievalResult,
   type ReuseRecommendation,
 } from './caseBasedReasoning';
 import {
@@ -1358,6 +1351,7 @@ export async function runWeaponizedBrain(
   const clampReasons: string[] = [];
   const subsystemFailures: string[] = [];
   let finalVerdict: Verdict = mega.verdict;
+  let confidence = mega.confidence;
 
   // Partial-success helper: every extension runs inside this wrapper so that
   // a failure in one subsystem never loses the decision from the others.
@@ -2547,9 +2541,9 @@ export async function runWeaponizedBrain(
   }
 
   // #87 Synthetic evasion generator — coverage gap check
-  {
+  if (req.syntheticEvasionConfig) {
     const synCases = runSafely('syntheticEvasionGenerator', () =>
-      generateSyntheticEvasionCases(req.syntheticEvasionConfig ?? { count: 20 })
+      generateSyntheticEvasionCases(req.syntheticEvasionConfig!)
     );
     extensions.syntheticEvasion = synCases;
     if (synCases) {
@@ -2832,7 +2826,7 @@ export async function runWeaponizedBrain(
   }
 
   // 8. Augmented confidence — take MIN across MegaBrain + new signals.
-  let confidence = mega.confidence;
+  confidence = mega.confidence;
   if (extensions.adverseMedia?.topCategory === 'critical') {
     confidence = Math.min(confidence, policy.adverseMediaCriticalConfidenceCap);
   }
@@ -3593,7 +3587,7 @@ function buildAuditNarrative(
     lines.push(
       `  - Predictive STR (#63): probability=${(extensions.strPrediction.strProbability * 100).toFixed(1)}%, ` +
       `risk=${extensions.strPrediction.riskLevel}, ` +
-      `topFactor=${extensions.strPrediction.topFactors[0]?.factor ?? 'none'}`
+      `topFactor=${extensions.strPrediction.topFactors?.[0]?.factor ?? 'none'}`
     );
   }
   if (extensions.penaltyVar) {

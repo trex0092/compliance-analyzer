@@ -98,7 +98,7 @@ function buildAlerts(brain: WeaponizedBrainResponse): MlroAlert[] {
 
   const todayISO = new Date().toISOString().split('T')[0];
   const in24h = new Date(Date.now() + 24 * 3_600_000).toISOString();
-  const in5bd = (() => {
+  const _in5bd = (() => {
     const d = new Date(); let cnt = 0;
     while (cnt < 5) { d.setDate(d.getDate() + 1); if (d.getDay() !== 5 && d.getDay() !== 6) cnt++; }
     return d.toISOString().split('T')[0];

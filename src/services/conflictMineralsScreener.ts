@@ -181,7 +181,7 @@ function assessSupplier(supplier: MineralSupplier): SupplierConflictAssessment {
   const requiredActions: string[] = [];
   const isCahra = CAHRA_COUNTRIES.has(supplier.countryOfOrigin);
   const hasStrong = hasCertification(supplier.certifications, STRONG_CERTIFICATIONS);
-  const hasModerate = hasCertification(supplier.certifications, MODERATE_CERTIFICATIONS);
+  const _hasModerate = hasCertification(supplier.certifications, MODERATE_CERTIFICATIONS);
   const hasAny = hasAnyCertification(supplier.certifications);
   const ageMonths = auditAgeMonths(supplier.lastAuditDate);
   const caharaStatus = supplier.caharaStatus ?? 'none';

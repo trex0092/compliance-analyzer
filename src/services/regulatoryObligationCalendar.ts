@@ -133,7 +133,7 @@ function addBusinessDays(fromDate: Date, days: number): Date {
 
 function computeDueDate(triggerDate: string, spec: ObligationSpec): { dueDate: string; isClockHours: boolean } {
   const trigger = new Date(triggerDate);
-  if (spec.clockHours != null) {
+  if (spec.clockHours !== null && spec.clockHours !== undefined) {
     const due = new Date(trigger.getTime() + spec.clockHours * 3_600_000);
     return { dueDate: due.toISOString(), isClockHours: true };
   }

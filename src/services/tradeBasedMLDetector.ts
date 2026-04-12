@@ -196,7 +196,7 @@ function detectMultipleInvoicing(tx: TbmlTransaction): TbmlPattern | null {
 
 function detectUnusualPaymentTerms(tx: TbmlTransaction): TbmlPattern | null {
   const longTermDocs = tx.documents.filter(
-    d => d.paymentTermsDays != null && d.paymentTermsDays > LONG_PAYMENT_TERMS_DAYS,
+    d => d.paymentTermsDays !== null && d.paymentTermsDays !== undefined && d.paymentTermsDays > LONG_PAYMENT_TERMS_DAYS,
   );
   if (longTermDocs.length === 0) return null;
 
@@ -218,7 +218,7 @@ function detectDocumentInconsistency(tx: TbmlTransaction): TbmlPattern | null {
   const inconsistencies: string[] = [];
   for (const inv of invoices) {
     const matchingCustoms = customs.find(c => c.counterpartyId === inv.counterpartyId);
-    if (matchingCustoms && matchingCustoms.declaredValue_AED != null) {
+    if (matchingCustoms && matchingCustoms.declaredValue_AED !== null && matchingCustoms.declaredValue_AED !== undefined) {
       const diff = Math.abs(inv.invoicedValue_AED - matchingCustoms.declaredValue_AED) / inv.invoicedValue_AED;
       if (diff > 0.05) {
         inconsistencies.push(`Invoice ${inv.documentId}: AED ${inv.invoicedValue_AED.toLocaleString()} vs customs AED ${matchingCustoms.declaredValue_AED.toLocaleString()} (${(diff*100).toFixed(1)}% diff)`);

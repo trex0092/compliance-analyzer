@@ -93,11 +93,11 @@ function computeDueDate(eventDate: string, deadline: FilingDeadline): string | n
   const event = new Date(eventDate);
   if (isNaN(event.getTime())) return null;
 
-  if (deadline.clockHours != null) {
+  if (deadline.clockHours !== null && deadline.clockHours !== undefined) {
     const due = new Date(event.getTime() + deadline.clockHours * 3_600_000);
     return due.toISOString();
   }
-  if (deadline.businessDays != null) {
+  if (deadline.businessDays !== null && deadline.businessDays !== undefined) {
     return addBusinessDays(event, deadline.businessDays).toISOString().split('T')[0];
   }
   return null;

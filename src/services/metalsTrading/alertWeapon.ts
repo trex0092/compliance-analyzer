@@ -5,7 +5,7 @@
 import type {
   Metal, AlertType, AlertSeverity, TradingAlert, PriceQuote,
   TAIndicators, FlowMetrics, OrderBook, ArbitrageOpportunity,
-  Position, RiskMetrics, CircuitBreaker, MarketRegime, Order,
+  RiskMetrics, CircuitBreaker, MarketRegime,
 } from './types';
 
 // ─── Alert Rules ────────────────────────────────────────────────────────────

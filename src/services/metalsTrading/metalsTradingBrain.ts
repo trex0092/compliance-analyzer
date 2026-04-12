@@ -5,8 +5,8 @@
 
 import type {
   Metal, TradingSession, TradingConfig, MetalsBrainResponse,
-  PriceQuote, OHLCV, TradingAlert, FusedDecision, RiskMetrics,
-  Portfolio, MarketRegime, TradingSignal,
+  PriceQuote, OHLCV, FusedDecision,
+  MarketRegime, TradingSignal,
 } from './types';
 import { PriceOracle, generateSimulatedPrices } from './priceOracle';
 import { computeAllIndicators, detectPatterns } from './technicalAnalysis';

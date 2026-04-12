@@ -4,9 +4,9 @@
 // Integrates compliance brain for counterparty/sanctions screening.
 
 import type {
-  Metal, Currency, Venue, TradeSide, OrderType, OrderStatus,
-  TimeInForce, Order, Execution, ExecutionStrategy, PriceQuote,
-  Portfolio, RiskLimits,
+  Metal, Venue, TradeSide, OrderType,
+  TimeInForce, Order, Execution, PriceQuote,
+  RiskLimits,
 } from './types';
 import type { PriceOracle } from './priceOracle';
 import type { PositionManager } from './positionManager';

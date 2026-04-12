@@ -114,7 +114,7 @@ function detectIndicators(tx: HawalaTransaction): HawalaIndicatorDetail[] {
   }
 
   // 4. Broker chain
-  if (tx.brokerChainLength != null && tx.brokerChainLength >= 3) {
+  if (tx.brokerChainLength !== null && tx.brokerChainLength !== undefined && tx.brokerChainLength >= 3) {
     found.push({
       indicator: 'broker_chain',
       severity: 'high',

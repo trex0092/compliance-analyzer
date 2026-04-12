@@ -89,8 +89,8 @@ export interface HawkeyeReport {
 const BRAND = 'HAWKEYE STERLING V2';
 const BRAND_TAGLINE = 'Screening Intelligence Platform';
 const SANCTIONS_LISTS = ['UN Security Council', 'OFAC SDN', 'EU Consolidated', 'UK HM Treasury', 'UAE Local List', 'EOCN TFS'];
-const DIVIDER_HEAVY = '═'.repeat(76);
-const DIVIDER_LIGHT = '─'.repeat(76);
+const _DIVIDER_HEAVY = '═'.repeat(76);
+const _DIVIDER_LIGHT = '─'.repeat(76);
 
 let reportSeq = 0;
 function nextReportId(entityId: string): string {

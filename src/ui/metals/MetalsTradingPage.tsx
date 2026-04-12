@@ -6,8 +6,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { MetalsTradingBrain, createTradingBrain } from '../../services/metalsTrading/metalsTradingBrain';
 import type {
   Metal, TradeSide, OrderType, TradingAlert, FusedDecision,
-  Position, Portfolio, RiskMetrics, MarketRegime,
-  MetalsBrainResponse, SpotSnapshot, ArbitrageOpportunity,
+  Portfolio, RiskMetrics, MarketRegime,
+  SpotSnapshot, ArbitrageOpportunity,
 } from '../../services/metalsTrading/types';
 
 // ─── Styles ─────────────────────────────────────────────────────────────────

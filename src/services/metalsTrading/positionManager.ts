@@ -3,9 +3,9 @@
 // Kelly criterion sizing, VaR calculation, correlation monitoring.
 
 import type {
-  Metal, Currency, Venue, TradeSide, Position, Portfolio,
-  RiskMetrics, CorrelationMatrix, Execution, TradeRecord,
-  PerformanceStats, RiskLimits, PriceQuote,
+  Metal, Venue, TradeSide, Position, Portfolio,
+  RiskMetrics, Execution, TradeRecord,
+  PerformanceStats, PriceQuote,
 } from './types';
 
 // ─── Position Manager ───────────────────────────────────────────────────────
