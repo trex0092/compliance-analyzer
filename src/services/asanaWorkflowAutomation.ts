@@ -46,6 +46,29 @@ export const STR_PIPELINE_DEPENDENCIES: readonly TaskDependencyEdge[] = [
   { parent: 'case_close', blockedBy: 'fiu_receipt' },
 ];
 
+/**
+ * STR lifecycle dependency DAG — matches the 7-subtask fan-out in
+ * src/services/strSubtaskLifecycle.ts. Every edge here maps one of the
+ * seven lifecycle stages to its prerequisite, so Asana's native "blocked
+ * by" rules prevent out-of-order closure. Nodes match
+ * strSubtaskLifecycle.STR_SUBTASK_STAGES verbatim so the workflow
+ * validator can cross-check the two sources.
+ *
+ * Regulatory basis:
+ *   FDL No.10/2025 Art.24    (10-year retention — audit trail preserved)
+ *   FDL No.10/2025 Art.26-27 (STR filing obligations)
+ *   Cabinet Res 134/2025 Art.19 (four-eyes internal review)
+ */
+export const STR_LIFECYCLE_DEPENDENCIES: readonly TaskDependencyEdge[] = [
+  { parent: 'four-eyes', blockedBy: 'mlro-review' },
+  { parent: 'goaml-xml', blockedBy: 'four-eyes' },
+  { parent: 'submit-fiu', blockedBy: 'goaml-xml' },
+  { parent: 'retain-10y', blockedBy: 'submit-fiu' },
+  { parent: 'monitor-ack', blockedBy: 'submit-fiu' },
+  { parent: 'close', blockedBy: 'retain-10y' },
+  { parent: 'close', blockedBy: 'monitor-ack' },
+];
+
 export function validateNoCycles(edges: readonly TaskDependencyEdge[]): boolean {
   const adj = new Map<string, string[]>();
   for (const e of edges) {
@@ -96,6 +119,30 @@ export function buildCustomerCaseFolderTemplate(customerName: string): ProjectTe
   };
 }
 
+/**
+ * Kanban-aligned project template — used by the new Asana Kanban view
+ * (src/services/asanaKanbanView.ts). Section names here are the
+ * canonical source the Kanban classifier recognises without fallback,
+ * so new projects created from this template render correctly in the
+ * SPA Kanban board on day one.
+ *
+ * Regulatory basis: same as buildCustomerCaseFolderTemplate; this is
+ * just a different section layout for the same kind of project.
+ */
+export function buildKanbanCaseFolderTemplate(customerName: string): ProjectTemplate {
+  return {
+    name: `${customerName} — Kanban Case Folder`,
+    sections: [
+      'To Do',
+      'In Progress',
+      'Four-Eyes Review',
+      'Done',
+      'Blocked',
+    ],
+    defaultCustomFieldGids: [],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // M3 — Rules as code
 // ---------------------------------------------------------------------------
@@ -134,6 +181,59 @@ export const COMPLIANCE_WORKFLOW_RULES: readonly WorkflowRule[] = [
     target: 'MLRO',
     citation: 'FDL No.10/2025 Art.20-21',
   },
+  // ── Asana weaponization pass additions ──
+  {
+    id: 'RL-04',
+    name: 'Blocked section → notify MLRO for unblock',
+    trigger: { section: 'Blocked' },
+    action: 'notify',
+    target: '#compliance-alerts',
+    citation: 'Cabinet Res 134/2025 Art.19',
+  },
+  {
+    id: 'RL-05',
+    name: 'STR drafted → move to Four-Eyes Review',
+    trigger: { customFieldId: 'ASANA_CF_DEADLINE_TYPE_GID', equals: 'STR' },
+    action: 'move_to_section',
+    target: 'Four-Eyes Review',
+    citation: 'FDL No.10/2025 Art.26-27; Cabinet Res 134/2025 Art.19',
+  },
+  {
+    id: 'RL-06',
+    name: 'EOCN freeze deadline → assign to MLRO',
+    trigger: { customFieldId: 'ASANA_CF_DEADLINE_TYPE_GID', equals: 'EOCN' },
+    action: 'assign',
+    target: 'MLRO',
+    citation: 'Cabinet Res 74/2020 Art.4-7',
+  },
+];
+
+// ---------------------------------------------------------------------------
+// M3b — SLA breach promotion table
+// ---------------------------------------------------------------------------
+
+/**
+ * Declarative tier ladder used by the SLA escalation workflow. This is
+ * the data the TypeScript dispatcher at
+ * src/services/asanaSlaAutoEscalation.ts exercises — hoisting it here
+ * as pure data lets the workflow validator and the ops dashboard
+ * surface the ladder without importing the dispatcher.
+ *
+ * Regulatory basis:
+ *   Cabinet Res 74/2020 Art.4-7 (EOCN hard deadline)
+ *   FDL No.10/2025 Art.20-21    (CO/MLRO duty of care)
+ *   Cabinet Res 134/2025 Art.19 (internal review)
+ */
+export const SLA_ESCALATION_LADDER: ReadonlyArray<{
+  from: 'CO' | 'MLRO' | 'BOARD' | 'REGULATOR';
+  to: 'CO' | 'MLRO' | 'BOARD' | 'REGULATOR';
+  breakglass: boolean;
+  citation: string;
+}> = [
+  { from: 'CO', to: 'MLRO', breakglass: false, citation: 'FDL Art.20-21' },
+  { from: 'MLRO', to: 'BOARD', breakglass: true, citation: 'FDL Art.20-21' },
+  { from: 'BOARD', to: 'REGULATOR', breakglass: true, citation: 'Cabinet Res 74/2020 Art.4-7' },
+  { from: 'REGULATOR', to: 'REGULATOR', breakglass: true, citation: 'Cabinet Res 74/2020 Art.4-7' },
 ];
 
 // ---------------------------------------------------------------------------
