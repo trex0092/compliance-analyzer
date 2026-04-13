@@ -4,6 +4,9 @@ import type { SuspicionReport } from '../../domain/reports';
 import { LocalAppStore } from '../../services/indexedDbStore';
 import { createId } from '../../utils/id';
 import { nowIso } from '../../utils/dates';
+import { createStrLifecycleTasks } from '../../services/strSubtaskLifecycle';
+import { isAsanaConfigured } from '../../services/asanaClient';
+import { COMPANY_REGISTRY } from '../../domain/customers';
 
 // CRITICAL: FDL Art.29 — No Tipping Off
 // This page must ONLY be accessible to Compliance Officers and MLRO.
@@ -57,6 +60,7 @@ function buildTransactionSummaries(caseObj: ComplianceCase): SuspicionReport['tr
 export default function STRDraftPage() {
   const [cases, setCases] = useState<ComplianceCase[]>([]);
   const [selectedId, setSelectedId] = useState<string>('');
+  const [lifecycleStatus, setLifecycleStatus] = useState<string>('');
 
   useEffect(() => {
     void store.getCases().then((items) => {
@@ -92,7 +96,52 @@ export default function STRDraftPage() {
     };
 
     await store.saveReport(report);
-    alert('STR draft generated.');
+
+    // Fan out to the 7-subtask Asana lifecycle so the draft doesn't
+    // rot in local storage. FDL Art.26-27 + Cabinet Res 134/2025
+    // Art.19 — MLRO review → four-eyes → goAML XML → submit → retain
+    // → monitor → close. If Asana is not configured we keep the draft
+    // saved and surface a status hint so the MLRO knows to wire up the
+    // token in Settings.
+    if (!isAsanaConfigured()) {
+      setLifecycleStatus(
+        'STR draft saved. Asana not configured — lifecycle fan-out skipped. Wire ASANA_TOKEN in Settings to enable.'
+      );
+      return;
+    }
+
+    setLifecycleStatus('Dispatching 7-subtask lifecycle to Asana…');
+    const customer = selected.linkedCustomerId
+      ? COMPANY_REGISTRY.find((c) => c.id === selected.linkedCustomerId)
+      : undefined;
+    const projectGid =
+      customer?.asanaComplianceProjectGid ??
+      customer?.asanaWorkflowProjectGid ??
+      '1213759768596515';
+
+    try {
+      const dispatch = await createStrLifecycleTasks({
+        strId: report.id,
+        caseId: selected.id,
+        entityRef: selected.id, // use case id, not entity name (FDL Art.29)
+        riskLevel: selected.riskLevel,
+        reasonForSuspicion: buildSuspicionNarrative(selected),
+        regulatoryBasis: 'FDL No.10/2025 Art.26-27',
+        projectGid,
+        draftedAtIso: report.generatedAt,
+      });
+      if (dispatch.ok) {
+        setLifecycleStatus(
+          `STR lifecycle dispatched — parent ${dispatch.parentGid} + ${dispatch.subtaskGids.length} subtasks.`
+        );
+      } else {
+        setLifecycleStatus(
+          `STR draft saved. Lifecycle fan-out failed: ${dispatch.errors.join('; ')}`
+        );
+      }
+    } catch (err) {
+      setLifecycleStatus(`STR draft saved. Lifecycle dispatch error: ${(err as Error).message}`);
+    }
   };
 
   return (
@@ -127,6 +176,21 @@ export default function STRDraftPage() {
           </p>
           <p>{buildSuspicionNarrative(selected)}</p>
           <button onClick={handleGenerate}>Generate STR Draft</button>
+          {lifecycleStatus && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 10,
+                background: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                fontSize: 12,
+                color: '#333',
+              }}
+            >
+              {lifecycleStatus}
+            </div>
+          )}
         </div>
       )}
     </div>

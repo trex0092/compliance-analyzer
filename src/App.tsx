@@ -4,6 +4,7 @@ import STRDraftPage from './ui/reports/STRDraftPage';
 import ReportsHub from './ui/reports/ReportsHub';
 import KPIDashboard from './ui/dashboard/KPIDashboard';
 import MetalsTradingPage from './ui/metals/MetalsTradingPage';
+import AsanaKanbanPage from './ui/asana/AsanaKanbanPage';
 import { LocalAppStore } from './services/indexedDbStore';
 import { calculateKPI } from './domain/kpi';
 import { generateAlerts } from './services/alertEngine';
@@ -28,7 +29,8 @@ type Page =
   | 'templates'
   | 'history'
   | 'backup'
-  | 'metals-trading';
+  | 'metals-trading'
+  | 'asana-kanban';
 
 // ─── Sidebar Navigation ──────────────────────────────────────────────────────
 
@@ -36,6 +38,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '◉' },
   { id: 'reports', label: 'Reports Hub', icon: '▣' },
   { id: 'cases', label: 'Cases', icon: '◆' },
+  { id: 'asana-kanban', label: 'Asana Kanban', icon: '⊞' },
   { id: 'str', label: 'STR / SAR', icon: '▲' },
   { id: 'customers', label: 'Customers', icon: '●' },
   { id: 'screening', label: 'Screening', icon: '◈' },
@@ -1378,6 +1381,7 @@ export default function App() {
     history: 'Audit History',
     backup: 'Data & Backup',
     'metals-trading': 'Metals Trading Platform',
+    'asana-kanban': 'Asana Kanban Board',
   };
 
   if (loading) {
@@ -1446,6 +1450,7 @@ export default function App() {
         {page === 'dashboard' && kpiData && <KPIDashboard data={kpiData} />}
         {page === 'reports' && <ReportsHub />}
         {page === 'cases' && <CasesPage />}
+        {page === 'asana-kanban' && <AsanaKanbanPage />}
         {page === 'str' && <STRDraftPage />}
         {page === 'customers' && <CustomersPage />}
         {page === 'screening' && <ScreeningPage />}
