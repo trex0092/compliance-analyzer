@@ -538,9 +538,9 @@ document.addEventListener('DOMContentLoaded', function(){
       <a id="watchlistAdminLink" href="/watchlist-admin.html" title="Open ongoing monitoring watchlist admin" style="padding:4px 10px;font-size:10px;text-decoration:none;color:var(--gold);border:1px solid var(--gold);border-radius:3px;font-family:'Montserrat',sans-serif;font-weight:600;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05)">
         👁️ WATCHLIST
       </a>
-      <a id="metalsTradingLink" href="#metals-trading" title="Precious Metals Trading Platform" data-action="switchTab" data-arg="metalstrading" style="padding:4px 10px;font-size:10px;text-decoration:none;color:var(--gold);border:1px solid var(--gold);border-radius:3px;font-family:'Montserrat',sans-serif;font-weight:600;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,0.05)">
-        ◈ TRADING
-      </a>
+      <!-- Removed duplicate header TRADING link — the same Trading tab
+           lives in the lower tab navigation (◈ Trading). One entry point
+           is enough; the header was a duplicate. -->
       <div id="currentUserInfo" style="display:flex;align-items:center;gap:6px">
         <span id="currentUserName" style="font-size:11px;color:var(--muted);font-family:'Montserrat',sans-serif"></span>
         <span id="currentUserRole" class="role-badge"></span>
