@@ -14,6 +14,11 @@ import {
   getAsanaHealthSnapshot,
   type AsanaHealthSnapshot,
 } from '../../services/asanaHealthTelemetry';
+import {
+  startRetryDrainLoop,
+  stopRetryDrainLoop,
+  getRetryDrainState,
+} from '../../services/retryDrainLoop';
 
 const STATUS_COLORS: Record<AsanaHealthSnapshot['status'], string> = {
   unconfigured: '#8b949e',
@@ -42,7 +47,22 @@ export default function AsanaHealthTile() {
     };
     load();
     const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
+
+    // Start the client-side retry drain loop so pending Asana
+    // tasks don't pile up when the Netlify cron is not running
+    // or the user is mid-tab (T4.18). Idempotent — calling start
+    // twice is a no-op.
+    startRetryDrainLoop();
+
+    return () => {
+      clearInterval(interval);
+      // Intentionally NOT stopping the drain loop on unmount —
+      // it's a singleton across the tab lifetime. Stopping it
+      // here would break the background drain for users who
+      // navigate away from the dashboard.
+      void getRetryDrainState; // reference so import isn't stripped
+      void stopRetryDrainLoop;
+    };
   }, []);
 
   if (!snapshot) {

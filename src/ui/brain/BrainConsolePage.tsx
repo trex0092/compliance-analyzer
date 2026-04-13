@@ -43,6 +43,12 @@ import { STR_SUBTASK_STAGES } from '../../services/strSubtaskLifecycle';
 import DependencyDag, { type DagNode } from '../reasoning/DependencyDag';
 import BrainSubsystemDag from '../reasoning/BrainSubsystemDag';
 import BrainVerdictBadge from '../reasoning/BrainVerdictBadge';
+import {
+  runSuperBrainBatch,
+  type SuperBrainBatchSummary,
+} from '../../services/superBrainBatchDispatcher';
+import { isAutoDispatchEnabled, setAutoDispatchEnabled } from '../../services/autoDispatchListener';
+import { summarizeAuditLog } from '../../services/dispatchAuditLog';
 
 const store = new LocalAppStore();
 const DEFAULT_PROJECT_FALLBACK = '1213759768596515';
@@ -64,6 +70,9 @@ export default function BrainConsolePage() {
   const [dispatching, setDispatching] = useState(false);
   const [result, setResult] = useState<SuperBrainDispatchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchSummary, setBatchSummary] = useState<SuperBrainBatchSummary | null>(null);
+  const [listenerEnabled, setListenerEnabled] = useState<boolean>(() => isAutoDispatchEnabled());
 
   useEffect(() => {
     void store.getCases().then((items) => {
@@ -71,6 +80,8 @@ export default function BrainConsolePage() {
       if (items.length > 0) setSelectedId(items[0].id);
     });
   }, []);
+
+  const auditSummary = useMemo(() => summarizeAuditLog(), [result, batchSummary]);
 
   const selected = useMemo(() => cases.find((c) => c.id === selectedId), [cases, selectedId]);
 
@@ -106,6 +117,30 @@ export default function BrainConsolePage() {
     } finally {
       setDispatching(false);
     }
+  };
+
+  const handleBatchDispatch = async () => {
+    if (cases.length === 0) return;
+    setBatchRunning(true);
+    setError(null);
+    try {
+      const openCases = cases.filter((c) => c.status === 'open');
+      const summary = await runSuperBrainBatch(openCases, {
+        trigger: 'manual',
+        skipAlreadyDispatched: true,
+      });
+      setBatchSummary(summary);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBatchRunning(false);
+    }
+  };
+
+  const handleListenerToggle = () => {
+    const next = !listenerEnabled;
+    setAutoDispatchEnabled(next);
+    setListenerEnabled(next);
   };
 
   return (
@@ -179,6 +214,50 @@ export default function BrainConsolePage() {
         >
           {dispatching ? 'DISPATCHING…' : 'DISPATCH SUPER BRAIN'}
         </button>
+        <button
+          onClick={() => void handleBatchDispatch()}
+          disabled={batchRunning || cases.length === 0}
+          style={{
+            padding: '8px 20px',
+            background: '#1f6feb',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: 0.5,
+            cursor: batchRunning ? 'wait' : 'pointer',
+            opacity: batchRunning || cases.length === 0 ? 0.6 : 1,
+          }}
+          title="Run the super brain against every open case that has not been dispatched yet"
+        >
+          {batchRunning ? 'BATCH RUNNING…' : 'DISPATCH ALL OPEN CASES'}
+        </button>
+        <label
+          style={{
+            fontSize: 11,
+            color: '#8b949e',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 10px',
+            background: listenerEnabled ? '#0f2a1b' : '#161b22',
+            border: `1px solid ${listenerEnabled ? '#3DA87644' : '#30363d'}`,
+            borderRadius: 6,
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={listenerEnabled}
+            onChange={handleListenerToggle}
+            style={{ margin: 0 }}
+          />
+          AUTOPILOT
+          <span style={{ color: listenerEnabled ? '#3DA876' : '#484f58', fontWeight: 600 }}>
+            {listenerEnabled ? 'ON' : 'OFF'}
+          </span>
+        </label>
         {!isAsanaConfigured() && (
           <span style={{ fontSize: 10, color: '#E8A030' }}>
             Asana not configured — dispatch will preview + emit toast only
@@ -367,6 +446,112 @@ export default function BrainConsolePage() {
           )}
         </div>
       )}
+
+      {/* Batch summary panel */}
+      {batchSummary && (
+        <div
+          style={{
+            padding: 16,
+            background: '#0f0f23',
+            border: '1px solid #2a2a4a',
+            borderLeft: `3px solid ${batchSummary.aborted ? '#D94F4F' : '#3DA876'}`,
+            borderRadius: 6,
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              color: '#8b949e',
+              fontWeight: 600,
+              letterSpacing: 0.5,
+              marginBottom: 8,
+            }}
+          >
+            BATCH DISPATCH RESULT
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(5, 1fr)',
+              gap: 8,
+              fontSize: 11,
+              marginBottom: 8,
+            }}
+          >
+            <div>
+              <div style={{ color: '#484f58', fontSize: 9, letterSpacing: 0.5 }}>TOTAL</div>
+              <div style={{ color: '#e6edf3', fontWeight: 700, fontSize: 18 }}>
+                {batchSummary.total}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: '#484f58', fontSize: 9, letterSpacing: 0.5 }}>DISPATCHED</div>
+              <div style={{ color: '#3DA876', fontWeight: 700, fontSize: 18 }}>
+                {batchSummary.dispatched}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: '#484f58', fontSize: 9, letterSpacing: 0.5 }}>SKIPPED</div>
+              <div style={{ color: '#8b949e', fontWeight: 700, fontSize: 18 }}>
+                {batchSummary.skipped}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: '#484f58', fontSize: 9, letterSpacing: 0.5 }}>FAILED</div>
+              <div
+                style={{
+                  color: batchSummary.failed > 0 ? '#D94F4F' : '#e6edf3',
+                  fontWeight: 700,
+                  fontSize: 18,
+                }}
+              >
+                {batchSummary.failed}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: '#484f58', fontSize: 9, letterSpacing: 0.5 }}>DURATION</div>
+              <div style={{ color: '#e6edf3', fontWeight: 700, fontSize: 18 }}>
+                {(batchSummary.durationMs / 1000).toFixed(1)}s
+              </div>
+            </div>
+          </div>
+          {batchSummary.aborted && (
+            <div style={{ fontSize: 10, color: '#D94F4F' }}>
+              <strong>ABORTED:</strong> {batchSummary.aborted}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Audit log summary — always visible */}
+      <div
+        style={{
+          padding: 12,
+          background: '#0d1117',
+          border: '1px solid #21262d',
+          borderRadius: 6,
+          fontSize: 10,
+          color: '#8b949e',
+          marginBottom: 16,
+          display: 'flex',
+          gap: 16,
+          flexWrap: 'wrap',
+        }}
+      >
+        <span>
+          <strong style={{ color: '#e6edf3' }}>AUDIT LOG</strong> · {auditSummary.total} total
+        </span>
+        <span>Last 24h: {auditSummary.last24h}</span>
+        <span>Last 7d: {auditSummary.last7d}</span>
+        <span style={{ color: auditSummary.errorsLast24h > 0 ? '#D94F4F' : '#3DA876' }}>
+          Errors 24h: {auditSummary.errorsLast24h}
+        </span>
+        <span style={{ color: '#3DA876' }}>Pass: {auditSummary.byVerdict.pass}</span>
+        <span style={{ color: '#E8A030' }}>Flag: {auditSummary.byVerdict.flag}</span>
+        <span style={{ color: '#FF8A3D' }}>Escalate: {auditSummary.byVerdict.escalate}</span>
+        <span style={{ color: '#D94F4F' }}>Freeze: {auditSummary.byVerdict.freeze}</span>
+      </div>
 
       {cases.length === 0 && (
         <div

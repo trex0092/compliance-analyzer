@@ -87,6 +87,15 @@ export interface SuperBrainInput {
   fourEyesApprovers?: readonly [FourEyesApprover, FourEyesApprover];
   /** Optional ISO timestamp override for deterministic tests. */
   dispatchedAtIso?: string;
+  /** Optional tenant isolation check — when both tenantId and
+   *  tenantRegistry are supplied, the planner calls
+   *  assertTenantOwnsTask before building the plan so a
+   *  misrouted dispatch throws instead of landing in the wrong
+   *  workspace. */
+  tenantId?: string;
+  tenantRegistry?: {
+    getCredentials: (tenantId: string) => { allowedProjectGids: readonly string[] } | undefined;
+  };
 }
 
 export interface SuperBrainDispatchPlan {
@@ -133,6 +142,24 @@ export interface SuperBrainDispatchResult {
  * through this function.
  */
 export function buildSuperBrainDispatchPlan(input: SuperBrainInput): SuperBrainDispatchPlan {
+  // Tenant isolation check (optional — only runs when both
+  // tenantId and tenantRegistry are supplied). Throws when the
+  // tenant is not authorized for the target project so a
+  // misrouted dispatch fails fast instead of landing in the
+  // wrong workspace. Cabinet Res 134/2025 Art.19 — auditable
+  // isolation boundary.
+  if (input.tenantId && input.tenantRegistry) {
+    const creds = input.tenantRegistry.getCredentials(input.tenantId);
+    if (!creds) {
+      throw new Error(`Super-brain dispatcher: unknown tenant ${input.tenantId}`);
+    }
+    if (!creds.allowedProjectGids.includes(input.projectGid)) {
+      throw new Error(
+        `Super-brain dispatcher: tenant ${input.tenantId} is not authorised to access project ${input.projectGid}`
+      );
+    }
+  }
+
   const brain = input.brain ?? caseToEnrichableBrain(input.case);
   const enrichment = enrichAsanaTaskFromBrain(brain);
   const warnings: string[] = [];
