@@ -89,6 +89,56 @@
   };
 
   // Diagnostic — exposed so ops can verify the bridge from the console.
-  window.__brainNotify.version = '1.0.0';
+  window.__brainNotify.version = '1.1.0';
   window.__brainNotify.endpoint = ENDPOINT;
+
+  // -----------------------------------------------------------------
+  // __decisionNotify — richer companion hook that POSTs through the
+  // compliance decision engine (/api/decision). Use this when the
+  // caller has a full entity + features vector and wants the
+  // weaponized brain verdict back. Still fire-and-forget unless the
+  // caller awaits the returned promise.
+  //
+  // Shape:
+  //   window.__decisionNotify({
+  //     tenantId, topic,
+  //     entity: { id, name, features, actorUserId },
+  //     filing: { decisionType, approvals } // optional
+  //   })
+  // -----------------------------------------------------------------
+  var DECISION_ENDPOINT = '/api/decision';
+  window.__decisionNotify = function decisionNotify(input) {
+    try {
+      if (!input || typeof input !== 'object') return Promise.resolve(null);
+      if (typeof input.tenantId !== 'string' || input.tenantId.length === 0)
+        return Promise.resolve(null);
+      if (typeof input.topic !== 'string' || input.topic.length === 0)
+        return Promise.resolve(null);
+      if (!input.entity || typeof input.entity !== 'object') return Promise.resolve(null);
+
+      var token = getToken();
+      if (!token) return Promise.resolve(null);
+
+      return fetch(DECISION_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token,
+        },
+        body: JSON.stringify(input),
+        keepalive: true,
+      })
+        .then(function (res) {
+          if (!res.ok) return null;
+          return res.json();
+        })
+        .catch(function () {
+          return null;
+        });
+    } catch (_err) {
+      return Promise.resolve(null);
+    }
+  };
+  window.__decisionNotify.version = '1.0.0';
+  window.__decisionNotify.endpoint = DECISION_ENDPOINT;
 })();

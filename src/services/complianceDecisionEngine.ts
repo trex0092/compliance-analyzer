@@ -41,11 +41,7 @@ import type { AdverseMediaHit } from './adverseMediaRanker';
 import type { UboGraph } from './uboGraph';
 import type { WalletDatabase } from './vaspWalletScoring';
 import type { Transaction } from './transactionAnomaly';
-import {
-  WarRoomFeed,
-  type WarRoomEvent,
-  type IncidentSeverity,
-} from './warRoomFeed';
+import { WarRoomFeed, type WarRoomEvent, type IncidentSeverity } from './warRoomFeed';
 import { commitScreening, type ScreeningCommitment } from './zkComplianceAttestation';
 import { predictStr, type StrFeatures, type StrPrediction } from './predictiveStr';
 import {
@@ -185,9 +181,7 @@ function newId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
     crypto.getRandomValues(bytes);
   } else {
-    throw new Error(
-      '[complianceDecisionEngine] Web Crypto unavailable — refusing to mint an id.'
-    );
+    throw new Error('[complianceDecisionEngine] Web Crypto unavailable — refusing to mint an id.');
   }
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }

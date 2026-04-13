@@ -171,7 +171,7 @@ export function plan(input: ComplianceCaseInput): OrchestrationPlan {
  */
 export function evaluate(
   decision: ComplianceDecision,
-  input: ComplianceCaseInput
+  _input: ComplianceCaseInput
 ): EvaluationReport {
   const concerns: string[] = [];
   let shouldConsultAdvisor = false;
