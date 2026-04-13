@@ -27,6 +27,17 @@ export default async (req: Request, context: Context) => {
     return Response.json({ error: 'Invalid key format' }, { status: 400 })
   }
 
+  // Per-user IDOR guard: the key must begin with `user/<callerId>/...`
+  // (uploads are namespaced in upload.mts). Legacy unprefixed keys are
+  // also served for now to avoid breaking already-uploaded evidence,
+  // but this fallback will be removed once migration completes.
+  const ownerId = auth.userId || 'unknown'
+  const expectedPrefix = `user/${ownerId}/`
+  const isLegacyKey = !key.startsWith('user/')
+  if (!isLegacyKey && !key.startsWith(expectedPrefix)) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const store = getStore('compliance-uploads')
 
   if (req.method === 'DELETE') {
@@ -41,7 +52,10 @@ export default async (req: Request, context: Context) => {
     return Response.json({ error: 'File not found' }, { status: 404 })
   }
 
-  const contentType = result.metadata?.contentType || 'application/octet-stream'
+  // Never reflect the stored content-type as a render target — always
+  // download as an opaque stream so a stored HTML/SVG can't run in the
+  // browser context. Keep the original type for UI hints in metadata.
+  const originalType = result.metadata?.contentType || 'application/octet-stream'
   const rawName = result.metadata?.originalName || key.split('/').pop() || 'download'
 
   // Sanitize filename to prevent header injection (strip quotes, CR, LF, and non-ASCII)
@@ -49,8 +63,11 @@ export default async (req: Request, context: Context) => {
 
   return new Response(result.data, {
     headers: {
-      'Content-Type': contentType,
+      'Content-Type': 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${safeName}"`,
+      'X-Content-Type-Options': 'nosniff',
+      'X-Original-Content-Type': originalType.replace(/[\r\n]/g, ''),
+      'Cache-Control': 'private, no-store',
     },
   })
 }

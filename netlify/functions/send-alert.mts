@@ -37,7 +37,7 @@ export default async (req: Request, context: Context) => {
   if (!auth.ok) return auth.response!;
 
   const emailServiceUrl = Netlify.env.get("EMAIL_SERVICE_URL");
-  const emailFrom = Netlify.env.get("EMAIL_FROM") || "compliance@hawkeye-sterling.com";
+  const emailFrom = Netlify.env.get("EMAIL_FROM") || "";
   const emailTo = Netlify.env.get("EMAIL_TO_CO") || "";
 
   if (!emailServiceUrl) {
@@ -46,12 +46,34 @@ export default async (req: Request, context: Context) => {
       { status: 200 }
     );
   }
-
+  if (!emailFrom) {
+    return Response.json(
+      { sent: false, reason: "EMAIL_FROM not configured" },
+      { status: 200 }
+    );
+  }
   if (!emailTo) {
     return Response.json(
       { sent: false, reason: "EMAIL_TO_CO not configured" },
       { status: 200 }
     );
+  }
+
+  // Only allow outbound email delivery to a curated set of hosts. Prevents a
+  // misconfigured EMAIL_SERVICE_URL from reaching an internal metadata
+  // endpoint or an arbitrary attacker-controlled host.
+  const EMAIL_HOST_ALLOWLIST = new Set<string>([
+    'api.sendgrid.com',
+    'api.resend.com',
+    'api.postmarkapp.com',
+    'api.mailgun.net',
+    'api.sparkpost.com',
+  ]);
+  let parsedUrl: URL;
+  try { parsedUrl = new URL(emailServiceUrl); } catch { return Response.json({ error: 'EMAIL_SERVICE_URL invalid' }, { status: 500 }); }
+  if (parsedUrl.protocol !== 'https:' || !EMAIL_HOST_ALLOWLIST.has(parsedUrl.hostname)) {
+    console.error('[send-alert] EMAIL_SERVICE_URL rejected: ' + parsedUrl.hostname);
+    return Response.json({ error: 'EMAIL_SERVICE_URL host not allowed' }, { status: 500 });
   }
 
   try {
@@ -61,20 +83,28 @@ export default async (req: Request, context: Context) => {
       return Response.json({ error: "subject and message required" }, { status: 400 });
     }
 
-    // Sanitize: strip newlines/carriage returns to prevent email header injection
-    const sanitize = (s: string) => s.replace(/[\r\n]/g, " ").slice(0, 500);
+    // Sanitize EVERY field — not just subject. CRLF injection into the
+    // email body lets an attacker craft BCC headers / add attachments
+    // via the upstream provider's free-form API.
+    const sanitize = (s: string) => String(s).replace(/[\r\n\u0000-\u001F]/g, " ").slice(0, 2000);
+    const sanitizeShort = (s: string) => String(s).replace(/[\r\n\u0000-\u001F]/g, " ").slice(0, 200);
+    const sanitizedMessage = sanitize(payload.message);
+    const sanitizedSubject = sanitizeShort(`[${payload.priority?.toUpperCase() || "ALERT"}] ${payload.subject}`);
+    const sanitizedRule    = sanitizeShort(payload.ruleName || "manual");
+    const sanitizedEntity  = sanitizeShort(payload.entityName || "N/A");
+    const sanitizedPriority= sanitizeShort(payload.priority || "medium");
 
     // Forward to configured email service
     const emailBody = {
       from: emailFrom,
       to: emailTo,
-      subject: sanitize(`[${payload.priority?.toUpperCase() || "ALERT"}] ${payload.subject}`),
+      subject: sanitizedSubject,
       text: [
-        payload.message,
+        sanitizedMessage,
         "",
-        `Rule: ${payload.ruleName || "manual"}`,
-        `Entity: ${payload.entityName || "N/A"}`,
-        `Priority: ${payload.priority || "medium"}`,
+        `Rule: ${sanitizedRule}`,
+        `Entity: ${sanitizedEntity}`,
+        `Priority: ${sanitizedPriority}`,
         `Timestamp: ${new Date().toISOString()}`,
         "",
         "— Hawkeye Sterling V2 Compliance Suite",
@@ -89,6 +119,7 @@ export default async (req: Request, context: Context) => {
     });
 
     if (!response.ok) {
+      console.error('[send-alert] upstream failure: ' + response.status);
       return Response.json(
         { sent: false, reason: `Email service returned ${response.status}` },
         { status: 502 }
@@ -97,6 +128,7 @@ export default async (req: Request, context: Context) => {
 
     return Response.json({ sent: true, to: emailTo, subject: emailBody.subject });
   } catch (e) {
+    console.error('[send-alert] delivery error:', (e as Error).message);
     return Response.json(
       { error: "Failed to send alert email" },
       { status: 500 }
