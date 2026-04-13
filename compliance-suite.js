@@ -4692,6 +4692,33 @@ ${sheetsHTML}
       URL.revokeObjectURL(url);
       if (typeof logAudit === 'function') logAudit('audit-pack', 'Downloaded ' + a.download);
       if (typeof toast === 'function') toast('✅ Audit pack downloaded' + (pack.manifest && pack.manifest.signature ? ' (HMAC-signed)' : ' (unsigned — set HAWKEYE_AUDIT_HMAC_KEY)'), 'success', 6000);
+
+      // Best-effort: also dispatch an `audit_finding_logged` event to
+      // /api/asana/dispatch so the audit pack lands as a parent task
+      // in the Asana "Audit Findings" project. Failure here does not
+      // unwind the local download — the pack is already on the
+      // operator's disk.
+      try {
+        await fetch('/api/asana/dispatch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token,
+          },
+          keepalive: true,
+          body: JSON.stringify({
+            kind: 'audit_finding_logged',
+            tenantId: tenantId,
+            occurredAtIso: new Date().toISOString(),
+            refId: 'audit-pack-' + tenantId + '-' + to.toISOString().slice(0,10),
+            payload: {
+              filename: a.download,
+              counts: pack.manifest && pack.manifest.counts ? pack.manifest.counts : null,
+              signed: !!(pack.manifest && pack.manifest.signature),
+            },
+          }),
+        });
+      } catch (_asanaErr) { /* best-effort */ }
     } catch (err) {
       if (typeof toast === 'function') toast('Audit pack network error: ' + err.message, 'error');
     }
