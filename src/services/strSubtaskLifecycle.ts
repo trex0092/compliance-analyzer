@@ -213,9 +213,7 @@ export function buildStrParentTaskPayload(ctx: StrLifecycleContext): AsanaTaskPa
  * Returns an array of exactly seven entries in STR_SUBTASK_STAGES
  * order. Tests should assert the order because dashboards depend on it.
  */
-export function buildStrSubtaskPayloads(
-  ctx: StrLifecycleContext
-): StrSubtaskPayload[] {
+export function buildStrSubtaskPayloads(ctx: StrLifecycleContext): StrSubtaskPayload[] {
   return STR_SUBTASK_STAGES.map((stage) => {
     const label = STAGE_LABEL[stage];
     const noteBody = STAGE_NOTE_BODY[stage];

@@ -27,13 +27,7 @@ import { asanaRequestWithRetry } from './asanaClient';
 // Types
 // ---------------------------------------------------------------------------
 
-export const KANBAN_COLUMNS = [
-  'todo',
-  'doing',
-  'review',
-  'done',
-  'blocked',
-] as const;
+export const KANBAN_COLUMNS = ['todo', 'doing', 'review', 'done', 'blocked'] as const;
 
 export type KanbanColumn = (typeof KANBAN_COLUMNS)[number];
 
@@ -113,7 +107,12 @@ export function sectionNameToColumn(name?: string): KanbanColumn | undefined {
   ) {
     return 'doing';
   }
-  if (lower.includes('todo') || lower.includes('to do') || lower.includes('backlog') || lower.includes('queue')) {
+  if (
+    lower.includes('todo') ||
+    lower.includes('to do') ||
+    lower.includes('backlog') ||
+    lower.includes('queue')
+  ) {
     return 'todo';
   }
   return undefined;

@@ -83,9 +83,7 @@ export default function AsanaHealthTile() {
           marginBottom: 8,
         }}
       >
-        <div style={{ fontSize: 12, color: '#8b949e', fontWeight: 600 }}>
-          ASANA SYNC
-        </div>
+        <div style={{ fontSize: 12, color: '#8b949e', fontWeight: 600 }}>ASANA SYNC</div>
         <span
           style={{
             padding: '2px 10px',
@@ -101,9 +99,7 @@ export default function AsanaHealthTile() {
           {label}
         </span>
       </div>
-      <div style={{ fontSize: 12, color: '#e6edf3', marginBottom: 8 }}>
-        {snapshot.summary}
-      </div>
+      <div style={{ fontSize: 12, color: '#e6edf3', marginBottom: 8 }}>{snapshot.summary}</div>
       <div
         style={{
           display: 'grid',
@@ -115,9 +111,7 @@ export default function AsanaHealthTile() {
       >
         <div>
           <div style={{ color: '#484f58', fontSize: 9, letterSpacing: 0.5 }}>RETRY</div>
-          <div style={{ color: '#e6edf3', fontWeight: 600 }}>
-            {snapshot.retryQueuePending}
-          </div>
+          <div style={{ color: '#e6edf3', fontWeight: 600 }}>{snapshot.retryQueuePending}</div>
         </div>
         <div>
           <div style={{ color: '#484f58', fontSize: 9, letterSpacing: 0.5 }}>FAILED</div>

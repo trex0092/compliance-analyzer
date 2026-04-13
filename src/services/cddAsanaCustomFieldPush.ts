@@ -103,9 +103,10 @@ function countQualifyingUBOs(customer: CustomerProfile): number {
  * configured, asanaCustomFields.ts silently drops the entry. The
  * payload may therefore be empty; the caller MUST tolerate that.
  */
-export function buildCddCustomFieldPayload(
-  input: CddCustomFieldInput
-): { payload: Record<string, string | number>; derivedCddLevel: 'SDD' | 'CDD' | 'EDD' } {
+export function buildCddCustomFieldPayload(input: CddCustomFieldInput): {
+  payload: Record<string, string | number>;
+  derivedCddLevel: 'SDD' | 'CDD' | 'EDD';
+} {
   const { customer } = input;
   const derivedCddLevel = input.cddLevelOverride ?? deriveCddLevel(customer);
   const riskLevel = deriveRiskLevel(customer);
@@ -122,8 +123,7 @@ export function buildCddCustomFieldPayload(
     derivedCddLevel === 'EDD' ? 'flag' : 'pass';
 
   const confidence =
-    customer.sourceOfFundsStatus === 'verified' &&
-    customer.sourceOfWealthStatus === 'verified'
+    customer.sourceOfFundsStatus === 'verified' && customer.sourceOfWealthStatus === 'verified'
       ? 1.0
       : 0.6;
 
@@ -136,8 +136,7 @@ export function buildCddCustomFieldPayload(
     regulationCitation:
       input.regulationCitation ??
       `FDL Art.12-14; Cabinet Res 134/2025 Art.${derivedCddLevel === 'EDD' ? '14' : '7-10'}`,
-    sanctionsFlag:
-      customer.pepStatus !== 'clear' || customer.sanctionsStatus !== 'clear',
+    sanctionsFlag: customer.pepStatus !== 'clear' || customer.sanctionsStatus !== 'clear',
   });
 
   // Side-channel fields that asanaCustomFields doesn't currently map —

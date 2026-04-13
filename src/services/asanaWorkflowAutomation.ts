@@ -132,13 +132,7 @@ export function buildCustomerCaseFolderTemplate(customerName: string): ProjectTe
 export function buildKanbanCaseFolderTemplate(customerName: string): ProjectTemplate {
   return {
     name: `${customerName} — Kanban Case Folder`,
-    sections: [
-      'To Do',
-      'In Progress',
-      'Four-Eyes Review',
-      'Done',
-      'Blocked',
-    ],
+    sections: ['To Do', 'In Progress', 'Four-Eyes Review', 'Done', 'Blocked'],
     defaultCustomFieldGids: [],
   };
 }

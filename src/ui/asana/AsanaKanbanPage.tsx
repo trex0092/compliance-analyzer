@@ -166,9 +166,7 @@ function ColumnView({
           marginBottom: 10,
         }}
       >
-        <strong style={{ fontSize: 13, color: '#e6edf3' }}>
-          {KANBAN_COLUMN_LABEL[column]}
-        </strong>
+        <strong style={{ fontSize: 13, color: '#e6edf3' }}>{KANBAN_COLUMN_LABEL[column]}</strong>
         <span
           style={{
             fontSize: 10,
@@ -233,19 +231,16 @@ export default function AsanaKanbanPage() {
     void refresh();
   }, [refresh]);
 
-  const handleDrop = useCallback(
-    (gid: string, column: KanbanColumn) => {
-      // Optimistic local move. We do NOT write back to Asana here
-      // because that requires section GIDs per project (different per
-      // project) — wiring that safely needs a per-project section map
-      // which is a separate task. The override lets the MLRO triage
-      // the board visually and see what reordering the columns would
-      // look like; on refresh we re-fetch from Asana and the override
-      // clears.
-      setLocalOverride((prev) => ({ ...prev, [gid]: column }));
-    },
-    []
-  );
+  const handleDrop = useCallback((gid: string, column: KanbanColumn) => {
+    // Optimistic local move. We do NOT write back to Asana here
+    // because that requires section GIDs per project (different per
+    // project) — wiring that safely needs a per-project section map
+    // which is a separate task. The override lets the MLRO triage
+    // the board visually and see what reordering the columns would
+    // look like; on refresh we re-fetch from Asana and the override
+    // clears.
+    setLocalOverride((prev) => ({ ...prev, [gid]: column }));
+  }, []);
 
   const displayBoard = useMemo(() => {
     if (!board) return null;
@@ -390,8 +385,8 @@ export default function AsanaKanbanPage() {
           <code>To Do / Backlog / Queue</code> → <strong>To Do</strong>;{' '}
           <code>In Progress / Doing / WIP</code> → <strong>Doing</strong>;{' '}
           <code>Review / QA / Four-Eyes / Approval</code> → <strong>Review</strong>;{' '}
-          <code>Done / Completed / Closed</code> → <strong>Done</strong>;{' '}
-          <code>Blocked</code> → <strong>Blocked</strong>.
+          <code>Done / Completed / Closed</code> → <strong>Done</strong>; <code>Blocked</code> →{' '}
+          <strong>Blocked</strong>.
         </span>
         <br />
         Drag cards between columns to preview a re-ordering locally — write-back to Asana sections
