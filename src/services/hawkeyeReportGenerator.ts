@@ -342,11 +342,7 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
   if (ext.goldOrigin) {
     // OriginTraceReport exposes refuseCount/eddCount/cleanCount + results[].
     const originRisk =
-      ext.goldOrigin.refuseCount > 0
-        ? 'REFUSE'
-        : ext.goldOrigin.eddCount > 0
-          ? 'EDD'
-          : 'CLEAN';
+      ext.goldOrigin.refuseCount > 0 ? 'REFUSE' : ext.goldOrigin.eddCount > 0 ? 'EDD' : 'CLEAN';
     lines.push(
       `| **Gold Origin Risk** | ${originRisk} | ${ext.goldOrigin.results.length} shipment(s) | LBMA RGG v9; OECD DDG 2016 |`
     );
@@ -466,15 +462,11 @@ function buildMarkdownReport(input: HawkeyeReportInput, reportId: string, now: s
       const sScore = ext.esgScore.pillars?.S?.score;
       const gScore = ext.esgScore.pillars?.G?.score;
       if (eScore !== undefined)
-        lines.push(
-          `| Environmental (E) | — | ${eScore.toFixed(0)} / 100 | GRI 2021 Standards |`
-        );
+        lines.push(`| Environmental (E) | — | ${eScore.toFixed(0)} / 100 | GRI 2021 Standards |`);
       if (sScore !== undefined)
         lines.push(`| Social (S) | — | ${sScore.toFixed(0)} / 100 | ILO Conventions 29, 105 |`);
       if (gScore !== undefined)
-        lines.push(
-          `| Governance (G) | — | ${gScore.toFixed(0)} / 100 | OECD CG Principles 2023 |`
-        );
+        lines.push(`| Governance (G) | — | ${gScore.toFixed(0)} / 100 | OECD CG Principles 2023 |`);
     }
     if (ext.carbonFootprint) {
       // netZeroAligned is derived from netZeroGap_tCO2e; per-oz intensity

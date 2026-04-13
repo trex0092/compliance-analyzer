@@ -352,7 +352,6 @@ import {
 } from './multiModelScreening';
 import {
   createCausalGraph,
-  simulate,
   runCounterfactual,
   type CausalNode,
   type Assignment,
@@ -2121,9 +2120,7 @@ export async function runWeaponizedBrain(
     // mega.auditNarrative on MegaBrainResponse.
     Promise.resolve(
       runSafely('promptInjection', () =>
-        detectPromptInjection(
-          `${req.mega.entity?.name ?? ''} ${(mega.notes ?? []).join(' ')}`
-        )
+        detectPromptInjection(`${req.mega.entity?.name ?? ''} ${(mega.notes ?? []).join(' ')}`)
       )
     ),
     // #60 Deepfake document detector — conditional
