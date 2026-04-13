@@ -73,6 +73,40 @@ window.csFormatDateInput = function (el) {
   function fmtDate(d) { if (!d) return '—'; const dt = (typeof d==='string'&&d.includes('/')) ? parseDDMMYYYY(d) : new Date(d); if(!dt||isNaN(dt.getTime())) return d; return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
   function fmtDateDDMMYYYY(dt) { return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); }
   function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+
+  // ─── Decision-engine helpers (FDL Art.29 — never transmit raw subject) ─
+  // Hash a subject string into an opaque 32-hex identifier so the
+  // weaponized brain backend never sees the raw name. The hash is
+  // intentionally non-cryptographic — it only needs to be stable so
+  // the same subject produces the same id, and one-way enough that
+  // backend logs cannot be reverse-mapped to a real customer.
+  global.cs2HashSubject = function(subject) {
+    var s = String(subject || '');
+    var h1 = 0x811c9dc5;
+    var h2 = 0xcbf29ce4;
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      h1 ^= c; h1 = (h1 * 0x01000193) >>> 0;
+      h2 ^= (c + i); h2 = (h2 * 0x100000001b3) >>> 0;
+    }
+    return 'subj-' + h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0');
+  };
+  // Resolve the active tenant id from the auth session, falling back
+  // to "default" so single-tenant installs continue to work.
+  global.cs2TenantId = function() {
+    try {
+      if (typeof AuthRBAC !== 'undefined' && AuthRBAC.getCurrentUser) {
+        var u = AuthRBAC.getCurrentUser();
+        if (u && u.tenantId) return String(u.tenantId).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+      }
+    } catch (_) { /* ignore */ }
+    try {
+      var t = localStorage.getItem('fgl_tenant_id');
+      if (t) return String(t).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+    } catch (_) { /* ignore */ }
+    return 'default';
+  };
+
   function toast(msg, type) {
     if (global.toast) { global.toast(msg, type); return; }
     const t = document.createElement('div');
@@ -632,6 +666,37 @@ window.csFormatDateInput = function (el) {
             nationality: form.nationality,
           },
         });
+        // Decision engine hook: route the sanctions-hit case through the
+        // weaponized brain so the 24h freeze countdown + four-eyes path
+        // start automatically when this request lands at /api/decision.
+        if (typeof global.__decisionNotify === 'function') {
+          var _hashed = (typeof global.cs2HashSubject === 'function')
+            ? global.cs2HashSubject(name)
+            : 'subject-' + record.id;
+          global.__decisionNotify({
+            tenantId: (typeof global.cs2TenantId === 'function' ? global.cs2TenantId() : 'default'),
+            topic: 'CRA sanctions hit',
+            entity: {
+              id: record.id,
+              name: _hashed,
+              isSanctionsConfirmed: form.sanctionsHit === 'Confirmed Match',
+              features: {
+                priorAlerts90d: 1,
+                txValue30dAED: 0,
+                nearThresholdCount30d: 0,
+                crossBorderRatio30d: form.geography && /CAHRA|Black|Grey|Cross/i.test(form.geography) ? 1 : 0,
+                isPep: !!(form.pepStatus && /PEP/i.test(form.pepStatus) && !/Not a PEP/i.test(form.pepStatus)),
+                highRiskJurisdiction: !!(form.geography && /CAHRA|Black|Grey/i.test(form.geography)),
+                hasAdverseMedia: !!(form.adverseMedia && /Confirmed|Possible/i.test(form.adverseMedia)),
+                daysSinceOnboarding: 0,
+                sanctionsMatchScore: _score,
+                cashRatio30d: 0,
+              },
+              actorUserId: (typeof AuthRBAC !== 'undefined' && AuthRBAC.getCurrentUser && AuthRBAC.getCurrentUser()?.id) || 'unknown',
+            },
+            sealAttestation: true,
+          });
+        }
       }
     } catch (_brainErr) { /* best-effort */ }
 
@@ -1414,6 +1479,42 @@ window.csFormatDateInput = function (el) {
             hasNarrative: !!record.narrative,
             filed: !!record.goamlRef,
           },
+        });
+      }
+      // Decision engine hook: when the operator has opted in to the
+      // weaponized brain, also POST the case through /api/decision so
+      // the 97-subsystem pipeline runs and surfaces a verdict in the
+      // war-room feed. Subject identity is hashed before transmission
+      // — the engine NEVER receives the raw subject name.
+      if (typeof global.__decisionNotify === 'function') {
+        var hashedSubject = (typeof global.cs2HashSubject === 'function')
+          ? global.cs2HashSubject(subject)
+          : 'subject-' + (record.id || 'unknown');
+        global.__decisionNotify({
+          tenantId: (typeof global.cs2TenantId === 'function' ? global.cs2TenantId() : 'default'),
+          topic: 'STR draft saved',
+          entity: {
+            id: record.id,
+            name: hashedSubject,
+            features: {
+              priorAlerts90d: 0,
+              txValue30dAED: parseFloat(record.amount) || 0,
+              nearThresholdCount30d: 0,
+              crossBorderRatio30d: 0,
+              isPep: false,
+              highRiskJurisdiction: false,
+              hasAdverseMedia: !!record.narrative && /adverse|media|sanction/i.test(record.narrative),
+              daysSinceOnboarding: 0,
+              sanctionsMatchScore: 0,
+              cashRatio30d: 0,
+            },
+            actorUserId: (typeof AuthRBAC !== 'undefined' && AuthRBAC.getCurrentUser && AuthRBAC.getCurrentUser()?.id) || 'unknown',
+          },
+          filing: {
+            decisionType: 'str_filing',
+            approvals: [],
+          },
+          sealAttestation: true,
         });
       }
     } catch (_brainErr) { /* brain is best-effort — never break the save path */ }
@@ -4424,6 +4525,7 @@ window.csFormatDateInput = function (el) {
         <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" onclick="dmExportAll()">Backup</button>
         <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" onclick="document.getElementById('dm-import-file').click()">Restore</button>
         <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" onclick="dmExportSummaryReport()">Summary</button>
+        <button class="btn btn-sm btn-gold" style="padding:8px 14px;font-size:11px" onclick="dmDownloadAuditPack()" title="Signed audit bundle for MoE / EOCN / LBMA inspectors (last 30 days)">📦 Audit Pack</button>
       </div>
       <input type="file" id="dm-import-file" accept=".json,.xlsx" style="display:none" onchange="dmImportBackup(this)"/>
 
@@ -4547,6 +4649,52 @@ ${sheetsHTML}
     localStorage.setItem('fgl_last_backup', new Date().toISOString());
     if (typeof toast === 'function') toast(`✅ Excel backup downloaded — ${totalExported} modules`, 'success');
     renderDataManager();
+  };
+
+  // ── AUDIT PACK DOWNLOAD ───────────────────────────────────────────────────
+  // Pulls the signed JSON bundle from /api/audit-pack and downloads it
+  // as a single file. The file contains 30 days of brain events,
+  // chain anchors, sanctions deltas, FX snapshots, and drift reports
+  // — everything an MoE / EOCN / LBMA inspector needs to reconstruct
+  // the compliance trail. HMAC-signed with HAWKEYE_AUDIT_HMAC_KEY.
+  global.dmDownloadAuditPack = async function() {
+    if (typeof toast === 'function') toast('Building signed audit pack...', 'info');
+    var token = null;
+    try { token = localStorage.getItem('auth.token'); } catch (_) { /* ignore */ }
+    if (!token) {
+      if (typeof toast === 'function') toast('Sign in required to fetch the audit pack.', 'error');
+      return;
+    }
+    var tenantId = (typeof global.cs2TenantId === 'function' ? global.cs2TenantId() : 'default');
+    var to = new Date();
+    var from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+    var qs = 'tenantId=' + encodeURIComponent(tenantId)
+      + '&from=' + from.toISOString().slice(0, 10)
+      + '&to=' + to.toISOString().slice(0, 10);
+    try {
+      var res = await fetch('/api/audit-pack?' + qs, {
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
+      });
+      if (!res.ok) {
+        var msg = 'HTTP ' + res.status;
+        try { var body = await res.json(); if (body && body.error) msg = body.error; } catch (_) {}
+        if (typeof toast === 'function') toast('Audit pack failed: ' + msg, 'error');
+        return;
+      }
+      var pack = await res.json();
+      var blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'audit-pack-' + tenantId + '-' + to.toISOString().slice(0,10) + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      if (typeof logAudit === 'function') logAudit('audit-pack', 'Downloaded ' + a.download);
+      if (typeof toast === 'function') toast('✅ Audit pack downloaded' + (pack.manifest && pack.manifest.signature ? ' (HMAC-signed)' : ' (unsigned — set HAWKEYE_AUDIT_HMAC_KEY)'), 'success', 6000);
+    } catch (err) {
+      if (typeof toast === 'function') toast('Audit pack network error: ' + err.message, 'error');
+    }
   };
 
   // ── EXPORT SINGLE MODULE → EXCEL ─────────────────────────────────────────
