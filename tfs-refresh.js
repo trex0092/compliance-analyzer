@@ -19,12 +19,17 @@ const TFSRefresh = (function() {
   function _remove(key) { localStorage.removeItem(_sk(key)); }
 
   // Sanctions list sources
+  // NOTE: Until a real server-side ingest pipeline is wired to these sources,
+  // every list stays in NOT_CHECKED state and screenEntity() hard-fails BLOCKED.
+  // See docs/sanctions-ingest.md for the target architecture. Direct violation
+  // of FATF Rec 6-7 and FDL Art.22 if screened results are treated as authoritative.
   const SANCTIONS_LISTS = [
     { id: 'UN_CONSOLIDATED', name: 'UN Security Council Consolidated List', source: 'United Nations', frequency: 'Daily', lastKnownCount: 734, category: 'UNSC Resolutions' },
     { id: 'OFAC_SDN', name: 'OFAC SDN List', source: 'US Treasury', frequency: 'Daily', lastKnownCount: 12500, category: 'US Sanctions' },
     { id: 'OFAC_CONS', name: 'OFAC Consolidated Non-SDN', source: 'US Treasury', frequency: 'Daily', lastKnownCount: 4200, category: 'US Sanctions' },
     { id: 'EU_CONSOLIDATED', name: 'EU Consolidated Sanctions List', source: 'European Union', frequency: 'Daily', lastKnownCount: 2100, category: 'EU Sanctions' },
     { id: 'UK_OFSI', name: 'UK OFSI Consolidated List', source: 'HM Treasury', frequency: 'Daily', lastKnownCount: 3800, category: 'UK Sanctions' },
+    { id: 'EOCN', name: 'UAE Executive Office for Control & Non-Proliferation TFS', source: 'UAE EOCN', frequency: 'As issued', lastKnownCount: 0, category: 'UAE Sanctions' },
     { id: 'UAE_LOCAL', name: 'UAE Local Terrorist List', source: 'UAE Cabinet', frequency: 'As updated', lastKnownCount: 150, category: 'UAE Sanctions' },
     { id: 'INTERPOL_RED', name: 'Interpol Red Notices', source: 'Interpol', frequency: 'Real-time', lastKnownCount: 7300, category: 'Law Enforcement' },
     { id: 'WORLD_CHECK', name: 'Refinitiv World-Check (indicator)', source: 'LSEG', frequency: 'Daily', lastKnownCount: 0, category: 'Commercial Database' },
@@ -63,51 +68,17 @@ const TFSRefresh = (function() {
     const list = lists.find(l => l.id === listId);
     if (!list) return;
 
-    list.status = 'REFRESHING';
-    saveListStatus(lists);
-
-    // Use AI to simulate a check (in production, this would hit actual API endpoints)
-    try {
-      if (typeof callAI === 'function') {
-        const data = await callAI({
-          model: 'claude-haiku-4-5',
-          max_tokens: 500,
-          temperature: 0,
-          system: 'You are a sanctions compliance specialist. Return only valid JSON.',
-          messages: [{
-            role: 'user',
-            content: `Simulate a sanctions list refresh status check for: ${list.name} (${list.source}).
-Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.lastKnownCount + Math.floor(Math.random() * 50)},"newEntries":${Math.floor(Math.random() * 5)},"removedEntries":${Math.floor(Math.random() * 2)},"summary":"Brief update summary"}`
-          }]
-        });
-
-        const raw = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-        let cleaned = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
-        const objM = cleaned.match(/\{[\s\S]*\}/);
-        if (objM) cleaned = objM[0];
-        let result;
-        try { result = JSON.parse(cleaned); } catch(_) { result = { status: 'CURRENT', entryCount: list.lastKnownCount }; }
-
-        list.status = 'CURRENT';
-        list.lastRefreshed = new Date().toISOString();
-        list.entryCount = result.entryCount || list.lastKnownCount;
-        list.newEntries = result.newEntries || 0;
-        list.removedEntries = result.removedEntries || 0;
-      } else {
-        list.status = 'CURRENT';
-        list.lastRefreshed = new Date().toISOString();
-      }
-    } catch (e) {
-      if (e.isBillingError || (typeof isBillingError === 'function' && isBillingError(e))) {
-        // API credits exhausted — mark as NEEDS_CHECK instead of ERROR
-        list.status = 'NEEDS_CHECK';
-        list.lastError = 'API credits exhausted — verify manually';
-        if (typeof toast === 'function') toast('API credits exhausted — sanctions list status requires manual verification', 'info', 6000);
-      } else {
-        list.status = 'ERROR';
-        list.lastError = e.message;
-      }
-    }
+    // NEVER mark a list CURRENT without a real server-side fetch that produced
+    // a parsed entry count + content checksum + source etag. Until the ingest
+    // pipeline exists, every refresh lands in NOT_WIRED, which the screen
+    // engine treats as "no current lists available" and hard-fails BLOCKED.
+    // (Audit §1.1-1.3: LLM-simulated refresh was a regulator-grade defect.)
+    list.status = 'NOT_WIRED';
+    list.lastRefreshed = null;
+    list.lastError = 'Real sanctions-list ingest pipeline not yet wired. Screening blocked — manual verification via the official regulator portal is required before any business activity.';
+    list.entryCount = 0;
+    list.newEntries = 0;
+    list.removedEntries = 0;
 
     saveListStatus(lists);
 
@@ -126,59 +97,54 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
   }
 
   async function refreshAll() {
-    if (typeof toast === 'function') toast('Refreshing all sanctions lists...', 'info');
+    if (typeof toast === 'function') toast('Marking all sanctions lists as NOT_WIRED...', 'info');
     const listIds = getListStatus().map(l => l.id);
-    let billingError = false;
     for (const id of listIds) {
       await refreshList(id);
-      // Re-read from storage since refreshList saves a fresh copy
-      const updated = getListStatus().find(l => l.id === id);
-      if (updated && updated.status === 'NEEDS_CHECK') { billingError = true; break; }
     }
-    if (billingError) {
-      // Mark remaining lists as NEEDS_CHECK too
-      const allLists = getListStatus();
-      const changed = [];
-      for (const l of allLists) {
-        if (l.status !== 'CURRENT' && l.status !== 'NEEDS_CHECK') {
-          l.status = 'NEEDS_CHECK';
-          l.lastError = 'API credits exhausted — verify manually';
-          changed.push(l.name);
-        }
-      }
-      saveListStatus(allLists);
-      if (changed.length && typeof logAudit === 'function') {
-        logAudit('tfs', `Bulk marked ${changed.length} lists as NEEDS_CHECK (API credits exhausted): ${changed.join(', ')}`);
-      }
-      if (typeof toast === 'function') toast('API credits exhausted — all lists marked for manual verification', 'info', 8000);
-    } else {
-      if (typeof toast === 'function') toast('All sanctions lists refreshed', 'success');
-    }
+    if (typeof logAudit === 'function') logAudit('tfs', 'Bulk refresh — all lists marked NOT_WIRED (real ingest pipeline pending)');
+    if (typeof toast === 'function') toast('Sanctions lists marked NOT_WIRED — real ingest pipeline pending. Screen manually.', 'info', 8000);
     refresh();
   }
 
   async function screenEntity(name, type, country) {
     if (!name) return null;
 
+    // Sanitize inputs — defense in depth against prompt injection and
+    // accidental control characters in LLM payloads.
+    const safeName = String(name).replace(/[\u0000-\u001F"\\`${}]/g, '').slice(0, 200);
+    const safeType = String(type || 'individual').replace(/[^A-Za-z _-]/g, '').slice(0, 40);
+    const safeCountry = String(country || '').replace(/[\u0000-\u001F"\\`${}]/g, '').slice(0, 120);
+
     const lists = getListStatus();
     const currentLists = lists.filter(l => l.status === 'CURRENT').map(l => l.name).join(', ');
-    const countryInfo = country ? ` Registered Country/Citizenship: ${country}.` : '';
+    const countryInfo = safeCountry ? ` Registered Country/Citizenship: ${safeCountry}.` : '';
 
-    // CRITICAL: Do NOT screen against empty/stale lists — regulatory violation risk (FATF Rec 6-7)
+    // CRITICAL: Do NOT screen against empty/stale/unwired lists.
+    // Until a real server-side ingest pipeline is in place (see
+    // docs/sanctions-ingest.md), this path must always BLOCK and route
+    // the operator to manual verification. FATF Rec 6-7, FDL Art.22,
+    // Cabinet Res 74/2020 Art.4-7.
     if (!currentLists.trim()) {
-      console.error('[TFS] No current sanctions lists available. Screening blocked. Check API credits.');
-      return {
-        id: Date.now(),
-        entity: name,
-        type: type,
-        country: country || '',
+      var blocked = {
+        id: 'screen-' + (crypto.randomUUID ? crypto.randomUUID() : Date.now()),
+        entity: safeName,
+        type: safeType,
+        country: safeCountry,
         result: 'MANUAL_REVIEW',
         matches: [],
-        recommendation: 'BLOCKED: No current sanctions lists available. Manual verification required before any business activity. Check API billing status.',
+        recommendation: 'BLOCKED: real sanctions-list ingest pipeline not yet wired. The compliance officer MUST perform manual screening against: UAE EOCN, UNSC Consolidated (scsanctions.un.org), OFAC SDN (sanctionssearch.ofac.treas.gov), EU Consolidated, UK OFSI, plus any local UAE terrorist list. Do NOT proceed with the business relationship until verification is documented.',
         date: new Date().toISOString(),
-        listsChecked: 'NONE — All lists stale or unavailable',
-        error: 'NO_CURRENT_LISTS'
+        listsChecked: 'NONE — ingest pipeline not wired',
+        error: 'NO_CURRENT_LISTS',
       };
+      // Persist so the audit trail captures every BLOCKED attempt.
+      var bm = getMatches();
+      bm.unshift(blocked);
+      saveMatches(bm);
+      if (typeof logAudit === 'function') logAudit('tfs', 'BLOCKED screen (no wired lists) for ' + safeName);
+      if (typeof toast === 'function') toast('Screening BLOCKED — sanctions ingest pipeline not wired. Verify manually.', 'error', 8000);
+      return blocked;
     }
 
     if (typeof callAI === 'function') {
@@ -192,7 +158,7 @@ Return JSON: {"status":"CURRENT","lastUpdate":"2026-03-29","entryCount":${list.l
             role: 'user',
             content: `TIER-1 COMPLIANCE SCREENING — REFINITIV/DOW JONES STANDARD:
 
-Entity: "${String(name).replace(/["\\\n\r`${}]/g, '')}" (type: ${String(type || 'individual').replace(/["\\\n\r`${}]/g, '')}).${countryInfo}
+Entity: "${safeName}" (type: ${safeType}).${countryInfo}
 
 Check ALL: sanctions (OFAC SDN/SSI/CAPTA, UN, EU, UK OFSI, UAE EOCN, UAE Central Bank, Swiss SECO, Australian DFAT, Canadian SEMA), PEP, corporate network, and do EXHAUSTIVE adverse media investigation. For each adverse media finding provide: allegation, source, date, jurisdiction, status. Investigate corporate connections and family business ties.
 
@@ -208,22 +174,32 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         try { result = JSON.parse(cleaned2); } catch(_) { result = { result: 'POTENTIAL_MATCH', matches: [], recommendation: 'Manual review required — AI response could not be parsed' }; }
 
         // Enforce confidence thresholds (Refinitiv World-Check standard):
-        // >= 0.9 = CONFIRMED, 0.5-0.89 = POTENTIAL, < 0.5 = DISMISS
+        // >= 0.9 = CONFIRMED, 0.5-0.89 = POTENTIAL, < 0.5 = DISMISS.
+        // Per FDL Art.24 every match including dismissed ones must be
+        // persisted to the audit trail — never silently filtered.
         if (result.matches && Array.isArray(result.matches)) {
-          result.matches = result.matches.filter(function(m) {
-            // Normalize confidence to a valid number in 0-1 range
+          var dismissed = [];
+          result.matches.forEach(function(m) {
             var conf = Number(m.confidence);
-            if (!Number.isFinite(conf)) { m.confidence = 0.5; conf = 0.5; } // Default to potential if missing
+            if (!Number.isFinite(conf)) { m.confidence = 0.5; conf = 0.5; }
             m.confidence = Math.max(0, Math.min(1, conf));
-            if (m.confidence >= 0.9) { m.threshold = 'CONFIRMED'; return true; }
-            if (m.confidence >= 0.5) { m.threshold = 'POTENTIAL'; return true; }
-            m.threshold = 'DISMISS';
-            return false; // Filter out low-confidence matches
+            if (m.confidence >= 0.9) { m.threshold = 'CONFIRMED'; }
+            else if (m.confidence >= 0.5) { m.threshold = 'POTENTIAL'; }
+            else {
+              m.threshold = 'DISMISS';
+              dismissed.push(m);
+              if (typeof logAudit === 'function') {
+                logAudit('tfs', 'Dismissed low-confidence match (' + m.list + ') for ' + safeName + ' at conf=' + m.confidence.toFixed(2));
+              }
+            }
           });
-          // If all matches filtered out, downgrade result to CLEAR
-          if (result.matches.length === 0 && result.result === 'POTENTIAL_MATCH') {
+          // Keep the raw set (including dismissed) so the audit trail is
+          // reconstructable; downstream renderers can filter for display.
+          result.dismissedMatches = dismissed;
+          var actionable = result.matches.filter(function(m) { return m.threshold !== 'DISMISS'; });
+          if (actionable.length === 0 && result.result === 'POTENTIAL_MATCH') {
             result.result = 'CLEAR';
-            result.recommendation = (result.recommendation || '') + ' [All matches below 0.5 confidence threshold — dismissed per screening policy.]';
+            result.recommendation = (result.recommendation || '') + ' [All matches below 0.5 confidence — dismissed with audit-log per FDL Art.24.]';
           }
         }
 
@@ -295,7 +271,7 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
         </div>
         <div style="text-align:right">
           <div style="font-size:10px;color:${isStale(l) ? 'var(--amber)' : 'var(--muted)'}">${l.lastRefreshed ? new Date(l.lastRefreshed).toLocaleDateString('en-GB') : 'Never'}</div>
-          ${l.newEntries ? `<div style="font-size:10px;color:var(--amber)">+${parseInt(l.newEntries)||0} new</div>` : ''}
+          ${l.newEntries ? `<div style="font-size:10px;color:var(--amber)">+${parseInt(l.newEntries, 10)||0} new</div>` : ''}
         </div>
         <button class="btn btn-sm btn-blue" data-action="TFSRefresh.refreshListAndRefresh" data-arg="${esc(l.id).replace(/'/g,'&#39;')}" style="min-width:60px">Refresh</button>
       </div>
@@ -413,8 +389,12 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     }
   }
 
-  // Run auto-check after a short delay
-  setTimeout(autoCheck, 5000);
+  // Run auto-check after a short delay with jitter to avoid thundering
+  // herd if multiple operator tabs load simultaneously.
+  var _autoCheckHandle = setTimeout(autoCheck, 5000 + Math.floor(Math.random() * 5000));
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', function() { clearTimeout(_autoCheckHandle); });
+  }
 
   function clearResults() {
     if (!confirm('Clear ALL TFS screening results? This cannot be undone.')) return;
@@ -475,8 +455,15 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     if (!matches.length) { toast('No results to export','error'); return; }
     const headers = ['Entity','Type','Country','Result','Date','Lists'];
     const labelFor = r => r==='MATCH'?'POSITIVE MATCH':r==='POTENTIAL_MATCH'?'POTENTIAL MATCH':r==='MANUAL_REVIEW'?'MANUAL REVIEW':'NEGATIVE MATCH';
+    // CSV formula-injection guard: prefix cells starting with = + - @ \t \r
+    // so Excel/Sheets don't interpret them as formulas.
+    const csvSafe = function(v) {
+      var s = String(v == null ? '' : v);
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
     const rows = matches.map(m => [m.entity||m.name, m.type, m.country, labelFor(m.result), new Date(m.timestamp||m.date||0).toLocaleDateString('en-GB'), (m.matches||[]).map(h=>h.list).join('; ')]);
-    const csv = [headers,...rows].map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+    const csv = [headers,...rows].map(r=>r.map(csvSafe).join(',')).join('\n');
     const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='TFS_Screening_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
     toast('CSV exported','success');

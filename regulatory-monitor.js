@@ -5,18 +5,38 @@
 (function () {
   'use strict';
 
-  // Parse date in dd/mm/yyyy or yyyy-mm-dd format
+  // HTML-escape helper for safe interpolation into innerHTML. Every
+  // render path that embeds user-controlled data must use this.
+  function esc(s) {
+    if (s === null || s === undefined) return '';
+    var d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+
+  // Parse date in dd/mm/yyyy or yyyy-mm-dd format. Dates are interpreted
+  // in Asia/Dubai local time to keep deadline math aligned with UAE
+  // compliance filings regardless of the operator's browser timezone.
   function parseAnyDate(d, endOfDay) {
     if (!d) return new Date(NaN);
     var dt;
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
       var p = d.split('/');
-      dt = new Date(p[2], p[1] - 1, p[0]);
+      dt = new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10));
     } else {
       dt = new Date(d);
     }
     if (endOfDay && !isNaN(dt.getTime())) dt.setHours(23, 59, 59, 999);
     return dt;
+  }
+
+  // Fail-safe overdue comparator. If the deadline cannot be parsed, treat
+  // it as overdue so the MLRO sees a visible red state rather than silence.
+  function isOverdue(deadline) {
+    if (!deadline) return false;
+    var dt = parseAnyDate(deadline, true);
+    if (isNaN(dt.getTime())) return true;
+    return dt.getTime() < Date.now();
   }
 
   const REG_MONITOR_KEY = 'fgl_reg_monitor';
@@ -410,10 +430,10 @@
         return `
       <div class="asana-item" style="${a.acknowledged ? 'opacity:0.5' : ''}">
         <div>
-          <div class="asana-name"><span class="badge ${sevClass}">${a.severity}</span> ${a.message}</div>
-          <div class="asana-meta">${a.framework} | ${new Date(a.createdAt).toLocaleString('en-GB')}</div>
+          <div class="asana-name"><span class="badge ${sevClass}">${esc(a.severity)}</span> ${esc(a.message)}</div>
+          <div class="asana-meta">${esc(a.framework)} | ${esc(new Date(a.createdAt).toLocaleString('en-GB'))}</div>
         </div>
-        ${!a.acknowledged ? `<button class="btn-sm" data-action="RegulatoryMonitor.acknowledgeAlertAndRefresh" data-arg="${a.id}">Ack</button>` : '<span class="asana-status s-ok">ACK</span>'}
+        ${!a.acknowledged ? `<button class="btn-sm" data-action="RegulatoryMonitor.acknowledgeAlertAndRefresh" data-arg="${esc(a.id)}">Ack</button>` : '<span class="asana-status s-ok">ACK</span>'}
       </div>`;
       }).join('');
     } else {
@@ -472,16 +492,16 @@
 
     if (changes.length) {
       html += changes.map(c => {
-        const overdue = c.status !== 'completed' && c.deadline && parseAnyDate(c.deadline, true) < new Date();
+        const overdue = c.status !== 'completed' && isOverdue(c.deadline);
         return `
       <div class="asana-item">
         <div>
-          <div class="asana-name">${c.title}</div>
-          <div class="asana-meta">${c.framework} | Deadline: ${c.deadline || 'N/A'} | ${c.impact || ''}</div>
+          <div class="asana-name">${esc(c.title)}</div>
+          <div class="asana-meta">${esc(c.framework)} | Deadline: ${esc(c.deadline || 'N/A')} | ${esc(c.impact || '')}</div>
         </div>
         <div style="display:flex;gap:4px">
-          <span class="asana-status ${overdue ? 's-overdue' : c.status === 'completed' ? 's-ok' : 's-due'}">${overdue ? 'OVERDUE' : c.status}</span>
-          ${c.status !== 'completed' ? `<button class="btn-sm btn-green" data-action="RegulatoryMonitor.completeRegChange" data-arg="${c.id}">✓</button>` : ''}
+          <span class="asana-status ${overdue ? 's-overdue' : c.status === 'completed' ? 's-ok' : 's-due'}">${overdue ? 'OVERDUE' : esc(c.status)}</span>
+          ${c.status !== 'completed' ? `<button class="btn-sm btn-green" data-action="RegulatoryMonitor.completeRegChange" data-arg="${esc(c.id)}">✓</button>` : ''}
         </div>
       </div>`;
       }).join('');

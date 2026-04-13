@@ -22,8 +22,13 @@ const GoAMLExport = (function() {
   const STORAGE_KEY = 'fgl_goaml_reports';
 
   function escapeXml(str) {
-    if (!str) return '';
+    if (str === null || str === undefined || str === '') return '';
     return String(str)
+      // Strip XML 1.0 forbidden control characters. U+0009, U+000A, U+000D
+      // are the only permitted low-range code points. Any other control
+      // character will cause the FIU parser to reject the filing.
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+      .replace(/[\uFEFF]/g, '') // drop BOM
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -31,28 +36,45 @@ const GoAMLExport = (function() {
       .replace(/'/g, '&apos;');
   }
 
+  // Return YYYY-MM-DD in Asia/Dubai local time, not UTC. Prevents off-by-one
+  // drift when STRs are generated between 00:00 and 03:59 GST.
+  function uaeDateOnly(d) {
+    var dt = d ? new Date(d) : new Date();
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dubai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(dt);
+    } catch (_) {
+      return dt.toISOString().slice(0, 10);
+    }
+  }
+
   function validateDate(dateStr) {
     if (!dateStr) return '';
     var d = String(dateStr).trim();
-    // Accept dd/mm/yyyy and convert to yyyy-mm-dd for XML
+    var year, month, day;
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
       var p = d.split('/');
-      var day = parseInt(p[0], 10), month = parseInt(p[1], 10), year = parseInt(p[2], 10);
-      // Semantic validation: verify the date components form a real date
-      var parsed = new Date(year, month - 1, day);
-      if (parsed.getDate() !== day || parsed.getMonth() !== month - 1 || parsed.getFullYear() !== year) {
-        return ''; // Invalid date (e.g. 31/02/2026)
-      }
-      d = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-    }
-    d = d.slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || isNaN(new Date(d).getTime())) return '';
-    // Reject future dates (transactions and events cannot be in the future)
-    if (new Date(d) > new Date()) {
-      console.warn('[goAML] Future date rejected: ' + d);
+      day = parseInt(p[0], 10); month = parseInt(p[1], 10); year = parseInt(p[2], 10);
+    } else if (/^\d{4}-\d{2}-\d{2}/.test(d)) {
+      var q = d.slice(0, 10).split('-');
+      year = parseInt(q[0], 10); month = parseInt(q[1], 10); day = parseInt(q[2], 10);
+    } else {
       return '';
     }
-    return d;
+    // Semantic validation — reject 31/02, 29/02/2025, etc.
+    var parsed = new Date(year, month - 1, day);
+    if (parsed.getDate() !== day || parsed.getMonth() !== month - 1 || parsed.getFullYear() !== year) {
+      return '';
+    }
+    var iso = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    // Reject future dates using Asia/Dubai "today" as the reference —
+    // not UTC, because STRs generated at 02:30 GST would otherwise reject
+    // a valid same-day transaction.
+    var todayUae = uaeDateOnly();
+    if (iso > todayUae) {
+      console.warn('[goAML] Future date rejected: ' + iso + ' (today GST: ' + todayUae + ')');
+      return '';
+    }
+    return iso;
   }
 
   function generateReportId() {
@@ -82,7 +104,15 @@ const GoAMLExport = (function() {
     const reporter = getReporterInfo();
     const reportId = generateReportId();
     const now = new Date().toISOString();
-    const dateOnly = now.slice(0, 10);
+    const dateOnly = uaeDateOnly();
+
+    // Validate the transaction date BEFORE building XML; refuse to silently
+    // fall back to today if the operator typed an invalid or future date.
+    var txDate = validateDate(data.transactionDate);
+    if (data.transactionDate && !txDate) {
+      throw new Error('[goAML STR] Invalid transaction date: "' + data.transactionDate + '". Please correct and retry.');
+    }
+    if (!txDate) txDate = dateOnly;
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <goAMLReport>
@@ -92,7 +122,7 @@ const GoAMLExport = (function() {
     <reportDate>${dateOnly}</reportDate>
     <reportStatus>NEW</reportStatus>
     <priority>${escapeXml(data.priority || 'HIGH')}</priority>
-    <currency>USD</currency>
+    <currency>${escapeXml(data.currency || 'AED')}</currency>
     <reportingCountry>AE</reportingCountry>
   </reportHeader>
 
@@ -129,11 +159,11 @@ const GoAMLExport = (function() {
   </suspiciousSubject>
 
   <transactionDetails>
-    <transactionDate>${escapeXml(validateDate(data.transactionDate) || dateOnly)}</transactionDate>
+    <transactionDate>${escapeXml(txDate)}</transactionDate>
     <transactionType>${escapeXml(data.transactionType || 'PURCHASE')}</transactionType>
     <amount>${escapeXml(String(data.amount || '0'))}</amount>
-    <currency>${escapeXml(data.currency || 'USD')}</currency>
-    <amountLocal>${escapeXml(String(data.amountLocal || ''))}</amountLocal>
+    <currency>${escapeXml(data.currency || 'AED')}</currency>
+    <amountLocal>${escapeXml(String(data.amountLocal || data.amount || ''))}</amountLocal>
     <currencyLocal>AED</currencyLocal>
     <conductedBy>${escapeXml(data.conductedBy || data.subjectName || '')}</conductedBy>
     <commodityType>${escapeXml(data.commodityType || 'PRECIOUS_METALS')}</commodityType>
@@ -177,7 +207,13 @@ ${(data.attachments || []).map(a => `    <attachment>
     const reporter = getReporterInfo();
     const reportId = generateReportId();
     const now = new Date().toISOString();
-    const dateOnly = now.slice(0, 10);
+    const dateOnly = uaeDateOnly();
+
+    var txDate = validateDate(data.transactionDate);
+    if (data.transactionDate && !txDate) {
+      throw new Error('[goAML CTR] Invalid transaction date: "' + data.transactionDate + '". Please correct and retry.');
+    }
+    if (!txDate) txDate = dateOnly;
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <goAMLReport>
@@ -208,7 +244,7 @@ ${(data.attachments || []).map(a => `    <attachment>
   </transactingParty>
 
   <cashTransaction>
-    <transactionDate>${escapeXml(validateDate(data.transactionDate) || dateOnly)}</transactionDate>
+    <transactionDate>${escapeXml(txDate)}</transactionDate>
     <cashAmount>${escapeXml(String(data.amount || '0'))}</cashAmount>
     <currency>${escapeXml(data.currency || 'AED')}</currency>
     <transactionType>${escapeXml(data.transactionType || 'PURCHASE')}</transactionType>

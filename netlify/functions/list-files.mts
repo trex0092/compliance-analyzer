@@ -16,10 +16,13 @@ export default async (req: Request, context: Context) => {
   if (!auth.ok) return auth.response ?? Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
-  const category = url.searchParams.get('category') || ''
+  const category = (url.searchParams.get('category') || '').replace(/[^a-zA-Z0-9_-]/g, '_')
 
   const store = getStore('compliance-uploads')
-  const prefix = category ? `${category}/` : undefined
+  // Scope the listing to the caller's namespace so it cannot enumerate
+  // other users' evidence. IDOR guard was the audit §1.8 IDOR finding.
+  const ownerId = auth.userId || 'unknown'
+  const prefix = category ? `user/${ownerId}/${category}/` : `user/${ownerId}/`
   const { blobs } = await store.list({ prefix })
 
   const files = await Promise.all(

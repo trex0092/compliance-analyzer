@@ -980,11 +980,23 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     }
   }
 
+  // CSV formula-injection guard for Google Drive uploads. The local-
+  // export helpers (csvSafe / csvSafeM) already do this; the Drive
+  // variants previously did not, so malicious circular titles or
+  // meeting references could execute as formulas when the file was
+  // opened in Excel or Sheets.
+  function _csvCell(v) {
+    var s = v == null ? '' : String(v);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
   async function saveCircularsToDrive() {
     const list = getCirculars();
     if (!list.length) { toast('No circulars to upload','error'); return; }
     if (typeof uploadToGDrive !== 'function') { toast('Google Drive not configured. Set up in Settings.','error'); return; }
-    const csv = [['#','Circular Reference','Subject','Month','Date'], ...list.map((c,i) => [i+1, c.ref, c.subject, c.month||'', c.date||''])].map(r => r.map(v => '"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+    const rows = [['#','Circular Reference','Subject','Month','Date'], ...list.map((c,i) => [i+1, c.ref, c.subject, c.month||'', c.date||''])];
+    const csv = rows.map(r => r.map(_csvCell).join(',')).join('\n');
     try {
       await uploadToGDrive('Circulars_' + new Date().toISOString().slice(0,10) + '.csv', '\ufeff' + csv, 'text/csv');
       toast('Circulars uploaded to Google Drive','success');
@@ -995,7 +1007,8 @@ th{background:${theme.stripe};color:white;font-size:8pt;text-transform:uppercase
     const list = getMeetings();
     if (!list.length) { toast('No meeting minutes to upload','error'); return; }
     if (typeof uploadToGDrive !== 'function') { toast('Google Drive not configured. Set up in Settings.','error'); return; }
-    const csv = [['#','Subject Reference','Month','Date'], ...list.map((m,i) => [i+1, m.ref, m.month||'', m.date||''])].map(r => r.map(v => '"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+    const rows = [['#','Subject Reference','Month','Date'], ...list.map((m,i) => [i+1, m.ref, m.month||'', m.date||''])];
+    const csv = rows.map(r => r.map(_csvCell).join(',')).join('\n');
     try {
       await uploadToGDrive('Meeting_Minutes_' + new Date().toISOString().slice(0,10) + '.csv', '\ufeff' + csv, 'text/csv');
       toast('Meeting minutes uploaded to Google Drive','success');

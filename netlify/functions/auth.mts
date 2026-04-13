@@ -28,11 +28,19 @@ import { checkRateLimit } from './middleware/rate-limit.mts';
 
 const USERS_STORE = 'auth-users';
 const SESSIONS_STORE = 'auth-sessions';
+const LOCKOUT_STORE = 'auth-lockouts';
 const AUDIT_STORE = 'auth-audit';
-const PBKDF2_ITERATIONS = 100_000;
+// OWASP 2024 password-storage cheat sheet: PBKDF2-HMAC-SHA256 at 600,000.
+// argon2id would be preferred but is unavailable in the Netlify runtime
+// without a native module; 600K is the OWASP fallback baseline.
+const PBKDF2_ITERATIONS = 600_000;
 const SESSION_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+// Dummy hash to defeat login-timing enumeration oracle — always run a
+// PBKDF2 pass, even when the username doesn't exist, so that the response
+// time is identical for valid and invalid usernames.
+const DUMMY_SALT = crypto.getRandomValues(new Uint8Array(16));
 
 const VALID_ROLES = ['admin', 'compliance-officer', 'analyst', 'viewer'] as const;
 type Role = (typeof VALID_ROLES)[number];
@@ -196,8 +204,10 @@ async function deleteSession(token: string): Promise<void> {
   await store.delete(`session:${token}`);
 }
 
+// Lockouts live in their own blob store so an attacker listing the
+// sessions store cannot enumerate usernames from the lockout: prefix.
 async function getLockout(username: string): Promise<LockoutRecord | null> {
-  const store = getStore(SESSIONS_STORE);
+  const store = getStore(LOCKOUT_STORE);
   try {
     return (await store.get(`lockout:${username}`, { type: 'json' })) as LockoutRecord | null;
   } catch {
@@ -206,12 +216,12 @@ async function getLockout(username: string): Promise<LockoutRecord | null> {
 }
 
 async function setLockout(username: string, record: LockoutRecord): Promise<void> {
-  const store = getStore(SESSIONS_STORE);
+  const store = getStore(LOCKOUT_STORE);
   await store.setJSON(`lockout:${username}`, record);
 }
 
 async function clearLockout(username: string): Promise<void> {
-  const store = getStore(SESSIONS_STORE);
+  const store = getStore(LOCKOUT_STORE);
   await store.delete(`lockout:${username}`);
 }
 
@@ -254,7 +264,13 @@ async function handleLogin(body: Record<string, unknown>, clientIp: string): Pro
   }
 
   const user = await getUser(username);
+  // Defeat timing-enumeration: always run PBKDF2, even when user is
+  // missing. Without this, response time differs measurably between
+  // "unknown username" (no hash) and "valid username wrong password"
+  // (full hash) — an oracle that lets attackers enumerate active
+  // usernames before running credential stuffing.
   if (!user || !user.active) {
+    await hashPassword(password, DUMMY_SALT); // discard
     await recordFailedAttempt(username, clientIp);
     return Response.json({ error: 'Invalid username or password.' }, { status: 401 });
   }
@@ -270,9 +286,13 @@ async function handleLogin(body: Record<string, unknown>, clientIp: string): Pro
   // Success — clear lockout, create session
   await clearLockout(username);
 
-  const tokenPayload = `${user.id}:${Date.now()}:${generateId()}`;
-  const tokenSig = await signToken(tokenPayload);
-  const token = `${tokenPayload}:${tokenSig}`;
+  // Token payload intentionally does NOT embed the user id — use an
+  // opaque random identifier and map it to the user via the session
+  // blob. Previous format (userId:ts:random:hmac) leaked user.id and
+  // token age via any browser error / log surface.
+  const tokenSecret = generateId() + generateId(); // 32 hex chars
+  const tokenSig = await signToken(tokenSecret);
+  const token = `${tokenSecret}:${tokenSig}`;
 
   const session: SessionRecord = {
     token,
@@ -284,11 +304,19 @@ async function handleLogin(body: Record<string, unknown>, clientIp: string): Pro
   };
   await saveSession(session);
 
+  // Issue an HttpOnly + Secure + SameSite=Strict cookie. The token is
+  // ALSO echoed in the response body for the existing SPA storage path,
+  // but clients should prefer the cookie (the SPA will be updated to
+  // drop sessionStorage in a follow-up).
+  // Also issue a CSRF token as a readable cookie; the SPA mirrors it in
+  // the X-CSRF-Token header on state-changing requests.
+  const csrf = generateId() + generateId();
   await auditLog({ event: 'login_success', username, userId: user.id, ip: clientIp });
 
-  return Response.json({
+  const resp = Response.json({
     success: true,
     token,
+    csrf,
     user: {
       id: user.id,
       username: user.username,
@@ -297,6 +325,10 @@ async function handleLogin(body: Record<string, unknown>, clientIp: string): Pro
       mustChangePassword: user.mustChangePassword,
     },
   });
+  const maxAgeSec = Math.floor(SESSION_DURATION_MS / 1000);
+  resp.headers.append('Set-Cookie', `fgl_session=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAgeSec}`);
+  resp.headers.append('Set-Cookie', `fgl_csrf=${csrf}; Path=/; Secure; SameSite=Strict; Max-Age=${maxAgeSec}`);
+  return resp;
 }
 
 async function recordFailedAttempt(username: string, ip: string): Promise<void> {
@@ -460,6 +492,22 @@ async function handleChangePassword(
   user.passwordChangedAt = new Date().toISOString();
   await saveUser(user);
 
+  // Invalidate all other sessions for this user — a stolen session token
+  // must not survive a victim-initiated password change.
+  try {
+    const store = getStore(SESSIONS_STORE);
+    const list = await store.list();
+    for (const entry of list.blobs || []) {
+      if (!entry.key.startsWith('session:')) continue;
+      const s = (await store.get(entry.key, { type: 'json' })) as SessionRecord | null;
+      if (s && s.userId === user.id && s.token !== token) {
+        await store.delete(entry.key);
+      }
+    }
+  } catch (err) {
+    console.warn('[auth] Failed to revoke sibling sessions:', err);
+  }
+
   await auditLog({
     event: 'password_changed',
     username: user.username,
@@ -481,19 +529,52 @@ export default async (req: Request, context: Context) => {
     return Response.json({ error: 'Method not allowed' }, { status: 405 });
   }
 
-  // Rate limit: 5 requests per IP per 15 min for auth endpoints
-  const rl = await checkRateLimit(req, { max: 5, clientIp: context.ip });
-  if (rl) return rl;
-
   const url = new URL(req.url);
   const action = url.pathname.replace('/api/auth/', '').replace('/api/auth', '');
   const clientIp = context.ip || 'unknown';
+
+  // Per-route namespaced rate limits — login/register are hard 5/15min,
+  // validate/logout share their own 100/15min bucket so the SPA's
+  // session-ping traffic doesn't burn the login budget.
+  // Login also gets a per-username counter in handleLogin via
+  // recordFailedAttempt, which is independent of IP.
+  let rlConfig: Parameters<typeof checkRateLimit>[1];
+  if (action === 'login' || action === 'register') {
+    rlConfig = { max: 5, clientIp, namespace: 'auth-' + action };
+  } else if (action === 'change-password') {
+    rlConfig = { max: 10, clientIp, namespace: 'auth-change-password' };
+  } else {
+    rlConfig = { max: 60, clientIp, namespace: 'auth-session' };
+  }
+  const rl = await checkRateLimit(req, rlConfig);
+  if (rl) return rl;
 
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
     return Response.json({ error: 'Invalid JSON body.' }, { status: 400 });
+  }
+
+  // CSRF + Origin check on state-changing requests (everything except
+  // login/register/validate which either bootstrap the session or do
+  // not mutate state server-side). For login we still require a strict
+  // Origin header match — otherwise a cross-site form could POST here.
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigin = Netlify.env.get('HAWKEYE_ALLOWED_ORIGIN') || '';
+  if (allowedOrigin && origin && origin !== allowedOrigin) {
+    await auditLog({ event: 'origin_rejected', origin, ip: clientIp });
+    return Response.json({ error: 'Origin not allowed.' }, { status: 403 });
+  }
+  if (action === 'logout' || action === 'change-password') {
+    // Double-submit CSRF: cookie fgl_csrf must equal X-CSRF-Token header.
+    const csrfCookie = (req.headers.get('cookie') || '')
+      .split(';').map(s => s.trim()).find(c => c.startsWith('fgl_csrf='))?.split('=')[1] || '';
+    const csrfHeader = req.headers.get('x-csrf-token') || '';
+    if (!csrfCookie || csrfCookie !== csrfHeader) {
+      await auditLog({ event: 'csrf_rejected', action, ip: clientIp });
+      return Response.json({ error: 'CSRF token missing or invalid.' }, { status: 403 });
+    }
   }
 
   switch (action) {

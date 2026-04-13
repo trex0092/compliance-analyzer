@@ -186,25 +186,68 @@ interface StoredBrainEvent {
   };
 }
 
+// Derive a set of per-day prefixes covering the requested date range.
+// The brain-events blob keys are written with a yyyy-mm-dd prefix (see
+// brain.mts persistEvent). Scanning by prefix turns the previous
+// O(total-blobs-in-10-years) scan into O(days-in-window × daily-volume),
+// which is the difference between a Lambda timeout and a fast response.
+function datePrefixes(fromIso?: string, toIso?: string): string[] {
+  const start = fromIso ? new Date(fromIso) : new Date(Date.now() - 30 * 86_400_000);
+  const end = toIso ? new Date(toIso) : new Date();
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+  if (end < start) return [];
+  const prefixes: string[] = [];
+  const cursor = new Date(start);
+  cursor.setUTCHours(0, 0, 0, 0);
+  let safetyGuard = 0;
+  while (cursor <= end && safetyGuard < 400) {
+    prefixes.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+    safetyGuard++;
+  }
+  return prefixes;
+}
+
+// Hard ceilings to prevent the inspector from ever scanning the whole
+// store regardless of user input. Matches the regulator-facing SLA.
+const MAX_KEYS_SCANNED = 2_000;
+
 async function fetchBrainEvents(query: QueryRequest): Promise<StoredBrainEvent[]> {
   const store = getStore(EVENT_STORE);
-  const listing = await store.list();
+  const limit = Math.min(query.limit ?? 100, 500);
   const out: StoredBrainEvent[] = [];
-  for (const entry of listing.blobs) {
+  const prefixes = datePrefixes(query.filter?.fromIso, query.filter?.toIso);
+  const prefixList = prefixes.length ? prefixes : [''];
+  let scanned = 0;
+  for (const prefix of prefixList) {
+    if (out.length >= limit || scanned >= MAX_KEYS_SCANNED) break;
+    let listing;
     try {
-      const blob = await store.get(entry.key, { type: 'json' });
-      if (!blob || typeof blob !== 'object') continue;
-      const stored = blob as StoredBrainEvent;
-      if (!stored.at || !stored.event) continue;
-      if (query.filter?.fromIso && stored.at < query.filter.fromIso) continue;
-      if (query.filter?.toIso && stored.at > query.filter.toIso) continue;
-      if (query.filter?.kind && stored.event.kind !== query.filter.kind) continue;
-      if (query.filter?.severity && stored.event.severity !== query.filter.severity) continue;
-      out.push(stored);
-      if (out.length >= (query.limit ?? 100)) break;
-    } catch {
-      /* skip malformed entries */
+      listing = await (store as any).list(prefix ? { prefix } : undefined);
+    } catch (err) {
+      console.warn('[inspector] list failed for prefix ' + prefix, err);
+      continue;
     }
+    for (const entry of listing.blobs || []) {
+      if (out.length >= limit || scanned >= MAX_KEYS_SCANNED) break;
+      scanned++;
+      try {
+        const blob = await store.get(entry.key, { type: 'json' });
+        if (!blob || typeof blob !== 'object') continue;
+        const stored = blob as StoredBrainEvent;
+        if (!stored.at || !stored.event) continue;
+        if (query.filter?.fromIso && stored.at < query.filter.fromIso) continue;
+        if (query.filter?.toIso && stored.at > query.filter.toIso) continue;
+        if (query.filter?.kind && stored.event.kind !== query.filter.kind) continue;
+        if (query.filter?.severity && stored.event.severity !== query.filter.severity) continue;
+        out.push(stored);
+      } catch {
+        /* skip malformed entries */
+      }
+    }
+  }
+  if (scanned >= MAX_KEYS_SCANNED) {
+    console.warn('[inspector] fetchBrainEvents hit MAX_KEYS_SCANNED=' + MAX_KEYS_SCANNED + '; narrow the date range');
   }
   return out.sort((a, b) => b.at.localeCompare(a.at));
 }

@@ -29,34 +29,60 @@ export interface RateLimitConfig {
   max?: number;
   /** Pass context.ip from Netlify Functions for reliable client IP. */
   clientIp?: string;
+  /**
+   * Namespace key — prevents route pollution. Every endpoint should pass
+   * a distinct namespace (e.g. 'auth-login', 'auth-validate', 'approvals',
+   * 'ai-proxy') so that a high-volume general endpoint cannot burn the
+   * auth-route budget.
+   */
+  namespace?: string;
+  /**
+   * Optional extra subject key — e.g. the username for per-account login
+   * brute-force detection. Combined with the IP bucket.
+   */
+  subject?: string;
 }
 
 /**
- * Sanitize an IP string into a safe Blob key.
+ * Sanitize an arbitrary string into a safe Blob key fragment.
  * Blob keys must avoid special characters.
  */
-function ipToKey(ip: string): string {
-  return 'rl:' + ip.replace(/[^a-zA-Z0-9.:_-]/g, '_').slice(0, 64);
+function safeKey(s: string): string {
+  return s.replace(/[^a-zA-Z0-9.:_-]/g, '_').slice(0, 64);
 }
 
-async function getEntry(key: string): Promise<RateLimitEntry | null> {
+function composeKey(namespace: string, subject: string | undefined, rawIp: string): string {
+  const ns = safeKey(namespace || 'default');
+  const subj = subject ? safeKey(subject) : '';
+  const ip = safeKey(rawIp);
+  return subj ? `rl:${ns}:${ip}:${subj}` : `rl:${ns}:${ip}`;
+}
+
+async function getEntryWithEtag(key: string): Promise<{ data: RateLimitEntry | null; etag: string | null }> {
   try {
     const store = getStore(BLOB_STORE_NAME);
-    const data = await store.get(key, { type: 'json' });
-    return data as RateLimitEntry | null;
+    // getWithMetadata returns { data, etag } — use for CAS on setJSON.
+    // Some Netlify Blobs SDK versions type this differently; widen to any.
+    const result: any = await (store as any).getWithMetadata(key, { type: 'json' });
+    if (!result) return { data: null, etag: null };
+    return { data: (result.data ?? null) as RateLimitEntry | null, etag: (result.etag ?? null) as string | null };
   } catch {
-    // Blobs unavailable — use memory fallback
-    return memoryStore.get(key) ?? null;
+    return { data: memoryStore.get(key) ?? null, etag: null };
   }
 }
 
-async function setEntry(key: string, entry: RateLimitEntry): Promise<void> {
+async function setEntryCas(key: string, entry: RateLimitEntry, etag: string | null): Promise<boolean> {
   try {
     const store = getStore(BLOB_STORE_NAME);
-    await store.setJSON(key, entry);
+    // onlyIfMatch enforces compare-and-swap; if another concurrent request
+    // already wrote a newer value, the write fails and we retry.
+    const opts: any = etag ? { onlyIfMatch: etag } : { onlyIfNew: true };
+    const ok: any = await (store as any).setJSON(key, entry, opts);
+    // Older SDKs return void on success and throw on conflict.
+    return ok !== false;
   } catch {
-    // Blobs unavailable — use memory fallback
     memoryStore.set(key, entry);
+    return true;
   }
 }
 
@@ -64,7 +90,7 @@ export async function checkRateLimit(
   req: Request,
   config: RateLimitConfig = {}
 ): Promise<Response | null> {
-  const { windowMs = 15 * 60 * 1000, max = 100 } = config;
+  const { windowMs = 15 * 60 * 1000, max = 100, namespace = 'default', subject } = config;
 
   // Prefer explicit clientIp (from Netlify context.ip — cannot be spoofed)
   // over X-Forwarded-For (can be spoofed by attackers).
@@ -72,19 +98,34 @@ export async function checkRateLimit(
     config.clientIp ||
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     'unknown';
-  const key = ipToKey(rawIp);
+  const key = composeKey(namespace, subject, rawIp);
   const now = Date.now();
 
-  let entry = await getEntry(key);
-  if (!entry || now - entry.windowStart > windowMs) {
-    entry = { windowStart: now, count: 0 };
+  // Retry loop on CAS conflict — prevents the racy count++ / setJSON
+  // pattern from letting two concurrent requests each see count=4 and
+  // both write count=5 (so the real value 6 is never observed).
+  let entry: RateLimitEntry | null = null;
+  let blocked = false;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const { data, etag } = await getEntryWithEtag(key);
+    const current = !data || now - data.windowStart > windowMs
+      ? { windowStart: now, count: 0 }
+      : { windowStart: data.windowStart, count: data.count };
+    current.count++;
+    const wrote = await setEntryCas(key, current, etag);
+    if (wrote) { entry = current; break; }
+  }
+  if (!entry) {
+    // If we couldn't CAS after retries, fail closed — safer to return 429
+    // than to silently let the attacker through.
+    return Response.json(
+      { error: 'Rate limit state unavailable; request rejected.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(windowMs / 1000)) } }
+    );
   }
 
-  entry.count++;
-  await setEntry(key, entry);
-
   if (entry.count > max) {
-    console.warn(`[RATE-LIMIT] Blocked ${rawIp} — ${entry.count} requests in window`);
+    console.warn(`[RATE-LIMIT] Blocked ${rawIp} on ${namespace}${subject ? '/' + subject : ''} — ${entry.count} requests in window`);
     return Response.json(
       { error: 'Too many requests, please try again later.' },
       {

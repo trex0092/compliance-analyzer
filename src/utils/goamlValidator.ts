@@ -203,6 +203,10 @@ export function validateCTR(xml: string): ValidationResult {
     }
   }
 
+  // FDL Art.29 no-tipping-off invariant applies to every filing, including
+  // CTR. Previously this check ran only on STR/SAR/DPMSR/CNMR.
+  checkNoTippingOff(xml, errors);
+
   return { valid: errors.length === 0, errors, warnings };
 }
 

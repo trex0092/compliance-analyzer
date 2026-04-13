@@ -134,16 +134,35 @@ export default async (req: Request, context: Context) => {
     );
   }
 
-  // Validate path — prevent SSRF
-  if (!path || !config.allowedPaths.some((p) => path.startsWith(p))) {
+  // Validate path — prevent SSRF. Exact match on the pathname, and
+  // reject any path that contains a query string, fragment, or
+  // encoded segment that could smuggle a different host.
+  if (!path || typeof path !== 'string') {
+    return Response.json({ error: 'Path required.' }, { status: 400 });
+  }
+  let parsedTarget: URL;
+  try {
+    parsedTarget = new URL(path, config.baseUrl);
+  } catch {
+    return Response.json({ error: 'Invalid path.' }, { status: 400 });
+  }
+  if (parsedTarget.origin !== new URL(config.baseUrl).origin) {
+    return Response.json({ error: 'Path must not change origin.' }, { status: 400 });
+  }
+  // Exact pathname match — no more prefix-based SSRF surface.
+  if (!config.allowedPaths.includes(parsedTarget.pathname)) {
     return Response.json(
-      { error: `Path "${path}" not allowed for ${providerName}. Allowed: ${config.allowedPaths.join(', ')}` },
+      { error: `Path "${parsedTarget.pathname}" not allowed for ${providerName}. Allowed: ${config.allowedPaths.join(', ')}` },
       { status: 400 }
     );
   }
+  // Drop any query string the caller supplied — only our server-side
+  // code adds query params (gemini key).
+  parsedTarget.search = '';
+  parsedTarget.hash = '';
 
   // Build target URL
-  let targetUrl = `${config.baseUrl}${path}`;
+  let targetUrl = parsedTarget.toString();
 
   // Gemini uses API key as query param
   if (providerName.toLowerCase() === 'gemini') {
@@ -174,23 +193,30 @@ export default async (req: Request, context: Context) => {
       signal: AbortSignal.timeout(60_000), // 60s timeout for AI requests
     });
 
-    // Stream response if requested and upstream supports it
+    // Never reflect the upstream Content-Type verbatim — the proxy
+    // accepts only JSON payloads and SSE streams. Force a known value
+    // plus nosniff so a compromised upstream can't return text/html.
+    const upstreamCT = (upstreamRes.headers.get('Content-Type') || '').toLowerCase();
+    const isSse = upstreamCT.startsWith('text/event-stream');
+
     if (stream && upstreamRes.body) {
       return new Response(upstreamRes.body, {
         status: upstreamRes.status,
         headers: {
-          'Content-Type': upstreamRes.headers.get('Content-Type') || 'text/event-stream',
+          'Content-Type': isSse ? 'text/event-stream' : 'application/json',
           'Cache-Control': 'no-cache',
+          'X-Content-Type-Options': 'nosniff',
         },
       });
     }
 
-    // Non-streaming: forward the response
     const responseBody = await upstreamRes.text();
     return new Response(responseBody, {
       status: upstreamRes.status,
       headers: {
-        'Content-Type': upstreamRes.headers.get('Content-Type') || 'application/json',
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store',
       },
     });
   } catch (err) {
