@@ -42,10 +42,18 @@ window.addEventListener('unhandledrejection', function(e) {
   e.preventDefault();
 });
 </script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onerror="console.warn('jsPDF CDN failed — PDF export unavailable')"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" onerror="console.warn('EmailJS CDN failed — email features unavailable')"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" onerror="console.warn('Chart.js CDN failed — charts unavailable')"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" onerror="console.warn('JSZip CDN failed — ZIP export will use fallback')"></script>
+<!--
+  Vendor CDN scripts. crossorigin="anonymous" is set as a prerequisite
+  for Subresource Integrity (SRI). Integrity hashes should be computed
+  at build/CI time via tools/compute-sri.sh and injected by the deploy
+  pipeline — they are not hard-coded here because the CDN may serve a
+  different build at the pinned version tag over time (mangled vs
+  non-mangled minifiers, for example).
+-->
+<script defer crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onerror="console.warn('jsPDF CDN failed — PDF export unavailable')"></script>
+<script defer crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" onerror="console.warn('EmailJS CDN failed — email features unavailable')"></script>
+<script defer crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" onerror="console.warn('Chart.js CDN failed — charts unavailable')"></script>
+<script defer crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" onerror="console.warn('JSZip CDN failed — ZIP export will use fallback')"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Montserrat:wght@200;300;400;500;600&family=Cinzel:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
@@ -579,6 +587,17 @@ document.addEventListener('DOMContentLoaded', function(){
     </div>
 
     <!-- ⚡ GLOBAL COMPLIANCE STATUS BAR — auto-refreshes every 30s -->
+    <style>
+      /* Mobile tweaks so the 8 KPI tiles don't overflow on small screens. */
+      @media (max-width: 780px) {
+        #globalStatusBar { padding: 6px 8px !important; }
+        #globalStatusBar .gsb-tile { padding: 2px 6px !important; font-size: 9px !important; }
+        #globalStatusBar .gsb-label { display: none !important; }
+      }
+      @media (max-width: 480px) {
+        #globalStatusBar .gsb-tile span:first-child { font-size: 8px !important; letter-spacing: 0.5px !important; }
+      }
+    </style>
     <div id="globalStatusBar" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px 0;padding:8px 12px;background:#0d1117;border:1px solid #21262d;border-radius:6px;font-family:'Inter',system-ui,sans-serif;align-items:center">
       <span style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;margin-right:6px">⚡ Live Status</span>
       <div class="gsb-tile" data-gsb="approvals" style="display:flex;align-items:center;gap:5px;padding:3px 8px;background:#161b22;border:1px solid #2a2a2a;border-left:3px solid #4A8FC1;border-radius:3px;font-size:10px;cursor:pointer" onclick="switchTab('approvals')" title="Click to open Approvals">
@@ -648,6 +667,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="tab" data-action="switchTab" data-arg="metalstrading">◈ Trading</div>
       <div class="tab" data-action="switchTab" data-arg="warroom">🎯 War Room</div>
       <div class="tab" data-action="switchTab" data-arg="customer360">🗂 Customer 360</div>
+      <div class="tab" data-action="switchTab" data-arg="insights">📊 Insights</div>
       <div class="tab" data-action="switchTab" data-arg="esg">🌱 ESG</div>
       <!-- Data Upload removed -->
     </div>
@@ -2720,7 +2740,7 @@ Examples:
           <button class="mt-metal-tab" data-metal="XAG" data-action="mtSelectMetal" data-arg="XAG">SILVER</button>
           <button class="mt-metal-tab" data-metal="XPT" data-action="mtSelectMetal" data-arg="XPT">PLATINUM</button>
           <button class="mt-metal-tab" data-metal="XPD" data-action="mtSelectMetal" data-arg="XPD">PALLADIUM</button>
-          <span style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:#d4a843;background:rgba(212,168,67,0.12);padding:3px 10px;border-radius:4px;margin-left:8px">SIMULATION</span>
+          <span id="mtLiveBadge" style="font-size:9px;font-weight:700;letter-spacing:1.5px;padding:3px 10px;border-radius:4px;margin-left:8px;background:rgba(212,168,67,0.12);color:#d4a843" title="Live spot price feed status">SIM</span>
           <span id="mtGsRatio" style="font-size:10px;color:#8b949e;margin-left:8px"></span>
           <span id="mtTickCount" style="font-size:10px;color:#484f58;margin-left:4px">Tick #0</span>
           <button id="mtLiveBtn" data-action="mtToggleRunning" style="margin-left:auto;padding:8px 20px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;border:none;letter-spacing:1px;background:#238636;color:#fff">START LIVE</button>
@@ -2904,6 +2924,24 @@ Examples:
       </div>
       <div id="customer360Container" style="font-family:'Inter',system-ui,sans-serif">
         <div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Select a customer above to open their 360° view.</div>
+      </div>
+    </div>
+
+    <!-- 📊 MLRO INSIGHTS TAB -->
+    <div id="tab-insights" class="tab-content">
+      <div class="card" style="margin-bottom:12px">
+        <div class="top-bar">
+          <span class="sec-title">📊 MLRO Insights — geo-risk · data quality · workload · rollup · timeline</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-blue" onclick="insightsRefresh()">🔄 Refresh</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">
+          FDL Art.19-21 · Cabinet Res 134/2025 Art.5,19 · FATF Rec.1 · Wolfsberg Country Risk 2023.
+        </div>
+      </div>
+      <div id="insightsContainer" style="font-family:'Inter',system-ui,sans-serif">
+        <div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Click 🔄 Refresh to compute the MLRO insights view.</div>
       </div>
     </div>
 
@@ -3148,6 +3186,7 @@ Examples:
 <script src="esg-portfolio-client.js?v=20260413"></script>
 <script src="customer-360-client.js?v=20260413"></script>
 <script src="str-drafter-client.js?v=20260413"></script>
+<script src="mlro-insights-client.js?v=20260413"></script>
 <script src="global-status-bar.js?v=20260413"></script>
 <script src="app-boot.js?v=20260409"></script>
 </body>
