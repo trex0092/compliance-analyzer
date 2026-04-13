@@ -938,6 +938,66 @@
         { type: 'create_asana_task', template: 'compliance_query_response', priority: 'high' },
         { type: 'email_alert', subject: 'PDPL erasure request', message: 'Right-to-erasure request. Confirm no AML 10-year retention conflict (UAE FDL Art.24) before deletion. UAE PDPL Art.14.' }
       ]
+    },
+    // ── Asana Weaponization Pass — STR 7-subtask lifecycle + SLA breach auto-escalation ──
+    //
+    // These rules bridge the legacy workflow engine to the new TypeScript
+    // services at src/services/strSubtaskLifecycle.ts and
+    // src/services/asanaSlaAutoEscalation.ts. The SPA fires these triggers
+    // via WorkflowEngine.processTrigger('str_drafted', ...) /
+    // processTrigger('sla_breach', ...) when it drafts an STR or when a
+    // task crosses its SLA, and the engine fans out Asana tasks for every
+    // stage. This is the side that survives without the React bundle —
+    // if the SPA is closed but a background cron fires these events, the
+    // tasks still land in Asana.
+    //
+    // Regulatory basis:
+    //   FDL No.10/2025 Art.26-27 (STR filing obligations)
+    //   FDL No.10/2025 Art.29    (no tipping off — case id, not entity name)
+    //   Cabinet Res 134/2025 Art.19 (four-eyes internal review)
+    //   Cabinet Res 74/2020 Art.4-7 (24h EOCN freeze + 5bd CNMR)
+    //   MoE Circular 08/AML/2021   (DPMS / goAML submission chain)
+    {
+      id: 'wf_str_drafted_lifecycle', name: 'STR Drafted → Fan-out 7-Subtask Lifecycle', enabled: true,
+      trigger: 'str_drafted', condition: {},
+      actions: [
+        // Seven stage tasks mirror strSubtaskLifecycle.STR_SUBTASK_STAGES.
+        // Templates are hints for executeCreateAsanaTask — if the template
+        // is unknown the executor falls back to a generic payload.
+        { type: 'create_asana_task', template: 'str_mlro_review', priority: 'high' },
+        { type: 'create_asana_task', template: 'str_four_eyes', priority: 'high' },
+        { type: 'create_asana_task', template: 'str_goaml_xml', priority: 'high' },
+        { type: 'create_asana_task', template: 'str_submit_fiu', priority: 'high' },
+        { type: 'create_asana_task', template: 'str_retain_10y', priority: 'medium' },
+        { type: 'create_asana_task', template: 'str_monitor_ack', priority: 'medium' },
+        { type: 'create_asana_task', template: 'str_close', priority: 'low' },
+        { type: 'browser_notify', title: 'STR Lifecycle Started', message: 'Seven-stage STR lifecycle dispatched for case {caseId}. Ref: FDL Art.26-27, Cabinet Res 134/2025 Art.19.' }
+      ]
+    },
+    {
+      id: 'wf_sla_breach_escalate', name: 'SLA Breach → Auto-Escalate', enabled: true,
+      trigger: 'sla_breach', condition: {},
+      actions: [
+        // The TypeScript service asanaSlaAutoEscalation.ts already picks
+        // the right tier (CO → MLRO → BOARD → REGULATOR). The legacy
+        // engine just creates a breakglass task and notifies. Two action
+        // paths are intentional — if the SPA is offline the legacy path
+        // still lands the escalation in Asana.
+        { type: 'create_asana_task', template: 'sla_breach_escalation', priority: 'high' },
+        { type: 'email_alert', subject: 'SLA BREACH — Escalation Required', message: 'Task {breachedTaskTitle} breached its SLA by {minutesOverdue} minutes. Auto-escalated to {tier}. Ref: {regulatory}. Do NOT tip off the subject (FDL Art.29).' },
+        { type: 'browser_notify', title: 'SLA Breach — ' + '{tier}', message: '{breachedTaskTitle} is {minutesOverdue}m overdue. Ref: {regulatory}.' }
+      ]
+    },
+    {
+      id: 'wf_kanban_blocked_column', name: 'Kanban "Blocked" Column — Escalate on Entry', enabled: true,
+      trigger: 'kanban_blocked', condition: {},
+      actions: [
+        // Fires when a task lands in the Kanban "Blocked" column (via the
+        // SPA drag-drop or the Asana section write-back path). Creates a
+        // blockage-resolution task so no work sits unblocked silently.
+        { type: 'create_asana_task', template: 'blockage_resolution', priority: 'high' },
+        { type: 'browser_notify', title: 'Task Blocked', message: '{taskName} moved to Blocked. Assign resolver within 24h.' }
+      ]
     }
   ];
 
@@ -1410,7 +1470,11 @@
     training_overdue: 'Training Overdue',
     scheduled_digest: 'Scheduled Digest',
     regulatory_change: 'Regulatory Change',
-    alert_escalation: 'Alert Escalation'
+    alert_escalation: 'Alert Escalation',
+    // Asana weaponization pass triggers
+    str_drafted: 'STR Drafted — 7-Subtask Lifecycle',
+    sla_breach: 'SLA Breach — Auto-Escalate',
+    kanban_blocked: 'Kanban Blocked Column Entry'
   };
 
   const ACTION_LABELS = {

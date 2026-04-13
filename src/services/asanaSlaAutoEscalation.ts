@@ -17,16 +17,8 @@
  *   - MoE Circular 08/AML/2021 (DPMS deadlines)
  */
 
-import {
-  asanaRequestWithRetry,
-  isAsanaConfigured,
-  type AsanaTaskPayload,
-} from './asanaClient';
-import {
-  type SlaPlan,
-  type RegulatoryDeadlineKind,
-  evaluateSlaStatus,
-} from './asanaSlaEnforcer';
+import { asanaRequestWithRetry, isAsanaConfigured, type AsanaTaskPayload } from './asanaClient';
+import { type SlaPlan, type RegulatoryDeadlineKind, evaluateSlaStatus } from './asanaSlaEnforcer';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,16 +85,14 @@ export function chooseEscalationTier(ctx: EscalationContext): EscalationDecision
         tier: 'BOARD',
         dueHours: 4,
         breakglass: true,
-        rationale:
-          'EOCN freeze breached — Cabinet Res 74/2020 Art.4. Board notification required.',
+        rationale: 'EOCN freeze breached — Cabinet Res 74/2020 Art.4. Board notification required.',
       };
     }
     return {
       tier: 'MLRO',
       dueHours: 1,
       breakglass: true,
-      rationale:
-        'EOCN freeze breach window — escalate to MLRO for immediate intervention.',
+      rationale: 'EOCN freeze breach window — escalate to MLRO for immediate intervention.',
     };
   }
 
@@ -131,9 +121,7 @@ export function chooseEscalationTier(ctx: EscalationContext): EscalationDecision
     BOARD: 'REGULATOR',
     REGULATOR: 'REGULATOR',
   };
-  const tier: EscalationTier = ctx.previousTier
-    ? promotionMap[ctx.previousTier]
-    : 'MLRO';
+  const tier: EscalationTier = ctx.previousTier ? promotionMap[ctx.previousTier] : 'MLRO';
 
   return {
     tier,
@@ -151,9 +139,7 @@ export function buildEscalationTaskPayload(
   ctx: EscalationContext,
   decision: EscalationDecision
 ): AsanaTaskPayload {
-  const dueOn = new Date(Date.now() + decision.dueHours * 3600_000)
-    .toISOString()
-    .slice(0, 10);
+  const dueOn = new Date(Date.now() + decision.dueHours * 3600_000).toISOString().slice(0, 10);
 
   const notes = [
     `ESCALATION — ${decision.tier} action required.`,

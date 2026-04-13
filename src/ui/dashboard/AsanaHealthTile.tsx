@@ -14,6 +14,12 @@ import {
   getAsanaHealthSnapshot,
   type AsanaHealthSnapshot,
 } from '../../services/asanaHealthTelemetry';
+import {
+  startRetryDrainLoop,
+  stopRetryDrainLoop,
+  getRetryDrainState,
+} from '../../services/retryDrainLoop';
+import { startToastStreamPoller } from '../../services/toastStreamPoller';
 
 const STATUS_COLORS: Record<AsanaHealthSnapshot['status'], string> = {
   unconfigured: '#8b949e',
@@ -42,7 +48,27 @@ export default function AsanaHealthTile() {
     };
     load();
     const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
+
+    // Start the client-side retry drain loop so pending Asana
+    // tasks don't pile up when the Netlify cron is not running
+    // or the user is mid-tab (T4.18). Idempotent — calling start
+    // twice is a no-op.
+    startRetryDrainLoop();
+
+    // Start the toast stream poller so server-originated toast
+    // events (from the Asana webhook receiver) flow into the
+    // SPA buffer without requiring a page reload.
+    startToastStreamPoller();
+
+    return () => {
+      clearInterval(interval);
+      // Intentionally NOT stopping the drain loop on unmount —
+      // it's a singleton across the tab lifetime. Stopping it
+      // here would break the background drain for users who
+      // navigate away from the dashboard.
+      void getRetryDrainState; // reference so import isn't stripped
+      void stopRetryDrainLoop;
+    };
   }, []);
 
   if (!snapshot) {
@@ -83,9 +109,7 @@ export default function AsanaHealthTile() {
           marginBottom: 8,
         }}
       >
-        <div style={{ fontSize: 12, color: '#8b949e', fontWeight: 600 }}>
-          ASANA SYNC
-        </div>
+        <div style={{ fontSize: 12, color: '#8b949e', fontWeight: 600 }}>ASANA SYNC</div>
         <span
           style={{
             padding: '2px 10px',
@@ -101,9 +125,7 @@ export default function AsanaHealthTile() {
           {label}
         </span>
       </div>
-      <div style={{ fontSize: 12, color: '#e6edf3', marginBottom: 8 }}>
-        {snapshot.summary}
-      </div>
+      <div style={{ fontSize: 12, color: '#e6edf3', marginBottom: 8 }}>{snapshot.summary}</div>
       <div
         style={{
           display: 'grid',
@@ -115,9 +137,7 @@ export default function AsanaHealthTile() {
       >
         <div>
           <div style={{ color: '#484f58', fontSize: 9, letterSpacing: 0.5 }}>RETRY</div>
-          <div style={{ color: '#e6edf3', fontWeight: 600 }}>
-            {snapshot.retryQueuePending}
-          </div>
+          <div style={{ color: '#e6edf3', fontWeight: 600 }}>{snapshot.retryQueuePending}</div>
         </div>
         <div>
           <div style={{ color: '#484f58', fontSize: 9, letterSpacing: 0.5 }}>FAILED</div>

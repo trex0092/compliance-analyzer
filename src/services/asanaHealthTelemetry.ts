@@ -24,11 +24,7 @@ import { isAsanaConfigured } from './asanaClient';
 // Types
 // ---------------------------------------------------------------------------
 
-export type AsanaHealthStatus =
-  | 'unconfigured'
-  | 'healthy'
-  | 'degraded'
-  | 'critical';
+export type AsanaHealthStatus = 'unconfigured' | 'healthy' | 'degraded' | 'critical';
 
 export interface AsanaHealthSnapshot {
   status: AsanaHealthStatus;
@@ -148,13 +144,11 @@ export function reduceAsanaHealth(inputs: AsanaHealthInputs): AsanaHealthSnapsho
 
   const { pending, failed } = inputs.retryQueue;
   const recentError =
-    inputs.lastError &&
-    now - new Date(inputs.lastError.atIso).getTime() < 15 * 60_000
+    inputs.lastError && now - new Date(inputs.lastError.atIso).getTime() < 15 * 60_000
       ? inputs.lastError
       : undefined;
   const recentRateLimit =
-    inputs.lastRateLimitAtIso &&
-    now - new Date(inputs.lastRateLimitAtIso).getTime() < 5 * 60_000
+    inputs.lastRateLimitAtIso && now - new Date(inputs.lastRateLimitAtIso).getTime() < 5 * 60_000
       ? inputs.lastRateLimitAtIso
       : undefined;
 

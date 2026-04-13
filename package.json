@@ -45,6 +45,7 @@
     "vitest": "^3.2.4"
   },
   "scripts": {
+    "setup": "node scripts/setup.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
