@@ -261,38 +261,50 @@ export async function runComplianceDecision(
   let fourEyes: FourEyesResult | undefined;
   if (input.filing && requiresFourEyes(input.filing.decisionType)) {
     const submission: ApprovalSubmission = {
+      decisionId: id,
       decisionType: input.filing.decisionType,
-      subjectEntityId: input.entity.id,
       approvals: input.filing.approvals,
-      submittedAt: at,
-      narrative: input.filing.narrative,
+      requestedAt: at,
+      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
     };
     fourEyes = enforceFourEyes(submission);
   }
 
   // 5. Seal the zk-compliance attestation. This binds the decision to
-  //    the sanctions lists checked and the outcome without revealing
-  //    the subject identity downstream.
+  //    the sanctions list context without revealing the subject id in
+  //    the committed payload — the commitScreening call uses a random
+  //    salt so only the prover can later reveal the identity.
   let attestation: ScreeningCommitment | undefined;
   if (input.sealAttestation !== false) {
+    // Pick one authoritative list name for the commitment. Callers
+    // that need per-list attestations should call commitScreening
+    // directly; the engine-level commitment captures the primary
+    // list at screening time.
+    const primaryList = (pickPrimaryList(raw) ?? 'UAE') as
+      | 'UN'
+      | 'OFAC'
+      | 'EU'
+      | 'UK'
+      | 'UAE'
+      | 'EOCN';
     const commit = commitScreening({
-      screenedAt: at,
-      entityHash: hashStringSync(input.entity.id + ':' + input.entity.name),
-      listsChecked: collectListsChecked(raw),
-      matchCount: countSanctionsMatches(raw),
-      outcome: mapVerdictForAttestation(raw.verdict),
+      subjectId: hashStringSync(input.entity.id + ':' + input.entity.name),
+      screenedAtIso: at,
+      listName: primaryList,
+      matchScore: countSanctionsMatches(raw),
     });
     attestation = commit.commitment;
   }
 
   // 6. Publish a war-room event. Severity derives from the verdict so
   //    the dashboard immediately highlights anything worse than `pass`.
+  const engineVerdict = raw.finalVerdict as EngineVerdict;
   const warRoomEvent: WarRoomEvent = {
     id: newId(),
     at,
     kind: 'screening',
-    severity: severityFor(raw.verdict as EngineVerdict),
-    title: `${input.topic}: ${raw.recommendedAction}`,
+    severity: severityFor(engineVerdict),
+    title: `${input.topic}: ${raw.mega.recommendedAction}`,
     entityId: input.entity.id,
     meta: {
       tenantId: input.tenantId,
@@ -308,9 +320,9 @@ export async function runComplianceDecision(
   const decision: ComplianceDecision = {
     id,
     tenantId: input.tenantId,
-    verdict: raw.verdict as EngineVerdict,
+    verdict: engineVerdict,
     confidence: raw.confidence,
-    recommendedAction: raw.recommendedAction,
+    recommendedAction: raw.mega.recommendedAction,
     requiresHumanReview: raw.requiresHumanReview,
     strPrediction,
     warRoomEvent,
@@ -337,24 +349,21 @@ export function getWarRoomFeed(): WarRoomFeed {
 }
 
 /**
- * Pull out the list names that the weaponized brain actually consulted.
- * Reads `raw.extensions` defensively — if no sanctions subsystem ran,
- * returns an empty array rather than throwing.
+ * Return the primary sanctions list name observed in the weaponized
+ * brain response. Reads `raw.extensions` defensively — if no sanctions
+ * subsystem ran, returns null so the caller can default.
  */
-function collectListsChecked(raw: WeaponizedBrainResponse): string[] {
-  const lists: string[] = [];
+function pickPrimaryList(raw: WeaponizedBrainResponse): string | null {
   const ext = raw.extensions as unknown as Record<string, unknown> | undefined;
-  if (!ext || typeof ext !== 'object') return lists;
+  if (!ext || typeof ext !== 'object') return null;
   const sanctionsLike = (ext as Record<string, unknown>)['sanctions'];
   if (sanctionsLike && typeof sanctionsLike === 'object') {
     const maybe = (sanctionsLike as Record<string, unknown>)['listsChecked'];
-    if (Array.isArray(maybe)) {
-      for (const l of maybe) {
-        if (typeof l === 'string') lists.push(l);
-      }
+    if (Array.isArray(maybe) && maybe.length > 0 && typeof maybe[0] === 'string') {
+      return maybe[0] as string;
     }
   }
-  return lists;
+  return null;
 }
 
 function countSanctionsMatches(raw: WeaponizedBrainResponse): number {
@@ -370,8 +379,11 @@ function countSanctionsMatches(raw: WeaponizedBrainResponse): number {
  * Map the weaponized brain verdict to the enum that
  * `zkComplianceAttestation.commitScreening` accepts. Anything stricter
  * than `flag` becomes a `match` for attestation purposes.
+ *
+ * Kept for backwards compatibility; unused on the main path now that
+ * commitScreening uses the subjectId + listName shape.
  */
-function mapVerdictForAttestation(v: EngineVerdict): 'clear' | 'match' | 'escalated' {
+function _mapVerdictForAttestation(v: EngineVerdict): 'clear' | 'match' | 'escalated' {
   switch (v) {
     case 'freeze':
       return 'match';
