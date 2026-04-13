@@ -38,6 +38,7 @@ import {
 } from './asanaClient';
 import { buildComplianceCustomFields } from './asanaCustomFields';
 import { addTaskLink } from './asanaTaskLinks';
+import { enrichAsanaTaskFromBrain, type EnrichableBrain } from './asanaBrainEnricher';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -81,6 +82,15 @@ export interface StrLifecycleContext {
   projectGid: string;
   /** ISO timestamp the STR was drafted (clock start). */
   draftedAtIso: string;
+  /**
+   * Optional brain response from megaBrain / weaponizedBrain. When
+   * supplied, every parent + subtask carries the verdict, confidence,
+   * subsystem readout, and stage-specific reasoning snippet so the
+   * MLRO sees the brain's rationale at every gate without leaving
+   * Asana. When omitted, the lifecycle dispatches exactly as before
+   * — brain enrichment is additive.
+   */
+  brain?: EnrichableBrain;
 }
 
 export interface StrSubtaskPayload {
@@ -172,6 +182,12 @@ function addBusinessDays(fromIso: string, days: number): string {
  * compliance-analyzer needing to mirror a dashboard surface.
  */
 export function buildStrParentTaskPayload(ctx: StrLifecycleContext): AsanaTaskPayload {
+  // Optional brain enrichment — when ctx.brain is supplied, merge the
+  // brain verdict/confidence into custom_fields and append a
+  // reasoning block to the notes. When omitted the payload is
+  // identical to the pre-enrichment shape (tests pin this).
+  const brainEnrichment = ctx.brain ? enrichAsanaTaskFromBrain(ctx.brain) : undefined;
+
   const notes = [
     'STR parent lifecycle task — do NOT close this task manually.',
     'It closes automatically when all seven subtasks are complete.',
@@ -189,21 +205,31 @@ export function buildStrParentTaskPayload(ctx: StrLifecycleContext): AsanaTaskPa
     '--- FDL Art.29 — NO TIPPING OFF ---',
     'This task is visible only to the compliance team. Never share',
     'subject identifiers, task name, or URL outside the team.',
+    ...(brainEnrichment ? ['', '---', brainEnrichment.notesBlock] : []),
   ].join('\n');
+
+  const baseCustomFields = buildComplianceCustomFields({
+    riskLevel: ctx.riskLevel,
+    verdict: 'escalate',
+    caseId: ctx.caseId,
+    deadlineType: 'STR',
+    daysRemaining: STAGE_DUE_DAYS.close,
+    regulationCitation: ctx.regulatoryBasis ?? 'FDL No.10/2025 Art.26-27',
+  });
+
+  // Merge brain custom fields on top of the base set. The brain's
+  // verdict may downgrade or upgrade the default 'escalate' slot
+  // (e.g. 'freeze' overrides 'escalate').
+  const customFields = brainEnrichment
+    ? { ...baseCustomFields, ...brainEnrichment.customFields }
+    : baseCustomFields;
 
   return {
     name: `[STR] ${ctx.caseId} — lifecycle`,
     notes,
     projects: [ctx.projectGid],
     due_on: addBusinessDays(ctx.draftedAtIso, STAGE_DUE_DAYS.close),
-    custom_fields: buildComplianceCustomFields({
-      riskLevel: ctx.riskLevel,
-      verdict: 'escalate',
-      caseId: ctx.caseId,
-      deadlineType: 'STR',
-      daysRemaining: STAGE_DUE_DAYS.close,
-      regulationCitation: ctx.regulatoryBasis ?? 'FDL No.10/2025 Art.26-27',
-    }),
+    custom_fields: customFields,
   };
 }
 
@@ -214,10 +240,16 @@ export function buildStrParentTaskPayload(ctx: StrLifecycleContext): AsanaTaskPa
  * order. Tests should assert the order because dashboards depend on it.
  */
 export function buildStrSubtaskPayloads(ctx: StrLifecycleContext): StrSubtaskPayload[] {
+  // When a brain response is supplied, compute per-stage enrichments
+  // so each subtask carries the matching subsystem readout in its
+  // notes. Pure — uses only the data we were given.
+  const brainEnrichment = ctx.brain ? enrichAsanaTaskFromBrain(ctx.brain) : undefined;
+
   return STR_SUBTASK_STAGES.map((stage) => {
     const label = STAGE_LABEL[stage];
     const noteBody = STAGE_NOTE_BODY[stage];
     const due = addBusinessDays(ctx.draftedAtIso, STAGE_DUE_DAYS[stage]);
+    const brainBlock = brainEnrichment?.stageEnrichments[stage];
     return {
       stage,
       name: `[${stage.toUpperCase()}] ${label} — ${ctx.caseId}`,
@@ -233,6 +265,7 @@ export function buildStrSubtaskPayloads(ctx: StrLifecycleContext): StrSubtaskPay
         'Regulatory basis: FDL No.10/2025 Art.26-27; Cabinet Res 134/2025 Art.19.',
         '',
         'FDL Art.29 — no tipping off. Do not contact the subject.',
+        ...(brainBlock ? ['', '---', '### Brain enrichment', brainBlock] : []),
       ].join('\n'),
       due_on: due,
     };

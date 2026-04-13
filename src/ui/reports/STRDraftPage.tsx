@@ -9,6 +9,9 @@ import { isAsanaConfigured } from '../../services/asanaClient';
 import { COMPANY_REGISTRY } from '../../domain/customers';
 import { STR_LIFECYCLE_DEPENDENCIES } from '../../services/asanaWorkflowAutomation';
 import DependencyDag, { type DagNode } from '../reasoning/DependencyDag';
+import BrainSubsystemDag from '../reasoning/BrainSubsystemDag';
+import BrainVerdictBadge from '../reasoning/BrainVerdictBadge';
+import type { EnrichableBrain } from '../../services/asanaBrainEnricher';
 
 // CRITICAL: FDL Art.29 — No Tipping Off
 // This page must ONLY be accessible to Compliance Officers and MLRO.
@@ -215,6 +218,67 @@ export default function STRDraftPage() {
           edges={STR_LIFECYCLE_DEPENDENCIES}
         />
       </div>
+
+      {/* Brain subsystem DAG — shows which megaBrain subsystems would
+          fire for this case. Uses a demo EnrichableBrain seeded from
+          the selected case's risk level so the MLRO sees the
+          reasoning pipeline before dispatching anything. Real brain
+          integration happens in a follow-up when runMegaBrain is
+          wired to the case. */}
+      {selected && (
+        <div style={{ marginTop: 24 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 8,
+            }}
+          >
+            <div style={{ fontSize: 12, color: '#8b949e', fontWeight: 600 }}>
+              BRAIN SUBSYSTEM PIPELINE (megaBrain — NIST AI RMF MANAGE-2)
+            </div>
+            <BrainVerdictBadge
+              verdict={
+                selected.riskLevel === 'critical'
+                  ? 'freeze'
+                  : selected.riskLevel === 'high'
+                    ? 'escalate'
+                    : selected.riskLevel === 'medium'
+                      ? 'flag'
+                      : 'pass'
+              }
+              confidence={0.8}
+              title="Demo verdict derived from case risk level"
+            />
+          </div>
+          <BrainSubsystemDag
+            brain={
+              {
+                verdict:
+                  selected.riskLevel === 'critical'
+                    ? 'freeze'
+                    : selected.riskLevel === 'high'
+                      ? 'escalate'
+                      : selected.riskLevel === 'medium'
+                        ? 'flag'
+                        : 'pass',
+                confidence: 0.8,
+                recommendedAction: 'Demo — see case page',
+                requiresHumanReview: selected.riskLevel !== 'low',
+                entityId: selected.id,
+                notes: [],
+                subsystems: {
+                  strPrediction: {} as never,
+                  reflection: {} as never,
+                  belief: {} as never,
+                  anomaly: {} as never,
+                },
+              } satisfies EnrichableBrain
+            }
+          />
+        </div>
+      )}
 
       {cases.length === 0 && (
         <div
