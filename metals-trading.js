@@ -665,6 +665,38 @@
       });
       if (state.alerts.length > 12) state.alerts.pop();
       renderAlerts();
+
+      // Auto-create a four-eyes override approval so the block is
+      // auditable and the CO can formally authorise (or reject) the
+      // trade. Mirrors the "Bullion Pre-Trade Compliance Override"
+      // entry in APPROVAL_TYPES + FOUR_EYES_APPROVAL_TYPES.
+      try {
+        var approvals = [];
+        try { approvals = JSON.parse(localStorage.getItem('fgl_approvals') || '[]'); } catch (_) {}
+        var approvalRec = {
+          id: 'APR_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+          approvalType: 'Bullion Pre-Trade Compliance Override',
+          subject: state.orderSide + ' ' + qty + ' oz ' + METAL_NAMES[m] + ' @ ' + fmtUSD(price),
+          requestedBy: 'Trading desk (auto)',
+          approver: '',
+          rationale: 'Pre-trade gate blocked the order. Blockers: ' + gate.blockers.join(' | ') + '. Warnings: ' + (gate.warnings.join(' | ') || 'none') + '. CO must provide documented override rationale. FDL Art.20.',
+          slaHours: 1,
+          status: 'Pending',
+          createdAt: new Date().toISOString(),
+          autoCreatedBy: 'metals-trading.preTradeComplianceGate'
+        };
+        approvals.unshift(approvalRec);
+        localStorage.setItem('fgl_approvals', JSON.stringify(approvals));
+        if (typeof logAudit === 'function') {
+          logAudit('approval_auto_created', 'Pre-trade override requested for ' + approvalRec.subject);
+        }
+        if (typeof toast === 'function') {
+          toast('Four-eyes override approval auto-created (' + approvalRec.id + ')', 'warning', 4000);
+        }
+        if (typeof window.gsbRefresh === 'function') window.gsbRefresh();
+      } catch (err) {
+        try { console.warn('[trading] failed to auto-create override approval:', err); } catch (_) {}
+      }
       return;
     }
     if (gate.warnings.length > 0) {

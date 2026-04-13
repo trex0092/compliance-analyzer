@@ -647,6 +647,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="tab" data-action="switchTab" data-arg="intelligence">🧠 Intelligence</div>
       <div class="tab" data-action="switchTab" data-arg="metalstrading">◈ Trading</div>
       <div class="tab" data-action="switchTab" data-arg="warroom">🎯 War Room</div>
+      <div class="tab" data-action="switchTab" data-arg="customer360">🗂 Customer 360</div>
       <div class="tab" data-action="switchTab" data-arg="esg">🌱 ESG</div>
       <!-- Data Upload removed -->
     </div>
@@ -2882,6 +2883,30 @@ Examples:
       </div>
     </div>
 
+    <!-- 🗂 CUSTOMER 360 TAB -->
+    <div id="tab-customer360" class="tab-content">
+      <div class="card" style="margin-bottom:12px">
+        <div class="top-bar">
+          <span class="sec-title">🗂 Customer 360 — single-pane drill-down</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-blue" onclick="c360Refresh()">🔄 Refresh</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">
+          Aggregates CDD + transactions + screening + red flags + ESG + adverse media + approvals + audit trail for one customer. FDL Art.20-21 · Cabinet Res 134/2025 Art.19.
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+          <input id="c360Search" placeholder="Filter customer IDs…" style="flex:1;min-width:180px;max-width:320px;padding:6px 10px;background:#0d1117;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:12px" />
+          <select id="c360CustomerSelect" onchange="c360OnSelect()" style="flex:2;min-width:200px;padding:6px 10px;background:#0d1117;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:12px">
+            <option value="">Select a customer…</option>
+          </select>
+        </div>
+      </div>
+      <div id="customer360Container" style="font-family:'Inter',system-ui,sans-serif">
+        <div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Select a customer above to open their 360° view.</div>
+      </div>
+    </div>
+
     <!-- 🌱 ESG SECTION -->
     <div id="tab-esg" class="tab-content">
       <div class="card" style="margin-bottom:12px">
@@ -3056,12 +3081,73 @@ Examples:
 <script src="management-approvals.js?v=20260408"></script>
 <script src="compliance-suite.js?v=20260408"></script>
 <script src="compliance-pipeline.js?v=20260409"></script>
+<!-- 📝 STR Drafter Modal -->
+<div class="modal-overlay" id="strDrafterModal">
+  <div class="modal" style="max-width:860px;width:96%;max-height:92vh;overflow:auto">
+    <button class="modal-close" onclick="strDrafterClose()">✕</button>
+    <div class="modal-title">📝 STR Narrative Drafter</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      Deterministic template compositor mirroring <code>strNarrativeBuilder.ts</code>. Same inputs → same narrative.
+      Blocks tipping-off language (FDL Art.29). Enforces 500-char EOCN minimum.
+    </div>
+    <input type="hidden" id="str-customer-id" />
+    <div class="row row-3">
+      <div><span class="lbl">Filing type</span>
+        <select id="str-filing-type"><option>STR</option><option>SAR</option><option>CTR</option><option>DPMSR</option><option>CNMR</option></select>
+      </div>
+      <div><span class="lbl">Subject name (hashed)</span><input id="str-subject-name" /></div>
+      <div><span class="lbl">Nationality / jurisdiction</span><input id="str-nationality" /></div>
+    </div>
+    <div class="row row-3">
+      <div><span class="lbl">Onboarding date</span><input id="str-onboarding-date" placeholder="dd/mm/yyyy" /></div>
+      <div><span class="lbl">Account number</span><input id="str-account" /></div>
+      <div><span class="lbl">Product</span><input id="str-product" /></div>
+    </div>
+    <div class="sec-title" style="font-size:11px;margin-top:10px">Suspicion — WHO / WHAT / WHERE / WHEN / WHY / HOW</div>
+    <div class="row row-2">
+      <div><span class="lbl">WHO</span><input id="str-who" /></div>
+      <div><span class="lbl">WHAT</span><input id="str-what" /></div>
+    </div>
+    <div class="row row-2">
+      <div><span class="lbl">WHERE</span><input id="str-where" /></div>
+      <div><span class="lbl">WHEN</span><input id="str-when" /></div>
+    </div>
+    <div class="row row-1"><div><span class="lbl">WHY</span><textarea id="str-why" rows="2"></textarea></div></div>
+    <div class="row row-1"><div><span class="lbl">HOW</span><textarea id="str-how" rows="2"></textarea></div></div>
+
+    <div class="sec-title" style="font-size:11px;margin-top:10px">Red flag indicators — one per line, format <code>CODE | description | regulatory ref</code></div>
+    <textarea id="str-redflags" rows="4" style="font-family:ui-monospace,monospace;font-size:11px"></textarea>
+
+    <div class="sec-title" style="font-size:11px;margin-top:10px">Action taken by reporting entity</div>
+    <textarea id="str-action" rows="2"></textarea>
+
+    <div class="sec-title" style="font-size:11px;margin-top:10px">Reporting officer</div>
+    <div class="row row-3">
+      <div><span class="lbl">Full name</span><input id="str-officer-name" /></div>
+      <div><span class="lbl">Officer ID</span><input id="str-officer-id" /></div>
+      <div><span class="lbl">Role</span><input id="str-officer-role" value="MLRO" /></div>
+    </div>
+    <div class="row row-1"><div><span class="lbl">Report date</span><input id="str-report-date" placeholder="dd/mm/yyyy" /></div></div>
+
+    <div style="display:flex;gap:6px;margin:14px 0 8px 0;flex-wrap:wrap">
+      <button class="btn btn-gold" onclick="strDrafterBuild()">Draft narrative</button>
+      <button class="btn btn-sm btn-blue" onclick="strDrafterCopy()">📋 Copy</button>
+      <button class="btn btn-sm btn-green" onclick="strDrafterSaveCase()">💾 Save as STR case</button>
+      <button class="btn btn-sm" onclick="strDrafterClose()">Cancel</button>
+    </div>
+    <div style="background:#0d1117;border:1px solid #21262d;border-radius:4px;padding:12px;font-family:ui-monospace,monospace;font-size:11px;color:#e6edf3;white-space:pre-wrap" id="strDrafterOutput">(Click "Draft narrative" to generate.)</div>
+    <div id="strDrafterWarnings"></div>
+  </div>
+</div>
+
 <script src="compliance-intelligence.js?v=20260409"></script>
 
 <script src="metals-trading.js?v=20260412"></script>
 <script src="brain-boot.js?v=20260410"></script>
 <script src="warroom-client.js?v=20260413"></script>
 <script src="esg-portfolio-client.js?v=20260413"></script>
+<script src="customer-360-client.js?v=20260413"></script>
+<script src="str-drafter-client.js?v=20260413"></script>
 <script src="global-status-bar.js?v=20260413"></script>
 <script src="app-boot.js?v=20260409"></script>
 </body>
