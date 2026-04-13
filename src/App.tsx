@@ -8,6 +8,7 @@ import AsanaKanbanPage from './ui/asana/AsanaKanbanPage';
 import AsanaInspectorPage from './ui/asana/AsanaInspectorPage';
 import AsanaTimeTrackingPage from './ui/asana/AsanaTimeTrackingPage';
 import AiGovernanceDashboard from './ui/aiGovernance/AiGovernanceDashboard';
+import BrainConsolePage from './ui/brain/BrainConsolePage';
 import { LocalAppStore } from './services/indexedDbStore';
 import { calculateKPI } from './domain/kpi';
 import { generateAlerts } from './services/alertEngine';
@@ -36,7 +37,8 @@ type Page =
   | 'asana-kanban'
   | 'asana-inspector'
   | 'asana-time'
-  | 'ai-governance';
+  | 'ai-governance'
+  | 'brain-console';
 
 // ─── Sidebar Navigation ──────────────────────────────────────────────────────
 
@@ -44,6 +46,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '◉' },
   { id: 'reports', label: 'Reports Hub', icon: '▣' },
   { id: 'cases', label: 'Cases', icon: '◆' },
+  { id: 'brain-console', label: 'Brain Console', icon: '⚡' },
   { id: 'asana-kanban', label: 'Asana Kanban', icon: '⊞' },
   { id: 'asana-inspector', label: 'Asana Inspector', icon: '◎' },
   { id: 'asana-time', label: 'Asana Time', icon: '◷' },
@@ -1410,6 +1413,7 @@ export default function App() {
     'asana-inspector': 'Asana Inspector (Read-Only)',
     'asana-time': 'Asana Time Tracking Rollup',
     'ai-governance': 'AI Governance Dashboard',
+    'brain-console': 'Brain Console — Super Brain Mega Weaponized',
   };
 
   if (loading) {
@@ -1482,6 +1486,7 @@ export default function App() {
         {page === 'asana-inspector' && <AsanaInspectorPage />}
         {page === 'asana-time' && <AsanaTimeTrackingPage />}
         {page === 'ai-governance' && <AiGovernanceDashboard />}
+        {page === 'brain-console' && <BrainConsolePage />}
         {page === 'str' && <STRDraftPage />}
         {page === 'customers' && <CustomersPage />}
         {page === 'screening' && <ScreeningPage />}
