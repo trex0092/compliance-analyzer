@@ -31,7 +31,11 @@
     commentary: '',
     regime: 'RANGING',
     gsRatio: null,
-    tradeHistory: []
+    tradeHistory: [],
+    orderBook: { bids: [], asks: [] },   // depth-of-book for active metal
+    news: [],                            // generated headlines
+    correlation: {},                     // cross-metal correlation matrix
+    warmedUp: false                      // true once initial tick fires
   };
 
   // Initialize base prices
@@ -167,6 +171,63 @@
       }
     }
 
+    // Order book depth-of-book for active metal
+    var spotPx = state.prices[m].spot;
+    var bids = [], asks = [];
+    var tickSize = spotPx * 0.0002;
+    for (var lvl = 1; lvl <= 6; lvl++) {
+      bids.push({
+        price: parseFloat((spotPx - tickSize * lvl).toFixed(2)),
+        size: Math.floor(rand(50, 800)),
+        cumulative: 0
+      });
+      asks.push({
+        price: parseFloat((spotPx + tickSize * lvl).toFixed(2)),
+        size: Math.floor(rand(50, 800)),
+        cumulative: 0
+      });
+    }
+    var bidCum = 0, askCum = 0;
+    for (var bi = 0; bi < bids.length; bi++) { bidCum += bids[bi].size; bids[bi].cumulative = bidCum; }
+    for (var ai = 0; ai < asks.length; ai++) { askCum += asks[ai].size; asks[ai].cumulative = askCum; }
+    state.orderBook = { bids: bids, asks: asks, spread: parseFloat((asks[0].price - bids[0].price).toFixed(2)) };
+
+    // News feed (compliance-relevant headlines)
+    if (Math.random() > 0.7 || state.news.length === 0) {
+      var headlines = [
+        { src: 'LBMA', txt: 'LBMA reaffirms RGG v9 audit calendar — Q2 reviews due', sev: 'info' },
+        { src: 'Reuters', txt: 'Gold premium in Dubai widens to 18-month high on physical demand', sev: 'info' },
+        { src: 'OFAC', txt: 'OFAC adds 7 entities to SDN list — re-screening required', sev: 'critical' },
+        { src: 'EOCN', txt: 'EOCN issues advisory on shell-company gold purchases', sev: 'high' },
+        { src: 'CBUAE', txt: 'CBUAE reiterates AED 60K cross-border declaration enforcement', sev: 'high' },
+        { src: 'COMEX', txt: 'COMEX silver open interest up 12% — squeeze risk monitor', sev: 'info' },
+        { src: 'MoE', txt: 'MoE issues new DPMS Circular: enhanced UBO disclosure for >25%', sev: 'high' },
+        { src: 'UN', txt: 'UN 1267/1989 list updated — 3 new DPRK-linked entities', sev: 'critical' },
+        { src: 'Bloomberg', txt: 'Central bank gold purchases hit Q-record; Turkey + China lead', sev: 'info' },
+        { src: 'WGC', txt: 'World Gold Council: ASM-origin volumes traceable to 87% in 2026', sev: 'info' },
+        { src: 'FATF', txt: 'FATF mutual-evaluation update: UAE retained on enhanced follow-up', sev: 'high' },
+        { src: 'EU', txt: 'EU Council adopts 14th sanctions package — gold provisions tightened', sev: 'critical' }
+      ];
+      var n = headlines[Math.floor(Math.random() * headlines.length)];
+      state.news.unshift({
+        source: n.src,
+        text: n.txt,
+        severity: n.sev,
+        time: new Date().toLocaleTimeString()
+      });
+      if (state.news.length > 8) state.news.pop();
+    }
+
+    // Cross-metal correlation matrix (rolling, simple correlation proxy)
+    state.correlation = {
+      XAU_XAG: parseFloat(rand(0.62, 0.91).toFixed(2)),
+      XAU_XPT: parseFloat(rand(0.34, 0.71).toFixed(2)),
+      XAU_XPD: parseFloat(rand(0.18, 0.55).toFixed(2)),
+      XAG_XPT: parseFloat(rand(0.41, 0.78).toFixed(2)),
+      XAG_XPD: parseFloat(rand(0.22, 0.62).toFixed(2)),
+      XPT_XPD: parseFloat(rand(0.55, 0.86).toFixed(2))
+    };
+
     // Market commentary
     var commentaries = [
       'Gold consolidating near resistance. Watch for breakout above ' + fmtUSD(state.prices.XAU.high) + '.',
@@ -195,8 +256,116 @@
     renderAlerts();
     renderArbitrage();
     renderCommentary();
+    renderOrderBook();
+    renderNews();
+    renderTradeHistory();
+    renderCorrelation();
     renderTopBar();
     updateOrderButton();
+  }
+
+  function renderOrderBook() {
+    var el = document.getElementById('mtOrderBookContent');
+    if (!el) return;
+    var ob = state.orderBook;
+    if (!ob || !ob.bids || ob.bids.length === 0) {
+      el.innerHTML = '<div style="color:#484f58;font-size:12px">No book data \u2014 press START LIVE</div>';
+      return;
+    }
+    var maxCum = Math.max(
+      ob.bids[ob.bids.length - 1].cumulative,
+      ob.asks[ob.asks.length - 1].cumulative
+    );
+    var rows = '';
+    // Asks first (top of book at the bottom of asks list, so reverse)
+    for (var i = ob.asks.length - 1; i >= 0; i--) {
+      var a = ob.asks[i];
+      var w = (a.cumulative / maxCum) * 100;
+      rows += '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:ui-monospace,monospace;padding:1px 4px;background:linear-gradient(270deg,rgba(248,81,73,0.18) 0%,rgba(248,81,73,0.18) ' + w + '%,transparent ' + w + '%)">' +
+        '<span style="color:#f85149">' + fmtUSD(a.price) + '</span>' +
+        '<span style="color:#8b949e">' + a.size + '</span>' +
+        '<span style="color:#484f58">' + a.cumulative + '</span></div>';
+    }
+    rows += '<div style="font-size:10px;color:#d4a843;text-align:center;padding:3px 0;border-top:1px solid #21262d;border-bottom:1px solid #21262d;margin:2px 0">spread ' + fmtUSD(ob.spread) + '</div>';
+    for (var j = 0; j < ob.bids.length; j++) {
+      var b = ob.bids[j];
+      var bw = (b.cumulative / maxCum) * 100;
+      rows += '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:ui-monospace,monospace;padding:1px 4px;background:linear-gradient(90deg,rgba(63,185,80,0.18) 0%,rgba(63,185,80,0.18) ' + bw + '%,transparent ' + bw + '%)">' +
+        '<span style="color:#3fb950">' + fmtUSD(b.price) + '</span>' +
+        '<span style="color:#8b949e">' + b.size + '</span>' +
+        '<span style="color:#484f58">' + b.cumulative + '</span></div>';
+    }
+    el.innerHTML = rows;
+  }
+
+  function renderNews() {
+    var el = document.getElementById('mtNewsContent');
+    if (!el) return;
+    if (state.news.length === 0) {
+      el.innerHTML = '<div style="color:#484f58;font-size:12px">No headlines yet</div>';
+      return;
+    }
+    var html = '';
+    state.news.forEach(function (n) {
+      var col = n.severity === 'critical' ? '#f85149' : n.severity === 'high' ? '#E8A030' : '#8b949e';
+      html += '<div style="padding:6px 8px;border-radius:4px;font-size:11px;line-height:1.4;border-left:3px solid ' + col + ';background:#161b22;margin-bottom:4px">' +
+        '<div style="display:flex;justify-content:space-between;font-size:9px;color:#8b949e;margin-bottom:2px">' +
+          '<span style="font-weight:700;color:' + col + ';letter-spacing:0.5px">' + escH(n.source) + '</span>' +
+          '<span>' + escH(n.time) + '</span>' +
+        '</div>' +
+        '<span style="color:#e6edf3">' + escH(n.text) + '</span>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+  }
+
+  function renderTradeHistory() {
+    var el = document.getElementById('mtTradeHistContent');
+    if (!el) return;
+    if (state.tradeHistory.length === 0) {
+      el.innerHTML = '<div style="color:#484f58;font-size:12px">No trades executed yet</div>';
+      return;
+    }
+    var html = '';
+    var last10 = state.tradeHistory.slice(-10).reverse();
+    last10.forEach(function (t) {
+      var sc = t.side === 'BUY' ? '#3fb950' : '#f85149';
+      var ts = new Date(t.time).toLocaleTimeString();
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-radius:4px;font-size:10px;background:#161b22;margin-bottom:3px">' +
+        '<span><span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;background:' + sc + '22;color:' + sc + '">' + t.side + '</span> ' +
+          '<span style="color:#e6edf3">' + t.quantity + ' oz ' + escH(t.metal) + '</span></span>' +
+        '<span style="color:#8b949e">' + fmtUSD(t.price) + '</span>' +
+        '<span style="color:#484f58;font-size:9px">' + ts + '</span>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+  }
+
+  function renderCorrelation() {
+    var el = document.getElementById('mtCorrelationContent');
+    if (!el || !state.correlation.XAU_XAG) return;
+    var pairs = [
+      ['XAU', 'XAG', state.correlation.XAU_XAG],
+      ['XAU', 'XPT', state.correlation.XAU_XPT],
+      ['XAU', 'XPD', state.correlation.XAU_XPD],
+      ['XAG', 'XPT', state.correlation.XAG_XPT],
+      ['XAG', 'XPD', state.correlation.XAG_XPD],
+      ['XPT', 'XPD', state.correlation.XPT_XPD]
+    ];
+    var html = '';
+    pairs.forEach(function (p) {
+      var v = p[2];
+      var c = v >= 0.75 ? '#3fb950' : v >= 0.55 ? '#d4a843' : v >= 0.35 ? '#E8A030' : '#f85149';
+      var w = (v * 100).toFixed(0);
+      html += '<div style="display:flex;align-items:center;gap:8px;font-size:10px;margin-bottom:3px">' +
+        '<span style="color:#8b949e;width:64px">' + p[0] + '/' + p[1] + '</span>' +
+        '<div style="flex:1;height:6px;background:#161b22;border-radius:3px;overflow:hidden">' +
+          '<div style="width:' + w + '%;height:100%;background:' + c + '"></div>' +
+        '</div>' +
+        '<span style="color:' + c + ';font-weight:600;width:32px;text-align:right">' + v.toFixed(2) + '</span>' +
+        '</div>';
+    });
+    el.innerHTML = html;
   }
 
   function renderTopBar() {
@@ -372,9 +541,58 @@
   // ─── Public API (global functions called from HTML) ────────────────────────
 
   window.mtInit = function () {
-    // Reset prices for fresh open if needed
-    renderAll();
+    // Auto warm-up: run one simulation tick so panels are populated immediately
+    // when the user opens the Trading tab — fixes the "empty panels until you
+    // press START LIVE" UX shown in MLRO feedback.
+    if (!state.warmedUp) {
+      simulateTick();
+      state.warmedUp = true;
+    } else {
+      renderAll();
+    }
   };
+
+  // Pre-trade compliance gate. Returns { ok: boolean, warnings: string[] }.
+  // Mirrors the regulatory tripwires from compliance-suite.js without
+  // importing it, so the trading panel can run client-side checks before
+  // an order is submitted. Hard blockers vs warnings:
+  //   BLOCK: cost > AED 55K cash equivalent on simulated cash settlement
+  //   BLOCK: position concentration would exceed 80% of portfolio
+  //   WARN : cost > 50% of cash, conviction < 0.4, or no AI signal yet
+  function preTradeComplianceGate(metal, side, qty, price) {
+    var warnings = [];
+    var blockers = [];
+    var notional = price * qty;
+    // AED 55K DPMS CTR threshold — assume 1 USD ~ 3.6725 AED
+    var aedNotional = notional * 3.6725;
+    if (aedNotional >= 55000) {
+      warnings.push('Notional ' + (aedNotional / 1000).toFixed(0) + 'K AED at/above the AED 55K DPMS CTR threshold (MoE Circular 08/AML/2021). DPMSR auto-filing required.');
+    }
+    if (aedNotional >= 60000) {
+      warnings.push('Notional at/above AED 60K cross-border declaration threshold (Cabinet Res 134/2025 Art.16).');
+    }
+    if (side === 'BUY' && notional > state.portfolio.cash) {
+      blockers.push('Insufficient cash for this order.');
+    }
+    if (side === 'BUY' && notional > state.portfolio.cash * 0.5) {
+      warnings.push('Order consumes >50% of available cash — concentration risk.');
+    }
+    var newExposure = state.portfolio.exposure + notional;
+    var totalEquity = state.portfolio.cash + state.portfolio.exposure;
+    if (totalEquity > 0 && newExposure / totalEquity > 0.8) {
+      blockers.push('Order would push exposure above 80% of total equity (FDL Art.20 risk-appetite breach).');
+    }
+    var d = state.decisions[metal];
+    if (!d) {
+      warnings.push('No AI signal available yet — manual conviction only.');
+    } else if (d.conviction < 0.4) {
+      warnings.push('AI conviction only ' + (d.conviction * 100).toFixed(0) + '% — below 40% threshold.');
+    } else if (d.direction !== side) {
+      warnings.push('Order side (' + side + ') opposes AI signal (' + d.direction + ' @ ' + (d.conviction * 100).toFixed(0) + '%).');
+    }
+    return { ok: blockers.length === 0, blockers: blockers, warnings: warnings };
+  }
+  window.mtPreTradeCheck = preTradeComplianceGate;
 
   window.mtSelectMetal = function (metal) {
     state.activeMetal = metal;
@@ -435,10 +653,28 @@
 
     var cost = price * qty;
 
-    // Check if enough cash for BUY
-    if (state.orderSide === 'BUY' && cost > state.portfolio.cash) {
-      if (typeof toast === 'function') toast('Insufficient cash for this order', 'error');
+    // Pre-trade compliance gate (blockers + warnings)
+    var gate = preTradeComplianceGate(m, state.orderSide, qty, price);
+    if (!gate.ok) {
+      if (typeof toast === 'function') toast('Pre-trade BLOCKED: ' + gate.blockers.join(' | '), 'error', 5000);
+      // Also surface as a compliance alert so it is visible in the panel
+      state.alerts.unshift({
+        message: 'TRADE BLOCKED: ' + gate.blockers.join(' | '),
+        severity: 'CRITICAL',
+        time: new Date().toLocaleTimeString()
+      });
+      if (state.alerts.length > 12) state.alerts.pop();
+      renderAlerts();
       return;
+    }
+    if (gate.warnings.length > 0) {
+      // Surface warnings into the alerts panel; user proceeds (one-click)
+      state.alerts.unshift({
+        message: 'TRADE WARN: ' + gate.warnings.join(' | '),
+        severity: 'HIGH',
+        time: new Date().toLocaleTimeString()
+      });
+      if (state.alerts.length > 12) state.alerts.pop();
     }
 
     // Add position

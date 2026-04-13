@@ -467,11 +467,16 @@
   // ══════════════════════════════════════════════════════════════
 
   function renderAnalyticsTab() {
-    if (!window.Chart) {
-      return `<div class="card"><p style="color:var(--red);font-size:13px">Chart.js library not loaded. Please check your internet connection and refresh.</p></div>`;
+    // Chart.js missing → degrade gracefully. We still render every KPI
+    // tile + table from the snapshot data; only the chart visuals are
+    // skipped. This is the correct fallback when CSP / network /
+    // ad-blocker prevents the CDN from loading.
+    var chartsAvailable = !!window.Chart;
+    if (!chartsAvailable) {
+      console.warn('[analytics] Chart.js not loaded — rendering KPI tiles only (no chart visuals)');
+    } else {
+      applyChartDefaults();
     }
-
-    applyChartDefaults();
     captureSnapshot();
 
     const snaps = parse(ANALYTICS_SNAPSHOT_KEY, []);

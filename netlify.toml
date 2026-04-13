@@ -27,15 +27,22 @@
     Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
     Cross-Origin-Opener-Policy = "same-origin"
     Cross-Origin-Resource-Policy = "same-origin"
-    # Tightened CSP (audit §H-2):
-    #  - Removed 'unsafe-hashes', cdnjs, jsdelivr — reduces CDN supply-
-    #    chain RCE surface. Inline scripts now require self-hosted
-    #    bundles; the two inline sha256 hashes are kept for the
-    #    strict-allow inline snippet.
-    #  - Removed https://api.allorigins.win (public CORS proxy, known
-    #    exfiltration vector).
-    #  - Removed https://*.netlify.app wildcard from connect-src.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-czf1SrR0FvvulXLO94AEDNFMUsrhJwZFAOM0j6jbAlM=' 'sha256-wpop8Hj4EY+jhKI5x9CFuAe11w4VD8ZwfcHpZi6SI1c='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://app.asana.com https://api.anthropic.com https://api.openai.com https://www.googleapis.com https://accounts.google.com https://generativelanguage.googleapis.com https://api.tavily.com https://api.metals.live https://api.gold-api.com https://api.metalpriceapi.com https://open.er-api.com https://data-asg.goldprice.org https://fonts.googleapis.com https://fonts.gstatic.com https://openrouter.ai https://scsanctions.un.org https://sanctionslistservice.ofac.treas.gov https://webgate.ec.europa.eu https://ofsistorage.blob.core.windows.net; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
+    # CSP — audit §H-2 hardened, with the two legitimate vendor CDNs
+    # restored after the analytics tab broke when Chart.js + jsPDF +
+    # JSZip + EmailJS could not load.
+    #
+    # Restored:
+    #  - https://cdn.jsdelivr.net (Chart.js, JSZip, EmailJS) — pinned
+    #    versions used by index.html. Future hardening: bundle these
+    #    into assets/vendor/ and drop the CDN entirely. SRI integrity
+    #    hashes should be added to the script tags as a follow-up.
+    #  - https://cdnjs.cloudflare.com (jsPDF) — same rationale.
+    #
+    # Still removed (the worst offenders from audit §H-2):
+    #  - 'unsafe-hashes' — wide XSS surface
+    #  - https://api.allorigins.win (public CORS proxy, exfiltration vector)
+    #  - https://*.netlify.app wildcard from connect-src
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-czf1SrR0FvvulXLO94AEDNFMUsrhJwZFAOM0j6jbAlM=' 'sha256-wpop8Hj4EY+jhKI5x9CFuAe11w4VD8ZwfcHpZi6SI1c=' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://app.asana.com https://api.anthropic.com https://api.openai.com https://www.googleapis.com https://accounts.google.com https://generativelanguage.googleapis.com https://api.tavily.com https://api.metals.live https://api.gold-api.com https://api.metalpriceapi.com https://open.er-api.com https://data-asg.goldprice.org https://fonts.googleapis.com https://fonts.gstatic.com https://openrouter.ai https://scsanctions.un.org https://sanctionslistservice.ofac.treas.gov https://webgate.ec.europa.eu https://ofsistorage.blob.core.windows.net; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
 
 [[headers]]
   for = "/sw.js"

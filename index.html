@@ -617,6 +617,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="tab" data-action="switchTab" data-arg="intelligence">🧠 Intelligence</div>
       <div class="tab" data-action="switchTab" data-arg="metalstrading">◈ Trading</div>
       <div class="tab" data-action="switchTab" data-arg="warroom">🎯 War Room</div>
+      <div class="tab" data-action="switchTab" data-arg="esg">🌱 ESG</div>
       <!-- Data Upload removed -->
     </div>
 
@@ -2773,6 +2774,29 @@ Examples:
             <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">MARKET COMMENTARY</div>
             <div id="mtCommentary" style="color:#8b949e;font-size:12px;line-height:1.6">Press START LIVE for AI market commentary</div>
           </div>
+          <!-- Order Book Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">ORDER BOOK (L2)</div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:#484f58;letter-spacing:0.5px;padding:0 4px">
+              <span>PRICE</span><span>SIZE</span><span>CUM</span>
+            </div>
+            <div id="mtOrderBookContent"><div style="color:#484f58;font-size:12px">No book data</div></div>
+          </div>
+          <!-- News Feed Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">REGULATORY NEWS FEED</div>
+            <div id="mtNewsContent"><div style="color:#484f58;font-size:12px">No headlines yet</div></div>
+          </div>
+          <!-- Trade History Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">TRADE HISTORY (LAST 10)</div>
+            <div id="mtTradeHistContent"><div style="color:#484f58;font-size:12px">No trades executed yet</div></div>
+          </div>
+          <!-- Cross-Metal Correlation Panel -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;border-bottom:1px solid #21262d;padding-bottom:8px">CROSS-METAL CORRELATION</div>
+            <div id="mtCorrelationContent"><div style="color:#484f58;font-size:12px">No correlation data</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -2797,6 +2821,83 @@ Examples:
         <p style="color:var(--muted);font-size:12px;padding:20px;text-align:center">
           Click <strong>▶ Start Live</strong> to open the SSE stream and begin rendering real-time war-room snapshots.
         </p>
+      </div>
+    </div>
+
+    <!-- 🌱 ESG SECTION -->
+    <div id="tab-esg" class="tab-content">
+      <div class="card" style="margin-bottom:12px">
+        <div class="top-bar">
+          <span class="sec-title">🌱 ESG Portfolio Scorecard</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-blue" onclick="esgRefresh()">🔄 Refresh</button>
+            <button class="btn btn-sm btn-green" onclick="esgExportCsv()">⬇ Export CSV</button>
+            <button class="btn btn-sm btn-gold" onclick="esgOpenForm()">+ Score Customer</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">
+          Aggregates per-customer Environmental + Social + Governance scores into a portfolio scorecard.
+          GRI Universal Standards 2021 · ISSB IFRS S1/S2 · LBMA RGG v9 Step 5 · TCFD · UAE Vision 2031.
+        </div>
+      </div>
+      <div id="esgContainer" style="font-family:'Inter',system-ui,sans-serif">
+        <p style="color:var(--muted);font-size:12px;padding:20px;text-align:center">
+          Click <strong>+ Score Customer</strong> to add an ESG record, or <strong>🔄 Refresh</strong> to render the current portfolio scorecard.
+        </p>
+      </div>
+
+      <div class="modal-overlay" id="esgModal">
+        <div class="modal" style="max-width:560px;width:95%">
+          <button class="modal-close" onclick="document.getElementById('esgModal').classList.remove('open')">✕</button>
+          <div class="modal-title">Add ESG Score</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">
+            All inputs are optional. Missing inputs reduce disclosureCompleteness but never block the score.
+          </div>
+          <div class="row row-2">
+            <div><span class="lbl">Customer name *</span><input id="esg-customer-name" placeholder="Hashed display name"/></div>
+            <div><span class="lbl">Sector</span>
+              <select id="esg-sector">
+                <option value="">—</option>
+                <option>Refining</option>
+                <option>Bullion Trading</option>
+                <option>Jewellery Manufacturing</option>
+                <option>Retail</option>
+                <option>Mining (LBMA accredited)</option>
+                <option>Mining (ASM)</option>
+                <option>End Consumer</option>
+                <option>Financial Institution</option>
+              </select>
+            </div>
+          </div>
+          <div class="sec-title" style="margin-top:14px;font-size:11px">Environmental</div>
+          <div class="row row-3">
+            <div><span class="lbl">Carbon intensity (tCO₂/oz)</span><input type="number" step="0.01" id="esg-carbon"/></div>
+            <div><span class="lbl">Renewable %</span><input type="number" min="0" max="100" id="esg-renewable"/></div>
+            <div><span class="lbl">Env incidents (12m)</span><input type="number" min="0" id="esg-incidents"/></div>
+          </div>
+          <div class="sec-title" style="margin-top:14px;font-size:11px">Social</div>
+          <div class="row row-3">
+            <div><span class="lbl">LTIFR</span><input type="number" step="0.01" id="esg-ltifr"/></div>
+            <div><span class="lbl">Living wage compliance %</span><input type="number" min="0" max="100" id="esg-living-wage"/></div>
+            <div><span class="lbl">Modern slavery statement?</span>
+              <select id="esg-mss"><option value="">—</option><option>yes</option><option>no</option></select>
+            </div>
+          </div>
+          <div class="sec-title" style="margin-top:14px;font-size:11px">Governance</div>
+          <div class="row row-3">
+            <div><span class="lbl">Board independence %</span><input type="number" min="0" max="100" id="esg-board-indep"/></div>
+            <div><span class="lbl">Anti-corruption?</span>
+              <select id="esg-anticorr"><option value="">—</option><option>yes</option><option>no</option></select>
+            </div>
+            <div><span class="lbl">Whistleblower channel?</span>
+              <select id="esg-whistle"><option value="">—</option><option>yes</option><option>no</option></select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button class="btn btn-gold" style="flex:1" onclick="esgSaveScore()">Score + Save</button>
+            <button class="btn btn-sm" onclick="document.getElementById('esgModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2902,6 +3003,7 @@ Examples:
 <script src="metals-trading.js?v=20260412"></script>
 <script src="brain-boot.js?v=20260410"></script>
 <script src="warroom-client.js?v=20260413"></script>
+<script src="esg-portfolio-client.js?v=20260413"></script>
 <script src="app-boot.js?v=20260409"></script>
 </body>
 </html>
