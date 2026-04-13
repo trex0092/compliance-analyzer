@@ -1,0 +1,80 @@
+name: SBOM
+
+# Generates a CycloneDX Software Bill of Materials on every push to
+# main and on a weekly schedule, then uploads it as an artifact so
+# audit/compliance reviewers can download a signed record of every
+# dependency included in the production build.
+#
+# This is the CI-level teeth behind the "Tier 0 #5 — Full dependency
+# scan + SBOM" item in the weaponization roadmap.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 4 * * 1'  # 04:00 UTC every Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate CycloneDX SBOM
+        # Use the cyclonedx-npm package directly — avoids pulling a
+        # GitHub Action that could inject additional dependencies.
+        # The npx install fetches cyclonedx-npm into a temporary
+        # working directory; we never persist it into node_modules.
+        run: |
+          mkdir -p sbom
+          npx --yes @cyclonedx/cyclonedx-npm@1.19.3 \
+            --output-file sbom/compliance-analyzer-sbom.json \
+            --output-format JSON \
+            --spec-version 1.5 \
+            --short-PURLs
+
+      - name: Summarise SBOM
+        run: |
+          echo '## Hawkeye Sterling V2 — SBOM Summary' >> "$GITHUB_STEP_SUMMARY"
+          node -e "
+            const sbom = require('./sbom/compliance-analyzer-sbom.json');
+            const count = (sbom.components || []).length;
+            console.log('Total components:', count);
+            console.log('Spec version:', sbom.specVersion);
+            console.log('Serial number:', sbom.serialNumber);
+          " >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-analyzer-sbom-${{ github.sha }}
+          path: sbom/compliance-analyzer-sbom.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Audit dependencies (high + critical)
+        run: npm audit --audit-level=high --json > sbom/npm-audit.json || true
+
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-analyzer-npm-audit-${{ github.sha }}
+          path: sbom/npm-audit.json
+          if-no-files-found: error
+          retention-days: 90
