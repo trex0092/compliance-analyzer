@@ -347,9 +347,18 @@
   function exportAnalyticsCSV() {
     const snaps = parse(ANALYTICS_SNAPSHOT_KEY, []);
     if (!snaps.length) { if (typeof toast === 'function') toast('No analytics data to export', 'error'); return; }
+    // CSV formula-injection guard: prefix cells whose first character could
+    // be interpreted as a formula by Excel / Sheets / Numbers.
+    const csvSafe = function (v) {
+      var s = v == null ? '' : String(v);
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
     const headers = Object.keys(snaps[0]);
-    const csv = [headers.join(',')].concat(snaps.map(s => headers.map(h => JSON.stringify(s[h] ?? '')).join(','))).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = [headers.map(csvSafe).join(',')]
+      .concat(snaps.map(s => headers.map(h => csvSafe(s[h] ?? '')).join(',')))
+      .join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `Compliance_Analytics_${new Date().toISOString().slice(0, 10)}.csv`;

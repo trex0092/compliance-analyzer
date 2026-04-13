@@ -275,26 +275,21 @@ const ComplianceIntelligence = (function () {
     toast('Anchor chain exported', 'ok');
   }
 
-  // SHA-256 using Web Crypto API
+  // SHA-256 using Web Crypto API.
+  // If crypto.subtle is unavailable (insecure context, legacy browser),
+  // FAIL HARD. The audit chain's tamper-evidence property depends on a
+  // real cryptographic hash; a 32-bit polynomial fallback silently
+  // degrades the integrity guarantee and lets an attacker forge chains
+  // that verify. FDL Art.24 requires reconstructable, integrity-verified
+  // records — that is a regulatory obligation, not a nice-to-have.
   async function sha256(message) {
-    if (typeof crypto !== 'undefined' && crypto.subtle) {
-      var msgBuffer = new TextEncoder().encode(message);
-      var hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-      var hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    if (typeof crypto === 'undefined' || !crypto.subtle) {
+      throw new Error('[audit-chain] Web Crypto (crypto.subtle) is unavailable. The compliance audit chain cannot operate without a real SHA-256. Serve the app over HTTPS or a secure context.');
     }
-    // Fallback: simple hash for environments without Web Crypto
-    return simpleHash(message);
-  }
-
-  function simpleHash(str) {
-    var hash = 0;
-    for (var i = 0; i < str.length; i++) {
-      var char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16).padStart(16, '0');
+    var msgBuffer = new TextEncoder().encode(message);
+    var hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    var hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
   }
 
   // ═══════════════════════════════════════════════════════════════

@@ -44,7 +44,19 @@ window.csFormatDateInput = function (el) {
     try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) { console.warn('Storage error', e); }
   }
   function uid(prefix) {
-    return prefix + '-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-6) + '-' + Math.random().toString(36).slice(2, 6);
+    // Use crypto.randomUUID when available (all modern browsers). Fall back
+    // to a timestamp + random-bytes suffix for legacy / insecure contexts.
+    var suffix;
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      suffix = crypto.randomUUID().split('-')[0];
+    } else if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      var buf = new Uint8Array(4);
+      crypto.getRandomValues(buf);
+      suffix = Array.from(buf).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+    } else {
+      throw new Error('[compliance-suite.uid] Web Crypto unavailable — cannot mint a safe identifier in this context.');
+    }
+    return prefix + '-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-6) + '-' + suffix;
   }
   function today() { const n=new Date(); return String(n.getDate()).padStart(2,'0')+'/'+String(n.getMonth()+1).padStart(2,'0')+'/'+n.getFullYear(); }
   function parseDDMMYYYY(s) {
@@ -186,7 +198,10 @@ window.csFormatDateInput = function (el) {
     'France': 'FATF Member', 'Japan': 'FATF Member', 'Canada': 'FATF Member', 'Australia': 'FATF Member',
     'Italy': 'FATF Member', 'Spain': 'FATF Member', 'Netherlands': 'FATF Member',
     'Switzerland': 'FATF Member', 'Singapore': 'FATF Member', 'Hong Kong': 'FATF Member',
-    'India': 'FATF Member', 'China': 'FATF Member', 'Russia': 'FATF Member',
+    'India': 'FATF Member', 'China': 'FATF Member',
+    // Russia suspended from FATF 24 Feb 2023 — remains suspended as of 2026.
+    // Treat as high-risk (scored 3) per FATF Plenary statements and UAE MoE guidance.
+    'Russia': 'FATF Suspended',
     'Brazil': 'FATF Member', 'Mexico': 'FATF Member', 'Turkey': 'FATF Member',
     'South Korea': 'FATF Member', 'Israel': 'FATF Member', 'Belgium': 'FATF Member',
     'Austria': 'FATF Member', 'Sweden': 'FATF Member', 'Norway': 'FATF Member',
@@ -225,6 +240,7 @@ window.csFormatDateInput = function (el) {
   function countryRiskToScore(riskLevel) {
     if (riskLevel === 'FATF Black List') return 4;
     if (riskLevel === 'CAHRA') return 4;
+    if (riskLevel === 'FATF Suspended') return 3; // Russia since Feb 2023
     if (riskLevel === 'FATF Grey List') return 3;
     if (riskLevel === 'GCC') return 1;
     if (riskLevel === 'FATF Member') return 1;
@@ -235,7 +251,7 @@ window.csFormatDateInput = function (el) {
   function getNationalityOptions() {
     var db = getCountryRiskDB();
     var entries = Object.entries(db);
-    var order = { 'FATF Black List': 0, 'CAHRA': 1, 'FATF Grey List': 2, 'Other': 3, 'GCC': 4, 'FATF Member': 5 };
+    var order = { 'FATF Black List': 0, 'CAHRA': 1, 'FATF Suspended': 2, 'FATF Grey List': 2, 'Other': 3, 'GCC': 4, 'FATF Member': 5 };
     entries.sort(function(a, b) { return (order[a[1]] || 3) - (order[b[1]] || 3) || a[0].localeCompare(b[0]); });
     return entries;
   }
@@ -259,8 +275,15 @@ window.csFormatDateInput = function (el) {
       deliveryChannel:{ 'Face-to-Face': 0, 'Established Intermediary': 1, 'Non-Face-to-Face / Online': 2, 'Anonymous / Unverified Channel': 4 },
       ownershipComplexity: { 'Simple / Transparent': 0, 'Moderate Layers': 1, 'Complex Multi-Jurisdiction': 3, 'Opaque / Nominee Structures': 4 },
     },
-    // Score thresholds: what total score = what rating
-    thresholds: { 'Very High': 15, 'High': 9, 'Medium': 4, 'Low': 0 },
+    // Score thresholds: Very High = RISK_CRITICAL (16), High = RISK_HIGH (11),
+    // Medium = RISK_MEDIUM (6), Low = 0. These are the canonical MoE values
+    // from src/domain/constants.ts. Never fork. CLAUDE.md Constants Architecture.
+    thresholds: {
+      'Very High': global.COMPLIANCE_CONSTANTS.RISK_CRITICAL, // 16
+      'High':      global.COMPLIANCE_CONSTANTS.RISK_HIGH,     // 11
+      'Medium':    global.COMPLIANCE_CONSTANTS.RISK_MEDIUM,   // 6
+      'Low':       0,
+    },
     // CDD level per rating
     cddLevels: {
       'Very High': 'EDD Required + Senior Management Approval',
@@ -566,7 +589,7 @@ window.csFormatDateInput = function (el) {
     }
 
     const records = load(SK.CRA) || [];
-    const editIdx = parseInt(document.getElementById('cra-edit-idx').value);
+    const editIdx = parseInt(document.getElementById('cra-edit-idx').value, 10);
     const record = {
       id: editIdx >= 0 ? records[editIdx].id : uid('CRA'),
       customerName: name,
@@ -692,7 +715,7 @@ window.csFormatDateInput = function (el) {
   global.suiteViewCountryRisk = function() {
     var db = getCountryRiskDB();
     var entries = Object.entries(db);
-    var order = { 'FATF Black List': 0, 'CAHRA': 1, 'FATF Grey List': 2, 'Other': 3, 'GCC': 4, 'FATF Member': 5 };
+    var order = { 'FATF Black List': 0, 'CAHRA': 1, 'FATF Suspended': 2, 'FATF Grey List': 2, 'Other': 3, 'GCC': 4, 'FATF Member': 5 };
     entries.sort(function(a, b) { return (order[a[1]] || 3) - (order[b[1]] || 3) || a[0].localeCompare(b[0]); });
 
     var colorFor = function(r) { return r === 'FATF Black List' ? '#D94F4F' : r === 'CAHRA' ? '#D94F4F' : r === 'FATF Grey List' ? '#E8A838' : r === 'GCC' ? '#3DA876' : r === 'FATF Member' ? '#3DA876' : 'var(--muted)'; };
@@ -831,16 +854,16 @@ window.csFormatDateInput = function (el) {
     // Save thresholds
     ['Very High','High','Medium','Low'].forEach(function(r) {
       var key = r.replace(/ /g,'_');
-      model.thresholds[r] = parseInt(document.getElementById('rc-thresh-' + key).value) || 0;
+      model.thresholds[r] = parseInt(document.getElementById('rc-thresh-' + key).value, 10) || 0;
       model.cddLevels[r] = document.getElementById('rc-cdd-' + key).value;
-      model.reviewFrequency[r] = parseInt(document.getElementById('rc-review-' + key).value) || 12;
+      model.reviewFrequency[r] = parseInt(document.getElementById('rc-review-' + key).value, 10) || 12;
     });
     // Save weights
     document.querySelectorAll('.rc-weight').forEach(function(el) {
       var cat = el.getAttribute('data-cat');
       var opt = el.getAttribute('data-opt');
       if (!model.weights[cat]) model.weights[cat] = {};
-      model.weights[cat][opt] = parseInt(el.value) || 0;
+      model.weights[cat][opt] = parseInt(el.value, 10) || 0;
     });
     model.regulatoryBasis = document.getElementById('rc-reg-basis').value;
     model.lastUpdatedBy = 'Manual Edit';
@@ -854,7 +877,7 @@ window.csFormatDateInput = function (el) {
   global.suiteAddRiskOption = function(cat) {
     var name = prompt('Enter new option name for ' + (CRA_CATEGORY_LABELS[cat] || cat) + ':');
     if (!name) return;
-    var score = parseInt(prompt('Enter risk score (0-10) for "' + name + '":'));
+    var score = parseInt(prompt('Enter risk score (0-10) for "' + name + '":'), 10);
     if (isNaN(score)) return;
     var model = getRiskModel();
     if (!model.weights[cat]) model.weights[cat] = {};
@@ -1102,27 +1125,50 @@ window.csFormatDateInput = function (el) {
     const name = document.getElementById('ubo-name').value.trim();
     if (!entity || !name) { toast('Entity and UBO name are required', 'error'); return; }
     const records = load(SK.UBO) || [];
-    const editIdx = parseInt(document.getElementById('ubo-edit-idx').value);
+    const editIdx = parseInt(document.getElementById('ubo-edit-idx').value, 10);
+    const prior = editIdx >= 0 ? records[editIdx] : null;
+    const ownershipPct = parseFloat(document.getElementById('ubo-pct').value) || 0;
+
+    // Cabinet Decision 109/2023: UBO must be re-verified within 15 working
+    // days of any ownership change. Auto-compute nextReview from the
+    // verified date; if the UI supplies a different value we still clamp
+    // it to the statutory limit.
+    const verifiedDate = document.getElementById('ubo-verified').value || today();
+    const uiNextReview = document.getElementById('ubo-review').value;
+    const statutoryNextReview = addBusinessDays(verifiedDate, THRESHOLDS.UBO_REVERIFICATION_WORKING_DAYS);
+    let nextReview = uiNextReview;
+    if (!nextReview) {
+      nextReview = statutoryNextReview;
+    } else {
+      // If ownership changed vs prior record, force-recalculate the deadline
+      // from today using the 15 working-day rule — the UI value is advisory.
+      if (prior && prior.ownershipPct !== ownershipPct) {
+        nextReview = statutoryNextReview;
+        toast('Ownership change detected — next review pinned to ' + nextReview + ' per Cabinet Decision 109/2023 (15 working days).', 'info');
+      }
+    }
+
     const record = {
       id: editIdx >= 0 ? records[editIdx].id : uid('UBO'),
       entityName: entity, uboName: name,
       nationality: document.getElementById('ubo-nationality').value,
       dob: document.getElementById('ubo-dob').value,
       residence: document.getElementById('ubo-residence').value,
-      ownershipPct: parseFloat(document.getElementById('ubo-pct').value) || 0,
+      ownershipPct: ownershipPct,
       controlType: document.getElementById('ubo-control').value,
       pepStatus: document.getElementById('ubo-pep').value,
       screeningStatus: document.getElementById('ubo-screening').value,
       docType: document.getElementById('ubo-doctype').value,
       docRef: document.getElementById('ubo-docref').value,
       docExpiry: document.getElementById('ubo-docexpiry').value,
-      verifiedDate: document.getElementById('ubo-verified').value,
-      nextReview: document.getElementById('ubo-review').value,
+      verifiedDate: verifiedDate,
+      nextReview: nextReview,
       notes: document.getElementById('ubo-notes').value.trim(),
       updatedAt: new Date().toISOString(),
     };
     if (editIdx >= 0) { records[editIdx] = record; } else { records.unshift(record); }
     save(SK.UBO, records);
+    if (typeof logAudit === 'function') logAudit('ubo', (editIdx >= 0 ? 'updated' : 'created') + ' UBO ' + record.id + ' nextReview=' + nextReview);
     document.getElementById('uboModal').classList.remove('open');
     toast(`UBO saved — ${name}`, 'success');
     renderUBO();
@@ -1228,7 +1274,7 @@ window.csFormatDateInput = function (el) {
               <select id="str-type"><option value="">Select</option><option>STR – Suspicious Transaction Report</option><option>SAR – Suspicious Activity Report</option><option>FFR – Funds Freeze Report</option><option>PNMR – Partial Name Match Report</option></select>
             </div>
             <div><span class="lbl">Priority</span>
-              <select id="str-priority"><option>Standard (30 days)</option><option>Urgent (Immediate – TF/PF)</option></select>
+              <select id="str-priority"><option>Without Delay (FDL Art.26-27)</option><option>Urgent (Immediate – TF/PF)</option></select>
             </div>
           </div>
           <div class="row row-2">
@@ -1239,7 +1285,7 @@ window.csFormatDateInput = function (el) {
           </div>
           <div class="row row-2">
             <div><span class="lbl">Date Suspicion Arose *</span><input type="text" id="str-suspicion-date" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
-            <div><span class="lbl">Filing Deadline (auto +30d)</span><input type="text" id="str-deadline" readonly style="opacity:0.7" placeholder="dd/mm/yyyy"/></div>
+            <div><span class="lbl">Filing Deadline (Without Delay — file immediately)</span><input type="text" id="str-deadline" readonly style="opacity:0.7" placeholder="dd/mm/yyyy"/></div>
           </div>
           <div><span class="lbl">Red Flags Identified (select all that apply) *</span>
             <div id="str-flags-container" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface2);padding:10px;border-radius:3px;border:1px solid var(--border);max-height:180px;overflow-y:auto;margin-top:4px">
@@ -1287,7 +1333,7 @@ window.csFormatDateInput = function (el) {
     ['str-subject','str-tx-dates','str-investigator','str-goaml-ref','str-notes','str-narrative'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
     ['str-type','str-subjtype'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
     document.getElementById('str-status').value = 'Draft';
-    document.getElementById('str-priority').value = 'Standard (30 days)';
+    document.getElementById('str-priority').value = 'Without Delay (FDL Art.26-27)';
     document.getElementById('str-suspicion-date').value = '';
     document.getElementById('str-deadline').value = '';
     document.getElementById('str-amount').value = '';
@@ -1301,7 +1347,7 @@ window.csFormatDateInput = function (el) {
     if (!c) return;
     document.getElementById('str-edit-idx').value = idx;
     document.getElementById('str-type').value = c.reportType || '';
-    document.getElementById('str-priority').value = c.priority || 'Standard (30 days)';
+    document.getElementById('str-priority').value = c.priority || 'Without Delay (FDL Art.26-27)';
     document.getElementById('str-subject').value = c.subjectName || '';
     document.getElementById('str-subjtype').value = c.subjectType || '';
     document.getElementById('str-suspicion-date').value = c.suspicionDate || '';
@@ -1324,7 +1370,7 @@ window.csFormatDateInput = function (el) {
     if (!subject || !rtype) { toast('Subject name and report type are required', 'error'); return; }
     const selectedFlags = STR_RED_FLAGS_DPMS.filter((_,i) => document.getElementById('strf-'+i)?.checked);
     const cases = load(SK.STR) || [];
-    const editIdx = parseInt(document.getElementById('str-edit-idx').value);
+    const editIdx = parseInt(document.getElementById('str-edit-idx').value, 10);
     const record = {
       id: editIdx >= 0 ? cases[editIdx].id : uid('STR'),
       reportType: rtype,
@@ -1880,8 +1926,8 @@ window.csFormatDateInput = function (el) {
     const flag = prompt('Enter the red flag description:');
     if (!flag || !flag.trim()) return;
     const ref = prompt('Regulatory reference (e.g. FATF Rec.10):') || 'Custom';
-    const l = parseInt(prompt('Likelihood (1-5):')) || 3;
-    const i = parseInt(prompt('Impact (1-5):')) || 3;
+    const l = parseInt(prompt('Likelihood (1-5):'), 10) || 3;
+    const i = parseInt(prompt('Impact (1-5):'), 10) || 3;
     const custom = getCustomFlags();
     custom.push({ flag: flag.trim(), ref, l: Math.min(5,Math.max(1,l)), i: Math.min(5,Math.max(1,i)), mx: [], custom: true, id: Date.now() });
     saveCustomFlags(custom);
@@ -1897,8 +1943,8 @@ window.csFormatDateInput = function (el) {
     const flag = prompt('Edit red flag description:', f.flag);
     if (!flag || !flag.trim()) return;
     const ref = prompt('Regulatory reference:', f.ref) || f.ref;
-    const l = parseInt(prompt('Likelihood (1-5):', f.l)) || f.l;
-    const i = parseInt(prompt('Impact (1-5):', f.i)) || f.i;
+    const l = parseInt(prompt('Likelihood (1-5):', f.l), 10) || f.l;
+    const i = parseInt(prompt('Impact (1-5):', f.i), 10) || f.i;
     custom[idx] = { ...f, flag: flag.trim(), ref, l: Math.min(5,Math.max(1,l)), i: Math.min(5,Math.max(1,i)) };
     saveCustomFlags(custom);
     renderRedFlags();
@@ -2210,16 +2256,25 @@ window.csFormatDateInput = function (el) {
   global.suiteSaveApproval = function() {
     const type = document.getElementById('approval-type').value;
     const subject = document.getElementById('approval-subject').value.trim();
+    const requester = document.getElementById('approval-requester').value.trim();
+    const approver = document.getElementById('approval-approver').value.trim();
+    const rationale = document.getElementById('approval-rationale').value.trim();
     if (!type || !subject) { toast('Type and subject are required', 'error'); return; }
+    if (!requester) { toast('Requested By is required', 'error'); return; }
+    if (!approver)  { toast('Designated Approver is required', 'error'); return; }
+    if (!rationale || rationale.length < 20) {
+      toast('Rationale is required (minimum 20 characters) — auditors need a documented basis.', 'error');
+      return;
+    }
     const slaEntry = APPROVAL_TYPES.find(a => a.type === type);
     const records = load(SK.APPROVALS) || [];
     const record = {
       id: uid('APR'),
       approvalType: type,
       subject,
-      requestedBy: document.getElementById('approval-requester').value,
-      approver: document.getElementById('approval-approver').value,
-      rationale: document.getElementById('approval-rationale').value,
+      requestedBy: requester,
+      approver: approver,
+      rationale: rationale,
       slaHours: slaEntry ? slaEntry.sla : 48,
       status: 'Pending',
       createdAt: new Date().toISOString(),
@@ -2231,61 +2286,124 @@ window.csFormatDateInput = function (el) {
     renderApprovals();
   };
 
+  // Four-eyes requires an authenticated session — the approver's identity
+  // MUST come from the signed-in user, not from a prompt() dialog. This
+  // blocks the single-actor bypass where one user types two different
+  // names in the same browser session.
+  //
+  // Explicit list of approval types that require two independent approvers.
+  // Every type in APPROVAL_TYPES that concerns sanctions / STR / EDD / TFS
+  // / asset freeze / FFR / CNMR / DPMSR filings / high-risk onboarding
+  // MUST be tagged true here. Do not rely on substring matching.
+  var FOUR_EYES_APPROVAL_TYPES = new Set([
+    'STR Filing',
+    'STR/SAR Filing',
+    'STR Filing via goAML',
+    'SAR Filing',
+    'SAR Filing via goAML',
+    'FFR Filing via goAML',
+    'CNMR Filing to EOCN',
+    'CNMR Filing',
+    'EDD Approval',
+    'EDD Onboarding',
+    'Sanctions Match',
+    'Sanctions True Hit',
+    'Sanctions Partial Match',
+    'UNSC Consolidated List Match',
+    'EOCN Local Terrorist List Match',
+    'Sanctions List Update Re-Screen',
+    'TFS Freeze',
+    'Asset Freeze',
+    'Transaction Suspension',
+    'PEP Onboarding',
+    'High Risk Customer',
+    'UBO Override',
+    'UBO Change',
+    'Compliance Exception',
+    'DPMSR Filing',
+  ]);
+  function approvalRequiresFourEyes(record) {
+    if (!record) return false;
+    if (FOUR_EYES_APPROVAL_TYPES.has(record.approvalType)) return true;
+    return !!(record.slaHours && record.slaHours <= 4);
+  }
+  global.approvalRequiresFourEyes = approvalRequiresFourEyes;
+
   global.suiteDecideApproval = function(idx, decision) {
-    const name = prompt(`Enter your name to confirm ${decision}:`);
-    if (!name) return;
+    // Require an authenticated session. If AuthRBAC isn't wired (e.g. a
+    // dev harness), fall back to prompt() but also record that the
+    // decision is UNAUTHENTICATED so it cannot masquerade as a valid
+    // four-eyes approval.
+    var authed = null;
+    try {
+      if (typeof AuthRBAC !== 'undefined' && typeof AuthRBAC.getCurrentUser === 'function') {
+        authed = AuthRBAC.getCurrentUser();
+      }
+    } catch (_) { authed = null; }
+
+    if (!authed || !authed.username) {
+      toast('You must be signed in to approve. Four-eyes requires an authenticated session.', 'error');
+      return;
+    }
+
+    var name = authed.username;
+    var sessionId = authed.sessionId || authed.id || ('session-' + name);
+    var userId = authed.id || authed.userId || name;
+
     const records = load(SK.APPROVALS) || [];
     const record = records[idx];
     if (!record) { toast('Approval record not found', 'error'); return; }
 
-    // Four-eyes enforcement: high-risk approval types require two independent approvers
-    const highRiskTypes = [
-      'STR Filing','EDD Approval','Sanctions Match','TFS Freeze','UBO Override',
-      'PEP Onboarding','High Risk Customer','UNSC Consolidated List Match',
-      'Asset Freeze','Compliance Exception'
-    ];
-    const requiresFourEyes = highRiskTypes.some(t =>
-      (record.approvalType || '').toLowerCase().includes(t.toLowerCase())
-    ) || (record.slaHours && record.slaHours <= 4);
+    const requiresFourEyes = approvalRequiresFourEyes(record);
 
     if (requiresFourEyes && decision === 'Approved') {
-      // Check if this is the first or second approver
       if (!record.firstApprover) {
-        // First approval — record it but don't finalize
         record.firstApprover = name;
+        record.firstApproverUserId = userId;
+        record.firstApproverSessionId = sessionId;
         record.firstApprovalAt = new Date().toISOString();
         record.status = 'Under Review';
         save(SK.APPROVALS, records);
-        toast(`First approval recorded by ${name}. A second independent approver is required (Four-Eyes Principle).`, 'info');
+        toast('First approval recorded by ' + name + '. A second INDEPENDENT approver (different user) is required (Four-Eyes Principle).', 'info');
+        if (typeof logAudit === 'function') logAudit('approvals', 'First approver ' + name + ' on ' + record.id);
         renderApprovals();
         return;
-      } else if (record.firstApprover.toLowerCase().trim() === name.toLowerCase().trim()) {
-        toast('Four-Eyes Violation: The second approver must be a DIFFERENT person than the first approver (' + record.firstApprover + ').', 'error');
+      }
+      // Reject if the same user, same user-id, OR same session is trying
+      // to provide the second approval.
+      if ((record.firstApproverUserId && record.firstApproverUserId === userId)
+          || (record.firstApprover && record.firstApprover.toLowerCase().trim() === name.toLowerCase().trim())
+          || (record.firstApproverSessionId && record.firstApproverSessionId === sessionId)) {
+        toast('Four-Eyes Violation: the second approver must be a DIFFERENT authenticated user than ' + record.firstApprover + '.', 'error');
+        if (typeof logAudit === 'function') logAudit('approvals', 'BLOCKED four-eyes self-approval attempt on ' + record.id + ' by ' + name);
         return;
       }
-      // Second independent approver — finalize
       record.secondApprover = name;
+      record.secondApproverUserId = userId;
+      record.secondApproverSessionId = sessionId;
       record.secondApprovalAt = new Date().toISOString();
     }
 
     record.status = decision;
     record.decision = decision;
     record.decidedBy = name;
+    record.decidedByUserId = userId;
     record.decidedAt = new Date().toISOString();
 
-    // Audit trail entry
     if (!record.auditTrail) record.auditTrail = [];
     record.auditTrail.push({
       action: decision,
       actor: name,
+      actorUserId: userId,
       timestamp: new Date().toISOString(),
       fourEyes: requiresFourEyes,
       firstApprover: record.firstApprover || null,
-      secondApprover: record.secondApprover || null
+      secondApprover: record.secondApprover || null,
     });
 
     save(SK.APPROVALS, records);
-    toast(`Decision recorded: ${decision}${requiresFourEyes ? ' (Four-Eyes verified)' : ''}`, decision==='Approved'?'success':'error');
+    if (typeof logAudit === 'function') logAudit('approvals', decision + ' ' + record.id + ' by ' + name + (requiresFourEyes ? ' (4-eyes)' : ''));
+    toast('Decision recorded: ' + decision + (requiresFourEyes ? ' (Four-Eyes verified)' : ''), decision==='Approved' ? 'success' : 'error');
     renderApprovals();
   };
 
@@ -2603,11 +2721,23 @@ window.csFormatDateInput = function (el) {
   function esc(s) { if (!s && s!==0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function toast(msg,type) { if(global.toast) global.toast(msg,type); }
 
-  // Regulatory threshold constants — single source of truth
+  // Regulatory threshold constants — pulled from the canonical bridge
+  // (constants-bridge.js → src/domain/constants.ts). Never hardcode a
+  // regulatory value here; update constants.ts instead and re-run the
+  // regulatory update skill. CLAUDE.md "Constants Architecture".
+  if (!global.COMPLIANCE_CONSTANTS) {
+    throw new Error('[compliance-suite] COMPLIANCE_CONSTANTS missing. Include constants-bridge.js before compliance-suite.js.');
+  }
   const THRESHOLDS = {
-    DPMSR_PRECIOUS_METALS: 55000, // AED — MoE Circular 08/AML/2021
-    CROSS_BORDER_CASH: 60000,     // AED — Cabinet Res 134/2025 Art.16
-    UBO_PERCENTAGE: 25,           // % — Cabinet Decision 109/2023
+    DPMSR_PRECIOUS_METALS: global.COMPLIANCE_CONSTANTS.DPMS_CASH_THRESHOLD_AED, // 55000 — MoE Circular 08/AML/2021
+    CROSS_BORDER_CASH:     global.COMPLIANCE_CONSTANTS.CROSS_BORDER_CASH_THRESHOLD_AED, // 60000 — Cabinet Res 134/2025 Art.16
+    UBO_PERCENTAGE:        global.COMPLIANCE_CONSTANTS.UBO_OWNERSHIP_THRESHOLD_PCT * 100, // 25 — Cabinet Decision 109/2023
+    RETENTION_YEARS:       global.COMPLIANCE_CONSTANTS.RECORD_RETENTION_YEARS, // 10 — FDL Art.24
+    UBO_REVERIFICATION_WORKING_DAYS: global.COMPLIANCE_CONSTANTS.UBO_REVERIFICATION_WORKING_DAYS, // 15
+    CNMR_FILING_DEADLINE_BUSINESS_DAYS: global.COMPLIANCE_CONSTANTS.CNMR_FILING_DEADLINE_BUSINESS_DAYS, // 5
+    RISK_CRITICAL: global.COMPLIANCE_CONSTANTS.RISK_CRITICAL, // 16
+    RISK_HIGH:     global.COMPLIANCE_CONSTANTS.RISK_HIGH,     // 11
+    RISK_MEDIUM:   global.COMPLIANCE_CONSTANTS.RISK_MEDIUM,   // 6
   };
 
   const SK2 = {
@@ -2721,11 +2851,11 @@ window.csFormatDateInput = function (el) {
         <div class="finding ${isConfirmed?'f-critical':isPartial?'f-high':'f-ok'}" style="margin-bottom:10px">
           <div class="f-head">
             <div class="f-head-left"><div>
-              <div class="f-title">${e.screenedName} ${badge2(e.outcome)} ${cnmrOverdue?badge2('Overdue'):''}</div>
-              <div class="f-body">Lists: ${e.listsScreened} | Event: ${e.eventType} | Date: ${fmtDate(e.screeningDate)}</div>
-              ${isConfirmed?`<div class="f-ref">Freeze: ${e.frozenWithin24h||'Not confirmed'} | FFR: ${e.ffrFiled||'Pending'} | CNMR: ${e.cnmrStatus||'Pending'} (deadline: ${fmtDate(cnmrDeadline)})</div>`:''}
-              ${isPartial?`<div class="f-ref">Transaction Suspended: ${e.txSuspended||'Pending'} | PNMR: ${e.pnmrStatus||'Pending'} (deadline: ${fmtDate(cnmrDeadline)})</div>`:''}
-              <div class="f-ref">Reviewer: ${e.reviewedBy||'—'} | Ref: ${e.id}</div>
+              <div class="f-title">${esc(e.screenedName)} ${badge2(e.outcome)} ${cnmrOverdue?badge2('Overdue'):''}</div>
+              <div class="f-body">Lists: ${esc(e.listsScreened)} | Event: ${esc(e.eventType)} | Date: ${esc(fmtDate(e.screeningDate))}</div>
+              ${isConfirmed?`<div class="f-ref">Freeze: ${esc(e.frozenWithin24h||'Not confirmed')} | FFR: ${esc(e.ffrFiled||'Pending')} | CNMR: ${esc(e.cnmrStatus||'Pending')} (deadline: ${esc(fmtDate(cnmrDeadline))})</div>`:''}
+              ${isPartial?`<div class="f-ref">Transaction Suspended: ${esc(e.txSuspended||'Pending')} | PNMR: ${esc(e.pnmrStatus||'Pending')} (deadline: ${esc(fmtDate(cnmrDeadline))})</div>`:''}
+              <div class="f-ref">Reviewer: ${esc(e.reviewedBy||'—')} | Ref: ${esc(e.id)}</div>
             </div></div>
             <div style="display:flex;gap:6px">
               <button class="btn btn-sm btn-gold" onclick="suite2EditTFS(${i})">View/Edit</button>
@@ -3140,7 +3270,7 @@ window.csFormatDateInput = function (el) {
     if (document.getElementById('tfs2-list-adverse')?.checked) lists.push('Adverse Media');
     if (document.getElementById('tfs2-list-pep')?.checked) lists.push('🏛️ Political Controversy / PEP');
     const events = load(SK2.TFS2)||[];
-    const editIdx = parseInt(document.getElementById('tfs2-edit-idx').value);
+    const editIdx = parseInt(document.getElementById('tfs2-edit-idx').value, 10);
     if (editIdx >= 0 && editIdx >= events.length) { toast('Record not found','error'); return; }
     const record = {
       id: editIdx>=0 ? events[editIdx].id : `TFS2-${Date.now()}`,
@@ -3298,9 +3428,9 @@ window.csFormatDateInput = function (el) {
         <div class="finding ${c.reportingRequired==='Yes – DPMSR Required'?'f-high':c.cddComplete==='Incomplete'?'f-critical':'f-ok'}" style="margin-bottom:8px">
           <div class="f-head">
             <div class="f-head-left"><div>
-              <div class="f-title">${c.customerName} — AED ${Number(c.amount||0).toLocaleString()} ${c.cddComplete==='Incomplete'?'<span style="color:var(--red);font-size:11px">⛔ CDD INCOMPLETE</span>':''}</div>
-              <div class="f-body">Type: ${c.customerType} | Payment: ${c.paymentMethod} | Date: ${fmtDate(c.txDate)}</div>
-              <div class="f-ref">DPMSR: ${c.reportingRequired} | Linked: ${c.linkedFlag||'No'} | Filed: ${c.dpmsr_filed||'No'}</div>
+              <div class="f-title">${esc(c.customerName)} — AED ${Number(c.amount||0).toLocaleString()} ${c.cddComplete==='Incomplete'?'<span style="color:var(--red);font-size:11px">⛔ CDD INCOMPLETE</span>':''}</div>
+              <div class="f-body">Type: ${esc(c.customerType)} | Payment: ${esc(c.paymentMethod)} | Date: ${esc(fmtDate(c.txDate))}</div>
+              <div class="f-ref">DPMSR: ${esc(c.reportingRequired)} | Linked: ${esc(c.linkedFlag||'No')} | Filed: ${esc(c.dpmsr_filed||'No')}</div>
             </div></div>
             <div style="display:flex;gap:6px">
               <button class="btn btn-sm btn-gold" onclick="suite2EditDPMSR(${i})">Edit</button>
@@ -3481,17 +3611,33 @@ window.csFormatDateInput = function (el) {
     const type = document.getElementById('dpmsr-type').value;
     const amount = document.getElementById('dpmsr-amount').value;
     if(!name||!type||!amount){toast('Customer name, type, and amount are required','error');return;}
+    const amountNum = parseFloat(amount);
     const cddStatus = document.getElementById('dpmsr-cdd-complete').value;
-    if(cddStatus==='Incomplete'&&parseFloat(amount)>=THRESHOLDS.DPMSR_PRECIOUS_METALS){
+    if(cddStatus==='Incomplete' && amountNum>=THRESHOLDS.DPMSR_PRECIOUS_METALS){
       if(!confirm('⛔ CDD is incomplete. Cabinet Resolution 134/2025 Art.14 prohibits proceeding without CDD. Save record for follow-up?'))return;
     }
+
+    // Cross-border AED 60K declaration check (Cabinet Res 134/2025 Art.16).
+    // Payment methods that imply cross-border movement of cash or BNI trip
+    // the declaration prompt automatically.
+    const paymentMethod = document.getElementById('dpmsr-payment').value || '';
+    const isCrossBorder = /cross[-\s]?border|international|wire (in|out)|import|export/i.test(paymentMethod);
+    let crossBorderDeclarationId = '';
+    if (isCrossBorder && amountNum >= THRESHOLDS.CROSS_BORDER_CASH) {
+      crossBorderDeclarationId = prompt('Cross-border cash/BNI movement ≥ AED ' + THRESHOLDS.CROSS_BORDER_CASH + ' detected (Cabinet Res 134/2025 Art.16). Enter the Customs declaration reference:') || '';
+      if (!crossBorderDeclarationId) {
+        toast('Cross-border cash declaration is mandatory — record saved WITHOUT declaration ref; resolve before filing DPMSR.', 'error', 8000);
+        if (typeof logAudit === 'function') logAudit('dpmsr', 'Cross-border AED ' + amountNum + ' without declaration ref for ' + name);
+      }
+    }
+
     const cases = load(SK2.DPMSR)||[];
-    const editIdx = parseInt(document.getElementById('dpmsr-edit-idx').value);
+    const editIdx = parseInt(document.getElementById('dpmsr-edit-idx').value, 10);
     const record = {
       id: editIdx>=0?cases[editIdx].id:`DPMSR-${Date.now()}`,
-      customerName:name, customerType:type, amount:parseFloat(amount),
+      customerName:name, customerType:type, amount:amountNum,
       txDate:document.getElementById('dpmsr-txdate').value,
-      paymentMethod:document.getElementById('dpmsr-payment').value,
+      paymentMethod:paymentMethod,
       txType:document.getElementById('dpmsr-txtype').value,
       idRef:document.getElementById('dpmsr-id-ref').value,
       reportingRequired:document.getElementById('dpmsr-reporting').value,
@@ -3502,6 +3648,8 @@ window.csFormatDateInput = function (el) {
       cumulative:document.getElementById('dpmsr-cumulative').value,
       structuringIndicator:document.getElementById('dpmsr-structuring').value,
       notes:document.getElementById('dpmsr-notes').value,
+      crossBorder: isCrossBorder,
+      crossBorderDeclarationId: crossBorderDeclarationId,
       updatedAt:new Date().toISOString(),
     };
     if(editIdx>=0){cases[editIdx]=record;}else{cases.unshift(record);}
@@ -3599,11 +3747,11 @@ window.csFormatDateInput = function (el) {
         return `<div class="finding ${status==='Overdue'?'f-critical':status==='Due Soon'?'f-high':'f-ok'}" style="margin-bottom:8px">
           <div class="f-head">
             <div class="f-head-left"><div>
-              <div class="f-title">${r.recordName} ${badge2(status)}</div>
-              <div class="f-body">Category: ${esc(r.category)} | Created: ${fmtDate(r.createdDate)} | Expires: ${fmtDate(expiry.toISOString())}</div>
+              <div class="f-title">${esc(r.recordName)} ${badge2(status)}</div>
+              <div class="f-body">Category: ${esc(r.category)} | Created: ${esc(fmtDate(r.createdDate))} | Expires: ${esc(fmtDate(expiry.toISOString()))}</div>
               <div class="f-ref">${esc(r.basis)} | Storage: ${esc(r.storageLocation)}</div>
             </div></div>
-            <button class="btn btn-sm btn-red" onclick="suite2DeleteRetention(${i})">Delete</button>
+            <button class="btn btn-sm btn-red" onclick="suite2DeleteRetention(${i})">Archive</button>
           </div>
         </div>`;
       }).join('')}
@@ -3620,7 +3768,7 @@ window.csFormatDateInput = function (el) {
         </div>
         <div class="row row-2">
           <div><span class="lbl">Record Created Date</span><input type="text" id="ret-date" value="${today()}" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
-          <div><span class="lbl">Retention Period (years)</span><input type="number" id="ret-years" value="10" min="1"/></div>
+          <div><span class="lbl">Retention Period (years, min 10 — FDL Art.24)</span><input type="number" id="ret-years" value="10" min="10"/></div>
         </div>
         <div><span class="lbl">Regulatory Basis</span><input id="ret-basis" placeholder="Auto-filled from category"/></div>
         <div><span class="lbl">Storage Location</span><input id="ret-storage" placeholder="e.g. Google Drive /Compliance/CDD/ | Physical: Filing cabinet A3"/></div>
@@ -3652,14 +3800,20 @@ window.csFormatDateInput = function (el) {
   global.suite2SaveRetention = function() {
     const name=document.getElementById('ret-name').value.trim();
     if(!name){toast('Record name required','error');return;}
+    var years = parseInt(document.getElementById('ret-years').value, 10);
+    if (!Number.isFinite(years) || years < THRESHOLDS.RETENTION_YEARS) {
+      toast('Retention period must be at least ' + THRESHOLDS.RETENTION_YEARS + ' years (FDL Art.24).', 'error');
+      return;
+    }
     const records=load(SK2.RETAIN)||[];
     records.unshift({
       id:`RET-${Date.now()}`, recordName:name,
       category:document.getElementById('ret-cat').value,
       createdDate:document.getElementById('ret-date').value,
-      retentionYears:parseInt(document.getElementById('ret-years').value)||10,
+      retentionYears:years,
       basis:document.getElementById('ret-basis').value,
       storageLocation:document.getElementById('ret-storage').value,
+      createdAt: new Date().toISOString(),
     });
     save(SK2.RETAIN,records);
     document.getElementById('retentionModal').classList.remove('open');
@@ -3668,10 +3822,24 @@ window.csFormatDateInput = function (el) {
   };
 
   global.suite2DeleteRetention = function(idx) {
-    if(!confirm('Delete this retention record?'))return;
+    // FDL Art.24-25 prohibits destruction of retained records before the
+    // statutory retention period expires. Replace destructive delete with
+    // an `archivedAt` soft-archive that preserves the full record.
     const records=load(SK2.RETAIN)||[];
-    records.splice(idx,1);
+    const r = records[idx];
+    if (!r) return;
+    const created = parseDDMMYYYY(r.createdDate) || new Date(r.createdDate || 0);
+    const expiry = new Date(created.getTime());
+    expiry.setFullYear(expiry.getFullYear() + (r.retentionYears || THRESHOLDS.RETENTION_YEARS));
+    if (expiry.getTime() > Date.now()) {
+      toast('Cannot delete before ' + fmtDateDDMMYYYY(expiry) + ' (FDL Art.24). Archive instead.', 'error');
+    }
+    if(!confirm('Archive this retention record? It stays in the inventory with archivedAt timestamp until the retention period expires.'))return;
+    r.archivedAt = new Date().toISOString();
+    r.archivedBy = (typeof AuthRBAC !== 'undefined' && AuthRBAC.getCurrentUser && AuthRBAC.getCurrentUser()?.username) || 'unknown';
+    records[idx] = r;
     save(SK2.RETAIN,records);
+    if (typeof logAudit === 'function') logAudit('retention', 'Archived retention record ' + r.id + ' (' + r.recordName + ')');
     renderRetention();
   };
 
@@ -4118,7 +4286,7 @@ window.csFormatDateInput = function (el) {
 
       // Convert old format to new TFS2 format
       const converted = oldRecords.map(r => ({
-        id: r.id || ('TFS2-MIGRATED-' + Date.now() + Math.random()),
+        id: r.id || ('TFS2-MIGRATED-' + uid('')),
         screenedName: r.screenedName || '—',
         eventType: r.eventType || 'Ad Hoc Review',
         listsScreened: r.listName || 'Migrated from TFS Ops',
@@ -4479,7 +4647,52 @@ ${sheetsHTML}
   };
 
   // ── IMPORT / RESTORE ──────────────────────────────────────────────────────
-  global.dmImportBackup = function(input) {
+  // Allowlist of backup keys that dmImportBackup will accept. Anything not
+  // here is rejected — prevents an attacker-crafted backup from injecting
+  // arbitrary localStorage keys that downstream code trusts.
+  var BACKUP_KEY_ALLOWLIST = new Set([
+    SK.CRA, SK.UBO, SK.STR, SK.TFS, SK.APPROVALS, SK.REGMAP, SK.JURISDICTION,
+    SK2.TFS2, SK2.DPMSR, SK2.RETAIN, SK2.AILOG, SK2.LINKED,
+    'fgl_cra_risk_model', 'fgl_country_risk_db',
+  ]);
+
+  // Derive a deterministic HMAC key for backup signing from the local
+  // install. This does not provide cryptographic secrecy against a remote
+  // attacker — it does prevent unsigned / cross-install / tampered backups
+  // from being restored without an explicit operator override.
+  async function backupKey() {
+    if (!crypto || !crypto.subtle) {
+      throw new Error('Web Crypto unavailable — backup signing disabled in insecure context.');
+    }
+    var seed = localStorage.getItem('fgl_backup_key_seed');
+    if (!seed) {
+      var buf = new Uint8Array(32);
+      crypto.getRandomValues(buf);
+      seed = Array.from(buf).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+      localStorage.setItem('fgl_backup_key_seed', seed);
+    }
+    var rawKey = new TextEncoder().encode(seed);
+    return await crypto.subtle.importKey('raw', rawKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+  }
+
+  async function signBackup(data) {
+    var key = await backupKey();
+    var bytes = new TextEncoder().encode(JSON.stringify(data));
+    var sig = await crypto.subtle.sign('HMAC', key, bytes);
+    return Array.from(new Uint8Array(sig)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+  }
+  global.dmSignBackup = signBackup;
+
+  async function verifyBackup(data, sigHex) {
+    try {
+      var key = await backupKey();
+      var bytes = new TextEncoder().encode(JSON.stringify(data));
+      var sig = new Uint8Array((sigHex || '').match(/../g || []).map(function(h){return parseInt(h, 16);}));
+      return await crypto.subtle.verify('HMAC', key, sig, bytes);
+    } catch (_) { return false; }
+  }
+
+  global.dmImportBackup = async function(input) {
     const file = input.files[0];
     if (!file) return;
     if (!file.name.endsWith('.json')) {
@@ -4487,28 +4700,55 @@ ${sheetsHTML}
       input.value = ''; return;
     }
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
       try {
         const backup = JSON.parse(e.target.result);
-        if (!backup.data) { if (typeof toast === 'function') toast('Invalid backup file', 'error'); return; }
-        const modules = Object.keys(backup.data).length;
-        const dated = backup.meta?.timestamp ? fmtDate(backup.meta.timestamp) : 'unknown date';
-        if (!confirm(`Restore ${modules} modules from backup (${dated})?\n\nExisting records are kept. Backup records are merged in.`)) return;
-        let restored = 0;
-        Object.entries(backup.data).forEach(([key, value]) => {
+        if (!backup || typeof backup !== 'object' || !backup.data || typeof backup.data !== 'object') {
+          if (typeof toast === 'function') toast('Invalid backup structure', 'error'); return;
+        }
+        // Schema: { meta, data, signature }
+        var signatureOk = false;
+        if (backup.signature) {
+          signatureOk = await verifyBackup(backup.data, backup.signature);
+        }
+        if (!signatureOk) {
+          if (!confirm('⚠️ Backup signature missing or invalid. Only restore backups you generated yourself from this install. Continue anyway?')) {
+            if (typeof logAudit === 'function') logAudit('dm', 'User cancelled unsigned backup restore');
+            return;
+          }
+          if (typeof logAudit === 'function') logAudit('dm', 'User override: unsigned backup restored');
+        }
+        // Enforce the allowlist — reject unknown keys rather than writing them.
+        var keys = Object.keys(backup.data).filter(function(k) { return BACKUP_KEY_ALLOWLIST.has(k); });
+        var rejected = Object.keys(backup.data).filter(function(k) { return !BACKUP_KEY_ALLOWLIST.has(k); });
+        if (rejected.length) {
+          console.warn('[dmImportBackup] rejected unknown keys:', rejected);
+          if (typeof logAudit === 'function') logAudit('dm', 'Rejected unknown backup keys: ' + rejected.join(','));
+        }
+        var modules = keys.length;
+        var dated = backup.meta && backup.meta.timestamp ? fmtDate(backup.meta.timestamp) : 'unknown date';
+        if (!confirm('Restore ' + modules + ' modules from backup (' + dated + ')?\n\nExisting records are kept. Backup records are merged in.' + (rejected.length ? '\n\n' + rejected.length + ' unknown keys were rejected.' : ''))) return;
+        var restored = 0;
+        keys.forEach(function(key) {
           try {
-            const existing = JSON.parse(localStorage.getItem(key) || 'null');
+            var value = backup.data[key];
+            var existing = null;
+            try { existing = JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) { existing = null; }
             if (Array.isArray(existing) && Array.isArray(value)) {
-              const ids = new Set(existing.map(r => r.id || JSON.stringify(r)));
-              const toAdd = value.filter(r => !ids.has(r.id || JSON.stringify(r)));
-              localStorage.setItem(key, JSON.stringify([...existing, ...toAdd]));
+              var ids = new Set(existing.map(function(r){return r.id || JSON.stringify(r);}));
+              var toAdd = value.filter(function(r){return !ids.has(r.id || JSON.stringify(r));});
+              localStorage.setItem(key, JSON.stringify(existing.concat(toAdd)));
+            } else if (Array.isArray(value) || (value && typeof value === 'object')) {
+              localStorage.setItem(key, JSON.stringify(value));
             } else {
-              localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+              // Scalar values are not expected — skip.
+              return;
             }
             restored++;
-          } catch {}
+          } catch (_) {}
         });
         localStorage.setItem('fgl_last_backup', new Date().toISOString());
+        if (typeof logAudit === 'function') logAudit('dm', 'Restored ' + restored + ' modules from backup (signatureOk=' + signatureOk + ')');
         if (typeof toast === 'function') toast('✅ Restored ' + restored + ' modules', 'success');
         renderDataManager();
         input.value = '';
@@ -4518,9 +4758,22 @@ ${sheetsHTML}
   };
 
   // ── CLEAR MODULE ──────────────────────────────────────────────────────────
+  // Retention-governed keys cannot be cleared without a Records Officer
+  // role + 2-person approval + age check (FDL Art.24-25). Non-retention
+  // keys can still be cleared by an admin.
+  var RETENTION_PROTECTED_KEYS = new Set([
+    SK.STR, SK.TFS, SK.UBO, SK.CRA, SK.APPROVALS,
+    SK2.TFS2, SK2.DPMSR, SK2.RETAIN, SK2.AILOG, SK2.LINKED,
+  ]);
   global.dmClearModule = function(key, label) {
+    if (RETENTION_PROTECTED_KEYS.has(key)) {
+      if (typeof toast === 'function') toast('"' + label + '" is retention-governed (FDL Art.24). Destruction requires Records Officer role + two-person approval + age-verified records.', 'error', 10000);
+      if (typeof logAudit === 'function') logAudit('dm', 'BLOCKED clear of retention-governed module ' + key);
+      return;
+    }
     if (!confirm('⚠️ Clear ALL data in "' + label + '"?\n\nThis cannot be undone. Download a backup first.')) return;
     localStorage.removeItem(key);
+    if (typeof logAudit === 'function') logAudit('dm', 'Cleared module ' + key);
     if (typeof toast === 'function') toast(label + ' cleared', 'success');
     renderDataManager();
   };
