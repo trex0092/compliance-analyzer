@@ -1263,24 +1263,70 @@ window.csFormatDateInput = function (el) {
   // ════════════════════════════════════════════════════════════════════════════
 
   const STR_RED_FLAGS_DPMS = [
+    // — Customer Due Diligence —
     'Customer reluctant to provide identification',
+    'Customer declines to complete CDD documentation',
+    'Inconsistency between declared source of funds and known business',
+    'Customer behaviour changes after CDD request',
+    'Customer requests anonymity or third-party payment',
+    'Customer cannot be reached at declared address or phone',
+    'Customer ID has expired or shows tampering signs',
+    'Customer provides Emirates ID that fails Federal Authority verification',
+    'Customer profile inconsistent with claimed occupation',
+    'Customer recently relocated from FATF grey/black-list jurisdiction',
+    // — Cash & threshold patterns —
     'Unusual cash payments above AED 55,000',
     'Multiple structured transactions below AED 55,000 threshold',
-    'Customer requests anonymity or third-party payment',
-    'Inconsistency between declared source of funds and known business',
+    'Cash deposit followed by immediate gold purchase',
+    'Cash carried in non-traceable form (envelopes, bricks)',
+    'Customer asks how to avoid the AED 55,000 reporting threshold',
+    'Cumulative linked transactions exceeding AED 55,000 in 7-day window',
+    'Round-number cash transactions repeated weekly',
+    // — Behaviour & profile —
     'Purchases inconsistent with customer profile or business activity',
     'Customer known to law enforcement or adverse media',
-    'Gold purchased immediately converted/exported',
+    'Customer expresses indifference to purity, weight, or assay',
+    'Customer expresses indifference to price or market quote',
+    'Customer in apparent rush to complete transaction',
+    'Customer asks staff to bypass standard procedures',
+    'Customer attempts to influence or befriend compliance staff',
+    'Customer brings unrelated companions who handle the cash',
+    // — Geography & sanctions —
     'Involvement of CAHRA or high-risk jurisdiction',
-    'PEP involvement without satisfactory source of wealth explanation',
-    'Unusually complex ownership or payment structure',
-    'Customer declines to complete CDD documentation',
+    'Customer/counterparty in OFAC SDN, UN, EU, UK, or UAE EOCN list',
     'Sanctions list match or potential match identified',
+    'Cross-border movement to jurisdiction without trade rationale',
+    'Goods routed through transhipment hub linked to TBML typologies',
+    // — UBO & structure —
+    'Unusually complex ownership or payment structure',
+    'Beneficial owner cannot be confirmed within Cabinet 109/2023 windows',
+    'PEP involvement without satisfactory source of wealth explanation',
+    'Domestic PEP family member acting on behalf of the PEP',
+    'Use of nominee directors or shareholders without legitimate purpose',
+    // — Outflow / disposal —
+    'Gold purchased immediately converted/exported',
+    'Resale at a loss within hours of purchase',
+    'Customer asks for delivery to a different name than the buyer',
+    'Customer asks for collection by a courier with no verifiable identity',
+    // — TBML / TF / PF —
     'Trade-Based Money Laundering indicators (over/under-invoicing)',
     'Terrorism financing red flag (political links, specific geography)',
     'Proliferation financing concern (dual-use goods reference)',
+    'Customer asks about converting gold into negotiable instruments offshore',
+    'Customer references restricted technologies or controlled goods alongside gold',
+    // — Documentation & integrity —
     'Transaction with no apparent business rationale',
-    'Customer behaviour changes after CDD request',
+    'False or altered invoice / assay / weight certificate',
+    'Mismatched signatures across related documentation',
+    'Repeated requests to alter or rebill prior invoices',
+    // — Crypto / virtual asset —
+    'Settlement requested in stablecoin or virtual asset',
+    'Wallet address linked to a known illicit cluster',
+    'Customer cannot explain origin of crypto used to pay',
+    // — Internal escalation —
+    'Internal staff observation prompting MLRO escalation',
+    'Pattern detected by automated monitoring exceeding rule threshold',
+    'External tip-off, whistleblower disclosure, or law-enforcement request',
   ];
 
   function renderSTR() {
@@ -1844,6 +1890,55 @@ window.csFormatDateInput = function (el) {
       { flag:'Cyber risk to AML/CFT/CPF screening systems not assessed as PF vulnerability', ref:'EOCN PF RA Guidance 2025 | Cabinet Resolution 134/2025 Art.5', l:3, i:4, mx:[] },
       { flag:'Customer linked to illicit networks seeking nuclear, biological, or chemical materials or delivery systems', ref:'EOCN PF RA Guidance 2025 | UNSCR 1540 | FATF Rec.7 | Cabinet Resolution 156/2025', l:5, i:5, mx:['sanctions'] },
     ],
+    'Virtual Assets & VASP Exposure': [
+      { flag:'Customer pays for gold using stablecoin or other virtual asset', ref:'FATF Rec.15 | VARA UAE | Cabinet Resolution 134/2025 Art.16', l:4, i:4, mx:[] },
+      { flag:'VASP wallet address matches OFAC SDN crypto addenda', ref:'OFAC SDN crypto addenda | Cabinet Resolution 74/2020', l:5, i:5, mx:['sanctions'] },
+      { flag:'Wallet history shows mixer / tumbler usage prior to settlement', ref:'FATF VA Guidance 2021 | Cabinet Resolution 134/2025 Art.16', l:5, i:5, mx:[] },
+      { flag:'Customer cannot explain origin of crypto used for payment', ref:'FATF Rec.15 | UAE FDL No.(10)/2025 Art.14', l:4, i:4, mx:[] },
+      { flag:'Use of privacy coins (Monero, Zcash, Dash) for any portion of settlement', ref:'FATF VA Guidance 2021', l:5, i:5, mx:[] },
+      { flag:'On-chain settlement immediately bridged to a non-custodial wallet', ref:'FATF Rec.15 | VARA UAE', l:4, i:4, mx:[] },
+      { flag:'Wallet linked via clustering to a known darknet marketplace', ref:'FATF VA Guidance 2021', l:5, i:5, mx:['sanctions'] },
+    ],
+    'Adverse Media & Reputational': [
+      { flag:'Customer named in ICIJ / OCCRP / Bellingcat / Global Witness investigation', ref:'FATF Rec.10 | UAE FDL No.(10)/2025 Art.14', l:4, i:5, mx:[] },
+      { flag:'Customer subject to active law enforcement investigation in any jurisdiction', ref:'FATF Rec.10 | Cabinet Resolution 134/2025 Art.14', l:5, i:5, mx:[] },
+      { flag:'Customer mentioned in Pandora / Panama / Paradise Papers leaks', ref:'FATF Rec.10 | UAE NRA 2024', l:4, i:4, mx:[] },
+      { flag:'Customer subject to a recent civil asset-recovery order', ref:'FATF Rec.10', l:4, i:4, mx:[] },
+      { flag:'Customer family member or close associate convicted of corruption', ref:'FATF Rec.12 | UAE FDL No.(10)/2025 Art.16', l:4, i:5, mx:['pep'] },
+      { flag:'Customer mentioned in human-rights NGO report', ref:'OECD DDG | LBMA RGG v9 Step 5', l:4, i:5, mx:[] },
+      { flag:'Customer linked to environmental crimes via investigative journalism', ref:'FATF Environmental Crime 2021', l:4, i:4, mx:[] },
+    ],
+    'Cyber & Insider Threat': [
+      { flag:'Anomalous login pattern on the customer account (geo + device + time)', ref:'FATF Cyber-Enabled Crime 2023', l:3, i:4, mx:[] },
+      { flag:'Customer credentials previously appeared in a known data-breach corpus', ref:'NIST 800-63B | UAE Cyber Security Council 2024', l:3, i:4, mx:[] },
+      { flag:'Customer device fingerprint shared with a previously confirmed mule account', ref:'FATF Cyber-Enabled Crime 2023', l:5, i:5, mx:['repeat'] },
+      { flag:'Insider staff member observed accessing customer record outside their portfolio', ref:'FATF Rec.18 | UAE Cyber Security Council 2024', l:4, i:4, mx:[] },
+      { flag:'Insider staff member with access to the freeze workflow exhibits unusual login pattern', ref:'FATF Rec.18 | EOCN TFS Guidance', l:4, i:5, mx:[] },
+    ],
+    'Human Trafficking & Modern Slavery': [
+      { flag:'Customer cannot speak for themselves; an unrelated third party answers', ref:'UAE Federal Law No.51/2006 | FATF HT Guidance 2018', l:5, i:5, mx:[] },
+      { flag:'Visible signs of coercion or fear during in-person transaction', ref:'FATF HT Guidance 2018', l:5, i:5, mx:[] },
+      { flag:'Customer carries identification belonging to multiple individuals', ref:'FATF HT Guidance 2018', l:5, i:5, mx:[] },
+      { flag:'Customer pays for goods on behalf of someone not present', ref:'FATF HT Guidance 2018', l:4, i:4, mx:[] },
+      { flag:'Customer staying in conditions inconsistent with declared income', ref:'UK Modern Slavery Act statement | FATF HT Guidance 2018', l:4, i:4, mx:[] },
+    ],
+    'Wildlife & Environmental Crime': [
+      { flag:'Customer attempts to sell ivory, rhino horn, or other CITES-listed product alongside gold', ref:'CITES | FATF Environmental Crime 2021', l:5, i:5, mx:[] },
+      { flag:'Suspected illegal mining proceeds laundered via gold purchase', ref:'FATF Illegal Mining 2021 | OECD DDG', l:5, i:5, mx:[] },
+      { flag:'Source ASM site documented in UNEP environmental violation report', ref:'OECD DDG §4 | UNEP', l:4, i:5, mx:[] },
+    ],
+    'Tax Evasion & Underground Banking': [
+      { flag:'Customer references hawala or undocumented value-transfer system', ref:'FATF Rec.14 | UAE FDL No.(10)/2025 Art.14', l:5, i:5, mx:[] },
+      { flag:'Customer requests invoice in name of unrelated third-party for tax purposes', ref:'FATF TBML Guidance 2020 | UAE FTA', l:4, i:4, mx:[] },
+      { flag:'Customer asks for split invoices to stay below VAT registration threshold', ref:'UAE FTA Decree-Law 8/2017 | FATF TBML 2020', l:4, i:4, mx:[] },
+      { flag:'Customer pays in foreign currency from a country with strict capital controls', ref:'FATF Rec.14 | IMF capital-controls list', l:4, i:4, mx:['high_risk_jurisdiction'] },
+    ],
+    'Behavioural & Psychological': [
+      { flag:'Customer rehearses answers to KYC questions verbatim from a script', ref:'FATF DPMS 2020 §4.2', l:3, i:4, mx:[] },
+      { flag:'Customer makes nervous eye contact / sweats / fidgets when asked source-of-funds questions', ref:'FATF DPMS 2020 §4.2', l:2, i:3, mx:[] },
+      { flag:'Customer threatens to take business elsewhere when asked compliance questions', ref:'FATF DPMS 2020 §4.2', l:3, i:4, mx:[] },
+      { flag:'Customer attempts to bribe or tip the employee to skip verification', ref:'FATF Rec.10 | UAE Federal Law No.31/2021', l:5, i:5, mx:[] },
+    ],
   };
 
   function renderRedFlags() {
@@ -2225,6 +2320,40 @@ window.csFormatDateInput = function (el) {
     { type: 'Governance Structure Change', sla: 72, desc: 'Material change in corporate governance requiring Board approval. ESG Governance' },
     { type: 'ESG Annual Report', sla: 168, desc: 'Annual ESG/sustainability report preparation and approval. GRI Standards' },
     { type: 'Responsible Sourcing Certification Renewal', sla: 168, desc: 'Renewal of LBMA/RMI/DMCC responsible sourcing certifications. LBMA RGG, RMI RMAP' },
+    // ── New (2026-04 expansion) ──
+    // Virtual Asset / VASP exposure
+    { type: 'VASP Settlement Approval', sla: 24, desc: 'Settlement using a virtual asset requires CO + Senior MLRO approval. FATF Rec 15, VARA UAE' },
+    { type: 'Sanctioned Wallet Detection', sla: 2, desc: 'Wallet matches OFAC SDN crypto addenda — immediate freeze + EOCN notification. OFAC SDN | Cabinet Res 74/2020' },
+    { type: 'Mixer/Tumbler Exposure', sla: 4, desc: 'On-chain history shows mixer / tumbler usage — EDD required. FATF VA Guidance 2021' },
+    { type: 'Crypto-to-Gold Conversion', sla: 24, desc: 'Customer pays for gold using crypto — full source-of-funds investigation. FATF Rec 15' },
+    // Modern slavery / human rights
+    { type: 'Modern Slavery Indicator', sla: 4, desc: 'Behavioural / verbal indicator of trafficking or coercion — immediate escalation. UAE Federal Law 51/2006, FATF HT Guidance 2018' },
+    { type: 'Suspected Forced Labour Source', sla: 24, desc: 'Source-of-supply investigation suggests forced labour. UK Modern Slavery Act, OECD DDG' },
+    // Wildlife / environmental
+    { type: 'Environmental Crime Indicator', sla: 24, desc: 'Customer or supplier linked to illegal mining, wildlife trafficking, or other environmental crime. FATF Environmental Crime 2021' },
+    { type: 'CITES-Listed Goods Encountered', sla: 4, desc: 'CITES-listed product offered alongside gold — immediate refusal + STR. CITES, FATF Environmental Crime 2021' },
+    // Tax & underground banking
+    { type: 'Hawala / IVTS Reference', sla: 24, desc: 'Customer references hawala / informal value-transfer system. FATF Rec 14, FDL Art.14' },
+    { type: 'Customs Duty Evasion Indicator', sla: 48, desc: 'Suspected customs duty / VAT evasion via gold transit. UAE FTA, FATF TBML 2020' },
+    // Cyber / insider
+    { type: 'Insider Misuse Investigation', sla: 4, desc: 'Suspected insider compliance bypass or unauthorised data access. FATF Rec 18, UAE Cyber Security Council 2024' },
+    { type: 'Customer Account Takeover', sla: 4, desc: 'Customer credentials compromised — immediate freeze + customer notification. NIST 800-63B' },
+    { type: 'Compromised Workstation Detected', sla: 4, desc: 'Compliance workstation flagged for malware / unusual activity. FATF Cyber-Enabled Crime 2023' },
+    // Adverse media / public records
+    { type: 'ICIJ / OCCRP Disclosure Match', sla: 48, desc: 'Customer named in investigative journalism leak (Pandora, Panama, Paradise, etc.). FATF Rec 10' },
+    { type: 'Civil Asset Recovery Order', sla: 48, desc: 'Customer subject to civil forfeiture / asset recovery — full review. FATF Rec 10, FDL Art.14' },
+    // EU AI Act / NIST AI RMF (governance)
+    { type: 'AI System High-Risk Re-Classification', sla: 168, desc: 'AI risk classification change requires governance review. EU AI Act Art.6, NIST AI RMF MAP 1.1' },
+    { type: 'AI Model Drift Threshold Breach', sla: 24, desc: 'Production AI model drift exceeded calibration threshold. NIST AI RMF MS-1.1, EU AI Act Art.15' },
+    { type: 'AI Incident Notification', sla: 24, desc: 'Serious AI system incident — EU AI Act Art.62 reporting deadline. EU AI Act Art.62' },
+    // Ops / continuity
+    { type: 'Business Continuity Activation', sla: 4, desc: 'BCP activation triggered by incident — operations + compliance review. ISO 22301, FATF Rec 18' },
+    { type: 'Third-Party Service Provider Failure', sla: 24, desc: 'Vendor outage affecting a compliance-critical service. ISO 27001 A.15' },
+    { type: 'Data Breach Notification', sla: 72, desc: 'Personal data breach — UAE PDPL Art.20 notification within 72 hours. UAE PDPL Art.20' },
+    // Inspector / regulator
+    { type: 'EOCN Inspector Visit', sla: 4, desc: 'Live EOCN inspector visit — open the inspector portal + provision read-only Asana access. EOCN Inspection Manual §9' },
+    { type: 'LBMA Audit Walkthrough', sla: 168, desc: 'Annual LBMA RGG audit walkthrough preparation. LBMA RGG v9 Step 5' },
+    { type: 'MoE Joint Inspection', sla: 72, desc: 'Joint MoE + EOCN supervisory visit — full audit pack. Cabinet Res 156/2025' },
   ];
 
   function renderApprovals() {
@@ -2422,6 +2551,22 @@ window.csFormatDateInput = function (el) {
     'UBO Change',
     'Compliance Exception',
     'DPMSR Filing',
+    // ── 2026-04 expansion ──
+    'VASP Settlement Approval',
+    'Sanctioned Wallet Detection',
+    'Mixer/Tumbler Exposure',
+    'Crypto-to-Gold Conversion',
+    'Modern Slavery Indicator',
+    'Suspected Forced Labour Source',
+    'Environmental Crime Indicator',
+    'CITES-Listed Goods Encountered',
+    'Hawala / IVTS Reference',
+    'Insider Misuse Investigation',
+    'Customer Account Takeover',
+    'AI Incident Notification',
+    'Data Breach Notification',
+    'EOCN Inspector Visit',
+    'MoE Joint Inspection',
   ]);
   function approvalRequiresFourEyes(record) {
     if (!record) return false;

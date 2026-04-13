@@ -687,6 +687,128 @@
         { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
         { type: 'email_alert', subject: 'PF Alert: Dual-Use Goods Nexus for {customerName}', message: 'Customer trades in or has links to dual-use goods or controlled items. Verify licensing, screen against UAE Strategic Goods Control Lists. Senior management approval required before onboarding. Ref: EOCN PF RA Guidance 2025, Cabinet Resolution 156/2025, UNSCR 1540.' }
       ]
+    },
+    // ── 2026-04 expansion ──
+    {
+      id: 'wf_vasp_settlement', name: 'VASP Settlement — CO + MLRO Approval', enabled: true,
+      trigger: 'vasp_settlement', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'vasp_review', priority: 'high' },
+        { type: 'email_alert', subject: 'VASP Settlement: {customerName}', message: 'Customer is settling in a virtual asset. Verify wallet provenance, screen against OFAC SDN crypto addenda, and obtain CO + Senior MLRO approval before release. FATF Rec 15, VARA UAE.' }
+      ]
+    },
+    {
+      id: 'wf_sanctioned_wallet', name: 'Sanctioned Wallet Detection — Immediate Freeze', enabled: true,
+      trigger: 'sanctioned_wallet', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'sanctions_update', priority: 'high' },
+        { type: 'email_alert', subject: 'URGENT: Sanctioned wallet detected', message: 'Wallet matches OFAC SDN crypto addenda. Freeze immediately, file FFR via goAML, notify EOCN within 24h. Cabinet Res 74/2020.' },
+        { type: 'browser_notify', title: 'SANCTIONED WALLET', message: 'Freeze + EOCN notify NOW.' }
+      ]
+    },
+    {
+      id: 'wf_mixer_exposure', name: 'Mixer / Tumbler Exposure — EDD', enabled: true,
+      trigger: 'mixer_exposure', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
+        { type: 'email_alert', subject: 'Mixer / Tumbler Exposure: {customerName}', message: 'On-chain analysis shows mixer / tumbler usage prior to settlement. Run EDD before clearing. FATF VA Guidance 2021.' }
+      ]
+    },
+    {
+      id: 'wf_modern_slavery_indicator', name: 'Modern Slavery Indicator — Immediate Escalation', enabled: true,
+      trigger: 'modern_slavery_indicator', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'incident_response', priority: 'high' },
+        { type: 'email_alert', subject: 'CONFIDENTIAL: Modern Slavery Indicator', message: 'Behavioural / verbal indicator of trafficking detected. Do NOT confront the subject. Escalate to MLRO + UAE Federal Authority for Identity. UAE Federal Law 51/2006, FATF HT 2018.' }
+      ]
+    },
+    {
+      id: 'wf_cites_goods', name: 'CITES-Listed Goods — Refuse + STR', enabled: true,
+      trigger: 'cites_goods', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'incident_response', priority: 'high' },
+        { type: 'browser_notify', title: 'CITES-LISTED GOODS', message: 'Refuse the transaction. File STR. CITES.' }
+      ]
+    },
+    {
+      id: 'wf_environmental_crime', name: 'Environmental Crime Indicator — EDD + STR Review', enabled: true,
+      trigger: 'environmental_crime', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'edd_escalation', priority: 'high' },
+        { type: 'email_alert', subject: 'Environmental Crime Indicator: {customerName}', message: 'Customer / supplier linked to illegal mining or environmental crime. Run EDD + STR review. FATF Environmental Crime 2021, OECD DDG.' }
+      ]
+    },
+    {
+      id: 'wf_hawala_reference', name: 'Hawala / IVTS Reference — STR Drafting', enabled: true,
+      trigger: 'hawala_reference', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'str_drafting', priority: 'high' },
+        { type: 'email_alert', subject: 'Hawala / IVTS Reference: {customerName}', message: 'Customer references hawala / informal value-transfer system. Draft STR and assess exit. FATF Rec 14, FDL Art.14.' }
+      ]
+    },
+    {
+      id: 'wf_insider_misuse', name: 'Insider Misuse — Lockdown + Forensics', enabled: true,
+      trigger: 'insider_misuse', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'incident_response', priority: 'high' },
+        { type: 'email_alert', subject: 'CONFIDENTIAL: Insider compliance bypass', message: 'Suspected insider compliance bypass. Suspend access, preserve audit logs, open a forensic investigation. FATF Rec 18.' }
+      ]
+    },
+    {
+      id: 'wf_data_breach', name: 'Data Breach — 72h Notification', enabled: true,
+      trigger: 'data_breach', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'breach_notification', priority: 'high' },
+        { type: 'email_alert', subject: 'PDPL Data Breach Notification', message: 'Personal data breach detected. Notify the UAE Data Office within 72 hours per UAE PDPL Art.20.' }
+      ]
+    },
+    {
+      id: 'wf_ai_incident', name: 'AI System Incident — EU AI Act Art.62', enabled: true,
+      trigger: 'ai_incident', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'incident_response', priority: 'high' },
+        { type: 'email_alert', subject: 'AI Incident Notification', message: 'Serious AI system incident detected. Trigger EU AI Act Art.62 reporting deadline. NIST AI RMF MS-1.1.' }
+      ]
+    },
+    {
+      id: 'wf_drift_breach', name: 'Drift Cron — Significant Band Detected', enabled: true,
+      trigger: 'drift_significant', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'risk_appetite', priority: 'high' },
+        { type: 'browser_notify', title: 'Drift Detected', message: 'Portfolio drift in significant band. Review risk model calibration. Cabinet Res 134/2025 Art.5.' }
+      ]
+    },
+    {
+      id: 'wf_red_team_miss', name: 'Red-team Miss — Patch + Golden Test', enabled: true,
+      trigger: 'red_team_miss', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'incident_response', priority: 'high' },
+        { type: 'browser_notify', title: 'Red-team miss', message: 'Synthetic adversarial case missed. Reproduce, patch, add a golden-case test. FATF Rec 1, NIST AI RMF MS-1.1.' }
+      ]
+    },
+    {
+      id: 'wf_eocn_inspector_visit', name: 'EOCN Inspector Visit — Audit Pack + Read-Only Asana', enabled: true,
+      trigger: 'eocn_inspector_visit', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'audit_preparation', priority: 'high' },
+        { type: 'email_alert', subject: 'EOCN Inspector Visit', message: 'Inspector on-site. Generate audit pack via /api/audit-pack, provision read-only Asana inspector view. EOCN Inspection Manual §9.' }
+      ]
+    },
+    {
+      id: 'wf_uae_ai_audit', name: 'UAE AI Audit — Self-Assessment', enabled: true,
+      trigger: 'scheduled_ai_audit', condition: { frequency: 'quarterly' },
+      actions: [
+        { type: 'create_asana_task', template: 'audit_preparation', priority: 'medium' },
+        { type: 'browser_notify', title: 'UAE AI Audit', message: 'Quarterly UAE AI governance self-audit due. Run runAiGovernanceAgent({ mode: "self" }). EU AI Act + ISO/IEC 42001.' }
+      ]
+    },
+    {
+      id: 'wf_pdpl_dsr', name: 'PDPL Data Subject Request — 30-day Response', enabled: true,
+      trigger: 'pdpl_dsr', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'compliance_query_response', priority: 'medium' },
+        { type: 'email_alert', subject: 'PDPL Data Subject Request: {customerName}', message: 'Data subject request received. Respond within 30 days per UAE PDPL Art.13. Document the response in the audit chain.' }
+      ]
     }
   ];
 
