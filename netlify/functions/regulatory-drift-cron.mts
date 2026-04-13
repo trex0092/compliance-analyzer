@@ -115,6 +115,37 @@ export default async (): Promise<Response> => {
     overallMaxPsi: report.overallMaxPsi,
   });
 
+  // Dispatch a drift_incident plan to Asana when the overall band is
+  // significant. Best-effort: failure here does not unwind the report
+  // persistence above.
+  if (report.overallBand === 'significant') {
+    try {
+      const { orchestrateAsanaForEvent } = await import(
+        '../../src/services/asanaComplianceOrchestrator'
+      );
+      const planStore = getStore('asana-plans');
+      const iso = new Date().toISOString();
+      const plan = orchestrateAsanaForEvent({
+        kind: 'drift_significant',
+        tenantId: 'default',
+        occurredAtIso: iso,
+        refId: `drift-${iso.slice(0, 10)}`,
+        payload: {
+          overallBand: report.overallBand,
+          driftedFeatureCount: report.driftedFeatureCount,
+          overallMaxPsi: report.overallMaxPsi,
+        },
+      });
+      await planStore.setJSON(`${iso.slice(0, 10)}/drift-${Date.now()}.json`, {
+        at: iso,
+        refId: `drift-${iso.slice(0, 10)}`,
+        plan,
+      });
+    } catch (err) {
+      console.warn('[regulatory-drift-cron] Asana dispatch failed:', err);
+    }
+  }
+
   return Response.json({
     ok: true,
     overallBand: report.overallBand,

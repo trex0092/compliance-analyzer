@@ -616,6 +616,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="tab" data-action="switchTab" data-arg="pipeline">📦 Export Pipeline</div>
       <div class="tab" data-action="switchTab" data-arg="intelligence">🧠 Intelligence</div>
       <div class="tab" data-action="switchTab" data-arg="metalstrading">◈ Trading</div>
+      <div class="tab" data-action="switchTab" data-arg="warroom">🎯 War Room</div>
       <!-- Data Upload removed -->
     </div>
 
@@ -2776,6 +2777,29 @@ Examples:
       </div>
     </div>
 
+    <!-- NORAD WAR ROOM TAB -->
+    <div id="tab-warroom" class="tab-content">
+      <div class="card" style="margin-bottom:12px">
+        <div class="top-bar">
+          <span class="sec-title">🎯 NORAD War Room — real-time compliance command centre</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-gold" onclick="warRoomStart()" id="warRoomStartBtn" title="Start live SSE stream from /api/warroom/stream">▶ Start Live</button>
+            <button class="btn btn-sm" onclick="warRoomStop()" id="warRoomStopBtn" style="display:none">⏹ Stop</button>
+            <button class="btn btn-sm btn-blue" onclick="warRoomRefresh()">🔄 Refresh</button>
+            <button class="btn btn-sm btn-blue" onclick="warRoomBrief()" title="Read the war-room brief via the voice assistant">🔊 Brief</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">
+          FDL Art.20-21 situational awareness · Cabinet Res 134/2025 Art.19 continuous monitoring · EOCN Inspection Manual §9
+        </div>
+      </div>
+      <div id="warRoomContainer" style="font-family:'Inter',system-ui,sans-serif">
+        <p style="color:var(--muted);font-size:12px;padding:20px;text-align:center">
+          Click <strong>▶ Start Live</strong> to open the SSE stream and begin rendering real-time war-room snapshots.
+        </p>
+      </div>
+    </div>
+
     <!-- DATA UPLOAD TAB -->
     <div id="tab-uploads" class="tab-content">
       <div class="card">
@@ -2877,6 +2901,7 @@ Examples:
 
 <script src="metals-trading.js?v=20260412"></script>
 <script src="brain-boot.js?v=20260410"></script>
+<script src="warroom-client.js?v=20260413"></script>
 <script src="app-boot.js?v=20260409"></script>
 </body>
 </html>

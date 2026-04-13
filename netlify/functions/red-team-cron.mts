@@ -117,6 +117,36 @@ export default async (): Promise<Response> => {
         summary: `Red-team: ${misses.length} of ${cases.length} synthetic cases misclassified. Immediate regression review required.`,
       },
     });
+
+    // Dispatch an Asana red-team-miss plan for each miss so the MLRO
+    // sees the regression in the same tool they use for real cases.
+    // The dispatch is best-effort: a failure here does not unwind the
+    // blob persistence above.
+    try {
+      const { orchestrateAsanaForEvent } = await import(
+        '../../src/services/asanaComplianceOrchestrator'
+      );
+      const planStore = getStore('asana-plans');
+      for (const m of misses.slice(0, 10)) {
+        const plan = orchestrateAsanaForEvent({
+          kind: 'red_team_miss',
+          tenantId: 'red-team',
+          occurredAtIso: startedAt,
+          refId: m.case.id,
+          payload: {
+            typology: m.case.typology,
+            expected: m.case.expectedVerdict,
+            actual: m.actualVerdict,
+          },
+        });
+        await planStore.setJSON(
+          `${startedAt.slice(0, 10)}/red-team-${m.case.id}-${Date.now()}.json`,
+          { at: startedAt, refId: m.case.id, plan }
+        );
+      }
+    } catch (err) {
+      console.warn('[red-team-cron] Asana dispatch failed:', err);
+    }
   }
 
   return Response.json({
