@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hawkeye Sterling V2 — Regulator Inspection Portal</title>
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <style>
+      :root {
+        --bg: #0f1115;
+        --surface: #161922;
+        --surface2: #1d212d;
+        --border: #2a2f3a;
+        --text: #f5f5f5;
+        --muted: #8d94a3;
+        --gold: #b4975a;
+        --green: #3da876;
+        --red: #d94f4f;
+        --amber: #e8a030;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-size: 14px;
+        min-height: 100vh;
+      }
+      header {
+        background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+        border-bottom: 1px solid var(--border);
+        padding: 24px 32px;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--gold);
+      }
+      header p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      main {
+        max-width: 920px;
+        margin: 24px auto;
+        padding: 0 24px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      .card h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+      }
+      input,
+      button {
+        font: inherit;
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 12px;
+        outline: none;
+      }
+      input {
+        width: 100%;
+        margin-top: 8px;
+      }
+      input:focus {
+        border-color: var(--gold);
+      }
+      button {
+        cursor: pointer;
+        background: var(--gold);
+        color: #0f1115;
+        font-weight: 600;
+        padding: 10px 20px;
+      }
+      button:hover {
+        opacity: 0.9;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .tile-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+      }
+      .tile {
+        background: var(--surface2);
+        border-left: 4px solid var(--gold);
+        border-radius: 4px;
+        padding: 12px;
+      }
+      .tile-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.5px;
+      }
+      .tile-value {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--gold);
+        margin-top: 4px;
+      }
+      .event-row {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        font-family: 'Menlo', ui-monospace, monospace;
+        font-size: 11px;
+      }
+      .severity-critical {
+        color: var(--red);
+        font-weight: 600;
+      }
+      .severity-high {
+        color: var(--amber);
+        font-weight: 600;
+      }
+      .severity-medium {
+        color: var(--amber);
+      }
+      .severity-info,
+      .severity-low {
+        color: var(--muted);
+      }
+      .error {
+        color: var(--red);
+        margin-top: 8px;
+        font-size: 12px;
+      }
+      .ok {
+        color: var(--green);
+        margin-top: 8px;
+        font-size: 12px;
+      }
+      details {
+        margin-top: 12px;
+      }
+      details summary {
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      pre {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 12px;
+        overflow-x: auto;
+        font-size: 11px;
+        font-family: 'Menlo', ui-monospace, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Hawkeye Sterling V2 — Regulator Inspection Portal</h1>
+      <p>
+        EOCN / MoE / FIU read-only access. Every query is meta-audit-logged.
+        FDL No.10/2025 Art.20-21, FATF Methodology 2022 §4.
+      </p>
+    </header>
+
+    <main>
+      <section class="card" id="auth-card">
+        <h2>Inspector access</h2>
+        <p class="muted">
+          Enter the one-time code issued by the Compliance Officer. The
+          code is valid for the duration printed when it was issued (default
+          60 minutes) and grants a 5-minute grace period after first use so
+          you can navigate multiple pages in a session.
+        </p>
+        <input
+          id="inspector-code"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="32"
+          placeholder="32-character hex code"
+        />
+        <div style="margin-top: 12px">
+          <button id="connect-btn">Connect</button>
+        </div>
+        <div id="auth-status"></div>
+      </section>
+
+      <section class="card" id="summary-card" hidden>
+        <h2>Summary — last 30 days</h2>
+        <div class="tile-grid" id="summary-tiles"></div>
+        <details>
+          <summary>Recent events (top 20)</summary>
+          <div id="summary-events"></div>
+        </details>
+      </section>
+
+      <section class="card" id="anchors-card" hidden>
+        <h2>Chain anchors</h2>
+        <p class="muted">
+          Tamper-evidence proofs published hourly. Each entry's
+          <code>signingPayload</code> can be independently verified against
+          a public-channel anchor (signed git commit, Bitcoin OP_RETURN, etc).
+        </p>
+        <div id="anchors-list"></div>
+      </section>
+    </main>
+
+    <script>
+      // The portal talks ONLY to its own /api/regulator/* endpoints —
+      // no third-party origins, no analytics, no fingerprinting.
+      (function () {
+        'use strict';
+
+        var BASE = '/api/regulator';
+        var $ = function (id) {
+          return document.getElementById(id);
+        };
+
+        function escapeHtml(s) {
+          var d = document.createElement('div');
+          d.textContent = String(s == null ? '' : s);
+          return d.innerHTML;
+        }
+
+        function bearer(code) {
+          return 'Bearer ' + code;
+        }
+
+        function show(id) {
+          var el = $(id);
+          if (el) el.hidden = false;
+        }
+
+        function hide(id) {
+          var el = $(id);
+          if (el) el.hidden = true;
+        }
+
+        function setStatus(elId, message, ok) {
+          var el = $(elId);
+          if (!el) return;
+          el.className = ok ? 'ok' : 'error';
+          el.textContent = message;
+        }
+
+        async function callJson(path, code) {
+          var res = await fetch(BASE + path, {
+            method: 'GET',
+            headers: { Authorization: bearer(code), Accept: 'application/json' },
+          });
+          if (!res.ok) {
+            var text = await res.text();
+            throw new Error('HTTP ' + res.status + ': ' + text);
+          }
+          return res.json();
+        }
+
+        function severityClass(sev) {
+          return 'severity-' + (sev || 'info');
+        }
+
+        function renderSummary(data) {
+          var tiles = $('summary-tiles');
+          tiles.innerHTML = '';
+          var events = data.events || [];
+          var counts = events.reduce(
+            function (acc, e) {
+              var sev = (e.event && e.event.severity) || 'info';
+              acc[sev] = (acc[sev] || 0) + 1;
+              acc.total++;
+              return acc;
+            },
+            { total: 0 }
+          );
+          [
+            ['total', 'Total events'],
+            ['critical', 'Critical'],
+            ['high', 'High'],
+            ['medium', 'Medium'],
+            ['low', 'Low'],
+            ['info', 'Info'],
+          ].forEach(function (pair) {
+            var key = pair[0];
+            var label = pair[1];
+            var tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.innerHTML =
+              '<div class="tile-label">' +
+              escapeHtml(label) +
+              '</div>' +
+              '<div class="tile-value">' +
+              (counts[key] || 0) +
+              '</div>';
+            tiles.appendChild(tile);
+          });
+
+          var feed = $('summary-events');
+          feed.innerHTML = '';
+          events.slice(0, 20).forEach(function (e) {
+            var sev = (e.event && e.event.severity) || 'info';
+            var summary = (e.event && e.event.summary) || '(no summary)';
+            var when = e.at || '';
+            var row = document.createElement('div');
+            row.className = 'event-row';
+            row.innerHTML =
+              '<span class="' +
+              severityClass(sev) +
+              '">[' +
+              escapeHtml(sev.toUpperCase()) +
+              ']</span> ' +
+              escapeHtml(summary) +
+              ' <span style="color:var(--muted)">' +
+              escapeHtml(when) +
+              '</span>';
+            feed.appendChild(row);
+          });
+        }
+
+        function renderAnchors(data) {
+          var list = $('anchors-list');
+          list.innerHTML = '';
+          var anchors = data.anchors || [];
+          if (anchors.length === 0) {
+            list.innerHTML = '<p class="muted">No anchors published yet.</p>';
+            return;
+          }
+          anchors.slice(0, 10).forEach(function (a) {
+            var d = document.createElement('div');
+            d.className = 'event-row';
+            d.innerHTML =
+              '<strong>' +
+              escapeHtml(a.rootHash || '') +
+              '</strong><br>' +
+              '<span class="muted">' +
+              escapeHtml(
+                'window: ' +
+                  (a.windowStartIso || '') +
+                  ' .. ' +
+                  (a.windowEndIso || '') +
+                  ' | ' +
+                  (a.chainCount || 0) +
+                  ' chains'
+              ) +
+              '</span>';
+            var pre = document.createElement('pre');
+            pre.textContent = a.signingPayload || '(no signing payload)';
+            d.appendChild(pre);
+            list.appendChild(d);
+          });
+        }
+
+        $('connect-btn').addEventListener('click', async function () {
+          var code = ($('inspector-code').value || '').trim();
+          if (!/^[a-fA-F0-9]{32}$/.test(code)) {
+            setStatus('auth-status', 'Code must be 32 hex characters.', false);
+            return;
+          }
+          setStatus('auth-status', 'Connecting...', true);
+          $('connect-btn').disabled = true;
+          try {
+            var summary = await callJson('/summary?limit=50', code);
+            setStatus('auth-status', 'Connected as ' + (summary.inspector?.name || 'inspector'), true);
+            show('summary-card');
+            renderSummary(summary);
+
+            var anchors = await callJson('/anchors?limit=20', code);
+            show('anchors-card');
+            renderAnchors(anchors);
+          } catch (err) {
+            setStatus('auth-status', 'Failed: ' + err.message, false);
+            hide('summary-card');
+            hide('anchors-card');
+          } finally {
+            $('connect-btn').disabled = false;
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
