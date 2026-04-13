@@ -1051,7 +1051,6 @@ function switchTab(name) {
   if (name==='evidence') renderEvidence();
   if (name==='schedule') { renderSchedules(); renderHistory(); }
   if (name==='ops' && typeof renderComplianceOps === 'function') renderComplianceOps();
-  if (name==='companies') renderCompaniesTab();
   if (name==='training') { renderEmployeeTraining(); }
   if (name==='learning') { if (typeof renderExternalLinks === 'function') renderExternalLinks(); }
   if (name==='gdrive') refreshGDriveFileList();

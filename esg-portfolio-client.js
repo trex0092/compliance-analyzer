@@ -290,60 +290,153 @@
     );
   }
 
+  // Section header used to group tiles into named blocks. Mirrors the
+  // "PILLAR AVERAGES / RISK DISTRIBUTION / GRADE DISTRIBUTION" layout
+  // that MLRO requested after the unorganised flat tile-row was shown.
+  function sectionHeader(label, sub) {
+    return (
+      '<div style="margin:14px 0 6px 0;display:flex;align-items:baseline;gap:8px">' +
+      '<span style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase">' +
+      escHtml(label) +
+      '</span>' +
+      (sub
+        ? '<span style="font-size:10px;color:var(--muted)">' + escHtml(sub) + '</span>'
+        : '') +
+      '</div>'
+    );
+  }
+
+  function tileGrid(tiles) {
+    return (
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">' +
+      tiles.join('') +
+      '</div>'
+    );
+  }
+
   function render() {
     var container = el('esgContainer');
     if (!container) return;
     var records = readRecords();
     var card = buildScorecard(records);
-    var html = '<div class="card" style="padding:16px">';
-    html += '<div style="font-size:14px;font-weight:600;margin-bottom:10px">Portfolio scorecard — ' + card.totalCustomers + ' customer(s)</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px">';
-    html += tile('Overall avg', card.pillarAverages.overallAvg, ACCENT[gradeFromScore(card.pillarAverages.overallAvg)] || '#7a7870');
-    html += tile('E avg', card.pillarAverages.environmentalAvg, '#3DA876');
-    html += tile('S avg', card.pillarAverages.socialAvg, '#4A8FC1');
-    html += tile('G avg', card.pillarAverages.governanceAvg, '#E8A030');
-    html += tile('Critical risk', card.riskDistribution.critical, ACCENT.critical);
-    html += tile('High risk', card.riskDistribution.high, ACCENT.high);
-    html += tile('Grade A', card.gradeDistribution.A, ACCENT.A);
-    html += tile('Grade F', card.gradeDistribution.F, ACCENT.F);
-    html += '</div>';
 
+    var html = '<div class="card" style="padding:16px">';
+    // Header summary
+    html +=
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">' +
+      '<div style="font-size:14px;font-weight:600">Portfolio scorecard — ' +
+      card.totalCustomers +
+      ' customer(s)</div>' +
+      '<div style="font-size:10px;color:var(--muted);text-align:right">' +
+      'Pillars max 33.3 each · Grades A≥85 · B≥70 · C≥55 · D≥40 · F&lt;40' +
+      '</div></div>';
+
+    // ── 1. Pillar averages ──
+    html += sectionHeader('Pillar averages', 'GRI 2021 · ISSB IFRS S1/S2');
+    html += tileGrid([
+      tile('Overall avg', card.pillarAverages.overallAvg, ACCENT[gradeFromScore(card.pillarAverages.overallAvg)] || '#7a7870'),
+      tile('Environmental', card.pillarAverages.environmentalAvg, '#3DA876'),
+      tile('Social', card.pillarAverages.socialAvg, '#4A8FC1'),
+      tile('Governance', card.pillarAverages.governanceAvg, '#E8A030'),
+    ]);
+
+    // ── 2. Risk distribution ──
+    html += sectionHeader('Risk distribution', 'FDL Art.20-21 · LBMA RGG v9 Step 5');
+    html += tileGrid([
+      tile('Critical', card.riskDistribution.critical, ACCENT.critical),
+      tile('High', card.riskDistribution.high, ACCENT.high),
+      tile('Medium', card.riskDistribution.medium, ACCENT.medium),
+      tile('Low', card.riskDistribution.low, ACCENT.low),
+    ]);
+
+    // ── 3. Grade distribution ──
+    html += sectionHeader('Grade distribution', 'A excellent · F critical');
+    html += tileGrid([
+      tile('Grade A', card.gradeDistribution.A, ACCENT.A),
+      tile('Grade B', card.gradeDistribution.B, ACCENT.B),
+      tile('Grade C', card.gradeDistribution.C, ACCENT.C),
+      tile('Grade D', card.gradeDistribution.D, ACCENT.D),
+      tile('Grade F', card.gradeDistribution.F, ACCENT.F),
+    ]);
+
+    // ── 4. Notes / regulator cues ──
+    html += sectionHeader('Compliance notes');
     if (card.notes.length) {
-      html += '<div style="background:#181818;border-radius:4px;padding:10px;margin-bottom:12px;font-size:12px;color:#cdcdcd">';
+      html +=
+        '<div style="background:#181818;border-radius:4px;padding:10px;font-size:12px;color:#cdcdcd">';
       card.notes.forEach(function (n) {
         html += '<div>• ' + escHtml(n) + '</div>';
       });
       html += '</div>';
+    } else {
+      html +=
+        '<div style="font-size:11px;color:var(--muted);padding:4px 0">No notes generated.</div>';
     }
 
+    // ── 5. By sector ──
     if (card.bySector.length) {
-      html += '<div style="font-size:11px;font-weight:600;color:#a8a8a8;text-transform:uppercase;margin-bottom:6px">By sector</div>';
-      html += '<div style="background:#181818;border-radius:4px;margin-bottom:12px">';
+      html += sectionHeader('By sector', 'Lowest grade first');
+      html += '<div style="background:#181818;border-radius:4px">';
       card.bySector.forEach(function (b) {
         var color = ACCENT[b.grade] || '#7a7870';
         html += '<div style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid #2a2a2a">';
-        html += '<span style="background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44;border-radius:3px;padding:2px 8px;font-size:10px;text-transform:uppercase;min-width:32px;text-align:center">' + b.grade + '</span>';
-        html += '<div style="flex:1"><div style="font-size:12px;color:#f5f5f5">' + escHtml(b.sector) + ' <span style="color:var(--muted)">(' + b.count + ')</span></div></div>';
+        html +=
+          '<span style="background:' +
+          color +
+          '22;color:' +
+          color +
+          ';border:1px solid ' +
+          color +
+          '44;border-radius:3px;padding:2px 8px;font-size:10px;text-transform:uppercase;min-width:32px;text-align:center">' +
+          b.grade +
+          '</span>';
+        html +=
+          '<div style="flex:1"><div style="font-size:12px;color:#f5f5f5">' +
+          escHtml(b.sector) +
+          ' <span style="color:var(--muted)">(' +
+          b.count +
+          ')</span></div></div>';
         html += '<div style="font-size:12px;color:' + color + '">' + b.overallAvg + '</div>';
         html += '</div>';
       });
       html += '</div>';
     }
 
+    // ── 6. Top 10 highest risk ──
     if (card.topRisks.length) {
-      html += '<div style="font-size:11px;font-weight:600;color:#a8a8a8;text-transform:uppercase;margin-bottom:6px">Top 10 highest ESG risk</div>';
+      html += sectionHeader('Top 10 highest ESG risk', 'Sorted ascending by total score');
       html += '<div style="background:#181818;border-radius:4px">';
       card.topRisks.forEach(function (r) {
         var color = ACCENT[r.score.riskLevel] || '#7a7870';
         html += '<div style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid #2a2a2a">';
-        html += '<span style="background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44;border-radius:3px;padding:2px 8px;font-size:10px;text-transform:uppercase;min-width:60px;text-align:center">' + escHtml(r.score.riskLevel) + '</span>';
-        html += '<div style="flex:1"><div style="font-size:12px;font-weight:500;color:#f5f5f5">' + escHtml(r.displayName) + '</div>';
-        html += '<div style="font-size:10px;color:#7a7870">' + escHtml(r.sector || '—') + ' · grade ' + escHtml(r.score.grade) + ' · disclosure ' + escHtml(r.score.disclosureCompleteness) + '%</div></div>';
+        html +=
+          '<span style="background:' +
+          color +
+          '22;color:' +
+          color +
+          ';border:1px solid ' +
+          color +
+          '44;border-radius:3px;padding:2px 8px;font-size:10px;text-transform:uppercase;min-width:60px;text-align:center">' +
+          escHtml(r.score.riskLevel) +
+          '</span>';
+        html +=
+          '<div style="flex:1"><div style="font-size:12px;font-weight:500;color:#f5f5f5">' +
+          escHtml(r.displayName) +
+          '</div>';
+        html +=
+          '<div style="font-size:10px;color:#7a7870">' +
+          escHtml(r.sector || '—') +
+          ' · grade ' +
+          escHtml(r.score.grade) +
+          ' · disclosure ' +
+          escHtml(r.score.disclosureCompleteness) +
+          '%</div></div>';
         html += '<div style="font-size:13px;color:' + color + '">' + r.score.totalScore + '</div>';
         html += '</div>';
       });
       html += '</div>';
     }
+
     html += '</div>';
     container.innerHTML = html;
   }

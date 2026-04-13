@@ -1939,6 +1939,49 @@ window.csFormatDateInput = function (el) {
       { flag:'Customer threatens to take business elsewhere when asked compliance questions', ref:'FATF DPMS 2020 §4.2', l:3, i:4, mx:[] },
       { flag:'Customer attempts to bribe or tip the employee to skip verification', ref:'FATF Rec.10 | UAE Federal Law No.31/2021', l:5, i:5, mx:[] },
     ],
+    'Trade-Based Money Laundering (TBML)': [
+      { flag:'Invoice value materially mismatches LBMA spot reference for the day', ref:'FATF TBML 2020 | LBMA RGG v9', l:5, i:5, mx:['cash'] },
+      { flag:'Multiple invoices from same counterparty issued on the same day with sequential numbers', ref:'FATF TBML 2020 §3.4', l:4, i:4, mx:[] },
+      { flag:'Phantom shipment — invoice issued but no shipping document or chain-of-custody record', ref:'FATF TBML 2020 §3.2 | LBMA CoC', l:5, i:5, mx:[] },
+      { flag:'Goods routed through 3+ jurisdictions before arriving at named consignee', ref:'FATF TBML 2020 | OECD DDG §3', l:4, i:5, mx:['high_risk_jurisdiction'] },
+      { flag:'Re-invoicing — same goods invoiced twice to different parties', ref:'FATF TBML 2020 §3.4', l:5, i:5, mx:[] },
+      { flag:'Shell-company consignee whose name does not match the customs declaration', ref:'FATF TBML 2020 | EOCN Bulletin', l:5, i:5, mx:[] },
+      { flag:'Settlement currency differs from invoice currency without commercial justification', ref:'FATF TBML 2020 §3.5', l:3, i:4, mx:[] },
+    ],
+    'Proliferation Financing (PF) & Dual-Use': [
+      { flag:'End-user listed on UAE Strategic Goods Control list', ref:'Cabinet Res 156/2025 | UAE FCSA', l:5, i:5, mx:['sanctions'] },
+      { flag:'Counterparty linked to DPRK / Iran / Syria sanctioned entity per UN 1718/2231', ref:'UNSCR 1718 | UNSCR 2231 | Cabinet Res 74/2020', l:5, i:5, mx:['sanctions'] },
+      { flag:'Refined gold purchased for delivery to a known weapons-procurement front company', ref:'FATF PF Guidance 2021', l:5, i:5, mx:['sanctions'] },
+      { flag:'Customer attempts to source rhenium, tungsten, beryllium, or other dual-use precursor alongside gold', ref:'Wassenaar Arrangement | EU Reg 2021/821', l:5, i:5, mx:[] },
+      { flag:'Trade finance request involves a maritime vessel flagged on UANI / OFAC SDN', ref:'OFAC Maritime Advisory 2020 | EOCN', l:5, i:5, mx:['sanctions'] },
+    ],
+    'Layering & Structuring': [
+      { flag:'Multiple cash deposits just below AED 55K threshold across a 7-day window', ref:'MoE Circular 08/AML/2021 | FATF Rec.10', l:5, i:5, mx:['cash'] },
+      { flag:'Customer splits one large transaction into 4+ smaller ones at different branches', ref:'FATF Rec.10 | UAE FDL No.(10)/2025 Art.15', l:5, i:5, mx:['cash'] },
+      { flag:'Funds layered through 3+ correspondent accounts before reaching gold dealer', ref:'FATF Rec.13 | Wolfsberg CBDDQ', l:4, i:5, mx:[] },
+      { flag:'Customer makes rapid back-to-back buy/sell trades with no economic rationale', ref:'FATF Rec.20 | LBMA RGG v9 §3', l:4, i:4, mx:[] },
+      { flag:'Customer uses third-party agent to deposit funds, then collects gold personally', ref:'FATF Rec.10 | UAE FDL Art.13', l:4, i:5, mx:[] },
+      { flag:'Beneficial owner declared after the third refusal to disclose', ref:'Cabinet Decision 109/2023 | FATF Rec.24', l:4, i:5, mx:[] },
+    ],
+    'NPO & Charity Abuse': [
+      { flag:'Customer is registered NPO making bulk gold purchases inconsistent with stated charitable mission', ref:'FATF Rec.8 | UAE FDL Art.13', l:4, i:5, mx:[] },
+      { flag:'NPO source-of-funds traced to jurisdictions on FATF grey/black list', ref:'FATF Rec.8 | FATF High-Risk Jurisdictions', l:5, i:5, mx:['high_risk_jurisdiction'] },
+      { flag:'NPO uses gold as a value-transfer mechanism to terror-affected regions', ref:'FATF NPO Best Practices 2015 | UNSCR 1373', l:5, i:5, mx:['sanctions'] },
+      { flag:'Charity invoice references project in CAHRA without OECD DDG mitigation evidence', ref:'OECD DDG §4 | LBMA RGG v9 Step 3', l:4, i:5, mx:['high_risk_jurisdiction'] },
+    ],
+    'PEP & Influence Risk': [
+      { flag:'Foreign PEP attempts to purchase >AED 100K in physical gold for "personal use"', ref:'FATF Rec.12 | Cabinet Res 134/2025 Art.14', l:5, i:5, mx:['pep'] },
+      { flag:'Domestic PEP family member structures purchases below CTR threshold', ref:'FATF Rec.12 | UAE FDL Art.14', l:4, i:5, mx:['pep','cash'] },
+      { flag:'PEP source-of-wealth narrative not corroborated by published asset declaration', ref:'FATF PEP Guidance 2013 | UAE FDL Art.14', l:4, i:5, mx:['pep'] },
+      { flag:'PEP introduces new counterparty and personally guarantees their KYC', ref:'FATF Rec.12 | Wolfsberg AAGD', l:4, i:5, mx:['pep'] },
+      { flag:'Close associate of a PEP attempts to use a corporate vehicle to mask ownership', ref:'FATF Rec.12 | Cabinet Decision 109/2023', l:5, i:5, mx:['pep'] },
+    ],
+    'Insurance & Title Fraud': [
+      { flag:'Insurance certificate for shipment shows altered values vs original carrier paperwork', ref:'FATF TBML 2020 | LBMA CoC', l:5, i:5, mx:[] },
+      { flag:'Same insurance policy number used across multiple unrelated shipments', ref:'FATF TBML 2020 §3.4', l:4, i:5, mx:[] },
+      { flag:'Title transfer occurs in a free zone with no underlying physical movement', ref:'FATF Free Trade Zones 2010 | EOCN', l:4, i:4, mx:[] },
+      { flag:'Bonded warehouse receipt presented for gold not actually held in custody (audit fail)', ref:'LBMA Vault Operators Manual | DGD', l:5, i:5, mx:[] },
+    ],
   };
 
   function renderRedFlags() {
@@ -2354,6 +2397,32 @@ window.csFormatDateInput = function (el) {
     { type: 'EOCN Inspector Visit', sla: 4, desc: 'Live EOCN inspector visit — open the inspector portal + provision read-only Asana access. EOCN Inspection Manual §9' },
     { type: 'LBMA Audit Walkthrough', sla: 168, desc: 'Annual LBMA RGG audit walkthrough preparation. LBMA RGG v9 Step 5' },
     { type: 'MoE Joint Inspection', sla: 72, desc: 'Joint MoE + EOCN supervisory visit — full audit pack. Cabinet Res 156/2025' },
+    // ── Trade & Settlement controls ──
+    { type: 'Bullion Pre-Trade Compliance Override', sla: 1, desc: 'CO override of pre-trade compliance gate breach (>80% exposure, AED 55K threshold). FDL Art.20' },
+    { type: 'OTC Counterparty Onboarding', sla: 48, desc: 'OTC bullion counterparty CDD + Wolfsberg AAGD review. Wolfsberg AAGD 2017 | LBMA RGG v9' },
+    { type: 'Vault-Out Authorisation', sla: 4, desc: 'Physical gold withdrawal from bonded vault — chain-of-custody sign-off. LBMA Vault Operators Manual' },
+    { type: 'Free-Zone Title Transfer', sla: 24, desc: 'Title transfer of bullion in DMCC/JAFZA without physical movement — TBML risk review. FATF Free Trade Zones 2010' },
+    { type: 'Refining Tolling Approval', sla: 48, desc: 'Toll-refining contract for third-party metal — origin diligence + ASM screening. LBMA RGG v9 Step 2 | OECD DDG' },
+    // ── Cross-border & TFS ──
+    { type: 'Cross-Border Cash Declaration Validation', sla: 4, desc: 'Cross-border cash/BNI ≥ AED 60K declaration verification + FCSA notification. Cabinet Res 134/2025 Art.16' },
+    { type: 'Outbound Wire to High-Risk Jurisdiction', sla: 4, desc: 'Wire transfer to FATF grey/black-list country — EDD + STR consideration. FATF Rec.13 | UAE FDL Art.14' },
+    { type: 'Sanctions De-listing Verification', sla: 8, desc: 'Counterparty appears removed from sanctions list — independent confirmation before unfreezing. Cabinet Res 74/2020 Art.11' },
+    { type: 'Strategic Goods License Cross-Check', sla: 24, desc: 'Strategic Goods Control list verification before settlement of dual-use ancillary goods. Cabinet Res 156/2025 | FCSA' },
+    // ── ESG & Reputation ──
+    { type: 'ESG Critical Risk Customer Decision', sla: 24, desc: 'Customer with ESG critical risk score — continue / exit / EDD. GRI 2021 | LBMA RGG v9 Step 5' },
+    { type: 'Adverse Media High-Severity Match', sla: 8, desc: 'Adverse media hit ≥ severity 8 — relationship review + Asana case open. FATF Rec 12 | Wolfsberg AAGD' },
+    { type: 'Modern Slavery Indicator Confirmation', sla: 24, desc: 'Confirmed modern slavery indicator in supply chain — escalate to MLRO + Board. UK MSA s.54 | OECD DDG §4' },
+    { type: 'Climate-Risk Material Disclosure', sla: 168, desc: 'Material climate-risk impact on customer book — TCFD-aligned disclosure decision. TCFD | ISSB IFRS S2' },
+    // ── Tech / AI governance ──
+    { type: 'AI Model Promotion to Production', sla: 72, desc: 'New ML/AI model gating: bias eval + drift baseline + rollback plan signed off. EU AI Act Art.9 | NIST AI RMF GV-1.6' },
+    { type: 'AI Hallucination Override', sla: 4, desc: 'CO override of an LLM-generated compliance recommendation — manual review + audit trail. NIST AI RMF MS-2.5' },
+    { type: 'Source-Code Privileged Access', sla: 24, desc: 'Engineer requests temporary write access to compliance code — pair-review + audit log. ISO 27001 A.9.4' },
+    { type: 'Database Schema Migration', sla: 48, desc: 'Production database schema change — backup + rollback + audit trail review. ISO 27001 A.12' },
+    { type: 'Vendor MCP Server Allowlist Change', sla: 24, desc: 'Add/remove MCP server from connect-src CSP allowlist. CSP §H-2 audit | OWASP ASVS 14' },
+    // ── Privacy & DSR ──
+    { type: 'PDPL Data Subject Access Request', sla: 240, desc: 'Data subject access request (10-day SLA) — DPO sign-off before fulfilment. UAE PDPL Art.13' },
+    { type: 'PDPL Right to Erasure', sla: 240, desc: 'Right-to-erasure request — confirm no AML 10-year retention conflict before deletion. UAE PDPL Art.14 | UAE FDL Art.24' },
+    { type: 'Cross-Border Data Transfer', sla: 48, desc: 'Personal data transfer outside UAE — adequacy / SCC / consent verification. UAE PDPL Art.22' },
   ];
 
   function renderApprovals() {
@@ -2567,6 +2636,26 @@ window.csFormatDateInput = function (el) {
     'Data Breach Notification',
     'EOCN Inspector Visit',
     'MoE Joint Inspection',
+    // ── 2026-04 secondary expansion ──
+    'Bullion Pre-Trade Compliance Override',
+    'OTC Counterparty Onboarding',
+    'Vault-Out Authorisation',
+    'Free-Zone Title Transfer',
+    'Refining Tolling Approval',
+    'Cross-Border Cash Declaration Validation',
+    'Outbound Wire to High-Risk Jurisdiction',
+    'Sanctions De-listing Verification',
+    'Strategic Goods License Cross-Check',
+    'ESG Critical Risk Customer Decision',
+    'Adverse Media High-Severity Match',
+    'Modern Slavery Indicator Confirmation',
+    'AI Model Promotion to Production',
+    'AI Hallucination Override',
+    'Source-Code Privileged Access',
+    'Database Schema Migration',
+    'Vendor MCP Server Allowlist Change',
+    'PDPL Right to Erasure',
+    'Cross-Border Data Transfer',
   ]);
   function approvalRequiresFourEyes(record) {
     if (!record) return false;
