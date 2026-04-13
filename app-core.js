@@ -1064,6 +1064,7 @@ function switchTab(name) {
   if (name==='incidents') { if (typeof updateIncidentMetrics === 'function') updateIncidentMetrics(); }
   if (name==='riskassessment') renderRiskAssessment();
   if (name==='metalstrading') { if (typeof mtInit === 'function') mtInit(); }
+  if (name==='brain') { if (window.BrainConsole && typeof window.BrainConsole.init === 'function') window.BrainConsole.init(); }
 }
 
 function persistEmployeeTraining() {

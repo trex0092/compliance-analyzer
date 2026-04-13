@@ -664,6 +664,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="tab" data-action="switchTab" data-arg="workflows">⚡ Workflows</div>
       <div class="tab" data-action="switchTab" data-arg="pipeline">📦 Export Pipeline</div>
       <div class="tab" data-action="switchTab" data-arg="intelligence">🧠 Intelligence</div>
+      <div class="tab" data-action="switchTab" data-arg="brain">🧠 Brain Console</div>
       <div class="tab" data-action="switchTab" data-arg="metalstrading">◈ Trading</div>
       <div class="tab" data-action="switchTab" data-arg="warroom">🎯 War Room</div>
       <div class="tab" data-action="switchTab" data-arg="customer360">🗂 Customer 360</div>
@@ -2496,6 +2497,11 @@ Examples:
     <!-- INTEGRATIONS TAB -->
     <div id="tab-integrations" class="tab-content"></div>
 
+    <!-- BRAIN CONSOLE TAB — populated by brain-console.js on first switchTab('brain') -->
+    <div id="tab-brain" class="tab-content">
+      <div style="padding:20px;color:#8b949e;font-size:12px;">Loading Brain Console…</div>
+    </div>
+
     <!-- goAML EXPORT TAB -->
     <div id="tab-goaml" class="tab-content"></div>
 
@@ -3182,6 +3188,7 @@ Examples:
 
 <script src="metals-trading.js?v=20260412"></script>
 <script src="brain-boot.js?v=20260410"></script>
+<script src="brain-console.js?v=20260413"></script>
 <script src="warroom-client.js?v=20260413"></script>
 <script src="esg-portfolio-client.js?v=20260413"></script>
 <script src="customer-360-client.js?v=20260413"></script>
