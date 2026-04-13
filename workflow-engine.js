@@ -1138,9 +1138,42 @@
       sendBrowserAlert(interpolate(action.title, data), interpolate(action.message, data));
       return;
     }
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(interpolate(action.title, data), { body: interpolate(action.message, data) });
+    if (!('Notification' in window)) {
+      return { skipped: true, reason: 'Browser does not support Notifications API' };
     }
+    if (Notification.permission === 'granted') {
+      new Notification(interpolate(action.title, data), { body: interpolate(action.message, data) });
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      return { skipped: true, reason: 'Notification permission denied by user' };
+    }
+    // default — auto-request and retry if granted
+    try {
+      Notification.requestPermission().then(function (perm) {
+        if (perm === 'granted') {
+          try { new Notification(interpolate(action.title, data), { body: interpolate(action.message, data) }); } catch (_) {}
+        }
+      });
+    } catch (_) {}
+    return { skipped: true, reason: 'Notification permission not yet granted — requested' };
+  }
+
+  // Proactively request notification permission on first workflow tab view.
+  // Gated on a one-time flag so we don't nag the user on every navigation.
+  function ensureNotificationPermission() {
+    try {
+      if (!('Notification' in window)) return;
+      if (Notification.permission !== 'default') return;
+      if (localStorage.getItem('fgl_notif_prompt_shown') === '1') return;
+      localStorage.setItem('fgl_notif_prompt_shown', '1');
+      Notification.requestPermission().then(function (p) {
+        if (typeof toast === 'function') {
+          if (p === 'granted') toast('Browser notifications enabled', 'success');
+          else if (p === 'denied') toast('Browser notifications denied — workflow alerts will be silent', 'warning');
+        }
+      });
+    } catch (_) {}
   }
 
   function executeSyncToNotion() { return; }
@@ -1388,6 +1421,7 @@
 
   function renderWorkflowsTab() {
     seedRuleStatus();
+    try { ensureNotificationPermission(); } catch (_) {}
     const rules = getRules();
     const log = getLog();
     const escalations = parse(WF_ESCALATION_KEY, []);
@@ -1400,6 +1434,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm btn-green" data-action="WorkflowEngine.runScan">Run Scan Now</button>
             <button class="btn btn-sm btn-blue" data-action="WorkflowEngine.runDigestAndRefresh">Run Digest</button>
+            <button class="btn btn-sm btn-gold" data-action="WorkflowEngine.showValidationReport" title="Static check: every Asana template referenced by a rule must exist">🔍 Validate Rules</button>
             <button class="btn btn-sm btn-red" data-action="WorkflowEngine.confirmResetRules">Reset to Defaults</button>
           </div>
         </div>
@@ -1407,6 +1442,12 @@
           Automated compliance workflows with Asana integration. ${enabledCount}/${rules.length} rules active.
           Rules trigger actions automatically when compliance events occur.
         </p>
+        ${isAsanaConfigured() ? '' : `
+          <div id="wfAsanaWarning" style="padding:10px 14px;background:rgba(232,160,48,0.08);border:1px solid rgba(232,160,48,0.35);border-left:3px solid #E8A030;border-radius:4px;margin-bottom:10px;font-size:11px;color:#E8A030">
+            ⚠ <strong>Asana is not configured.</strong> Workflow rules will skip the "create Asana task" actions silently.
+            Set <code style="color:#d4a843">PROXY_URL</code> or <code style="color:#d4a843">ASANA_TOKEN</code> in Settings, then reload.
+          </div>`}
+        <div id="wfValidationBox" style="margin-bottom:10px"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div style="padding:8px 12px;background:var(--surface2);border-radius:3px;border-left:3px solid var(--green);font-size:11px">
             <strong style="color:var(--green)">Run Scan Now</strong> <span style="color:var(--muted)">— Detection + Action: finds problems and creates tasks/alerts</span>
@@ -1851,6 +1892,56 @@
   // Run validation once on init so issues surface in DevTools immediately
   try { validateRules(); } catch (_) {}
 
+  // Asana configuration check — reports whether the workflow engine has a
+  // usable Asana proxy/token. Used by the not-configured banner in the
+  // Workflows tab so operators know when rules are silently skipping
+  // instead of actually executing Asana actions.
+  function isAsanaConfigured() {
+    try {
+      var proxy = typeof window !== 'undefined' ? window.PROXY_URL : null;
+      var token = typeof window !== 'undefined' ? window.ASANA_TOKEN : null;
+      return !!(proxy || token);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Show a modal-free inline validation report in the Workflows tab.
+  function showValidationReport() {
+    var issues = [];
+    try { issues = validateRules(); } catch (e) {
+      if (typeof toast === 'function') toast('Validation failed: ' + e.message, 'error');
+      return;
+    }
+    var box = document.getElementById('wfValidationBox');
+    if (!box) return;
+    if (issues.length === 0) {
+      box.innerHTML =
+        '<div style="padding:10px 14px;background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.35);border-left:3px solid #3fb950;border-radius:4px;font-size:12px;color:#3fb950">' +
+        '✓ All rules validated — ' + getRules().length + ' rule(s), every Asana template resolves, every condition is well-formed.' +
+        '</div>';
+      if (typeof toast === 'function') toast('All rules valid', 'success');
+      return;
+    }
+    var rows = issues.map(function (iss) {
+      return '<div style="padding:4px 0;font-size:11px;color:#e6edf3">' +
+        '<span style="color:#f85149;font-weight:600">' + escHtml(iss.ruleId) + '</span>' +
+        '<span style="color:#8b949e"> — ' + escHtml(iss.issue) + '</span>' +
+        '</div>';
+    }).join('');
+    box.innerHTML =
+      '<div style="padding:10px 14px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.35);border-left:3px solid #f85149;border-radius:4px;font-size:12px">' +
+      '<div style="color:#f85149;font-weight:700;margin-bottom:6px">⚠ ' + issues.length + ' rule validation issue(s)</div>' +
+      rows +
+      '</div>';
+    if (typeof toast === 'function') toast(issues.length + ' rule issue(s) found — see banner', 'error');
+  }
+
+  function escHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   // Start auto-scan 60s after load
   if (document.readyState === 'complete') scheduleAutoScan(60000);
   else window.addEventListener('load', () => scheduleAutoScan(60000));
@@ -2021,7 +2112,9 @@
     addDocVersion,
     removeDocVersion,
     exportDocLog,
-    validateRules
+    validateRules,
+    showValidationReport,
+    isAsanaConfigured
   };
 
 })();
