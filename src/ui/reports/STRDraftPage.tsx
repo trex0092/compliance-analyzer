@@ -4,9 +4,11 @@ import type { SuspicionReport } from '../../domain/reports';
 import { LocalAppStore } from '../../services/indexedDbStore';
 import { createId } from '../../utils/id';
 import { nowIso } from '../../utils/dates';
-import { createStrLifecycleTasks } from '../../services/strSubtaskLifecycle';
+import { createStrLifecycleTasks, STR_SUBTASK_STAGES } from '../../services/strSubtaskLifecycle';
 import { isAsanaConfigured } from '../../services/asanaClient';
 import { COMPANY_REGISTRY } from '../../domain/customers';
+import { STR_LIFECYCLE_DEPENDENCIES } from '../../services/asanaWorkflowAutomation';
+import DependencyDag, { type DagNode } from '../reasoning/DependencyDag';
 
 // CRITICAL: FDL Art.29 — No Tipping Off
 // This page must ONLY be accessible to Compliance Officers and MLRO.
@@ -191,6 +193,49 @@ export default function STRDraftPage() {
               {lifecycleStatus}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 7-stage STR lifecycle DAG — always visible so the MLRO sees
+          the gate chain before dispatching the draft. Node state is
+          'pending' by default; the dispatcher doesn't round-trip
+          live stage state yet (that requires the Asana webhook path
+          in asanaCommentMirror to be wired). */}
+      <div style={{ marginTop: 24 }}>
+        <div style={{ fontSize: 12, color: '#8b949e', fontWeight: 600, marginBottom: 8 }}>
+          STR LIFECYCLE — 7-STAGE GATE CHAIN (FDL Art.26-27; Cabinet Res 134/2025 Art.19)
+        </div>
+        <DependencyDag
+          nodes={STR_SUBTASK_STAGES.map<DagNode>((stage, idx) => ({
+            id: stage,
+            label: stage.toUpperCase(),
+            sublabel: `Stage ${idx + 1}/${STR_SUBTASK_STAGES.length}`,
+            state: 'pending',
+          }))}
+          edges={STR_LIFECYCLE_DEPENDENCIES}
+        />
+      </div>
+
+      {cases.length === 0 && (
+        <div
+          style={{
+            marginTop: 24,
+            padding: 24,
+            background: '#161b22',
+            border: '1px dashed #30363d',
+            borderRadius: 8,
+            textAlign: 'center',
+            color: '#8b949e',
+          }}
+        >
+          <div style={{ fontSize: 14, marginBottom: 8, color: '#e6edf3' }}>
+            No cases available for STR drafting
+          </div>
+          <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+            STR drafts must link to a source case. Create a case first from the{' '}
+            <strong>Cases</strong> page, or run a screening that produces a red-flagged case. Once a
+            case exists, it will appear in the dropdown above for drafting.
+          </div>
         </div>
       )}
     </div>

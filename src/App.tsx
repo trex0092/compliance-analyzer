@@ -5,6 +5,9 @@ import ReportsHub from './ui/reports/ReportsHub';
 import KPIDashboard from './ui/dashboard/KPIDashboard';
 import MetalsTradingPage from './ui/metals/MetalsTradingPage';
 import AsanaKanbanPage from './ui/asana/AsanaKanbanPage';
+import AsanaInspectorPage from './ui/asana/AsanaInspectorPage';
+import AsanaTimeTrackingPage from './ui/asana/AsanaTimeTrackingPage';
+import AiGovernanceDashboard from './ui/aiGovernance/AiGovernanceDashboard';
 import { LocalAppStore } from './services/indexedDbStore';
 import { calculateKPI } from './domain/kpi';
 import { generateAlerts } from './services/alertEngine';
@@ -30,7 +33,10 @@ type Page =
   | 'history'
   | 'backup'
   | 'metals-trading'
-  | 'asana-kanban';
+  | 'asana-kanban'
+  | 'asana-inspector'
+  | 'asana-time'
+  | 'ai-governance';
 
 // ─── Sidebar Navigation ──────────────────────────────────────────────────────
 
@@ -39,6 +45,9 @@ const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: 'reports', label: 'Reports Hub', icon: '▣' },
   { id: 'cases', label: 'Cases', icon: '◆' },
   { id: 'asana-kanban', label: 'Asana Kanban', icon: '⊞' },
+  { id: 'asana-inspector', label: 'Asana Inspector', icon: '◎' },
+  { id: 'asana-time', label: 'Asana Time', icon: '◷' },
+  { id: 'ai-governance', label: 'AI Governance', icon: '◐' },
   { id: 'str', label: 'STR / SAR', icon: '▲' },
   { id: 'customers', label: 'Customers', icon: '●' },
   { id: 'screening', label: 'Screening', icon: '◈' },
@@ -620,7 +629,16 @@ function CustomersPage() {
         ))}
       </div>
       {filtered.length === 0 && (
-        <div style={styles.emptyState}>No customers match your search.</div>
+        <div style={styles.emptyState}>
+          <div style={{ fontSize: 14, marginBottom: 8, color: '#e6edf3' }}>
+            No customers match your search
+          </div>
+          <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+            Clear the search box to see all customers, or use <strong>Customer Onboarding</strong>{' '}
+            to add a new entity. Customers seeded from <code>COMPANY_REGISTRY</code> appear here
+            automatically on first boot.
+          </div>
+        </div>
       )}
     </div>
   );
@@ -956,7 +974,14 @@ function HistoryPage() {
         <div>
           {screenings.length === 0 && (
             <div style={styles.emptyState}>
-              No screening runs recorded yet. Use the Screening page to screen entities.
+              <div style={{ fontSize: 14, marginBottom: 8, color: '#e6edf3' }}>
+                No screening runs recorded yet
+              </div>
+              <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+                Head to the <strong>Screening</strong> page and enter an entity name to run a full
+                UN / OFAC / EU / UK / UAE / EOCN screen. Every run is logged here with the result
+                and the lists checked, so the 10-year audit trail stays populated (FDL Art.24).
+              </div>
             </div>
           )}
           {screenings.map((s) => (
@@ -1382,6 +1407,9 @@ export default function App() {
     backup: 'Data & Backup',
     'metals-trading': 'Metals Trading Platform',
     'asana-kanban': 'Asana Kanban Board',
+    'asana-inspector': 'Asana Inspector (Read-Only)',
+    'asana-time': 'Asana Time Tracking Rollup',
+    'ai-governance': 'AI Governance Dashboard',
   };
 
   if (loading) {
@@ -1451,6 +1479,9 @@ export default function App() {
         {page === 'reports' && <ReportsHub />}
         {page === 'cases' && <CasesPage />}
         {page === 'asana-kanban' && <AsanaKanbanPage />}
+        {page === 'asana-inspector' && <AsanaInspectorPage />}
+        {page === 'asana-time' && <AsanaTimeTrackingPage />}
+        {page === 'ai-governance' && <AiGovernanceDashboard />}
         {page === 'str' && <STRDraftPage />}
         {page === 'customers' && <CustomersPage />}
         {page === 'screening' && <ScreeningPage />}

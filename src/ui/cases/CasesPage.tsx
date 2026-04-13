@@ -160,8 +160,26 @@ export default function CasesPage() {
         {/* Case List */}
         <div style={{ maxHeight: 'calc(100vh - 280px)', overflow: 'auto' }}>
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 32, color: '#8b949e', fontSize: 13 }}>
-              No cases match your filters.
+            <div
+              style={{
+                textAlign: 'center',
+                padding: 32,
+                color: '#8b949e',
+                fontSize: 12,
+                background: '#161b22',
+                border: '1px dashed #30363d',
+                borderRadius: 8,
+                lineHeight: 1.6,
+              }}
+            >
+              <div style={{ fontSize: 14, marginBottom: 8, color: '#e6edf3' }}>
+                No cases match your filters
+              </div>
+              <div>
+                Try clearing the status/risk filters or running <strong>Sanctions Screening</strong>{' '}
+                to auto-generate cases from screening hits. Cases also land here from{' '}
+                <strong>Customer Onboarding</strong> and <strong>Transaction Monitoring</strong>.
+              </div>
             </div>
           )}
           {filtered.map((c) => (
