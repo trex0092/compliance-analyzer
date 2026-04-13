@@ -809,6 +809,135 @@
         { type: 'create_asana_task', template: 'compliance_query_response', priority: 'medium' },
         { type: 'email_alert', subject: 'PDPL Data Subject Request: {customerName}', message: 'Data subject request received. Respond within 30 days per UAE PDPL Art.13. Document the response in the audit chain.' }
       ]
+    },
+    // ── 2026-04 secondary expansion: 16 new workflow rules ──
+    {
+      id: 'wf_tbml_pattern', name: 'TBML Pattern Detected — Invoice vs LBMA Spot', enabled: true,
+      trigger: 'tbml_pattern', condition: { deviationPct: 5 },
+      actions: [
+        { type: 'create_asana_task', template: 'investigation', priority: 'high' },
+        { type: 'email_alert', subject: 'TBML alert: invoice vs spot deviation', message: 'Invoice price deviates >5% from LBMA spot. Investigate per FATF TBML 2020 §3.2 and document under-/over-invoicing rationale.' }
+      ]
+    },
+    {
+      id: 'wf_phantom_shipment', name: 'Phantom Shipment — No Chain of Custody', enabled: true,
+      trigger: 'phantom_shipment', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'investigation', priority: 'critical' },
+        { type: 'email_alert', subject: 'CRITICAL: Phantom shipment detected', message: 'Shipment invoice issued without supporting chain-of-custody. Freeze settlement pending LBMA RGG v9 Step 2 verification.' }
+      ]
+    },
+    {
+      id: 'wf_proliferation_finance', name: 'Proliferation Finance — Strategic Goods Match', enabled: true,
+      trigger: 'pf_strategic_goods', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'sanctions_response', priority: 'critical' },
+        { type: 'email_alert', subject: 'PF/dual-use match — Cabinet Res 156/2025', message: 'Strategic Goods Control list match. Halt transaction, notify FCSA + EOCN within 24h. Cabinet Res 156/2025.' }
+      ]
+    },
+    {
+      id: 'wf_layering_structuring', name: 'Layering — Sub-Threshold Cash Splits', enabled: true,
+      trigger: 'cash_structuring', condition: { count: 3, windowDays: 7, thresholdAed: 50000 },
+      actions: [
+        { type: 'create_asana_task', template: 'investigation', priority: 'high' },
+        { type: 'email_alert', subject: 'Structuring pattern detected', message: '3+ cash deposits below AED 55K threshold within 7 days. Open STR draft per MoE Circular 08/AML/2021.' }
+      ]
+    },
+    {
+      id: 'wf_pep_close_associate', name: 'PEP Close-Associate Onboarding', enabled: true,
+      trigger: 'pep_associate', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'edd_review', priority: 'high' },
+        { type: 'email_alert', subject: 'PEP close associate — EDD required', message: 'Close associate of a PEP onboarding. Trigger EDD per FATF Rec.12 + UAE FDL Art.14. Senior management approval required.' }
+      ]
+    },
+    {
+      id: 'wf_npo_high_risk_jurisdiction', name: 'NPO Trade with High-Risk Jurisdiction', enabled: true,
+      trigger: 'npo_high_risk', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'edd_review', priority: 'high' },
+        { type: 'email_alert', subject: 'NPO high-risk jurisdiction exposure', message: 'NPO source-of-funds linked to FATF grey/black-list. Apply FATF Rec.8 + UAE FDL Art.13 EDD.' }
+      ]
+    },
+    {
+      id: 'wf_vault_out_unauthorised', name: 'Vault-Out Without Authorisation', enabled: true,
+      trigger: 'vault_out_unauth', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'incident_response', priority: 'critical' },
+        { type: 'email_alert', subject: 'CRITICAL: Unauthorised vault-out', message: 'Physical gold leaving bonded vault without sign-off. Open incident, freeze remaining stock, alert MLRO + COO.' }
+      ]
+    },
+    {
+      id: 'wf_freezone_title_only', name: 'Free-Zone Title Transfer Without Movement', enabled: true,
+      trigger: 'freezone_title_transfer', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'investigation', priority: 'medium' },
+        { type: 'email_alert', subject: 'Free-zone title-only transfer', message: 'Bullion title transferred in DMCC/JAFZA without physical movement. Apply TBML risk controls per FATF Free Trade Zones 2010.' }
+      ]
+    },
+    {
+      id: 'wf_outbound_high_risk_wire', name: 'Outbound Wire to High-Risk Jurisdiction', enabled: true,
+      trigger: 'outbound_high_risk', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'edd_review', priority: 'high' },
+        { type: 'email_alert', subject: 'Outbound wire — high-risk jurisdiction', message: 'Wire transfer to FATF grey/black-list country. Apply FATF Rec.13 EDD and consider STR.' }
+      ]
+    },
+    {
+      id: 'wf_sanctions_delisting', name: 'Sanctions De-listing — Independent Verification', enabled: true,
+      trigger: 'sanctions_delist', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'sanctions_response', priority: 'high' },
+        { type: 'email_alert', subject: 'Sanctions de-listing claim', message: 'Counterparty appears removed from sanctions list. Independent verification required before unfreezing per Cabinet Res 74/2020 Art.11.' }
+      ]
+    },
+    {
+      id: 'wf_esg_critical_risk', name: 'ESG Critical Risk Customer', enabled: true,
+      trigger: 'esg_critical', condition: { gradeLT: 'D' },
+      actions: [
+        { type: 'create_asana_task', template: 'edd_review', priority: 'high' },
+        { type: 'email_alert', subject: 'ESG critical risk customer', message: 'Customer scored ESG critical (grade D/F). Decision required: continue / exit / EDD. GRI 2021 + LBMA RGG v9 Step 5.' }
+      ]
+    },
+    {
+      id: 'wf_climate_material', name: 'Climate-Risk Material Disclosure', enabled: true,
+      trigger: 'climate_material', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'compliance_query_response', priority: 'medium' },
+        { type: 'browser_notify', title: 'Climate disclosure', message: 'Material climate risk on customer book. TCFD-aligned disclosure decision required. ISSB IFRS S2.' }
+      ]
+    },
+    {
+      id: 'wf_ai_model_promotion', name: 'AI Model Promotion to Production', enabled: true,
+      trigger: 'ai_promote', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'audit_preparation', priority: 'high' },
+        { type: 'email_alert', subject: 'AI model promotion — gating', message: 'New ML/AI model promoted. Bias eval + drift baseline + rollback plan required. EU AI Act Art.9 + NIST AI RMF GV-1.6.' }
+      ]
+    },
+    {
+      id: 'wf_ai_hallucination', name: 'AI Hallucination Override', enabled: true,
+      trigger: 'ai_hallucination', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'incident_response', priority: 'high' },
+        { type: 'email_alert', subject: 'AI hallucination override', message: 'CO override of LLM-generated recommendation. Audit-trail entry required. NIST AI RMF MS-2.5.' }
+      ]
+    },
+    {
+      id: 'wf_csp_change', name: 'CSP / MCP Allowlist Change', enabled: true,
+      trigger: 'csp_change', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'audit_preparation', priority: 'medium' },
+        { type: 'email_alert', subject: 'CSP / MCP allowlist change', message: 'Vendor MCP server added/removed from CSP allowlist. Security review per OWASP ASVS 14.' }
+      ]
+    },
+    {
+      id: 'wf_pdpl_erasure', name: 'PDPL Right to Erasure — Retention Conflict Check', enabled: true,
+      trigger: 'pdpl_erasure', condition: {},
+      actions: [
+        { type: 'create_asana_task', template: 'compliance_query_response', priority: 'high' },
+        { type: 'email_alert', subject: 'PDPL erasure request', message: 'Right-to-erasure request. Confirm no AML 10-year retention conflict (UAE FDL Art.24) before deletion. UAE PDPL Art.14.' }
+      ]
     }
   ];
 
@@ -938,12 +1067,19 @@
     const resolver = typeof AsanaProjectResolver !== 'undefined' ? AsanaProjectResolver : null;
     const projectId = resolver ? resolver.resolveProject('workflow') : (localStorage.getItem('asanaProjectId') || '1213759768596515');
     const templates = (typeof IntegrationsEnhanced !== 'undefined' && IntegrationsEnhanced.asana?.TASK_TEMPLATES) ? IntegrationsEnhanced.asana.TASK_TEMPLATES : {};
-    const tmpl = templates[action.template] || {};
+    const tmpl = templates[action.template];
+    if (!tmpl) {
+      // Unknown template — log a clear warning so MLRO can see why the
+      // task name is generic, but still create the task with a sensible
+      // fallback so the workflow doesn't fail outright.
+      try { console.warn('[workflow] Unknown Asana task template:', action.template, '— add it to integrations-enhanced.js TASK_TEMPLATES.'); } catch (_) {}
+    }
     // Inject active company name so {entity} placeholder is always resolved
     const entityName = resolver ? resolver.resolveEntityName() : ((typeof getActiveCompany === 'function') ? (getActiveCompany().name || 'Hawkeye Sterling') : 'Hawkeye Sterling');
     const enrichedData = Object.assign({ entity: entityName, company: entityName }, data);
-    const taskName = interpolate(tmpl.name || action.template, enrichedData);
-    const taskNotes = interpolate(tmpl.notes || '', enrichedData);
+    const fallbackName = (action.template ? action.template.replace(/_/g, ' ').replace(/\b\w/g, function(c){return c.toUpperCase();}) : 'Compliance task') + ': {entity}';
+    const taskName = interpolate((tmpl && tmpl.name) || fallbackName, enrichedData);
+    const taskNotes = interpolate((tmpl && tmpl.notes) || ('Auto-created compliance task — template "' + action.template + '" had no body. Please review.'), enrichedData);
 
     const taskBody = JSON.stringify({
       data: {
@@ -1671,6 +1807,50 @@
   // Seed success status for all rules on load
   seedRuleStatus();
 
+  // ── Workflow self-validation ───────────────────────────────────
+  // Verify every rule's referenced Asana template exists and every
+  // condition object is well-formed. Returns a list of issues; empty
+  // means healthy. Surfaced via WorkflowEngine.validateRules().
+  function validateRules() {
+    const issues = [];
+    const rules = getRules();
+    const templates = (typeof IntegrationsEnhanced !== 'undefined' && IntegrationsEnhanced.asana?.TASK_TEMPLATES) ? IntegrationsEnhanced.asana.TASK_TEMPLATES : {};
+    rules.forEach(function (r) {
+      if (!r || !r.id) {
+        issues.push({ ruleId: '?', issue: 'Rule missing id' });
+        return;
+      }
+      if (!r.trigger) issues.push({ ruleId: r.id, issue: 'Missing trigger name' });
+      if (!Array.isArray(r.actions) || r.actions.length === 0) {
+        issues.push({ ruleId: r.id, issue: 'No actions defined' });
+        return;
+      }
+      r.actions.forEach(function (a, idx) {
+        if (!a || !a.type) {
+          issues.push({ ruleId: r.id, issue: 'Action[' + idx + '] missing type' });
+          return;
+        }
+        if (a.type === 'create_asana_task') {
+          if (!a.template) {
+            issues.push({ ruleId: r.id, issue: 'Asana action missing template' });
+          } else if (!templates[a.template]) {
+            issues.push({ ruleId: r.id, issue: 'Unknown Asana template: ' + a.template });
+          }
+        }
+        if (a.type === 'email_alert' && !a.subject) {
+          issues.push({ ruleId: r.id, issue: 'Email action missing subject' });
+        }
+      });
+    });
+    if (issues.length > 0) {
+      try { console.warn('[workflow] validation found', issues.length, 'issue(s):', issues); } catch (_) {}
+    }
+    return issues;
+  }
+
+  // Run validation once on init so issues surface in DevTools immediately
+  try { validateRules(); } catch (_) {}
+
   // Start auto-scan 60s after load
   if (document.readyState === 'complete') scheduleAutoScan(60000);
   else window.addEventListener('load', () => scheduleAutoScan(60000));
@@ -1840,7 +2020,8 @@
     resetChecklists,
     addDocVersion,
     removeDocVersion,
-    exportDocLog
+    exportDocLog,
+    validateRules
   };
 
 })();

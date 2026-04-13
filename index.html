@@ -578,6 +578,37 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="cb-switch"><select id="cbCompanySelect" data-change="_switchCompanyAndUpdateBar"></select></div>
     </div>
 
+    <!-- ⚡ GLOBAL COMPLIANCE STATUS BAR — auto-refreshes every 30s -->
+    <div id="globalStatusBar" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px 0;padding:8px 12px;background:#0d1117;border:1px solid #21262d;border-radius:6px;font-family:'Inter',system-ui,sans-serif;align-items:center">
+      <span style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:#d4a843;text-transform:uppercase;margin-right:6px">⚡ Live Status</span>
+      <div class="gsb-tile" data-gsb="approvals" style="display:flex;align-items:center;gap:5px;padding:3px 8px;background:#161b22;border:1px solid #2a2a2a;border-left:3px solid #4A8FC1;border-radius:3px;font-size:10px;cursor:pointer" onclick="switchTab('approvals')" title="Click to open Approvals">
+        <span style="color:#8b949e">APPROVALS</span><span style="color:#4A8FC1;font-weight:700" id="gsbApprovals">0</span>
+      </div>
+      <div class="gsb-tile" data-gsb="sla" style="display:flex;align-items:center;gap:5px;padding:3px 8px;background:#161b22;border:1px solid #2a2a2a;border-left:3px solid #D94F4F;border-radius:3px;font-size:10px;cursor:pointer" onclick="switchTab('approvals')" title="SLA breaches">
+        <span style="color:#8b949e">SLA BREACH</span><span style="color:#D94F4F;font-weight:700" id="gsbSlaBreach">0</span>
+      </div>
+      <div class="gsb-tile" data-gsb="workflows" style="display:flex;align-items:center;gap:5px;padding:3px 8px;background:#161b22;border:1px solid #2a2a2a;border-left:3px solid #d4a843;border-radius:3px;font-size:10px;cursor:pointer" onclick="switchTab('workflows')" title="Click to open Workflows">
+        <span style="color:#8b949e">WORKFLOWS</span><span style="color:#d4a843;font-weight:700" id="gsbWorkflows">0</span>
+      </div>
+      <div class="gsb-tile" data-gsb="redflags" style="display:flex;align-items:center;gap:5px;padding:3px 8px;background:#161b22;border:1px solid #2a2a2a;border-left:3px solid #E8A030;border-radius:3px;font-size:10px;cursor:pointer" onclick="switchTab('redflags')" title="Click to open Red Flags">
+        <span style="color:#8b949e">RED FLAGS</span><span style="color:#E8A030;font-weight:700" id="gsbRedFlags">0</span>
+      </div>
+      <div class="gsb-tile" data-gsb="sanctions" style="display:flex;align-items:center;gap:5px;padding:3px 8px;background:#161b22;border:1px solid #2a2a2a;border-left:3px solid #A33;border-radius:3px;font-size:10px;cursor:pointer" onclick="switchTab('screening')" title="Click to open Screening &amp; TFS">
+        <span style="color:#8b949e">SANCTIONS</span><span style="color:#A33;font-weight:700" id="gsbSanctions">0</span>
+      </div>
+      <div class="gsb-tile" data-gsb="esg" style="display:flex;align-items:center;gap:5px;padding:3px 8px;background:#161b22;border:1px solid #2a2a2a;border-left:3px solid #3DA876;border-radius:3px;font-size:10px;cursor:pointer" onclick="switchTab('esg')" title="Click to open ESG">
+        <span style="color:#8b949e">ESG CRIT</span><span style="color:#3DA876;font-weight:700" id="gsbEsgCritical">0</span>
+      </div>
+      <div class="gsb-tile" data-gsb="incidents" style="display:flex;align-items:center;gap:5px;padding:3px 8px;background:#161b22;border:1px solid #2a2a2a;border-left:3px solid #D94F4F;border-radius:3px;font-size:10px;cursor:pointer" onclick="switchTab('incidents')" title="Click to open Incidents">
+        <span style="color:#8b949e">INCIDENTS</span><span style="color:#D94F4F;font-weight:700" id="gsbIncidents">0</span>
+      </div>
+      <div class="gsb-tile" data-gsb="strs" style="display:flex;align-items:center;gap:5px;padding:3px 8px;background:#161b22;border:1px solid #2a2a2a;border-left:3px solid #4A8FC1;border-radius:3px;font-size:10px;cursor:pointer" onclick="switchTab('strcases')" title="Click to open STR Cases">
+        <span style="color:#8b949e">STR CASES</span><span style="color:#4A8FC1;font-weight:700" id="gsbStrCases">0</span>
+      </div>
+      <div style="flex:1"></div>
+      <span id="gsbHeartbeat" style="font-size:9px;color:#484f58;letter-spacing:0.5px">⚡ —</span>
+    </div>
+
     <div class="tabs" id="tabsNav">
       <button class="mobile-menu-close" id="mobileMenuClose" data-action="MobileResponsive.toggleMenu">&times;</button>
       <div class="tab active" data-action="_switchTabAndCloseMenu" data-arg="analyse">🔍 Analyze</div>
@@ -590,7 +621,6 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="tab" data-action="switchTab" data-arg="complianceprog">📋 Compliance Programme</div>
       <div class="tab" data-action="switchTab" data-arg="gaps">🔴 Gap Register</div>
       <div class="tab" data-action="switchTab" data-arg="ops">🛡️ Ops</div>
-      <div class="tab" data-action="switchTab" data-arg="companies">🏢 Companies</div>
       <div class="tab" data-action="switchTab" data-arg="training">🎓 Training</div>
       <div class="tab" data-action="switchTab" data-arg="learning">📚 Learning</div>
       <div class="tab" data-action="switchTab" data-arg="employees">👤 Employees</div>
@@ -1633,28 +1663,6 @@ Examples:
         <div id="opsModelMetrics" class="token-note">No metrics yet.</div>
       </div>
 
-    </div>
-
-    <div id="tab-companies" class="tab-content">
-      <div class="card">
-        <div class="top-bar" style="margin-bottom:10px">
-          <span class="lbl" style="margin:0">Company Workspace Manager</span>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
-            <button class="btn btn-sm btn-blue" data-action="_clickFileInput" data-arg="companyFileInput">File</button>
-            <button class="btn btn-sm btn-green" data-action="exportCompanyPDF">PDF</button>
-            <button class="btn btn-sm btn-green" data-action="exportCompanyDOCX">Word</button>
-            <button class="btn btn-sm btn-gold" data-action="saveCompanyProfileEdits">Save Company Profile</button>
-            <input type="file" id="companyFileInput" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.zip" data-change="attachCompanyFile" />
-          </div>
-        </div>
-        <div id="companyAttachments" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px"></div>
-        <div class="row row-2">
-          <div>
-            <span class="lbl">Active Company</span>
-            <select id="companyEditorSelect" data-change="loadCompanyProfileEditor" style="width:100%;max-width:100%;text-overflow:ellipsis"></select>
-          </div>
-        </div>
-      </div>
     </div>
 
     <div id="tab-training" class="tab-content">
@@ -2817,6 +2825,56 @@ Examples:
           FDL Art.20-21 situational awareness · Cabinet Res 134/2025 Art.19 continuous monitoring · EOCN Inspection Manual §9
         </div>
       </div>
+
+      <!-- War Room — what it is + how it works -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="sec-title" style="font-size:12px">What is the War Room?</div>
+        <div style="font-size:12px;color:#cdcdcd;line-height:1.6;margin-top:6px">
+          The NORAD War Room is the live operational view of the entire compliance estate.
+          It opens a server-sent-events (SSE) stream from <code style="color:#d4a843">/api/warroom/stream</code>
+          and pushes real-time situational awareness snapshots to the dashboard
+          <strong>without manual refresh</strong>. It is built for the MLRO + CO + ops officer
+          on shift — so they can react to incidents in seconds, not after an end-of-day report.
+        </div>
+
+        <div class="sec-title" style="font-size:12px;margin-top:12px">What you'll see when you click ▶ Start Live</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin-top:6px;font-size:11px;color:#cdcdcd">
+          <div style="background:#181818;border:1px solid #2a2a2a;border-left:3px solid #d4a843;border-radius:4px;padding:10px">
+            <div style="font-weight:700;color:#d4a843;margin-bottom:4px">⚡ Live Threat Feed</div>
+            Sanctions hits, structuring patterns, EOCN watch-list pings, and STR triggers as they happen — colour-coded by severity (CRITICAL / HIGH / MEDIUM).
+          </div>
+          <div style="background:#181818;border:1px solid #2a2a2a;border-left:3px solid #3DA876;border-radius:4px;padding:10px">
+            <div style="font-weight:700;color:#3DA876;margin-bottom:4px">🛰 SLA Countdown</div>
+            Live countdowns for every regulatory deadline currently running: 24h asset freeze, 5-day CNMR, 10-day STR, 15-day UBO re-verify.
+          </div>
+          <div style="background:#181818;border:1px solid #2a2a2a;border-left:3px solid #4A8FC1;border-radius:4px;padding:10px">
+            <div style="font-weight:700;color:#4A8FC1;margin-bottom:4px">🧠 Brain Telemetry</div>
+            Hot subsystem stack — which of the 100+ brain subsystems are firing right now (sanctions screen, ESG scorer, anomaly explainer, AI governance audit, etc.).
+          </div>
+          <div style="background:#181818;border:1px solid #2a2a2a;border-left:3px solid #E8A030;border-radius:4px;padding:10px">
+            <div style="font-weight:700;color:#E8A030;margin-bottom:4px">📨 Asana Bridge</div>
+            Mirrors the auto-created Asana tasks (STR draft, CDD review, sanctions response) so you can see them flow without leaving the SPA.
+          </div>
+          <div style="background:#181818;border:1px solid #2a2a2a;border-left:3px solid #D94F4F;border-radius:4px;padding:10px">
+            <div style="font-weight:700;color:#D94F4F;margin-bottom:4px">🔒 Four-Eyes Queue</div>
+            Approval requests waiting on a second approver — pending count, oldest item age, breaches of the 24h SLA.
+          </div>
+          <div style="background:#181818;border:1px solid #2a2a2a;border-left:3px solid #A33;border-radius:4px;padding:10px">
+            <div style="font-weight:700;color:#A33;margin-bottom:4px">🌍 Geo Heatmap</div>
+            High-risk jurisdictions touched by today's transactions, weighted by FATF list status and Wolfsberg country score.
+          </div>
+        </div>
+
+        <div class="sec-title" style="font-size:12px;margin-top:12px">Why it exists</div>
+        <div style="font-size:11px;color:#cdcdcd;line-height:1.6;margin-top:4px">
+          Compliance evidence has historically been retrospective — written up after the fact, in a Word document, days
+          after the trigger event. EOCN, MoE and LBMA inspectors increasingly expect <em>live</em> evidence of
+          continuous monitoring per <strong>Cabinet Res 134/2025 Art.19</strong>. The War Room is that live evidence:
+          press <strong>🔊 Brief</strong> at any time and the voice assistant will read the current state aloud,
+          which is what an inspector sees during a walkthrough.
+        </div>
+      </div>
+
       <div id="warRoomContainer" style="font-family:'Inter',system-ui,sans-serif">
         <p style="color:var(--muted);font-size:12px;padding:20px;text-align:center">
           Click <strong>▶ Start Live</strong> to open the SSE stream and begin rendering real-time war-room snapshots.
@@ -3004,6 +3062,7 @@ Examples:
 <script src="brain-boot.js?v=20260410"></script>
 <script src="warroom-client.js?v=20260413"></script>
 <script src="esg-portfolio-client.js?v=20260413"></script>
+<script src="global-status-bar.js?v=20260413"></script>
 <script src="app-boot.js?v=20260409"></script>
 </body>
 </html>
