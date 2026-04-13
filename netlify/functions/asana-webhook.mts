@@ -159,7 +159,90 @@ export default async (req: Request, context: Context): Promise<Response> => {
     eventCount: events.length,
   });
 
-  return Response.json({ ok: true, eventCount: events.length });
+  // Inline router pass — produces toast payloads + slash command
+  // jobs. The router is pure; downstream stores are best-effort.
+  // Never fails the webhook HTTP response because a routing error
+  // would cause Asana to retry the whole delivery which is
+  // wasteful for events we already persisted to the event store.
+  let routerSummary = {
+    toastCount: 0,
+    slashCount: 0,
+    resolveCount: 0,
+    seedCount: 0,
+  };
+  try {
+    const routerModule = await import('../../src/services/asanaWebhookRouter');
+    const skillModule = await import('../../src/services/asanaCommentSkillRouter');
+    const routed = routerModule.routeAsanaWebhookEvents({
+      events: events as Parameters<typeof routerModule.routeAsanaWebhookEvents>[0] extends
+        | { events?: infer E }
+        | null
+        ? E
+        : never,
+    });
+
+    // Persist toasts into the stream blob store — the SPA's
+    // polling endpoint drains this.
+    if (routed.toasts.length > 0) {
+      const toastStore = getStore('asana-toast-stream');
+      for (const toast of routed.toasts) {
+        await toastStore.setJSON(`pending/${toast.id}.json`, toast);
+      }
+      routerSummary.toastCount = routed.toasts.length;
+    }
+
+    // Slash commands — walk the raw events for stories, run the
+    // skill router on the comment text, and enqueue jobs into
+    // the skill-execution blob store so the dedicated handler
+    // function can process them.
+    const skillStore = getStore('asana-skill-jobs');
+    for (const rawEvent of events) {
+      const typed = rawEvent as {
+        resource?: { resource_type?: string; resource_subtype?: string; gid?: string };
+        parent?: { gid?: string };
+        user?: { gid?: string; name?: string };
+      };
+      if (
+        typed.resource?.resource_type === 'story' &&
+        typed.resource.resource_subtype === 'comment_added'
+      ) {
+        // We don't have the comment body here — Asana webhooks
+        // carry only the event envelope. A follow-up read
+        // fetches the story text in the skill handler. Enqueue
+        // a job with the story gid so the handler can fetch it.
+        const jobId = `${typed.resource.gid ?? 'unknown'}-${Date.now()}`;
+        await skillStore.setJSON(`pending/${jobId}.json`, {
+          jobId,
+          storyGid: typed.resource.gid,
+          parentTaskGid: typed.parent?.gid,
+          userGid: typed.user?.gid,
+          userName: typed.user?.name,
+          enqueuedAtIso: iso,
+        });
+        routerSummary.slashCount++;
+      }
+    }
+
+    routerSummary.resolveCount = routed.resolveTaskGids.length;
+    routerSummary.seedCount = routed.seedTaskGids.length;
+
+    // Touch the skill module so the dynamic import isn't
+    // tree-shaken out at build time when the handler is unused.
+    void skillModule.SKILL_CATALOGUE;
+  } catch (err) {
+    // Non-fatal. Log and continue — the raw events are already
+    // persisted, so a retry cycle can re-route them.
+    await writeAudit({
+      event: 'asana_webhook_router_failed',
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  return Response.json({
+    ok: true,
+    eventCount: events.length,
+    router: routerSummary,
+  });
 };
 
 export const config: Config = {

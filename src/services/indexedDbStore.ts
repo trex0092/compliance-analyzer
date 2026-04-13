@@ -207,9 +207,31 @@ export class LocalAppStore implements AppStore {
   async saveCase(item: ComplianceCase): Promise<void> {
     if (!idbAvailable) {
       lsWrite('cases', lsUpsert(lsRead<ComplianceCase>('cases'), item));
-      return;
+    } else {
+      await putItem('cases', item);
     }
-    return putItem('cases', item);
+    // Fire the super-brain auto-dispatch listener. Non-blocking
+    // (fire-and-forget) so the save returns immediately. Dynamic
+    // import to avoid a cyclic module graph: the listener imports
+    // the super-brain dispatcher, which (transitively) imports
+    // the Asana client stack but NOT this store — using a
+    // dynamic import keeps the store module load order safe even
+    // as the dispatcher stack grows.
+    //
+    // The listener is a no-op when AUTOPILOT is disabled or the
+    // case has already been dispatched (idempotency check via
+    // the dispatch audit log). See src/services/autoDispatchListener.ts.
+    //
+    // Regulatory basis: FDL No.10/2025 Art.19-21 (no case left
+    // uncategorized); Cabinet Res 134/2025 Art.19 (auditable
+    // internal review).
+    void import('./autoDispatchListener')
+      .then((mod) => mod.handleCaseSaved(item))
+      .catch(() => {
+        // Never break the save path on a dispatcher error. The
+        // listener records its own audit log entries; swallow the
+        // error here so the save path stays silent on degradation.
+      });
   }
 
   async deleteCase(id: string): Promise<void> {

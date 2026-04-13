@@ -49,6 +49,7 @@ import {
 } from '../../services/superBrainBatchDispatcher';
 import { isAutoDispatchEnabled, setAutoDispatchEnabled } from '../../services/autoDispatchListener';
 import { summarizeAuditLog } from '../../services/dispatchAuditLog';
+import { SKILL_CATALOGUE } from '../../services/asanaCommentSkillRouter';
 
 const store = new LocalAppStore();
 const DEFAULT_PROJECT_FALLBACK = '1213759768596515';
@@ -553,6 +554,95 @@ export default function BrainConsolePage() {
         <span style={{ color: '#D94F4F' }}>Freeze: {auditSummary.byVerdict.freeze}</span>
       </div>
 
+      {/* Skill catalogue — slash commands the MLRO can type in an
+          Asana comment to fire a compliance skill server-side.
+          The catalogue mirrors SKILL_CATALOGUE in
+          asanaCommentSkillRouter. The comment skill handler cron
+          parses comment bodies, runs the skill, and posts the
+          reply back to the same task within 60 seconds. */}
+      <div
+        style={{
+          marginTop: 8,
+          padding: 16,
+          background: '#0d1117',
+          border: '1px solid #21262d',
+          borderRadius: 8,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 12,
+            color: '#8b949e',
+            fontWeight: 600,
+            letterSpacing: 0.5,
+            marginBottom: 12,
+          }}
+        >
+          ASANA SLASH COMMAND SKILLS ({SKILL_CATALOGUE.length})
+        </div>
+        <div
+          style={{
+            fontSize: 10,
+            color: '#484f58',
+            marginBottom: 12,
+            lineHeight: 1.6,
+          }}
+        >
+          Type any of these as an Asana task comment. The <code>asana-comment-skill-handler</code>{' '}
+          cron parses it within 60 seconds and posts the reply back to the task. Quoted arguments
+          stay together: <code>/screen "ACME LLC"</code>.
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: 8,
+          }}
+        >
+          {SKILL_CATALOGUE.map((skill) => (
+            <div
+              key={skill.name}
+              style={{
+                padding: 10,
+                background: '#161b22',
+                border: '1px solid #21262d',
+                borderLeft: `3px solid ${categoryColor(skill.category)}`,
+                borderRadius: 4,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  marginBottom: 4,
+                }}
+              >
+                <code style={{ color: '#d4a843', fontSize: 12, fontWeight: 700 }}>
+                  /{skill.name}
+                </code>
+                <span
+                  style={{
+                    fontSize: 8,
+                    color: categoryColor(skill.category),
+                    letterSpacing: 0.5,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {skill.category}
+                </span>
+              </div>
+              <div style={{ fontSize: 10, color: '#8b949e', lineHeight: 1.4 }}>
+                {skill.description}
+              </div>
+              <div style={{ fontSize: 9, color: '#484f58', marginTop: 4 }}>
+                {skill.citation} · min {skill.minArgs} arg{skill.minArgs === 1 ? '' : 's'}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {cases.length === 0 && (
         <div
           style={{
@@ -562,6 +652,7 @@ export default function BrainConsolePage() {
             background: '#161b22',
             border: '1px dashed #30363d',
             borderRadius: 8,
+            marginTop: 16,
           }}
         >
           <div style={{ fontSize: 14, marginBottom: 8, color: '#e6edf3' }}>No cases loaded yet</div>
@@ -573,6 +664,29 @@ export default function BrainConsolePage() {
       )}
     </div>
   );
+}
+
+function categoryColor(category: string): string {
+  switch (category) {
+    case 'screening':
+      return '#3B82F6';
+    case 'onboarding':
+      return '#10B981';
+    case 'incident':
+      return '#D94F4F';
+    case 'filing':
+      return '#E8A030';
+    case 'audit':
+      return '#8B5CF6';
+    case 'review':
+      return '#06B6D4';
+    case 'reporting':
+      return '#F59E0B';
+    case 'governance':
+      return '#d4a843';
+    default:
+      return '#8b949e';
+  }
 }
 
 function Tile({ label, value }: { label: string; value: string }) {

@@ -19,6 +19,7 @@ import {
   stopRetryDrainLoop,
   getRetryDrainState,
 } from '../../services/retryDrainLoop';
+import { startToastStreamPoller } from '../../services/toastStreamPoller';
 
 const STATUS_COLORS: Record<AsanaHealthSnapshot['status'], string> = {
   unconfigured: '#8b949e',
@@ -53,6 +54,11 @@ export default function AsanaHealthTile() {
     // or the user is mid-tab (T4.18). Idempotent — calling start
     // twice is a no-op.
     startRetryDrainLoop();
+
+    // Start the toast stream poller so server-originated toast
+    // events (from the Asana webhook receiver) flow into the
+    // SPA buffer without requiring a page reload.
+    startToastStreamPoller();
 
     return () => {
       clearInterval(interval);
