@@ -7,6 +7,7 @@
 
 import { useMemo } from 'react';
 import type { KPIDashboard as KPIData } from '../../domain/kpi';
+import AsanaHealthTile from './AsanaHealthTile';
 
 interface KPIDashboardProps {
   data: KPIData;
@@ -190,6 +191,11 @@ export default function KPIDashboardView({ data }: KPIDashboardProps) {
         <MetricCard label="STR Pending" value={data.strPending} target={0} inverse />
         <MetricCard label="Screening Runs" value={data.screeningRuns} target={1} />
         <MetricCard label="PF Alerts" value={data.pfAlertsGenerated} target={0} inverse />
+      </div>
+
+      {/* Asana Health Tile */}
+      <div style={{ marginBottom: '12px' }}>
+        <AsanaHealthTile />
       </div>
 
       {/* Filing Summary */}
