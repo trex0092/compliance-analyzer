@@ -11,7 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18, 20]
+        # Node 18 reached End-of-Life on 2025-04-30 (nodejs.org release
+        # schedule). Testing against an EOL runtime gates merges on a
+        # platform we no longer ship to. Production runs on Node 20+
+        # via the Netlify default; CI mirrors that single supported
+        # version. Re-add Node 22 here once it's been promoted to
+        # Active LTS in our deployment environment.
+        node-version: [20]
 
     steps:
       - uses: actions/checkout@v4
@@ -43,6 +49,13 @@ jobs:
 
       - name: Lint TypeScript
         run: npm run lint:ts
+
+      - name: Type-check TypeScript
+        # Catches shape-drift errors that eslint doesn't — running
+        # tsc --noEmit here means an incorrect import signature can
+        # no longer slip through to main as happened with
+        # complianceDecisionEngine.ts in #105.
+        run: npx tsc --noEmit
 
       - name: Run tests
         run: npm test

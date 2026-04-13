@@ -81,6 +81,8 @@ export interface ReviewReport {
   /** Executor/advisor pair used. */
   executor: string;
   advisor: string;
+  /** Short reason when consulted=false and the caller needs to know why. */
+  skipReason?: string;
 }
 
 export interface OrchestrationResult {
@@ -268,12 +270,7 @@ async function review(
       consulted: false,
       executor,
       advisor,
-      result: {
-        advice: `Advisor pair invalid: ${msg}`,
-        usedAdvisor: false,
-        stopReason: null,
-        textResponse: null,
-      } as AdvisorCallResult,
+      skipReason: `Advisor pair invalid: ${msg}`,
     };
   }
 
@@ -289,12 +286,7 @@ async function review(
       consulted: false,
       executor,
       advisor,
-      result: {
-        advice: 'Advisor skipped: advisorDeps not provided',
-        usedAdvisor: false,
-        stopReason: null,
-        textResponse: null,
-      } as AdvisorCallResult,
+      skipReason: 'Advisor skipped: advisorDeps not provided',
     };
   }
 
@@ -316,9 +308,9 @@ async function review(
 
   const result = await callAdvisorAssisted(
     {
-      executorModel: executor,
-      advisorModel: advisor,
-      systemPrompt: COMPLIANCE_ADVISOR_SYSTEM_PROMPT,
+      executor,
+      advisor,
+      additionalSystemPrompt: COMPLIANCE_ADVISOR_SYSTEM_PROMPT,
       userMessage: prompt,
       maxTokens: 1024,
     },

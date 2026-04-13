@@ -22,6 +22,7 @@
 
 import { getStore } from '@netlify/blobs';
 import type { Config, Context } from '@netlify/functions';
+import { argon2id } from 'hash-wasm';
 import { checkRateLimit } from './middleware/rate-limit.mts';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -88,11 +89,48 @@ function hexToArray(hex: string): Uint8Array {
   return bytes;
 }
 
+// Argon2id parameters chosen per OWASP 2024 password storage cheat sheet:
+//   - 19 MiB memory, 2 iterations, 1 lane → conservative for serverless
+//     where memory is cheap but CPU is constrained. Raise these if the
+//     runtime supports it.
+// The hash is stored as a tagged string `argon2id$<hashLen>$<hexHash>` so
+// the verification path can tell apart argon2id and legacy PBKDF2 records
+// without an extra schema bump.
+const ARGON2_MEMORY_KIB = 19 * 1024;
+const ARGON2_ITERATIONS = 2;
+const ARGON2_PARALLELISM = 1;
+const ARGON2_HASH_LENGTH = 32;
+
 async function hashPassword(
   password: string,
   existingSalt?: Uint8Array
 ): Promise<{ hash: string; salt: string }> {
   const salt = existingSalt ?? crypto.getRandomValues(new Uint8Array(16));
+  const hashHex = await argon2id({
+    password,
+    salt,
+    parallelism: ARGON2_PARALLELISM,
+    iterations: ARGON2_ITERATIONS,
+    memorySize: ARGON2_MEMORY_KIB,
+    hashLength: ARGON2_HASH_LENGTH,
+    outputType: 'hex',
+  });
+  // Tagged with the algorithm prefix so the verification path can
+  // distinguish new argon2id records from legacy PBKDF2 records.
+  return { hash: `argon2id$${ARGON2_HASH_LENGTH}$${hashHex}`, salt: arrayToHex(salt) };
+}
+
+/**
+ * Legacy PBKDF2 hash for records created before the argon2id migration.
+ * Only used by the verification path when an existing record's hash is
+ * NOT tagged with `argon2id$...`. On a successful legacy verification
+ * the record is transparently upgraded to argon2id (`handleLogin`
+ * re-stores the user with the new hash + salt).
+ */
+async function legacyPbkdf2(
+  password: string,
+  salt: Uint8Array
+): Promise<string> {
   const enc = new TextEncoder();
   const baseKey = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, [
     'deriveBits',
@@ -102,7 +140,40 @@ async function hashPassword(
     baseKey,
     256
   );
-  return { hash: arrayToHex(new Uint8Array(derived)), salt: arrayToHex(salt) };
+  return arrayToHex(new Uint8Array(derived));
+}
+
+/**
+ * Verify a supplied password against a stored user record. Returns
+ * `{ ok: boolean; needsUpgrade: boolean }`. `needsUpgrade` is true when
+ * the stored hash is still a legacy PBKDF2 record; the caller MUST then
+ * re-hash the plaintext with argon2id and persist the new values before
+ * issuing a session.
+ */
+async function verifyPassword(
+  password: string,
+  user: Pick<UserRecord, 'passwordHash' | 'passwordSalt'>
+): Promise<{ ok: boolean; needsUpgrade: boolean }> {
+  const saltBytes = hexToArray(user.passwordSalt);
+  if (user.passwordHash.startsWith('argon2id$')) {
+    // New-style record.
+    const parts = user.passwordHash.split('$');
+    if (parts.length !== 3) return { ok: false, needsUpgrade: false };
+    const candidateHex = await argon2id({
+      password,
+      salt: saltBytes,
+      parallelism: ARGON2_PARALLELISM,
+      iterations: ARGON2_ITERATIONS,
+      memorySize: ARGON2_MEMORY_KIB,
+      hashLength: parseInt(parts[1], 10) || ARGON2_HASH_LENGTH,
+      outputType: 'hex',
+    });
+    return { ok: candidateHex === parts[2], needsUpgrade: false };
+  }
+  // Legacy PBKDF2 record — accept if it matches and signal the caller
+  // to upgrade on the next save.
+  const legacyHex = await legacyPbkdf2(password, saltBytes);
+  return { ok: legacyHex === user.passwordHash, needsUpgrade: true };
 }
 
 function getSigningSecret(): string {
@@ -264,8 +335,8 @@ async function handleLogin(body: Record<string, unknown>, clientIp: string): Pro
   }
 
   const user = await getUser(username);
-  // Defeat timing-enumeration: always run PBKDF2, even when user is
-  // missing. Without this, response time differs measurably between
+  // Defeat timing-enumeration: always run argon2id, even when the user
+  // is missing. Without this, response time differs measurably between
   // "unknown username" (no hash) and "valid username wrong password"
   // (full hash) — an oracle that lets attackers enumerate active
   // usernames before running credential stuffing.
@@ -275,12 +346,34 @@ async function handleLogin(body: Record<string, unknown>, clientIp: string): Pro
     return Response.json({ error: 'Invalid username or password.' }, { status: 401 });
   }
 
-  // Verify password
-  const saltBytes = hexToArray(user.passwordSalt);
-  const { hash } = await hashPassword(password, saltBytes);
-  if (hash !== user.passwordHash) {
+  // Verify password — accepts both argon2id and legacy PBKDF2 records.
+  const { ok, needsUpgrade } = await verifyPassword(password, user);
+  if (!ok) {
     await recordFailedAttempt(username, clientIp);
     return Response.json({ error: 'Invalid username or password.' }, { status: 401 });
+  }
+
+  // Transparent upgrade: legacy PBKDF2 records are re-hashed with
+  // argon2id on successful login and persisted before the session is
+  // returned. This migrates every active user on their next sign-in.
+  if (needsUpgrade) {
+    try {
+      const upgraded = await hashPassword(password);
+      user.passwordHash = upgraded.hash;
+      user.passwordSalt = upgraded.salt;
+      user.passwordChangedAt = new Date().toISOString();
+      await saveUser(user);
+      await auditLog({
+        event: 'password_upgraded',
+        username: user.username,
+        userId: user.id,
+        algo: 'argon2id',
+        ip: clientIp,
+      });
+    } catch (err) {
+      console.warn('[auth] argon2 upgrade failed for', user.username, err);
+      // Non-fatal — still let the user in on the legacy hash.
+    }
   }
 
   // Success — clear lockout, create session
@@ -468,14 +561,16 @@ async function handleChangePassword(
     return Response.json({ error: 'User not found.' }, { status: 404 });
   }
 
-  // If not mustChangePassword, verify current password
+  // If not mustChangePassword, verify current password.
+  // verifyPassword handles both argon2id and legacy PBKDF2 records,
+  // and the change-password flow always writes back an argon2id hash
+  // regardless of the prior algorithm, so no explicit upgrade needed.
   if (!user.mustChangePassword) {
     if (!currentPassword) {
       return Response.json({ error: 'Current password required.' }, { status: 400 });
     }
-    const saltBytes = hexToArray(user.passwordSalt);
-    const { hash } = await hashPassword(currentPassword, saltBytes);
-    if (hash !== user.passwordHash) {
+    const { ok } = await verifyPassword(currentPassword, user);
+    if (!ok) {
       return Response.json({ error: 'Current password is incorrect.' }, { status: 401 });
     }
   }
