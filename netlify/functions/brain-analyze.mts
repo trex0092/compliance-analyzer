@@ -65,6 +65,7 @@ import {
 } from "../../src/services/brainMemoryBlobStore";
 import { BrainMemoryDigestBlobStore } from "../../src/services/brainMemoryDigestBlobStore";
 import { emptyDigest } from "../../src/services/brainMemoryDigest";
+import { BrainTelemetryStore } from "../../src/services/brainTelemetryStore";
 
 // ---------------------------------------------------------------------------
 // Lazy advisor — built once per function instance so we don't
@@ -133,6 +134,24 @@ const brainDigestBlob: BrainMemoryDigestBlobStore | null = (() => {
       delete: (key) => store.delete(key),
     });
     return new BrainMemoryDigestBlobStore(handle);
+  } catch {
+    return null;
+  }
+})();
+
+// Telemetry store — same Netlify Blob backend, dedicated key prefix
+// `telemetry/<tenantId>/<YYYY-MM-DD>.jsonl`. Every /api/brain/analyze
+// call writes one entry for the trend view rendered by
+// /api/brain/telemetry and the Brain Console.
+const brainTelemetry: BrainTelemetryStore | null = (() => {
+  try {
+    const store = getStore("brain-memory");
+    const handle = createNetlifyBlobHandle({
+      get: (key, opts) => store.get(key, opts),
+      setJSON: (key, value) => store.setJSON(key, value),
+      delete: (key) => store.delete(key),
+    });
+    return new BrainTelemetryStore(handle);
   } catch {
     return null;
   }
@@ -588,6 +607,47 @@ export default async (req: Request, context: Context) => {
     if (brainDigestBlob && superResult.digestAfter) {
       brainDigestBlob.save(superResult.digestAfter);
     }
+
+    // Append a telemetry entry for the trend view. Opaque refs only
+    // (FDL Art.29 safe) — never entity legal names. Fire-and-forget.
+    if (brainTelemetry) {
+      try {
+        const megaVerdictRaw = (
+          superResult.decision.raw as { mega?: { verdict?: string } }
+        )?.mega?.verdict;
+        const brainVerdict =
+          megaVerdictRaw === "pass" ||
+          megaVerdictRaw === "flag" ||
+          megaVerdictRaw === "escalate" ||
+          megaVerdictRaw === "freeze"
+            ? megaVerdictRaw
+            : null;
+        brainTelemetry.record({
+          tsIso: superResult.decision.at,
+          tenantId: superResult.decision.tenantId,
+          entityRef: request.entity.id,
+          verdict: superResult.decision.verdict,
+          confidence: superResult.decision.confidence,
+          powerScore: superResult.powerScore?.score ?? null,
+          brainVerdict,
+          ensembleUnstable: superResult.ensemble?.unstable ?? false,
+          typologyIds: (superResult.typologies?.matches ?? [])
+            .slice(0, 5)
+            .map((m) => m.typology.id),
+          crossCaseFindingCount:
+            superResult.crossCase?.correlations?.length ?? 0,
+          velocitySeverity: superResult.velocity?.severity ?? null,
+          driftSeverity: "none",
+          requiresHumanReview: superResult.decision.requiresHumanReview,
+        });
+      } catch (err) {
+        console.warn(
+          "[brain-analyze] telemetry write failed:",
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    }
+
     decision = superResult.decision;
     powerScore = superResult.powerScore;
     if (superResult.asanaDispatch) {
