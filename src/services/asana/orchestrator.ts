@@ -56,6 +56,7 @@ import {
   type SkillRunnerRegistry,
   type SkillRunnerResult,
 } from './skillRunnerRegistry';
+import type { AsanaBrainTaskTemplate } from './asanaBrainTaskTemplate';
 
 // ---------------------------------------------------------------------------
 // Types surfaced at the façade level.
@@ -153,8 +154,27 @@ export type DispatchAdapter = (verdict: BrainVerdictLike) => Promise<{
   skipped?: string;
 }>;
 
+/**
+ * Richer adapter signature used by dispatchWithTemplate. Receives the
+ * full template (title + notes + project env key + tags) alongside
+ * the verdict so the adapter has everything it needs to call
+ * asanaClient.createAsanaTask without any extra context.
+ */
+export interface AsanaTaskDispatchInput {
+  verdict: BrainVerdictLike;
+  template: AsanaBrainTaskTemplate;
+}
+
+export type TemplateDispatchAdapter = (
+  input: AsanaTaskDispatchInput
+) => Promise<{ taskGid?: string; skipped?: string }>;
+
 const DEFAULT_DISPATCH_ADAPTER: DispatchAdapter = async () => ({
   skipped: 'no_adapter_configured',
+});
+
+const DEFAULT_TEMPLATE_DISPATCH_ADAPTER: TemplateDispatchAdapter = async () => ({
+  skipped: 'no_template_adapter_configured',
 });
 
 // ---------------------------------------------------------------------------
@@ -164,6 +184,7 @@ const DEFAULT_DISPATCH_ADAPTER: DispatchAdapter = async () => ({
 export class AsanaOrchestrator {
   private readonly store: IdempotencyStore;
   private dispatch: DispatchAdapter;
+  private templateDispatch: TemplateDispatchAdapter;
   private readonly skillRegistry: SkillRunnerRegistry;
   private lastDispatchAt: string | null = null;
   private lastDispatchResult: AsanaOrchestratorDispatchResult | null = null;
@@ -171,10 +192,13 @@ export class AsanaOrchestrator {
   constructor(opts: {
     idempotencyStore?: IdempotencyStore;
     dispatchAdapter?: DispatchAdapter;
+    templateDispatchAdapter?: TemplateDispatchAdapter;
     skillRegistry?: SkillRunnerRegistry;
   } = {}) {
     this.store = opts.idempotencyStore ?? new InMemoryIdempotencyStore();
     this.dispatch = opts.dispatchAdapter ?? DEFAULT_DISPATCH_ADAPTER;
+    this.templateDispatch =
+      opts.templateDispatchAdapter ?? DEFAULT_TEMPLATE_DISPATCH_ADAPTER;
     this.skillRegistry = opts.skillRegistry ?? defaultSkillRegistry;
   }
 
@@ -185,6 +209,15 @@ export class AsanaOrchestrator {
    */
   setDispatchAdapter(adapter: DispatchAdapter): void {
     this.dispatch = adapter;
+  }
+
+  /**
+   * Swap the template-aware dispatch adapter at runtime. Used by
+   * brain-analyze.mts to wire the production asanaClient-backed
+   * adapter without forcing this module to import the HTTP client.
+   */
+  setTemplateDispatchAdapter(adapter: TemplateDispatchAdapter): void {
+    this.templateDispatch = adapter;
   }
 
   /**
@@ -212,6 +245,58 @@ export class AsanaOrchestrator {
 
     // New dispatch — call the adapter.
     const adapterResult = await this.dispatch(verdict);
+    if (adapterResult.skipped) {
+      const result: AsanaOrchestratorDispatchResult = {
+        idempotencyKey: key,
+        created: false,
+        skippedReason: adapterResult.skipped,
+      };
+      this.lastDispatchAt = new Date().toISOString();
+      this.lastDispatchResult = result;
+      return result;
+    }
+
+    if (adapterResult.taskGid) {
+      await this.store.set(key, adapterResult.taskGid);
+    }
+    const result: AsanaOrchestratorDispatchResult = {
+      idempotencyKey: key,
+      created: true,
+      taskGid: adapterResult.taskGid,
+    };
+    this.lastDispatchAt = new Date().toISOString();
+    this.lastDispatchResult = result;
+    return result;
+  }
+
+  /**
+   * Dispatch a brain verdict to Asana using a pre-built template.
+   * Shares the same idempotency store as dispatchBrainVerdict so a
+   * caller can use either method and replays NEVER create a
+   * duplicate task. The richer input lets the production adapter
+   * build a fully-populated task body without needing a second
+   * trip through the super runner.
+   */
+  async dispatchWithTemplate(
+    verdict: BrainVerdictLike,
+    template: AsanaBrainTaskTemplate
+  ): Promise<AsanaOrchestratorDispatchResult> {
+    const key = makeIdempotencyKey(verdict);
+
+    // Idempotent replay path — same store as dispatchBrainVerdict.
+    if (await this.store.has(key)) {
+      const taskGid = (await this.store.get(key)) ?? undefined;
+      const result: AsanaOrchestratorDispatchResult = {
+        idempotencyKey: key,
+        created: false,
+        taskGid,
+      };
+      this.lastDispatchAt = new Date().toISOString();
+      this.lastDispatchResult = result;
+      return result;
+    }
+
+    const adapterResult = await this.templateDispatch({ verdict, template });
     if (adapterResult.skipped) {
       const result: AsanaOrchestratorDispatchResult = {
         idempotencyKey: key,
