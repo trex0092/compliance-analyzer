@@ -329,6 +329,658 @@
   }
 
   // ────────────────────────────────────────────────────────────────
+  // LIVE BRAIN ANALYSIS — calls /api/brain/analyze end-to-end.
+  //
+  // This is the FIRST UI surface that actually executes the Weaponized
+  // Brain (MegaBrain + 30+ subsystems + advisor + zk-attestation +
+  // four-eyes) in a deployed environment. Everything above this block
+  // is cron health + static content.
+  // ────────────────────────────────────────────────────────────────
+
+  const ANALYSIS_FEATURE_DEFS = [
+    { key: 'priorAlerts90d', label: 'Prior alerts (90d)', kind: 'number', default: 0, min: 0, max: 50, help: 'Count of prior CDD alerts in the last 90 days.' },
+    { key: 'txValue30dAED', label: 'Tx value 30d (AED)', kind: 'number', default: 50000, min: 0, max: 1e9, help: 'Aggregate transaction value over the last 30 days.' },
+    { key: 'nearThresholdCount30d', label: 'Near-threshold tx count (30d)', kind: 'number', default: 0, min: 0, max: 99, help: 'Transactions at or just below AED 55K (structuring signal).' },
+    { key: 'crossBorderRatio30d', label: 'Cross-border ratio (30d)', kind: 'number', default: 0, min: 0, max: 1, step: 0.01, help: 'Ratio of cross-border transactions in [0, 1].' },
+    { key: 'isPep', label: 'Any UBO is PEP?', kind: 'boolean', default: false, help: 'Politically Exposed Person — forces EDD (Cabinet Res 134/2025 Art.14).' },
+    { key: 'highRiskJurisdiction', label: 'High-risk jurisdiction?', kind: 'boolean', default: false, help: 'Counterparty in FATF / PF high-risk jurisdiction.' },
+    { key: 'hasAdverseMedia', label: 'Adverse media?', kind: 'boolean', default: false, help: 'Unresolved adverse media hit for this entity.' },
+    { key: 'daysSinceOnboarding', label: 'Days since onboarding', kind: 'number', default: 365, min: 0, max: 10000, help: 'Newer relationships are riskier.' },
+    { key: 'sanctionsMatchScore', label: 'Sanctions match score', kind: 'number', default: 0, min: 0, max: 1, step: 0.01, help: 'Name-match score against sanctions lists in [0, 1].' },
+    { key: 'cashRatio30d', label: 'Cash ratio (30d)', kind: 'number', default: 0, min: 0, max: 1, step: 0.01, help: 'Cash transaction ratio in [0, 1].' },
+  ];
+
+  let lastAnalysisResult = null;
+
+  function renderAnalysisPanel() {
+    const featureInputs = ANALYSIS_FEATURE_DEFS.map((f) => {
+      if (f.kind === 'boolean') {
+        return `
+          <label style="display:flex;align-items:center;gap:8px;background:#0d1117;border:1px solid #21262d;border-radius:4px;padding:8px 10px;font-size:11px;color:#e6edf3;cursor:pointer;">
+            <input type="checkbox" data-feature="${f.key}" ${f.default ? 'checked' : ''} style="accent-color:#d4a843;" />
+            <span>${escapeHtml(f.label)}</span>
+          </label>
+        `;
+      }
+      const step = f.step ?? 1;
+      return `
+        <label style="display:flex;flex-direction:column;gap:4px;background:#0d1117;border:1px solid #21262d;border-radius:4px;padding:8px 10px;">
+          <span style="font-size:10px;color:#8b949e;letter-spacing:0.4px;text-transform:uppercase;">${escapeHtml(f.label)}</span>
+          <input type="number" data-feature="${f.key}" value="${f.default}" min="${f.min}" max="${f.max}" step="${step}" title="${escapeHtml(f.help)}" style="background:#010409;color:#e6edf3;border:1px solid #30363d;border-radius:3px;padding:5px 8px;font-family:monospace;font-size:12px;width:100%;box-sizing:border-box;" />
+        </label>
+      `;
+    }).join('');
+
+    return `
+      <div style="${STYLE.panel}border-left:4px solid #3DA876;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:#3DA876;letter-spacing:0.5px;">🧠 LIVE BRAIN ANALYSIS</div>
+            <div style="font-size:11px;color:#8b949e;margin-top:4px;line-height:1.5;">
+              Runs the full Weaponized Brain (MegaBrain + 30+ subsystems + advisor + zk-attestation + four-eyes) against the entity profile below.<br>
+              Calls <code style="color:#d4a843;">POST /api/brain/analyze</code>. Requires the Hawkeye Brain Token (Settings tab).
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+          <label style="display:flex;flex-direction:column;gap:4px;">
+            <span style="font-size:10px;color:#8b949e;letter-spacing:0.4px;text-transform:uppercase;">Entity ID</span>
+            <input type="text" id="brain-analyze-entity-id" value="entity-demo-001" maxlength="128" style="background:#010409;color:#e6edf3;border:1px solid #30363d;border-radius:3px;padding:6px 10px;font-size:12px;font-family:monospace;" />
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;">
+            <span style="font-size:10px;color:#8b949e;letter-spacing:0.4px;text-transform:uppercase;">Entity Name</span>
+            <input type="text" id="brain-analyze-entity-name" value="Demo Entity LLC" maxlength="256" style="background:#010409;color:#e6edf3;border:1px solid #30363d;border-radius:3px;padding:6px 10px;font-size:12px;" />
+          </label>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;">
+          <span style="font-size:10px;color:#8b949e;letter-spacing:0.4px;text-transform:uppercase;">Topic</span>
+          <input type="text" id="brain-analyze-topic" value="Live brain console analysis" maxlength="200" style="background:#010409;color:#e6edf3;border:1px solid #30363d;border-radius:3px;padding:6px 10px;font-size:12px;" />
+        </label>
+
+        <div style="${STYLE.label}">ENTITY RISK FEATURES (StrFeatures vector)</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:10px;margin-bottom:12px;">
+          ${featureInputs}
+        </div>
+
+        <label style="display:flex;align-items:center;gap:8px;background:#2a1012;border:1px solid #D94F4F44;border-left:3px solid #D94F4F;border-radius:4px;padding:8px 10px;font-size:11px;color:#e6edf3;cursor:pointer;margin-bottom:12px;">
+          <input type="checkbox" id="brain-analyze-sanctions-confirmed" style="accent-color:#D94F4F;" />
+          <span><strong style="color:#D94F4F;">isSanctionsConfirmed</strong> — forces <code>freeze</code> verdict (Cabinet Res 74/2020 Art.4)</span>
+        </label>
+
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button id="brain-analyze-run" style="${STYLE.btnPrimary}">▶ RUN FULL BRAIN ANALYSIS</button>
+          <button id="brain-analyze-clear" style="${STYLE.btnSecondary}">Clear result</button>
+          <span id="brain-analyze-status" style="font-size:11px;color:#8b949e;"></span>
+        </div>
+      </div>
+
+      <div id="brain-analyze-result" style="display:none;"></div>
+    `;
+  }
+
+  function readAnalysisForm() {
+    const features = {};
+    for (const def of ANALYSIS_FEATURE_DEFS) {
+      const el = document.querySelector(`[data-feature="${def.key}"]`);
+      if (!el) continue;
+      if (def.kind === 'boolean') {
+        features[def.key] = el.checked;
+      } else {
+        const n = Number(el.value);
+        features[def.key] = Number.isFinite(n) ? n : def.default;
+      }
+    }
+    const payload = {
+      tenantId: 'brain-console',
+      topic: (document.getElementById('brain-analyze-topic') || {}).value || 'Live analysis',
+      entity: {
+        id: (document.getElementById('brain-analyze-entity-id') || {}).value || 'entity-demo-001',
+        name: (document.getElementById('brain-analyze-entity-name') || {}).value || 'Demo Entity LLC',
+        features,
+      },
+    };
+    const confirmedEl = document.getElementById('brain-analyze-sanctions-confirmed');
+    if (confirmedEl && confirmedEl.checked) {
+      payload.entity.isSanctionsConfirmed = true;
+    }
+    return payload;
+  }
+
+  async function runAnalysis() {
+    const statusEl = document.getElementById('brain-analyze-status');
+    const resultEl = document.getElementById('brain-analyze-result');
+    const runBtn = document.getElementById('brain-analyze-run');
+    const token = window.HAWKEYE_BRAIN_TOKEN;
+
+    if (!token) {
+      statusEl.textContent = '⚠ Set HAWKEYE_BRAIN_TOKEN in Settings tab first.';
+      statusEl.style.color = '#E8A030';
+      return;
+    }
+
+    runBtn.disabled = true;
+    runBtn.style.opacity = '0.6';
+    statusEl.textContent = 'Running weaponized brain…';
+    statusEl.style.color = '#d4a843';
+
+    const payload = readAnalysisForm();
+    const started = Date.now();
+
+    try {
+      const response = await fetch(NETLIFY_BASE + '/api/brain/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const body = await response.json().catch(() => ({}));
+      const durationMs = Date.now() - started;
+
+      if (!response.ok) {
+        statusEl.textContent = `✗ ${response.status} ${body.error || 'error'} (${durationMs}ms)`;
+        statusEl.style.color = '#D94F4F';
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = `
+          <div style="${STYLE.cardErr}">
+            <strong style="color:#D94F4F;">Brain returned ${response.status}</strong>
+            <div style="${STYLE.code}margin-top:8px;">${escapeHtml(JSON.stringify(body, null, 2))}</div>
+          </div>
+        `;
+        return;
+      }
+
+      lastAnalysisResult = body;
+      const powerLabel = body.powerScore
+        ? ` · brain=${body.powerScore.score}/${body.powerScore.verdict}`
+        : '';
+      const crossLabel = body.crossCase && body.crossCase.findings.length > 0
+        ? ` · cross-case=${body.crossCase.findings.length}/${body.crossCase.topSeverity}`
+        : '';
+      const typoLabel = body.typologies && body.typologies.matches.length > 0
+        ? ` · typo=${body.typologies.matches.length}/${body.typologies.topSeverity}`
+        : '';
+      const driftLabel = body.regulatoryDrift && !body.regulatoryDrift.clean
+        ? ` · DRIFT=${body.regulatoryDrift.topSeverity}`
+        : '';
+      statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel}${crossLabel}${typoLabel}${driftLabel} (${durationMs}ms)`;
+      statusEl.style.color = '#3DA876';
+      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase, body.typologies, body.regulatoryDrift, body.velocity, body.ensemble);
+    } catch (err) {
+      statusEl.textContent = `✗ network error: ${err.message || err}`;
+      statusEl.style.color = '#D94F4F';
+    } finally {
+      runBtn.disabled = false;
+      runBtn.style.opacity = '1';
+    }
+  }
+
+  function verdictBadge(verdict) {
+    const map = {
+      pass: { color: '#3DA876', bg: '#0f2a1b', label: 'PASS' },
+      flag: { color: '#E8A030', bg: '#2a1f0a', label: 'FLAG' },
+      escalate: { color: '#E8A030', bg: '#2a1f0a', label: 'ESCALATE' },
+      freeze: { color: '#D94F4F', bg: '#2a1012', label: 'FREEZE' },
+    };
+    const cfg = map[verdict] || { color: '#8b949e', bg: '#161b22', label: verdict.toUpperCase() };
+    return `<span style="background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.color}66;padding:3px 12px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:0.5px;">${cfg.label}</span>`;
+  }
+
+  function severityBadge(sev) {
+    const map = {
+      info: '#8b949e',
+      low: '#3DA876',
+      medium: '#E8A030',
+      high: '#E8A030',
+      critical: '#D94F4F',
+    };
+    return `<span style="color:${map[sev] || '#8b949e'};font-weight:700;font-size:10px;letter-spacing:0.5px;">${(sev || 'info').toUpperCase()}</span>`;
+  }
+
+  function renderPowerScoreCard(powerScore) {
+    if (!powerScore) return '';
+    const verdictColors = {
+      thin: '#8b949e',
+      standard: '#3DA876',
+      advanced: '#d4a843',
+      weaponized: '#D94F4F',
+    };
+    const color = verdictColors[powerScore.verdict] || '#8b949e';
+    const filled = Math.max(0, Math.min(100, powerScore.score));
+    const componentsHtml = (powerScore.components || []).map((c) => `
+      <tr>
+        <td style="padding:3px 8px;font-size:10px;color:#8b949e;">${escapeHtml(c.label)}</td>
+        <td style="padding:3px 8px;font-size:10px;color:#e6edf3;font-family:monospace;text-align:right;">${c.points}/${c.max}</td>
+        <td style="padding:3px 8px;width:100px;">
+          <div style="background:#0d1117;border-radius:2px;height:5px;overflow:hidden;">
+            <div style="background:${color};height:100%;width:${c.max > 0 ? (c.points / c.max) * 100 : 0}%;"></div>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    return `
+      <div style="${STYLE.panel}border-left:4px solid ${color};">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:11px;letter-spacing:0.5px;color:${color};font-weight:700;text-transform:uppercase;">BRAIN POWER SCORE</div>
+            <div style="font-size:36px;font-weight:700;color:${color};line-height:1;margin-top:4px;">${powerScore.score}<span style="font-size:14px;color:#8b949e;font-weight:400;">/100</span></div>
+            <div style="font-size:12px;color:${color};margin-top:2px;letter-spacing:0.5px;text-transform:uppercase;">${escapeHtml(powerScore.verdict)}</div>
+          </div>
+          <div style="flex:1;min-width:180px;">
+            <div style="font-size:10px;color:#8b949e;margin-bottom:6px;letter-spacing:0.3px;">SUBSYSTEMS</div>
+            <div style="background:#0d1117;border-radius:3px;height:8px;overflow:hidden;margin-bottom:4px;">
+              <div style="background:${color};height:100%;width:${filled}%;"></div>
+            </div>
+            <div style="font-size:10px;color:#8b949e;line-height:1.6;">
+              ${powerScore.subsystemsInvoked} invoked · ${powerScore.subsystemsFailed} failed · ${powerScore.clampsFired} clamps fired<br>
+              ${powerScore.advisorInvoked ? '🎓 advisor escalated · ' : ''}${powerScore.attestationSealed ? '🔒 zk-attestation sealed' : 'attestation skipped'}
+            </div>
+          </div>
+        </div>
+        <table style="width:100%;margin-top:12px;border-collapse:collapse;">
+          <tbody>${componentsHtml}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderAsanaDispatchCard(asanaDispatch) {
+    if (!asanaDispatch) {
+      return `
+        <div style="${STYLE.cardNeutral}">
+          <strong style="color:#8b949e;">ASANA DISPATCH — SKIPPED</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">Verdict was 'pass' — no Asana task needed.</div>
+        </div>
+      `;
+    }
+    const status = asanaDispatch.created
+      ? '✓ CREATED'
+      : asanaDispatch.skippedReason
+        ? '⚠ SKIPPED'
+        : '↻ REPLAYED (idempotent)';
+    const cardStyle = asanaDispatch.created
+      ? STYLE.cardOk
+      : asanaDispatch.skippedReason
+        ? STYLE.cardWarn
+        : STYLE.cardNeutral;
+    return `
+      <div style="${cardStyle}">
+        <strong style="color:#3DA876;">ASANA DISPATCH — ${status}</strong>
+        <div style="font-size:10px;color:#8b949e;margin-top:4px;font-family:monospace;word-break:break-all;">
+          ${asanaDispatch.taskGid ? 'task gid: ' + escapeHtml(asanaDispatch.taskGid) : ''}
+          ${asanaDispatch.skippedReason ? 'reason: ' + escapeHtml(asanaDispatch.skippedReason) : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderCrossCaseCard(crossCase) {
+    if (!crossCase || !crossCase.findings || crossCase.findings.length === 0) {
+      return `
+        <div style="${STYLE.cardNeutral}">
+          <strong style="color:#8b949e;">CROSS-CASE CORRELATION — NO PATTERNS</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">${crossCase ? crossCase.caseCount : 0} cases in memory · no multi-case rings detected.</div>
+        </div>
+      `;
+    }
+    const kindColors = {
+      'wallet-reuse': '#D94F4F',
+      'shared-ubo-ring': '#D94F4F',
+      'sanctions-key-reuse': '#D94F4F',
+      'structuring-cluster': '#E8A030',
+      'corridor-burst': '#E8A030',
+      'address-reuse': '#d4a843',
+      'narrative-copypaste': '#d4a843',
+    };
+    const findingsHtml = crossCase.findings.map((f) => {
+      const color = kindColors[f.kind] || '#8b949e';
+      return `
+        <div style="border:1px solid ${color}44;border-left:3px solid ${color};background:#0d1117;border-radius:3px;padding:10px 12px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+            <strong style="color:${color};font-size:12px;letter-spacing:0.5px;">${escapeHtml(f.kind.toUpperCase())}</strong>
+            <span style="font-size:10px;color:#8b949e;">${f.caseIds.length} cases · conf ${(f.confidence * 100).toFixed(0)}% · ${escapeHtml(f.severity)}</span>
+          </div>
+          <div style="font-size:11px;color:#e6edf3;line-height:1.6;">${escapeHtml(f.description)}</div>
+          <div style="font-size:9px;color:#8b949e;margin-top:4px;font-style:italic;">${escapeHtml(f.regulatory)}</div>
+        </div>
+      `;
+    }).join('');
+    return `
+      <div style="${STYLE.panel}border-left:4px solid #D94F4F;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+          <div style="font-size:14px;font-weight:700;color:#D94F4F;letter-spacing:0.5px;">🕸 CROSS-CASE CORRELATION</div>
+          <div style="font-size:10px;color:#8b949e;">${crossCase.caseCount} cases scanned · top severity ${escapeHtml(crossCase.topSeverity)}</div>
+        </div>
+        ${findingsHtml}
+      </div>
+    `;
+  }
+
+  function renderTypologiesCard(typologies) {
+    if (!typologies || !typologies.matches || typologies.matches.length === 0) {
+      return `
+        <div style="${STYLE.cardNeutral}">
+          <strong style="color:#8b949e;">FATF TYPOLOGIES — NO MATCH</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">No named money-laundering typology matched this case.</div>
+        </div>
+      `;
+    }
+    const sevColors = {
+      low: '#3DA876',
+      medium: '#E8A030',
+      high: '#E8A030',
+      critical: '#D94F4F',
+    };
+    const rows = typologies.matches.map((m) => {
+      const color = sevColors[m.severity] || '#8b949e';
+      const signalHtml = (m.firedSignals || []).slice(0, 5).map((s) =>
+        `<span style="display:inline-block;background:#010409;border:1px solid ${color}44;color:${color};padding:2px 8px;border-radius:10px;font-size:10px;margin:2px 4px 2px 0;">${escapeHtml(s)}</span>`
+      ).join('');
+      return `
+        <div style="border:1px solid ${color}44;border-left:3px solid ${color};background:#0d1117;border-radius:3px;padding:10px 12px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+            <div>
+              <strong style="color:${color};font-size:12px;letter-spacing:0.5px;">${escapeHtml(m.id)} — ${escapeHtml(m.name)}</strong>
+            </div>
+            <span style="font-size:10px;color:#8b949e;">score ${(m.score * 100).toFixed(0)}% · ${escapeHtml(m.severity)}</span>
+          </div>
+          <div style="font-size:11px;color:#e6edf3;line-height:1.6;margin-bottom:4px;">${escapeHtml(m.description)}</div>
+          <div style="margin-top:6px;">${signalHtml}</div>
+          <div style="font-size:9px;color:#8b949e;margin-top:6px;font-style:italic;">${escapeHtml(m.regulatory)}</div>
+          <div style="font-size:10px;color:#d4a843;margin-top:4px;"><strong>Action:</strong> ${escapeHtml(m.recommendedAction)}</div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div style="${STYLE.panel}border-left:4px solid #d4a843;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+          <div style="font-size:14px;font-weight:700;color:#d4a843;letter-spacing:0.5px;">📖 FATF DPMS TYPOLOGIES</div>
+          <div style="font-size:10px;color:#8b949e;">${typologies.matches.length} matched · top severity ${escapeHtml(typologies.topSeverity)}</div>
+        </div>
+        <div style="font-size:11px;color:#cfc7b3;margin-bottom:10px;font-style:italic;">${escapeHtml(typologies.summary)}</div>
+        ${rows}
+      </div>
+    `;
+  }
+
+  function renderRegulatoryDriftCard(drift) {
+    if (!drift) return '';
+    if (drift.clean) {
+      return `
+        <div style="${STYLE.cardOk}">
+          <strong style="color:#3DA876;">REGULATORY DRIFT — CLEAN</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">Constants version ${escapeHtml(drift.currentVersion)} matches baseline.</div>
+        </div>
+      `;
+    }
+    const sevColors = {
+      low: '#d4a843',
+      medium: '#E8A030',
+      high: '#E8A030',
+      critical: '#D94F4F',
+      none: '#8b949e',
+    };
+    const color = sevColors[drift.topSeverity] || '#8b949e';
+    const rows = (drift.findings || []).map((f) => {
+      const fc = sevColors[f.severity] || '#8b949e';
+      return `
+        <div style="border:1px solid ${fc}44;border-left:3px solid ${fc};background:#0d1117;border-radius:3px;padding:8px 12px;margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+            <strong style="color:${fc};font-size:11px;font-family:monospace;">${escapeHtml(f.key)}</strong>
+            <span style="font-size:10px;color:#8b949e;">${escapeHtml(f.severity)}</span>
+          </div>
+          <div style="font-size:11px;color:#e6edf3;line-height:1.5;margin-top:4px;">
+            <code style="color:#8b949e;">${escapeHtml(String(f.previous))}</code> → <code style="color:#e6edf3;">${escapeHtml(String(f.current))}</code>
+          </div>
+          <div style="font-size:9px;color:#8b949e;margin-top:3px;font-style:italic;">${escapeHtml(f.regulatory)}</div>
+        </div>
+      `;
+    }).join('');
+    return `
+      <div style="${STYLE.panel}border-left:4px solid ${color};">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+          <div style="font-size:14px;font-weight:700;color:${color};letter-spacing:0.5px;">⚠ REGULATORY DRIFT</div>
+          <div style="font-size:10px;color:#8b949e;">${escapeHtml(drift.baselineVersion)} → ${escapeHtml(drift.currentVersion)} · top ${escapeHtml(drift.topSeverity)}</div>
+        </div>
+        <div style="font-size:11px;color:#cfc7b3;margin-bottom:10px;font-style:italic;">${escapeHtml(drift.summary)}</div>
+        ${rows}
+      </div>
+    `;
+  }
+
+  function renderEnsembleCard(ensemble) {
+    if (!ensemble) return '';
+    const color = ensemble.unstable ? '#D94F4F' : '#3DA876';
+    const badge = ensemble.unstable ? 'UNSTABLE' : 'STABLE';
+    return `
+      <div style="${ensemble.unstable ? STYLE.cardErr : STYLE.cardOk}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <strong style="color:${color};">🎯 CONSENSUS ENSEMBLE — ${badge}</strong>
+          <span style="font-size:10px;color:#8b949e;">${ensemble.majorityVoteCount}/${ensemble.runs} agree · ${(ensemble.agreement * 100).toFixed(0)}%</span>
+        </div>
+        <div style="font-size:11px;color:#e6edf3;margin-top:6px;line-height:1.6;">
+          Majority: <code style="color:#d4a843;">${escapeHtml(ensemble.majorityTypologyId || 'no-match')}</code>
+          · severity <strong>${escapeHtml(ensemble.majoritySeverity)}</strong>
+          · mean ${ensemble.meanMatchCount.toFixed(1)} matches/run
+        </div>
+        <div style="font-size:10px;color:#8b949e;margin-top:6px;font-style:italic;">${escapeHtml(ensemble.summary)}</div>
+      </div>
+    `;
+  }
+
+  function renderVelocityCard(velocity) {
+    if (!velocity) {
+      return `
+        <div style="${STYLE.cardNeutral}">
+          <strong style="color:#8b949e;">BEHAVIOURAL VELOCITY — N/A</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">Memory backend disabled for this request.</div>
+        </div>
+      `;
+    }
+    const sevColors = {
+      info: '#8b949e',
+      low: '#3DA876',
+      medium: '#d4a843',
+      high: '#E8A030',
+      critical: '#D94F4F',
+    };
+    const color = sevColors[velocity.severity] || '#8b949e';
+    const pct = (n) => (n * 100).toFixed(0) + '%';
+    return `
+      <div style="${STYLE.panel}border-left:4px solid ${color};">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+          <div style="font-size:14px;font-weight:700;color:${color};letter-spacing:0.5px;">⚡ BEHAVIOURAL VELOCITY</div>
+          <div style="font-size:10px;color:#8b949e;">composite ${pct(velocity.compositeScore)} · ${escapeHtml(velocity.severity)} · ${velocity.caseCount} cases</div>
+        </div>
+        <div style="font-size:11px;color:#cfc7b3;margin-bottom:10px;font-style:italic;">${escapeHtml(velocity.summary)}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">BURST</div>
+            <div style="font-size:14px;color:${velocity.burst.score >= 0.5 ? color : '#e6edf3'};font-weight:700;margin-top:2px;">${pct(velocity.burst.score)}</div>
+            <div style="font-size:10px;color:#8b949e;margin-top:4px;line-height:1.4;">${escapeHtml(velocity.burst.description)}</div>
+          </div>
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">OFF-HOURS</div>
+            <div style="font-size:14px;color:${velocity.offHours.score >= 0.5 ? color : '#e6edf3'};font-weight:700;margin-top:2px;">${pct(velocity.offHours.score)}</div>
+            <div style="font-size:10px;color:#8b949e;margin-top:4px;line-height:1.4;">${escapeHtml(velocity.offHours.description)}</div>
+          </div>
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">WEEKEND</div>
+            <div style="font-size:14px;color:${velocity.weekend.score >= 0.5 ? color : '#e6edf3'};font-weight:700;margin-top:2px;">${pct(velocity.weekend.score)}</div>
+            <div style="font-size:10px;color:#8b949e;margin-top:4px;line-height:1.4;">${escapeHtml(velocity.weekend.description)}</div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:#8b949e;margin-top:8px;font-style:italic;">${escapeHtml(velocity.regulatory)}</div>
+      </div>
+    `;
+  }
+
+  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase, typologies, regulatoryDrift, velocity, ensemble) {
+    const resultEl = document.getElementById('brain-analyze-result');
+    if (!resultEl) return;
+
+    const factorsHtml = (decision.strPrediction.topFactors || [])
+      .map((f) => `
+        <tr>
+          <td style="padding:4px 8px;color:#e6edf3;font-family:monospace;font-size:11px;">${escapeHtml(f.feature)}</td>
+          <td style="padding:4px 8px;color:#8b949e;font-family:monospace;font-size:11px;">${escapeHtml(String(f.value))}</td>
+          <td style="padding:4px 8px;color:${f.impact === 'increases-risk' ? '#D94F4F' : f.impact === 'decreases-risk' ? '#3DA876' : '#8b949e'};font-family:monospace;font-size:11px;">${f.contribution >= 0 ? '+' : ''}${f.contribution.toFixed(3)}</td>
+          <td style="padding:4px 8px;color:#8b949e;font-size:10px;">${escapeHtml(f.impact)}</td>
+        </tr>
+      `).join('');
+
+    const clampsHtml = (decision.brain.clampReasons || []).length > 0
+      ? `<div style="${STYLE.cardWarn}">
+          <strong style="color:#E8A030;">⚠ SAFETY CLAMPS FIRED</strong>
+          <ul style="margin:6px 0 0;padding-left:18px;font-size:11px;color:#e6edf3;line-height:1.6;">
+            ${decision.brain.clampReasons.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}
+          </ul>
+        </div>`
+      : '';
+
+    const failuresHtml = (decision.brain.subsystemFailures || []).length > 0
+      ? `<div style="${STYLE.cardErr}">
+          <strong style="color:#D94F4F;">✗ SUBSYSTEM FAILURES (${decision.brain.subsystemFailures.length})</strong>
+          <div style="font-size:11px;color:#e6edf3;margin-top:6px;">${escapeHtml(decision.brain.subsystemFailures.join(', '))}</div>
+        </div>`
+      : '';
+
+    const advisorHtml = decision.brain.advisorInvoked
+      ? `<div style="${STYLE.cardWarn}">
+          <strong style="color:#d4a843;">🎓 ADVISOR ESCALATION</strong>
+          <div style="font-size:11px;color:#8b949e;margin-top:4px;">Model: ${escapeHtml(decision.brain.advisorModel || 'unknown')}</div>
+        </div>`
+      : '';
+
+    const fourEyesHtml = decision.fourEyes
+      ? `<div style="${decision.fourEyes.meetsRequirements ? STYLE.cardOk : STYLE.cardWarn}">
+          <strong style="color:${decision.fourEyes.meetsRequirements ? '#3DA876' : '#E8A030'};">✓ FOUR-EYES ${decision.fourEyes.status.toUpperCase()}</strong>
+          <div style="font-size:11px;color:#e6edf3;margin-top:4px;line-height:1.6;">
+            ${decision.fourEyes.approvalCount}/${decision.fourEyes.requiredCount} approvals · ${escapeHtml(decision.fourEyes.regulatoryRef)}<br>
+            ${decision.fourEyes.missingRoles.length > 0 ? 'Missing: ' + escapeHtml(decision.fourEyes.missingRoles.join(', ')) : ''}
+          </div>
+        </div>`
+      : '';
+
+    const attestationHtml = decision.attestation
+      ? `<div style="${STYLE.cardNeutral}">
+          <strong style="color:#d4a843;">🔒 ZK-COMPLIANCE ATTESTATION</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;font-family:monospace;word-break:break-all;">
+            ${escapeHtml(decision.attestation.commitHash.slice(0, 64))}…<br>
+            list: ${escapeHtml(decision.attestation.listName)} · published: ${escapeHtml(decision.attestation.attestationPublishedAtIso)}
+          </div>
+        </div>`
+      : '';
+
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <div style="${STYLE.panel}border-left:4px solid #d4a843;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+          <div style="font-size:16px;font-weight:700;color:#d4a843;">DECISION</div>
+          ${verdictBadge(decision.verdict)}
+          <span style="color:#8b949e;font-size:11px;">confidence ${(decision.confidence * 100).toFixed(1)}%</span>
+          ${decision.requiresHumanReview ? '<span style="background:#2a1012;color:#D94F4F;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;">HUMAN REVIEW REQUIRED</span>' : ''}
+        </div>
+        <div style="font-size:12px;color:#e6edf3;line-height:1.7;padding:10px 12px;background:#0d1117;border:1px solid #21262d;border-radius:4px;">
+          <strong style="color:#d4a843;">Recommended action:</strong> ${escapeHtml(decision.recommendedAction)}
+        </div>
+        <div style="font-size:11px;color:#8b949e;margin-top:8px;line-height:1.6;">
+          <strong>Audit narrative:</strong> ${escapeHtml(decision.auditNarrative)}
+        </div>
+      </div>
+
+      ${renderPowerScoreCard(powerScore)}
+      ${renderRegulatoryDriftCard(regulatoryDrift)}
+      ${renderEnsembleCard(ensemble)}
+      ${renderVelocityCard(velocity)}
+      ${renderTypologiesCard(typologies)}
+      ${renderCrossCaseCard(crossCase)}
+      ${renderAsanaDispatchCard(asanaDispatch)}
+      ${clampsHtml}
+      ${failuresHtml}
+      ${advisorHtml}
+      ${fourEyesHtml}
+      ${attestationHtml}
+
+      <div style="${STYLE.panel}">
+        <div style="${STYLE.label}">STR PREDICTION — ${decision.strPrediction.band.toUpperCase()} band (${(decision.strPrediction.probability * 100).toFixed(1)}% probability, recommendation: ${escapeHtml(decision.strPrediction.recommendation)})</div>
+        <table style="width:100%;margin-top:10px;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid #21262d;">
+              <th style="text-align:left;padding:6px 8px;font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;">Feature</th>
+              <th style="text-align:left;padding:6px 8px;font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;">Value</th>
+              <th style="text-align:left;padding:6px 8px;font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;">Contribution</th>
+              <th style="text-align:left;padding:6px 8px;font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;">Impact</th>
+            </tr>
+          </thead>
+          <tbody>${factorsHtml}</tbody>
+        </table>
+      </div>
+
+      <div style="${STYLE.panel}">
+        <div style="${STYLE.label}">WAR-ROOM EVENT</div>
+        <div style="margin-top:8px;font-size:11px;color:#e6edf3;line-height:1.7;">
+          <div><strong>ID:</strong> <code style="color:#d4a843;font-size:10px;">${escapeHtml(decision.warRoomEvent.id)}</code></div>
+          <div><strong>Severity:</strong> ${severityBadge(decision.warRoomEvent.severity)}</div>
+          <div><strong>Kind:</strong> ${escapeHtml(decision.warRoomEvent.kind)}</div>
+          <div><strong>Title:</strong> ${escapeHtml(decision.warRoomEvent.title)}</div>
+          <div><strong>At:</strong> ${escapeHtml(decision.warRoomEvent.at)}</div>
+        </div>
+      </div>
+
+      <div style="${STYLE.panel}">
+        <div style="${STYLE.label}">BRAIN INTERNALS</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px;">
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">MEGA VERDICT</div>
+            <div style="font-size:13px;color:#e6edf3;font-weight:700;margin-top:2px;">${escapeHtml(decision.brain.megaVerdict)}</div>
+          </div>
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">FINAL VERDICT</div>
+            <div style="font-size:13px;color:#e6edf3;font-weight:700;margin-top:2px;">${escapeHtml(decision.brain.finalVerdict)}</div>
+          </div>
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">MEGA CONFIDENCE</div>
+            <div style="font-size:13px;color:#e6edf3;font-weight:700;margin-top:2px;">${(decision.brain.megaConfidence * 100).toFixed(1)}%</div>
+          </div>
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">REASONING NODES</div>
+            <div style="font-size:13px;color:#e6edf3;font-weight:700;margin-top:2px;">${decision.brain.reasoningChainNodeCount}</div>
+          </div>
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">REASONING EDGES</div>
+            <div style="font-size:13px;color:#e6edf3;font-weight:700;margin-top:2px;">${decision.brain.reasoningChainEdgeCount}</div>
+          </div>
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">MANAGED AGENTS</div>
+            <div style="font-size:13px;color:#e6edf3;font-weight:700;margin-top:2px;">${decision.brain.managedAgentPlan.length}</div>
+          </div>
+        </div>
+        ${decision.brain.megaNotes && decision.brain.megaNotes.length > 0
+          ? `<div style="${STYLE.code}margin-top:10px;">${decision.brain.megaNotes.map(escapeHtml).join('\n')}</div>`
+          : ''}
+      </div>
+    `;
+  }
+
+  function clearAnalysis() {
+    lastAnalysisResult = null;
+    const resultEl = document.getElementById('brain-analyze-result');
+    const statusEl = document.getElementById('brain-analyze-status');
+    if (resultEl) {
+      resultEl.style.display = 'none';
+      resultEl.innerHTML = '';
+    }
+    if (statusEl) {
+      statusEl.textContent = '';
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────
   // Init / mount
   // ────────────────────────────────────────────────────────────────
 
@@ -344,6 +996,7 @@
 
     container.innerHTML = `
       ${renderHeader()}
+      ${renderAnalysisPanel()}
       ${renderHelp()}
       <div style="${STYLE.panel}">
         <div style="${STYLE.label}">CRON HEALTH</div>
@@ -358,6 +1011,8 @@
     document.getElementById('brain-refresh').addEventListener('click', () => {
       renderCronList();
     });
+    document.getElementById('brain-analyze-run').addEventListener('click', runAnalysis);
+    document.getElementById('brain-analyze-clear').addEventListener('click', clearAnalysis);
 
     renderCronList();
 
@@ -380,5 +1035,8 @@
     init: init,
     probeAll: probeAllCrons,
     state: () => ({ ...cronStates }),
+    runAnalysis: runAnalysis,
+    clearAnalysis: clearAnalysis,
+    lastAnalysis: () => lastAnalysisResult,
   };
 })();
