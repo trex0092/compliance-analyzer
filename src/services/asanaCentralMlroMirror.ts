@@ -181,6 +181,10 @@ export function buildCentralMlroTaskPayload(
       // deadline-rollup view picks them up alongside other 24h
       // clocks.
       deadlineType: entry.verdict === 'freeze' ? 'EOCN' : undefined,
+      // Tier-4 #13 — freeze cases need MLRO manual action in the
+      // bank portal (no banking API). The red chip surfaces this
+      // on the task card for visual triage.
+      manualActionRequired: entry.verdict === 'freeze' ? 'pending' : undefined,
       regulationCitation:
         entry.verdict === 'freeze'
           ? 'Cabinet Res 74/2020 Art.4-7'

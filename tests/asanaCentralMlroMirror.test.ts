@@ -42,6 +42,9 @@ beforeEach(() => {
   delete process.env.ASANA_CF_VERDICT_ESCALATE;
   delete process.env.ASANA_CF_DEADLINE_TYPE_GID;
   delete process.env.ASANA_CF_DEADLINE_TYPE_EOCN;
+  delete process.env.ASANA_CF_MANUAL_ACTION_GID;
+  delete process.env.ASANA_CF_MANUAL_ACTION_PENDING;
+  delete process.env.ASANA_CF_MANUAL_ACTION_DONE;
 });
 
 const baseEntry: DispatchAuditEntry = {
@@ -184,6 +187,26 @@ describe('buildCentralMlroTaskPayload', () => {
       projectGid: 'CENTRAL',
     });
     expect(payload.custom_fields?.DEADLINE_FIELD).toBeUndefined();
+  });
+
+  it('attaches Awaiting Manual Action chip for freeze verdicts (Tier-4 #13)', () => {
+    process.env.ASANA_CF_MANUAL_ACTION_GID = 'MANUAL_FIELD';
+    process.env.ASANA_CF_MANUAL_ACTION_PENDING = 'MANUAL_PENDING_OPT';
+    const payload = buildCentralMlroTaskPayload({
+      entry: { ...baseEntry, verdict: 'freeze' },
+      projectGid: 'CENTRAL',
+    });
+    expect(payload.custom_fields?.MANUAL_FIELD).toBe('MANUAL_PENDING_OPT');
+  });
+
+  it('does not attach Awaiting Manual Action chip for escalate verdicts', () => {
+    process.env.ASANA_CF_MANUAL_ACTION_GID = 'MANUAL_FIELD';
+    process.env.ASANA_CF_MANUAL_ACTION_PENDING = 'MANUAL_PENDING_OPT';
+    const payload = buildCentralMlroTaskPayload({
+      entry: { ...baseEntry, verdict: 'escalate' },
+      projectGid: 'CENTRAL',
+    });
+    expect(payload.custom_fields?.MANUAL_FIELD).toBeUndefined();
   });
 
   it('drops custom fields when env GIDs are unset (degradation contract)', () => {

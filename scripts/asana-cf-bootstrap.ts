@@ -133,6 +133,20 @@ const FIELDS: readonly FieldDefinition[] = [
       { envKey: 'ASANA_CF_PEP_FLAG_MATCH', name: 'Confirmed match', color: 'red' },
     ],
   },
+  // Tier-4 #13 — Awaiting Manual Action chip. Surfaces the "MLRO
+  // needs to execute this in the bank portal because we can't call
+  // a banking API" signal as a coloured chip on the task card.
+  {
+    envKey: 'ASANA_CF_MANUAL_ACTION_GID',
+    name: 'Awaiting Manual Action',
+    type: 'enum',
+    description:
+      'Whether the MLRO needs to take a manual action outside the analyzer (e.g. execute a freeze in the bank portal). Set automatically on freeze verdicts.',
+    options: [
+      { envKey: 'ASANA_CF_MANUAL_ACTION_PENDING', name: 'Pending MLRO action', color: 'red' },
+      { envKey: 'ASANA_CF_MANUAL_ACTION_DONE', name: 'Manual action complete', color: 'green' },
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
