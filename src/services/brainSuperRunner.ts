@@ -84,6 +84,10 @@ import {
   type BrainMemoryDigest,
   type PrecedentReport,
 } from './brainMemoryDigest';
+import {
+  augmentChainWithPrecedents,
+  type AugmentChainResult,
+} from './reasoningChainAugmenter';
 
 // ---------------------------------------------------------------------------
 // Brain Power Score
@@ -337,6 +341,20 @@ export interface SuperDecision {
    * this to durable storage so the next cold start can hydrate.
    */
   digestAfter: BrainMemoryDigest;
+  /**
+   * Augmented reasoning chain — a new, sealed chain containing
+   * every node from the original mega-brain chain plus one
+   * evidence node per retrieved precedent. Falls back to the
+   * original sealed chain (unchanged=true) when no precedents
+   * clear the similarity threshold.
+   *
+   * IMPORTANT: this augmented chain is NOT covered by the
+   * zk-compliance attestation (which only commits the screening
+   * event metadata). It lives alongside the attestation as an
+   * MLRO-facing audit artifact, not inside the cryptographic
+   * commitment.
+   */
+  augmentedChain: AugmentChainResult;
 }
 
 /**
@@ -429,6 +447,12 @@ export async function runSuperDecision(
     powerScore: powerScore.score,
   });
 
+  // Augment the mega-brain chain with precedent evidence nodes.
+  // Pure function; never throws; falls back to the original
+  // sealed chain if no precedents clear the similarity threshold.
+  const megaChain = decision.raw.mega.chain;
+  const augmentedChain = augmentChainWithPrecedents(megaChain, precedents);
+
   // Record + cross-case correlate BEFORE Asana dispatch so the Asana
   // task description can (in a future commit) carry correlation
   // findings as a custom field. Also run the behavioural velocity
@@ -480,6 +504,7 @@ export async function runSuperDecision(
     ensemble,
     precedents,
     digestAfter,
+    augmentedChain,
   };
 }
 
