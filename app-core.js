@@ -4382,6 +4382,137 @@ function switchCProgSub(sub) {
   const el = document.getElementById('cprog-' + sub);
   if (el) el.style.display = '';
   event.target.classList.add('active');
+  // Load self-persisting narrative fields + custom sections for this sub-tab.
+  try { loadCProgPersistedFields(el); } catch (e) { /* no-op */ }
+  try { renderCProgCustomSections(sub === 'manual' ? 'cm' : sub); } catch (e) { /* no-op */ }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Compliance Programme: generic self-persisting narrative fields
+// + custom sections engine.
+//
+// The existing saveEWRA / saveBWRA / saveComplianceManual functions
+// remain UNTOUCHED — they still persist the same field IDs they
+// always did. This engine is an ADDITIVE layer that lives in its
+// own localStorage keys so nothing about the original save/load
+// cycle changes.
+//
+// Narrative fields:
+//   <textarea data-cprog-persist-key="fgl_cprog_<type>_<name>" />
+//   Auto-saves on blur + input (debounced); reloads on sub-tab open.
+//
+// Custom sections:
+//   Per type ('ewra' | 'bwra' | 'cm'), stored as an array of
+//   { id, title, content } in localStorage under
+//   `fgl_cprog_<type>_custom_sections`.
+//   Operator adds via "+ Add Custom Section" button.
+//   Removes via the per-section × button. Re-rendered on sub-tab
+//   open so custom sections persist across reloads.
+// ──────────────────────────────────────────────────────────────────────
+
+const CPROG_CUSTOM_KEY = (type) => 'fgl_cprog_' + type + '_custom_sections';
+
+function loadCProgPersistedFields(container) {
+  if (!container) return;
+  container.querySelectorAll('[data-cprog-persist-key]').forEach(el => {
+    const key = el.getAttribute('data-cprog-persist-key');
+    const stored = safeLocalParse(key, null);
+    if (stored !== null && typeof stored === 'string') el.value = stored;
+    // Wire input handler once (idempotent via dataset flag).
+    if (!el.dataset.cprogBound) {
+      el.addEventListener('input', () => {
+        try { safeLocalSave(key, el.value); } catch (e) { /* swallow quota errors */ }
+      });
+      el.dataset.cprogBound = '1';
+    }
+  });
+}
+
+function getCProgCustomSections(type) {
+  const raw = safeLocalParse(CPROG_CUSTOM_KEY(type), null);
+  return Array.isArray(raw) ? raw : [];
+}
+
+function saveCProgCustomSections(type, sections) {
+  safeLocalSave(CPROG_CUSTOM_KEY(type), sections);
+}
+
+function addCProgCustomSection(type) {
+  if (!['ewra','bwra','cm'].includes(type)) return;
+  const title = (prompt('Section title:') || '').trim();
+  if (!title) return;
+  const sections = getCProgCustomSections(type);
+  const id = 'cs_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6);
+  sections.push({ id, title, content: '' });
+  saveCProgCustomSections(type, sections);
+  renderCProgCustomSections(type);
+  toast('Custom section added', 'success');
+}
+
+function removeCProgCustomSection(type, id) {
+  if (!confirm('Remove this custom section?')) return;
+  const sections = getCProgCustomSections(type).filter(s => s.id !== id);
+  saveCProgCustomSections(type, sections);
+  renderCProgCustomSections(type);
+  toast('Custom section removed', 'info');
+}
+
+function updateCProgCustomSection(type, id, field, value) {
+  const sections = getCProgCustomSections(type);
+  const target = sections.find(s => s.id === id);
+  if (!target) return;
+  if (field === 'title') target.title = value;
+  else if (field === 'content') target.content = value;
+  saveCProgCustomSections(type, sections);
+}
+
+function escCProgHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function renderCProgCustomSections(type) {
+  if (!['ewra','bwra','cm'].includes(type)) return;
+  const container = document.getElementById('cprogCustomSections_' + type);
+  if (!container) return;
+  const sections = getCProgCustomSections(type);
+  if (sections.length === 0) {
+    container.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:8px 0">No custom sections yet. Click "+ Add Custom Section" to add any subject.</div>';
+    return;
+  }
+  container.innerHTML = sections.map(s => {
+    const titleId = 'cprog_' + type + '_cs_title_' + s.id;
+    const contentId = 'cprog_' + type + '_cs_content_' + s.id;
+    return '<div class="card" style="margin-bottom:10px;padding:10px 12px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">' +
+        '<input type="text" id="' + titleId + '" value="' + escCProgHtml(s.title) + '" data-cprog-custom-title="' + type + ':' + s.id + '" style="flex:1;font-weight:600;font-size:12px" />' +
+        '<button class="btn btn-sm btn-red" data-action="removeCProgCustomSection" data-arg="' + type + '" data-arg2="' + s.id + '" title="Remove this section">×</button>' +
+      '</div>' +
+      '<textarea id="' + contentId + '" data-cprog-custom-content="' + type + ':' + s.id + '" rows="3" placeholder="Describe this section...">' + escCProgHtml(s.content) + '</textarea>' +
+    '</div>';
+  }).join('');
+
+  // Wire input handlers for every custom field.
+  container.querySelectorAll('[data-cprog-custom-title]').forEach(el => {
+    if (el.dataset.cprogBound) return;
+    el.addEventListener('input', () => {
+      const [t, id] = el.getAttribute('data-cprog-custom-title').split(':');
+      updateCProgCustomSection(t, id, 'title', el.value);
+    });
+    el.dataset.cprogBound = '1';
+  });
+  container.querySelectorAll('[data-cprog-custom-content]').forEach(el => {
+    if (el.dataset.cprogBound) return;
+    el.addEventListener('input', () => {
+      const [t, id] = el.getAttribute('data-cprog-custom-content').split(':');
+      updateCProgCustomSection(t, id, 'content', el.value);
+    });
+    el.dataset.cprogBound = '1';
+  });
 }
 
 // ── EWRA ──
