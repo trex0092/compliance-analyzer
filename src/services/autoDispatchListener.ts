@@ -35,6 +35,10 @@ import {
   isCentralMlroMirrorConfigured,
   mirrorDispatchToCentralMlro,
 } from './asanaCentralMlroMirror';
+import {
+  isInspectorMirrorConfigured,
+  mirrorDispatchToInspector,
+} from './asanaInspectorMirror';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -197,6 +201,14 @@ export async function handleCaseSaved(
     // fails an otherwise-successful dispatch.
     if (isCentralMlroMirrorConfigured()) {
       void mirrorDispatchToCentralMlro(auditEntry).catch(() => {});
+    }
+
+    // Inspector evidence mirror — fire-and-forget. The mirror applies
+    // its own needsInspectorEvidence filter so noisy passes never
+    // reach the inspector project. No-op when
+    // ASANA_INSPECTOR_PROJECT_GID is unset. Tier-4 #14.
+    if (isInspectorMirrorConfigured()) {
+      void mirrorDispatchToInspector(auditEntry).catch(() => {});
     }
 
     writeState({
