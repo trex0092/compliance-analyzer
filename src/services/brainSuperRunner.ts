@@ -64,6 +64,8 @@ import type { CorrelationReport } from './crossCasePatternCorrelator';
 import { matchFatfTypologies, type TypologyReport } from './fatfTypologyMatcher';
 import { analyseBehaviouralVelocity, type VelocityReport } from './behaviouralVelocityDetector';
 import { runBrainEnsemble, type EnsembleReport } from './brainConsensusEnsemble';
+import { deriveUncertaintyInterval, type UncertaintyInterval } from './uncertaintyInterval';
+import { runAdversarialDebate, shouldDebate, type DebateReport } from './brainAdversarialDebate';
 import {
   emptyDigest,
   updateDigest,
@@ -364,6 +366,27 @@ export interface SuperDecision {
    * commitment.
    */
   augmentedChain: AugmentChainResult;
+  /**
+   * The exact CaseSnapshot recorded into the memory store for this
+   * decision. Surfaced here so downstream replay / audit systems
+   * can persist the same opaque-ref payload without re-deriving it.
+   * Null when memory recording is skipped (tests).
+   */
+  recordedSnapshot: import('./crossCasePatternCorrelator').CaseSnapshot | null;
+  /**
+   * Structured variance interval on the decision confidence derived
+   * from the ensemble perturbation votes. See uncertaintyInterval.ts
+   * for the width formula + calibration disclaimer. Always present
+   * (pure function; collapses to a point interval when the ensemble
+   * is empty).
+   */
+  uncertainty: UncertaintyInterval;
+  /**
+   * Adversarial debate report (prosecution vs defence). Cost-gated
+   * by shouldDebate() — null when the case is clear-cut and the
+   * debate would add no signal. See brainAdversarialDebate.ts.
+   */
+  debate: DebateReport | null;
 }
 
 /**
@@ -495,11 +518,13 @@ export async function runSuperDecision(
   // weekend clustering surfaces alongside the correlation findings.
   let crossCase: CorrelationReport | null = null;
   let velocity: VelocityReport | null = null;
+  let recordedSnapshot: import('./crossCasePatternCorrelator').CaseSnapshot | null = null;
   if (!opts.skipMemory) {
     const store = opts.memory ?? brainMemory;
     try {
       const result = recordAndCorrelate(decision, opts.memoryExtras ?? {}, store);
       crossCase = result.correlation;
+      recordedSnapshot = result.snapshot;
       // Velocity uses the same tenant-scoped history that the
       // correlator just saw. It is pure and deterministic so it
       // never blocks and never throws under normal input.
@@ -528,6 +553,14 @@ export async function runSuperDecision(
     }
   }
 
+  const uncertainty = deriveUncertaintyInterval(ensemble, decision.confidence);
+
+  // Adversarial debate — cost-gated. Only borderline / ambiguous
+  // cases trigger the prosecution/defence pass so audit logs stay lean.
+  const debate: DebateReport | null = shouldDebate(decision.confidence, uncertainty)
+    ? runAdversarialDebate(input.entity.features)
+    : null;
+
   const result: SuperDecision = {
     decision,
     powerScore,
@@ -539,6 +572,9 @@ export async function runSuperDecision(
     precedents,
     digestAfter,
     augmentedChain,
+    recordedSnapshot,
+    uncertainty,
+    debate,
   };
 
   // Store in the fingerprint cache so the next call with identical
