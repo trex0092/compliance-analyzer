@@ -496,9 +496,12 @@
       const powerLabel = body.powerScore
         ? ` · brain=${body.powerScore.score}/${body.powerScore.verdict}`
         : '';
-      statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel} (${durationMs}ms)`;
+      const crossLabel = body.crossCase && body.crossCase.findings.length > 0
+        ? ` · cross-case=${body.crossCase.findings.length}/${body.crossCase.topSeverity}`
+        : '';
+      statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel}${crossLabel} (${durationMs}ms)`;
       statusEl.style.color = '#3DA876';
-      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch);
+      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase);
     } catch (err) {
       statusEl.textContent = `✗ network error: ${err.message || err}`;
       statusEl.style.color = '#D94F4F';
@@ -608,7 +611,49 @@
     `;
   }
 
-  function renderAnalysisResult(decision, powerScore, asanaDispatch) {
+  function renderCrossCaseCard(crossCase) {
+    if (!crossCase || !crossCase.findings || crossCase.findings.length === 0) {
+      return `
+        <div style="${STYLE.cardNeutral}">
+          <strong style="color:#8b949e;">CROSS-CASE CORRELATION — NO PATTERNS</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">${crossCase ? crossCase.caseCount : 0} cases in memory · no multi-case rings detected.</div>
+        </div>
+      `;
+    }
+    const kindColors = {
+      'wallet-reuse': '#D94F4F',
+      'shared-ubo-ring': '#D94F4F',
+      'sanctions-key-reuse': '#D94F4F',
+      'structuring-cluster': '#E8A030',
+      'corridor-burst': '#E8A030',
+      'address-reuse': '#d4a843',
+      'narrative-copypaste': '#d4a843',
+    };
+    const findingsHtml = crossCase.findings.map((f) => {
+      const color = kindColors[f.kind] || '#8b949e';
+      return `
+        <div style="border:1px solid ${color}44;border-left:3px solid ${color};background:#0d1117;border-radius:3px;padding:10px 12px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+            <strong style="color:${color};font-size:12px;letter-spacing:0.5px;">${escapeHtml(f.kind.toUpperCase())}</strong>
+            <span style="font-size:10px;color:#8b949e;">${f.caseIds.length} cases · conf ${(f.confidence * 100).toFixed(0)}% · ${escapeHtml(f.severity)}</span>
+          </div>
+          <div style="font-size:11px;color:#e6edf3;line-height:1.6;">${escapeHtml(f.description)}</div>
+          <div style="font-size:9px;color:#8b949e;margin-top:4px;font-style:italic;">${escapeHtml(f.regulatory)}</div>
+        </div>
+      `;
+    }).join('');
+    return `
+      <div style="${STYLE.panel}border-left:4px solid #D94F4F;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+          <div style="font-size:14px;font-weight:700;color:#D94F4F;letter-spacing:0.5px;">🕸 CROSS-CASE CORRELATION</div>
+          <div style="font-size:10px;color:#8b949e;">${crossCase.caseCount} cases scanned · top severity ${escapeHtml(crossCase.topSeverity)}</div>
+        </div>
+        ${findingsHtml}
+      </div>
+    `;
+  }
+
+  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase) {
     const resultEl = document.getElementById('brain-analyze-result');
     if (!resultEl) return;
 
@@ -683,6 +728,7 @@
       </div>
 
       ${renderPowerScoreCard(powerScore)}
+      ${renderCrossCaseCard(crossCase)}
       ${renderAsanaDispatchCard(asanaDispatch)}
       ${clampsHtml}
       ${failuresHtml}

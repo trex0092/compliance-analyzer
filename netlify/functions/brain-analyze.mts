@@ -390,11 +390,25 @@ export default async (req: Request, context: Context) => {
     taskGid?: string;
     skippedReason?: string;
   } | null = null;
+  let crossCaseSummary: {
+    caseCount: number;
+    topSeverity: string;
+    findings: ReadonlyArray<{
+      kind: string;
+      id: string;
+      caseIds: readonly string[];
+      confidence: number;
+      severity: string;
+      description: string;
+      regulatory: string;
+    }>;
+  } | null = null;
   try {
     // Run the full super-brain pipeline:
     //   - Weaponized brain (MegaBrain + 30+ subsystems)
     //   - Auto-wired advisor escalation on high-stakes cases
     //   - zk-compliance attestation
+    //   - Brain memory store record + cross-case correlation
     //   - Asana dispatch (idempotent; skipped on 'pass' verdicts)
     //   - Brain Power Score
     const superResult = await runSuperDecision(caseInput);
@@ -405,6 +419,21 @@ export default async (req: Request, context: Context) => {
         created: superResult.asanaDispatch.created,
         taskGid: superResult.asanaDispatch.taskGid,
         skippedReason: superResult.asanaDispatch.skippedReason,
+      };
+    }
+    if (superResult.crossCase) {
+      crossCaseSummary = {
+        caseCount: superResult.crossCase.caseCount,
+        topSeverity: superResult.crossCase.topSeverity,
+        findings: superResult.crossCase.correlations.slice(0, 20).map((c) => ({
+          kind: c.kind,
+          id: c.id,
+          caseIds: c.caseIds,
+          confidence: c.confidence,
+          severity: c.severity,
+          description: c.description,
+          regulatory: c.regulatory,
+        })),
       };
     }
   } catch (err) {
@@ -451,6 +480,7 @@ export default async (req: Request, context: Context) => {
     decision: payload,
     powerScore: powerScore ? serialisePowerScore(powerScore) : null,
     asanaDispatch: asanaDispatchSummary,
+    crossCase: crossCaseSummary,
   });
 };
 

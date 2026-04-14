@@ -261,7 +261,7 @@ describe("computeBrainPowerScore", () => {
     });
     const { decision, powerScore } = await runSuperDecision(
       makeInput({ sealAttestation: false }),
-      { skipAsanaDispatch: true }
+      { skipAsanaDispatch: true, skipMemory: true }
     );
     expect(powerScore.score).toBeGreaterThanOrEqual(0);
     expect(powerScore.score).toBeLessThanOrEqual(100);
@@ -317,7 +317,7 @@ describe("computeBrainPowerScore", () => {
           actorUserId: "u",
         },
       }),
-      { skipAsanaDispatch: true }
+      { skipAsanaDispatch: true, skipMemory: true }
     );
 
     expect(powerScore.score).toBeGreaterThanOrEqual(70);
@@ -354,7 +354,7 @@ describe("runSuperDecision", () => {
     mockBrainReturn.current = makeBrainResponse({ finalVerdict: "flag" });
     const { decision, powerScore, asanaDispatch } = await runSuperDecision(
       makeInput(),
-      { skipAsanaDispatch: false, asana: new AsanaOrchestrator() }
+      { skipAsanaDispatch: false, asana: new AsanaOrchestrator(), skipMemory: true }
     );
     expect(decision.verdict).toBe("flag");
     expect(powerScore).toBeDefined();
@@ -366,6 +366,7 @@ describe("runSuperDecision", () => {
     mockBrainReturn.current = makeBrainResponse({ finalVerdict: "pass" });
     const { asanaDispatch } = await runSuperDecision(makeInput(), {
       asana: new AsanaOrchestrator(),
+      skipMemory: true,
     });
     expect(asanaDispatch).toBeNull();
   });
@@ -391,6 +392,7 @@ describe("runSuperDecision", () => {
     });
     const { decision, powerScore } = await runSuperDecision(pep, {
       skipAsanaDispatch: true,
+      skipMemory: true,
     });
     expect(decision.verdict).toBe("escalate");
     expect(powerScore.advisorInvoked).toBe(true);
@@ -401,6 +403,7 @@ describe("runSuperDecision", () => {
     mockBrainReturn.current = makeBrainResponse({ advisorResult: null });
     const { powerScore } = await runSuperDecision(makeInput(), {
       skipAsanaDispatch: true,
+      skipMemory: true,
     });
     expect(powerScore.advisorInvoked).toBe(false);
   });
@@ -415,8 +418,8 @@ describe("runSuperDecision", () => {
     // mocking Date.now during the second call so the engine produces
     // the same decision id.
     const spy = vi.spyOn(Date, "now").mockReturnValue(1);
-    const a = await runSuperDecision(makeInput(), { asana });
-    const b = await runSuperDecision(makeInput(), { asana });
+    const a = await runSuperDecision(makeInput(), { asana, skipMemory: true });
+    const b = await runSuperDecision(makeInput(), { asana, skipMemory: true });
     spy.mockRestore();
 
     expect(a.asanaDispatch?.created).toBe(true);

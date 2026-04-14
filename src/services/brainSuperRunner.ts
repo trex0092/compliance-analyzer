@@ -59,6 +59,12 @@ import {
   type AsanaOrchestratorDispatchResult,
   type BrainVerdictLike,
 } from './asana/orchestrator';
+import {
+  brainMemory,
+  recordAndCorrelate,
+  type MemoryStore,
+} from './brainMemoryStore';
+import type { CorrelationReport } from './crossCasePatternCorrelator';
 
 // ---------------------------------------------------------------------------
 // Brain Power Score
@@ -244,12 +250,37 @@ export interface SuperRunnerOptions {
   asana?: AsanaOrchestrator;
   /** Skip Asana dispatch entirely (tests + offline). */
   skipAsanaDispatch?: boolean;
+  /** Override the brain memory store (default: shared singleton). */
+  memory?: MemoryStore;
+  /** Skip memory recording + cross-case correlation (tests). */
+  skipMemory?: boolean;
+  /**
+   * Optional extras to include in the memory snapshot for future
+   * cross-case correlation. See snapshotFromDecision() for the
+   * allowed fields — wallets, uboRefs, addressHash, etc.
+   */
+  memoryExtras?: {
+    entityRef?: string;
+    uboRefs?: readonly string[];
+    wallets?: readonly string[];
+    addressHash?: string;
+    corridorCountry?: string;
+    maxTxAED?: number;
+    narrativeHash?: string;
+    sanctionsMatchKeys?: readonly string[];
+  };
 }
 
 export interface SuperDecision {
   decision: ComplianceDecision;
   powerScore: BrainPowerScore;
   asanaDispatch: AsanaOrchestratorDispatchResult | null;
+  /**
+   * Cross-case correlation report computed against this tenant's
+   * memory store, INCLUDING the case we just decided on. Null when
+   * memory recording is skipped (e.g. in unit tests).
+   */
+  crossCase: CorrelationReport | null;
 }
 
 /**
@@ -319,6 +350,24 @@ export async function runSuperDecision(
   const decision = await runComplianceDecision(caseInput);
   const powerScore = computeBrainPowerScore(decision);
 
+  // Record + cross-case correlate BEFORE Asana dispatch so the Asana
+  // task description can (in a future commit) carry correlation
+  // findings as a custom field.
+  let crossCase: CorrelationReport | null = null;
+  if (!opts.skipMemory) {
+    const store = opts.memory ?? brainMemory;
+    try {
+      const result = recordAndCorrelate(decision, opts.memoryExtras ?? {}, store);
+      crossCase = result.correlation;
+    } catch (err) {
+      // Memory failures must never block a compliance decision.
+      console.error(
+        '[brainSuperRunner] memory/correlate failure:',
+        err instanceof Error ? err.message : String(err)
+      );
+    }
+  }
+
   let asanaDispatch: AsanaOrchestratorDispatchResult | null = null;
   if (!opts.skipAsanaDispatch && decision.verdict !== 'pass') {
     const asana = opts.asana ?? defaultOrchestrator;
@@ -334,7 +383,7 @@ export async function runSuperDecision(
     }
   }
 
-  return { decision, powerScore, asanaDispatch };
+  return { decision, powerScore, asanaDispatch, crossCase };
 }
 
 // Exports for tests.
