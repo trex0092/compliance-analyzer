@@ -64,6 +64,7 @@ import type { CorrelationReport } from './crossCasePatternCorrelator';
 import { matchFatfTypologies, type TypologyReport } from './fatfTypologyMatcher';
 import { analyseBehaviouralVelocity, type VelocityReport } from './behaviouralVelocityDetector';
 import { runBrainEnsemble, type EnsembleReport } from './brainConsensusEnsemble';
+import { deriveUncertaintyInterval, type UncertaintyInterval } from './uncertaintyInterval';
 import {
   emptyDigest,
   updateDigest,
@@ -371,6 +372,14 @@ export interface SuperDecision {
    * Null when memory recording is skipped (tests).
    */
   recordedSnapshot: import('./crossCasePatternCorrelator').CaseSnapshot | null;
+  /**
+   * Structured variance interval on the decision confidence derived
+   * from the ensemble perturbation votes. See uncertaintyInterval.ts
+   * for the width formula + calibration disclaimer. Always present
+   * (pure function; collapses to a point interval when the ensemble
+   * is empty).
+   */
+  uncertainty: UncertaintyInterval;
 }
 
 /**
@@ -537,6 +546,8 @@ export async function runSuperDecision(
     }
   }
 
+  const uncertainty = deriveUncertaintyInterval(ensemble, decision.confidence);
+
   const result: SuperDecision = {
     decision,
     powerScore,
@@ -549,6 +560,7 @@ export async function runSuperDecision(
     digestAfter,
     augmentedChain,
     recordedSnapshot,
+    uncertainty,
   };
 
   // Store in the fingerprint cache so the next call with identical

@@ -573,6 +573,19 @@ export default async (req: Request, context: Context) => {
     summary: string;
     regulatory: string;
   } | null = null;
+  let uncertaintySummary: {
+    kind: 'variance_interval';
+    pointEstimate: number;
+    lower: number;
+    upper: number;
+    width: number;
+    stddev: number;
+    sampleSize: number;
+    agreement: number;
+    coverage: 'point' | 'narrow' | 'moderate' | 'wide' | 'critical';
+    summary: string;
+    regulatory: string;
+  } | null = null;
   try {
     // Lazy hydrate this tenant's blob-backed memory before the
     // decision so the cross-case correlator sees the full history.
@@ -741,6 +754,19 @@ export default async (req: Request, context: Context) => {
       summary: superResult.ensemble.summary,
       regulatory: superResult.ensemble.regulatory,
     };
+    uncertaintySummary = {
+      kind: superResult.uncertainty.kind,
+      pointEstimate: superResult.uncertainty.pointEstimate,
+      lower: superResult.uncertainty.lower,
+      upper: superResult.uncertainty.upper,
+      width: superResult.uncertainty.width,
+      stddev: superResult.uncertainty.stddev,
+      sampleSize: superResult.uncertainty.sampleSize,
+      agreement: superResult.uncertainty.agreement,
+      coverage: superResult.uncertainty.coverage,
+      summary: superResult.uncertainty.summary,
+      regulatory: superResult.uncertainty.regulatory,
+    };
     precedentSummary = {
       matchCount: superResult.precedents.matches.length,
       hasCriticalPrecedent: superResult.precedents.hasCriticalPrecedent,
@@ -806,6 +832,7 @@ export default async (req: Request, context: Context) => {
     typologies: typologiesSummary,
     velocity: velocitySummary,
     ensemble: ensembleSummary,
+    uncertainty: uncertaintySummary,
     precedents: precedentSummary,
     regulatoryDrift: {
       clean: drift.clean,
