@@ -628,63 +628,9 @@ document.addEventListener('DOMContentLoaded', function(){
       <span id="gsbHeartbeat" style="font-size:9px;color:#484f58;letter-spacing:0.5px">⚡ —</span>
     </div>
 
-    <div class="tabs" id="tabsNav">
-      <button class="mobile-menu-close" id="mobileMenuClose" data-action="MobileResponsive.toggleMenu">&times;</button>
-      <div class="tab active" data-action="_switchTabAndCloseMenu" data-arg="about">✦ About</div>
-      <div class="tab" data-action="switchTab" data-arg="analyse">🔍 Analyze</div>
-      <div class="tab" data-action="switchTab" data-arg="shipments">🚚 IAR Shipments</div>
-      <div class="tab" data-action="switchTab" data-arg="localshipments">📦 Local Shipments</div>
-      <div class="tab" data-action="switchTab" data-arg="iarreport">📝 IAR Report</div>
-      <div class="tab" data-action="switchTab" data-arg="asana">📋 Asana Tasks</div>
-      <!-- Evidence Tracker removed -->
-      <div class="tab" data-action="switchTab" data-arg="schedule">⏰ Scheduler</div>
-      <div class="tab" data-action="switchTab" data-arg="complianceprog">📋 Compliance Programme</div>
-      <div class="tab" data-action="switchTab" data-arg="gaps">🔴 Gap Register</div>
-      <div class="tab" data-action="switchTab" data-arg="ops">🛡️ Ops</div>
-      <div class="tab" data-action="switchTab" data-arg="training">🎓 Training</div>
-      <div class="tab" data-action="switchTab" data-arg="learning">📚 Learning</div>
-      <div class="tab" data-action="switchTab" data-arg="employees">👤 Employees</div>
-      <div class="tab" data-action="switchTab" data-arg="screening">🔍 Screening & TFS</div>
-      <div class="tab" data-action="switchTab" data-arg="onboarding">👤 Onboarding</div>
-      <div class="tab" data-action="switchTab" data-arg="riskassessment">⚖️ Risk & CRA</div>
-      <div class="tab" data-action="switchTab" data-arg="incidents">⚠️ Incidents</div>
-      <div class="tab" data-action="switchTab" data-arg="dashboard">📊 Dashboard</div>
-      <div class="tab" data-action="switchTab" data-arg="calendar">📅 Calendar</div>
-      <div class="tab" data-action="switchTab" data-arg="settings">⚙️ Settings</div>
-      <div class="tab" data-action="switchTab" data-arg="reports">📑 Reports</div>
-      <div class="tab" data-action="switchTab" data-arg="monitor">🛡️ Reg Monitor</div>
-      <div class="tab" data-action="switchTab" data-arg="integrations">🔗 Integrations</div>
-      <!-- goAML Export removed -->
-      <div class="tab" data-action="switchTab" data-arg="threshold">💰 Thresholds</div>
-      <div class="tab" data-action="switchTab" data-arg="supplychain">⛏️ Supply</div>
-      <div class="tab" data-action="switchTab" data-arg="raci">📋 RACI Matrix</div>
-      <div class="tab" data-action="switchTab" data-arg="definitions">📖 Definitions</div>
-      <div class="tab" data-action="switchTab" data-arg="approvals">✅ Approvals</div>
-      <div class="tab" data-action="switchTab" data-arg="regchanges">📋 Reg Changes</div>
-      <div class="tab" data-action="switchTab" data-arg="workflows">⚡ Workflows</div>
-      <div class="tab" data-action="switchTab" data-arg="pipeline">📦 Export Pipeline</div>
-      <div class="tab" data-action="switchTab" data-arg="intelligence">🧠 Intelligence</div>
-      <div class="tab" data-action="switchTab" data-arg="brain">🧠 Brain Console</div>
-      <div class="tab" data-action="switchTab" data-arg="metalstrading">◈ Trading</div>
-      <div class="tab" data-action="switchTab" data-arg="warroom">🎯 War Room</div>
-      <div class="tab" data-action="switchTab" data-arg="customer360">🗂 Customer 360</div>
-      <div class="tab" data-action="switchTab" data-arg="insights">📊 Insights</div>
-      <div class="tab" data-action="switchTab" data-arg="esg">🌱 ESG</div>
-      <!-- Data Upload removed -->
-    </div>
-
-    <!-- ALERT BANNER -->
-    <div id="alertBanner" style="display:none;margin:0 0 10px;padding:10px 16px;border-radius:4px;border:1px solid var(--red);background:rgba(248,81,73,0.06);font-size:12px;cursor:pointer" data-action="switchTab" data-arg="employees">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span id="alertBannerExpired" style="display:none;color:var(--red);font-weight:700">⚠️ <span id="alertExpiredCount">0</span> EXPIRED</span>
-        <span id="alertBannerExpiring" style="display:none;color:var(--amber);font-weight:600">⚠️ <span id="alertExpiringCount">0</span> EXPIRING IN 10 DAYS</span>
-        <span id="alertBannerGaps" style="display:none;color:var(--red);font-weight:600">⚠️ <span id="alertGapCount">0</span> GAPS OVERDUE (15-DAY WINDOW)</span>
-        <span style="margin-left:auto;font-size:10px;color:var(--muted)">Click to review →</span>
-      </div>
-    </div>
-
-    <!-- ABOUT TAB — Hawkeye Sterling brand introduction -->
-    <div id="tab-about" class="tab-content active">
+    <!-- HAWKEYE STERLING INTRODUCTION — always rendered BEFORE the tab nav so
+         it is the first thing every visitor sees when the SPA loads. -->
+    <section class="hawkeye-intro" aria-label="Hawkeye Sterling introduction">
       <div class="hawkeye-hero" style="position:relative;padding:64px 32px 56px;border-radius:6px;background:radial-gradient(ellipse at center,#15110a 0%,#0a0805 60%,#050402 100%);border:1px solid #2a2113;box-shadow:inset 0 0 120px rgba(212,175,55,0.04),0 4px 24px rgba(0,0,0,0.6);text-align:center;overflow:hidden">
         <div style="position:absolute;inset:0;background-image:radial-gradient(circle at 50% 0%,rgba(212,175,55,0.08) 0%,transparent 40%);pointer-events:none"></div>
         <div style="position:relative;z-index:1">
@@ -758,17 +704,71 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
       </div>
 
-      <div class="card" style="margin-top:24px;background:#0a0805;border:1px solid #2a2113;padding:56px 32px;text-align:center">
+      <div class="card" style="margin-top:24px;margin-bottom:24px;background:#0a0805;border:1px solid #2a2113;padding:56px 32px;text-align:center">
         <h2 style="font-family:Georgia,'Times New Roman',serif;font-weight:300;font-size:36px;letter-spacing:0.08em;color:#f5f1e6;margin:0 0 16px;line-height:1.15">EXPERIENCE THE STANDARD</h2>
         <div style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:15px;color:#cfc7b3;margin-bottom:32px">By invitation. By reputation. By design.</div>
-        <button class="btn" data-action="switchTab" data-arg="analyse" style="background:transparent;border:1px solid #d4af37;color:#d4af37;font-family:Georgia,'Times New Roman',serif;font-size:12px;letter-spacing:0.35em;padding:18px 42px;border-radius:2px;cursor:pointer;font-weight:500">LAUNCH SCREENING CONSOLE</button>
+        <button class="btn" data-action="switchTab" data-arg="analyse" style="background:transparent;border:1px solid #d4af37;color:#d4af37;font-family:Georgia,'Times New Roman',serif;font-size:12px;letter-spacing:0.35em;padding:18px 42px;border-radius:2px;cursor:pointer;font-weight:500">LAUNCH ANALYZER</button>
         <div style="margin-top:40px;padding-top:24px;border-top:1px solid #2a2113;font-family:Georgia,'Times New Roman',serif;font-size:10px;letter-spacing:0.4em;color:#d4af37;opacity:0.65">HAWKEYE STERLING</div>
         <div style="margin-top:8px;font-family:Georgia,'Times New Roman',serif;font-size:9px;letter-spacing:0.3em;color:#7a7160">© 2026 HAWKEYE STERLING · ALL RIGHTS RESERVED</div>
+      </div>
+    </section>
+
+    <div class="tabs" id="tabsNav">
+      <button class="mobile-menu-close" id="mobileMenuClose" data-action="MobileResponsive.toggleMenu">&times;</button>
+      <div class="tab active" data-action="_switchTabAndCloseMenu" data-arg="analyse">🔍 Analyze</div>
+      <div class="tab" data-action="switchTab" data-arg="shipments">🚚 IAR Shipments</div>
+      <div class="tab" data-action="switchTab" data-arg="localshipments">📦 Local Shipments</div>
+      <div class="tab" data-action="switchTab" data-arg="iarreport">📝 IAR Report</div>
+      <div class="tab" data-action="switchTab" data-arg="asana">📋 Asana Tasks</div>
+      <!-- Evidence Tracker removed -->
+      <div class="tab" data-action="switchTab" data-arg="schedule">⏰ Scheduler</div>
+      <div class="tab" data-action="switchTab" data-arg="complianceprog">📋 Compliance Programme</div>
+      <div class="tab" data-action="switchTab" data-arg="gaps">🔴 Gap Register</div>
+      <div class="tab" data-action="switchTab" data-arg="ops">🛡️ Ops</div>
+      <div class="tab" data-action="switchTab" data-arg="training">🎓 Training</div>
+      <div class="tab" data-action="switchTab" data-arg="learning">📚 Learning</div>
+      <div class="tab" data-action="switchTab" data-arg="employees">👤 Employees</div>
+      <div class="tab" data-action="switchTab" data-arg="screening">🔍 Screening & TFS</div>
+      <div class="tab" data-action="switchTab" data-arg="onboarding">👤 Onboarding</div>
+      <div class="tab" data-action="switchTab" data-arg="riskassessment">⚖️ Risk & CRA</div>
+      <div class="tab" data-action="switchTab" data-arg="incidents">⚠️ Incidents</div>
+      <div class="tab" data-action="switchTab" data-arg="dashboard">📊 Dashboard</div>
+      <div class="tab" data-action="switchTab" data-arg="calendar">📅 Calendar</div>
+      <div class="tab" data-action="switchTab" data-arg="settings">⚙️ Settings</div>
+      <div class="tab" data-action="switchTab" data-arg="reports">📑 Reports</div>
+      <div class="tab" data-action="switchTab" data-arg="monitor">🛡️ Reg Monitor</div>
+      <div class="tab" data-action="switchTab" data-arg="integrations">🔗 Integrations</div>
+      <!-- goAML Export removed -->
+      <div class="tab" data-action="switchTab" data-arg="threshold">💰 Thresholds</div>
+      <div class="tab" data-action="switchTab" data-arg="supplychain">⛏️ Supply</div>
+      <div class="tab" data-action="switchTab" data-arg="raci">📋 RACI Matrix</div>
+      <div class="tab" data-action="switchTab" data-arg="definitions">📖 Definitions</div>
+      <div class="tab" data-action="switchTab" data-arg="approvals">✅ Approvals</div>
+      <div class="tab" data-action="switchTab" data-arg="regchanges">📋 Reg Changes</div>
+      <div class="tab" data-action="switchTab" data-arg="workflows">⚡ Workflows</div>
+      <div class="tab" data-action="switchTab" data-arg="pipeline">📦 Export Pipeline</div>
+      <div class="tab" data-action="switchTab" data-arg="intelligence">🧠 Intelligence</div>
+      <div class="tab" data-action="switchTab" data-arg="brain">🧠 Brain Console</div>
+      <div class="tab" data-action="switchTab" data-arg="metalstrading">◈ Trading</div>
+      <div class="tab" data-action="switchTab" data-arg="warroom">🎯 War Room</div>
+      <div class="tab" data-action="switchTab" data-arg="customer360">🗂 Customer 360</div>
+      <div class="tab" data-action="switchTab" data-arg="insights">📊 Insights</div>
+      <div class="tab" data-action="switchTab" data-arg="esg">🌱 ESG</div>
+      <!-- Data Upload removed -->
+    </div>
+
+    <!-- ALERT BANNER -->
+    <div id="alertBanner" style="display:none;margin:0 0 10px;padding:10px 16px;border-radius:4px;border:1px solid var(--red);background:rgba(248,81,73,0.06);font-size:12px;cursor:pointer" data-action="switchTab" data-arg="employees">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span id="alertBannerExpired" style="display:none;color:var(--red);font-weight:700">⚠️ <span id="alertExpiredCount">0</span> EXPIRED</span>
+        <span id="alertBannerExpiring" style="display:none;color:var(--amber);font-weight:600">⚠️ <span id="alertExpiringCount">0</span> EXPIRING IN 10 DAYS</span>
+        <span id="alertBannerGaps" style="display:none;color:var(--red);font-weight:600">⚠️ <span id="alertGapCount">0</span> GAPS OVERDUE (15-DAY WINDOW)</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--muted)">Click to review →</span>
       </div>
     </div>
 
     <!-- ANALYSE TAB -->
-    <div id="tab-analyse" class="tab-content">
+    <div id="tab-analyse" class="tab-content active">
       <div class="card">
         <span class="lbl">Describe what you want to analyze</span>
         <textarea id="queryInput" placeholder="Describe the compliance area, process, or scenario you want to analyze. Be specific about regulations, entities, risk factors, or operational gaps you need assessed.
