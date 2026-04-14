@@ -63,6 +63,8 @@ import {
   BlobBrainMemoryStore,
   createNetlifyBlobHandle,
 } from "../../src/services/brainMemoryBlobStore";
+import { BrainMemoryDigestBlobStore } from "../../src/services/brainMemoryDigestBlobStore";
+import { emptyDigest } from "../../src/services/brainMemoryDigest";
 
 // ---------------------------------------------------------------------------
 // Lazy advisor — built once per function instance so we don't
@@ -113,6 +115,25 @@ const brainMemoryBlob: BlobBrainMemoryStore | null = (() => {
       "[brain-analyze] Netlify Blob store unavailable; using in-memory fallback:",
       err instanceof Error ? err.message : String(err)
     );
+    return null;
+  }
+})();
+
+// Digest store reuses the same Netlify Blob store ("brain-memory")
+// but writes to a distinct key prefix (`digest/<tenantId>.json`) so
+// it cannot collide with snapshot blobs. Same degradation as the
+// snapshot store: if the blob backend is unreachable, fall back to
+// an empty per-request digest so the decision path never blocks.
+const brainDigestBlob: BrainMemoryDigestBlobStore | null = (() => {
+  try {
+    const store = getStore("brain-memory");
+    const handle = createNetlifyBlobHandle({
+      get: (key, opts) => store.get(key, opts),
+      setJSON: (key, value) => store.setJSON(key, value),
+      delete: (key) => store.delete(key),
+    });
+    return new BrainMemoryDigestBlobStore(handle);
+  } catch {
     return null;
   }
 })();
@@ -498,6 +519,18 @@ export default async (req: Request, context: Context) => {
       firedSignals: readonly string[];
     }>;
   } | null = null;
+  let precedentSummary: {
+    matchCount: number;
+    hasCriticalPrecedent: boolean;
+    summary: string;
+    matches: ReadonlyArray<{
+      caseId: string;
+      similarity: number;
+      verdict: string;
+      severity: string;
+      narrative: string;
+    }>;
+  } | null = null;
   let velocitySummary: {
     tenantId: string;
     caseCount: number;
@@ -525,18 +558,36 @@ export default async (req: Request, context: Context) => {
     // decision so the cross-case correlator sees the full history.
     await ensureTenantHydrated(request.tenantId);
 
+    // Load the persistent memory digest for this tenant so the
+    // super runner can inject historical precedents via cosine
+    // similarity. Cold start returns an empty digest; the
+    // digestAfter field of the super result is written back to
+    // the blob after the decision so the next request sees it.
+    const loadedDigest = brainDigestBlob
+      ? await brainDigestBlob.load(request.tenantId)
+      : emptyDigest(request.tenantId);
+
     // Run the full super-brain pipeline:
     //   - Weaponized brain (MegaBrain + 30+ subsystems)
     //   - Auto-wired Anthropic advisor (falls back to deterministic)
     //   - zk-compliance attestation
     //   - Durable brain memory store record + cross-case correlation
     //   - FATF DPMS typology matcher
+    //   - Permanent digest precedent retrieval (cosine similarity)
     //   - Asana dispatch (idempotent; skipped on 'pass' verdicts)
     //   - Brain Power Score
     const superResult = await runSuperDecision(caseInput, {
       advisor: anthropicAdvisor,
       memory: brainMemoryBlob ?? undefined,
+      digest: loadedDigest,
     });
+
+    // Persist the updated digest. Fire-and-forget — the save
+    // pending-writes queue flushes on the next request or function
+    // shutdown; failures are logged server-side only.
+    if (brainDigestBlob && superResult.digestAfter) {
+      brainDigestBlob.save(superResult.digestAfter);
+    }
     decision = superResult.decision;
     powerScore = superResult.powerScore;
     if (superResult.asanaDispatch) {
@@ -608,6 +659,18 @@ export default async (req: Request, context: Context) => {
       summary: superResult.ensemble.summary,
       regulatory: superResult.ensemble.regulatory,
     };
+    precedentSummary = {
+      matchCount: superResult.precedents.matches.length,
+      hasCriticalPrecedent: superResult.precedents.hasCriticalPrecedent,
+      summary: superResult.precedents.summary,
+      matches: superResult.precedents.matches.slice(0, 5).map((m) => ({
+        caseId: m.entry.caseId,
+        similarity: m.similarity,
+        verdict: m.entry.verdict,
+        severity: m.entry.severity,
+        narrative: m.narrative,
+      })),
+    };
   } catch (err) {
     // Never leak subsystem internals — log server-side, return generic.
     console.error(
@@ -661,6 +724,7 @@ export default async (req: Request, context: Context) => {
     typologies: typologiesSummary,
     velocity: velocitySummary,
     ensemble: ensembleSummary,
+    precedents: precedentSummary,
     regulatoryDrift: {
       clean: drift.clean,
       versionDrifted: drift.versionDrifted,
