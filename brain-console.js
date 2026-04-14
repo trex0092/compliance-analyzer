@@ -168,7 +168,7 @@
         } else {
           cronStates[cron.id] = {
             status: 'unauthed',
-            error: 'HAWKEYE_BRAIN_TOKEN not in window — paste it in the Brain Token card above OR in the Settings tab → "Hawkeye Brain Token" field',
+            error: 'HAWKEYE_BRAIN_TOKEN not in window — open the Settings tab → "Hawkeye Brain Token" field → paste + Update Keys',
             lastCheckedAt: new Date().toISOString(),
             durationMs: Date.now() - start,
           };
