@@ -99,6 +99,40 @@ const FIELDS: readonly FieldDefinition[] = [
     type: 'text',
     description: 'Article / Circular that justifies the task.',
   },
+  // CDD push side-channel fields (consumed by
+  // src/services/cddAsanaCustomFieldPush.ts). Required so a CDD
+  // snapshot lands as native Asana custom fields on the customer
+  // case task — without these the MLRO can't filter customers by
+  // jurisdiction/PEP/UBO count in Asana.
+  {
+    envKey: 'ASANA_CF_CUSTOMER_NAME_GID',
+    name: 'Customer name',
+    type: 'text',
+    description: 'Legal entity name pushed from the CDD record.',
+  },
+  {
+    envKey: 'ASANA_CF_JURISDICTION_GID',
+    name: 'Jurisdiction',
+    type: 'text',
+    description: 'Country / jurisdiction of registration (ISO short name).',
+  },
+  {
+    envKey: 'ASANA_CF_UBO_COUNT_GID',
+    name: 'UBO count',
+    type: 'number',
+    description: 'Beneficial owners ≥25% on file (Cabinet Decision 109/2023).',
+  },
+  {
+    envKey: 'ASANA_CF_PEP_FLAG_GID',
+    name: 'PEP flag',
+    type: 'enum',
+    description: 'Politically Exposed Person screening result (Cabinet Res 134/2025 Art.14).',
+    options: [
+      { envKey: 'ASANA_CF_PEP_FLAG_CLEAR', name: 'Clear', color: 'green' },
+      { envKey: 'ASANA_CF_PEP_FLAG_POTENTIAL', name: 'Potential match', color: 'yellow' },
+      { envKey: 'ASANA_CF_PEP_FLAG_MATCH', name: 'Confirmed match', color: 'red' },
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

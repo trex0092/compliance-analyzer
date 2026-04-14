@@ -59,6 +59,10 @@
     "validate:goaml": "tsx scripts/validate-goaml.ts",
     "regulatory:watch": "tsx scripts/regulatory-watcher.ts",
     "audit:lbma": "tsx scripts/lbma-audit-pack.ts",
-    "redteam": "tsx scripts/redteam.ts"
+    "redteam": "tsx scripts/redteam.ts",
+    "asana:bootstrap": "tsx scripts/asana-project-bootstrap.ts",
+    "asana:bootstrap:cf": "tsx scripts/asana-cf-bootstrap.ts",
+    "asana:bootstrap:sections": "tsx scripts/asana-section-bootstrap.ts",
+    "asana:bootstrap:webhooks": "tsx scripts/asana-webhook-bootstrap.ts"
   }
 }
