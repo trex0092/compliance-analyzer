@@ -43,13 +43,6 @@
       var el = document.getElementById('tab-regchanges');
       if (el && typeof RegulatoryMonitor !== 'undefined') el.innerHTML = RegulatoryMonitor.renderChangeTrackerTab();
     }
-    if (name === 'analytics') {
-      var el = document.getElementById('tab-analytics');
-      if (el && typeof AnalyticsDashboard !== 'undefined') {
-        el.innerHTML = AnalyticsDashboard.renderAnalyticsTab();
-        setTimeout(function() { AnalyticsDashboard.initCharts(); }, 50);
-      }
-    }
     if (name === 'workflows') {
       var el = document.getElementById('tab-workflows');
       if (el && typeof WorkflowEngine !== 'undefined') el.innerHTML = WorkflowEngine.renderWorkflowsTab();

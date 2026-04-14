@@ -171,6 +171,15 @@
     if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
   };
 
+  // Close a modal by id — replaces the
+  //   onclick="document.getElementById('xModal').classList.remove('open')"
+  // CSP-blocked pattern used throughout compliance-suite.js. Wired
+  // via data-action="_closeModal" data-arg="xModal".
+  window._closeModal = function (id) {
+    var el = document.getElementById(id);
+    if (el && el.classList) el.classList.remove('open');
+  };
+
   // AI provider selector handler
   window._aiProviderChange = function (e) {
     document.querySelectorAll('.ai-key-section').forEach(function (s) { s.style.display = 'none'; });

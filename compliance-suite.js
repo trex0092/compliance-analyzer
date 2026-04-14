@@ -425,9 +425,9 @@ window.csFormatDateInput = function (el) {
         <div class="top-bar">
           <span class="sec-title">👤 Customer Risk Assessment — CDD/EDD</span>
           <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 | Art. 12-16 | FATF Rec. 10</span>
-          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenCRAForm()">+ New Assessment</button>
-          <button class="btn btn-sm btn-gold" style="padding:6px 12px;font-size:11px" onclick="suiteOpenRiskConfig()">Risk Model Config</button>
-          <button class="btn btn-sm btn-red" style="padding:6px 12px;font-size:11px" onclick="suiteAutoUpdateRiskModel()">Auto-Update Risk Model</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" data-action="suiteOpenCRAForm">+ New Assessment</button>
+          <button class="btn btn-sm btn-gold" style="padding:6px 12px;font-size:11px" data-action="suiteOpenRiskConfig">Risk Model Config</button>
+          <button class="btn btn-sm btn-red" style="padding:6px 12px;font-size:11px" data-action="suiteAutoUpdateRiskModel">Auto-Update Risk Model</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
           <div class="metric m-c"><div class="metric-num">${records.filter(r=>r.rating==='Very High').length}</div><div class="metric-lbl">Very High Risk</div></div>
@@ -448,9 +448,9 @@ window.csFormatDateInput = function (el) {
                   </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center">
-                  <button class="btn btn-sm btn-gold" onclick="suiteEditCRA(${i})">Edit</button>
-                  <button class="btn btn-sm btn-blue" onclick="suiteSyncCRAToAsana(${i})">Asana</button>
-                  <button class="btn btn-sm btn-red" onclick="suiteDeleteCRA(${i})">Delete</button>
+                  <button class="btn btn-sm btn-gold" data-action="suiteEditCRA" data-arg="${i}">Edit</button>
+                  <button class="btn btn-sm btn-blue" data-action="suiteSyncCRAToAsana" data-arg="${i}">Asana</button>
+                  <button class="btn btn-sm btn-red" data-action="suiteDeleteCRA" data-arg="${i}">Delete</button>
                 </div>
               </div>
               ${r.notes ? `<div class="rec">${esc(r.notes)}</div>` : ''}
@@ -462,7 +462,7 @@ window.csFormatDateInput = function (el) {
       <!-- CRA Form Modal -->
       <div class="modal-overlay" id="craModal">
         <div class="modal" style="max-width:600px;width:95%">
-          <button class="modal-close" onclick="document.getElementById('craModal').classList.remove('open')">✕</button>
+          <button class="modal-close" data-action="_closeModal" data-arg="craModal">✕</button>
           <div class="modal-title">Customer Risk Assessment Form</div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">UAE FDL No.(10) of 2025 | FATF Rec. 10 | FATF DPMS Guidance 2020</div>
 
@@ -545,8 +545,8 @@ window.csFormatDateInput = function (el) {
           </div>
 
           <div style="display:flex;gap:8px;margin-top:1rem">
-            <button class="btn btn-gold" onclick="suiteCalcAndSaveCRA()" style="flex:1">Calculate Score & Save</button>
-            <button class="btn btn-sm" onclick="document.getElementById('craModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+            <button class="btn btn-gold" data-action="suiteCalcAndSaveCRA" style="flex:1">Calculate Score & Save</button>
+            <button class="btn btn-sm" data-action="_closeModal" data-arg="craModal" style="padding:12px 20px">Cancel</button>
           </div>
         </div>
       </div>
@@ -788,7 +788,7 @@ window.csFormatDateInput = function (el) {
     entries.forEach(function(e) { countByRisk[e[1]] = (countByRisk[e[1]] || 0) + 1; });
 
     var html = '<div class="modal-overlay" id="countryRiskModal"><div class="modal" style="max-width:700px;width:95%;max-height:90vh">';
-    html += '<button class="modal-close" onclick="document.getElementById(\'countryRiskModal\').classList.remove(\'open\')">✕</button>';
+    html += '<button class="modal-close" data-action="_closeModal" data-arg="countryRiskModal">✕</button>';
     html += '<div class="modal-title">Country Risk Database</div>';
     html += '<div class="token-note" style="margin-bottom:1rem"><strong>FATF & CAHRA Classifications:</strong> This database determines risk scoring in the CRA. Update it when FATF publishes new grey/black list changes (typically every February, June, October). Click "Update Country Risk Data" to auto-refresh from the latest sources.</div>';
 
@@ -803,7 +803,7 @@ window.csFormatDateInput = function (el) {
     html += '<div style="display:flex;gap:6px;margin-bottom:10px">';
     html += '<input id="crisk-new-country" placeholder="Country name" style="flex:1;font-size:12px">';
     html += '<select id="crisk-new-level" style="font-size:12px"><option>FATF Black List</option><option>FATF Grey List</option><option>CAHRA</option><option>GCC</option><option>FATF Member</option><option>Other</option></select>';
-    html += '<button class="btn btn-sm btn-gold" onclick="suiteAddCountryRisk()" style="padding:4px 10px;font-size:11px">Add</button>';
+    html += '<button class="btn btn-sm btn-gold" data-action="suiteAddCountryRisk" style="padding:4px 10px;font-size:11px">Add</button>';
     html += '</div>';
 
     // Country table
@@ -818,7 +818,7 @@ window.csFormatDateInput = function (el) {
     });
     html += '</div>';
 
-    html += '<div style="display:flex;gap:8px;margin-top:1rem"><button class="btn btn-sm" onclick="document.getElementById(\'countryRiskModal\').classList.remove(\'open\')" style="flex:1;padding:10px">Close</button></div>';
+    html += '<div style="display:flex;gap:8px;margin-top:1rem"><button class="btn btn-sm" data-action="_closeModal" data-arg="countryRiskModal" style="flex:1;padding:10px">Close</button></div>';
     html += '</div></div>';
 
     // Remove old modal if exists
@@ -853,7 +853,7 @@ window.csFormatDateInput = function (el) {
   global.suiteOpenRiskConfig = function() {
     var model = getRiskModel();
     var html = '<div class="modal-overlay" id="riskConfigModal"><div class="modal" style="max-width:800px;width:95%;max-height:92vh">';
-    html += '<button class="modal-close" onclick="document.getElementById(\'riskConfigModal\').classList.remove(\'open\')">✕</button>';
+    html += '<button class="modal-close" data-action="_closeModal" data-arg="riskConfigModal">✕</button>';
     html += '<div class="modal-title">Risk Model Configuration</div>';
     html += '<div class="token-note" style="margin-bottom:1rem"><strong>Risk Appetite & Regulatory Configuration:</strong> Modify risk factor weights, score thresholds, CDD levels, and review frequencies. Changes take effect immediately for all new assessments. Last updated: ' + new Date(model.lastUpdated).toLocaleDateString('en-GB') + ' by ' + (model.lastUpdatedBy || 'System') + '</div>';
 
@@ -896,14 +896,14 @@ window.csFormatDateInput = function (el) {
 
     // Country Risk DB link
     html += '<div style="margin-top:8px;display:flex;gap:8px">';
-    html += '<button class="btn btn-sm btn-gold" onclick="suiteViewCountryRisk()" style="padding:6px 12px;font-size:11px">Edit Country Risk Database</button>';
-    html += '<button class="btn btn-sm btn-red" onclick="suiteAutoUpdateRiskModel()" style="padding:6px 12px;font-size:11px">Auto-Update from Regulations</button>';
+    html += '<button class="btn btn-sm btn-gold" data-action="suiteViewCountryRisk" style="padding:6px 12px;font-size:11px">Edit Country Risk Database</button>';
+    html += '<button class="btn btn-sm btn-red" data-action="suiteAutoUpdateRiskModel" style="padding:6px 12px;font-size:11px">Auto-Update from Regulations</button>';
     html += '</div>';
 
     // Save / Cancel
     html += '<div style="display:flex;gap:8px;margin-top:1rem">';
-    html += '<button class="btn btn-gold" onclick="suiteSaveRiskConfig()" style="flex:1;padding:12px;font-size:13px;font-weight:600">Save Risk Model</button>';
-    html += '<button class="btn btn-sm" onclick="document.getElementById(\'riskConfigModal\').classList.remove(\'open\')" style="padding:12px 20px">Cancel</button>';
+    html += '<button class="btn btn-gold" data-action="suiteSaveRiskConfig" style="flex:1;padding:12px;font-size:13px;font-weight:600">Save Risk Model</button>';
+    html += '<button class="btn btn-sm" data-action="_closeModal" data-arg="riskConfigModal" style="padding:12px 20px">Cancel</button>';
     html += '</div>';
 
     html += '</div></div>';
@@ -1057,7 +1057,7 @@ window.csFormatDateInput = function (el) {
         <div class="top-bar">
           <span class="sec-title">🏛️ UBO Register — Beneficial Ownership</span>
           <span style="font-size:11px;color:var(--muted)">UAE Cabinet Decision No.(109) of 2023 | FDL No.(10) of 2025 Art.18</span>
-          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenUBOForm()">+ Add UBO</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" data-action="suiteOpenUBOForm">+ Add UBO</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
           <div class="metric m-ok"><div class="metric-num">${records.length}</div><div class="metric-lbl">Total UBOs</div></div>
@@ -1087,9 +1087,9 @@ window.csFormatDateInput = function (el) {
                   <td style="padding:8px;font-size:12px;color:${new Date(r.nextReview)<new Date()?'var(--red)':'var(--text)'}">${fmtDate(r.nextReview)}</td>
                   <td style="padding:8px">
                     <div style="display:flex;gap:4px">
-                      <button class="btn btn-sm btn-gold" onclick="suiteEditUBO(${i})">Edit</button>
-                      <button class="btn btn-sm btn-blue" onclick="suiteSyncUBOToAsana(${i})">Asana</button>
-                      <button class="btn btn-sm btn-red" onclick="suiteDeleteUBO(${i})">Del</button>
+                      <button class="btn btn-sm btn-gold" data-action="suiteEditUBO" data-arg="${i}">Edit</button>
+                      <button class="btn btn-sm btn-blue" data-action="suiteSyncUBOToAsana" data-arg="${i}">Asana</button>
+                      <button class="btn btn-sm btn-red" data-action="suiteDeleteUBO" data-arg="${i}">Del</button>
                     </div>
                   </td>
                 </tr>
@@ -1102,7 +1102,7 @@ window.csFormatDateInput = function (el) {
       <!-- UBO Form Modal -->
       <div class="modal-overlay" id="uboModal">
         <div class="modal" style="max-width:580px;width:95%">
-          <button class="modal-close" onclick="document.getElementById('uboModal').classList.remove('open')">✕</button>
+          <button class="modal-close" data-action="_closeModal" data-arg="uboModal">✕</button>
           <div class="modal-title">UBO Record</div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">UAE Cabinet Decision No.(109) of 2023 | Capture all persons owning ≥25% or exercising ultimate control</div>
           <input type="hidden" id="ubo-edit-idx" value="-1">
@@ -1144,8 +1144,8 @@ window.csFormatDateInput = function (el) {
           </div>
           <div><span class="lbl">Notes</span><textarea id="ubo-notes" style="min-height:60px" placeholder="Ownership structure notes, supporting documents, escalation notes..."></textarea></div>
           <div style="display:flex;gap:8px;margin-top:1rem">
-            <button class="btn btn-gold" onclick="suiteSaveUBO()" style="flex:1">Save UBO Record</button>
-            <button class="btn btn-sm" onclick="document.getElementById('uboModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+            <button class="btn btn-gold" data-action="suiteSaveUBO" style="flex:1">Save UBO Record</button>
+            <button class="btn btn-sm" data-action="_closeModal" data-arg="uboModal" style="padding:12px 20px">Cancel</button>
           </div>
         </div>
       </div>
@@ -1339,7 +1339,7 @@ window.csFormatDateInput = function (el) {
         <div class="top-bar">
           <span class="sec-title">STR Case Management</span>
           <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 Art.26-27 | goAML | FATF Rec.20 | File WITHOUT DELAY upon suspicion</span>
-          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenSTRForm()">+ New STR Case</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" data-action="suiteOpenSTRForm">+ New STR Case</button>
         </div>
         <div style="background:rgba(217,79,79,0.1);border:1px solid rgba(217,79,79,0.3);border-radius:4px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:var(--red);font-family:'Montserrat',sans-serif">
           ⚠️ CONFIDENTIALITY NOTICE: STR information is strictly confidential. Tipping off a subject is a criminal offence under UAE FDL No.(10) of 2025 Art.21. Do not disclose to any person that a report has been or will be filed.
@@ -1362,9 +1362,9 @@ window.csFormatDateInput = function (el) {
                 </div>
               </div>
               <div style="display:flex;gap:6px">
-                <button class="btn btn-sm btn-gold" onclick="suiteEditSTR(${i})">View/Edit</button>
-                <button class="btn btn-sm btn-blue" onclick="suiteSyncSTRToAsana(${i})">Asana</button>
-                <button class="btn btn-sm btn-red" onclick="suiteDeleteSTR(${i})">Delete</button>
+                <button class="btn btn-sm btn-gold" data-action="suiteEditSTR" data-arg="${i}">View/Edit</button>
+                <button class="btn btn-sm btn-blue" data-action="suiteSyncSTRToAsana" data-arg="${i}">Asana</button>
+                <button class="btn btn-sm btn-red" data-action="suiteDeleteSTR" data-arg="${i}">Delete</button>
               </div>
             </div>
             <div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px;background:var(--surface2);border-radius:3px;line-height:1.5">${esc((c.narrative||'').slice(0,200))}${(c.narrative||'').length>200?'...':''}</div>
@@ -1375,7 +1375,7 @@ window.csFormatDateInput = function (el) {
       <!-- STR Form Modal -->
       <div class="modal-overlay" id="strModal">
         <div class="modal" style="max-width:680px;width:95%;max-height:90vh">
-          <button class="modal-close" onclick="document.getElementById('strModal').classList.remove('open')">✕</button>
+          <button class="modal-close" data-action="_closeModal" data-arg="strModal">✕</button>
           <div class="modal-title">STR Case File</div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">UAE FDL No.(10) of 2025 Art.26-27 | File to UAE FIU via goAML WITHOUT DELAY upon suspicion arising</div>
           <input type="hidden" id="str-edit-idx" value="-1">
@@ -1420,8 +1420,8 @@ window.csFormatDateInput = function (el) {
           <div><span class="lbl">Internal Notes</span><textarea id="str-notes" style="min-height:60px" placeholder="Internal escalation notes, management approvals, supporting documents..."></textarea></div>
 
           <div style="display:flex;gap:8px;margin-top:1rem">
-            <button class="btn btn-gold" onclick="suiteSaveSTR()" style="flex:1">Save Case</button>
-            <button class="btn btn-sm" onclick="document.getElementById('strModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+            <button class="btn btn-gold" data-action="suiteSaveSTR" style="flex:1">Save Case</button>
+            <button class="btn btn-sm" data-action="_closeModal" data-arg="strModal" style="padding:12px 20px">Cancel</button>
           </div>
         </div>
       </div>
@@ -2012,19 +2012,19 @@ window.csFormatDateInput = function (el) {
 
         <!-- Risk Score Summary -->
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
-          <div class="metric m-c" style="cursor:pointer" onclick="suiteFilterRFLevel('Critical')">
+          <div class="metric m-c" style="cursor:pointer" data-action="suiteFilterRFLevel" data-arg="Critical">
             <div class="metric-num">${counts.Critical}</div>
             <div class="metric-lbl">Critical (16–25)</div>
           </div>
-          <div class="metric m-h" style="cursor:pointer" onclick="suiteFilterRFLevel('High')">
+          <div class="metric m-h" style="cursor:pointer" data-action="suiteFilterRFLevel" data-arg="High">
             <div class="metric-num">${counts.High}</div>
             <div class="metric-lbl">High (11–15)</div>
           </div>
-          <div class="metric m-m" style="cursor:pointer" onclick="suiteFilterRFLevel('Medium')">
+          <div class="metric m-m" style="cursor:pointer" data-action="suiteFilterRFLevel" data-arg="Medium">
             <div class="metric-num">${counts.Medium}</div>
             <div class="metric-lbl">Medium (6–10)</div>
           </div>
-          <div class="metric m-ok" style="cursor:pointer" onclick="suiteFilterRFLevel('Low')">
+          <div class="metric m-ok" style="cursor:pointer" data-action="suiteFilterRFLevel" data-arg="Low">
             <div class="metric-num">${counts.Low}</div>
             <div class="metric-lbl">Low (1–5)</div>
           </div>
@@ -2077,7 +2077,7 @@ window.csFormatDateInput = function (el) {
             <option value="Medium">🟡 Medium</option>
             <option value="Low">🟢 Low</option>
           </select>
-          <button class="btn btn-sm btn-green" onclick="suiteAddRedFlag()" style="white-space:nowrap">+ Add Red Flag</button>
+          <button class="btn btn-sm btn-green" data-action="suiteAddRedFlag" style="white-space:nowrap">+ Add Red Flag</button>
         </div>
 
         <div id="rf-results">
@@ -2120,8 +2120,8 @@ window.csFormatDateInput = function (el) {
                     <div style="font-size:13px;font-weight:500;flex:1">${esc(f.flag)}</div>
                     <div style="flex-shrink:0;display:flex;align-items:center;gap:6px">
                       <div style="background:${rl.bg};color:${rl.col};border:1px solid ${rl.border};border-radius:3px;padding:2px 8px;font-size:10px;font-family:'Montserrat',sans-serif;white-space:nowrap">${lvl} — ${score}</div>
-                      <button class="btn btn-sm btn-gold" onclick="suiteEditRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Edit</button>
-                      <button class="btn btn-sm btn-red" onclick="suiteDeleteRedFlag(${f.id})" style="padding:2px 6px;font-size:9px">Del</button>
+                      <button class="btn btn-sm btn-gold" data-action="suiteEditRedFlag" data-arg="${f.id}" style="padding:2px 6px;font-size:9px">Edit</button>
+                      <button class="btn btn-sm btn-red" data-action="suiteDeleteRedFlag" data-arg="${f.id}" style="padding:2px 6px;font-size:9px">Del</button>
                     </div>
                   </div>
                   <div style="font-size:11px;color:var(--gold);font-family:'Montserrat',sans-serif;margin-top:4px">${esc(f.ref)}</div>
@@ -2439,7 +2439,7 @@ window.csFormatDateInput = function (el) {
         <div class="top-bar">
           <span class="sec-title">✅ Approval Matrix — Four-Eyes Control</span>
           <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 | Senior Management Approval Requirements</span>
-          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteOpenApprovalForm()">+ New Approval Request</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" data-action="suiteOpenApprovalForm">+ New Approval Request</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">
           <div class="metric m-c"><div class="metric-num">${pending.length}</div><div class="metric-lbl">Pending</div></div>
@@ -2478,8 +2478,8 @@ window.csFormatDateInput = function (el) {
                     <button class="btn btn-sm btn-green" onclick="suiteDecideApproval(${i},'Approved')">Approve</button>
                     <button class="btn btn-sm btn-red" onclick="suiteDecideApproval(${i},'Rejected')">Reject</button>
                   ` : ''}
-                  <button class="btn btn-sm btn-blue" onclick="suiteSyncApprovalToAsana(${i})">Asana</button>
-                  <button class="btn btn-sm btn-red" onclick="suiteDeleteApproval(${i})">Del</button>
+                  <button class="btn btn-sm btn-blue" data-action="suiteSyncApprovalToAsana" data-arg="${i}">Asana</button>
+                  <button class="btn btn-sm btn-red" data-action="suiteDeleteApproval" data-arg="${i}">Del</button>
                 </div>
               </div>
               ${r.rationale ? `<div class="rec" style="margin-top:8px">${esc(r.rationale)}</div>` : ''}
@@ -2513,7 +2513,7 @@ window.csFormatDateInput = function (el) {
             + '<div style="font-size:11px;color:var(--muted);font-family:\'Montserrat\',sans-serif;margin-top:2px">'+type+' | Risk: '+risk+' | '+date+'</div></div>'
             + '<div style="display:flex;align-items:center;gap:8px">'
             + '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:3px;padding:2px 8px;font-size:10px;font-family:\'Montserrat\',sans-serif">'+st+'</span>'
-            + '<button class="btn btn-sm btn-blue" onclick="suiteSyncMgmtApprovalToAsana('+i+')">Asana</button>'
+            + '<button class="btn btn-sm btn-blue" data-action="suiteSyncMgmtApprovalToAsana" data-arg="+i+">Asana</button>'
             + '</div></div>';
         }).join('')}
         ${mgmtApprovals.length > 10 ? `<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">Showing 10 of ${mgmtApprovals.length} records. Open Management Approvals tab for full list.</div>` : ''}
@@ -2522,7 +2522,7 @@ window.csFormatDateInput = function (el) {
       <!-- Approval Form Modal -->
       <div class="modal-overlay" id="approvalModal">
         <div class="modal" style="max-width:520px;width:95%">
-          <button class="modal-close" onclick="document.getElementById('approvalModal').classList.remove('open')">✕</button>
+          <button class="modal-close" data-action="_closeModal" data-arg="approvalModal">✕</button>
           <div class="modal-title">New Approval Request</div>
           <input type="hidden" id="approval-edit-idx" value="-1">
           <div><span class="lbl">Approval Type *</span>
@@ -2537,8 +2537,8 @@ window.csFormatDateInput = function (el) {
             <textarea id="approval-rationale" style="min-height:80px" placeholder="Explain why approval is required and provide relevant context..."></textarea>
           </div>
           <div style="display:flex;gap:8px;margin-top:1rem">
-            <button class="btn btn-gold" onclick="suiteSaveApproval()" style="flex:1">Submit for Approval</button>
-            <button class="btn btn-sm" onclick="document.getElementById('approvalModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+            <button class="btn btn-gold" data-action="suiteSaveApproval" style="flex:1">Submit for Approval</button>
+            <button class="btn btn-sm" data-action="_closeModal" data-arg="approvalModal" style="padding:12px 20px">Cancel</button>
           </div>
         </div>
       </div>
@@ -2898,7 +2898,7 @@ window.csFormatDateInput = function (el) {
       <div class="card">
         <div class="top-bar">
           <span class="sec-title">Regulatory Change Log</span>
-          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suiteAddRegChange()">+ Log Change</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" data-action="suiteAddRegChange">+ Log Change</button>
         </div>
         ${changelog.length===0 ? '<p style="color:var(--muted);font-size:13px;text-align:center;padding:1rem">No regulatory changes logged.</p>' : ''}
         ${changelog.map((c,i)=>`
@@ -2911,7 +2911,7 @@ window.csFormatDateInput = function (el) {
                   <div class="f-ref">Effective: ${fmtDate(c.effectiveDate)} | Impact: ${c.impactedControls}</div>
                 </div>
               </div>
-              <button class="btn btn-sm btn-red" onclick="suiteDeleteRegChange(${i})">Del</button>
+              <button class="btn btn-sm btn-red" data-action="suiteDeleteRegChange" data-arg="${i}">Del</button>
             </div>
           </div>
         `).join('')}
@@ -2920,7 +2920,7 @@ window.csFormatDateInput = function (el) {
       <!-- Reg Change Modal -->
       <div class="modal-overlay" id="regchangeModal">
         <div class="modal" style="max-width:500px;width:95%">
-          <button class="modal-close" onclick="document.getElementById('regchangeModal').classList.remove('open')">✕</button>
+          <button class="modal-close" data-action="_closeModal" data-arg="regchangeModal">✕</button>
           <div class="modal-title">Log Regulatory Change</div>
           <div><span class="lbl">Framework / Regulation</span><input id="rc-framework" placeholder="e.g. UAE FDL No.(10) of 2025"/></div>
           <div><span class="lbl">Change Type</span>
@@ -2932,8 +2932,8 @@ window.csFormatDateInput = function (el) {
             <div><span class="lbl">Impacted Controls/Documents</span><input id="rc-controls" placeholder="e.g. Compliance Manual, EWRA, CDD procedure"/></div>
           </div>
           <div style="display:flex;gap:8px;margin-top:1rem">
-            <button class="btn btn-gold" onclick="suiteSaveRegChange()" style="flex:1">Save</button>
-            <button class="btn btn-sm" onclick="document.getElementById('regchangeModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+            <button class="btn btn-gold" data-action="suiteSaveRegChange" style="flex:1">Save</button>
+            <button class="btn btn-sm" data-action="_closeModal" data-arg="regchangeModal" style="padding:12px 20px">Cancel</button>
           </div>
         </div>
       </div>
@@ -3155,7 +3155,7 @@ window.csFormatDateInput = function (el) {
         <span style="font-size:11px;color:var(--muted)">Cabinet Decision No.(74) of 2020 | EOCN Executive Office TFS Guidance</span>
         <div style="display:flex;gap:6px">
           <button class="btn btn-sm btn-blue" onclick="if(typeof refreshSanctionsLists==='function'){refreshSanctionsLists().then(function(){renderTFS2()}).catch(function(e){console.warn('[TFS] Refresh failed:',e);renderTFS2()})}else{renderTFS2()}">Refresh</button>
-          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenTFSForm()">+ New Screening Event</button>
+          <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" data-action="suite2OpenTFSForm">+ New Screening Event</button>
         </div>
       </div>
 
@@ -3193,8 +3193,8 @@ window.csFormatDateInput = function (el) {
               <div class="f-ref">Reviewer: ${esc(e.reviewedBy||'—')} | Ref: ${esc(e.id)}</div>
             </div></div>
             <div style="display:flex;gap:6px">
-              <button class="btn btn-sm btn-gold" onclick="suite2EditTFS(${i})">View/Edit</button>
-              <button class="btn btn-sm btn-red" onclick="suite2DeleteTFS(${i})">Delete</button>
+              <button class="btn btn-sm btn-gold" data-action="suite2EditTFS" data-arg="${i}">View/Edit</button>
+              <button class="btn btn-sm btn-red" data-action="suite2DeleteTFS" data-arg="${i}">Delete</button>
             </div>
           </div>
           ${e.notes?`<div class="rec">${esc(e.notes)}</div>`:''}
@@ -3206,7 +3206,7 @@ window.csFormatDateInput = function (el) {
     <!-- TFS2 Modal -->
     <div class="modal-overlay" id="tfs2Modal">
       <div class="modal" style="max-width:680px;width:95%;max-height:92vh">
-        <button class="modal-close" onclick="document.getElementById('tfs2Modal').classList.remove('open')">✕</button>
+        <button class="modal-close" data-action="_closeModal" data-arg="tfs2Modal">✕</button>
         <div class="modal-title">TFS Screening Event</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance | Mandatory: UAE Local Terrorist List + UNSC Consolidated List</div>
         <input type="hidden" id="tfs2-edit-idx" value="-1">
@@ -3250,7 +3250,7 @@ window.csFormatDateInput = function (el) {
               {val:'Confirmed Match', col:'var(--red)', icon:'🔴'},
             ].map(o=>`
               <button type="button" class="btn" id="tfs2-btn-${o.val.replace(/\s/g,'_')}"
-                onclick="suite2SelectOutcome('${o.val}')"
+                data-action="suite2SelectOutcome" data-arg="${o.val}"
                 style="background:var(--surface2);border:2px solid var(--border);color:var(--text);font-size:11px;padding:10px 6px">
                 ${o.icon} ${o.val}
               </button>
@@ -3334,9 +3334,9 @@ window.csFormatDateInput = function (el) {
         </div>
 
         <div style="display:flex;gap:8px;margin-top:1rem">
-          <button class="btn btn-gold" onclick="suite2SaveTFS()" style="flex:1">Save Screening Event</button>
-          <button class="btn btn-sm btn-blue" onclick="suite2RunScreening()" style="flex:1;padding:12px">Run Screening</button>
-          <button class="btn btn-sm" onclick="document.getElementById('tfs2Modal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+          <button class="btn btn-gold" data-action="suite2SaveTFS" style="flex:1">Save Screening Event</button>
+          <button class="btn btn-sm btn-blue" data-action="suite2RunScreening" style="flex:1;padding:12px">Run Screening</button>
+          <button class="btn btn-sm" data-action="_closeModal" data-arg="tfs2Modal" style="padding:12px 20px">Cancel</button>
         </div>
       </div>
     </div>
@@ -3718,7 +3718,7 @@ window.csFormatDateInput = function (el) {
       <div class="top-bar">
         <span class="sec-title">DPMSR — Threshold Reporting & Linked Transaction Detection</span>
         <span style="font-size:11px;color:var(--muted)">MoE Circular 08/AML/2021 | AED 55,000 Threshold | Cabinet Resolution 134/2025 Art.13</span>
-        <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2OpenDPMSRForm()">+ New Threshold Case</button>
+        <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" data-action="suite2OpenDPMSRForm">+ New Threshold Case</button>
       </div>
 
       <div style="background:var(--surface2);border-radius:4px;padding:14px;margin-bottom:1rem">
@@ -3768,8 +3768,8 @@ window.csFormatDateInput = function (el) {
               <div class="f-ref">DPMSR: ${esc(c.reportingRequired)} | Linked: ${esc(c.linkedFlag||'No')} | Filed: ${esc(c.dpmsr_filed||'No')}</div>
             </div></div>
             <div style="display:flex;gap:6px">
-              <button class="btn btn-sm btn-gold" onclick="suite2EditDPMSR(${i})">Edit</button>
-              <button class="btn btn-sm btn-red" onclick="suite2DeleteDPMSR(${i})">Delete</button>
+              <button class="btn btn-sm btn-gold" data-action="suite2EditDPMSR" data-arg="${i}">Edit</button>
+              <button class="btn btn-sm btn-red" data-action="suite2DeleteDPMSR" data-arg="${i}">Delete</button>
             </div>
           </div>
         </div>
@@ -3779,7 +3779,7 @@ window.csFormatDateInput = function (el) {
     <!-- DPMSR Modal -->
     <div class="modal-overlay" id="dpmsrModal">
       <div class="modal" style="max-width:620px;width:95%">
-        <button class="modal-close" onclick="document.getElementById('dpmsrModal').classList.remove('open')">✕</button>
+        <button class="modal-close" data-action="_closeModal" data-arg="dpmsrModal">✕</button>
         <div class="modal-title">DPMSR Threshold Case</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">MoE Circular 08/AML/2021 | AED 55,000 Threshold | goAML DPMSR Reporting</div>
         <input type="hidden" id="dpmsr-edit-idx" value="-1">
@@ -3862,8 +3862,8 @@ window.csFormatDateInput = function (el) {
         <div><span class="lbl">Notes</span><textarea id="dpmsr-notes" style="min-height:60px" placeholder="Additional context, source of funds notes, escalation notes..."></textarea></div>
 
         <div style="display:flex;gap:8px;margin-top:1rem">
-          <button class="btn btn-gold" onclick="suite2SaveDPMSR()" style="flex:1">Save Threshold Case</button>
-          <button class="btn btn-sm" onclick="document.getElementById('dpmsrModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+          <button class="btn btn-gold" data-action="suite2SaveDPMSR" style="flex:1">Save Threshold Case</button>
+          <button class="btn btn-sm" data-action="_closeModal" data-arg="dpmsrModal" style="padding:12px 20px">Cancel</button>
         </div>
       </div>
     </div>`;
@@ -4052,7 +4052,7 @@ window.csFormatDateInput = function (el) {
       <div class="top-bar">
         <span class="sec-title">🗄️ Record Retention Register</span>
         <span style="font-size:11px;color:var(--muted)">UAE FDL No.(10) of 2025 — Minimum 10 years | Records must enable transaction reconstruction</span>
-        <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2AddRetentionRecord()">+ Add Record</button>
+        <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" data-action="suite2AddRetentionRecord">+ Add Record</button>
       </div>
       <div style="background:rgba(217,79,79,0.08);border:1px solid var(--red);border-radius:4px;padding:12px;margin-bottom:1rem;font-size:12px;color:var(--red)">
         <strong style="color:var(--red)">UAE FDL No.(10) of 2025 — 10 Year Minimum:</strong> <span style="color:var(--text)">All records must be retained for a minimum of 10 years. Records must be organized so individual transactions can be reconstructed and provided promptly to competent authorities upon request. This applies to all CDD, transaction, STR, risk assessment, training, audit, and correspondence records.</span>
@@ -4086,14 +4086,14 @@ window.csFormatDateInput = function (el) {
               <div class="f-body">Category: ${esc(r.category)} | Created: ${esc(fmtDate(r.createdDate))} | Expires: ${esc(fmtDate(expiry.toISOString()))}</div>
               <div class="f-ref">${esc(r.basis)} | Storage: ${esc(r.storageLocation)}</div>
             </div></div>
-            <button class="btn btn-sm btn-red" onclick="suite2DeleteRetention(${i})">Archive</button>
+            <button class="btn btn-sm btn-red" data-action="suite2DeleteRetention" data-arg="${i}">Archive</button>
           </div>
         </div>`;
       }).join('')}
     </div>
     <div class="modal-overlay" id="retentionModal">
       <div class="modal" style="max-width:500px;width:95%">
-        <button class="modal-close" onclick="document.getElementById('retentionModal').classList.remove('open')">✕</button>
+        <button class="modal-close" data-action="_closeModal" data-arg="retentionModal">✕</button>
         <div class="modal-title">Add Retention Record</div>
         <div><span class="lbl">Record Name / Description *</span><input id="ret-name" placeholder="e.g. Customer CDD file — Al Futtaim Trading"/></div>
         <div><span class="lbl">Category *</span>
@@ -4108,8 +4108,8 @@ window.csFormatDateInput = function (el) {
         <div><span class="lbl">Regulatory Basis</span><input id="ret-basis" placeholder="Auto-filled from category"/></div>
         <div><span class="lbl">Storage Location</span><input id="ret-storage" placeholder="e.g. Google Drive /Compliance/CDD/ | Physical: Filing cabinet A3"/></div>
         <div style="display:flex;gap:8px;margin-top:1rem">
-          <button class="btn btn-gold" onclick="suite2SaveRetention()" style="flex:1">Save Record</button>
-          <button class="btn btn-sm" onclick="document.getElementById('retentionModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+          <button class="btn btn-gold" data-action="suite2SaveRetention" style="flex:1">Save Record</button>
+          <button class="btn btn-sm" data-action="_closeModal" data-arg="retentionModal" style="padding:12px 20px">Cancel</button>
         </div>
       </div>
     </div>`;
@@ -4192,7 +4192,7 @@ window.csFormatDateInput = function (el) {
       <div class="top-bar">
         <span class="sec-title">🤖 AI Output Governance — Human Review Log</span>
         <span style="font-size:11px;color:var(--muted)">Cabinet Resolution 134/2025 Art.24 | PDPL — Human review of automated processing decisions</span>
-        <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" onclick="suite2LogAIReview()">+ Log AI Review</button>
+        <button class="btn btn-sm btn-blue" style="padding:6px 12px;font-size:11px" data-action="suite2LogAIReview">+ Log AI Review</button>
       </div>
       <div style="background:rgba(74,143,193,0.1);border:1px solid rgba(74,143,193,0.3);border-radius:4px;padding:12px;margin-bottom:1rem;font-size:12px">
         <strong>Governance Requirement (Art.24):</strong> All AI-generated compliance outputs — gap assessments, risk scores, STR drafts, screening results, recommendations — must be reviewed and signed off by a qualified human compliance professional before any action is taken. AI outputs are advisory only and cannot constitute regulatory decisions without human review and approval.
@@ -4211,14 +4211,14 @@ window.csFormatDateInput = function (el) {
               <div class="f-body">Reviewed by: ${esc(l.reviewer)} | Date: ${fmtDate(l.reviewDate)}</div>
               <div class="f-ref">Ref: ${l.id} | ${esc(l.notes)}</div>
             </div></div>
-            <button class="btn btn-sm btn-red" onclick="suite2DeleteAILog(${i})">Delete</button>
+            <button class="btn btn-sm btn-red" data-action="suite2DeleteAILog" data-arg="${i}">Delete</button>
           </div>
         </div>
       `).join('')}
     </div>
     <div class="modal-overlay" id="ailogModal">
       <div class="modal" style="max-width:520px;width:95%">
-        <button class="modal-close" onclick="document.getElementById('ailogModal').classList.remove('open')">✕</button>
+        <button class="modal-close" data-action="_closeModal" data-arg="ailogModal">✕</button>
         <div class="modal-title">Log AI Output Review</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Cabinet Resolution 134/2025 Art.24 — All AI outputs require human sign-off before action</div>
         <div><span class="lbl">AI Task / Output Type *</span>
@@ -4244,8 +4244,8 @@ window.csFormatDateInput = function (el) {
         </div>
         <div><span class="lbl">Reviewer Notes / Modifications Made</span><textarea id="ailog-notes" style="min-height:60px" placeholder="Note any modifications made to AI output, reasons for rejection, or additional context..."></textarea></div>
         <div style="display:flex;gap:8px;margin-top:1rem">
-          <button class="btn btn-gold" onclick="suite2SaveAILog()" style="flex:1">Save Review Log</button>
-          <button class="btn btn-sm" onclick="document.getElementById('ailogModal').classList.remove('open')" style="padding:12px 20px">Cancel</button>
+          <button class="btn btn-gold" data-action="suite2SaveAILog" style="flex:1">Save Review Log</button>
+          <button class="btn btn-sm" data-action="_closeModal" data-arg="ailogModal" style="padding:12px 20px">Cancel</button>
         </div>
       </div>
     </div>`;
@@ -4756,10 +4756,10 @@ window.csFormatDateInput = function (el) {
       </div>
 
       <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
-        <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" onclick="dmExportAll()">Backup</button>
+        <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" data-action="dmExportAll">Backup</button>
         <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" onclick="document.getElementById('dm-import-file').click()">Restore</button>
-        <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" onclick="dmExportSummaryReport()">Summary</button>
-        <button class="btn btn-sm btn-gold" style="padding:8px 14px;font-size:11px" onclick="dmDownloadAuditPack()" title="Signed audit bundle for MoE / EOCN / LBMA inspectors (last 30 days)">📦 Audit Pack</button>
+        <button class="btn btn-sm btn-blue" style="padding:8px 14px;font-size:11px" data-action="dmExportSummaryReport">Summary</button>
+        <button class="btn btn-sm btn-gold" style="padding:8px 14px;font-size:11px" data-action="dmDownloadAuditPack" title="Signed audit bundle for MoE / EOCN / LBMA inspectors (last 30 days)">📦 Audit Pack</button>
       </div>
       <input type="file" id="dm-import-file" accept=".json,.xlsx" style="display:none" onchange="dmImportBackup(this)"/>
 
@@ -5032,7 +5032,7 @@ ${sheetsHTML}
       @media print { button { display:none; } }
     </style>
     </head><body>
-    <button onclick="window.print()" style="float:right;padding:8px 16px;background:#8B6914;color:white;border:none;border-radius:3px;cursor:pointer;font-size:13px">🖨️ Print / Save PDF</button>
+    <button data-action="window.print" style="float:right;padding:8px 16px;background:#8B6914;color:white;border:none;border-radius:3px;cursor:pointer;font-size:13px">🖨️ Print / Save PDF</button>
     <h1>🏛️ ${esc(entity)}</h1>
     <p><strong>Compliance Programme Status Report</strong><br>
     Generated: ${ts}<br>

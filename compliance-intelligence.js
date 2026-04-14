@@ -390,9 +390,9 @@ const ComplianceIntelligence = (function () {
       '<div style="display:flex;gap:8px;margin-bottom:12px">' +
       '<input type="text" id="kbQuery" placeholder="Search cases, screenings, filings, alerts, gaps..." ' +
       'style="flex:1;padding:8px 12px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;font-size:13px" ' +
-      'onkeydown="if(event.key===\'Enter\')ComplianceIntelligence.search()" />' +
-      '<button class="btn btn-sm btn-blue" onclick="ComplianceIntelligence.search()">Search</button>' +
-      '<button class="btn btn-sm btn-green" onclick="ComplianceIntelligence.runScan()">Scan</button>' +
+      'data-enter="ComplianceIntelligence.search" />' +
+      '<button class="btn btn-sm btn-blue" data-action="ComplianceIntelligence.search">Search</button>' +
+      '<button class="btn btn-sm btn-green" data-action="ComplianceIntelligence.runScan">Scan</button>' +
       '</div>' +
       '<div style="font-size:11px;color:#8b949e;margin-bottom:8px">' +
       'Query your compliance corpus: try "sanctions match", "open cases", "high risk", "CTR pending", "gap critical"' +
@@ -449,9 +449,9 @@ const ComplianceIntelligence = (function () {
       '<div class="top-bar" style="margin-bottom:12px">' +
       '<span class="sec-title" style="margin:0;border:none;padding:0">Audit Anchoring (SHA-256 Chain)</span>' +
       '<div style="display:flex;gap:6px">' +
-      '<button class="btn btn-sm btn-green" onclick="ComplianceIntelligence.anchor()">Create Anchor</button>' +
-      '<button class="btn btn-sm btn-blue" onclick="ComplianceIntelligence.verify()">Verify Chain</button>' +
-      '<button class="btn btn-sm btn-blue" onclick="ComplianceIntelligence.exportAnchors()">Export</button>' +
+      '<button class="btn btn-sm btn-green" data-action="ComplianceIntelligence.anchor">Create Anchor</button>' +
+      '<button class="btn btn-sm btn-blue" data-action="ComplianceIntelligence.verify">Verify Chain</button>' +
+      '<button class="btn btn-sm btn-blue" data-action="ComplianceIntelligence.exportAnchors">Export</button>' +
       '</div></div>' +
       '<div style="font-size:11px;color:#8b949e;margin-bottom:8px">' +
       'Immutable compliance checkpoints. Each anchor hashes the current audit state and chains to the previous anchor — tamper-proof compliance proof.' +
@@ -491,8 +491,8 @@ const ComplianceIntelligence = (function () {
       '<div class="top-bar" style="margin-bottom:12px">' +
       '<span class="sec-title" style="margin:0;border:none;padding:0">Agent Feed</span>' +
       '<div style="display:flex;gap:6px">' +
-      '<button class="btn btn-sm btn-blue" onclick="ComplianceIntelligence.runScan()">Run Scan</button>' +
-      '<button class="btn btn-sm btn-red" onclick="ComplianceIntelligence.clearFeed()">Clear</button>' +
+      '<button class="btn btn-sm btn-blue" data-action="ComplianceIntelligence.runScan">Run Scan</button>' +
+      '<button class="btn btn-sm btn-red" data-action="ComplianceIntelligence.clearFeed">Clear</button>' +
       '</div></div>' +
       '<div style="font-size:11px;color:#8b949e;margin-bottom:8px">' +
       'Automated compliance event stream — AI agent broadcasts compliance status, alerts, and actions.' +
