@@ -39,15 +39,15 @@ import { buildReadinessPayloads, EU_AI_ACT_DEADLINE } from '@/services/euAiActRe
 // ---------------------------------------------------------------------------
 
 describe('asana-cf-bootstrap field definitions', () => {
-  it('defines 7 canonical fields', () => {
-    expect(FIELDS.length).toBe(7);
+  it('defines 12 canonical fields (7 core + 4 CDD push + manual action chip)', () => {
+    expect(FIELDS.length).toBe(12);
   });
 
-  it('every enum field has at least 4 options', () => {
+  it('every enum field has at least 2 options (no degenerate single-option enums)', () => {
     for (const f of FIELDS) {
       if (f.type === 'enum') {
         expect(f.options).toBeDefined();
-        expect(f.options!.length).toBeGreaterThanOrEqual(4);
+        expect(f.options!.length).toBeGreaterThanOrEqual(2);
       }
     }
   });

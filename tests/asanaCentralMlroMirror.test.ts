@@ -222,7 +222,14 @@ describe('buildCentralMlroTaskPayload', () => {
       entry: { ...baseEntry, caseId: 'CASE/7 [pep]', verdict: 'freeze' },
       projectGid: 'CENTRAL',
     });
-    expect(payload.name).not.toMatch(/[/\[\]]/);
+    // The literal unsafe input must NOT appear in the rendered
+    // name — slashes, embedded brackets, and spaces are sanitized.
+    // (We can't blanket-reject brackets because the [FREEZE] /
+    // [ESCALATE] / [BLOCKED] verdict prefixes legitimately
+    // contain them.)
+    expect(payload.name).not.toContain('CASE/7 [pep]');
+    expect(payload.name).not.toContain('CASE/7');
+    expect(payload.name).toContain('CASE_7__pep_');
   });
 
   it('formats errors and warnings as bullet lists in notes', () => {
