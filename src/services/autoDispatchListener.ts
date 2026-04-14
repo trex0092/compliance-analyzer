@@ -35,10 +35,7 @@ import {
   isCentralMlroMirrorConfigured,
   mirrorDispatchToCentralMlro,
 } from './asanaCentralMlroMirror';
-import {
-  isInspectorMirrorConfigured,
-  mirrorDispatchToInspector,
-} from './asanaInspectorMirror';
+import { isInspectorMirrorConfigured, mirrorDispatchToInspector } from './asanaInspectorMirror';
 
 // ---------------------------------------------------------------------------
 // Types

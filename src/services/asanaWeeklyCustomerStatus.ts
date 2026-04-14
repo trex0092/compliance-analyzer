@@ -79,10 +79,7 @@ export interface BuildWeeklyStatusInput {
 // Tag inspectors — pure helpers
 // ---------------------------------------------------------------------------
 
-function tagsContain(
-  task: WeeklyStatusTaskInput,
-  predicate: (label: string) => boolean
-): boolean {
+function tagsContain(task: WeeklyStatusTaskInput, predicate: (label: string) => boolean): boolean {
   if (!task.tags) return false;
   for (const tag of task.tags) {
     if (tag?.name && predicate(tag.name)) return true;
@@ -122,9 +119,7 @@ function isInWindow(iso: string | undefined, fromMs: number, toMs: number): bool
  *
  * Pure — no I/O, no env reads, deterministic for a given input.
  */
-export function summarizeCustomerWeek(
-  input: BuildWeeklyStatusInput
-): WeeklyCustomerStatusSummary {
+export function summarizeCustomerWeek(input: BuildWeeklyStatusInput): WeeklyCustomerStatusSummary {
   const fromMs = Date.parse(input.windowFromIso);
   const toMs = Date.parse(input.windowToIso);
 

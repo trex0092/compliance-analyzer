@@ -141,11 +141,7 @@ export function pickFourEyesPair(
   const diagnostics = {
     poolSize: pool.length,
     eligibleCount: eligible.length,
-    pickStrategy: 'lowest-load' as
-      | 'round-robin'
-      | 'lowest-load'
-      | 'fallback'
-      | 'solo-mlro',
+    pickStrategy: 'lowest-load' as 'round-robin' | 'lowest-load' | 'fallback' | 'solo-mlro',
   };
 
   // Solo-MLRO short-circuit. Triggered explicitly via options.
@@ -390,11 +386,8 @@ export function pickFourEyesFromPersistentPool(
     rotationSeed: seed,
     // Distinct-team enforcement makes no sense in solo mode (only
     // one team member exists) — skip it when solo is active.
-    requireDistinctTeams: soloFromEnv
-      ? false
-      : (options.requireDistinctTeams ?? true),
+    requireDistinctTeams: soloFromEnv ? false : (options.requireDistinctTeams ?? true),
     soloMlroMode: options.soloMlroMode ?? soloFromEnv,
-    soloMlroCooldownHours:
-      options.soloMlroCooldownHours ?? getSoloMlroCooldownHours(),
+    soloMlroCooldownHours: options.soloMlroCooldownHours ?? getSoloMlroCooldownHours(),
   });
 }

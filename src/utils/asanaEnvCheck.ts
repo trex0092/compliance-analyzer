@@ -357,17 +357,14 @@ function checkFourEyes(ctx: CheckContext): void {
         category: 'Four-eyes',
         title: 'Solo-MLRO mode enabled but no approver key set',
         envKey: 'HAWKEYE_SOLO_MLRO_MODE,HAWKEYE_APPROVER_KEYS',
-        detail:
-          'HAWKEYE_SOLO_MLRO_MODE=true requires exactly 1 entry in HAWKEYE_APPROVER_KEYS.',
+        detail: 'HAWKEYE_SOLO_MLRO_MODE=true requires exactly 1 entry in HAWKEYE_APPROVER_KEYS.',
         fix: 'Set HAWKEYE_APPROVER_KEYS=user-mlro:<32-hex-key>.',
       });
     } else if (validEntries === 1) {
       const cooldownRaw = ctx.env.HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS ?? '24';
       const cooldown = Number.parseFloat(cooldownRaw);
       const cooldownHours =
-        Number.isFinite(cooldown) && cooldown > 0
-          ? Math.max(1, Math.min(168, cooldown))
-          : 24;
+        Number.isFinite(cooldown) && cooldown > 0 ? Math.max(1, Math.min(168, cooldown)) : 24;
       pushInfo(ctx, {
         category: 'Four-eyes',
         title: `Solo-MLRO mode active (cooldown ${cooldownHours}h)`,

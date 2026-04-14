@@ -163,9 +163,7 @@ export interface BuildInspectorTaskInput {
  * buildComplianceCustomFields. Safe to call without Asana
  * configured — the returned payload is just data.
  */
-export function buildInspectorTaskPayload(
-  input: BuildInspectorTaskInput
-): AsanaTaskPayload {
+export function buildInspectorTaskPayload(input: BuildInspectorTaskInput): AsanaTaskPayload {
   const { entry, projectGid } = input;
   return {
     name: buildInspectorTaskName(entry),
@@ -180,11 +178,7 @@ export function buildInspectorTaskPayload(
       // inspectors should see what the analyzer DECIDED, not the
       // operational state of the MLRO's bank-portal workflow.
     }),
-    tags: [
-      'inspector-evidence',
-      `verdict:${entry.verdict}`,
-      `trigger:${entry.trigger}`,
-    ],
+    tags: ['inspector-evidence', `verdict:${entry.verdict}`, `trigger:${entry.trigger}`],
   };
 }
 

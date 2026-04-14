@@ -165,9 +165,7 @@ export interface BuildCentralMlroTaskInput {
  * GIDs from env via buildComplianceCustomFields. Safe to call
  * without Asana configured — the returned payload is just data.
  */
-export function buildCentralMlroTaskPayload(
-  input: BuildCentralMlroTaskInput
-): AsanaTaskPayload {
+export function buildCentralMlroTaskPayload(input: BuildCentralMlroTaskInput): AsanaTaskPayload {
   const { entry, projectGid } = input;
   return {
     name: buildTriageTaskName(entry),
@@ -186,9 +184,7 @@ export function buildCentralMlroTaskPayload(
       // on the task card for visual triage.
       manualActionRequired: entry.verdict === 'freeze' ? 'pending' : undefined,
       regulationCitation:
-        entry.verdict === 'freeze'
-          ? 'Cabinet Res 74/2020 Art.4-7'
-          : 'FDL No.10/2025 Art.20-21',
+        entry.verdict === 'freeze' ? 'Cabinet Res 74/2020 Art.4-7' : 'FDL No.10/2025 Art.20-21',
     }),
     tags: [
       'central-mlro-triage',

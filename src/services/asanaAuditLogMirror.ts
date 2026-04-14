@@ -83,9 +83,7 @@ function buildMirrorTaskName(entry: DispatchAuditEntry): string {
  */
 function buildMirrorTaskNotes(entry: DispatchAuditEntry): string {
   const errorBlock =
-    entry.errors.length > 0
-      ? `\nErrors:\n${entry.errors.map((e) => `  - ${e}`).join('\n')}`
-      : '';
+    entry.errors.length > 0 ? `\nErrors:\n${entry.errors.map((e) => `  - ${e}`).join('\n')}` : '';
   const warningBlock =
     entry.warnings.length > 0
       ? `\nWarnings:\n${entry.warnings.map((w) => `  - ${w}`).join('\n')}`
@@ -124,9 +122,7 @@ export interface BuildAuditMirrorTaskInput {
  * `buildComplianceCustomFields`. Safe to call without Asana
  * configured — the returned payload is just data.
  */
-export function buildAuditMirrorTaskPayload(
-  input: BuildAuditMirrorTaskInput
-): AsanaTaskPayload {
+export function buildAuditMirrorTaskPayload(input: BuildAuditMirrorTaskInput): AsanaTaskPayload {
   const { entry, projectGid } = input;
   return {
     name: buildMirrorTaskName(entry),
@@ -155,7 +151,9 @@ function readMirroredIds(): Set<string> {
     const raw = localStorage.getItem(MIRRORED_KEY);
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? new Set(parsed.filter((s): s is string => typeof s === 'string')) : new Set();
+    return Array.isArray(parsed)
+      ? new Set(parsed.filter((s): s is string => typeof s === 'string'))
+      : new Set();
   } catch {
     return new Set();
   }
@@ -202,9 +200,7 @@ export interface MirrorAuditEntryResult {
  * id is already in the mirrored-id set, returns alreadyMirrored=true
  * without calling Asana.
  */
-export async function mirrorAuditEntry(
-  entry: DispatchAuditEntry
-): Promise<MirrorAuditEntryResult> {
+export async function mirrorAuditEntry(entry: DispatchAuditEntry): Promise<MirrorAuditEntryResult> {
   const projectGid = getAuditMirrorProjectGid();
   if (!projectGid || !isAsanaConfigured()) {
     return { ok: true, unconfigured: true };
