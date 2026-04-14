@@ -270,6 +270,7 @@ describe("AsanaOrchestrator — skill catalogue", () => {
       "raci",
       "gap-register",
       "zk-attest",
+      "caveman",
     ];
     for (const name of required) {
       expect(orchestrator.findSkill(name), `missing skill /${name}`).not.toBeNull();

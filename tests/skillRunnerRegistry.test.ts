@@ -292,4 +292,95 @@ describe("makeDefaultSkillRegistry — real runners", () => {
     expect(result.reply).toMatch(/Cabinet Res 134\/2025 Art\.?12-14/);
     expect(result.reply).toMatch(/sanctions_freeze/);
   });
+
+  it("/caveman full intensity returns terse single-line output under 600 chars", async () => {
+    const result = await registry.execute(
+      parse("/caveman ent1"),
+      ctx({ features: f({ sanctionsMatchScore: 0.8, isPep: true }) })
+    );
+    expect(result.real).toBe(true);
+    expect(result.reply.length).toBeLessThanOrEqual(600);
+    expect(result.reply).toMatch(/ent1/);
+    expect(result.reply).toMatch(/conf=/);
+    expect(result.reply).toMatch(/factors=\[/);
+    expect(result.data?.intensity).toBe("full");
+    expect(result.data?.maxLength).toBe(600);
+  });
+
+  it("/caveman ultra intensity hard-caps at 120 chars", async () => {
+    const result = await registry.execute(
+      parse("/caveman ent1 ultra"),
+      ctx({ features: f({ sanctionsMatchScore: 0.9 }) })
+    );
+    expect(result.real).toBe(true);
+    expect(result.reply.length).toBeLessThanOrEqual(120);
+    expect(result.data?.intensity).toBe("ultra");
+    // Ultra uses the 3-letter verdict code.
+    expect(result.reply).toMatch(/^(FRZ|ESC|FLG|PAS)/);
+  });
+
+  it("/caveman lite intensity hard-caps at 280 chars", async () => {
+    const result = await registry.execute(
+      parse("/caveman ent1 lite"),
+      ctx({ features: f({ sanctionsMatchScore: 0.9 }) })
+    );
+    expect(result.real).toBe(true);
+    expect(result.reply.length).toBeLessThanOrEqual(280);
+    expect(result.data?.intensity).toBe("lite");
+    expect(result.reply).toMatch(/FDL/);
+  });
+
+  it("/caveman defaults to full when intensity is omitted", async () => {
+    const result = await registry.execute(
+      parse("/caveman ent1"),
+      ctx()
+    );
+    expect(result.data?.intensity).toBe("full");
+  });
+
+  it("/caveman defaults to full when intensity is unrecognized", async () => {
+    const result = await registry.execute(
+      parse("/caveman ent1 banana"),
+      ctx()
+    );
+    expect(result.data?.intensity).toBe("full");
+  });
+
+  it("/caveman verdict code is one of FRZ/ESC/FLG/PAS", async () => {
+    const result = await registry.execute(
+      parse("/caveman ent1"),
+      ctx({ features: f({ sanctionsMatchScore: 0.95, isPep: true }) })
+    );
+    expect(["FRZ", "ESC", "FLG", "PAS"]).toContain(result.data?.code);
+  });
+
+  it("/caveman degrades with a clear message when features context is missing", async () => {
+    const result = await registry.execute(
+      parse("/caveman ent1"),
+      { tenantId: "t1", userId: "u1" }
+    );
+    expect(result.real).toBe(true);
+    expect(result.reply).toMatch(/needs an StrFeatures vector/);
+  });
+
+  it("/caveman reply is a single-line string (no newlines)", async () => {
+    const result = await registry.execute(
+      parse("/caveman ent1 full"),
+      ctx({ features: f({ sanctionsMatchScore: 0.9 }) })
+    );
+    expect(result.reply.includes("\n")).toBe(false);
+  });
+
+  it("/caveman is deterministic — same input returns same output", async () => {
+    const a = await registry.execute(
+      parse("/caveman ent1"),
+      ctx({ features: f({ sanctionsMatchScore: 0.7 }) })
+    );
+    const b = await registry.execute(
+      parse("/caveman ent1"),
+      ctx({ features: f({ sanctionsMatchScore: 0.7 }) })
+    );
+    expect(a.reply).toBe(b.reply);
+    expect(a.data?.confidence).toBe(b.data?.confidence);
+  });
 });

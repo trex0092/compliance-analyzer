@@ -407,6 +407,141 @@ export const runUboTrace: SkillRunner = (invocation, ctx) => {
   };
 };
 
+/**
+ * /caveman — ultra-terse compliance verdict compression.
+ *
+ * Inspired by the JuliusBrussee/caveman Claude Code skill, which
+ * documents three intensity levels (Lite / Full / Ultra) for terse
+ * output. This runner borrows ONLY the intensity-level concept and
+ * reuses zero caveman code — it's a pure TypeScript function.
+ *
+ * Output discipline:
+ *   - Single-line summary, no newlines (except between fields in Full).
+ *   - No emojis (pager-gateway safe).
+ *   - No entity legal names — only opaque refs from the runner ctx.
+ *   - Hard caps per intensity: Ultra ≤120, Lite ≤280, Full ≤600.
+ *   - Runs through the registry's upstream tipping-off linter which
+ *     will replace the output with a suppressed placeholder if any
+ *     pattern fires.
+ *
+ * Args:
+ *   args[0]          entity reference
+ *   args[1] optional intensity — "lite" | "full" | "ultra"  (default: full)
+ */
+type CavemanIntensity = 'lite' | 'full' | 'ultra';
+
+const CAVEMAN_CAPS: Record<CavemanIntensity, number> = {
+  ultra: 120,
+  lite: 280,
+  full: 600,
+};
+
+function parseIntensity(raw: string | undefined): CavemanIntensity {
+  if (raw === 'lite' || raw === 'full' || raw === 'ultra') return raw;
+  return 'full';
+}
+
+function cavemanVerdictCode(verdict: StrFeatures extends never ? never : 'pass' | 'flag' | 'escalate' | 'freeze'): string {
+  switch (verdict) {
+    case 'freeze':
+      return 'FRZ';
+    case 'escalate':
+      return 'ESC';
+    case 'flag':
+      return 'FLG';
+    case 'pass':
+      return 'PAS';
+  }
+}
+
+function truncateWithEllipsis(s: string, max: number): string {
+  if (s.length <= max) return s;
+  return s.slice(0, Math.max(0, max - 1)) + '…';
+}
+
+export const runCaveman: SkillRunner = (invocation, ctx) => {
+  const entity = invocation.args[0] ?? ctx.entityRef ?? 'unk';
+  const intensity = parseIntensity(invocation.args[1]?.toLowerCase());
+  const featuresOrErr = requireFeatures(ctx, invocation.skill);
+  if (!('priorAlerts90d' in featuresOrErr)) return featuresOrErr;
+  const features = featuresOrErr as StrFeatures;
+  const pred = predictStr(features);
+
+  // Derive a deterministic verdict code from the predictive band. The
+  // runner never fabricates: it compresses what's already on the
+  // feature vector via predictStr.
+  const verdict =
+    pred.band === 'critical'
+      ? 'freeze'
+      : pred.band === 'high'
+        ? 'escalate'
+        : pred.band === 'medium'
+          ? 'flag'
+          : 'pass';
+  const code = cavemanVerdictCode(verdict);
+  const conf = pred.probability.toFixed(2);
+
+  const topFactor = pred.factors[0];
+  const factorCode = topFactor
+    ? topFactor.feature
+        .replace(/([A-Z])/g, '-$1')
+        .replace(/^-/, '')
+        .toLowerCase()
+        .slice(0, 16)
+    : '';
+
+  let reply: string;
+  switch (intensity) {
+    case 'ultra': {
+      // ≤120 chars
+      reply = `${code} ${entity} ${conf}${factorCode ? ' ' + factorCode : ''}`;
+      break;
+    }
+    case 'lite': {
+      // ≤280 chars — one line with verdict + entity + confidence + top factor + citation
+      reply =
+        `${code} ${entity} conf=${conf} ` +
+        `band=${pred.band} ` +
+        `top=${factorCode || 'n/a'} | ` +
+        `${invocation.skill.citation}`;
+      break;
+    }
+    case 'full':
+    default: {
+      // ≤600 chars — adds top 3 factor contributions
+      const top3 = pred.factors
+        .slice(0, 3)
+        .map(
+          (f) =>
+            `${f.feature}:${f.contribution >= 0 ? '+' : ''}${f.contribution.toFixed(2)}`
+        )
+        .join(' ');
+      reply =
+        `${code} ${entity} conf=${conf} band=${pred.band} rec=${pred.recommendation} | ` +
+        `factors=[${top3}] | ${invocation.skill.citation}`;
+      break;
+    }
+  }
+
+  reply = truncateWithEllipsis(reply, CAVEMAN_CAPS[intensity]);
+
+  return {
+    skillName: invocation.skill.name,
+    reply,
+    citation: invocation.skill.citation,
+    data: {
+      intensity,
+      verdict,
+      code,
+      confidence: pred.probability,
+      band: pred.band,
+      length: reply.length,
+      maxLength: CAVEMAN_CAPS[intensity],
+    },
+    real: true,
+  };
+};
+
 /** /four-eyes-status — summary of pending four-eyes approvals */
 export const runFourEyesStatus: SkillRunner = (invocation) => {
   const reply = [
@@ -444,6 +579,7 @@ export function makeDefaultSkillRegistry(): SkillRunnerRegistry {
   registry.register('brain-analyze', runBrainAnalyze);
   registry.register('ubo-trace', runUboTrace);
   registry.register('four-eyes-status', runFourEyesStatus);
+  registry.register('caveman', runCaveman);
   return registry;
 }
 

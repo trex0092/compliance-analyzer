@@ -411,6 +411,14 @@ export const SKILL_CATALOGUE: readonly SkillCatalogueEntry[] = [
     minArgs: 1,
     citation: 'FDL No.10/2025 Art.24; FATF Rec 40',
   },
+  {
+    name: 'caveman',
+    category: 'reporting',
+    description:
+      'Ultra-terse compliance verdict compression (Lite/Full/Ultra) for SMS / pager / dashboard',
+    minArgs: 1,
+    citation: 'FDL No.10/2025 Art.20-21; Art.29',
+  },
 ];
 
 // ---------------------------------------------------------------------------
