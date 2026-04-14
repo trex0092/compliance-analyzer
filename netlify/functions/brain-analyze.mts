@@ -53,6 +53,31 @@ import {
   runSuperDecision,
   type BrainPowerScore,
 } from "../../src/services/brainSuperRunner";
+import { createAnthropicAdvisor } from "../../src/services/anthropicAdvisor";
+import {
+  captureRegulatoryBaseline,
+  checkRegulatoryDrift,
+} from "../../src/services/regulatoryDriftWatchdog";
+
+// ---------------------------------------------------------------------------
+// Lazy advisor — built once per function instance so we don't
+// re-create fetch / URL objects on every request. The advisor
+// itself falls back to deterministic if the proxy is unreachable.
+// ---------------------------------------------------------------------------
+const anthropicAdvisor = createAnthropicAdvisor({
+  proxyUrl:
+    (typeof process !== "undefined" && process.env?.HAWKEYE_AI_PROXY_URL) ||
+    "https://compliance-analyzer.netlify.app/api/ai-proxy",
+  bearerToken:
+    typeof process !== "undefined"
+      ? process.env?.HAWKEYE_BRAIN_TOKEN
+      : undefined,
+});
+
+// Baseline captured at function boot. Every request diffs against
+// this so an MLRO can see drift immediately after a deploy that
+// bumped constants.ts without a re-baseline.
+const bootBaseline = captureRegulatoryBaseline();
 
 // ---------------------------------------------------------------------------
 // CORS
@@ -420,12 +445,15 @@ export default async (req: Request, context: Context) => {
   try {
     // Run the full super-brain pipeline:
     //   - Weaponized brain (MegaBrain + 30+ subsystems)
-    //   - Auto-wired advisor escalation on high-stakes cases
+    //   - Auto-wired Anthropic advisor (falls back to deterministic)
     //   - zk-compliance attestation
     //   - Brain memory store record + cross-case correlation
+    //   - FATF DPMS typology matcher
     //   - Asana dispatch (idempotent; skipped on 'pass' verdicts)
     //   - Brain Power Score
-    const superResult = await runSuperDecision(caseInput);
+    const superResult = await runSuperDecision(caseInput, {
+      advisor: anthropicAdvisor,
+    });
     decision = superResult.decision;
     powerScore = superResult.powerScore;
     if (superResult.asanaDispatch) {
@@ -503,6 +531,11 @@ export default async (req: Request, context: Context) => {
     `[BRAIN-ANALYZE] ${auth.userId} tenant=${request.tenantId} entity=${request.entity.id} verdict=${decision.verdict} confidence=${decision.confidence.toFixed(3)} power=${powerScore?.score ?? "n/a"}/${powerScore?.verdict ?? "?"} humanReview=${decision.requiresHumanReview}`
   );
 
+  // Diff current constants against the boot baseline so the SPA
+  // shows drift immediately even when no one manually ran the
+  // watchdog.
+  const drift = checkRegulatoryDrift(bootBaseline);
+
   return jsonResponse({
     ok: true,
     decision: payload,
@@ -510,6 +543,23 @@ export default async (req: Request, context: Context) => {
     asanaDispatch: asanaDispatchSummary,
     crossCase: crossCaseSummary,
     typologies: typologiesSummary,
+    regulatoryDrift: {
+      clean: drift.clean,
+      versionDrifted: drift.versionDrifted,
+      baselineVersion: drift.baselineVersion,
+      currentVersion: drift.currentVersion,
+      topSeverity: drift.topSeverity,
+      findings: drift.findings.slice(0, 20).map((f) => ({
+        key: f.key,
+        previous: f.previous,
+        current: f.current,
+        delta: f.delta,
+        severity: f.severity,
+        description: f.description,
+        regulatory: f.regulatory,
+      })),
+      summary: drift.summary,
+    },
   });
 };
 

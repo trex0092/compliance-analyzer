@@ -502,9 +502,12 @@
       const typoLabel = body.typologies && body.typologies.matches.length > 0
         ? ` · typo=${body.typologies.matches.length}/${body.typologies.topSeverity}`
         : '';
-      statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel}${crossLabel}${typoLabel} (${durationMs}ms)`;
+      const driftLabel = body.regulatoryDrift && !body.regulatoryDrift.clean
+        ? ` · DRIFT=${body.regulatoryDrift.topSeverity}`
+        : '';
+      statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel}${crossLabel}${typoLabel}${driftLabel} (${durationMs}ms)`;
       statusEl.style.color = '#3DA876';
-      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase, body.typologies);
+      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase, body.typologies, body.regulatoryDrift);
     } catch (err) {
       statusEl.textContent = `✗ network error: ${err.message || err}`;
       statusEl.style.color = '#D94F4F';
@@ -704,7 +707,52 @@
     `;
   }
 
-  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase, typologies) {
+  function renderRegulatoryDriftCard(drift) {
+    if (!drift) return '';
+    if (drift.clean) {
+      return `
+        <div style="${STYLE.cardOk}">
+          <strong style="color:#3DA876;">REGULATORY DRIFT — CLEAN</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">Constants version ${escapeHtml(drift.currentVersion)} matches baseline.</div>
+        </div>
+      `;
+    }
+    const sevColors = {
+      low: '#d4a843',
+      medium: '#E8A030',
+      high: '#E8A030',
+      critical: '#D94F4F',
+      none: '#8b949e',
+    };
+    const color = sevColors[drift.topSeverity] || '#8b949e';
+    const rows = (drift.findings || []).map((f) => {
+      const fc = sevColors[f.severity] || '#8b949e';
+      return `
+        <div style="border:1px solid ${fc}44;border-left:3px solid ${fc};background:#0d1117;border-radius:3px;padding:8px 12px;margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+            <strong style="color:${fc};font-size:11px;font-family:monospace;">${escapeHtml(f.key)}</strong>
+            <span style="font-size:10px;color:#8b949e;">${escapeHtml(f.severity)}</span>
+          </div>
+          <div style="font-size:11px;color:#e6edf3;line-height:1.5;margin-top:4px;">
+            <code style="color:#8b949e;">${escapeHtml(String(f.previous))}</code> → <code style="color:#e6edf3;">${escapeHtml(String(f.current))}</code>
+          </div>
+          <div style="font-size:9px;color:#8b949e;margin-top:3px;font-style:italic;">${escapeHtml(f.regulatory)}</div>
+        </div>
+      `;
+    }).join('');
+    return `
+      <div style="${STYLE.panel}border-left:4px solid ${color};">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+          <div style="font-size:14px;font-weight:700;color:${color};letter-spacing:0.5px;">⚠ REGULATORY DRIFT</div>
+          <div style="font-size:10px;color:#8b949e;">${escapeHtml(drift.baselineVersion)} → ${escapeHtml(drift.currentVersion)} · top ${escapeHtml(drift.topSeverity)}</div>
+        </div>
+        <div style="font-size:11px;color:#cfc7b3;margin-bottom:10px;font-style:italic;">${escapeHtml(drift.summary)}</div>
+        ${rows}
+      </div>
+    `;
+  }
+
+  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase, typologies, regulatoryDrift) {
     const resultEl = document.getElementById('brain-analyze-result');
     if (!resultEl) return;
 
@@ -779,6 +827,7 @@
       </div>
 
       ${renderPowerScoreCard(powerScore)}
+      ${renderRegulatoryDriftCard(regulatoryDrift)}
       ${renderTypologiesCard(typologies)}
       ${renderCrossCaseCard(crossCase)}
       ${renderAsanaDispatchCard(asanaDispatch)}
