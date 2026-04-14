@@ -30,6 +30,7 @@ import { COMPANY_REGISTRY } from '../domain/customers';
 import { dispatchSuperBrainPlan } from './asanaSuperBrainDispatcher';
 import { pickFourEyesFromPersistentPool } from './approverPool';
 import { readAuditLog, recordDispatch } from './dispatchAuditLog';
+import { flushAuditLogToAsana, isAuditMirrorConfigured } from './asanaAuditLogMirror';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -192,6 +193,14 @@ export async function handleCaseSaved(
       lastError: result.ok ? undefined : result.errors.join('; '),
       dispatchCount: state.dispatchCount + 1,
     });
+
+    // FDL Art.24 durable mirror — fire-and-forget. The mirror is
+    // a no-op when ASANA_AUDIT_LOG_PROJECT_GID is unset, so this
+    // never blocks dispatch. Errors are swallowed so a mirror
+    // failure doesn't fail an otherwise-successful dispatch.
+    if (isAuditMirrorConfigured()) {
+      void flushAuditLogToAsana({ limit: 10 }).catch(() => {});
+    }
 
     return result.ok ? { ok: true } : { ok: false, error: result.errors.join('; ') };
   } catch (err) {
