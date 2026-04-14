@@ -41,6 +41,7 @@
  */
 
 import type { Config, Context } from "@netlify/functions";
+import { getStore } from "@netlify/blobs";
 import { checkRateLimit } from "./middleware/rate-limit.mts";
 import { authenticate } from "./middleware/auth.mts";
 import {
@@ -58,6 +59,10 @@ import {
   captureRegulatoryBaseline,
   checkRegulatoryDrift,
 } from "../../src/services/regulatoryDriftWatchdog";
+import {
+  BlobBrainMemoryStore,
+  createNetlifyBlobHandle,
+} from "../../src/services/brainMemoryBlobStore";
 
 // ---------------------------------------------------------------------------
 // Lazy advisor — built once per function instance so we don't
@@ -78,6 +83,57 @@ const anthropicAdvisor = createAnthropicAdvisor({
 // this so an MLRO can see drift immediately after a deploy that
 // bumped constants.ts without a re-baseline.
 const bootBaseline = captureRegulatoryBaseline();
+
+// ---------------------------------------------------------------------------
+// Blob-backed brain memory — singleton per function instance.
+//
+// The store is lazily hydrated per tenantId on first contact so a cold
+// function start does not pay the full tenant history up front for
+// every tenant. Subsequent requests from the same tenant on the same
+// warm instance reuse the in-process cache.
+//
+// Failures are swallowed with a console.warn and the super-runner
+// falls back to cache-only behaviour for the duration of the request.
+// Cross-case correlation on a brand-new instance will be thin until
+// the hydrate completes; this is acceptable because the decision path
+// must never block on storage.
+// ---------------------------------------------------------------------------
+
+const brainMemoryBlob: BlobBrainMemoryStore | null = (() => {
+  try {
+    const store = getStore("brain-memory");
+    const handle = createNetlifyBlobHandle({
+      get: (key, opts) => store.get(key, opts),
+      setJSON: (key, value) => store.setJSON(key, value),
+      delete: (key) => store.delete(key),
+    });
+    return new BlobBrainMemoryStore(handle);
+  } catch (err) {
+    console.warn(
+      "[brain-analyze] Netlify Blob store unavailable; using in-memory fallback:",
+      err instanceof Error ? err.message : String(err)
+    );
+    return null;
+  }
+})();
+
+const hydratedTenants = new Set<string>();
+
+async function ensureTenantHydrated(tenantId: string): Promise<void> {
+  if (!brainMemoryBlob) return;
+  if (hydratedTenants.has(tenantId)) return;
+  try {
+    await brainMemoryBlob.hydrate(tenantId);
+    hydratedTenants.add(tenantId);
+  } catch (err) {
+    console.warn(
+      `[brain-analyze] hydrate failed for tenant ${tenantId}:`,
+      err instanceof Error ? err.message : String(err)
+    );
+    // Mark hydrated anyway so we don't spam retries on every request.
+    hydratedTenants.add(tenantId);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // CORS
@@ -443,16 +499,21 @@ export default async (req: Request, context: Context) => {
     }>;
   } | null = null;
   try {
+    // Lazy hydrate this tenant's blob-backed memory before the
+    // decision so the cross-case correlator sees the full history.
+    await ensureTenantHydrated(request.tenantId);
+
     // Run the full super-brain pipeline:
     //   - Weaponized brain (MegaBrain + 30+ subsystems)
     //   - Auto-wired Anthropic advisor (falls back to deterministic)
     //   - zk-compliance attestation
-    //   - Brain memory store record + cross-case correlation
+    //   - Durable brain memory store record + cross-case correlation
     //   - FATF DPMS typology matcher
     //   - Asana dispatch (idempotent; skipped on 'pass' verdicts)
     //   - Brain Power Score
     const superResult = await runSuperDecision(caseInput, {
       advisor: anthropicAdvisor,
+      memory: brainMemoryBlob ?? undefined,
     });
     decision = superResult.decision;
     powerScore = superResult.powerScore;
