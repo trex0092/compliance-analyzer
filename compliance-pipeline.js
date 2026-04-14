@@ -489,8 +489,8 @@ const CompliancePipeline = (function () {
       '<div class="top-bar" style="margin-bottom:12px">' +
       '<span class="sec-title" style="margin:0;border:none;padding:0">Compliance Export Pipeline</span>' +
       '<div style="display:flex;gap:6px">' +
-      '<button class="btn btn-sm btn-green" onclick="CompliancePipeline.runPipeline()">Run Full Pipeline</button>' +
-      '<button class="btn btn-sm btn-blue" onclick="CompliancePipeline.runPreview()">Preview Analysis</button>' +
+      '<button class="btn btn-sm btn-green" data-action="CompliancePipeline.runPipeline">Run Full Pipeline</button>' +
+      '<button class="btn btn-sm btn-blue" data-action="CompliancePipeline.runPreview">Preview Analysis</button>' +
       '</div></div>' +
 
       '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">' +
@@ -511,7 +511,7 @@ const CompliancePipeline = (function () {
       (history.length > 0 ?
         '<div class="card"><div class="top-bar" style="margin-bottom:8px">' +
         '<span class="sec-title" style="margin:0;border:none;padding:0">Pipeline History</span>' +
-        '<button class="btn btn-sm btn-red" onclick="CompliancePipeline.clearHistory()">Clear</button>' +
+        '<button class="btn btn-sm btn-red" data-action="CompliancePipeline.clearHistory">Clear</button>' +
         '</div>' +
         '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
         '<thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #30363d;color:#8b949e">Date</th>' +

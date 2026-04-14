@@ -8291,6 +8291,130 @@ const UAE_CALENDAR = [
   {title:'Incident & Breach Log Review',category:'review',month:0,day:0,recurring:false,note:'Quarterly'},
   {title:'Gap Register Status Review',category:'review',month:0,day:0,recurring:false,note:'Monthly'},
   {title:'RACI Matrix Annual Review',category:'review',month:3,day:1,recurring:true},
+
+  // ─── Sanctions & TFS (UN, OFAC, EU, UK, UAE EOCN, HMT) ───
+  {title:'UN Security Council Consolidated List Refresh',category:'regulatory',month:0,day:0,recurring:false,note:'Daily — automated TFS engine check'},
+  {title:'OFAC SDN List Refresh',category:'regulatory',month:0,day:0,recurring:false,note:'Daily — Cabinet Res 74/2020'},
+  {title:'EU Consolidated Sanctions List Refresh',category:'regulatory',month:0,day:0,recurring:false,note:'Daily — Council Reg 2580/2001'},
+  {title:'UK HMT OFSI Consolidated List Refresh',category:'regulatory',month:0,day:0,recurring:false,note:'Daily — UK SAMLA 2018'},
+  {title:'UAE EOCN Local Terrorist List Refresh',category:'regulatory',month:0,day:0,recurring:false,note:'Real-time — Cabinet Res 74/2020 Art.4'},
+  {title:'EOCN 24h Asset Freeze Response Window',category:'regulatory',month:0,day:0,recurring:false,note:'Event-driven — Cabinet Res 74/2020 Art.4-7 (24 clock hours, NOT business days)'},
+  {title:'CNMR Filing — 5 Business Day Deadline',category:'regulatory',month:0,day:0,recurring:false,note:'Event-driven — Cabinet Res 74/2020 (post-freeze report to EOCN)'},
+  {title:'TFS False-Positive Audit Review',category:'audit',month:6,day:30,recurring:true,note:'Semi-annual'},
+
+  // ─── goAML Filings (FIU UAE) ───
+  {title:'goAML Portal Account Re-Verification',category:'regulatory',month:0,day:1,recurring:true,note:'Annual'},
+  {title:'STR (Suspicious Transaction Report) — 10 Business Day Filing',category:'regulatory',month:0,day:0,recurring:false,note:'Event-driven — FDL No.10/2025 Art.26-27'},
+  {title:'SAR (Suspicious Activity Report) — 10 Business Day Filing',category:'regulatory',month:0,day:0,recurring:false,note:'Event-driven — FDL No.10/2025 Art.26-27'},
+  {title:'CTR (Cash Transaction Report) — 15 Business Day Filing',category:'regulatory',month:0,day:0,recurring:false,note:'Event-driven — AED 55K threshold (MoE Circular 08/AML/2021)'},
+  {title:'DPMSR (DPMS Report) — Quarterly Filing',category:'regulatory',month:2,day:31,recurring:true,note:'Q1 — MoE Circular 08/AML/2021'},
+  {title:'DPMSR (DPMS Report) — Quarterly Filing',category:'regulatory',month:5,day:30,recurring:true,note:'Q2'},
+  {title:'DPMSR (DPMS Report) — Quarterly Filing',category:'regulatory',month:8,day:30,recurring:true,note:'Q3'},
+  {title:'DPMSR (DPMS Report) — Quarterly Filing',category:'regulatory',month:11,day:31,recurring:true,note:'Q4'},
+  {title:'goAML XML Schema Compatibility Check',category:'regulatory',month:0,day:0,recurring:false,note:'On every FIU schema update'},
+
+  // ─── DPMS-Specific Thresholds & Reports (MoE Circular 08/AML/2021) ───
+  {title:'AED 55,000 DPMS Cash Transaction Threshold Review',category:'review',month:0,day:0,recurring:false,note:'Per-transaction trigger — MoE Circular 08/AML/2021'},
+  {title:'AED 60,000 Cross-Border Cash/BNI Declaration',category:'regulatory',month:0,day:0,recurring:false,note:'Per-transaction trigger — Cabinet Res 134/2025 Art.16'},
+  {title:'DPMS Sector Risk Assessment — Annual',category:'review',month:1,day:31,recurring:true,note:'MoE Circular 08/AML/2021'},
+  {title:'High-Value Goods Transaction Pattern Analysis',category:'review',month:0,day:0,recurring:false,note:'Quarterly'},
+
+  // ─── UBO & Beneficial Ownership (Cabinet Decision 109/2023) ───
+  {title:'UBO Re-Verification Window — 15 Working Days After Change',category:'regulatory',month:0,day:0,recurring:false,note:'Event-driven — Cabinet Decision 109/2023'},
+  {title:'UBO Register Annual Submission to Registrar',category:'regulatory',month:6,day:30,recurring:true},
+  {title:'25%+ Ownership Threshold Audit',category:'audit',month:0,day:0,recurring:false,note:'Quarterly'},
+  {title:'Shell Company / Layering Detection Review',category:'review',month:0,day:0,recurring:false,note:'Quarterly'},
+
+  // ─── Customer Due Diligence (CDD/EDD/SDD) ───
+  {title:'EDD (Enhanced Due Diligence) Review — High-Risk Customers',category:'review',month:0,day:0,recurring:false,note:'Every 3 months — Cabinet Res 134/2025 Art.7-10'},
+  {title:'CDD (Standard Due Diligence) Review',category:'review',month:0,day:0,recurring:false,note:'Every 6 months'},
+  {title:'SDD (Simplified Due Diligence) Review',category:'review',month:0,day:0,recurring:false,note:'Annual'},
+  {title:'Customer Source of Funds Re-Verification',category:'review',month:0,day:0,recurring:false,note:'Annual or on material change'},
+  {title:'Customer Source of Wealth Re-Verification',category:'review',month:0,day:0,recurring:false,note:'Annual for high-risk'},
+  {title:'PEP Status Re-Screening',category:'review',month:0,day:0,recurring:false,note:'Quarterly — Cabinet Res 134/2025 Art.14'},
+
+  // ─── LBMA & Responsible Sourcing of Gold ───
+  {title:'LBMA RGG v9 Annual Compliance Report',category:'audit',month:6,day:30,recurring:true},
+  {title:'LBMA Step 1 — Strong Management Systems Review',category:'audit',month:3,day:1,recurring:true},
+  {title:'LBMA Step 2 — Risk Identification & Assessment',category:'audit',month:3,day:15,recurring:true},
+  {title:'LBMA Step 3 — Risk Management Strategy',category:'audit',month:3,day:30,recurring:true},
+  {title:'LBMA Step 4 — Independent Audit',category:'audit',month:6,day:30,recurring:true},
+  {title:'LBMA Step 5 — Annual Report Publication',category:'audit',month:8,day:31,recurring:true},
+  {title:'CAHRA (Conflict-Affected & High-Risk Areas) Mitigation Review',category:'review',month:0,day:0,recurring:false,note:'Quarterly — OECD Annex II'},
+  {title:'ASM (Artisanal & Small-Scale Mining) Compliance Audit',category:'audit',month:6,day:30,recurring:true},
+  {title:'Refiner Due Diligence Review',category:'review',month:0,day:0,recurring:false,note:'Quarterly — UAE MoE RSG'},
+  {title:'Origin Traceability Records Review',category:'review',month:0,day:0,recurring:false,note:'Per shipment + monthly aggregate'},
+  {title:'Dubai Good Delivery (DGD) Hallmark & Assay Verification',category:'review',month:0,day:0,recurring:false,note:'Per refining batch'},
+
+  // ─── PF / Dual-Use / Strategic Goods (Cabinet Res 156/2025) ───
+  {title:'Proliferation Financing Risk Assessment',category:'review',month:5,day:1,recurring:true,note:'Cabinet Res 156/2025'},
+  {title:'Strategic Goods Screening Review',category:'review',month:0,day:0,recurring:false,note:'Quarterly'},
+  {title:'Dual-Use Goods Export Control Audit',category:'audit',month:9,day:1,recurring:true},
+
+  // ─── Penalties & Enforcement ───
+  {title:'Cabinet Res 71/2024 Penalty Schedule Review',category:'review',month:0,day:1,recurring:true,note:'Annual — AED 10K-100M penalty range'},
+  {title:'Internal Penalty Self-Assessment',category:'review',month:5,day:30,recurring:true},
+
+  // ─── AI Governance & Algorithmic Compliance ───
+  {title:'EU AI Act (Reg 2024/1689) Compliance Self-Audit',category:'audit',month:7,day:31,recurring:true,note:'Annual'},
+  {title:'NIST AI RMF 1.0 Annual Review',category:'review',month:7,day:31,recurring:true},
+  {title:'ISO/IEC 42001:2023 AI Management System Audit',category:'audit',month:9,day:30,recurring:true},
+  {title:'UAE AI Charter Compliance Review',category:'review',month:11,day:1,recurring:true},
+  {title:'AI Decision Provenance Spot-Check',category:'review',month:0,day:0,recurring:false,note:'Monthly'},
+  {title:'AI Output Human Review Log Audit',category:'audit',month:0,day:0,recurring:false,note:'Quarterly — Cabinet Res 134/2025 Art.24'},
+  {title:'AI Model Bias & Fairness Re-Test',category:'review',month:5,day:1,recurring:true},
+
+  // ─── Data Protection (UAE PDPL / GDPR) ───
+  {title:'PDPL (UAE Federal Decree-Law 45/2021) Compliance Audit',category:'audit',month:8,day:31,recurring:true},
+  {title:'Data Subject Access Request (DSAR) Backlog Review',category:'review',month:0,day:0,recurring:false,note:'Monthly'},
+  {title:'Data Breach Response Plan Drill',category:'training',month:5,day:15,recurring:true},
+  {title:'Customer Data Retention Audit (10-Year Rule)',category:'audit',month:11,day:30,recurring:true,note:'FDL No.10/2025 Art.24'},
+
+  // ─── Tax & VAT (UAE FTA) ───
+  {title:'VAT Return Filing — Q1',category:'regulatory',month:3,day:28,recurring:true,note:'UAE FTA'},
+  {title:'VAT Return Filing — Q2',category:'regulatory',month:6,day:28,recurring:true},
+  {title:'VAT Return Filing — Q3',category:'regulatory',month:9,day:28,recurring:true},
+  {title:'VAT Return Filing — Q4',category:'regulatory',month:0,day:28,recurring:true},
+  {title:'Corporate Tax Filing (UAE)',category:'regulatory',month:8,day:30,recurring:true,note:'Annual — within 9 months of fiscal year end'},
+  {title:'Excise Tax Filing — Monthly',category:'regulatory',month:0,day:15,recurring:false,note:'Monthly — UAE FTA'},
+
+  // ─── Operational & Internal Controls ───
+  {title:'Four-Eyes Approval Sample Audit',category:'audit',month:0,day:0,recurring:false,note:'Monthly — Cabinet Res 134/2025 Art.19'},
+  {title:'MLRO Independence Self-Assessment',category:'review',month:5,day:1,recurring:true},
+  {title:'Compliance Officer Change Notification',category:'regulatory',month:0,day:0,recurring:false,note:'Event-driven — Cabinet Res 134/2025 Art.18'},
+  {title:'Internal Whistleblower Channel Test',category:'review',month:5,day:1,recurring:true},
+  {title:'Information Security & Cyber Resilience Drill',category:'training',month:8,day:1,recurring:true},
+  {title:'Business Continuity Plan Test',category:'training',month:9,day:1,recurring:true},
+  {title:'Disaster Recovery Drill',category:'training',month:10,day:1,recurring:true},
+  {title:'Penetration Test (External Vendor)',category:'audit',month:5,day:30,recurring:true},
+  {title:'Red-Team Exercise — Compliance Workflows',category:'audit',month:11,day:1,recurring:true},
+
+  // ─── Regulatory Watch & Horizon Scanning ───
+  {title:'New MoE Circular Impact Assessment — 30-Day Window',category:'regulatory',month:0,day:0,recurring:false,note:'Event-driven — policy update deadline'},
+  {title:'CBUAE Notice & Guidance Review',category:'regulatory',month:0,day:0,recurring:false,note:'Weekly'},
+  {title:'EU AML Package Updates Tracking',category:'regulatory',month:0,day:0,recurring:false,note:'Monthly'},
+  {title:'OECD Common Reporting Standard (CRS) Review',category:'regulatory',month:4,day:30,recurring:true},
+  {title:'FATCA Reporting (US Persons)',category:'regulatory',month:5,day:30,recurring:true},
+
+  // ─── Counterparty & Supplier Management ───
+  {title:'Counterparty Sanctions Re-Screening — All Active',category:'review',month:0,day:0,recurring:false,note:'Monthly'},
+  {title:'Supplier RGG Compliance Re-Verification',category:'review',month:0,day:0,recurring:false,note:'Annual + on material change'},
+  {title:'New Supplier Onboarding KYC',category:'review',month:0,day:0,recurring:false,note:'Per supplier — pre-engagement'},
+  {title:'Counterparty CRA (Counterparty Risk Assessment) Refresh',category:'review',month:0,day:0,recurring:false,note:'Annual'},
+
+  // ─── ESG & Sustainability ───
+  {title:'Annual ESG Disclosure',category:'review',month:2,day:31,recurring:true},
+  {title:'Carbon Footprint Reporting',category:'review',month:5,day:30,recurring:true},
+  {title:'Modern Slavery Statement (UK MSA equivalent)',category:'regulatory',month:8,day:30,recurring:true},
+  {title:'Conflict Minerals Disclosure',category:'regulatory',month:4,day:31,recurring:true,note:'Dodd-Frank Sec.1502'},
+
+  // ─── Board, Governance & Senior Management ───
+  {title:'Board Audit Committee Meeting',category:'review',month:0,day:0,recurring:false,note:'Quarterly'},
+  {title:'Board Risk Committee Meeting',category:'review',month:0,day:0,recurring:false,note:'Quarterly'},
+  {title:'Senior Management AML Effectiveness Review',category:'review',month:5,day:1,recurring:true},
+  {title:'Risk Appetite Statement Annual Review',category:'review',month:1,day:31,recurring:true,note:'Cabinet Res 134/2025 Art.5'},
+  {title:'Compliance Programme Effectiveness Review',category:'review',month:1,day:31,recurring:true,note:'Annual'},
+  {title:'Board Compliance Training (CO duty of care)',category:'training',month:1,day:15,recurring:true,note:'FDL No.10/2025 Art.20-21'},
 ];
 
 function showNewDeadlineForm() { document.getElementById('newDeadlineForm').style.display='block'; }

@@ -143,6 +143,99 @@
   let cronStates = {}; // id → { status, lastResponse, lastCheckedAt }
 
   // ────────────────────────────────────────────────────────────────
+  // Brain token persistence — solves the "HAWKEYE_BRAIN_TOKEN not in
+  // window" NEEDS AUTH error by giving the operator a place to paste
+  // the token, persisting it in localStorage, and injecting it into
+  // window.HAWKEYE_BRAIN_TOKEN on every Brain Console init.
+  // ────────────────────────────────────────────────────────────────
+
+  const TOKEN_STORAGE_KEY = 'fgl_brain_token';
+
+  function loadBrainTokenFromStorage() {
+    try {
+      var stored = localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (stored && stored.length >= 16) {
+        window.HAWKEYE_BRAIN_TOKEN = stored;
+        return stored;
+      }
+    } catch (e) { /* ignore */ }
+    return undefined;
+  }
+
+  function saveBrainToken(token) {
+    try {
+      var clean = (token || '').trim();
+      if (clean.length === 0) {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        delete window.HAWKEYE_BRAIN_TOKEN;
+      } else {
+        if (clean.length < 16) {
+          alert('Brain token looks too short. Expected 32+ hex characters from openssl rand -hex 24.');
+          return false;
+        }
+        localStorage.setItem(TOKEN_STORAGE_KEY, clean);
+        window.HAWKEYE_BRAIN_TOKEN = clean;
+      }
+      return true;
+    } catch (e) {
+      alert('Could not save token: ' + (e && e.message ? e.message : String(e)));
+      return false;
+    }
+  }
+
+  // Expose as global helpers so the data-action delegation can call
+  // them by name from the Settings card.
+  window._brainSaveToken = function () {
+    var input = document.getElementById('brain-token-input');
+    if (!input) return;
+    if (saveBrainToken(input.value)) {
+      input.value = '';
+      renderTokenStatus();
+      // Re-probe the toast stream cron now that auth is configured.
+      var toastCron = CRON_ENDPOINTS.find(function (c) { return c.id === 'toaststream'; });
+      if (toastCron) probeCron(toastCron);
+    }
+  };
+
+  window._brainClearToken = function () {
+    if (!confirm('Clear the saved Brain token? You will need to re-paste it next time.')) return;
+    saveBrainToken('');
+    renderTokenStatus();
+  };
+
+  function renderTokenStatus() {
+    var status = document.getElementById('brain-token-status');
+    if (!status) return;
+    var current = window.HAWKEYE_BRAIN_TOKEN;
+    if (current && typeof current === 'string' && current.length >= 16) {
+      status.innerHTML = '<span style="color:#3DA876;font-weight:700;">✓ TOKEN SET</span> <span style="color:#8b949e;font-size:10px;">(' + current.length + ' chars)</span>';
+    } else {
+      status.innerHTML = '<span style="color:#E8A030;font-weight:700;">⚠ NOT SET</span> <span style="color:#8b949e;font-size:10px;">— paste your HAWKEYE_BRAIN_TOKEN above</span>';
+    }
+  }
+
+  function renderTokenSettings() {
+    return (
+      '<div style="' + STYLE.panel + '">' +
+      '<div style="' + STYLE.label + '">BRAIN TOKEN — REQUIRED FOR AUTHED CRON PROBES</div>' +
+      '<div style="font-size:11px;color:#8b949e;line-height:1.5;margin-top:8px;margin-bottom:10px;">' +
+      'Paste your <code>HAWKEYE_BRAIN_TOKEN</code> here once. It is stored in this browser only ' +
+      '(localStorage), never sent anywhere except as <code>Authorization: Bearer &lt;token&gt;</code> when ' +
+      'probing the toast stream cron. The same token must be set in Netlify env vars for the ' +
+      'server side to accept it.' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;margin-bottom:6px;">' +
+      '<input id="brain-token-input" type="password" placeholder="paste 32+ hex chars from Netlify HAWKEYE_BRAIN_TOKEN here" ' +
+      'style="flex:1;padding:8px 12px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;font-size:12px;font-family:monospace;" />' +
+      '<button class="btn btn-sm btn-green" data-action="_brainSaveToken" style="' + STYLE.btnSecondary + 'background:#0f2a1b;border-color:#3DA876;color:#3DA876;">Save</button>' +
+      '<button class="btn btn-sm btn-red" data-action="_brainClearToken" style="' + STYLE.btnSecondary + 'background:#2a1012;border-color:#D94F4F;color:#D94F4F;">Clear</button>' +
+      '</div>' +
+      '<div id="brain-token-status" style="font-size:11px;"></div>' +
+      '</div>'
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────
   // Cron probe — calls a Netlify function, captures the response
   // ────────────────────────────────────────────────────────────────
 
@@ -329,6 +422,11 @@
     if (initialized) return;
     initialized = true;
 
+    // Pull a previously-saved Brain token from localStorage into
+    // window so authed cron probes (toast stream) can use it without
+    // the operator having to re-paste it on every page load.
+    loadBrainTokenFromStorage();
+
     const container = document.getElementById('tab-brain');
     if (!container) {
       console.warn('[BrainConsole] #tab-brain mount point not found');
@@ -338,6 +436,7 @@
     container.innerHTML = `
       ${renderHeader()}
       ${renderHelp()}
+      ${renderTokenSettings()}
       <div style="${STYLE.panel}">
         <div style="${STYLE.label}">CRON HEALTH</div>
         <div id="brain-cron-list" style="margin-top:10px;"></div>
@@ -352,6 +451,7 @@
       renderCronList();
     });
 
+    renderTokenStatus();
     renderCronList();
 
     // Auto-probe on first open so the user sees something immediately
