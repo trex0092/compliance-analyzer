@@ -193,8 +193,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'TBML-002',
     name: 'Trade-Based ML: Under-Invoicing',
-    description:
-      'Cross-border invoices deflated to move undeclared value via shipped goods.',
+    description: 'Cross-border invoices deflated to move undeclared value via shipped goods.',
     signals: [
       sig.required(sig.crossBorderHeavy(0.4)),
       sig.priorAlerts(2),
@@ -208,8 +207,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'DPMS-001',
     name: 'High-Value Cash Gold Purchase',
-    description:
-      'Customer walks in and buys gold for large cash amounts with minimal KYC history.',
+    description: 'Customer walks in and buys gold for large cash amounts with minimal KYC history.',
     signals: [
       sig.required(sig.cashHeavy(0.7)),
       sig.required(sig.largeTx(100_000)),
@@ -223,13 +221,8 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'DPMS-002',
     name: 'Gold for Cash — Repeated Sub-Threshold',
-    description:
-      'Repeated cash gold purchases each under AED 55K to stay below CTR filing duty.',
-    signals: [
-      sig.required(sig.nearThreshold(4)),
-      sig.cashHeavy(0.6),
-      sig.priorAlerts(1),
-    ],
+    description: 'Repeated cash gold purchases each under AED 55K to stay below CTR filing duty.',
+    signals: [sig.required(sig.nearThreshold(4)), sig.cashHeavy(0.6), sig.priorAlerts(1)],
     threshold: 0.4,
     severity: 'high',
     regulatory: 'MoE Circular 08/AML/2021',
@@ -238,8 +231,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'SANCTIONS-001',
     name: 'Sanctions Proximity Hit',
-    description:
-      'Name or alias proximity to a sanctioned individual / entity.',
+    description: 'Name or alias proximity to a sanctioned individual / entity.',
     signals: [sig.required(sig.sanctionsProximity(0.5))],
     threshold: 0.35,
     severity: 'critical',
@@ -249,8 +241,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'SANCTIONS-002',
     name: 'Confirmed Sanctions Match',
-    description:
-      'High-confidence match to a confirmed sanctioned party.',
+    description: 'High-confidence match to a confirmed sanctioned party.',
     signals: [sig.required(sig.sanctionsProximity(0.9))],
     threshold: 0.6,
     severity: 'critical',
@@ -260,8 +251,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'PEP-001',
     name: 'PEP Onboarding Without EDD',
-    description:
-      'PEP detected but Enhanced Due Diligence not yet completed.',
+    description: 'PEP detected but Enhanced Due Diligence not yet completed.',
     signals: [sig.required(sig.pep()), sig.newRelationship(90)],
     threshold: 0.35,
     severity: 'high',
@@ -271,8 +261,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'PEP-002',
     name: 'PEP + Cash-Heavy Transactions',
-    description:
-      'PEP customer with disproportionate cash activity for their profile.',
+    description: 'PEP customer with disproportionate cash activity for their profile.',
     signals: [sig.required(sig.pep()), sig.required(sig.cashHeavy(0.5))],
     threshold: 0.4,
     severity: 'high',
@@ -282,8 +271,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'SHELL-001',
     name: 'Shell-Company Layering',
-    description:
-      'Multiple entities sharing the same UBO used to layer funds across jurisdictions.',
+    description: 'Multiple entities sharing the same UBO used to layer funds across jurisdictions.',
     signals: [
       sig.required(sig.crossBorderHeavy(0.5)),
       sig.newRelationship(60),
@@ -297,8 +285,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'CORRIDOR-001',
     name: 'High-Risk Corridor Burst',
-    description:
-      'Sudden spike in transactions to / from a FATF-listed high-risk jurisdiction.',
+    description: 'Sudden spike in transactions to / from a FATF-listed high-risk jurisdiction.',
     signals: [
       sig.required(sig.highRiskJurisdiction()),
       sig.required(sig.crossBorderHeavy(0.6)),
@@ -312,12 +299,8 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'NEW-REL-001',
     name: 'New Relationship — Large First Trade',
-    description:
-      'First-trade amount materially above the profile expected at onboarding.',
-    signals: [
-      sig.required(sig.newRelationship(14)),
-      sig.required(sig.largeTx(200_000)),
-    ],
+    description: 'First-trade amount materially above the profile expected at onboarding.',
+    signals: [sig.required(sig.newRelationship(14)), sig.required(sig.largeTx(200_000))],
     threshold: 0.35,
     severity: 'medium',
     regulatory: 'Cabinet Res 134/2025 Art.7-10 (CDD)',
@@ -326,12 +309,8 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'ADVERSE-001',
     name: 'Adverse Media + Cash',
-    description:
-      'Negative news about the customer combined with cash-heavy activity.',
-    signals: [
-      sig.required(sig.adverseMedia()),
-      sig.required(sig.cashHeavy(0.4)),
-    ],
+    description: 'Negative news about the customer combined with cash-heavy activity.',
+    signals: [sig.required(sig.adverseMedia()), sig.required(sig.cashHeavy(0.4))],
     threshold: 0.4,
     severity: 'high',
     regulatory: 'FATF Rec.10; Cabinet Res 134/2025 Art.14',
@@ -340,8 +319,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'ADVERSE-002',
     name: 'Adverse Media + PEP',
-    description:
-      'Negative news about a politically exposed person.',
+    description: 'Negative news about a politically exposed person.',
     signals: [sig.required(sig.adverseMedia()), sig.required(sig.pep())],
     threshold: 0.4,
     severity: 'critical',
@@ -351,8 +329,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'REPEAT-ALERT-001',
     name: 'Repeat Alert — Same Customer',
-    description:
-      'Customer has triggered multiple alerts in the past 90 days.',
+    description: 'Customer has triggered multiple alerts in the past 90 days.',
     signals: [sig.required(sig.priorAlerts(3))],
     threshold: 0.3,
     severity: 'medium',
@@ -373,12 +350,8 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'LARGE-CASH-001',
     name: 'Single Large Cash Transaction',
-    description:
-      'Single cash transaction above AED 55K reporting threshold.',
-    signals: [
-      sig.required(sig.cashHeavy(0.5)),
-      sig.required(sig.largeTx(55_000)),
-    ],
+    description: 'Single cash transaction above AED 55K reporting threshold.',
+    signals: [sig.required(sig.cashHeavy(0.5)), sig.required(sig.largeTx(55_000))],
     threshold: 0.3,
     severity: 'medium',
     regulatory: 'FDL Art.16; MoE Circular 08/AML/2021',
@@ -402,12 +375,8 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'LAYER-001',
     name: 'Layering via Multiple Small Cross-Border Transfers',
-    description:
-      'Many small cross-border transfers breaking up a larger sum.',
-    signals: [
-      sig.required(sig.crossBorderHeavy(0.5)),
-      sig.required(sig.nearThreshold(3)),
-    ],
+    description: 'Many small cross-border transfers breaking up a larger sum.',
+    signals: [sig.required(sig.crossBorderHeavy(0.5)), sig.required(sig.nearThreshold(3))],
     threshold: 0.4,
     severity: 'high',
     regulatory: 'FATF Best Practices on Layering',
@@ -418,10 +387,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
     name: 'Integration — Gold → Cash',
     description:
       'Gold sale with proceeds taken in cash, converting placed funds back to usable currency.',
-    signals: [
-      sig.required(sig.cashHeavy(0.7)),
-      sig.required(sig.largeTx(100_000)),
-    ],
+    signals: [sig.required(sig.cashHeavy(0.7)), sig.required(sig.largeTx(100_000))],
     threshold: 0.4,
     severity: 'high',
     regulatory: 'FATF Three-Stage ML Model; MoE Circular 08/AML/2021',
@@ -430,12 +396,8 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'PLACEMENT-001',
     name: 'Placement — Unusual Cash Deposits',
-    description:
-      'Abrupt increase in cash activity for an otherwise cashless customer.',
-    signals: [
-      sig.required(sig.cashHeavy(0.5)),
-      sig.required(sig.priorAlerts(1)),
-    ],
+    description: 'Abrupt increase in cash activity for an otherwise cashless customer.',
+    signals: [sig.required(sig.cashHeavy(0.5)), sig.required(sig.priorAlerts(1))],
     threshold: 0.35,
     severity: 'medium',
     regulatory: 'FATF Three-Stage ML Model',
@@ -444,8 +406,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'DORMANT-001',
     name: 'Dormancy Reactivation',
-    description:
-      'Long-dormant account reactivated with sudden large activity.',
+    description: 'Long-dormant account reactivated with sudden large activity.',
     signals: [sig.required(sig.priorAlerts(1)), sig.largeTx(200_000)],
     threshold: 0.3,
     severity: 'medium',
@@ -455,8 +416,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'CASH-INTENSIVE-001',
     name: 'Cash-Intensive Business — Unexplained Growth',
-    description:
-      'Cash-intensive customer whose turnover grows beyond declared profile.',
+    description: 'Cash-intensive customer whose turnover grows beyond declared profile.',
     signals: [
       sig.required(sig.cashHeavy(0.6)),
       sig.required(sig.largeTx(100_000)),
@@ -472,10 +432,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
     name: 'Cross-Border BNI Above AED 60K',
     description:
       'Cross-border bearer negotiable instrument above the AED 60K declaration threshold.',
-    signals: [
-      sig.required(sig.crossBorderHeavy(0.4)),
-      sig.required(sig.largeTx(60_000)),
-    ],
+    signals: [sig.required(sig.crossBorderHeavy(0.4)), sig.required(sig.largeTx(60_000))],
     threshold: 0.3,
     severity: 'high',
     regulatory: 'FDL Art.17',
@@ -484,12 +441,8 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
   {
     id: 'SMURFING-CASH-001',
     name: 'Smurfing via Multiple Sub-Threshold Cash Drops',
-    description:
-      'Several cash deposits just below threshold within a short window.',
-    signals: [
-      sig.required(sig.nearThreshold(5)),
-      sig.required(sig.cashHeavy(0.7)),
-    ],
+    description: 'Several cash deposits just below threshold within a short window.',
+    signals: [sig.required(sig.nearThreshold(5)), sig.required(sig.cashHeavy(0.7))],
     threshold: 0.45,
     severity: 'high',
     regulatory: 'FATF Best Practices on Structuring',

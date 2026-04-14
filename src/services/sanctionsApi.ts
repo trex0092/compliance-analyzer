@@ -359,9 +359,7 @@ export function parseUKOfsiCsv(csv: string): SanctionsEntry[] {
   const col = (name: string): number =>
     header.findIndex((h) => h.toLowerCase() === name.toLowerCase());
 
-  const nameCols = [1, 2, 3, 4, 5, 6]
-    .map((i) => col(`Name ${i}`))
-    .filter((i) => i >= 0);
+  const nameCols = [1, 2, 3, 4, 5, 6].map((i) => col(`Name ${i}`)).filter((i) => i >= 0);
   const groupIdCol = col('Group ID');
   const groupTypeCol = col('Group Type');
   const aliasTypeCol = col('Alias Type');
@@ -407,12 +405,9 @@ export function parseUKOfsiCsv(csv: string): SanctionsEntry[] {
         aliases: new Set<string>(),
         type,
         regime: regimeCol >= 0 ? (row[regimeCol] || '').trim() || undefined : undefined,
-        listedOn:
-          listedOnCol >= 0 ? (row[listedOnCol] || '').trim() || undefined : undefined,
+        listedOn: listedOnCol >= 0 ? (row[listedOnCol] || '').trim() || undefined : undefined,
         nationality:
-          nationalityCol >= 0
-            ? (row[nationalityCol] || '').trim() || undefined
-            : undefined,
+          nationalityCol >= 0 ? (row[nationalityCol] || '').trim() || undefined : undefined,
       });
     } else {
       // Any non-primary row becomes an alias.
@@ -469,9 +464,7 @@ let uaeSanctionsCache: readonly SanctionsEntry[] | null = null;
  * caching so a malformed feed can't poison later screening runs.
  */
 export function seedUaeSanctionsList(
-  entries: ReadonlyArray<
-    Partial<SanctionsEntry> & Pick<SanctionsEntry, 'name' | 'type'>
-  >
+  entries: ReadonlyArray<Partial<SanctionsEntry> & Pick<SanctionsEntry, 'name' | 'type'>>
 ): number {
   const normalised: SanctionsEntry[] = [];
   for (const e of entries) {

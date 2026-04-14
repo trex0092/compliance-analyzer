@@ -59,24 +59,11 @@ import {
   type AsanaOrchestratorDispatchResult,
   type BrainVerdictLike,
 } from './asana/orchestrator';
-import {
-  brainMemory,
-  recordAndCorrelate,
-  type MemoryStore,
-} from './brainMemoryStore';
+import { brainMemory, recordAndCorrelate, type MemoryStore } from './brainMemoryStore';
 import type { CorrelationReport } from './crossCasePatternCorrelator';
-import {
-  matchFatfTypologies,
-  type TypologyReport,
-} from './fatfTypologyMatcher';
-import {
-  analyseBehaviouralVelocity,
-  type VelocityReport,
-} from './behaviouralVelocityDetector';
-import {
-  runBrainEnsemble,
-  type EnsembleReport,
-} from './brainConsensusEnsemble';
+import { matchFatfTypologies, type TypologyReport } from './fatfTypologyMatcher';
+import { analyseBehaviouralVelocity, type VelocityReport } from './behaviouralVelocityDetector';
+import { runBrainEnsemble, type EnsembleReport } from './brainConsensusEnsemble';
 import {
   emptyDigest,
   updateDigest,
@@ -84,14 +71,8 @@ import {
   type BrainMemoryDigest,
   type PrecedentReport,
 } from './brainMemoryDigest';
-import {
-  augmentChainWithPrecedents,
-  type AugmentChainResult,
-} from './reasoningChainAugmenter';
-import {
-  DecisionFingerprintCache,
-  computeFingerprint,
-} from './decisionFingerprintCache';
+import { augmentChainWithPrecedents, type AugmentChainResult } from './reasoningChainAugmenter';
+import { DecisionFingerprintCache, computeFingerprint } from './decisionFingerprintCache';
 
 // ---------------------------------------------------------------------------
 // Brain Power Score
@@ -167,9 +148,7 @@ export function computeBrainPowerScore(decision: ComplianceDecision): BrainPower
   }
 
   const clampsFired = Array.isArray(raw.clampReasons) ? raw.clampReasons.length : 0;
-  const subsystemsFailed = Array.isArray(raw.subsystemFailures)
-    ? raw.subsystemFailures.length
-    : 0;
+  const subsystemsFailed = Array.isArray(raw.subsystemFailures) ? raw.subsystemFailures.length : 0;
   const advisorInvoked = raw.advisorResult !== null;
   const attestationSealed = decision.attestation !== undefined;
   const confidence = Math.max(0, Math.min(1, decision.confidence));
@@ -187,7 +166,13 @@ export function computeBrainPowerScore(decision: ComplianceDecision): BrainPower
     0,
     Math.min(
       100,
-      megaCoverage + extensions25 + confidence10 + advisor10 + attestation10 + clamps5 + noFailureBonus
+      megaCoverage +
+        extensions25 +
+        confidence10 +
+        advisor10 +
+        attestation10 +
+        clamps5 +
+        noFailureBonus
     )
   );
 
@@ -236,7 +221,9 @@ function isEmptyObject(v: unknown): boolean {
  */
 export function deterministicAdvisor(input: AdvisorEscalationInput): AdvisorEscalationResult {
   const lines: string[] = [];
-  lines.push(`Advisor reviewed verdict="${input.verdict}" confidence=${input.confidence.toFixed(2)}.`);
+  lines.push(
+    `Advisor reviewed verdict="${input.verdict}" confidence=${input.confidence.toFixed(2)}.`
+  );
 
   if (input.verdict === 'freeze') {
     lines.push('1. Execute 24h EOCN freeze protocol (Cabinet Res 74/2020 Art.4).');
@@ -256,7 +243,9 @@ export function deterministicAdvisor(input: AdvisorEscalationInput): AdvisorEsca
   }
 
   if (input.clampReasons.length > 0) {
-    lines.push(`Note: ${input.clampReasons.length} safety clamp(s) fired — review each before closing the case.`);
+    lines.push(
+      `Note: ${input.clampReasons.length} safety clamp(s) fired — review each before closing the case.`
+    );
   }
 
   return {
@@ -459,7 +448,9 @@ export async function runSuperDecision(
 
   const advisor: AdvisorEscalationFn | undefined =
     input.advisor ??
-    (shouldInvokeAdvisor(input) ? opts.advisor ?? (async (i) => deterministicAdvisor(i)) : undefined);
+    (shouldInvokeAdvisor(input)
+      ? (opts.advisor ?? (async (i) => deterministicAdvisor(i)))
+      : undefined);
 
   const caseInput: ComplianceCaseInput = {
     ...input,
@@ -469,8 +460,7 @@ export async function runSuperDecision(
   // Retrieve precedents BEFORE the decision so the reasoning
   // chain (future commit) can inject them into the brain's
   // narrative. Right now we just surface them in the response.
-  const precedentDigest =
-    opts.digest ?? emptyDigest(input.tenantId);
+  const precedentDigest = opts.digest ?? emptyDigest(input.tenantId);
   const precedents = retrievePrecedents(precedentDigest, {
     caseId: `${input.tenantId}:${input.entity.id}`,
     features: input.entity.features,
@@ -533,8 +523,7 @@ export async function runSuperDecision(
       asanaDispatch = {
         idempotencyKey: `${decision.tenantId}:${decision.id}`,
         created: false,
-        skippedReason:
-          err instanceof Error ? `asana_error:${err.message}` : 'asana_error:unknown',
+        skippedReason: err instanceof Error ? `asana_error:${err.message}` : 'asana_error:unknown',
       };
     }
   }

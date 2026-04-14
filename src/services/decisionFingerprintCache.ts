@@ -141,9 +141,7 @@ export function canonicalizeFingerprintInput(input: FingerprintInput): string {
  * Uses Web Crypto (available in Netlify Functions, browsers, and
  * Node 18+). No Node-specific imports — browser-safe.
  */
-export async function computeFingerprint(
-  input: FingerprintInput
-): Promise<string> {
+export async function computeFingerprint(input: FingerprintInput): Promise<string> {
   const canonical = canonicalizeFingerprintInput(input);
   const bytes = new TextEncoder().encode(canonical);
   const g = globalThis as {

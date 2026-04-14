@@ -343,9 +343,7 @@ export function retrievePrecedents(
   });
 
   const matches = scored.slice(0, topK);
-  const hasCriticalPrecedent = matches.some(
-    (m) => m.entry.severity === 'critical'
-  );
+  const hasCriticalPrecedent = matches.some((m) => m.entry.severity === 'critical');
 
   const summary =
     matches.length === 0

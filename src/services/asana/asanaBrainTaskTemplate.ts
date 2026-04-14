@@ -150,10 +150,7 @@ function hasStagedFiling(input: TemplateInput): boolean {
   // decisionTypes explicitly.
   const f = input.decision.fourEyes;
   if (!f) return false;
-  return (
-    f.decisionType === 'str_filing' ||
-    f.decisionType === 'high_value_transaction'
-  );
+  return f.decisionType === 'str_filing' || f.decisionType === 'high_value_transaction';
 }
 
 /**
@@ -193,8 +190,7 @@ export function routeToProject(input: TemplateInput): {
   ) {
     return {
       projectEnvKey: 'ASANA_PROJECT_AI_GOVERNANCE_WATCHDOG',
-      routingReason:
-        'critical regulatory drift → AI Governance Watchdog (NIST AI RMF MANAGE-2)',
+      routingReason: 'critical regulatory drift → AI Governance Watchdog (NIST AI RMF MANAGE-2)',
     };
   }
 
@@ -211,8 +207,7 @@ export function routeToProject(input: TemplateInput): {
   if (v === 'escalate') {
     return {
       projectEnvKey: 'ASANA_PROJECT_KYC_CDD_TRACKER',
-      routingReason:
-        'verdict=escalate → KYC/CDD Tracker (Cabinet Res 134/2025 Art.14 — EDD)',
+      routingReason: 'verdict=escalate → KYC/CDD Tracker (Cabinet Res 134/2025 Art.14 — EDD)',
     };
   }
 
@@ -220,8 +215,7 @@ export function routeToProject(input: TemplateInput): {
   if (v === 'flag' && hasSanctionsTypology(input)) {
     return {
       projectEnvKey: 'ASANA_PROJECT_SCREENINGS_TFS_DAILY_LOG',
-      routingReason:
-        'verdict=flag + SANCTIONS-* typology → Screenings TFS Daily Log (FDL Art.35)',
+      routingReason: 'verdict=flag + SANCTIONS-* typology → Screenings TFS Daily Log (FDL Art.35)',
     };
   }
 
@@ -277,7 +271,8 @@ function fmtPct(n: number): string {
 }
 
 function buildBody(input: TemplateInput): string {
-  const { decision, powerScore, typologies, crossCase, ensemble, velocity, regulatoryDrift } = input;
+  const { decision, powerScore, typologies, crossCase, ensemble, velocity, regulatoryDrift } =
+    input;
   const lines: string[] = [];
 
   lines.push('# Brain Decision');
@@ -356,8 +351,7 @@ function buildBody(input: TemplateInput): string {
   if (regulatoryDrift && !regulatoryDrift.clean) {
     lines.push('## ⚠ Regulatory Drift');
     lines.push(`- top severity: **${regulatoryDrift.topSeverity}**`);
-    if (regulatoryDrift.versionDrifted)
-      lines.push('- REGULATORY_CONSTANTS_VERSION drifted');
+    if (regulatoryDrift.versionDrifted) lines.push('- REGULATORY_CONSTANTS_VERSION drifted');
     if (regulatoryDrift.findings) {
       for (const f of regulatoryDrift.findings.slice(0, 5)) {
         lines.push(`- ${f.key} — ${f.severity}`);
@@ -431,9 +425,7 @@ function buildTags(input: TemplateInput): string[] {
 // Main entry point
 // ---------------------------------------------------------------------------
 
-export function buildAsanaTaskFromBrainResponse(
-  input: TemplateInput
-): AsanaBrainTaskTemplate {
+export function buildAsanaTaskFromBrainResponse(input: TemplateInput): AsanaBrainTaskTemplate {
   const route = routeToProject(input);
   return {
     name: buildTitle(input.decision),

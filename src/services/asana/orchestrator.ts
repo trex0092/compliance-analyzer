@@ -189,16 +189,17 @@ export class AsanaOrchestrator {
   private lastDispatchAt: string | null = null;
   private lastDispatchResult: AsanaOrchestratorDispatchResult | null = null;
 
-  constructor(opts: {
-    idempotencyStore?: IdempotencyStore;
-    dispatchAdapter?: DispatchAdapter;
-    templateDispatchAdapter?: TemplateDispatchAdapter;
-    skillRegistry?: SkillRunnerRegistry;
-  } = {}) {
+  constructor(
+    opts: {
+      idempotencyStore?: IdempotencyStore;
+      dispatchAdapter?: DispatchAdapter;
+      templateDispatchAdapter?: TemplateDispatchAdapter;
+      skillRegistry?: SkillRunnerRegistry;
+    } = {}
+  ) {
     this.store = opts.idempotencyStore ?? new InMemoryIdempotencyStore();
     this.dispatch = opts.dispatchAdapter ?? DEFAULT_DISPATCH_ADAPTER;
-    this.templateDispatch =
-      opts.templateDispatchAdapter ?? DEFAULT_TEMPLATE_DISPATCH_ADAPTER;
+    this.templateDispatch = opts.templateDispatchAdapter ?? DEFAULT_TEMPLATE_DISPATCH_ADAPTER;
     this.skillRegistry = opts.skillRegistry ?? defaultSkillRegistry;
   }
 
@@ -225,9 +226,7 @@ export class AsanaOrchestrator {
    * function twice with the same verdict id returns the SAME task gid
    * without creating a duplicate task.
    */
-  async dispatchBrainVerdict(
-    verdict: BrainVerdictLike
-  ): Promise<AsanaOrchestratorDispatchResult> {
+  async dispatchBrainVerdict(verdict: BrainVerdictLike): Promise<AsanaOrchestratorDispatchResult> {
     const key = makeIdempotencyKey(verdict);
 
     // Idempotent replay — return the existing task gid.
@@ -395,9 +394,7 @@ export class AsanaOrchestrator {
       skillsByCategory[s.category] += 1;
     }
     return {
-      asanaConfigured: typeof process !== 'undefined'
-        ? Boolean(process.env?.ASANA_TOKEN)
-        : false,
+      asanaConfigured: typeof process !== 'undefined' ? Boolean(process.env?.ASANA_TOKEN) : false,
       skillCount: SKILL_CATALOGUE.length,
       skillCatalogue: SKILL_CATALOGUE,
       skillsByCategory,

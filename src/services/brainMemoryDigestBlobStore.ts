@@ -38,10 +38,7 @@
  *   Cabinet Res 134/2025 Art.19 (internal review visibility)
  */
 
-import {
-  emptyDigest,
-  type BrainMemoryDigest,
-} from './brainMemoryDigest';
+import { emptyDigest, type BrainMemoryDigest } from './brainMemoryDigest';
 import type { BlobHandle } from './brainMemoryBlobStore';
 
 // ---------------------------------------------------------------------------
@@ -80,10 +77,7 @@ export class BrainMemoryDigestBlobStore {
   private readonly cache = new Map<string, BrainMemoryDigest>();
   private readonly pendingWrites = new Set<Promise<unknown>>();
 
-  constructor(
-    blob: BlobHandle,
-    opts: BrainMemoryDigestStoreOptions = {}
-  ) {
+  constructor(blob: BlobHandle, opts: BrainMemoryDigestStoreOptions = {}) {
     this.blob = blob;
     this.enableCache = opts.enableCache ?? true;
   }
@@ -105,9 +99,7 @@ export class BrainMemoryDigestBlobStore {
       if (cached) return cached;
     }
     try {
-      const stored = await this.blob.getJSON<BrainMemoryDigest>(
-        digestKey(tenantId)
-      );
+      const stored = await this.blob.getJSON<BrainMemoryDigest>(digestKey(tenantId));
       if (stored && typeof stored === 'object' && stored.tenantId === tenantId) {
         if (this.enableCache) this.cache.set(tenantId, stored);
         return stored;

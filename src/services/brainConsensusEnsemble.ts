@@ -38,10 +38,7 @@
  */
 
 import type { StrFeatures } from './predictiveStr';
-import {
-  matchFatfTypologies,
-  type TypologyReport,
-} from './fatfTypologyMatcher';
+import { matchFatfTypologies, type TypologyReport } from './fatfTypologyMatcher';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,32 +115,18 @@ function perturbNumeric(
   return Math.min(max, Math.max(min, next));
 }
 
-function perturbFeatures(
-  base: StrFeatures,
-  rng: () => number,
-  amount: number
-): StrFeatures {
+function perturbFeatures(base: StrFeatures, rng: () => number, amount: number): StrFeatures {
   return {
     priorAlerts90d: Math.round(perturbNumeric(base.priorAlerts90d, rng, amount)),
     txValue30dAED: perturbNumeric(base.txValue30dAED, rng, amount),
-    nearThresholdCount30d: Math.round(
-      perturbNumeric(base.nearThresholdCount30d, rng, amount)
-    ),
+    nearThresholdCount30d: Math.round(perturbNumeric(base.nearThresholdCount30d, rng, amount)),
     crossBorderRatio30d: perturbNumeric(base.crossBorderRatio30d, rng, amount, 0, 1),
     // Booleans stay fixed — they are not noisy inputs.
     isPep: base.isPep,
     highRiskJurisdiction: base.highRiskJurisdiction,
     hasAdverseMedia: base.hasAdverseMedia,
-    daysSinceOnboarding: Math.round(
-      perturbNumeric(base.daysSinceOnboarding, rng, amount)
-    ),
-    sanctionsMatchScore: perturbNumeric(
-      base.sanctionsMatchScore,
-      rng,
-      amount,
-      0,
-      1
-    ),
+    daysSinceOnboarding: Math.round(perturbNumeric(base.daysSinceOnboarding, rng, amount)),
+    sanctionsMatchScore: perturbNumeric(base.sanctionsMatchScore, rng, amount, 0, 1),
     cashRatio30d: perturbNumeric(base.cashRatio30d, rng, amount, 0, 1),
   };
 }
@@ -157,10 +140,7 @@ const DEFAULT_PERTURBATION = 0.1;
 const DEFAULT_SEED = 42;
 const STABILITY_THRESHOLD = 0.8;
 
-export function runBrainEnsemble(
-  base: StrFeatures,
-  cfg: EnsembleConfig = {}
-): EnsembleReport {
+export function runBrainEnsemble(base: StrFeatures, cfg: EnsembleConfig = {}): EnsembleReport {
   const runs = Math.max(1, cfg.runs ?? DEFAULT_RUNS);
   const perturbation = Math.max(0, cfg.perturbation ?? DEFAULT_PERTURBATION);
   const seed = cfg.seed ?? DEFAULT_SEED;
@@ -207,10 +187,7 @@ export function runBrainEnsemble(
   // Majority voting on severity.
   const severityCounts = new Map<string, number>();
   for (const v of votes) {
-    severityCounts.set(
-      v.topSeverity,
-      (severityCounts.get(v.topSeverity) ?? 0) + 1
-    );
+    severityCounts.set(v.topSeverity, (severityCounts.get(v.topSeverity) ?? 0) + 1);
   }
   let majoritySeverity: TypologyReport['topSeverity'] = 'none';
   let topSeverityCount = 0;

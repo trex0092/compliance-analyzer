@@ -156,9 +156,7 @@ export function snapshotFromDecision(
     ...(extras.corridorCountry ? { corridorCountry: extras.corridorCountry } : {}),
     ...(extras.maxTxAED !== undefined ? { maxTxAED: extras.maxTxAED } : {}),
     ...(extras.narrativeHash ? { narrativeHash: extras.narrativeHash } : {}),
-    ...(extras.sanctionsMatchKeys
-      ? { sanctionsMatchKeys: extras.sanctionsMatchKeys }
-      : {}),
+    ...(extras.sanctionsMatchKeys ? { sanctionsMatchKeys: extras.sanctionsMatchKeys } : {}),
   };
 }
 

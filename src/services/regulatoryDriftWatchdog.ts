@@ -230,9 +230,7 @@ export function checkRegulatoryDrift(baseline: RegulatoryBaseline): DriftReport 
     }
     if (previous !== c.current) {
       const delta =
-        typeof previous === 'number' && typeof c.current === 'number'
-          ? c.current - previous
-          : null;
+        typeof previous === 'number' && typeof c.current === 'number' ? c.current - previous : null;
       findings.push({
         key: c.key,
         previous,
@@ -266,9 +264,7 @@ export function checkRegulatoryDrift(baseline: RegulatoryBaseline): DriftReport 
     });
   }
 
-  findings.sort(
-    (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity]
-  );
+  findings.sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity]);
 
   let topSeverity: DriftReport['topSeverity'] = 'none';
   let topRank = 0;

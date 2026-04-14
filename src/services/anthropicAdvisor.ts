@@ -127,12 +127,8 @@ async function callProxy(
   };
   if (bearer) headers['Authorization'] = `Bearer ${bearer}`;
 
-  const controller =
-    typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timer =
-    controller !== null
-      ? setTimeout(() => controller.abort(), timeoutMs)
-      : null;
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller !== null ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
   try {
     const res = await fetchImpl(proxyUrl, {
@@ -177,16 +173,15 @@ function extractText(payload: AnthropicResponseShape): string {
  * advisor when the proxy is unreachable, the request times out,
  * or the response fails the FDL Art.29 linter.
  */
-export function createAnthropicAdvisor(
-  opts: AnthropicAdvisorOptions = {}
-): AdvisorEscalationFn {
+export function createAnthropicAdvisor(opts: AnthropicAdvisorOptions = {}): AdvisorEscalationFn {
   const proxyUrl = opts.proxyUrl ?? '/api/ai-proxy';
   const executor = opts.executor ?? EXECUTOR_SONNET;
   const advisor = opts.advisor ?? ADVISOR_OPUS;
   const timeoutMs = opts.timeoutMs ?? 15_000;
   const warnOnFallback = opts.warnOnFallback ?? true;
   const fetchImpl =
-    opts.fetchImpl ?? (typeof globalThis.fetch === 'function' ? globalThis.fetch.bind(globalThis) : null);
+    opts.fetchImpl ??
+    (typeof globalThis.fetch === 'function' ? globalThis.fetch.bind(globalThis) : null);
 
   if (!fetchImpl) {
     // Environments without a fetch at all (very old Node) — always
@@ -219,13 +214,7 @@ export function createAnthropicAdvisor(
     };
 
     try {
-      return await callProxy(
-        proxyUrl,
-        opts.bearerToken,
-        body,
-        timeoutMs,
-        fetchImpl
-      );
+      return await callProxy(proxyUrl, opts.bearerToken, body, timeoutMs, fetchImpl);
     } catch (err) {
       if (warnOnFallback) {
         console.warn(

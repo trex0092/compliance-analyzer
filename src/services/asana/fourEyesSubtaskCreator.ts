@@ -117,11 +117,8 @@ export function buildFourEyesSubtaskBody(input: FourEyesSubtaskInput): string {
   return lines.join('\n');
 }
 
-export function buildFourEyesSubtaskTitle(
-  input: FourEyesSubtaskInput
-): string {
-  const emoji =
-    input.decisionType === 'sanctions_freeze' ? '🚨' : '⚠';
+export function buildFourEyesSubtaskTitle(input: FourEyesSubtaskInput): string {
+  const emoji = input.decisionType === 'sanctions_freeze' ? '🚨' : '⚠';
   const missing = input.requiredCount - input.approvalCount;
   const title = `${emoji} Four-Eyes Gate · ${input.decisionType} · ${missing} approval(s) missing`;
   return title.length <= 256 ? title : title.slice(0, 255) + '…';
