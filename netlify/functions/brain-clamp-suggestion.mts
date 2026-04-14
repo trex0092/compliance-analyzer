@@ -31,6 +31,8 @@ import {
 } from '../../src/services/clampSuggestionLog';
 import { ClampSuggestionBlobStore } from '../../src/services/tierCBlobStores';
 import { createNetlifyBlobHandle } from '../../src/services/brainMemoryBlobStore';
+import { createTierCAsanaDispatcher } from '../../src/services/asana/tierCAsanaDispatch';
+import { orchestrator as defaultOrchestrator } from '../../src/services/asana/orchestrator';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':
@@ -189,6 +191,20 @@ export default async (req: Request, context: Context) => {
     }
     store.append(suggestion);
     await store.flush();
+    // Fire-and-forget dispatch to Asana so MLROs see the pending
+    // suggestion without opening a separate dashboard. Dispatch
+    // failures never roll back — the blob store is the source of
+    // truth and the Asana task is a mirror.
+    try {
+      const dispatcher = createTierCAsanaDispatcher(defaultOrchestrator);
+      const tenantId = (body as { tenantId?: string }).tenantId ?? 'default';
+      await dispatcher.dispatchClampSuggestion(suggestion, tenantId);
+    } catch (err) {
+      console.warn(
+        '[BRAIN-CLAMP-SUGGESTION] asana dispatch failed:',
+        err instanceof Error ? err.message : String(err)
+      );
+    }
     return jsonResponse({ ok: true, suggestion });
   }
 

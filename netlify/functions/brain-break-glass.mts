@@ -27,6 +27,8 @@ import { authenticate } from './middleware/auth.mts';
 import { BreakGlassStore, type OverrideVerdict } from '../../src/services/breakGlassOverride';
 import { BreakGlassBlobStore } from '../../src/services/tierCBlobStores';
 import { createNetlifyBlobHandle } from '../../src/services/brainMemoryBlobStore';
+import { createTierCAsanaDispatcher } from '../../src/services/asana/tierCAsanaDispatch';
+import { orchestrator as defaultOrchestrator } from '../../src/services/asana/orchestrator';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':
@@ -197,6 +199,22 @@ export default async (req: Request, context: Context) => {
 
   if (v.action === 'approve') {
     const res = await blobStore.approve(v.tenantId, v.id, v.approverId);
+    // On successful approval, fire-and-forget dispatch to Asana so the
+    // orchestrator creates the execution task on the CO queue. Failures
+    // are logged but never roll back the approval — the blob store is
+    // the source of truth.
+    if (res.ok) {
+      try {
+        const dispatcher = createTierCAsanaDispatcher(defaultOrchestrator);
+        const entry = await blobStore.get(v.tenantId, v.id);
+        if (entry) await dispatcher.dispatchBreakGlass(entry);
+      } catch (err) {
+        console.warn(
+          '[BRAIN-BREAK-GLASS] asana dispatch failed:',
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    }
     return jsonResponse({ ok: res.ok, reason: res.reason }, { status: res.ok ? 200 : 400 });
   }
 
