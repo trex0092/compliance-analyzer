@@ -31,6 +31,10 @@ import { dispatchSuperBrainPlan } from './asanaSuperBrainDispatcher';
 import { pickFourEyesFromPersistentPool } from './approverPool';
 import { readAuditLog, recordDispatch } from './dispatchAuditLog';
 import { flushAuditLogToAsana, isAuditMirrorConfigured } from './asanaAuditLogMirror';
+import {
+  isCentralMlroMirrorConfigured,
+  mirrorDispatchToCentralMlro,
+} from './asanaCentralMlroMirror';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -169,7 +173,7 @@ export async function handleCaseSaved(
     });
 
     // Record in the audit log with the listener trigger.
-    recordDispatch({
+    const auditEntry = recordDispatch({
       caseId: caseObj.id,
       verdict: result.plan.verdict,
       confidence: result.plan.enrichment.customFields
@@ -185,6 +189,15 @@ export async function handleCaseSaved(
       warnings: result.plan.warnings,
       trigger: 'listener',
     });
+
+    // Central MLRO triage mirror — fire-and-forget. The mirror
+    // applies its own freeze/escalate/blocked filter so passes are
+    // skipped automatically. No-op when ASANA_CENTRAL_MLRO_PROJECT_GID
+    // is unset. Errors swallowed so a triage mirror failure never
+    // fails an otherwise-successful dispatch.
+    if (isCentralMlroMirrorConfigured()) {
+      void mirrorDispatchToCentralMlro(auditEntry).catch(() => {});
+    }
 
     writeState({
       status: result.ok ? 'enabled' : 'error',
