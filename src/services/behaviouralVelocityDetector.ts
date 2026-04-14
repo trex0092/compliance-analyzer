@@ -104,10 +104,7 @@ function severityOf(score: number): VelocityReport['severity'] {
 // Signal detectors
 // ---------------------------------------------------------------------------
 
-function computeBurst(
-  cases: readonly CaseSnapshot[],
-  burstThresholdHours: number
-): VelocitySignal {
+function computeBurst(cases: readonly CaseSnapshot[], burstThresholdHours: number): VelocitySignal {
   if (cases.length < 2) {
     return {
       score: 0,
@@ -255,18 +252,13 @@ export function analyseBehaviouralVelocity(
       burst: zero,
       offHours: zero,
       weekend: zero,
-      summary:
-        `Behavioural velocity: insufficient history (${scoped.length} cases < ${full.minCases} minimum).`,
+      summary: `Behavioural velocity: insufficient history (${scoped.length} cases < ${full.minCases} minimum).`,
       regulatory: 'FATF Rec 20; MoE Circular 08/AML/2021; FDL Art.20-21',
     };
   }
 
   const burst = computeBurst(scoped, full.burstThresholdHours);
-  const offHours = computeOffHours(
-    scoped,
-    full.businessHoursStart,
-    full.businessHoursEnd
-  );
+  const offHours = computeOffHours(scoped, full.businessHoursStart, full.businessHoursEnd);
   const weekend = computeWeekend(scoped);
   const compositeScore = Math.max(burst.score, offHours.score, weekend.score);
   const severity = severityOf(compositeScore);

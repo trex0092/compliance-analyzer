@@ -32,15 +32,8 @@ import {
   type SkillInvocation,
   type StubExecutionResult,
 } from '../asanaCommentSkillRouter';
-import {
-  matchFatfTypologies,
-  type TypologyReport,
-} from '../fatfTypologyMatcher';
-import {
-  brainMemory,
-  correlateWithMemory,
-  type MemoryStore,
-} from '../brainMemoryStore';
+import { matchFatfTypologies, type TypologyReport } from '../fatfTypologyMatcher';
+import { brainMemory, correlateWithMemory, type MemoryStore } from '../brainMemoryStore';
 import type { CorrelationReport } from '../crossCasePatternCorrelator';
 import type { StrFeatures } from '../predictiveStr';
 import { predictStr } from '../predictiveStr';
@@ -111,10 +104,7 @@ export class SkillRunnerRegistry {
    * when one is registered; otherwise falls back to the catalogue
    * stub so unknown skills still produce a helpful acknowledgement.
    */
-  async execute(
-    invocation: SkillInvocation,
-    ctx: SkillRunnerContext
-  ): Promise<SkillRunnerResult> {
+  async execute(invocation: SkillInvocation, ctx: SkillRunnerContext): Promise<SkillRunnerResult> {
     const name = invocation.skill.name.toLowerCase();
     const runner = this.runners.get(name);
     if (runner) {
@@ -141,8 +131,7 @@ export class SkillRunnerRegistry {
         return {
           skillName: name,
           reply:
-            `Skill /${name} execution error: ` +
-            (err instanceof Error ? err.message : String(err)),
+            `Skill /${name} execution error: ` + (err instanceof Error ? err.message : String(err)),
           citation: invocation.skill.citation,
           data: { error: true },
           real: true,
@@ -188,9 +177,12 @@ export const runRiskScore: SkillRunner = (invocation, ctx) => {
   if (!('priorAlerts90d' in featuresOrErr)) return featuresOrErr;
   const features = featuresOrErr as StrFeatures;
   const pred = predictStr(features);
-  const top = pred.factors.slice(0, 5).map(
-    (f) => `  - ${f.feature}: ${f.contribution >= 0 ? '+' : ''}${f.contribution.toFixed(3)} (${f.impact})`
-  );
+  const top = pred.factors
+    .slice(0, 5)
+    .map(
+      (f) =>
+        `  - ${f.feature}: ${f.contribution >= 0 ? '+' : ''}${f.contribution.toFixed(3)} (${f.impact})`
+    );
   const reply = [
     `Risk score for entity ${ctx.entityRef ?? invocation.args[0] ?? '(unspecified)'}:`,
     `  probability: ${(pred.probability * 100).toFixed(1)}%`,
@@ -329,11 +321,13 @@ export const runCrossCase: SkillRunner = (invocation, ctx) => {
   const lines = [
     `Cross-case scan: ${report.caseCount} cases, ${report.correlations.length} findings (top severity ${report.topSeverity}).`,
     '',
-    ...report.correlations.slice(0, 10).map(
-      (c) =>
-        `  [${c.severity.toUpperCase()}] ${c.kind} — ${c.caseIds.length} cases, ` +
-        `confidence ${(c.confidence * 100).toFixed(0)}% — ${c.regulatory}`
-    ),
+    ...report.correlations
+      .slice(0, 10)
+      .map(
+        (c) =>
+          `  [${c.severity.toUpperCase()}] ${c.kind} — ${c.caseIds.length} cases, ` +
+          `confidence ${(c.confidence * 100).toFixed(0)}% — ${c.regulatory}`
+      ),
   ];
   return {
     skillName: invocation.skill.name,
@@ -363,11 +357,13 @@ export const runBrainAnalyze: SkillRunner = (invocation, ctx) => {
       real: true,
     };
   }
-  const top = report.matches.slice(0, 5).map(
-    (m) =>
-      `  [${m.typology.severity.toUpperCase()}] ${m.typology.id} — ${m.typology.name} ` +
-      `(score ${(m.score * 100).toFixed(0)}%)`
-  );
+  const top = report.matches
+    .slice(0, 5)
+    .map(
+      (m) =>
+        `  [${m.typology.severity.toUpperCase()}] ${m.typology.id} — ${m.typology.name} ` +
+        `(score ${(m.score * 100).toFixed(0)}%)`
+    );
   const reply = [
     `Brain analysis — ${report.matches.length} FATF typologies matched (top severity ${report.topSeverity}).`,
     '',
@@ -393,11 +389,12 @@ export const runUboTrace: SkillRunner = (invocation, ctx) => {
   const store = ctx.memory ?? brainMemory;
   const report = correlateWithMemory(ctx.tenantId, store);
   const uboFindings = report.correlations.filter((c) => c.kind === 'shared-ubo-ring');
-  const reply = uboFindings.length === 0
-    ? `UBO trace: ${report.caseCount} cases scanned, no shared-UBO rings detected.`
-    : `UBO trace: ${uboFindings.length} shared-UBO ring(s) detected ` +
-      `across ${report.caseCount} cases. Cabinet Decision 109/2023 requires ` +
-      `re-verification within 15 working days.`;
+  const reply =
+    uboFindings.length === 0
+      ? `UBO trace: ${report.caseCount} cases scanned, no shared-UBO rings detected.`
+      : `UBO trace: ${uboFindings.length} shared-UBO ring(s) detected ` +
+        `across ${report.caseCount} cases. Cabinet Decision 109/2023 requires ` +
+        `re-verification within 15 working days.`;
   return {
     skillName: invocation.skill.name,
     reply,
@@ -441,7 +438,9 @@ function parseIntensity(raw: string | undefined): CavemanIntensity {
   return 'full';
 }
 
-function cavemanVerdictCode(verdict: StrFeatures extends never ? never : 'pass' | 'flag' | 'escalate' | 'freeze'): string {
+function cavemanVerdictCode(
+  verdict: StrFeatures extends never ? never : 'pass' | 'flag' | 'escalate' | 'freeze'
+): string {
   switch (verdict) {
     case 'freeze':
       return 'FRZ';
@@ -511,10 +510,7 @@ export const runCaveman: SkillRunner = (invocation, ctx) => {
       // ≤600 chars — adds top 3 factor contributions
       const top3 = pred.factors
         .slice(0, 3)
-        .map(
-          (f) =>
-            `${f.feature}:${f.contribution >= 0 ? '+' : ''}${f.contribution.toFixed(2)}`
-        )
+        .map((f) => `${f.feature}:${f.contribution >= 0 ? '+' : ''}${f.contribution.toFixed(2)}`)
         .join(' ');
       reply =
         `${code} ${entity} conf=${conf} band=${pred.band} rec=${pred.recommendation} | ` +

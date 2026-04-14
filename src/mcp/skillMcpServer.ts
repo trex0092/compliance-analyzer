@@ -47,10 +47,7 @@ import {
   type SkillRunnerContext,
   type SkillRunnerRegistry,
 } from '../services/asana/skillRunnerRegistry';
-import {
-  SKILL_CATALOGUE,
-  type SkillCatalogueEntry,
-} from '../services/asanaCommentSkillRouter';
+import { SKILL_CATALOGUE, type SkillCatalogueEntry } from '../services/asanaCommentSkillRouter';
 import type { StrFeatures } from '../services/predictiveStr';
 
 // ---------------------------------------------------------------------------
@@ -117,8 +114,7 @@ function toMcpTool(skill: SkillCatalogueEntry): McpTool {
   return {
     name: `skill.${skill.name}`,
     description:
-      (argDescriptions[skill.name] ?? skill.description) +
-      `  (Regulatory: ${skill.citation})`,
+      (argDescriptions[skill.name] ?? skill.description) + `  (Regulatory: ${skill.citation})`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -178,9 +174,7 @@ export async function invokeSkillOverMcp(
   rawParams: unknown
 ): Promise<McpCallToolResult> {
   // Strip the "skill." namespace prefix.
-  const skillName = toolName.startsWith('skill.')
-    ? toolName.slice(6)
-    : toolName;
+  const skillName = toolName.startsWith('skill.') ? toolName.slice(6) : toolName;
 
   const skill = SKILL_CATALOGUE.find((s) => s.name === skillName);
   if (!skill) {
@@ -201,13 +195,9 @@ export async function invokeSkillOverMcp(
       ? params.entityRef
       : 'mcp-unknown';
   const tenantId =
-    typeof params.tenantId === 'string' && params.tenantId.length > 0
-      ? params.tenantId
-      : 'mcp';
+    typeof params.tenantId === 'string' && params.tenantId.length > 0 ? params.tenantId : 'mcp';
   const extraArgs = Array.isArray(params.args)
-    ? (params.args as unknown[]).filter(
-        (v): v is string => typeof v === 'string'
-      )
+    ? (params.args as unknown[]).filter((v): v is string => typeof v === 'string')
     : [];
   const features = (params.features ?? undefined) as StrFeatures | undefined;
 
@@ -313,11 +303,7 @@ export async function handleMcpRequest(
             },
           };
         }
-        const callResult = await invokeSkillOverMcp(
-          registry,
-          params.name,
-          params.arguments
-        );
+        const callResult = await invokeSkillOverMcp(registry, params.name, params.arguments);
         return {
           jsonrpc: '2.0',
           id,
@@ -402,10 +388,7 @@ export async function runStdioLoop(
       );
       continue;
     }
-    const response = await handleMcpRequest(
-      parsed as JsonRpcRequest,
-      opts
-    );
+    const response = await handleMcpRequest(parsed as JsonRpcRequest, opts);
     await write(JSON.stringify(response));
   }
 }

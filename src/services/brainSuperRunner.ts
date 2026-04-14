@@ -59,24 +59,11 @@ import {
   type AsanaOrchestratorDispatchResult,
   type BrainVerdictLike,
 } from './asana/orchestrator';
-import {
-  brainMemory,
-  recordAndCorrelate,
-  type MemoryStore,
-} from './brainMemoryStore';
+import { brainMemory, recordAndCorrelate, type MemoryStore } from './brainMemoryStore';
 import type { CorrelationReport } from './crossCasePatternCorrelator';
-import {
-  matchFatfTypologies,
-  type TypologyReport,
-} from './fatfTypologyMatcher';
-import {
-  analyseBehaviouralVelocity,
-  type VelocityReport,
-} from './behaviouralVelocityDetector';
-import {
-  runBrainEnsemble,
-  type EnsembleReport,
-} from './brainConsensusEnsemble';
+import { matchFatfTypologies, type TypologyReport } from './fatfTypologyMatcher';
+import { analyseBehaviouralVelocity, type VelocityReport } from './behaviouralVelocityDetector';
+import { runBrainEnsemble, type EnsembleReport } from './brainConsensusEnsemble';
 import {
   emptyDigest,
   updateDigest,
@@ -84,10 +71,8 @@ import {
   type BrainMemoryDigest,
   type PrecedentReport,
 } from './brainMemoryDigest';
-import {
-  augmentChainWithPrecedents,
-  type AugmentChainResult,
-} from './reasoningChainAugmenter';
+import { augmentChainWithPrecedents, type AugmentChainResult } from './reasoningChainAugmenter';
+import { DecisionFingerprintCache, computeFingerprint } from './decisionFingerprintCache';
 
 // ---------------------------------------------------------------------------
 // Brain Power Score
@@ -163,9 +148,7 @@ export function computeBrainPowerScore(decision: ComplianceDecision): BrainPower
   }
 
   const clampsFired = Array.isArray(raw.clampReasons) ? raw.clampReasons.length : 0;
-  const subsystemsFailed = Array.isArray(raw.subsystemFailures)
-    ? raw.subsystemFailures.length
-    : 0;
+  const subsystemsFailed = Array.isArray(raw.subsystemFailures) ? raw.subsystemFailures.length : 0;
   const advisorInvoked = raw.advisorResult !== null;
   const attestationSealed = decision.attestation !== undefined;
   const confidence = Math.max(0, Math.min(1, decision.confidence));
@@ -183,7 +166,13 @@ export function computeBrainPowerScore(decision: ComplianceDecision): BrainPower
     0,
     Math.min(
       100,
-      megaCoverage + extensions25 + confidence10 + advisor10 + attestation10 + clamps5 + noFailureBonus
+      megaCoverage +
+        extensions25 +
+        confidence10 +
+        advisor10 +
+        attestation10 +
+        clamps5 +
+        noFailureBonus
     )
   );
 
@@ -232,7 +221,9 @@ function isEmptyObject(v: unknown): boolean {
  */
 export function deterministicAdvisor(input: AdvisorEscalationInput): AdvisorEscalationResult {
   const lines: string[] = [];
-  lines.push(`Advisor reviewed verdict="${input.verdict}" confidence=${input.confidence.toFixed(2)}.`);
+  lines.push(
+    `Advisor reviewed verdict="${input.verdict}" confidence=${input.confidence.toFixed(2)}.`
+  );
 
   if (input.verdict === 'freeze') {
     lines.push('1. Execute 24h EOCN freeze protocol (Cabinet Res 74/2020 Art.4).');
@@ -252,7 +243,9 @@ export function deterministicAdvisor(input: AdvisorEscalationInput): AdvisorEsca
   }
 
   if (input.clampReasons.length > 0) {
-    lines.push(`Note: ${input.clampReasons.length} safety clamp(s) fired — review each before closing the case.`);
+    lines.push(
+      `Note: ${input.clampReasons.length} safety clamp(s) fired — review each before closing the case.`
+    );
   }
 
   return {
@@ -301,6 +294,22 @@ export interface SuperRunnerOptions {
     narrativeHash?: string;
     sanctionsMatchKeys?: readonly string[];
   };
+  /**
+   * Optional fingerprint cache. When provided, the runner
+   * computes a deterministic SHA-256 fingerprint of
+   * (tenantId, entityId, sanctionsConfirmedFlag, features) and
+   * checks the cache before running the decision. A cache hit
+   * returns the prior SuperDecision directly, saving every
+   * subsystem call. Tests omit this option to exercise the
+   * non-cached path as before.
+   */
+  cache?: DecisionFingerprintCache<SuperDecision>;
+  /**
+   * When true (and a cache is provided), force a fresh run and
+   * overwrite the cache entry. Useful for debug endpoints that
+   * want to bypass caching.
+   */
+  forceFresh?: boolean;
 }
 
 export interface SuperDecision {
@@ -412,9 +421,36 @@ export async function runSuperDecision(
   input: ComplianceCaseInput,
   opts: SuperRunnerOptions = {}
 ): Promise<SuperDecision> {
+  // -------------------------------------------------------------------------
+  // Fingerprint cache lookup — short-circuit on hit. Cache failures
+  // never block the decision path; any exception falls through to the
+  // normal run and simply doesn't write to the cache afterward.
+  // -------------------------------------------------------------------------
+  let cacheFingerprint: string | null = null;
+  if (opts.cache && !opts.forceFresh) {
+    try {
+      cacheFingerprint = await computeFingerprint({
+        tenantId: input.tenantId,
+        entityId: input.entity.id,
+        features: input.entity.features,
+        sanctionsConfirmedFlag: input.entity.isSanctionsConfirmed === true,
+      });
+      const hit = opts.cache.get(input.tenantId, cacheFingerprint);
+      if (hit !== null) return hit;
+    } catch (err) {
+      console.warn(
+        '[brainSuperRunner] fingerprint cache lookup failed:',
+        err instanceof Error ? err.message : String(err)
+      );
+      cacheFingerprint = null;
+    }
+  }
+
   const advisor: AdvisorEscalationFn | undefined =
     input.advisor ??
-    (shouldInvokeAdvisor(input) ? opts.advisor ?? (async (i) => deterministicAdvisor(i)) : undefined);
+    (shouldInvokeAdvisor(input)
+      ? (opts.advisor ?? (async (i) => deterministicAdvisor(i)))
+      : undefined);
 
   const caseInput: ComplianceCaseInput = {
     ...input,
@@ -424,8 +460,7 @@ export async function runSuperDecision(
   // Retrieve precedents BEFORE the decision so the reasoning
   // chain (future commit) can inject them into the brain's
   // narrative. Right now we just surface them in the response.
-  const precedentDigest =
-    opts.digest ?? emptyDigest(input.tenantId);
+  const precedentDigest = opts.digest ?? emptyDigest(input.tenantId);
   const precedents = retrievePrecedents(precedentDigest, {
     caseId: `${input.tenantId}:${input.entity.id}`,
     features: input.entity.features,
@@ -488,13 +523,12 @@ export async function runSuperDecision(
       asanaDispatch = {
         idempotencyKey: `${decision.tenantId}:${decision.id}`,
         created: false,
-        skippedReason:
-          err instanceof Error ? `asana_error:${err.message}` : 'asana_error:unknown',
+        skippedReason: err instanceof Error ? `asana_error:${err.message}` : 'asana_error:unknown',
       };
     }
   }
 
-  return {
+  const result: SuperDecision = {
     decision,
     powerScore,
     asanaDispatch,
@@ -506,6 +540,23 @@ export async function runSuperDecision(
     digestAfter,
     augmentedChain,
   };
+
+  // Store in the fingerprint cache so the next call with identical
+  // inputs returns this SuperDecision directly. Guarded on a
+  // successful fingerprint earlier — if we couldn't compute it,
+  // we skip the write instead of poisoning the cache.
+  if (opts.cache && cacheFingerprint) {
+    try {
+      opts.cache.set(input.tenantId, cacheFingerprint, result);
+    } catch (err) {
+      console.warn(
+        '[brainSuperRunner] fingerprint cache set failed:',
+        err instanceof Error ? err.message : String(err)
+      );
+    }
+  }
+
+  return result;
 }
 
 // Exports for tests.

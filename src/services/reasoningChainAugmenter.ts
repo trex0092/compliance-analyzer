@@ -48,13 +48,7 @@
  *   FATF Rec 18 (internal controls proportionate to risk)
  */
 
-import {
-  createChain,
-  addNode,
-  addEdge,
-  seal,
-  type ReasoningChain,
-} from './reasoningChain';
+import { createChain, addNode, addEdge, seal, type ReasoningChain } from './reasoningChain';
 import type { PrecedentReport } from './brainMemoryDigest';
 
 // ---------------------------------------------------------------------------

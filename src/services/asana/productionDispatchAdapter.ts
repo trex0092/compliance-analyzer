@@ -41,14 +41,11 @@
  */
 
 import { lintForTippingOff } from '../tippingOffLinter';
-import type {
-  AsanaBrainTaskTemplate,
-  ProjectEnvKey,
-} from './asanaBrainTaskTemplate';
-import type {
-  BrainVerdictLike,
-  TemplateDispatchAdapter,
-} from './orchestrator';
+import type { ProjectEnvKey } from './asanaBrainTaskTemplate';
+import type { TemplateDispatchAdapter } from './orchestrator';
+// AsanaBrainTaskTemplate + BrainVerdictLike are referenced transitively
+// via TemplateDispatchAdapter's AsanaTaskDispatchInput parameter — no
+// direct import needed here. Documented in the module header comment.
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,9 +73,7 @@ export interface CreateTaskPayload {
   tags?: readonly string[];
 }
 
-export type CreateTaskFn = (
-  payload: CreateTaskPayload
-) => Promise<CreateTaskResponseShape>;
+export type CreateTaskFn = (payload: CreateTaskPayload) => Promise<CreateTaskResponseShape>;
 
 /**
  * Resolver for project env keys → real Asana project GIDs. By

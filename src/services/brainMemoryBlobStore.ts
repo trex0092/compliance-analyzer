@@ -53,9 +53,7 @@
  *   Cabinet Res 134/2025 Art.19 (internal review visibility)
  */
 
-import type {
-  CaseSnapshot,
-} from './crossCasePatternCorrelator';
+import type { CaseSnapshot } from './crossCasePatternCorrelator';
 import type { MemoryStore } from './brainMemoryStore';
 
 // ---------------------------------------------------------------------------
@@ -223,9 +221,7 @@ export class BlobBrainMemoryStore implements MemoryStore {
 
     const snapshots: CaseSnapshot[] = [];
     for (const caseId of index.caseIds) {
-      const snap = await this.blob.getJSON<CaseSnapshot>(
-        this.snapshotKey(tenantId, caseId)
-      );
+      const snap = await this.blob.getJSON<CaseSnapshot>(this.snapshotKey(tenantId, caseId));
       if (snap) snapshots.push(snap);
     }
     // Sort by openedAt to preserve chronological order across cold starts.
@@ -256,10 +252,7 @@ export class BlobBrainMemoryStore implements MemoryStore {
 
     // Write the snapshot blob first so a concurrent reader cannot
     // observe an index entry for a not-yet-written case.
-    await this.blob.setJSON(
-      this.snapshotKey(tenantId, snapshot.caseId),
-      snapshot
-    );
+    await this.blob.setJSON(this.snapshotKey(tenantId, snapshot.caseId), snapshot);
 
     // Update index. Read-modify-write is acceptable here because the
     // super-runner serialises per-tenant writes.

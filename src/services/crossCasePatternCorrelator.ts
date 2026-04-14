@@ -162,10 +162,7 @@ function groupBy<T, K>(items: readonly T[], keyFn: (item: T) => K | null): Map<K
   return out;
 }
 
-function withinWindow(
-  snapshots: readonly CaseSnapshot[],
-  windowHours: number
-): boolean {
+function withinWindow(snapshots: readonly CaseSnapshot[], windowHours: number): boolean {
   if (snapshots.length < 2) return false;
   const times = snapshots
     .map((s) => Date.parse(s.openedAt))
@@ -200,7 +197,10 @@ function detectStructuringClusters(
     c.uboRefs && c.uboRefs.length > 0 ? c.uboRefs[0] : null
   );
   for (const [ubo, bucket] of byFirstUbo) {
-    if (bucket.length >= cfg.minStructuringCluster && withinWindow(bucket, cfg.structuringWindowHours)) {
+    if (
+      bucket.length >= cfg.minStructuringCluster &&
+      withinWindow(bucket, cfg.structuringWindowHours)
+    ) {
       const confidence = Math.min(1, bucket.length / 10 + 0.4);
       findings.push({
         kind: 'structuring-cluster',
@@ -314,7 +314,10 @@ function detectCorridorBursts(
   const byCorridor = groupBy(cases, (c) => c.corridorCountry ?? null);
   const findings: Correlation[] = [];
   for (const [country, bucket] of byCorridor) {
-    if (bucket.length >= cfg.minCorridorBurst && withinWindow(bucket, cfg.corridorBurstWindowHours)) {
+    if (
+      bucket.length >= cfg.minCorridorBurst &&
+      withinWindow(bucket, cfg.corridorBurstWindowHours)
+    ) {
       const confidence = Math.min(1, bucket.length / 15 + 0.5);
       findings.push({
         kind: 'corridor-burst',
@@ -412,7 +415,8 @@ export function correlateCrossCases(
     structuringWindowHours: cfg.structuringWindowHours ?? DEFAULT_CONFIG.structuringWindowHours,
     structuringMaxTxAED: cfg.structuringMaxTxAED ?? DEFAULT_CONFIG.structuringMaxTxAED,
     minCorridorBurst: cfg.minCorridorBurst ?? DEFAULT_CONFIG.minCorridorBurst,
-    corridorBurstWindowHours: cfg.corridorBurstWindowHours ?? DEFAULT_CONFIG.corridorBurstWindowHours,
+    corridorBurstWindowHours:
+      cfg.corridorBurstWindowHours ?? DEFAULT_CONFIG.corridorBurstWindowHours,
     tenantId: cfg.tenantId,
   };
   const scoped = cases.filter((c) => c.tenantId === cfg.tenantId);
@@ -428,9 +432,7 @@ export function correlateCrossCases(
   ];
 
   correlations.sort(
-    (a, b) =>
-      SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
-      b.confidence - a.confidence
+    (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || b.confidence - a.confidence
   );
 
   let topSeverity: Correlation['severity'] = 'info';
