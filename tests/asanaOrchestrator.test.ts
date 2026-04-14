@@ -139,6 +139,39 @@ describe("AsanaOrchestrator.dispatchBrainVerdict", () => {
 // Comment routing passthrough
 // ---------------------------------------------------------------------------
 
+describe("AsanaOrchestrator.executeSkill", () => {
+  it("runs a real runner when one is registered", async () => {
+    const orchestrator = new AsanaOrchestrator();
+    const route = orchestrator.routeComment("/brain-status");
+    expect(route.ok).toBe(true);
+    const result = await orchestrator.executeSkill(route.invocation!, {
+      tenantId: "t1",
+      userId: "u1",
+    });
+    expect(result.real).toBe(true);
+    expect(result.skillName).toBe("brain-status");
+    expect(result.data?.skillCatalogueSize).toBe(46);
+  });
+
+  it("falls back to the stub for an unregistered skill", async () => {
+    const orchestrator = new AsanaOrchestrator();
+    const route = orchestrator.routeComment("/audit");
+    expect(route.ok).toBe(true);
+    const result = await orchestrator.executeSkill(route.invocation!, {
+      tenantId: "t1",
+      userId: "u1",
+    });
+    expect(result.real).toBe(false);
+  });
+
+  it("exposes the skill registry so callers can add runners at boot", () => {
+    const orchestrator = new AsanaOrchestrator();
+    const registry = orchestrator.getSkillRegistry();
+    expect(registry).toBeDefined();
+    expect(registry.has("brain-status")).toBe(true);
+  });
+});
+
 describe("AsanaOrchestrator.routeComment", () => {
   const orchestrator = new AsanaOrchestrator();
 

@@ -50,6 +50,12 @@ import {
   type SkillCatalogueEntry,
   type StubExecutionResult,
 } from '../asanaCommentSkillRouter';
+import {
+  defaultSkillRegistry,
+  type SkillRunnerContext,
+  type SkillRunnerRegistry,
+  type SkillRunnerResult,
+} from './skillRunnerRegistry';
 
 // ---------------------------------------------------------------------------
 // Types surfaced at the façade level.
@@ -158,15 +164,18 @@ const DEFAULT_DISPATCH_ADAPTER: DispatchAdapter = async () => ({
 export class AsanaOrchestrator {
   private readonly store: IdempotencyStore;
   private dispatch: DispatchAdapter;
+  private readonly skillRegistry: SkillRunnerRegistry;
   private lastDispatchAt: string | null = null;
   private lastDispatchResult: AsanaOrchestratorDispatchResult | null = null;
 
   constructor(opts: {
     idempotencyStore?: IdempotencyStore;
     dispatchAdapter?: DispatchAdapter;
+    skillRegistry?: SkillRunnerRegistry;
   } = {}) {
     this.store = opts.idempotencyStore ?? new InMemoryIdempotencyStore();
     this.dispatch = opts.dispatchAdapter ?? DEFAULT_DISPATCH_ADAPTER;
+    this.skillRegistry = opts.skillRegistry ?? defaultSkillRegistry;
   }
 
   /**
@@ -242,6 +251,26 @@ export class AsanaOrchestrator {
    */
   executeSkillStub(invocation: SkillInvocation): StubExecutionResult {
     return buildStubExecution(invocation);
+  }
+
+  /**
+   * Execute a parsed skill invocation through the runner registry.
+   * Unknown skills fall back to the stub automatically.
+   * FDL Art.29 tipping-off guard runs inside the registry.
+   */
+  async executeSkill(
+    invocation: SkillInvocation,
+    ctx: SkillRunnerContext
+  ): Promise<SkillRunnerResult> {
+    return this.skillRegistry.execute(invocation, ctx);
+  }
+
+  /**
+   * Return the skill runner registry so callers can register custom
+   * runners at boot without touching the façade.
+   */
+  getSkillRegistry(): SkillRunnerRegistry {
+    return this.skillRegistry;
   }
 
   /**
