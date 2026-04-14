@@ -77,6 +77,13 @@ import {
   runBrainEnsemble,
   type EnsembleReport,
 } from './brainConsensusEnsemble';
+import {
+  emptyDigest,
+  updateDigest,
+  retrievePrecedents,
+  type BrainMemoryDigest,
+  type PrecedentReport,
+} from './brainMemoryDigest';
 
 // ---------------------------------------------------------------------------
 // Brain Power Score
@@ -267,6 +274,15 @@ export interface SuperRunnerOptions {
   /** Skip memory recording + cross-case correlation (tests). */
   skipMemory?: boolean;
   /**
+   * Permanent memory digest to retrieve precedents from. When
+   * provided, retrievePrecedents is called BEFORE the decision
+   * (for injection into the reasoning chain) and updateDigest is
+   * called AFTER so the tenant's compressed history grows by one
+   * entry per super call. Tests can pass `emptyDigest(tenantId)`
+   * to exercise the code path.
+   */
+  digest?: BrainMemoryDigest;
+  /**
    * Optional extras to include in the memory snapshot for future
    * cross-case correlation. See snapshotFromDecision() for the
    * allowed fields — wallets, uboRefs, addressHash, etc.
@@ -310,6 +326,17 @@ export interface SuperDecision {
    * computed (pure function, no memory needed).
    */
   ensemble: EnsembleReport;
+  /**
+   * Historical precedents retrieved from the brain permanent
+   * memory digest via cosine similarity. Empty when no digest is
+   * supplied or no match clears the similarity threshold.
+   */
+  precedents: PrecedentReport;
+  /**
+   * The digest AFTER this decision was recorded. Callers persist
+   * this to durable storage so the next cold start can hydrate.
+   */
+  digestAfter: BrainMemoryDigest;
 }
 
 /**
@@ -376,10 +403,31 @@ export async function runSuperDecision(
     advisor,
   };
 
+  // Retrieve precedents BEFORE the decision so the reasoning
+  // chain (future commit) can inject them into the brain's
+  // narrative. Right now we just surface them in the response.
+  const precedentDigest =
+    opts.digest ?? emptyDigest(input.tenantId);
+  const precedents = retrievePrecedents(precedentDigest, {
+    caseId: `${input.tenantId}:${input.entity.id}`,
+    features: input.entity.features,
+  });
+
   const decision = await runComplianceDecision(caseInput);
   const powerScore = computeBrainPowerScore(decision);
   const typologies = matchFatfTypologies(input.entity.features);
   const ensemble = runBrainEnsemble(input.entity.features);
+
+  // Update the digest with the just-decided case so it's visible
+  // to the NEXT super call.
+  const digestAfter = updateDigest(precedentDigest, {
+    tenantId: input.tenantId,
+    decision,
+    features: input.entity.features,
+    entityRef: input.entity.id,
+    topTypologyId: typologies.matches[0]?.typology.id ?? null,
+    powerScore: powerScore.score,
+  });
 
   // Record + cross-case correlate BEFORE Asana dispatch so the Asana
   // task description can (in a future commit) carry correlation
@@ -430,6 +478,8 @@ export async function runSuperDecision(
     typologies,
     velocity,
     ensemble,
+    precedents,
+    digestAfter,
   };
 }
 
