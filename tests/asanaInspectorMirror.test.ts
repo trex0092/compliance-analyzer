@@ -120,7 +120,7 @@ describe('buildInspectorTaskPayload', () => {
     expect(payload.notes).not.toContain('app.asana.com/0/0/');
   });
 
-  it('omits dispatcher warnings from inspector notes', () => {
+  it('omits dispatcher warnings from inspector notes (TBD canary stripped)', () => {
     const payload = buildInspectorTaskPayload({
       entry: {
         ...baseEntry,
@@ -129,8 +129,13 @@ describe('buildInspectorTaskPayload', () => {
       },
       projectGid: 'INSPECTOR',
     });
+    // The literal 'TBD' (which only appears in the warning string)
+    // is the canary — its absence proves the warning was stripped.
+    // Note: the inspector access-notes footer DOES use the word
+    // "drafting" in an explanatory sentence ("PII, internal MLRO
+    // drafting notes ... omitted") so we test for the leaked
+    // PAYLOAD content, not the explanatory footer word.
     expect(payload.notes).not.toContain('TBD');
-    expect(payload.notes).not.toContain('drafting');
   });
 
   it('omits the full machine-readable JSON dump (sanitised view)', () => {
@@ -214,7 +219,15 @@ describe('buildInspectorTaskPayload', () => {
       entry: { ...baseEntry, caseId: 'CASE/7 [pep]', verdict: 'freeze' },
       projectGid: 'INSPECTOR',
     });
-    expect(payload.name).not.toMatch(/[/\[\]]/);
+    // The literal unsafe input must NOT appear in the rendered
+    // name — slashes, embedded brackets, and spaces are sanitized.
+    // (We can't blanket-reject brackets because the [INSPECTOR]
+    // prefix legitimately contains them.)
+    expect(payload.name).not.toContain('CASE/7 [pep]');
+    expect(payload.name).not.toContain('CASE/7');
+    // The sanitized value (slashes/brackets/spaces → underscores)
+    // is what should appear instead.
+    expect(payload.name).toContain('CASE_7__pep_');
   });
 
   it('formats errors as a bullet list when present', () => {
