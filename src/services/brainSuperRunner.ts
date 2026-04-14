@@ -65,6 +65,10 @@ import {
   type MemoryStore,
 } from './brainMemoryStore';
 import type { CorrelationReport } from './crossCasePatternCorrelator';
+import {
+  matchFatfTypologies,
+  type TypologyReport,
+} from './fatfTypologyMatcher';
 
 // ---------------------------------------------------------------------------
 // Brain Power Score
@@ -281,6 +285,11 @@ export interface SuperDecision {
    * memory recording is skipped (e.g. in unit tests).
    */
   crossCase: CorrelationReport | null;
+  /**
+   * FATF DPMS typology report — named typologies matched by the
+   * case's feature vector. Always computed (pure function).
+   */
+  typologies: TypologyReport;
 }
 
 /**
@@ -349,6 +358,7 @@ export async function runSuperDecision(
 
   const decision = await runComplianceDecision(caseInput);
   const powerScore = computeBrainPowerScore(decision);
+  const typologies = matchFatfTypologies(input.entity.features);
 
   // Record + cross-case correlate BEFORE Asana dispatch so the Asana
   // task description can (in a future commit) carry correlation
@@ -383,7 +393,7 @@ export async function runSuperDecision(
     }
   }
 
-  return { decision, powerScore, asanaDispatch, crossCase };
+  return { decision, powerScore, asanaDispatch, crossCase, typologies };
 }
 
 // Exports for tests.

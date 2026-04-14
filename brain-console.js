@@ -499,9 +499,12 @@
       const crossLabel = body.crossCase && body.crossCase.findings.length > 0
         ? ` · cross-case=${body.crossCase.findings.length}/${body.crossCase.topSeverity}`
         : '';
-      statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel}${crossLabel} (${durationMs}ms)`;
+      const typoLabel = body.typologies && body.typologies.matches.length > 0
+        ? ` · typo=${body.typologies.matches.length}/${body.typologies.topSeverity}`
+        : '';
+      statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel}${crossLabel}${typoLabel} (${durationMs}ms)`;
       statusEl.style.color = '#3DA876';
-      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase);
+      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase, body.typologies);
     } catch (err) {
       statusEl.textContent = `✗ network error: ${err.message || err}`;
       statusEl.style.color = '#D94F4F';
@@ -653,7 +656,55 @@
     `;
   }
 
-  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase) {
+  function renderTypologiesCard(typologies) {
+    if (!typologies || !typologies.matches || typologies.matches.length === 0) {
+      return `
+        <div style="${STYLE.cardNeutral}">
+          <strong style="color:#8b949e;">FATF TYPOLOGIES — NO MATCH</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">No named money-laundering typology matched this case.</div>
+        </div>
+      `;
+    }
+    const sevColors = {
+      low: '#3DA876',
+      medium: '#E8A030',
+      high: '#E8A030',
+      critical: '#D94F4F',
+    };
+    const rows = typologies.matches.map((m) => {
+      const color = sevColors[m.severity] || '#8b949e';
+      const signalHtml = (m.firedSignals || []).slice(0, 5).map((s) =>
+        `<span style="display:inline-block;background:#010409;border:1px solid ${color}44;color:${color};padding:2px 8px;border-radius:10px;font-size:10px;margin:2px 4px 2px 0;">${escapeHtml(s)}</span>`
+      ).join('');
+      return `
+        <div style="border:1px solid ${color}44;border-left:3px solid ${color};background:#0d1117;border-radius:3px;padding:10px 12px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+            <div>
+              <strong style="color:${color};font-size:12px;letter-spacing:0.5px;">${escapeHtml(m.id)} — ${escapeHtml(m.name)}</strong>
+            </div>
+            <span style="font-size:10px;color:#8b949e;">score ${(m.score * 100).toFixed(0)}% · ${escapeHtml(m.severity)}</span>
+          </div>
+          <div style="font-size:11px;color:#e6edf3;line-height:1.6;margin-bottom:4px;">${escapeHtml(m.description)}</div>
+          <div style="margin-top:6px;">${signalHtml}</div>
+          <div style="font-size:9px;color:#8b949e;margin-top:6px;font-style:italic;">${escapeHtml(m.regulatory)}</div>
+          <div style="font-size:10px;color:#d4a843;margin-top:4px;"><strong>Action:</strong> ${escapeHtml(m.recommendedAction)}</div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div style="${STYLE.panel}border-left:4px solid #d4a843;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+          <div style="font-size:14px;font-weight:700;color:#d4a843;letter-spacing:0.5px;">📖 FATF DPMS TYPOLOGIES</div>
+          <div style="font-size:10px;color:#8b949e;">${typologies.matches.length} matched · top severity ${escapeHtml(typologies.topSeverity)}</div>
+        </div>
+        <div style="font-size:11px;color:#cfc7b3;margin-bottom:10px;font-style:italic;">${escapeHtml(typologies.summary)}</div>
+        ${rows}
+      </div>
+    `;
+  }
+
+  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase, typologies) {
     const resultEl = document.getElementById('brain-analyze-result');
     if (!resultEl) return;
 
@@ -728,6 +779,7 @@
       </div>
 
       ${renderPowerScoreCard(powerScore)}
+      ${renderTypologiesCard(typologies)}
       ${renderCrossCaseCard(crossCase)}
       ${renderAsanaDispatchCard(asanaDispatch)}
       ${clampsHtml}

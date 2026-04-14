@@ -403,6 +403,20 @@ export default async (req: Request, context: Context) => {
       regulatory: string;
     }>;
   } | null = null;
+  let typologiesSummary: {
+    topSeverity: string;
+    summary: string;
+    matches: ReadonlyArray<{
+      id: string;
+      name: string;
+      description: string;
+      severity: string;
+      score: number;
+      regulatory: string;
+      recommendedAction: string;
+      firedSignals: readonly string[];
+    }>;
+  } | null = null;
   try {
     // Run the full super-brain pipeline:
     //   - Weaponized brain (MegaBrain + 30+ subsystems)
@@ -436,6 +450,20 @@ export default async (req: Request, context: Context) => {
         })),
       };
     }
+    typologiesSummary = {
+      topSeverity: superResult.typologies.topSeverity,
+      summary: superResult.typologies.summary,
+      matches: superResult.typologies.matches.slice(0, 20).map((m) => ({
+        id: m.typology.id,
+        name: m.typology.name,
+        description: m.typology.description,
+        severity: m.typology.severity,
+        score: m.score,
+        regulatory: m.typology.regulatory,
+        recommendedAction: m.typology.recommendedAction,
+        firedSignals: m.firedSignals,
+      })),
+    };
   } catch (err) {
     // Never leak subsystem internals — log server-side, return generic.
     console.error(
@@ -481,6 +509,7 @@ export default async (req: Request, context: Context) => {
     powerScore: powerScore ? serialisePowerScore(powerScore) : null,
     asanaDispatch: asanaDispatchSummary,
     crossCase: crossCaseSummary,
+    typologies: typologiesSummary,
   });
 };
 
