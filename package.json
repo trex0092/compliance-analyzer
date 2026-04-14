@@ -63,6 +63,8 @@
     "asana:bootstrap": "tsx scripts/asana-project-bootstrap.ts",
     "asana:bootstrap:cf": "tsx scripts/asana-cf-bootstrap.ts",
     "asana:bootstrap:sections": "tsx scripts/asana-section-bootstrap.ts",
-    "asana:bootstrap:webhooks": "tsx scripts/asana-webhook-bootstrap.ts"
+    "asana:bootstrap:webhooks": "tsx scripts/asana-webhook-bootstrap.ts",
+    "asana:bootstrap:inspector": "tsx scripts/asana-inspector-project-bootstrap.ts",
+    "asana:env:check": "tsx scripts/asana-env-check.ts"
   }
 }

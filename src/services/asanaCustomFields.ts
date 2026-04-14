@@ -48,6 +48,14 @@ export type RiskLevel = 'critical' | 'high' | 'medium' | 'low';
 export type Verdict = 'pass' | 'flag' | 'escalate' | 'freeze';
 export type DeadlineType = 'STR' | 'CTR' | 'CNMR' | 'DPMSR' | 'EOCN' | 'SAR';
 
+/**
+ * Manual action state — surfaces the "this freeze needs MLRO action
+ * in the bank portal because we can't call a banking API" signal as
+ * a coloured chip on the Asana task card. Tier-4 #13 from the Asana
+ * setup gap audit.
+ */
+export type ManualActionState = 'pending' | 'done';
+
 export interface ComplianceCustomFieldInput {
   riskLevel?: RiskLevel;
   verdict?: Verdict;
@@ -68,6 +76,14 @@ export interface ComplianceCustomFieldInput {
   sanctionsFlag?: boolean;
   /** Optional ESG grade (A–F). */
   esgGrade?: string;
+  /**
+   * Optional manual-action flag. Set to 'pending' on freeze
+   * verdicts so the MLRO sees a red chip on the task card prompting
+   * them to execute the freeze in the bank portal manually (we
+   * don't have a banking-rail API integration yet). Cleared to
+   * 'done' once the MLRO confirms the manual freeze landed.
+   */
+  manualActionRequired?: ManualActionState;
 }
 
 // ---------------------------------------------------------------------------
@@ -156,6 +172,17 @@ export function buildComplianceCustomFields(
     const fieldGid = env('ASANA_CF_REGULATION_GID');
     if (fieldGid) {
       out[fieldGid] = input.regulationCitation;
+    }
+  }
+
+  // Manual action required (enum) — Tier-4 #13. Surfaces the "MLRO
+  // needs to execute this in the bank portal" signal as a coloured
+  // chip on the task card.
+  if (input.manualActionRequired) {
+    const fieldGid = env('ASANA_CF_MANUAL_ACTION_GID');
+    const optionGid = env(`ASANA_CF_MANUAL_ACTION_${input.manualActionRequired.toUpperCase()}`);
+    if (fieldGid && optionGid) {
+      out[fieldGid] = optionGid;
     }
   }
 

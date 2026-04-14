@@ -12,7 +12,24 @@ import { describe, it, expect } from 'vitest';
 // @ts-expect-error — .mts import from tests
 import { __test__ } from '../netlify/functions/approvals.mts';
 
-const { needsFourEyes, makeEventIdFromKey, isStoredBrainEvent, REQUIRED_APPROVERS } = __test__;
+const {
+  needsFourEyes,
+  makeEventIdFromKey,
+  isStoredBrainEvent,
+  applyDecisionToRecord,
+  REQUIRED_APPROVERS,
+} = __test__;
+
+interface ApprovalEntry {
+  eventId: string;
+  approvals: Array<{ actor: string; at: string; note?: string }>;
+  rejections: Array<{ actor: string; at: string; note?: string }>;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+function blankRec(eventId = 'evt-1'): ApprovalEntry {
+  return { eventId, approvals: [], rejections: [], status: 'pending' };
+}
 
 const base = {
   at: '2026-04-10T08:00:00Z',
@@ -139,5 +156,190 @@ describe('approvals: isStoredBrainEvent shape guard', () => {
 describe('approvals: REQUIRED_APPROVERS constant', () => {
   it('enforces exactly 2 (four-eyes)', () => {
     expect(REQUIRED_APPROVERS).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyDecisionToRecord — Tier-1 #7 solo-MLRO cooldown
+// ---------------------------------------------------------------------------
+
+const T_FIRST = '2026-04-14T10:00:00.000Z';
+const T_FIRST_MS = Date.parse(T_FIRST);
+const T_PLUS_1H_MS = T_FIRST_MS + 1 * 3_600_000;
+const T_PLUS_24H_MS = T_FIRST_MS + 24 * 3_600_000;
+
+describe('approvals: applyDecisionToRecord — standard distinct-approver path', () => {
+  it('records a first approval and stays pending', () => {
+    const result = applyDecisionToRecord(blankRec(), 'mlro', 'approve', 'first vote', {
+      soloMode: false,
+      soloCooldownHours: 24,
+      nowMs: T_FIRST_MS,
+    });
+    expect(result.shouldPersist).toBe(true);
+    expect(result.rec.approvals).toHaveLength(1);
+    expect(result.rec.status).toBe('pending');
+  });
+
+  it('flips to approved when two distinct approvers vote', () => {
+    const rec = blankRec();
+    applyDecisionToRecord(rec, 'mlro', 'approve', undefined, {
+      soloMode: false,
+      soloCooldownHours: 24,
+      nowMs: T_FIRST_MS,
+    });
+    const result = applyDecisionToRecord(rec, 'deputy', 'approve', undefined, {
+      soloMode: false,
+      soloCooldownHours: 24,
+      nowMs: T_FIRST_MS,
+    });
+    expect(result.rec.status).toBe('approved');
+    expect(result.rec.approvals).toHaveLength(2);
+  });
+
+  it('same approver voting twice is a no-op when solo mode OFF', () => {
+    const rec = blankRec();
+    applyDecisionToRecord(rec, 'mlro', 'approve', undefined, {
+      soloMode: false,
+      soloCooldownHours: 24,
+      nowMs: T_FIRST_MS,
+    });
+    const result = applyDecisionToRecord(rec, 'mlro', 'approve', 'sneaking in', {
+      soloMode: false,
+      soloCooldownHours: 24,
+      nowMs: T_PLUS_24H_MS,
+    });
+    expect(result.shouldPersist).toBe(false);
+    expect(result.rec.status).toBe('pending');
+    expect(result.rec.approvals).toHaveLength(1);
+  });
+
+  it('any rejection is terminal', () => {
+    const result = applyDecisionToRecord(blankRec(), 'mlro', 'reject', 'too risky', {
+      soloMode: false,
+      soloCooldownHours: 24,
+      nowMs: T_FIRST_MS,
+    });
+    expect(result.rec.status).toBe('rejected');
+    expect(result.rec.rejections).toHaveLength(1);
+  });
+
+  it('does not mutate a terminal record', () => {
+    const rec = blankRec();
+    rec.status = 'approved';
+    rec.approvals = [{ actor: 'a', at: T_FIRST }, { actor: 'b', at: T_FIRST }];
+    const result = applyDecisionToRecord(rec, 'mlro', 'approve', undefined, {
+      soloMode: false,
+      soloCooldownHours: 24,
+      nowMs: T_PLUS_24H_MS,
+    });
+    expect(result.shouldPersist).toBe(false);
+    expect(result.rec.approvals).toHaveLength(2);
+  });
+});
+
+describe('approvals: applyDecisionToRecord — solo-MLRO mode', () => {
+  it('rejects the second vote BEFORE the cooldown elapses', () => {
+    const rec = blankRec();
+    applyDecisionToRecord(rec, 'mlro', 'approve', 'first vote', {
+      soloMode: true,
+      soloCooldownHours: 24,
+      nowMs: T_FIRST_MS,
+    });
+    const result = applyDecisionToRecord(rec, 'mlro', 'approve', 'second vote (too soon)', {
+      soloMode: true,
+      soloCooldownHours: 24,
+      nowMs: T_PLUS_1H_MS,
+    });
+    expect(result.shouldPersist).toBe(false);
+    expect(result.cooldownPendingUntilIso).toBe('2026-04-15T10:00:00.000Z');
+    expect(result.rec.status).toBe('pending');
+    expect(result.rec.approvals).toHaveLength(1);
+  });
+
+  it('accepts the second vote AFTER the cooldown elapses', () => {
+    const rec = blankRec();
+    applyDecisionToRecord(rec, 'mlro', 'approve', 'first vote', {
+      soloMode: true,
+      soloCooldownHours: 24,
+      nowMs: T_FIRST_MS,
+    });
+    const result = applyDecisionToRecord(rec, 'mlro', 'approve', 'second vote (next day)', {
+      soloMode: true,
+      soloCooldownHours: 24,
+      nowMs: T_PLUS_24H_MS,
+    });
+    expect(result.shouldPersist).toBe(true);
+    expect(result.cooldownPendingUntilIso).toBeUndefined();
+    expect(result.rec.status).toBe('approved');
+    expect(result.rec.approvals).toHaveLength(2);
+  });
+
+  it('marks the second vote with a [solo-mlro] audit-trail tag', () => {
+    const rec = blankRec();
+    applyDecisionToRecord(rec, 'mlro', 'approve', 'first vote', {
+      soloMode: true,
+      soloCooldownHours: 24,
+      nowMs: T_FIRST_MS,
+    });
+    applyDecisionToRecord(rec, 'mlro', 'approve', 'second vote', {
+      soloMode: true,
+      soloCooldownHours: 24,
+      nowMs: T_PLUS_24H_MS,
+    });
+    const second = rec.approvals[1];
+    expect(second.note).toContain('[solo-mlro 2nd vote');
+    expect(second.note).toContain('24h cooldown');
+    expect(second.note).toContain('second vote');
+  });
+
+  it('honours custom cooldown hours', () => {
+    const rec = blankRec();
+    applyDecisionToRecord(rec, 'mlro', 'approve', undefined, {
+      soloMode: true,
+      soloCooldownHours: 6,
+      nowMs: T_FIRST_MS,
+    });
+    // 5 hours later → still blocked
+    const tooSoon = applyDecisionToRecord(rec, 'mlro', 'approve', undefined, {
+      soloMode: true,
+      soloCooldownHours: 6,
+      nowMs: T_FIRST_MS + 5 * 3_600_000,
+    });
+    expect(tooSoon.cooldownPendingUntilIso).toBe('2026-04-14T16:00:00.000Z');
+    // 7 hours later → accepted
+    const accepted = applyDecisionToRecord(rec, 'mlro', 'approve', undefined, {
+      soloMode: true,
+      soloCooldownHours: 6,
+      nowMs: T_FIRST_MS + 7 * 3_600_000,
+    });
+    expect(accepted.shouldPersist).toBe(true);
+    expect(accepted.rec.status).toBe('approved');
+  });
+
+  it('refuses the second vote when the prior timestamp is corrupted', () => {
+    const rec = blankRec();
+    rec.approvals.push({ actor: 'mlro', at: 'not-a-date' });
+    const result = applyDecisionToRecord(rec, 'mlro', 'approve', undefined, {
+      soloMode: true,
+      soloCooldownHours: 24,
+      nowMs: T_PLUS_24H_MS,
+    });
+    expect(result.shouldPersist).toBe(false);
+    expect(result.cooldownPendingUntilIso).toBeUndefined();
+    expect(result.rec.approvals).toHaveLength(1);
+  });
+
+  it('does not allow the second vote to flip an already-approved record', () => {
+    const rec = blankRec();
+    rec.status = 'approved';
+    rec.approvals.push({ actor: 'mlro', at: T_FIRST });
+    rec.approvals.push({ actor: 'mlro', at: T_FIRST });
+    const result = applyDecisionToRecord(rec, 'mlro', 'approve', undefined, {
+      soloMode: true,
+      soloCooldownHours: 24,
+      nowMs: T_PLUS_24H_MS,
+    });
+    expect(result.shouldPersist).toBe(false);
+    expect(result.rec.approvals).toHaveLength(2);
   });
 });

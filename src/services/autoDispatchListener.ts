@@ -30,6 +30,15 @@ import { COMPANY_REGISTRY } from '../domain/customers';
 import { dispatchSuperBrainPlan } from './asanaSuperBrainDispatcher';
 import { pickFourEyesFromPersistentPool } from './approverPool';
 import { readAuditLog, recordDispatch } from './dispatchAuditLog';
+import { flushAuditLogToAsana, isAuditMirrorConfigured } from './asanaAuditLogMirror';
+import {
+  isCentralMlroMirrorConfigured,
+  mirrorDispatchToCentralMlro,
+} from './asanaCentralMlroMirror';
+import {
+  isInspectorMirrorConfigured,
+  mirrorDispatchToInspector,
+} from './asanaInspectorMirror';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -168,7 +177,7 @@ export async function handleCaseSaved(
     });
 
     // Record in the audit log with the listener trigger.
-    recordDispatch({
+    const auditEntry = recordDispatch({
       caseId: caseObj.id,
       verdict: result.plan.verdict,
       confidence: result.plan.enrichment.customFields
@@ -185,6 +194,23 @@ export async function handleCaseSaved(
       trigger: 'listener',
     });
 
+    // Central MLRO triage mirror — fire-and-forget. The mirror
+    // applies its own freeze/escalate/blocked filter so passes are
+    // skipped automatically. No-op when ASANA_CENTRAL_MLRO_PROJECT_GID
+    // is unset. Errors swallowed so a triage mirror failure never
+    // fails an otherwise-successful dispatch.
+    if (isCentralMlroMirrorConfigured()) {
+      void mirrorDispatchToCentralMlro(auditEntry).catch(() => {});
+    }
+
+    // Inspector evidence mirror — fire-and-forget. The mirror applies
+    // its own needsInspectorEvidence filter so noisy passes never
+    // reach the inspector project. No-op when
+    // ASANA_INSPECTOR_PROJECT_GID is unset. Tier-4 #14.
+    if (isInspectorMirrorConfigured()) {
+      void mirrorDispatchToInspector(auditEntry).catch(() => {});
+    }
+
     writeState({
       status: result.ok ? 'enabled' : 'error',
       lastDispatchAtIso: new Date().toISOString(),
@@ -192,6 +218,14 @@ export async function handleCaseSaved(
       lastError: result.ok ? undefined : result.errors.join('; '),
       dispatchCount: state.dispatchCount + 1,
     });
+
+    // FDL Art.24 durable mirror — fire-and-forget. The mirror is
+    // a no-op when ASANA_AUDIT_LOG_PROJECT_GID is unset, so this
+    // never blocks dispatch. Errors are swallowed so a mirror
+    // failure doesn't fail an otherwise-successful dispatch.
+    if (isAuditMirrorConfigured()) {
+      void flushAuditLogToAsana({ limit: 10 }).catch(() => {});
+    }
 
     return result.ok ? { ok: true } : { ok: false, error: result.errors.join('; ') };
   } catch (err) {

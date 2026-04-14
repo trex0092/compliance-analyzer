@@ -55,6 +55,40 @@ Using code-review-graph, check:
 - [ ] No unsafe-inline in script-src
 - [ ] CORS policy unchanged
 
+### Step 6: Asana Env Validation
+Run the deploy-readiness env validator. This catches missing env vars
+that would silently break the autopilot dispatcher, the cross-project
+mirrors (audit log + central MLRO + inspector), the webhook receiver,
+the four-eyes flow, and the per-customer status update cron.
+
+```bash
+npm run asana:env:check
+```
+
+The validator categorises every check as:
+- 🚫 **BLOCKER** — missing → core feature broken, deploy will fail
+- ⚠ **WARNING** — missing → enhancement degrades to a no-op silently
+- ✓ **INFO** — confirmation that a feature is fully wired
+
+Exit code:
+- `0` when all blockers pass
+- `1` when any blocker is present
+
+For a strict deploy (treat warnings as blockers too):
+```bash
+npm run asana:env:check -- --strict
+```
+
+**Block deployment** if:
+- ANY blocker is reported (HTTP token missing, four-eyes
+  misconfigured, placeholder REPLACE_ME values still present,
+  non-HTTPS webhook target)
+- Solo-MLRO mode is enabled but `HAWKEYE_APPROVER_KEYS` is empty
+- Standard four-eyes mode and fewer than 2 approvers configured
+
+**Warnings are acceptable for deploy** but indicate features that
+will silently degrade — track and fix in the next pass.
+
 ### Output
 ```
 ## Pre-Deployment Check

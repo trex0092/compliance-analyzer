@@ -31,6 +31,9 @@ const KEYS = [
   'ASANA_CF_DAYS_REMAINING_GID',
   'ASANA_CF_CONFIDENCE_GID',
   'ASANA_CF_REGULATION_GID',
+  'ASANA_CF_MANUAL_ACTION_GID',
+  'ASANA_CF_MANUAL_ACTION_PENDING',
+  'ASANA_CF_MANUAL_ACTION_DONE',
 ];
 
 const originalEnv: Record<string, string | undefined> = {};
@@ -112,7 +115,30 @@ describe('buildComplianceCustomFields — env configured', () => {
     expect(out['field-reg']).toBe('FDL Art.20');
   });
 
+  it('maps manualActionRequired pending → red chip option (Tier-4 #13)', () => {
+    process.env.ASANA_CF_MANUAL_ACTION_GID = 'field-manual';
+    process.env.ASANA_CF_MANUAL_ACTION_PENDING = 'opt-manual-pending';
+    const out = buildComplianceCustomFields({ manualActionRequired: 'pending' });
+    expect(out['field-manual']).toBe('opt-manual-pending');
+  });
+
+  it('maps manualActionRequired done → green chip option', () => {
+    process.env.ASANA_CF_MANUAL_ACTION_GID = 'field-manual';
+    process.env.ASANA_CF_MANUAL_ACTION_DONE = 'opt-manual-done';
+    const out = buildComplianceCustomFields({ manualActionRequired: 'done' });
+    expect(out['field-manual']).toBe('opt-manual-done');
+  });
+
+  it('drops manualActionRequired silently when env GID is unset', () => {
+    // No ASANA_CF_MANUAL_ACTION_GID — the field should be omitted
+    // from the payload, not crash.
+    const out = buildComplianceCustomFields({ manualActionRequired: 'pending' });
+    expect(Object.keys(out)).not.toContain('field-manual');
+  });
+
   it('populates all fields together', () => {
+    process.env.ASANA_CF_MANUAL_ACTION_GID = 'field-manual';
+    process.env.ASANA_CF_MANUAL_ACTION_PENDING = 'opt-manual-pending';
     const out = buildComplianceCustomFields({
       riskLevel: 'high',
       verdict: 'freeze',
@@ -121,9 +147,11 @@ describe('buildComplianceCustomFields — env configured', () => {
       daysRemaining: 3,
       confidence: 0.92,
       regulationCitation: 'FDL Art.26',
+      manualActionRequired: 'pending',
     });
-    expect(Object.keys(out).length).toBe(7);
+    expect(Object.keys(out).length).toBe(8);
     expect(out['field-risk']).toBe('opt-high');
+    expect(out['field-manual']).toBe('opt-manual-pending');
   });
 
   it('missing per-option env var leaves that field unset', () => {
