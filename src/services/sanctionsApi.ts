@@ -312,32 +312,273 @@ function parseEUXml(xml: string): SanctionsEntry[] {
 /**
  * Fetch UK OFSI Consolidated List.
  * Required by FDL No.10/2025 Art.35 — must screen against UK sanctions.
+ *
+ * Parses the HM Treasury OFSI Consolidated List CSV (the public
+ * "2022 format" file) and returns structured entries. The CSV groups
+ * names by `Group ID`: the first row per group carries the primary
+ * name, and subsequent rows with `Alias Type = 'AKA'` or similar
+ * become aliases attached to the same logical sanctioned party.
+ *
+ * Closes deep-review gap C1: prior to this commit the function
+ * returned [] silently, causing screenAgainstList to miss every
+ * UK-designated entity — an Art.35 violation.
  */
 export async function fetchUKSanctionsList(proxyUrl?: string): Promise<SanctionsEntry[]> {
-  // UK OFSI list — endpoint requires proxy for CORS
-  const url = proxyUrl
-    ? `${proxyUrl}/uk-ofsi/ConList.csv`
-    : 'https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv';
+  const UK_URL = 'https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv';
+  const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(UK_URL)}` : UK_URL;
 
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    // Return empty — actual parsing requires CSV parser; entries come from TFS-refresh in production
-    return [];
-  } catch {
-    return [];
+  const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  if (!res.ok) throw new Error(`UK OFSI API returned ${res.status}`);
+
+  const csv = await res.text();
+  return parseUKOfsiCsv(csv);
+}
+
+/**
+ * Parse the UK OFSI CSV into SanctionsEntry objects. The parser is
+ * intentionally tolerant: the OFSI format has evolved over time and
+ * downstream screening should never crash on an unknown header.
+ */
+export function parseUKOfsiCsv(csv: string): SanctionsEntry[] {
+  const rows = parseCsvRows(csv);
+  if (rows.length === 0) return [];
+
+  // Find the header row. Real OFSI CSVs start with a leading blank
+  // and a metadata row; the header is the first row containing a
+  // 'Name 1' column, not necessarily row 0.
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(rows.length, 5); i++) {
+    if (rows[i].some((c) => /^Name\s*1$/i.test(c.trim()))) {
+      headerIdx = i;
+      break;
+    }
   }
+  if (headerIdx === -1) return [];
+
+  const header = rows[headerIdx].map((h) => h.trim());
+  const col = (name: string): number =>
+    header.findIndex((h) => h.toLowerCase() === name.toLowerCase());
+
+  const nameCols = [1, 2, 3, 4, 5, 6]
+    .map((i) => col(`Name ${i}`))
+    .filter((i) => i >= 0);
+  const groupIdCol = col('Group ID');
+  const groupTypeCol = col('Group Type');
+  const aliasTypeCol = col('Alias Type');
+  const regimeCol = col('Regime');
+  const listedOnCol = col('Listed On');
+  const nationalityCol = col('Nationality');
+
+  if (nameCols.length === 0 || groupIdCol < 0) return [];
+
+  // Group records by Group ID so aliases attach to their primary party.
+  interface Accumulator {
+    primaryName: string;
+    aliases: Set<string>;
+    type: 'individual' | 'entity';
+    regime?: string;
+    listedOn?: string;
+    nationality?: string;
+  }
+  const byGroup = new Map<string, Accumulator>();
+
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.length <= 1) continue;
+    const groupId = (row[groupIdCol] || '').trim();
+    if (!groupId) continue;
+
+    const fullName = nameCols
+      .map((c) => (row[c] || '').trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    if (!fullName) continue;
+
+    const groupType = groupTypeCol >= 0 ? (row[groupTypeCol] || '').trim() : '';
+    const aliasType = aliasTypeCol >= 0 ? (row[aliasTypeCol] || '').trim() : '';
+    const type: 'individual' | 'entity' =
+      groupType.toLowerCase() === 'individual' ? 'individual' : 'entity';
+
+    const existing = byGroup.get(groupId);
+    if (!existing) {
+      byGroup.set(groupId, {
+        primaryName: fullName,
+        aliases: new Set<string>(),
+        type,
+        regime: regimeCol >= 0 ? (row[regimeCol] || '').trim() || undefined : undefined,
+        listedOn:
+          listedOnCol >= 0 ? (row[listedOnCol] || '').trim() || undefined : undefined,
+        nationality:
+          nationalityCol >= 0
+            ? (row[nationalityCol] || '').trim() || undefined
+            : undefined,
+      });
+    } else {
+      // Any non-primary row becomes an alias.
+      if (aliasType || fullName !== existing.primaryName) {
+        existing.aliases.add(fullName);
+      }
+    }
+  }
+
+  const entries: SanctionsEntry[] = [];
+  for (const [groupId, acc] of byGroup) {
+    entries.push({
+      id: `UK-OFSI-${groupId}`,
+      name: acc.primaryName,
+      aliases: Array.from(acc.aliases),
+      listSource: 'UK OFSI',
+      listDate: acc.listedOn,
+      type: acc.type,
+      nationality: acc.nationality,
+      designationRef: acc.regime,
+    });
+  }
+  return entries;
+}
+
+// ---------------------------------------------------------------------------
+// UAE / EOCN Local Terrorist List
+// ---------------------------------------------------------------------------
+//
+// The UAE EOCN (Executive Office for Control and Non-Proliferation) does
+// NOT publish a machine-readable list. Designations arrive via gazetted
+// notifications, circulars, and the goAML portal. The tfs-refresh.js
+// root module ingests these into a tenant-side cache and seeds this
+// module via `seedUaeSanctionsList()`.
+//
+// Behaviour change vs. the previous stub:
+//   - If the cache has been seeded, fetchUAESanctionsList returns the
+//     cached entries.
+//   - If the cache is empty, it THROWS with a diagnostic error rather
+//     than silently returning []. The caller (fetchAllSanctionsLists)
+//     handles the throw via Promise.allSettled and surfaces the gap in
+//     `errors[]` — exactly the signal an MLRO audit needs to catch the
+//     Art.35 Violation before it becomes a regulator finding.
+
+let uaeSanctionsCache: readonly SanctionsEntry[] | null = null;
+
+/**
+ * Seed the UAE / EOCN sanctions cache. Called by tfs-refresh.js once
+ * the latest designations have been fetched from the operator's
+ * tenant store or the goAML XML upload.
+ *
+ * Accepts either plain SanctionsEntry objects or minimal records with
+ * just name + type + designationRef. Validates and normalises before
+ * caching so a malformed feed can't poison later screening runs.
+ */
+export function seedUaeSanctionsList(
+  entries: ReadonlyArray<
+    Partial<SanctionsEntry> & Pick<SanctionsEntry, 'name' | 'type'>
+  >
+): number {
+  const normalised: SanctionsEntry[] = [];
+  for (const e of entries) {
+    if (!e || typeof e.name !== 'string' || e.name.trim().length === 0) continue;
+    if (e.type !== 'individual' && e.type !== 'entity') continue;
+    normalised.push(
+      Object.freeze({
+        id: e.id ?? `UAE-EOCN-${normalised.length + 1}`,
+        name: e.name.trim(),
+        aliases: Object.freeze(
+          Array.isArray(e.aliases)
+            ? e.aliases.filter((a): a is string => typeof a === 'string' && a.length > 0)
+            : []
+        ) as string[],
+        listSource: 'UAE EOCN',
+        listDate: e.listDate,
+        type: e.type,
+        nationality: e.nationality,
+        designationRef: e.designationRef,
+      })
+    );
+  }
+  uaeSanctionsCache = Object.freeze(normalised);
+  return normalised.length;
+}
+
+/**
+ * Clear the UAE / EOCN cache. Test-only — production code should
+ * never need to unload an active sanctions list.
+ */
+export function __clearUaeSanctionsCacheForTests(): void {
+  uaeSanctionsCache = null;
 }
 
 /**
  * Fetch UAE Local Terrorist List / EOCN TFS designations.
  * Required by Cabinet Res 74/2020 — UAE-specific sanctions.
+ *
+ * Reads from the seeded cache. If the cache is empty, throws so the
+ * caller sees the gap (previously this returned [] and screenings
+ * silently ignored UAE designations).
  */
 export async function fetchUAESanctionsList(): Promise<SanctionsEntry[]> {
-  // UAE local list has no public API — entries maintained via EOCN notifications
-  // In production, this is populated through the TFS-refresh module
-  return [];
+  if (uaeSanctionsCache === null) {
+    throw new Error(
+      'UAE EOCN sanctions cache is empty — seed via seedUaeSanctionsList() ' +
+        'from tfs-refresh.js before screening. FDL No.10/2025 Art.35 / ' +
+        'Cabinet Res 74/2020 Art.4 require UAE list coverage.'
+    );
+  }
+  return [...uaeSanctionsCache];
 }
+
+// ---------------------------------------------------------------------------
+// CSV parser — RFC 4180-ish, tolerant of CRLF and quoted fields with
+// embedded commas / quotes / newlines. Written inline (not dependency-
+// added) because the rest of the project has no CSV parsing need.
+// ---------------------------------------------------------------------------
+
+function parseCsvRows(input: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        // Escaped quote?
+        if (input[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cell += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        row.push(cell);
+        cell = '';
+      } else if (ch === '\r') {
+        // swallow; paired \n handles row end
+      } else if (ch === '\n') {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = '';
+      } else {
+        cell += ch;
+      }
+    }
+  }
+  // Trailing cell / row.
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows;
+}
+
+// Exported for tests only.
+export const __test__ = { parseCsvRows };
 
 export interface FetchAllSanctionsResult {
   entries: SanctionsEntry[];
