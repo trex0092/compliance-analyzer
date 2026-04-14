@@ -630,7 +630,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
     <div class="tabs" id="tabsNav">
       <button class="mobile-menu-close" id="mobileMenuClose" data-action="MobileResponsive.toggleMenu">&times;</button>
-      <div class="tab active" data-action="_switchTabAndCloseMenu" data-arg="analyse">🔍 Analyze</div>
+      <div class="tab active" data-action="_switchTabAndCloseMenu" data-arg="about">✦ About</div>
+      <div class="tab" data-action="switchTab" data-arg="analyse">🔍 Analyze</div>
       <div class="tab" data-action="switchTab" data-arg="shipments">🚚 IAR Shipments</div>
       <div class="tab" data-action="switchTab" data-arg="localshipments">📦 Local Shipments</div>
       <div class="tab" data-action="switchTab" data-arg="iarreport">📝 IAR Report</div>
@@ -682,8 +683,92 @@ document.addEventListener('DOMContentLoaded', function(){
       </div>
     </div>
 
+    <!-- ABOUT TAB — Hawkeye Sterling brand introduction -->
+    <div id="tab-about" class="tab-content active">
+      <div class="hawkeye-hero" style="position:relative;padding:64px 32px 56px;border-radius:6px;background:radial-gradient(ellipse at center,#15110a 0%,#0a0805 60%,#050402 100%);border:1px solid #2a2113;box-shadow:inset 0 0 120px rgba(212,175,55,0.04),0 4px 24px rgba(0,0,0,0.6);text-align:center;overflow:hidden">
+        <div style="position:absolute;inset:0;background-image:radial-gradient(circle at 50% 0%,rgba(212,175,55,0.08) 0%,transparent 40%);pointer-events:none"></div>
+        <div style="position:relative;z-index:1">
+          <div style="font-size:11px;letter-spacing:0.55em;color:#d4af37;font-weight:500;margin-bottom:32px;font-family:Georgia,'Times New Roman',serif">PRECISION SCREENING REDEFINED</div>
+          <div aria-hidden="true" style="display:flex;justify-content:center;margin:0 auto 28px;align-items:center;gap:10px">
+            <span style="display:inline-block;width:60px;height:1px;background:linear-gradient(90deg,transparent,#d4af37,transparent)"></span>
+            <span style="display:inline-block;width:14px;height:14px;border:1px solid #d4af37;border-radius:50%;position:relative">
+              <span style="position:absolute;inset:3px;background:#d4af37;border-radius:50%"></span>
+            </span>
+            <span style="display:inline-block;width:60px;height:1px;background:linear-gradient(90deg,transparent,#d4af37,transparent)"></span>
+          </div>
+          <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:300;font-size:64px;letter-spacing:0.18em;color:#f5f1e6;margin:0 0 6px;line-height:1.05">HAWKEYE</h1>
+          <h2 style="font-family:Georgia,'Times New Roman',serif;font-weight:300;font-style:italic;font-size:64px;letter-spacing:0.05em;color:#d4af37;margin:0 0 28px;line-height:1.05">Sterling</h2>
+          <div style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:18px;color:#cfc7b3;margin-bottom:32px">Where Vision Meets Vigilance</div>
+          <div style="width:80px;height:1px;background:#d4af37;margin:0 auto 24px;opacity:0.6"></div>
+          <div style="font-size:11px;letter-spacing:0.4em;color:#d4af37;font-weight:500">NOTHING ESCAPES. EVERYTHING IS VERIFIED.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:24px;background:#0a0805;border:1px solid #2a2113;padding:48px 40px">
+        <div style="font-size:11px;letter-spacing:0.45em;color:#d4af37;font-weight:500;font-family:Georgia,'Times New Roman',serif;margin-bottom:18px">THE STANDARD</div>
+        <h2 style="font-family:Georgia,'Times New Roman',serif;font-weight:300;font-size:38px;letter-spacing:0.06em;color:#f5f1e6;margin:0 0 24px;line-height:1.15">SCREENING WITHOUT COMPROMISE</h2>
+        <p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.85;color:#cfc7b3;max-width:640px;margin:0">
+          Hawkeye Sterling is the definitive screening instrument for organizations that
+          accept nothing less than absolute clarity. Engineered for precision. Designed
+          for those who lead.
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:24px;background:#0a0805;border:1px solid #2a2113;padding:48px 32px;text-align:center">
+        <div style="font-size:11px;letter-spacing:0.45em;color:#d4af37;font-weight:500;font-family:Georgia,'Times New Roman',serif;margin-bottom:14px">CAPABILITIES</div>
+        <h2 style="font-family:Georgia,'Times New Roman',serif;font-weight:300;font-size:34px;letter-spacing:0.06em;color:#f5f1e6;margin:0 0 40px;line-height:1.2">BUILT FOR THE UNCOMPROMISING</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;max-width:1100px;margin:0 auto">
+
+          <div style="border:1px solid #2a2113;background:linear-gradient(180deg,#100c06 0%,#0a0805 100%);padding:36px 24px 32px;border-radius:4px;text-align:center">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#d4af37;letter-spacing:0.12em;margin-bottom:18px;opacity:0.7">I</div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:0.35em;color:#d4af37;margin-bottom:18px;font-weight:500">PRECISION</div>
+            <p style="font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#cfc7b3;margin:0">Multi-layered filtering with surgical accuracy. Every data point verified, every risk identified before it materializes.</p>
+          </div>
+
+          <div style="border:1px solid #2a2113;background:linear-gradient(180deg,#100c06 0%,#0a0805 100%);padding:36px 24px 32px;border-radius:4px;text-align:center">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#d4af37;letter-spacing:0.12em;margin-bottom:18px;opacity:0.7">II</div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:0.35em;color:#d4af37;margin-bottom:18px;font-weight:500">VIGILANCE</div>
+            <p style="font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#cfc7b3;margin:0">Continuous, real-time monitoring that never sleeps. Persistent surveillance across every vector of exposure.</p>
+          </div>
+
+          <div style="border:1px solid #2a2113;background:linear-gradient(180deg,#100c06 0%,#0a0805 100%);padding:36px 24px 32px;border-radius:4px;text-align:center">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#d4af37;letter-spacing:0.12em;margin-bottom:18px;opacity:0.7">III</div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:0.35em;color:#d4af37;margin-bottom:18px;font-weight:500">INTELLIGENCE</div>
+            <p style="font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#cfc7b3;margin:0">Adaptive analytics that anticipate threats before they emerge. Pattern recognition refined to an art form.</p>
+          </div>
+
+          <div style="border:1px solid #2a2113;background:linear-gradient(180deg,#100c06 0%,#0a0805 100%);padding:36px 24px 32px;border-radius:4px;text-align:center">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#d4af37;letter-spacing:0.12em;margin-bottom:18px;opacity:0.7">IV</div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:0.35em;color:#d4af37;margin-bottom:18px;font-weight:500">INTEGRITY</div>
+            <p style="font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#cfc7b3;margin:0">Immutable audit trails and transparent reporting. Every decision documented, every action accountable.</p>
+          </div>
+
+          <div style="border:1px solid #2a2113;background:linear-gradient(180deg,#100c06 0%,#0a0805 100%);padding:36px 24px 32px;border-radius:4px;text-align:center">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#d4af37;letter-spacing:0.12em;margin-bottom:18px;opacity:0.7">V</div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:0.35em;color:#d4af37;margin-bottom:18px;font-weight:500">SOVEREIGNTY</div>
+            <p style="font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#cfc7b3;margin:0">Complete data sovereignty with enterprise-grade encryption. Your intelligence remains exclusively yours.</p>
+          </div>
+
+          <div style="border:1px solid #2a2113;background:linear-gradient(180deg,#100c06 0%,#0a0805 100%);padding:36px 24px 32px;border-radius:4px;text-align:center">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#d4af37;letter-spacing:0.12em;margin-bottom:18px;opacity:0.7">VI</div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:0.35em;color:#d4af37;margin-bottom:18px;font-weight:500">ELEGANCE</div>
+            <p style="font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#cfc7b3;margin:0">Complexity distilled into clarity. An interface so refined, power feels effortless in your hands.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:24px;background:#0a0805;border:1px solid #2a2113;padding:56px 32px;text-align:center">
+        <h2 style="font-family:Georgia,'Times New Roman',serif;font-weight:300;font-size:36px;letter-spacing:0.08em;color:#f5f1e6;margin:0 0 16px;line-height:1.15">EXPERIENCE THE STANDARD</h2>
+        <div style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:15px;color:#cfc7b3;margin-bottom:32px">By invitation. By reputation. By design.</div>
+        <button class="btn" data-action="switchTab" data-arg="analyse" style="background:transparent;border:1px solid #d4af37;color:#d4af37;font-family:Georgia,'Times New Roman',serif;font-size:12px;letter-spacing:0.35em;padding:18px 42px;border-radius:2px;cursor:pointer;font-weight:500">LAUNCH SCREENING CONSOLE</button>
+        <div style="margin-top:40px;padding-top:24px;border-top:1px solid #2a2113;font-family:Georgia,'Times New Roman',serif;font-size:10px;letter-spacing:0.4em;color:#d4af37;opacity:0.65">HAWKEYE STERLING</div>
+        <div style="margin-top:8px;font-family:Georgia,'Times New Roman',serif;font-size:9px;letter-spacing:0.3em;color:#7a7160">© 2026 HAWKEYE STERLING · ALL RIGHTS RESERVED</div>
+      </div>
+    </div>
+
     <!-- ANALYSE TAB -->
-    <div id="tab-analyse" class="tab-content active">
+    <div id="tab-analyse" class="tab-content">
       <div class="card">
         <span class="lbl">Describe what you want to analyze</span>
         <textarea id="queryInput" placeholder="Describe the compliance area, process, or scenario you want to analyze. Be specific about regulations, entities, risk factors, or operational gaps you need assessed.
