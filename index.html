@@ -1817,6 +1817,45 @@
       .launch-analyzer-btn:active {
         transform: translateY(0);
       }
+
+      /* === HERO INTRO SOFT FADE === */
+      .hero-intro {
+        transition:
+          opacity 0.55s ease,
+          transform 0.55s ease,
+          max-height 0.6s ease 0.1s,
+          margin 0.5s ease 0.15s,
+          padding 0.5s ease 0.15s,
+          border-color 0.4s ease;
+        max-height: 1200px;
+        overflow: hidden;
+        will-change: opacity, transform, max-height;
+      }
+      .hero-intro--gone {
+        opacity: 0;
+        transform: translateY(-12px);
+        max-height: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        border-color: transparent;
+        pointer-events: none;
+      }
+      /* Soft fade-in for tab content after switch from hero. */
+      .tab-content.tab-soft-enter {
+        animation: tabSoftFadeIn 0.6s ease;
+      }
+      @keyframes tabSoftFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
     </style>
     <script>
       // Apply saved theme immediately to prevent flash
@@ -2962,7 +3001,8 @@
           </div>
 
           <div
-            class="card"
+            id="heroIntro"
+            class="card hero-intro"
             style="
               margin-top: 24px;
               margin-bottom: 24px;
@@ -10153,6 +10193,6 @@ Examples:
     <script src="str-drafter-client.js?v=20260413"></script>
     <script src="mlro-insights-client.js?v=20260413"></script>
     <script src="global-status-bar.js?v=20260413"></script>
-    <script src="app-boot.js?v=20260409"></script>
+    <script src="app-boot.js?v=20260414scroll"></script>
   </body>
 </html>

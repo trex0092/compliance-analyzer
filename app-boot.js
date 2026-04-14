@@ -1,27 +1,62 @@
 // Wire all enhanced tabs into switchTab
 (function () {
   var origSwitch = window.switchTab;
+  // Hide the LAUNCH ANALYZER hero with a soft fade the first time
+  // any tab switch happens. Persists for the session via sessionStorage.
+  function hideHeroIntro() {
+    try {
+      var hero = document.getElementById('heroIntro');
+      if (!hero) return;
+      if (hero.classList.contains('hero-intro--gone')) return;
+      hero.classList.add('hero-intro--gone');
+      sessionStorage.setItem('heroIntroDismissed', '1');
+      // After the transition removes the box, also remove from layout.
+      setTimeout(function () {
+        if (hero.parentNode) hero.style.display = 'none';
+      }, 700);
+    } catch (err) {
+      /* best-effort */
+    }
+  }
+  // Soft fade-in animation on the active tab content.
+  function softFadeActiveTab() {
+    try {
+      var active = document.querySelector('.tab-content.active');
+      if (!active) return;
+      active.classList.remove('tab-soft-enter');
+      // Force reflow so the animation re-runs.
+      void active.offsetWidth;
+      active.classList.add('tab-soft-enter');
+      setTimeout(function () {
+        if (active) active.classList.remove('tab-soft-enter');
+      }, 700);
+    } catch (err) {
+      /* no-op */
+    }
+  }
   // Scroll the tab nav + active content into view after every switch.
-  // This fixes the "LAUNCH ANALYZER" intro button which would swap tabs
-  // without moving the viewport, leaving the user stuck on the hero.
-  // Idempotent: harmless on tab-bar clicks since nav is already in view.
+  // Lands the user inside the analyzer when they click LAUNCH ANALYZER
+  // on the intro hero. Idempotent on tab-bar clicks.
   function scrollToActiveTab() {
     try {
       var nav = document.getElementById('tabsNav');
       if (!nav) return;
       var rect = nav.getBoundingClientRect();
-      // Only scroll if the nav is not already fully visible.
       if (rect.top < 0 || rect.top > window.innerHeight - 40) {
         nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } catch (err) {
-      /* no-op — scroll is best-effort */
+      /* no-op */
     }
   }
   window.switchTab = function (name) {
+    hideHeroIntro();
     origSwitch(name);
-    // Defer scroll so origSwitch + per-tab renderers finish first.
-    setTimeout(scrollToActiveTab, 0);
+    // Defer scroll + fade so origSwitch + renderers finish first.
+    setTimeout(function () {
+      scrollToActiveTab();
+      softFadeActiveTab();
+    }, 0);
     if (name === 'reports') {
       var el = document.getElementById('tab-reports');
       if (el && typeof ReportGenerator !== 'undefined') {
@@ -101,6 +136,20 @@
       window.switchTab('metalstrading');
     }
   }, 500);
+
+  // If the hero was dismissed earlier in this session, keep it hidden
+  // on reload so the user does not see it flash before the JS hides it.
+  try {
+    if (sessionStorage.getItem('heroIntroDismissed') === '1') {
+      var hero = document.getElementById('heroIntro');
+      if (hero) {
+        hero.classList.add('hero-intro--gone');
+        hero.style.display = 'none';
+      }
+    }
+  } catch (err) {
+    /* sessionStorage may be unavailable in private mode — ignore */
+  }
 
   // Auto-migrate localStorage to IndexedDB on first load
   if (typeof ComplianceDB !== 'undefined') {

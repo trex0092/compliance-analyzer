@@ -45,14 +45,187 @@
  */
 
 // ---------------------------------------------------------------------------
-// Step 1: normalise
+// Step 1: normalise (with Cyrillic + Greek transliteration)
 // ---------------------------------------------------------------------------
 
 const DIACRITICS = /[\u0300-\u036f]/g;
 
+// ISO 9 Cyrillic-to-Latin map (subset covering Russian + Ukrainian +
+// Belarusian + Bulgarian alphabets seen on UN/OFAC list spellings).
+const CYRILLIC_LATIN: Record<string, string> = {
+  А: 'a',
+  а: 'a',
+  Б: 'b',
+  б: 'b',
+  В: 'v',
+  в: 'v',
+  Г: 'g',
+  г: 'g',
+  Ґ: 'g',
+  ґ: 'g',
+  Д: 'd',
+  д: 'd',
+  Е: 'e',
+  е: 'e',
+  Ё: 'e',
+  ё: 'e',
+  Є: 'ye',
+  є: 'ye',
+  Ж: 'zh',
+  ж: 'zh',
+  З: 'z',
+  з: 'z',
+  И: 'i',
+  и: 'i',
+  І: 'i',
+  і: 'i',
+  Й: 'i',
+  й: 'i',
+  Ї: 'yi',
+  ї: 'yi',
+  К: 'k',
+  к: 'k',
+  Л: 'l',
+  л: 'l',
+  М: 'm',
+  м: 'm',
+  Н: 'n',
+  н: 'n',
+  О: 'o',
+  о: 'o',
+  П: 'p',
+  п: 'p',
+  Р: 'r',
+  р: 'r',
+  С: 's',
+  с: 's',
+  Т: 't',
+  т: 't',
+  У: 'u',
+  у: 'u',
+  Ф: 'f',
+  ф: 'f',
+  Х: 'kh',
+  х: 'kh',
+  Ц: 'ts',
+  ц: 'ts',
+  Ч: 'ch',
+  ч: 'ch',
+  Ш: 'sh',
+  ш: 'sh',
+  Щ: 'sch',
+  щ: 'sch',
+  Ъ: '',
+  ъ: '',
+  Ы: 'y',
+  ы: 'y',
+  Ь: '',
+  ь: '',
+  Э: 'e',
+  э: 'e',
+  Ю: 'yu',
+  ю: 'yu',
+  Я: 'ya',
+  я: 'ya',
+};
+
+// ISO 843 Greek-to-Latin map (modern Greek + classical letter
+// shapes seen on EU + UN list spellings).
+const GREEK_LATIN: Record<string, string> = {
+  Α: 'a',
+  α: 'a',
+  Ά: 'a',
+  ά: 'a',
+  Β: 'v',
+  β: 'v',
+  Γ: 'g',
+  γ: 'g',
+  Δ: 'd',
+  δ: 'd',
+  Ε: 'e',
+  ε: 'e',
+  Έ: 'e',
+  έ: 'e',
+  Ζ: 'z',
+  ζ: 'z',
+  Η: 'i',
+  η: 'i',
+  Ή: 'i',
+  ή: 'i',
+  Θ: 'th',
+  θ: 'th',
+  Ι: 'i',
+  ι: 'i',
+  Ί: 'i',
+  ί: 'i',
+  Ϊ: 'i',
+  ϊ: 'i',
+  Κ: 'k',
+  κ: 'k',
+  Λ: 'l',
+  λ: 'l',
+  Μ: 'm',
+  μ: 'm',
+  Ν: 'n',
+  ν: 'n',
+  Ξ: 'x',
+  ξ: 'x',
+  Ο: 'o',
+  ο: 'o',
+  Ό: 'o',
+  ό: 'o',
+  Π: 'p',
+  π: 'p',
+  Ρ: 'r',
+  ρ: 'r',
+  Σ: 's',
+  σ: 's',
+  ς: 's',
+  Τ: 't',
+  τ: 't',
+  Υ: 'y',
+  υ: 'y',
+  Ύ: 'y',
+  ύ: 'y',
+  Ϋ: 'y',
+  ϋ: 'y',
+  Φ: 'f',
+  φ: 'f',
+  Χ: 'ch',
+  χ: 'ch',
+  Ψ: 'ps',
+  ψ: 'ps',
+  Ω: 'o',
+  ω: 'o',
+  Ώ: 'o',
+  ώ: 'o',
+};
+
+function transliterateScript(name: string, table: Record<string, string>): string {
+  let out = '';
+  for (const ch of name) {
+    const mapped = table[ch];
+    out += mapped !== undefined ? mapped : ch;
+  }
+  return out;
+}
+
+function transliterateCyrillic(name: string): string {
+  return transliterateScript(name, CYRILLIC_LATIN);
+}
+
+function transliterateGreek(name: string): string {
+  return transliterateScript(name, GREEK_LATIN);
+}
+
 function normalize(name: string): string {
   if (typeof name !== 'string') return '';
-  return name
+  // Transliterate non-Latin scripts BEFORE NFD so the diacritic
+  // strip does not nuke characters we just produced.
+  let s = name;
+  s = transliterateCyrillic(s);
+  s = transliterateGreek(s);
+  return s
     .normalize('NFD')
     .replace(DIACRITICS, '')
     .replace(/[''`\u2019\u2018]/g, '')
@@ -249,5 +422,7 @@ export const __test__ = {
   foldDoubleConsonants,
   stripVowels,
   phoneticKey,
+  transliterateCyrillic,
+  transliterateGreek,
   MAX_VARIANTS,
 };
