@@ -204,6 +204,7 @@ var CLICKUP_LIST_ID = ''; // removed — use Asana
 var GEMINI_KEY = '';
 var COPILOT_KEY = ''; // GitHub Copilot / GitHub Models API token
 var TAVILY_KEY = '';
+var HAWKEYE_BRAIN_TOKEN_VALUE = ''; // Brain Console toast stream auth (Tier-3 #10)
 var GDRIVE_CLIENT_ID = '';
 var GDRIVE_FOLDER_ID = '';
 var gdriveAccessToken = '';
@@ -783,6 +784,7 @@ function persistKeys() {
     scheduleEmail: SCHEDULE_EMAIL,
     proxyUrl: PROXY_URL,
     tavilyKey: TAVILY_KEY,
+    hawkeyeBrainToken: HAWKEYE_BRAIN_TOKEN_VALUE,
     gdriveClientId: GDRIVE_CLIENT_ID,
     gdriveFolderId: GDRIVE_FOLDER_ID,
     rememberKeys: REMEMBER_KEYS
@@ -821,6 +823,12 @@ function hydrateKeys() {
   GEMINI_KEY = (saved.geminiKey || '').trim();
   COPILOT_KEY = (saved.copilotKey || '').trim();
   TAVILY_KEY = (saved.tavilyKey || '').trim();
+  HAWKEYE_BRAIN_TOKEN_VALUE = (saved.hawkeyeBrainToken || '').trim();
+  // Inject into window so brain-console.js + toastStreamPoller.ts
+  // pick it up without a page reload.
+  if (HAWKEYE_BRAIN_TOKEN_VALUE) {
+    window.HAWKEYE_BRAIN_TOKEN = HAWKEYE_BRAIN_TOKEN_VALUE;
+  }
   GDRIVE_CLIENT_ID = (saved.gdriveClientId || '').trim();
   GDRIVE_FOLDER_ID = (saved.gdriveFolderId || '').trim();
   AI_PROVIDER = saved.aiProvider || 'gemini';
@@ -842,6 +850,7 @@ function hydrateKeys() {
     scheduleEmail: SCHEDULE_EMAIL, schedEmail2: SCHEDULE_EMAIL,
     proxyUrl: PROXY_URL, proxyUrl2: PROXY_URL,
     tavilyKey2: TAVILY_KEY,
+    hawkeyeBrainToken2: HAWKEYE_BRAIN_TOKEN_VALUE,
     gdriveClientId: GDRIVE_CLIENT_ID, gdriveClientId2: GDRIVE_CLIENT_ID,
     gdriveFolderId: GDRIVE_FOLDER_ID, gdriveFolderId2: GDRIVE_FOLDER_ID,
   };
@@ -903,6 +912,12 @@ function updateKeys() {
   if (document.getElementById('gdriveFolderId2')?.value.trim()) GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId2').value.trim();
   if (document.getElementById('proxyUrl2')?.value.trim()) PROXY_URL = normaliseProxyUrl(document.getElementById('proxyUrl2').value);
   if (document.getElementById('tavilyKey2')?.value.trim()) TAVILY_KEY = document.getElementById('tavilyKey2').value.trim();
+  if (document.getElementById('hawkeyeBrainToken2')?.value.trim()) {
+    HAWKEYE_BRAIN_TOKEN_VALUE = document.getElementById('hawkeyeBrainToken2').value.trim();
+    // Inject into window immediately so the toast stream poller +
+    // Brain Console probe pick it up without a reload.
+    window.HAWKEYE_BRAIN_TOKEN = HAWKEYE_BRAIN_TOKEN_VALUE;
+  }
   persistKeys();
 
   // Sync setup panel fields
