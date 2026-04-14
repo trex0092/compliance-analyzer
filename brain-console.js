@@ -507,7 +507,7 @@
         : '';
       statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel}${crossLabel}${typoLabel}${driftLabel} (${durationMs}ms)`;
       statusEl.style.color = '#3DA876';
-      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase, body.typologies, body.regulatoryDrift);
+      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase, body.typologies, body.regulatoryDrift, body.velocity);
     } catch (err) {
       statusEl.textContent = `✗ network error: ${err.message || err}`;
       statusEl.style.color = '#D94F4F';
@@ -752,7 +752,54 @@
     `;
   }
 
-  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase, typologies, regulatoryDrift) {
+  function renderVelocityCard(velocity) {
+    if (!velocity) {
+      return `
+        <div style="${STYLE.cardNeutral}">
+          <strong style="color:#8b949e;">BEHAVIOURAL VELOCITY — N/A</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">Memory backend disabled for this request.</div>
+        </div>
+      `;
+    }
+    const sevColors = {
+      info: '#8b949e',
+      low: '#3DA876',
+      medium: '#d4a843',
+      high: '#E8A030',
+      critical: '#D94F4F',
+    };
+    const color = sevColors[velocity.severity] || '#8b949e';
+    const pct = (n) => (n * 100).toFixed(0) + '%';
+    return `
+      <div style="${STYLE.panel}border-left:4px solid ${color};">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+          <div style="font-size:14px;font-weight:700;color:${color};letter-spacing:0.5px;">⚡ BEHAVIOURAL VELOCITY</div>
+          <div style="font-size:10px;color:#8b949e;">composite ${pct(velocity.compositeScore)} · ${escapeHtml(velocity.severity)} · ${velocity.caseCount} cases</div>
+        </div>
+        <div style="font-size:11px;color:#cfc7b3;margin-bottom:10px;font-style:italic;">${escapeHtml(velocity.summary)}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">BURST</div>
+            <div style="font-size:14px;color:${velocity.burst.score >= 0.5 ? color : '#e6edf3'};font-weight:700;margin-top:2px;">${pct(velocity.burst.score)}</div>
+            <div style="font-size:10px;color:#8b949e;margin-top:4px;line-height:1.4;">${escapeHtml(velocity.burst.description)}</div>
+          </div>
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">OFF-HOURS</div>
+            <div style="font-size:14px;color:${velocity.offHours.score >= 0.5 ? color : '#e6edf3'};font-weight:700;margin-top:2px;">${pct(velocity.offHours.score)}</div>
+            <div style="font-size:10px;color:#8b949e;margin-top:4px;line-height:1.4;">${escapeHtml(velocity.offHours.description)}</div>
+          </div>
+          <div style="${STYLE.cardNeutral}">
+            <div style="font-size:10px;color:#8b949e;">WEEKEND</div>
+            <div style="font-size:14px;color:${velocity.weekend.score >= 0.5 ? color : '#e6edf3'};font-weight:700;margin-top:2px;">${pct(velocity.weekend.score)}</div>
+            <div style="font-size:10px;color:#8b949e;margin-top:4px;line-height:1.4;">${escapeHtml(velocity.weekend.description)}</div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:#8b949e;margin-top:8px;font-style:italic;">${escapeHtml(velocity.regulatory)}</div>
+      </div>
+    `;
+  }
+
+  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase, typologies, regulatoryDrift, velocity) {
     const resultEl = document.getElementById('brain-analyze-result');
     if (!resultEl) return;
 
@@ -828,6 +875,7 @@
 
       ${renderPowerScoreCard(powerScore)}
       ${renderRegulatoryDriftCard(regulatoryDrift)}
+      ${renderVelocityCard(velocity)}
       ${renderTypologiesCard(typologies)}
       ${renderCrossCaseCard(crossCase)}
       ${renderAsanaDispatchCard(asanaDispatch)}

@@ -498,6 +498,17 @@ export default async (req: Request, context: Context) => {
       firedSignals: readonly string[];
     }>;
   } | null = null;
+  let velocitySummary: {
+    tenantId: string;
+    caseCount: number;
+    compositeScore: number;
+    severity: string;
+    summary: string;
+    regulatory: string;
+    burst: { score: number; description: string };
+    offHours: { score: number; description: string };
+    weekend: { score: number; description: string };
+  } | null = null;
   try {
     // Lazy hydrate this tenant's blob-backed memory before the
     // decision so the cross-case correlator sees the full history.
@@ -553,6 +564,28 @@ export default async (req: Request, context: Context) => {
         firedSignals: m.firedSignals,
       })),
     };
+    if (superResult.velocity) {
+      velocitySummary = {
+        tenantId: superResult.velocity.tenantId,
+        caseCount: superResult.velocity.caseCount,
+        compositeScore: superResult.velocity.compositeScore,
+        severity: superResult.velocity.severity,
+        summary: superResult.velocity.summary,
+        regulatory: superResult.velocity.regulatory,
+        burst: {
+          score: superResult.velocity.burst.score,
+          description: superResult.velocity.burst.description,
+        },
+        offHours: {
+          score: superResult.velocity.offHours.score,
+          description: superResult.velocity.offHours.description,
+        },
+        weekend: {
+          score: superResult.velocity.weekend.score,
+          description: superResult.velocity.weekend.description,
+        },
+      };
+    }
   } catch (err) {
     // Never leak subsystem internals — log server-side, return generic.
     console.error(
@@ -604,6 +637,7 @@ export default async (req: Request, context: Context) => {
     asanaDispatch: asanaDispatchSummary,
     crossCase: crossCaseSummary,
     typologies: typologiesSummary,
+    velocity: velocitySummary,
     regulatoryDrift: {
       clean: drift.clean,
       versionDrifted: drift.versionDrifted,

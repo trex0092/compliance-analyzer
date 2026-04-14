@@ -69,6 +69,10 @@ import {
   matchFatfTypologies,
   type TypologyReport,
 } from './fatfTypologyMatcher';
+import {
+  analyseBehaviouralVelocity,
+  type VelocityReport,
+} from './behaviouralVelocityDetector';
 
 // ---------------------------------------------------------------------------
 // Brain Power Score
@@ -290,6 +294,12 @@ export interface SuperDecision {
    * case's feature vector. Always computed (pure function).
    */
   typologies: TypologyReport;
+  /**
+   * Behavioural velocity report — burst / off-hours / weekend
+   * clustering detected across the tenant's recent cases.
+   * Null when memory is skipped (tests).
+   */
+  velocity: VelocityReport | null;
 }
 
 /**
@@ -362,13 +372,21 @@ export async function runSuperDecision(
 
   // Record + cross-case correlate BEFORE Asana dispatch so the Asana
   // task description can (in a future commit) carry correlation
-  // findings as a custom field.
+  // findings as a custom field. Also run the behavioural velocity
+  // detector over the tenant's recent history so burst / off-hours /
+  // weekend clustering surfaces alongside the correlation findings.
   let crossCase: CorrelationReport | null = null;
+  let velocity: VelocityReport | null = null;
   if (!opts.skipMemory) {
     const store = opts.memory ?? brainMemory;
     try {
       const result = recordAndCorrelate(decision, opts.memoryExtras ?? {}, store);
       crossCase = result.correlation;
+      // Velocity uses the same tenant-scoped history that the
+      // correlator just saw. It is pure and deterministic so it
+      // never blocks and never throws under normal input.
+      const recent = store.recentForTenant(decision.tenantId, 500);
+      velocity = analyseBehaviouralVelocity(decision.tenantId, recent);
     } catch (err) {
       // Memory failures must never block a compliance decision.
       console.error(
@@ -393,7 +411,7 @@ export async function runSuperDecision(
     }
   }
 
-  return { decision, powerScore, asanaDispatch, crossCase, typologies };
+  return { decision, powerScore, asanaDispatch, crossCase, typologies, velocity };
 }
 
 // Exports for tests.
