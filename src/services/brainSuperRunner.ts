@@ -364,6 +364,13 @@ export interface SuperDecision {
    * commitment.
    */
   augmentedChain: AugmentChainResult;
+  /**
+   * The exact CaseSnapshot recorded into the memory store for this
+   * decision. Surfaced here so downstream replay / audit systems
+   * can persist the same opaque-ref payload without re-deriving it.
+   * Null when memory recording is skipped (tests).
+   */
+  recordedSnapshot: import('./crossCasePatternCorrelator').CaseSnapshot | null;
 }
 
 /**
@@ -495,11 +502,13 @@ export async function runSuperDecision(
   // weekend clustering surfaces alongside the correlation findings.
   let crossCase: CorrelationReport | null = null;
   let velocity: VelocityReport | null = null;
+  let recordedSnapshot: import('./crossCasePatternCorrelator').CaseSnapshot | null = null;
   if (!opts.skipMemory) {
     const store = opts.memory ?? brainMemory;
     try {
       const result = recordAndCorrelate(decision, opts.memoryExtras ?? {}, store);
       crossCase = result.correlation;
+      recordedSnapshot = result.snapshot;
       // Velocity uses the same tenant-scoped history that the
       // correlator just saw. It is pure and deterministic so it
       // never blocks and never throws under normal input.
@@ -539,6 +548,7 @@ export async function runSuperDecision(
     precedents,
     digestAfter,
     augmentedChain,
+    recordedSnapshot,
   };
 
   // Store in the fingerprint cache so the next call with identical

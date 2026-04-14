@@ -40,32 +40,30 @@
  *   - FATF Rec 1, 10, 15, 18, 22, 23 (risk-based + UBO + DPMS)
  */
 
-import type { Config, Context } from "@netlify/functions";
-import { getStore } from "@netlify/blobs";
-import { checkRateLimit } from "./middleware/rate-limit.mts";
-import { authenticate } from "./middleware/auth.mts";
+import type { Config, Context } from '@netlify/functions';
+import { getStore } from '@netlify/blobs';
+import { checkRateLimit } from './middleware/rate-limit.mts';
+import { authenticate } from './middleware/auth.mts';
 import {
   type ComplianceCaseInput,
   type ComplianceDecision,
-} from "../../src/services/complianceDecisionEngine";
-import type { StrFeatures } from "../../src/services/predictiveStr";
-import { lintForTippingOff } from "../../src/services/tippingOffLinter";
-import {
-  runSuperDecision,
-  type BrainPowerScore,
-} from "../../src/services/brainSuperRunner";
-import { createAnthropicAdvisor } from "../../src/services/anthropicAdvisor";
+} from '../../src/services/complianceDecisionEngine';
+import type { StrFeatures } from '../../src/services/predictiveStr';
+import { lintForTippingOff } from '../../src/services/tippingOffLinter';
+import { runSuperDecision, type BrainPowerScore } from '../../src/services/brainSuperRunner';
+import { createAnthropicAdvisor } from '../../src/services/anthropicAdvisor';
 import {
   captureRegulatoryBaseline,
   checkRegulatoryDrift,
-} from "../../src/services/regulatoryDriftWatchdog";
+} from '../../src/services/regulatoryDriftWatchdog';
 import {
   BlobBrainMemoryStore,
   createNetlifyBlobHandle,
-} from "../../src/services/brainMemoryBlobStore";
-import { BrainMemoryDigestBlobStore } from "../../src/services/brainMemoryDigestBlobStore";
-import { emptyDigest } from "../../src/services/brainMemoryDigest";
-import { BrainTelemetryStore } from "../../src/services/brainTelemetryStore";
+} from '../../src/services/brainMemoryBlobStore';
+import { BrainMemoryDigestBlobStore } from '../../src/services/brainMemoryDigestBlobStore';
+import { emptyDigest } from '../../src/services/brainMemoryDigest';
+import { BrainTelemetryStore } from '../../src/services/brainTelemetryStore';
+import { CaseReplayStore } from '../../src/services/caseReplayStore';
 
 // ---------------------------------------------------------------------------
 // Lazy advisor — built once per function instance so we don't
@@ -74,12 +72,9 @@ import { BrainTelemetryStore } from "../../src/services/brainTelemetryStore";
 // ---------------------------------------------------------------------------
 const anthropicAdvisor = createAnthropicAdvisor({
   proxyUrl:
-    (typeof process !== "undefined" && process.env?.HAWKEYE_AI_PROXY_URL) ||
-    "https://compliance-analyzer.netlify.app/api/ai-proxy",
-  bearerToken:
-    typeof process !== "undefined"
-      ? process.env?.HAWKEYE_BRAIN_TOKEN
-      : undefined,
+    (typeof process !== 'undefined' && process.env?.HAWKEYE_AI_PROXY_URL) ||
+    'https://compliance-analyzer.netlify.app/api/ai-proxy',
+  bearerToken: typeof process !== 'undefined' ? process.env?.HAWKEYE_BRAIN_TOKEN : undefined,
 });
 
 // Baseline captured at function boot. Every request diffs against
@@ -104,7 +99,7 @@ const bootBaseline = captureRegulatoryBaseline();
 
 const brainMemoryBlob: BlobBrainMemoryStore | null = (() => {
   try {
-    const store = getStore("brain-memory");
+    const store = getStore('brain-memory');
     const handle = createNetlifyBlobHandle({
       get: (key, opts) => store.get(key, opts),
       setJSON: (key, value) => store.setJSON(key, value),
@@ -113,7 +108,7 @@ const brainMemoryBlob: BlobBrainMemoryStore | null = (() => {
     return new BlobBrainMemoryStore(handle);
   } catch (err) {
     console.warn(
-      "[brain-analyze] Netlify Blob store unavailable; using in-memory fallback:",
+      '[brain-analyze] Netlify Blob store unavailable; using in-memory fallback:',
       err instanceof Error ? err.message : String(err)
     );
     return null;
@@ -127,7 +122,7 @@ const brainMemoryBlob: BlobBrainMemoryStore | null = (() => {
 // an empty per-request digest so the decision path never blocks.
 const brainDigestBlob: BrainMemoryDigestBlobStore | null = (() => {
   try {
-    const store = getStore("brain-memory");
+    const store = getStore('brain-memory');
     const handle = createNetlifyBlobHandle({
       get: (key, opts) => store.get(key, opts),
       setJSON: (key, value) => store.setJSON(key, value),
@@ -145,13 +140,31 @@ const brainDigestBlob: BrainMemoryDigestBlobStore | null = (() => {
 // /api/brain/telemetry and the Brain Console.
 const brainTelemetry: BrainTelemetryStore | null = (() => {
   try {
-    const store = getStore("brain-memory");
+    const store = getStore('brain-memory');
     const handle = createNetlifyBlobHandle({
       get: (key, opts) => store.get(key, opts),
       setJSON: (key, value) => store.setJSON(key, value),
       delete: (key) => store.delete(key),
     });
     return new BrainTelemetryStore(handle);
+  } catch {
+    return null;
+  }
+})();
+
+// Case replay store — persists the CaseSnapshot + frozen regulatory
+// baseline per decided case under `replay/<tenantId>/<caseId>.json`.
+// Survives eviction for the full 10-year retention window (FDL Art.24),
+// so /api/brain/replay can re-validate historical decisions.
+const caseReplay: CaseReplayStore | null = (() => {
+  try {
+    const store = getStore('brain-memory');
+    const handle = createNetlifyBlobHandle({
+      get: (key, opts) => store.get(key, opts),
+      setJSON: (key, value) => store.setJSON(key, value),
+      delete: (key) => store.delete(key),
+    });
+    return new CaseReplayStore(handle);
   } catch {
     return null;
   }
@@ -180,13 +193,12 @@ async function ensureTenantHydrated(tenantId: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin":
-    process.env.HAWKEYE_ALLOWED_ORIGIN ??
-    "https://compliance-analyzer.netlify.app",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type",
-  "Access-Control-Max-Age": "600",
-  Vary: "Origin",
+  'Access-Control-Allow-Origin':
+    process.env.HAWKEYE_ALLOWED_ORIGIN ?? 'https://compliance-analyzer.netlify.app',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+  'Access-Control-Max-Age': '600',
+  Vary: 'Origin',
 } as const;
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
@@ -221,70 +233,66 @@ const STRING_LIMITS = {
 } as const;
 
 const FEATURE_KEYS = [
-  "priorAlerts90d",
-  "txValue30dAED",
-  "nearThresholdCount30d",
-  "crossBorderRatio30d",
-  "isPep",
-  "highRiskJurisdiction",
-  "hasAdverseMedia",
-  "daysSinceOnboarding",
-  "sanctionsMatchScore",
-  "cashRatio30d",
+  'priorAlerts90d',
+  'txValue30dAED',
+  'nearThresholdCount30d',
+  'crossBorderRatio30d',
+  'isPep',
+  'highRiskJurisdiction',
+  'hasAdverseMedia',
+  'daysSinceOnboarding',
+  'sanctionsMatchScore',
+  'cashRatio30d',
 ] as const;
 
 function isFiniteNumber(x: unknown): x is number {
-  return typeof x === "number" && Number.isFinite(x);
+  return typeof x === 'number' && Number.isFinite(x);
 }
 
 function validate(
   input: unknown
 ): { ok: true; request: AnalyzeRequest } | { ok: false; error: string } {
-  if (!input || typeof input !== "object") {
-    return { ok: false, error: "body must be an object" };
+  if (!input || typeof input !== 'object') {
+    return { ok: false, error: 'body must be an object' };
   }
   const raw = input as Record<string, unknown>;
 
   // --- tenantId
   if (
-    typeof raw.tenantId !== "string" ||
+    typeof raw.tenantId !== 'string' ||
     raw.tenantId.length === 0 ||
     raw.tenantId.length > STRING_LIMITS.tenantId
   ) {
-    return { ok: false, error: "tenantId must be a non-empty string (<=64)" };
+    return { ok: false, error: 'tenantId must be a non-empty string (<=64)' };
   }
   // --- topic
   if (
-    typeof raw.topic !== "string" ||
+    typeof raw.topic !== 'string' ||
     raw.topic.length === 0 ||
     raw.topic.length > STRING_LIMITS.topic
   ) {
-    return { ok: false, error: "topic must be a non-empty string (<=200)" };
+    return { ok: false, error: 'topic must be a non-empty string (<=200)' };
   }
   // --- entity
-  if (!raw.entity || typeof raw.entity !== "object") {
-    return { ok: false, error: "entity must be an object" };
+  if (!raw.entity || typeof raw.entity !== 'object') {
+    return { ok: false, error: 'entity must be an object' };
   }
   const ent = raw.entity as Record<string, unknown>;
-  if (
-    typeof ent.id !== "string" ||
-    ent.id.length === 0 ||
-    ent.id.length > STRING_LIMITS.entityId
-  ) {
-    return { ok: false, error: "entity.id must be a non-empty string (<=128)" };
+  if (typeof ent.id !== 'string' || ent.id.length === 0 || ent.id.length > STRING_LIMITS.entityId) {
+    return { ok: false, error: 'entity.id must be a non-empty string (<=128)' };
   }
   if (
-    typeof ent.name !== "string" ||
+    typeof ent.name !== 'string' ||
     ent.name.length === 0 ||
     ent.name.length > STRING_LIMITS.entityName
   ) {
     return {
       ok: false,
-      error: "entity.name must be a non-empty string (<=256)",
+      error: 'entity.name must be a non-empty string (<=256)',
     };
   }
-  if (!ent.features || typeof ent.features !== "object") {
-    return { ok: false, error: "entity.features must be an object" };
+  if (!ent.features || typeof ent.features !== 'object') {
+    return { ok: false, error: 'entity.features must be an object' };
   }
   const features = ent.features as Record<string, unknown>;
 
@@ -292,8 +300,8 @@ function validate(
   const validated: Partial<StrFeatures> = {};
   for (const k of FEATURE_KEYS) {
     const v = features[k];
-    if (k === "isPep" || k === "highRiskJurisdiction" || k === "hasAdverseMedia") {
-      if (typeof v !== "boolean") {
+    if (k === 'isPep' || k === 'highRiskJurisdiction' || k === 'hasAdverseMedia') {
+      if (typeof v !== 'boolean') {
         return { ok: false, error: `entity.features.${k} must be boolean` };
       }
       validated[k] = v;
@@ -304,7 +312,7 @@ function validate(
           error: `entity.features.${k} must be a non-negative finite number`,
         };
       }
-      if (k === "crossBorderRatio30d" || k === "cashRatio30d" || k === "sanctionsMatchScore") {
+      if (k === 'crossBorderRatio30d' || k === 'cashRatio30d' || k === 'sanctionsMatchScore') {
         if (v > 1) {
           return { ok: false, error: `entity.features.${k} must be in [0,1]` };
         }
@@ -316,10 +324,10 @@ function validate(
   // Optional confirmed-sanctions flag.
   let isSanctionsConfirmed: boolean | undefined;
   if (ent.isSanctionsConfirmed !== undefined) {
-    if (typeof ent.isSanctionsConfirmed !== "boolean") {
+    if (typeof ent.isSanctionsConfirmed !== 'boolean') {
       return {
         ok: false,
-        error: "entity.isSanctionsConfirmed must be boolean if present",
+        error: 'entity.isSanctionsConfirmed must be boolean if present',
       };
     }
     isSanctionsConfirmed = ent.isSanctionsConfirmed;
@@ -328,8 +336,8 @@ function validate(
   // Optional sealAttestation flag.
   let sealAttestation: boolean | undefined;
   if (raw.sealAttestation !== undefined) {
-    if (typeof raw.sealAttestation !== "boolean") {
-      return { ok: false, error: "sealAttestation must be boolean if present" };
+    if (typeof raw.sealAttestation !== 'boolean') {
+      return { ok: false, error: 'sealAttestation must be boolean if present' };
     }
     sealAttestation = raw.sealAttestation;
   }
@@ -405,8 +413,7 @@ function serialiseDecision(decision: ComplianceDecision, userId: string) {
       ? {
           commitHash: decision.attestation.commitHash,
           listName: decision.attestation.listName,
-          attestationPublishedAtIso:
-            decision.attestation.attestationPublishedAtIso,
+          attestationPublishedAtIso: decision.attestation.attestationPublishedAtIso,
         }
       : null,
     fourEyes: decision.fourEyes
@@ -431,21 +438,17 @@ function serialiseDecision(decision: ComplianceDecision, userId: string) {
       megaRecommendedAction: raw.mega.recommendedAction,
       megaConfidence: raw.mega.confidence,
       megaNotes: raw.mega.notes,
-      reasoningChainNodeCount: Array.isArray(
-        (raw.mega.chain as { nodes?: unknown[] }).nodes
-      )
+      reasoningChainNodeCount: Array.isArray((raw.mega.chain as { nodes?: unknown[] }).nodes)
         ? (raw.mega.chain as { nodes: unknown[] }).nodes.length
         : 0,
-      reasoningChainEdgeCount: Array.isArray(
-        (raw.mega.chain as { edges?: unknown[] }).edges
-      )
+      reasoningChainEdgeCount: Array.isArray((raw.mega.chain as { edges?: unknown[] }).edges)
         ? (raw.mega.chain as { edges: unknown[] }).edges.length
         : 0,
       advisorInvoked: raw.advisorResult !== null,
       advisorModel: raw.advisorResult?.modelUsed ?? null,
       managedAgentPlan: raw.managedAgentPlan.map((a) => ({
-        agentType: (a as { agentType?: string }).agentType ?? "unknown",
-        reason: (a as { reason?: string }).reason ?? "",
+        agentType: (a as { agentType?: string }).agentType ?? 'unknown',
+        reason: (a as { reason?: string }).reason ?? '',
       })),
     },
   };
@@ -456,18 +459,18 @@ function serialiseDecision(decision: ComplianceDecision, userId: string) {
 // ---------------------------------------------------------------------------
 
 export default async (req: Request, context: Context) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
-  if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, { status: 405 });
+  if (req.method !== 'POST') {
+    return jsonResponse({ error: 'Method not allowed' }, { status: 405 });
   }
 
   // Rate limit — sensitive bucket (10 / 15min).
   const rl = await checkRateLimit(req, {
     max: 10,
     clientIp: context.ip,
-    namespace: "brain-analyze",
+    namespace: 'brain-analyze',
   });
   if (rl) return rl;
 
@@ -479,14 +482,12 @@ export default async (req: Request, context: Context) => {
   try {
     body = await req.json();
   } catch {
-    return jsonResponse({ error: "Invalid JSON body" }, { status: 400 });
+    return jsonResponse({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
   const v = validate(body);
   if (!v.ok) {
-    console.warn(
-      `[BRAIN-ANALYZE] Rejected input from ${auth.userId}: ${v.error}`
-    );
+    console.warn(`[BRAIN-ANALYZE] Rejected input from ${auth.userId}: ${v.error}`);
     return jsonResponse({ error: v.error }, { status: 400 });
   }
   const request = v.request;
@@ -612,14 +613,13 @@ export default async (req: Request, context: Context) => {
     // (FDL Art.29 safe) — never entity legal names. Fire-and-forget.
     if (brainTelemetry) {
       try {
-        const megaVerdictRaw = (
-          superResult.decision.raw as { mega?: { verdict?: string } }
-        )?.mega?.verdict;
+        const megaVerdictRaw = (superResult.decision.raw as { mega?: { verdict?: string } })?.mega
+          ?.verdict;
         const brainVerdict =
-          megaVerdictRaw === "pass" ||
-          megaVerdictRaw === "flag" ||
-          megaVerdictRaw === "escalate" ||
-          megaVerdictRaw === "freeze"
+          megaVerdictRaw === 'pass' ||
+          megaVerdictRaw === 'flag' ||
+          megaVerdictRaw === 'escalate' ||
+          megaVerdictRaw === 'freeze'
             ? megaVerdictRaw
             : null;
         brainTelemetry.record({
@@ -634,15 +634,37 @@ export default async (req: Request, context: Context) => {
           typologyIds: (superResult.typologies?.matches ?? [])
             .slice(0, 5)
             .map((m) => m.typology.id),
-          crossCaseFindingCount:
-            superResult.crossCase?.correlations?.length ?? 0,
+          crossCaseFindingCount: superResult.crossCase?.correlations?.length ?? 0,
           velocitySeverity: superResult.velocity?.severity ?? null,
-          driftSeverity: "none",
+          driftSeverity: 'none',
           requiresHumanReview: superResult.decision.requiresHumanReview,
         });
       } catch (err) {
         console.warn(
-          "[brain-analyze] telemetry write failed:",
+          '[brain-analyze] telemetry write failed:',
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    }
+
+    // Persist the case replay tuple (snapshot + frozen regulatory
+    // baseline + verdict at decision time) under
+    // `replay/<tenantId>/<caseId>.json`. Fire-and-forget. This is what
+    // /api/brain/replay reads to answer "would this case decide
+    // differently today?" — see src/services/caseReplayStore.ts.
+    if (caseReplay && superResult.recordedSnapshot) {
+      try {
+        caseReplay.record({
+          tenantId: superResult.decision.tenantId,
+          caseId: superResult.decision.id,
+          snapshot: superResult.recordedSnapshot,
+          verdictAtTime: superResult.decision.verdict,
+          confidenceAtTime: superResult.decision.confidence,
+          powerScoreAtTime: superResult.powerScore?.score ?? null,
+        });
+      } catch (err) {
+        console.warn(
+          '[brain-analyze] case replay write failed:',
           err instanceof Error ? err.message : String(err)
         );
       }
@@ -738,7 +760,7 @@ export default async (req: Request, context: Context) => {
       err instanceof Error ? err.message : String(err)
     );
     return jsonResponse(
-      { error: "brain_failure", reason: "subsystem execution failed" },
+      { error: 'brain_failure', reason: 'subsystem execution failed' },
       { status: 500 }
     );
   }
@@ -747,14 +769,14 @@ export default async (req: Request, context: Context) => {
   // language. Even though our own subsystems should not produce it, the
   // advisor escalation can return free-text that must be filtered.
   const lint = lintForTippingOff(decision.recommendedAction);
-  if (!lint.clean && (lint.topSeverity === "critical" || lint.topSeverity === "high")) {
+  if (!lint.clean && (lint.topSeverity === 'critical' || lint.topSeverity === 'high')) {
     console.warn(
-      `[BRAIN-ANALYZE] Tipping-off guard blocked response for ${auth.userId}: ${lint.findings.map((f) => f.patternId).join(",")}`
+      `[BRAIN-ANALYZE] Tipping-off guard blocked response for ${auth.userId}: ${lint.findings.map((f) => f.patternId).join(',')}`
     );
     return jsonResponse(
       {
-        error: "tipping_off_blocked",
-        reason: "response contained language that would tip off subject (FDL Art.29)",
+        error: 'tipping_off_blocked',
+        reason: 'response contained language that would tip off subject (FDL Art.29)',
         findings: lint.findings.map((f) => ({
           patternId: f.patternId,
           severity: f.severity,
@@ -767,7 +789,7 @@ export default async (req: Request, context: Context) => {
   const payload = serialiseDecision(decision, auth.userId!);
 
   console.log(
-    `[BRAIN-ANALYZE] ${auth.userId} tenant=${request.tenantId} entity=${request.entity.id} verdict=${decision.verdict} confidence=${decision.confidence.toFixed(3)} power=${powerScore?.score ?? "n/a"}/${powerScore?.verdict ?? "?"} humanReview=${decision.requiresHumanReview}`
+    `[BRAIN-ANALYZE] ${auth.userId} tenant=${request.tenantId} entity=${request.entity.id} verdict=${decision.verdict} confidence=${decision.confidence.toFixed(3)} power=${powerScore?.score ?? 'n/a'}/${powerScore?.verdict ?? '?'} humanReview=${decision.requiresHumanReview}`
   );
 
   // Diff current constants against the boot baseline so the SPA
@@ -806,8 +828,8 @@ export default async (req: Request, context: Context) => {
 };
 
 export const config: Config = {
-  path: "/api/brain/analyze",
-  method: ["POST", "OPTIONS"],
+  path: '/api/brain/analyze',
+  method: ['POST', 'OPTIONS'],
 };
 
 // Exported for unit tests.
