@@ -15,6 +15,19 @@
  *     the pool supplies team metadata (optional)
  *   - Round-robin across the pool to prevent reviewer burnout
  *
+ * SOLO-MLRO MODE (Tier-1 #7 — opt-in via env):
+ *   When HAWKEYE_SOLO_MLRO_MODE=true the picker accepts a single
+ *   member pool and produces a degenerate pair where both entries
+ *   point at the same MLRO. The pair is annotated with
+ *   `cooldownUntilIso` set to (now + HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS,
+ *   default 24h). The approvals API (netlify/functions/approvals.mts)
+ *   enforces the cooldown server-side: the same actor voting twice
+ *   on the same event is rejected until the cooldown has elapsed,
+ *   forcing a fresh-eyes second look on a different day. This is
+ *   the only safe degradation for a one-MLRO operation — it
+ *   preserves the fresh-eyes principle behind Cabinet Res 134/2025
+ *   Art.19 even when a deputy isn't available.
+ *
  * Regulatory basis:
  *   - Cabinet Res 134/2025 Art.19 (independent four-eyes review)
  *   - FDL No.10/2025 Art.20-21 (CO/MLRO duty of care)
@@ -45,6 +58,27 @@ export interface PoolPickOptions {
   requireDistinctTeams?: boolean;
   /** Optional exclusion list (e.g. the analyst who raised the case). */
   excludeGids?: readonly string[];
+  /**
+   * Solo-MLRO opt-in. When true, the picker accepts a 1-member pool
+   * and produces a degenerate pair where both entries point at the
+   * same MLRO. Caller MUST treat the result as solo mode (pair[0].gid
+   * === pair[1].gid) and the cooldown enforcement happens in the
+   * approval API. Default: false. Read from env at call sites via
+   * `isSoloMlroModeEnabled()`.
+   */
+  soloMlroMode?: boolean;
+  /**
+   * Cooldown applied to the SECOND approval slot when soloMlroMode
+   * is true. Default: 24 hours. The picker writes the corresponding
+   * `cooldownUntilIso` into PoolPickResult so the approval handler
+   * can enforce it without re-reading env.
+   */
+  soloMlroCooldownHours?: number;
+  /**
+   * Reference timestamp for cooldown computation — defaults to
+   * Date.now(). Test seam.
+   */
+  nowMs?: number;
 }
 
 export interface PoolPickResult {
@@ -55,7 +89,17 @@ export interface PoolPickResult {
   diagnostics: {
     poolSize: number;
     eligibleCount: number;
-    pickStrategy: 'round-robin' | 'lowest-load' | 'fallback';
+    pickStrategy: 'round-robin' | 'lowest-load' | 'fallback' | 'solo-mlro';
+  };
+  /**
+   * Solo-MLRO mode metadata. Populated only when the picker ran in
+   * solo mode. The cooldownUntilIso is the earliest moment the same
+   * actor can cast their SECOND approval vote on the same event.
+   */
+  soloMode?: {
+    enabled: true;
+    cooldownHours: number;
+    cooldownUntilIso: string;
   };
 }
 
@@ -82,6 +126,11 @@ function rankByLoad(members: readonly ApproverPoolMember[]): ApproverPoolMember[
  *   1. Lowest-load reviewer first
  *   2. Second pick from a different team (if requireDistinctTeams)
  *   3. Second pick advanced by rotationSeed to spread load across runs
+ *
+ * In SOLO-MLRO mode (opt-in), the picker accepts a 1-member pool
+ * and produces a degenerate pair where both entries point at the
+ * same MLRO. The pair carries cooldown metadata so the approvals
+ * API can enforce a fresh-eyes second vote on a different day.
  */
 export function pickFourEyesPair(
   pool: readonly ApproverPoolMember[],
@@ -92,13 +141,43 @@ export function pickFourEyesPair(
   const diagnostics = {
     poolSize: pool.length,
     eligibleCount: eligible.length,
-    pickStrategy: 'lowest-load' as 'round-robin' | 'lowest-load' | 'fallback',
+    pickStrategy: 'lowest-load' as
+      | 'round-robin'
+      | 'lowest-load'
+      | 'fallback'
+      | 'solo-mlro',
   };
+
+  // Solo-MLRO short-circuit. Triggered explicitly via options.
+  // When the pool has exactly 1 eligible member AND solo mode is on,
+  // produce a degenerate pair pointing at the same MLRO and emit
+  // the cooldown metadata. The approvals API enforces the cooldown
+  // when it sees the same actor casting a second vote.
+  if (options.soloMlroMode && eligible.length === 1) {
+    const solo = eligible[0];
+    const cooldownHours = options.soloMlroCooldownHours ?? DEFAULT_SOLO_COOLDOWN_HOURS;
+    const nowMs = options.nowMs ?? Date.now();
+    const cooldownUntilIso = new Date(nowMs + cooldownHours * 60 * 60 * 1000).toISOString();
+    diagnostics.pickStrategy = 'solo-mlro';
+    return {
+      ok: true,
+      pair: [
+        { gid: solo.gid, name: solo.name },
+        { gid: solo.gid, name: solo.name },
+      ],
+      diagnostics,
+      soloMode: {
+        enabled: true,
+        cooldownHours,
+        cooldownUntilIso,
+      },
+    };
+  }
 
   if (eligible.length < 2) {
     return {
       ok: false,
-      error: `Approver pool has ${eligible.length} eligible member(s); four-eyes requires 2 (Cabinet Res 134/2025 Art.19)`,
+      error: `Approver pool has ${eligible.length} eligible member(s); four-eyes requires 2 (Cabinet Res 134/2025 Art.19). Set HAWKEYE_SOLO_MLRO_MODE=true to enable solo-MLRO mode with delayed self-review.`,
       diagnostics,
     };
   }
@@ -166,6 +245,48 @@ export function pickFourEyesPair(
     { gid: secondary.gid, name: secondary.name },
   ];
   return { ok: true, pair, diagnostics };
+}
+
+// ---------------------------------------------------------------------------
+// Solo-MLRO env helpers
+// ---------------------------------------------------------------------------
+
+/** Default cooldown applied between an MLRO's two approval votes. */
+export const DEFAULT_SOLO_COOLDOWN_HOURS = 24;
+
+function readEnv(key: string): string | undefined {
+  if (typeof process !== 'undefined' && process.env?.[key]) return process.env[key];
+  if (typeof globalThis !== 'undefined') {
+    const g = globalThis as Record<string, unknown>;
+    const val = g[key];
+    if (typeof val === 'string') return val;
+  }
+  return undefined;
+}
+
+/**
+ * True when the operator has opted into solo-MLRO mode via env.
+ * Case-insensitive — accepts 'true', '1', 'yes', 'on'. Anything
+ * else is treated as off (default).
+ */
+export function isSoloMlroModeEnabled(): boolean {
+  const raw = readEnv('HAWKEYE_SOLO_MLRO_MODE');
+  if (!raw) return false;
+  const lower = raw.trim().toLowerCase();
+  return lower === 'true' || lower === '1' || lower === 'yes' || lower === 'on';
+}
+
+/**
+ * Cooldown hours from env, or DEFAULT_SOLO_COOLDOWN_HOURS when
+ * unset / malformed. Clamped to [1, 168] (1 hour to 1 week) so a
+ * misconfiguration can never produce a no-op cooldown.
+ */
+export function getSoloMlroCooldownHours(): number {
+  const raw = readEnv('HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS');
+  if (!raw) return DEFAULT_SOLO_COOLDOWN_HOURS;
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_SOLO_COOLDOWN_HOURS;
+  return Math.max(1, Math.min(168, parsed));
 }
 
 // ---------------------------------------------------------------------------
@@ -252,15 +373,28 @@ const DEFAULT_POOL: ApproverPoolMember[] = [
  * Pick a four-eyes pair using the persistent pool + a rotating
  * seed. Used by the super-brain dispatcher when the caller doesn't
  * supply explicit approvers.
+ *
+ * Honours HAWKEYE_SOLO_MLRO_MODE automatically — when set, the
+ * caller doesn't have to pass soloMlroMode: true explicitly. This
+ * keeps the dispatcher path identical between deputy + solo
+ * deployments.
  */
 export function pickFourEyesFromPersistentPool(
   options: Omit<PoolPickOptions, 'rotationSeed'> = {}
 ): PoolPickResult {
   const pool = readApproverPool();
   const seed = advanceRotationSeed();
+  const soloFromEnv = isSoloMlroModeEnabled();
   return pickFourEyesPair(pool, {
     ...options,
     rotationSeed: seed,
-    requireDistinctTeams: options.requireDistinctTeams ?? true,
+    // Distinct-team enforcement makes no sense in solo mode (only
+    // one team member exists) — skip it when solo is active.
+    requireDistinctTeams: soloFromEnv
+      ? false
+      : (options.requireDistinctTeams ?? true),
+    soloMlroMode: options.soloMlroMode ?? soloFromEnv,
+    soloMlroCooldownHours:
+      options.soloMlroCooldownHours ?? getSoloMlroCooldownHours(),
   });
 }

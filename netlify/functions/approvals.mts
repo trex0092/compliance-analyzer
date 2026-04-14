@@ -37,6 +37,29 @@ const EVENT_STORE = "brain-events";
 const APPROVAL_STORE = "brain-approvals";
 const REQUIRED_APPROVERS = 2;
 
+// ---------------------------------------------------------------------------
+// Solo-MLRO mode (Tier-1 #7) — opt-in via env, default off
+// ---------------------------------------------------------------------------
+
+const DEFAULT_SOLO_COOLDOWN_HOURS = 24;
+const MIN_SOLO_COOLDOWN_HOURS = 1;
+const MAX_SOLO_COOLDOWN_HOURS = 168; // 1 week
+
+function isSoloMlroModeEnabled(): boolean {
+  const raw = process.env.HAWKEYE_SOLO_MLRO_MODE;
+  if (!raw) return false;
+  const lower = raw.trim().toLowerCase();
+  return lower === "true" || lower === "1" || lower === "yes" || lower === "on";
+}
+
+function getSoloMlroCooldownHours(): number {
+  const raw = process.env.HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS;
+  if (!raw) return DEFAULT_SOLO_COOLDOWN_HOURS;
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_SOLO_COOLDOWN_HOURS;
+  return Math.max(MIN_SOLO_COOLDOWN_HOURS, Math.min(MAX_SOLO_COOLDOWN_HOURS, parsed));
+}
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin":
     process.env.HAWKEYE_ALLOWED_ORIGIN ?? "https://compliance-analyzer.netlify.app",
@@ -214,12 +237,114 @@ async function listPending(): Promise<{
 // Record an approval or rejection
 // ---------------------------------------------------------------------------
 
+interface RecordDecisionResult {
+  rec: ApprovalEntry;
+  /** Set when the vote was rejected because the solo cooldown hasn't elapsed yet. */
+  cooldownPendingUntilIso?: string;
+  /** True when the record changed and should be persisted. */
+  shouldPersist: boolean;
+}
+
+interface ApplyDecisionOptions {
+  soloMode: boolean;
+  soloCooldownHours: number;
+  nowMs: number;
+}
+
+/**
+ * Pure cooldown + quorum logic — no I/O, fully testable. Given the
+ * current ApprovalEntry, an actor + verdict, and the solo-mode
+ * config, compute the new ApprovalEntry and whether it should be
+ * persisted. Returns a cooldownPendingUntilIso when a solo-mode
+ * second vote was rejected because the cooldown hasn't elapsed.
+ */
+export function applyDecisionToRecord(
+  rec: ApprovalEntry,
+  actor: string,
+  verdict: "approve" | "reject",
+  note: string | undefined,
+  options: ApplyDecisionOptions,
+): RecordDecisionResult {
+  // Do not mutate a terminal record.
+  if (rec.status === "approved" || rec.status === "rejected") {
+    return { rec, shouldPersist: false };
+  }
+
+  if (verdict === "approve") {
+    const existingByActor = rec.approvals.find((a) => a.actor === actor);
+
+    // Solo-MLRO mode: the same actor may cast their SECOND vote
+    // after the cooldown has elapsed. This is the fresh-eyes
+    // safeguard — it forces a different-day second look on the
+    // same decision. Cabinet Res 134/2025 Art.19 fresh-eyes
+    // principle is preserved even though the deputy doesn't exist.
+    if (existingByActor) {
+      if (!options.soloMode) {
+        // Pre-existing behaviour — same approver voting twice is a no-op.
+        return { rec, shouldPersist: false };
+      }
+      if (rec.approvals.length >= REQUIRED_APPROVERS) {
+        // Already at quorum — no-op.
+        return { rec, shouldPersist: false };
+      }
+      const cooldownMs = options.soloCooldownHours * 60 * 60 * 1000;
+      const firstVoteMs = Date.parse(existingByActor.at);
+      if (!Number.isFinite(firstVoteMs)) {
+        // Defensive: corrupted timestamp on the prior vote — do not
+        // accept the second vote.
+        return { rec, shouldPersist: false };
+      }
+      const earliestSecondVoteMs = firstVoteMs + cooldownMs;
+      if (options.nowMs < earliestSecondVoteMs) {
+        const pendingIso = new Date(earliestSecondVoteMs).toISOString();
+        // Do NOT persist the rejected vote — surface the cooldown
+        // wait time so the MLRO knows when to come back.
+        return { rec, cooldownPendingUntilIso: pendingIso, shouldPersist: false };
+      }
+      // Cooldown elapsed — record the second vote with a fresh
+      // timestamp + a marker note so the audit trail shows that
+      // this decision used solo-MLRO mode.
+      rec.approvals.push({
+        actor,
+        at: new Date(options.nowMs).toISOString(),
+        note: note
+          ? `[solo-mlro 2nd vote, ${options.soloCooldownHours}h cooldown] ${note}`
+          : `[solo-mlro 2nd vote, ${options.soloCooldownHours}h cooldown]`,
+      });
+      if (rec.approvals.length >= REQUIRED_APPROVERS) {
+        rec.status = "approved";
+      }
+      return { rec, shouldPersist: true };
+    }
+
+    // First vote from this actor — standard path.
+    rec.approvals.push({ actor, at: new Date(options.nowMs).toISOString(), note });
+    // Distinct-approver check is enforced by the per-user auth flavour —
+    // `actor` is the verified username from HAWKEYE_APPROVER_KEYS, so
+    // two entries in rec.approvals with different `actor` values
+    // necessarily come from two different registered humans.
+    if (rec.approvals.length >= REQUIRED_APPROVERS) {
+      rec.status = "approved";
+    }
+    return { rec, shouldPersist: true };
+  }
+
+  // verdict === "reject"
+  if (rec.rejections.some((r) => r.actor === actor)) {
+    return { rec, shouldPersist: false };
+  }
+  rec.rejections.push({ actor, at: new Date(options.nowMs).toISOString(), note });
+  rec.status = "rejected";
+  return { rec, shouldPersist: true };
+}
+
 async function recordDecision(
   eventId: string,
   actor: string,
   verdict: "approve" | "reject",
   note: string | undefined,
-): Promise<ApprovalEntry> {
+  nowMs: number = Date.now(),
+): Promise<RecordDecisionResult> {
   const approvalStore = getStore(APPROVAL_STORE);
   const existing = (await approvalStore.get(eventId, { type: "json" })) as ApprovalEntry | null;
   const rec: ApprovalEntry = existing ?? {
@@ -229,30 +354,17 @@ async function recordDecision(
     status: "pending",
   };
 
-  // Do not mutate a terminal record.
-  if (rec.status === "approved" || rec.status === "rejected") {
-    return rec;
+  const result = applyDecisionToRecord(rec, actor, verdict, note, {
+    soloMode: isSoloMlroModeEnabled(),
+    soloCooldownHours: getSoloMlroCooldownHours(),
+    nowMs,
+  });
+
+  if (result.shouldPersist) {
+    await approvalStore.setJSON(eventId, result.rec);
   }
 
-  if (verdict === "approve") {
-    // Idempotent: same approver voting twice is a no-op.
-    if (rec.approvals.some((a) => a.actor === actor)) return rec;
-    rec.approvals.push({ actor, at: new Date().toISOString(), note });
-    // Distinct-approver check is enforced by the per-user auth flavour —
-    // `actor` is the verified username from HAWKEYE_APPROVER_KEYS, so
-    // two entries in rec.approvals with different `actor` values
-    // necessarily come from two different registered humans.
-    if (rec.approvals.length >= REQUIRED_APPROVERS) {
-      rec.status = "approved";
-    }
-  } else {
-    if (rec.rejections.some((r) => r.actor === actor)) return rec;
-    rec.rejections.push({ actor, at: new Date().toISOString(), note });
-    rec.status = "rejected";
-  }
-
-  await approvalStore.setJSON(eventId, rec);
-  return rec;
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,12 +431,34 @@ export default async (req: Request, context: Context) => {
         : undefined;
 
     try {
-      const rec = await recordDecision(
+      const result = await recordDecision(
         eventId,
         auth.username!,
         isApprove ? "approve" : "reject",
         note,
       );
+      const { rec, cooldownPendingUntilIso } = result;
+
+      // Solo-MLRO cooldown rejection — surface the wait time so the
+      // MLRO knows when to come back. HTTP 409 (Conflict) is the
+      // closest-fit code for "request well-formed but blocked by
+      // a state-machine constraint".
+      if (cooldownPendingUntilIso) {
+        console.log(
+          `[approvals] solo-mlro cooldown blocked eventId=${eventId} actor=${auth.username} until=${cooldownPendingUntilIso}`,
+        );
+        return jsonResponse(
+          {
+            ok: false,
+            error: "solo_mlro_cooldown_pending",
+            cooldownPendingUntilIso,
+            message: `Solo-MLRO mode requires a cooldown between your two votes. Try again at ${cooldownPendingUntilIso}.`,
+            record: rec,
+          },
+          { status: 409 },
+        );
+      }
+
       console.log(
         `[approvals] ${isApprove ? "approve" : "reject"} eventId=${eventId} actor=${auth.username} status=${rec.status}`,
       );
@@ -348,5 +482,9 @@ export const __test__ = {
   needsFourEyes,
   makeEventIdFromKey,
   isStoredBrainEvent,
+  applyDecisionToRecord,
+  isSoloMlroModeEnabled,
+  getSoloMlroCooldownHours,
   REQUIRED_APPROVERS,
+  DEFAULT_SOLO_COOLDOWN_HOURS,
 };
