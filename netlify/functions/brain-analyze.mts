@@ -44,12 +44,15 @@ import type { Config, Context } from "@netlify/functions";
 import { checkRateLimit } from "./middleware/rate-limit.mts";
 import { authenticate } from "./middleware/auth.mts";
 import {
-  runComplianceDecision,
   type ComplianceCaseInput,
   type ComplianceDecision,
 } from "../../src/services/complianceDecisionEngine";
 import type { StrFeatures } from "../../src/services/predictiveStr";
 import { lintForTippingOff } from "../../src/services/tippingOffLinter";
+import {
+  runSuperDecision,
+  type BrainPowerScore,
+} from "../../src/services/brainSuperRunner";
 
 // ---------------------------------------------------------------------------
 // CORS
@@ -230,6 +233,23 @@ function validate(
 // Serialisation — trim large nested objects to keep the response <64 KB.
 // ---------------------------------------------------------------------------
 
+function serialisePowerScore(p: BrainPowerScore) {
+  return {
+    score: p.score,
+    verdict: p.verdict,
+    subsystemsInvoked: p.subsystemsInvoked,
+    subsystemsFailed: p.subsystemsFailed,
+    advisorInvoked: p.advisorInvoked,
+    attestationSealed: p.attestationSealed,
+    clampsFired: p.clampsFired,
+    components: p.components.map((c) => ({
+      label: c.label,
+      points: c.points,
+      max: c.max,
+    })),
+  };
+}
+
 function serialiseDecision(decision: ComplianceDecision, userId: string) {
   const raw = decision.raw;
   return {
@@ -364,8 +384,29 @@ export default async (req: Request, context: Context) => {
   };
 
   let decision: ComplianceDecision;
+  let powerScore: BrainPowerScore | null = null;
+  let asanaDispatchSummary: {
+    created: boolean;
+    taskGid?: string;
+    skippedReason?: string;
+  } | null = null;
   try {
-    decision = await runComplianceDecision(caseInput);
+    // Run the full super-brain pipeline:
+    //   - Weaponized brain (MegaBrain + 30+ subsystems)
+    //   - Auto-wired advisor escalation on high-stakes cases
+    //   - zk-compliance attestation
+    //   - Asana dispatch (idempotent; skipped on 'pass' verdicts)
+    //   - Brain Power Score
+    const superResult = await runSuperDecision(caseInput);
+    decision = superResult.decision;
+    powerScore = superResult.powerScore;
+    if (superResult.asanaDispatch) {
+      asanaDispatchSummary = {
+        created: superResult.asanaDispatch.created,
+        taskGid: superResult.asanaDispatch.taskGid,
+        skippedReason: superResult.asanaDispatch.skippedReason,
+      };
+    }
   } catch (err) {
     // Never leak subsystem internals — log server-side, return generic.
     console.error(
@@ -402,10 +443,15 @@ export default async (req: Request, context: Context) => {
   const payload = serialiseDecision(decision, auth.userId!);
 
   console.log(
-    `[BRAIN-ANALYZE] ${auth.userId} tenant=${request.tenantId} entity=${request.entity.id} verdict=${decision.verdict} confidence=${decision.confidence.toFixed(3)} humanReview=${decision.requiresHumanReview}`
+    `[BRAIN-ANALYZE] ${auth.userId} tenant=${request.tenantId} entity=${request.entity.id} verdict=${decision.verdict} confidence=${decision.confidence.toFixed(3)} power=${powerScore?.score ?? "n/a"}/${powerScore?.verdict ?? "?"} humanReview=${decision.requiresHumanReview}`
   );
 
-  return jsonResponse({ ok: true, decision: payload });
+  return jsonResponse({
+    ok: true,
+    decision: payload,
+    powerScore: powerScore ? serialisePowerScore(powerScore) : null,
+    asanaDispatch: asanaDispatchSummary,
+  });
 };
 
 export const config: Config = {

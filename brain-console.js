@@ -492,10 +492,13 @@
         return;
       }
 
-      lastAnalysisResult = body.decision;
-      statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)} (${durationMs}ms)`;
+      lastAnalysisResult = body;
+      const powerLabel = body.powerScore
+        ? ` · brain=${body.powerScore.score}/${body.powerScore.verdict}`
+        : '';
+      statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel} (${durationMs}ms)`;
       statusEl.style.color = '#3DA876';
-      renderAnalysisResult(body.decision);
+      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch);
     } catch (err) {
       statusEl.textContent = `✗ network error: ${err.message || err}`;
       statusEl.style.color = '#D94F4F';
@@ -527,7 +530,85 @@
     return `<span style="color:${map[sev] || '#8b949e'};font-weight:700;font-size:10px;letter-spacing:0.5px;">${(sev || 'info').toUpperCase()}</span>`;
   }
 
-  function renderAnalysisResult(decision) {
+  function renderPowerScoreCard(powerScore) {
+    if (!powerScore) return '';
+    const verdictColors = {
+      thin: '#8b949e',
+      standard: '#3DA876',
+      advanced: '#d4a843',
+      weaponized: '#D94F4F',
+    };
+    const color = verdictColors[powerScore.verdict] || '#8b949e';
+    const filled = Math.max(0, Math.min(100, powerScore.score));
+    const componentsHtml = (powerScore.components || []).map((c) => `
+      <tr>
+        <td style="padding:3px 8px;font-size:10px;color:#8b949e;">${escapeHtml(c.label)}</td>
+        <td style="padding:3px 8px;font-size:10px;color:#e6edf3;font-family:monospace;text-align:right;">${c.points}/${c.max}</td>
+        <td style="padding:3px 8px;width:100px;">
+          <div style="background:#0d1117;border-radius:2px;height:5px;overflow:hidden;">
+            <div style="background:${color};height:100%;width:${c.max > 0 ? (c.points / c.max) * 100 : 0}%;"></div>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    return `
+      <div style="${STYLE.panel}border-left:4px solid ${color};">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:11px;letter-spacing:0.5px;color:${color};font-weight:700;text-transform:uppercase;">BRAIN POWER SCORE</div>
+            <div style="font-size:36px;font-weight:700;color:${color};line-height:1;margin-top:4px;">${powerScore.score}<span style="font-size:14px;color:#8b949e;font-weight:400;">/100</span></div>
+            <div style="font-size:12px;color:${color};margin-top:2px;letter-spacing:0.5px;text-transform:uppercase;">${escapeHtml(powerScore.verdict)}</div>
+          </div>
+          <div style="flex:1;min-width:180px;">
+            <div style="font-size:10px;color:#8b949e;margin-bottom:6px;letter-spacing:0.3px;">SUBSYSTEMS</div>
+            <div style="background:#0d1117;border-radius:3px;height:8px;overflow:hidden;margin-bottom:4px;">
+              <div style="background:${color};height:100%;width:${filled}%;"></div>
+            </div>
+            <div style="font-size:10px;color:#8b949e;line-height:1.6;">
+              ${powerScore.subsystemsInvoked} invoked · ${powerScore.subsystemsFailed} failed · ${powerScore.clampsFired} clamps fired<br>
+              ${powerScore.advisorInvoked ? '🎓 advisor escalated · ' : ''}${powerScore.attestationSealed ? '🔒 zk-attestation sealed' : 'attestation skipped'}
+            </div>
+          </div>
+        </div>
+        <table style="width:100%;margin-top:12px;border-collapse:collapse;">
+          <tbody>${componentsHtml}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderAsanaDispatchCard(asanaDispatch) {
+    if (!asanaDispatch) {
+      return `
+        <div style="${STYLE.cardNeutral}">
+          <strong style="color:#8b949e;">ASANA DISPATCH — SKIPPED</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">Verdict was 'pass' — no Asana task needed.</div>
+        </div>
+      `;
+    }
+    const status = asanaDispatch.created
+      ? '✓ CREATED'
+      : asanaDispatch.skippedReason
+        ? '⚠ SKIPPED'
+        : '↻ REPLAYED (idempotent)';
+    const cardStyle = asanaDispatch.created
+      ? STYLE.cardOk
+      : asanaDispatch.skippedReason
+        ? STYLE.cardWarn
+        : STYLE.cardNeutral;
+    return `
+      <div style="${cardStyle}">
+        <strong style="color:#3DA876;">ASANA DISPATCH — ${status}</strong>
+        <div style="font-size:10px;color:#8b949e;margin-top:4px;font-family:monospace;word-break:break-all;">
+          ${asanaDispatch.taskGid ? 'task gid: ' + escapeHtml(asanaDispatch.taskGid) : ''}
+          ${asanaDispatch.skippedReason ? 'reason: ' + escapeHtml(asanaDispatch.skippedReason) : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderAnalysisResult(decision, powerScore, asanaDispatch) {
     const resultEl = document.getElementById('brain-analyze-result');
     if (!resultEl) return;
 
@@ -601,6 +682,8 @@
         </div>
       </div>
 
+      ${renderPowerScoreCard(powerScore)}
+      ${renderAsanaDispatchCard(asanaDispatch)}
       ${clampsHtml}
       ${failuresHtml}
       ${advisorHtml}
