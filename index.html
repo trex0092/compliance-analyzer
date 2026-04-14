@@ -1817,6 +1817,45 @@
       .launch-analyzer-btn:active {
         transform: translateY(0);
       }
+
+      /* === HERO INTRO SOFT FADE === */
+      .hero-intro {
+        transition:
+          opacity 0.55s ease,
+          transform 0.55s ease,
+          max-height 0.6s ease 0.1s,
+          margin 0.5s ease 0.15s,
+          padding 0.5s ease 0.15s,
+          border-color 0.4s ease;
+        max-height: 1200px;
+        overflow: hidden;
+        will-change: opacity, transform, max-height;
+      }
+      .hero-intro--gone {
+        opacity: 0;
+        transform: translateY(-12px);
+        max-height: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        border-color: transparent;
+        pointer-events: none;
+      }
+      /* Soft fade-in for tab content after switch from hero. */
+      .tab-content.tab-soft-enter {
+        animation: tabSoftFadeIn 0.6s ease;
+      }
+      @keyframes tabSoftFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
     </style>
     <script>
       // Apply saved theme immediately to prevent flash
@@ -2962,7 +3001,8 @@
           </div>
 
           <div
-            class="card"
+            id="heroIntro"
+            class="card hero-intro"
             style="
               margin-top: 24px;
               margin-bottom: 24px;
@@ -5109,7 +5149,7 @@ Examples:
               data-action="switchCProgSub"
               data-arg="manual"
             >
-              📖 Compliance Manual
+              📖 Compliance Framework
             </button>
           </div>
 
@@ -5350,6 +5390,27 @@ Examples:
               </div>
               <div id="cprogAttachments_ewra" style="margin-top: 8px"></div>
               <div id="ewraSavedList" style="margin-top: 14px"></div>
+            </div>
+            <!-- Custom sections engine: operator can add any subject. -->
+            <div class="card" style="margin-top: 12px">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 8px;
+                "
+              >
+                <span class="lbl" style="margin: 0">Custom Sections</span>
+                <button
+                  class="btn btn-sm btn-blue"
+                  data-action="addCProgCustomSection"
+                  data-arg="ewra"
+                >
+                  + Add Custom Section
+                </button>
+              </div>
+              <div id="cprogCustomSections_ewra"></div>
             </div>
           </div>
 
@@ -5705,6 +5766,27 @@ Examples:
               <div id="cprogAttachments_bwra" style="margin-top: 8px"></div>
               <div id="bwraSavedList" style="margin-top: 14px"></div>
             </div>
+            <!-- Custom sections engine: operator can add any subject. -->
+            <div class="card" style="margin-top: 12px">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 8px;
+                "
+              >
+                <span class="lbl" style="margin: 0">Custom Sections</span>
+                <button
+                  class="btn btn-sm btn-blue"
+                  data-action="addCProgCustomSection"
+                  data-arg="bwra"
+                >
+                  + Add Custom Section
+                </button>
+              </div>
+              <div id="cprogCustomSections_bwra"></div>
+            </div>
           </div>
 
           <!-- Compliance Manual Sub-section -->
@@ -5712,7 +5794,7 @@ Examples:
             <div class="card">
               <div class="top-bar" style="margin-bottom: 10px">
                 <span class="sec-title" style="margin: 0; border: none; padding: 0"
-                  >Compliance Manual</span
+                  >Compliance Framework</span
                 >
                 <div style="display: flex; gap: 6px; flex-wrap: wrap">
                   <button
@@ -5964,6 +6046,27 @@ Examples:
                   </button>
                 </div>
               </div>
+            </div>
+            <!-- Custom sections engine: operator can add any subject. -->
+            <div class="card" style="margin-top: 12px">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 8px;
+                "
+              >
+                <span class="lbl" style="margin: 0">Custom Sections</span>
+                <button
+                  class="btn btn-sm btn-blue"
+                  data-action="addCProgCustomSection"
+                  data-arg="cm"
+                >
+                  + Add Custom Section
+                </button>
+              </div>
+              <div id="cprogCustomSections_cm"></div>
             </div>
           </div>
         </div>
@@ -10090,6 +10193,6 @@ Examples:
     <script src="str-drafter-client.js?v=20260413"></script>
     <script src="mlro-insights-client.js?v=20260413"></script>
     <script src="global-status-bar.js?v=20260413"></script>
-    <script src="app-boot.js?v=20260409"></script>
+    <script src="app-boot.js?v=20260414scroll"></script>
   </body>
 </html>

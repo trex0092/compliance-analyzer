@@ -36,7 +36,8 @@
       id: 'skills',
       name: 'Asana Comment Skill Handler',
       path: '/.netlify/functions/asana-comment-skill-handler',
-      description: 'Watches Asana comments for slash commands like /screen or /audit. Runs every minute.',
+      description:
+        'Watches Asana comments for slash commands like /screen or /audit. Runs every minute.',
       icon: '⚡',
       regulatory: 'FDL No.10/2025 Art.20-21',
     },
@@ -44,7 +45,8 @@
       id: 'governance',
       name: 'AI Governance Self-Audit',
       path: '/.netlify/functions/ai-governance-self-audit-cron',
-      description: 'Daily self-audit against EU AI Act, NIST AI RMF, ISO/IEC 42001, UAE AI Charter. Runs at 02:00 UTC.',
+      description:
+        'Daily self-audit against EU AI Act, NIST AI RMF, ISO/IEC 42001, UAE AI Charter. Runs at 02:00 UTC.',
       icon: '🛡️',
       regulatory: 'EU Reg 2024/1689 Art.27; NIST AI RMF 1.0; ISO/IEC 42001:2023',
     },
@@ -124,15 +126,23 @@
   // ────────────────────────────────────────────────────────────────
 
   const STYLE = {
-    panel: 'background:#161b22;border:1px solid #21262d;border-radius:8px;padding:16px;margin-bottom:12px;',
-    cardOk: 'background:#0f2a1b;border:1px solid #3DA87644;border-left:3px solid #3DA876;border-radius:6px;padding:12px;margin-bottom:8px;',
-    cardErr: 'background:#2a1012;border:1px solid #D94F4F44;border-left:3px solid #D94F4F;border-radius:6px;padding:12px;margin-bottom:8px;',
-    cardWarn: 'background:#1f2933;border:1px solid #E8A03044;border-left:3px solid #E8A030;border-radius:6px;padding:12px;margin-bottom:8px;',
-    cardNeutral: 'background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px;margin-bottom:8px;',
-    btnPrimary: 'padding:8px 20px;background:#d4a843;color:#000;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;',
-    btnSecondary: 'padding:6px 14px;background:#161b22;color:#e6edf3;border:1px solid #30363d;border-radius:6px;font-size:11px;cursor:pointer;',
+    panel:
+      'background:#161b22;border:1px solid #21262d;border-radius:8px;padding:16px;margin-bottom:12px;',
+    cardOk:
+      'background:#0f2a1b;border:1px solid #3DA87644;border-left:3px solid #3DA876;border-radius:6px;padding:12px;margin-bottom:8px;',
+    cardErr:
+      'background:#2a1012;border:1px solid #D94F4F44;border-left:3px solid #D94F4F;border-radius:6px;padding:12px;margin-bottom:8px;',
+    cardWarn:
+      'background:#1f2933;border:1px solid #E8A03044;border-left:3px solid #E8A030;border-radius:6px;padding:12px;margin-bottom:8px;',
+    cardNeutral:
+      'background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px;margin-bottom:8px;',
+    btnPrimary:
+      'padding:8px 20px;background:#d4a843;color:#000;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;',
+    btnSecondary:
+      'padding:6px 14px;background:#161b22;color:#e6edf3;border:1px solid #30363d;border-radius:6px;font-size:11px;cursor:pointer;',
     code: 'background:#010409;color:#3DA876;padding:8px 12px;border-radius:4px;font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;',
-    label: 'font-size:11px;color:#8b949e;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;',
+    label:
+      'font-size:11px;color:#8b949e;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;',
   };
 
   // ────────────────────────────────────────────────────────────────
@@ -168,7 +178,8 @@
         } else {
           cronStates[cron.id] = {
             status: 'unauthed',
-            error: 'HAWKEYE_BRAIN_TOKEN not in window — open the Settings tab → "Hawkeye Brain Token" field → paste + Update Keys',
+            error:
+              'HAWKEYE_BRAIN_TOKEN not in window — open the Settings tab → "Hawkeye Brain Token" field → paste + Update Keys',
             lastCheckedAt: new Date().toISOString(),
             durationMs: Date.now() - start,
           };
@@ -216,9 +227,12 @@
 
   function statusBadge(state) {
     if (!state) return '<span style="color:#484f58;font-size:10px;">UNTESTED</span>';
-    if (state.status === 'pending') return '<span style="color:#E8A030;font-size:10px;font-weight:700;">PROBING…</span>';
-    if (state.status === 'ok') return '<span style="color:#3DA876;font-size:10px;font-weight:700;">✓ ALIVE</span>';
-    if (state.status === 'unauthed') return '<span style="color:#E8A030;font-size:10px;font-weight:700;">⚠ NEEDS AUTH</span>';
+    if (state.status === 'pending')
+      return '<span style="color:#E8A030;font-size:10px;font-weight:700;">PROBING…</span>';
+    if (state.status === 'ok')
+      return '<span style="color:#3DA876;font-size:10px;font-weight:700;">✓ ALIVE</span>';
+    if (state.status === 'unauthed')
+      return '<span style="color:#E8A030;font-size:10px;font-weight:700;">⚠ NEEDS AUTH</span>';
     return '<span style="color:#D94F4F;font-size:10px;font-weight:700;">✗ ERROR</span>';
   }
 
@@ -236,11 +250,12 @@
             ? STYLE.cardWarn
             : STYLE.cardErr;
 
-      const lastResp = state && state.lastResponse
-        ? `<div style="${STYLE.code}margin-top:8px;">${escapeHtml(JSON.stringify(state.lastResponse, null, 2))}</div>`
-        : state && state.error
-          ? `<div style="${STYLE.code}margin-top:8px;color:#D94F4F;">${escapeHtml(state.error)}</div>`
-          : '';
+      const lastResp =
+        state && state.lastResponse
+          ? `<div style="${STYLE.code}margin-top:8px;">${escapeHtml(JSON.stringify(state.lastResponse, null, 2))}</div>`
+          : state && state.error
+            ? `<div style="${STYLE.code}margin-top:8px;color:#D94F4F;">${escapeHtml(state.error)}</div>`
+            : '';
 
       const meta = state
         ? `<div style="font-size:9px;color:#484f58;margin-top:4px;">HTTP ${state.httpStatus || '—'} · ${state.durationMs || 0}ms · ${state.lastCheckedAt ? state.lastCheckedAt.slice(11, 19) : '—'}</div>`
@@ -279,14 +294,16 @@
       <div style="${STYLE.panel}">
         <div style="${STYLE.label}">19 BRAIN PRIMITIVES SHIPPED THIS SESSION</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:10px;">
-          ${TIER_FEATURES.map((tier) => `
+          ${TIER_FEATURES.map(
+            (tier) => `
             <div style="background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px;">
               <div style="font-size:11px;color:#d4a843;font-weight:700;margin-bottom:6px;">TIER ${tier.tier} — ${tier.title}</div>
               <ul style="margin:0;padding-left:16px;font-size:10px;color:#8b949e;line-height:1.6;">
                 ${tier.items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
               </ul>
             </div>
-          `).join('')}
+          `
+          ).join('')}
         </div>
       </div>
     `;
@@ -338,16 +355,93 @@
   // ────────────────────────────────────────────────────────────────
 
   const ANALYSIS_FEATURE_DEFS = [
-    { key: 'priorAlerts90d', label: 'Prior alerts (90d)', kind: 'number', default: 0, min: 0, max: 50, help: 'Count of prior CDD alerts in the last 90 days.' },
-    { key: 'txValue30dAED', label: 'Tx value 30d (AED)', kind: 'number', default: 50000, min: 0, max: 1e9, help: 'Aggregate transaction value over the last 30 days.' },
-    { key: 'nearThresholdCount30d', label: 'Near-threshold tx count (30d)', kind: 'number', default: 0, min: 0, max: 99, help: 'Transactions at or just below AED 55K (structuring signal).' },
-    { key: 'crossBorderRatio30d', label: 'Cross-border ratio (30d)', kind: 'number', default: 0, min: 0, max: 1, step: 0.01, help: 'Ratio of cross-border transactions in [0, 1].' },
-    { key: 'isPep', label: 'Any UBO is PEP?', kind: 'boolean', default: false, help: 'Politically Exposed Person — forces EDD (Cabinet Res 134/2025 Art.14).' },
-    { key: 'highRiskJurisdiction', label: 'High-risk jurisdiction?', kind: 'boolean', default: false, help: 'Counterparty in FATF / PF high-risk jurisdiction.' },
-    { key: 'hasAdverseMedia', label: 'Adverse media?', kind: 'boolean', default: false, help: 'Unresolved adverse media hit for this entity.' },
-    { key: 'daysSinceOnboarding', label: 'Days since onboarding', kind: 'number', default: 365, min: 0, max: 10000, help: 'Newer relationships are riskier.' },
-    { key: 'sanctionsMatchScore', label: 'Sanctions match score', kind: 'number', default: 0, min: 0, max: 1, step: 0.01, help: 'Name-match score against sanctions lists in [0, 1].' },
-    { key: 'cashRatio30d', label: 'Cash ratio (30d)', kind: 'number', default: 0, min: 0, max: 1, step: 0.01, help: 'Cash transaction ratio in [0, 1].' },
+    {
+      key: 'priorAlerts90d',
+      label: 'Prior alerts (90d)',
+      kind: 'number',
+      default: 0,
+      min: 0,
+      max: 50,
+      help: 'Count of prior CDD alerts in the last 90 days.',
+    },
+    {
+      key: 'txValue30dAED',
+      label: 'Tx value 30d (AED)',
+      kind: 'number',
+      default: 50000,
+      min: 0,
+      max: 1e9,
+      help: 'Aggregate transaction value over the last 30 days.',
+    },
+    {
+      key: 'nearThresholdCount30d',
+      label: 'Near-threshold tx count (30d)',
+      kind: 'number',
+      default: 0,
+      min: 0,
+      max: 99,
+      help: 'Transactions at or just below AED 55K (structuring signal).',
+    },
+    {
+      key: 'crossBorderRatio30d',
+      label: 'Cross-border ratio (30d)',
+      kind: 'number',
+      default: 0,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      help: 'Ratio of cross-border transactions in [0, 1].',
+    },
+    {
+      key: 'isPep',
+      label: 'Any UBO is PEP?',
+      kind: 'boolean',
+      default: false,
+      help: 'Politically Exposed Person — forces EDD (Cabinet Res 134/2025 Art.14).',
+    },
+    {
+      key: 'highRiskJurisdiction',
+      label: 'High-risk jurisdiction?',
+      kind: 'boolean',
+      default: false,
+      help: 'Counterparty in FATF / PF high-risk jurisdiction.',
+    },
+    {
+      key: 'hasAdverseMedia',
+      label: 'Adverse media?',
+      kind: 'boolean',
+      default: false,
+      help: 'Unresolved adverse media hit for this entity.',
+    },
+    {
+      key: 'daysSinceOnboarding',
+      label: 'Days since onboarding',
+      kind: 'number',
+      default: 365,
+      min: 0,
+      max: 10000,
+      help: 'Newer relationships are riskier.',
+    },
+    {
+      key: 'sanctionsMatchScore',
+      label: 'Sanctions match score',
+      kind: 'number',
+      default: 0,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      help: 'Name-match score against sanctions lists in [0, 1].',
+    },
+    {
+      key: 'cashRatio30d',
+      label: 'Cash ratio (30d)',
+      kind: 'number',
+      default: 0,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      help: 'Cash transaction ratio in [0, 1].',
+    },
   ];
 
   let lastAnalysisResult = null;
@@ -436,7 +530,8 @@
       topic: (document.getElementById('brain-analyze-topic') || {}).value || 'Live analysis',
       entity: {
         id: (document.getElementById('brain-analyze-entity-id') || {}).value || 'entity-demo-001',
-        name: (document.getElementById('brain-analyze-entity-name') || {}).value || 'Demo Entity LLC',
+        name:
+          (document.getElementById('brain-analyze-entity-name') || {}).value || 'Demo Entity LLC',
         features,
       },
     };
@@ -496,18 +591,32 @@
       const powerLabel = body.powerScore
         ? ` · brain=${body.powerScore.score}/${body.powerScore.verdict}`
         : '';
-      const crossLabel = body.crossCase && body.crossCase.findings.length > 0
-        ? ` · cross-case=${body.crossCase.findings.length}/${body.crossCase.topSeverity}`
-        : '';
-      const typoLabel = body.typologies && body.typologies.matches.length > 0
-        ? ` · typo=${body.typologies.matches.length}/${body.typologies.topSeverity}`
-        : '';
-      const driftLabel = body.regulatoryDrift && !body.regulatoryDrift.clean
-        ? ` · DRIFT=${body.regulatoryDrift.topSeverity}`
-        : '';
+      const crossLabel =
+        body.crossCase && body.crossCase.findings.length > 0
+          ? ` · cross-case=${body.crossCase.findings.length}/${body.crossCase.topSeverity}`
+          : '';
+      const typoLabel =
+        body.typologies && body.typologies.matches.length > 0
+          ? ` · typo=${body.typologies.matches.length}/${body.typologies.topSeverity}`
+          : '';
+      const driftLabel =
+        body.regulatoryDrift && !body.regulatoryDrift.clean
+          ? ` · DRIFT=${body.regulatoryDrift.topSeverity}`
+          : '';
       statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel}${crossLabel}${typoLabel}${driftLabel} (${durationMs}ms)`;
       statusEl.style.color = '#3DA876';
-      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase, body.typologies, body.regulatoryDrift, body.velocity, body.ensemble);
+      renderAnalysisResult(
+        body.decision,
+        body.powerScore,
+        body.asanaDispatch,
+        body.crossCase,
+        body.typologies,
+        body.regulatoryDrift,
+        body.velocity,
+        body.ensemble,
+        body.uncertainty,
+        body.debate
+      );
     } catch (err) {
       statusEl.textContent = `✗ network error: ${err.message || err}`;
       statusEl.style.color = '#D94F4F';
@@ -549,7 +658,9 @@
     };
     const color = verdictColors[powerScore.verdict] || '#8b949e';
     const filled = Math.max(0, Math.min(100, powerScore.score));
-    const componentsHtml = (powerScore.components || []).map((c) => `
+    const componentsHtml = (powerScore.components || [])
+      .map(
+        (c) => `
       <tr>
         <td style="padding:3px 8px;font-size:10px;color:#8b949e;">${escapeHtml(c.label)}</td>
         <td style="padding:3px 8px;font-size:10px;color:#e6edf3;font-family:monospace;text-align:right;">${c.points}/${c.max}</td>
@@ -559,7 +670,9 @@
           </div>
         </td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
 
     return `
       <div style="${STYLE.panel}border-left:4px solid ${color};">
@@ -635,9 +748,10 @@
       'address-reuse': '#d4a843',
       'narrative-copypaste': '#d4a843',
     };
-    const findingsHtml = crossCase.findings.map((f) => {
-      const color = kindColors[f.kind] || '#8b949e';
-      return `
+    const findingsHtml = crossCase.findings
+      .map((f) => {
+        const color = kindColors[f.kind] || '#8b949e';
+        return `
         <div style="border:1px solid ${color}44;border-left:3px solid ${color};background:#0d1117;border-radius:3px;padding:10px 12px;margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
             <strong style="color:${color};font-size:12px;letter-spacing:0.5px;">${escapeHtml(f.kind.toUpperCase())}</strong>
@@ -647,7 +761,8 @@
           <div style="font-size:9px;color:#8b949e;margin-top:4px;font-style:italic;">${escapeHtml(f.regulatory)}</div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
     return `
       <div style="${STYLE.panel}border-left:4px solid #D94F4F;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
@@ -674,12 +789,17 @@
       high: '#E8A030',
       critical: '#D94F4F',
     };
-    const rows = typologies.matches.map((m) => {
-      const color = sevColors[m.severity] || '#8b949e';
-      const signalHtml = (m.firedSignals || []).slice(0, 5).map((s) =>
-        `<span style="display:inline-block;background:#010409;border:1px solid ${color}44;color:${color};padding:2px 8px;border-radius:10px;font-size:10px;margin:2px 4px 2px 0;">${escapeHtml(s)}</span>`
-      ).join('');
-      return `
+    const rows = typologies.matches
+      .map((m) => {
+        const color = sevColors[m.severity] || '#8b949e';
+        const signalHtml = (m.firedSignals || [])
+          .slice(0, 5)
+          .map(
+            (s) =>
+              `<span style="display:inline-block;background:#010409;border:1px solid ${color}44;color:${color};padding:2px 8px;border-radius:10px;font-size:10px;margin:2px 4px 2px 0;">${escapeHtml(s)}</span>`
+          )
+          .join('');
+        return `
         <div style="border:1px solid ${color}44;border-left:3px solid ${color};background:#0d1117;border-radius:3px;padding:10px 12px;margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
             <div>
@@ -693,7 +813,8 @@
           <div style="font-size:10px;color:#d4a843;margin-top:4px;"><strong>Action:</strong> ${escapeHtml(m.recommendedAction)}</div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
     return `
       <div style="${STYLE.panel}border-left:4px solid #d4a843;">
@@ -725,9 +846,10 @@
       none: '#8b949e',
     };
     const color = sevColors[drift.topSeverity] || '#8b949e';
-    const rows = (drift.findings || []).map((f) => {
-      const fc = sevColors[f.severity] || '#8b949e';
-      return `
+    const rows = (drift.findings || [])
+      .map((f) => {
+        const fc = sevColors[f.severity] || '#8b949e';
+        return `
         <div style="border:1px solid ${fc}44;border-left:3px solid ${fc};background:#0d1117;border-radius:3px;padding:8px 12px;margin-bottom:6px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
             <strong style="color:${fc};font-size:11px;font-family:monospace;">${escapeHtml(f.key)}</strong>
@@ -739,7 +861,8 @@
           <div style="font-size:9px;color:#8b949e;margin-top:3px;font-style:italic;">${escapeHtml(f.regulatory)}</div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
     return `
       <div style="${STYLE.panel}border-left:4px solid ${color};">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
@@ -819,35 +942,125 @@
     `;
   }
 
-  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase, typologies, regulatoryDrift, velocity, ensemble) {
+  function renderUncertaintyCard(uncertainty) {
+    if (!uncertainty) return '';
+    const bandColors = {
+      point: '#3DA876',
+      narrow: '#3DA876',
+      moderate: '#E8A030',
+      wide: '#D94F4F',
+      critical: '#D94F4F',
+    };
+    const color = bandColors[uncertainty.coverage] || '#8b949e';
+    const cardStyle =
+      uncertainty.coverage === 'critical' || uncertainty.coverage === 'wide'
+        ? STYLE.cardErr
+        : uncertainty.coverage === 'moderate'
+          ? STYLE.cardWarn
+          : STYLE.cardOk;
+    return `
+      <div style="${cardStyle}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <strong style="color:${color};">📐 UNCERTAINTY INTERVAL — ${uncertainty.coverage.toUpperCase()}</strong>
+          <span style="font-size:10px;color:#8b949e;">n=${uncertainty.sampleSize} · sd ${uncertainty.stddev.toFixed(3)}</span>
+        </div>
+        <div style="font-size:11px;color:#e6edf3;margin-top:6px;line-height:1.6;">
+          point <code style="color:#d4a843;">${uncertainty.pointEstimate.toFixed(3)}</code>
+          · interval <code style="color:#d4a843;">[${uncertainty.lower.toFixed(3)}, ${uncertainty.upper.toFixed(3)}]</code>
+          · width ${uncertainty.width.toFixed(3)}
+          · agreement ${(uncertainty.agreement * 100).toFixed(0)}%
+        </div>
+        <div style="font-size:10px;color:#8b949e;margin-top:6px;font-style:italic;">${escapeHtml(uncertainty.summary)}</div>
+      </div>
+    `;
+  }
+
+  function renderDebateCard(debate) {
+    if (!debate) return '';
+    const outcomeColors = {
+      prosecution_wins: '#D94F4F',
+      defence_wins: '#3DA876',
+      undetermined: '#E8A030',
+    };
+    const color = outcomeColors[debate.outcome] || '#8b949e';
+    const cardStyle = debate.outcome === 'undetermined' ? STYLE.cardWarn : STYLE.cardNeutral;
+    return `
+      <div style="${cardStyle}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <strong style="color:${color};">⚖ ADVERSARIAL DEBATE — ${debate.outcome.replace(/_/g, ' ').toUpperCase()}</strong>
+          <span style="font-size:10px;color:#8b949e;">gap ${debate.gap.toFixed(3)} · threshold ${debate.threshold.toFixed(2)}</span>
+        </div>
+        <div style="font-size:11px;color:#e6edf3;margin-top:6px;line-height:1.6;">
+          <div><strong style="color:#D94F4F;">Prosecution ${debate.prosecutionScore.toFixed(3)}:</strong> ${escapeHtml(debate.prosecutionPosition)}</div>
+          <div style="margin-top:4px;"><strong style="color:#3DA876;">Defence ${debate.defenceScore.toFixed(3)}:</strong> ${escapeHtml(debate.defencePosition)}</div>
+        </div>
+        <div style="font-size:10px;color:#8b949e;margin-top:6px;font-style:italic;border-top:1px solid #21262d;padding-top:6px;">${escapeHtml(debate.judgeSynthesis)}</div>
+      </div>
+    `;
+  }
+
+  function renderCaseToolsCard(decision) {
+    if (!decision) return '';
+    const tenantId = decision.tenantId || '';
+    const caseId = decision.id || '';
+    return `
+      <div style="${STYLE.cardNeutral}">
+        <strong style="color:#d4a843;">🛠 CASE TOOLS</strong>
+        <div style="font-size:10px;color:#8b949e;margin-top:4px;">tenant <code>${escapeHtml(tenantId)}</code> · case <code>${escapeHtml(caseId)}</code></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+          <button class="btn btn-sm btn-blue" data-action="brainConsoleReplay" data-arg="${escapeHtml(tenantId)}" data-arg2="${escapeHtml(caseId)}" title="Re-validate this case against the current regulatory baseline">↻ Replay</button>
+          <button class="btn btn-sm btn-blue" data-action="brainConsoleEvidenceBundle" data-arg="${escapeHtml(tenantId)}" data-arg2="${escapeHtml(caseId)}" title="Export the SHA3-512-sealed audit bundle">📦 Evidence Bundle</button>
+        </div>
+        <div id="brain-case-tools-result" style="margin-top:8px;font-size:10px;color:#8b949e;font-family:monospace;max-height:240px;overflow:auto;"></div>
+      </div>
+    `;
+  }
+
+  function renderAnalysisResult(
+    decision,
+    powerScore,
+    asanaDispatch,
+    crossCase,
+    typologies,
+    regulatoryDrift,
+    velocity,
+    ensemble,
+    uncertainty,
+    debate
+  ) {
     const resultEl = document.getElementById('brain-analyze-result');
     if (!resultEl) return;
 
     const factorsHtml = (decision.strPrediction.topFactors || [])
-      .map((f) => `
+      .map(
+        (f) => `
         <tr>
           <td style="padding:4px 8px;color:#e6edf3;font-family:monospace;font-size:11px;">${escapeHtml(f.feature)}</td>
           <td style="padding:4px 8px;color:#8b949e;font-family:monospace;font-size:11px;">${escapeHtml(String(f.value))}</td>
           <td style="padding:4px 8px;color:${f.impact === 'increases-risk' ? '#D94F4F' : f.impact === 'decreases-risk' ? '#3DA876' : '#8b949e'};font-family:monospace;font-size:11px;">${f.contribution >= 0 ? '+' : ''}${f.contribution.toFixed(3)}</td>
           <td style="padding:4px 8px;color:#8b949e;font-size:10px;">${escapeHtml(f.impact)}</td>
         </tr>
-      `).join('');
+      `
+      )
+      .join('');
 
-    const clampsHtml = (decision.brain.clampReasons || []).length > 0
-      ? `<div style="${STYLE.cardWarn}">
+    const clampsHtml =
+      (decision.brain.clampReasons || []).length > 0
+        ? `<div style="${STYLE.cardWarn}">
           <strong style="color:#E8A030;">⚠ SAFETY CLAMPS FIRED</strong>
           <ul style="margin:6px 0 0;padding-left:18px;font-size:11px;color:#e6edf3;line-height:1.6;">
             ${decision.brain.clampReasons.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}
           </ul>
         </div>`
-      : '';
+        : '';
 
-    const failuresHtml = (decision.brain.subsystemFailures || []).length > 0
-      ? `<div style="${STYLE.cardErr}">
+    const failuresHtml =
+      (decision.brain.subsystemFailures || []).length > 0
+        ? `<div style="${STYLE.cardErr}">
           <strong style="color:#D94F4F;">✗ SUBSYSTEM FAILURES (${decision.brain.subsystemFailures.length})</strong>
           <div style="font-size:11px;color:#e6edf3;margin-top:6px;">${escapeHtml(decision.brain.subsystemFailures.join(', '))}</div>
         </div>`
-      : '';
+        : '';
 
     const advisorHtml = decision.brain.advisorInvoked
       ? `<div style="${STYLE.cardWarn}">
@@ -894,12 +1107,15 @@
       </div>
 
       ${renderPowerScoreCard(powerScore)}
+      ${renderUncertaintyCard(uncertainty)}
+      ${renderDebateCard(debate)}
       ${renderRegulatoryDriftCard(regulatoryDrift)}
       ${renderEnsembleCard(ensemble)}
       ${renderVelocityCard(velocity)}
       ${renderTypologiesCard(typologies)}
       ${renderCrossCaseCard(crossCase)}
       ${renderAsanaDispatchCard(asanaDispatch)}
+      ${renderCaseToolsCard(decision)}
       ${clampsHtml}
       ${failuresHtml}
       ${advisorHtml}
@@ -960,9 +1176,11 @@
             <div style="font-size:13px;color:#e6edf3;font-weight:700;margin-top:2px;">${decision.brain.managedAgentPlan.length}</div>
           </div>
         </div>
-        ${decision.brain.megaNotes && decision.brain.megaNotes.length > 0
-          ? `<div style="${STYLE.code}margin-top:10px;">${decision.brain.megaNotes.map(escapeHtml).join('\n')}</div>`
-          : ''}
+        ${
+          decision.brain.megaNotes && decision.brain.megaNotes.length > 0
+            ? `<div style="${STYLE.code}margin-top:10px;">${decision.brain.megaNotes.map(escapeHtml).join('\n')}</div>`
+            : ''
+        }
       </div>
     `;
   }
@@ -1030,6 +1248,46 @@
       .replace(/'/g, '&#039;');
   }
 
+  // ─── Case-tools handlers — replay + evidence bundle ─────────────────
+  async function callCaseEndpoint(path, tenantId, caseId) {
+    const out = document.getElementById('brain-case-tools-result');
+    const token = window.HAWKEYE_BRAIN_TOKEN;
+    if (!token) {
+      if (out) out.textContent = 'HAWKEYE_BRAIN_TOKEN missing — set it in Settings.';
+      return;
+    }
+    if (!tenantId || !caseId) {
+      if (out) out.textContent = 'Missing tenant or case id.';
+      return;
+    }
+    if (out) out.textContent = `Calling ${path}…`;
+    try {
+      const response = await fetch(NETLIFY_BASE + path, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ tenantId, caseId }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (out) out.textContent = JSON.stringify(body, null, 2);
+    } catch (err) {
+      if (out)
+        out.textContent = 'fetch failed: ' + (err && err.message ? err.message : String(err));
+    }
+  }
+
+  async function brainConsoleReplay(tenantId, caseId) {
+    return callCaseEndpoint('/api/brain/replay', tenantId, caseId);
+  }
+  async function brainConsoleEvidenceBundle(tenantId, caseId) {
+    return callCaseEndpoint('/api/brain/evidence-bundle', tenantId, caseId);
+  }
+  // Expose for the data-action delegate.
+  window.brainConsoleReplay = brainConsoleReplay;
+  window.brainConsoleEvidenceBundle = brainConsoleEvidenceBundle;
+
   // Expose the public API
   window.BrainConsole = {
     init: init,
@@ -1038,5 +1296,7 @@
     runAnalysis: runAnalysis,
     clearAnalysis: clearAnalysis,
     lastAnalysis: () => lastAnalysisResult,
+    replay: brainConsoleReplay,
+    evidenceBundle: brainConsoleEvidenceBundle,
   };
 })();
