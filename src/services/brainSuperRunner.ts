@@ -65,6 +65,7 @@ import { matchFatfTypologies, type TypologyReport } from './fatfTypologyMatcher'
 import { analyseBehaviouralVelocity, type VelocityReport } from './behaviouralVelocityDetector';
 import { runBrainEnsemble, type EnsembleReport } from './brainConsensusEnsemble';
 import { deriveUncertaintyInterval, type UncertaintyInterval } from './uncertaintyInterval';
+import { runAdversarialDebate, shouldDebate, type DebateReport } from './brainAdversarialDebate';
 import {
   emptyDigest,
   updateDigest,
@@ -380,6 +381,12 @@ export interface SuperDecision {
    * is empty).
    */
   uncertainty: UncertaintyInterval;
+  /**
+   * Adversarial debate report (prosecution vs defence). Cost-gated
+   * by shouldDebate() — null when the case is clear-cut and the
+   * debate would add no signal. See brainAdversarialDebate.ts.
+   */
+  debate: DebateReport | null;
 }
 
 /**
@@ -548,6 +555,12 @@ export async function runSuperDecision(
 
   const uncertainty = deriveUncertaintyInterval(ensemble, decision.confidence);
 
+  // Adversarial debate — cost-gated. Only borderline / ambiguous
+  // cases trigger the prosecution/defence pass so audit logs stay lean.
+  const debate: DebateReport | null = shouldDebate(decision.confidence, uncertainty)
+    ? runAdversarialDebate(input.entity.features)
+    : null;
+
   const result: SuperDecision = {
     decision,
     powerScore,
@@ -561,6 +574,7 @@ export async function runSuperDecision(
     augmentedChain,
     recordedSnapshot,
     uncertainty,
+    debate,
   };
 
   // Store in the fingerprint cache so the next call with identical

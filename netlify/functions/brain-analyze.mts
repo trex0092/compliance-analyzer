@@ -586,6 +586,17 @@ export default async (req: Request, context: Context) => {
     summary: string;
     regulatory: string;
   } | null = null;
+  let debateSummary: {
+    outcome: 'prosecution_wins' | 'defence_wins' | 'undetermined';
+    gap: number;
+    threshold: number;
+    prosecutionScore: number;
+    defenceScore: number;
+    prosecutionPosition: string;
+    defencePosition: string;
+    judgeSynthesis: string;
+    regulatory: readonly string[];
+  } | null = null;
   try {
     // Lazy hydrate this tenant's blob-backed memory before the
     // decision so the cross-case correlator sees the full history.
@@ -767,6 +778,19 @@ export default async (req: Request, context: Context) => {
       summary: superResult.uncertainty.summary,
       regulatory: superResult.uncertainty.regulatory,
     };
+    if (superResult.debate) {
+      debateSummary = {
+        outcome: superResult.debate.outcome,
+        gap: superResult.debate.gap,
+        threshold: superResult.debate.threshold,
+        prosecutionScore: superResult.debate.prosecution.score,
+        defenceScore: superResult.debate.defence.score,
+        prosecutionPosition: superResult.debate.prosecution.position,
+        defencePosition: superResult.debate.defence.position,
+        judgeSynthesis: superResult.debate.judgeSynthesis,
+        regulatory: superResult.debate.regulatory,
+      };
+    }
     precedentSummary = {
       matchCount: superResult.precedents.matches.length,
       hasCriticalPrecedent: superResult.precedents.hasCriticalPrecedent,
@@ -833,6 +857,7 @@ export default async (req: Request, context: Context) => {
     velocity: velocitySummary,
     ensemble: ensembleSummary,
     uncertainty: uncertaintySummary,
+    debate: debateSummary,
     precedents: precedentSummary,
     regulatoryDrift: {
       clean: drift.clean,
