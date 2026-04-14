@@ -507,7 +507,7 @@
         : '';
       statusEl.textContent = `✓ verdict=${body.decision.verdict} confidence=${body.decision.confidence.toFixed(3)}${powerLabel}${crossLabel}${typoLabel}${driftLabel} (${durationMs}ms)`;
       statusEl.style.color = '#3DA876';
-      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase, body.typologies, body.regulatoryDrift, body.velocity);
+      renderAnalysisResult(body.decision, body.powerScore, body.asanaDispatch, body.crossCase, body.typologies, body.regulatoryDrift, body.velocity, body.ensemble);
     } catch (err) {
       statusEl.textContent = `✗ network error: ${err.message || err}`;
       statusEl.style.color = '#D94F4F';
@@ -752,6 +752,26 @@
     `;
   }
 
+  function renderEnsembleCard(ensemble) {
+    if (!ensemble) return '';
+    const color = ensemble.unstable ? '#D94F4F' : '#3DA876';
+    const badge = ensemble.unstable ? 'UNSTABLE' : 'STABLE';
+    return `
+      <div style="${ensemble.unstable ? STYLE.cardErr : STYLE.cardOk}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <strong style="color:${color};">🎯 CONSENSUS ENSEMBLE — ${badge}</strong>
+          <span style="font-size:10px;color:#8b949e;">${ensemble.majorityVoteCount}/${ensemble.runs} agree · ${(ensemble.agreement * 100).toFixed(0)}%</span>
+        </div>
+        <div style="font-size:11px;color:#e6edf3;margin-top:6px;line-height:1.6;">
+          Majority: <code style="color:#d4a843;">${escapeHtml(ensemble.majorityTypologyId || 'no-match')}</code>
+          · severity <strong>${escapeHtml(ensemble.majoritySeverity)}</strong>
+          · mean ${ensemble.meanMatchCount.toFixed(1)} matches/run
+        </div>
+        <div style="font-size:10px;color:#8b949e;margin-top:6px;font-style:italic;">${escapeHtml(ensemble.summary)}</div>
+      </div>
+    `;
+  }
+
   function renderVelocityCard(velocity) {
     if (!velocity) {
       return `
@@ -799,7 +819,7 @@
     `;
   }
 
-  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase, typologies, regulatoryDrift, velocity) {
+  function renderAnalysisResult(decision, powerScore, asanaDispatch, crossCase, typologies, regulatoryDrift, velocity, ensemble) {
     const resultEl = document.getElementById('brain-analyze-result');
     if (!resultEl) return;
 
@@ -875,6 +895,7 @@
 
       ${renderPowerScoreCard(powerScore)}
       ${renderRegulatoryDriftCard(regulatoryDrift)}
+      ${renderEnsembleCard(ensemble)}
       ${renderVelocityCard(velocity)}
       ${renderTypologiesCard(typologies)}
       ${renderCrossCaseCard(crossCase)}

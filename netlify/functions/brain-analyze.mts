@@ -509,6 +509,17 @@ export default async (req: Request, context: Context) => {
     offHours: { score: number; description: string };
     weekend: { score: number; description: string };
   } | null = null;
+  let ensembleSummary: {
+    runs: number;
+    agreement: number;
+    unstable: boolean;
+    majorityTypologyId: string | null;
+    majorityVoteCount: number;
+    majoritySeverity: string;
+    meanMatchCount: number;
+    summary: string;
+    regulatory: string;
+  } | null = null;
   try {
     // Lazy hydrate this tenant's blob-backed memory before the
     // decision so the cross-case correlator sees the full history.
@@ -586,6 +597,17 @@ export default async (req: Request, context: Context) => {
         },
       };
     }
+    ensembleSummary = {
+      runs: superResult.ensemble.runs,
+      agreement: superResult.ensemble.agreement,
+      unstable: superResult.ensemble.unstable,
+      majorityTypologyId: superResult.ensemble.majorityTypologyId,
+      majorityVoteCount: superResult.ensemble.majorityVoteCount,
+      majoritySeverity: superResult.ensemble.majoritySeverity,
+      meanMatchCount: superResult.ensemble.meanMatchCount,
+      summary: superResult.ensemble.summary,
+      regulatory: superResult.ensemble.regulatory,
+    };
   } catch (err) {
     // Never leak subsystem internals — log server-side, return generic.
     console.error(
@@ -638,6 +660,7 @@ export default async (req: Request, context: Context) => {
     crossCase: crossCaseSummary,
     typologies: typologiesSummary,
     velocity: velocitySummary,
+    ensemble: ensembleSummary,
     regulatoryDrift: {
       clean: drift.clean,
       versionDrifted: drift.versionDrifted,

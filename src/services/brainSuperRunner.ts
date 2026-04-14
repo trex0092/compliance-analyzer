@@ -73,6 +73,10 @@ import {
   analyseBehaviouralVelocity,
   type VelocityReport,
 } from './behaviouralVelocityDetector';
+import {
+  runBrainEnsemble,
+  type EnsembleReport,
+} from './brainConsensusEnsemble';
 
 // ---------------------------------------------------------------------------
 // Brain Power Score
@@ -300,6 +304,12 @@ export interface SuperDecision {
    * Null when memory is skipped (tests).
    */
   velocity: VelocityReport | null;
+  /**
+   * Consensus ensemble report — brain run N times with perturbed
+   * input vectors to detect decision-boundary instability. Always
+   * computed (pure function, no memory needed).
+   */
+  ensemble: EnsembleReport;
 }
 
 /**
@@ -369,6 +379,7 @@ export async function runSuperDecision(
   const decision = await runComplianceDecision(caseInput);
   const powerScore = computeBrainPowerScore(decision);
   const typologies = matchFatfTypologies(input.entity.features);
+  const ensemble = runBrainEnsemble(input.entity.features);
 
   // Record + cross-case correlate BEFORE Asana dispatch so the Asana
   // task description can (in a future commit) carry correlation
@@ -411,7 +422,15 @@ export async function runSuperDecision(
     }
   }
 
-  return { decision, powerScore, asanaDispatch, crossCase, typologies, velocity };
+  return {
+    decision,
+    powerScore,
+    asanaDispatch,
+    crossCase,
+    typologies,
+    velocity,
+    ensemble,
+  };
 }
 
 // Exports for tests.
