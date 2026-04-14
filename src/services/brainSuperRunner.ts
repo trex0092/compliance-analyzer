@@ -88,6 +88,10 @@ import {
   augmentChainWithPrecedents,
   type AugmentChainResult,
 } from './reasoningChainAugmenter';
+import {
+  DecisionFingerprintCache,
+  computeFingerprint,
+} from './decisionFingerprintCache';
 
 // ---------------------------------------------------------------------------
 // Brain Power Score
@@ -301,6 +305,22 @@ export interface SuperRunnerOptions {
     narrativeHash?: string;
     sanctionsMatchKeys?: readonly string[];
   };
+  /**
+   * Optional fingerprint cache. When provided, the runner
+   * computes a deterministic SHA-256 fingerprint of
+   * (tenantId, entityId, sanctionsConfirmedFlag, features) and
+   * checks the cache before running the decision. A cache hit
+   * returns the prior SuperDecision directly, saving every
+   * subsystem call. Tests omit this option to exercise the
+   * non-cached path as before.
+   */
+  cache?: DecisionFingerprintCache<SuperDecision>;
+  /**
+   * When true (and a cache is provided), force a fresh run and
+   * overwrite the cache entry. Useful for debug endpoints that
+   * want to bypass caching.
+   */
+  forceFresh?: boolean;
 }
 
 export interface SuperDecision {
@@ -412,6 +432,31 @@ export async function runSuperDecision(
   input: ComplianceCaseInput,
   opts: SuperRunnerOptions = {}
 ): Promise<SuperDecision> {
+  // -------------------------------------------------------------------------
+  // Fingerprint cache lookup — short-circuit on hit. Cache failures
+  // never block the decision path; any exception falls through to the
+  // normal run and simply doesn't write to the cache afterward.
+  // -------------------------------------------------------------------------
+  let cacheFingerprint: string | null = null;
+  if (opts.cache && !opts.forceFresh) {
+    try {
+      cacheFingerprint = await computeFingerprint({
+        tenantId: input.tenantId,
+        entityId: input.entity.id,
+        features: input.entity.features,
+        sanctionsConfirmedFlag: input.entity.isSanctionsConfirmed === true,
+      });
+      const hit = opts.cache.get(input.tenantId, cacheFingerprint);
+      if (hit !== null) return hit;
+    } catch (err) {
+      console.warn(
+        '[brainSuperRunner] fingerprint cache lookup failed:',
+        err instanceof Error ? err.message : String(err)
+      );
+      cacheFingerprint = null;
+    }
+  }
+
   const advisor: AdvisorEscalationFn | undefined =
     input.advisor ??
     (shouldInvokeAdvisor(input) ? opts.advisor ?? (async (i) => deterministicAdvisor(i)) : undefined);
@@ -494,7 +539,7 @@ export async function runSuperDecision(
     }
   }
 
-  return {
+  const result: SuperDecision = {
     decision,
     powerScore,
     asanaDispatch,
@@ -506,6 +551,23 @@ export async function runSuperDecision(
     digestAfter,
     augmentedChain,
   };
+
+  // Store in the fingerprint cache so the next call with identical
+  // inputs returns this SuperDecision directly. Guarded on a
+  // successful fingerprint earlier — if we couldn't compute it,
+  // we skip the write instead of poisoning the cache.
+  if (opts.cache && cacheFingerprint) {
+    try {
+      opts.cache.set(input.tenantId, cacheFingerprint, result);
+    } catch (err) {
+      console.warn(
+        '[brainSuperRunner] fingerprint cache set failed:',
+        err instanceof Error ? err.message : String(err)
+      );
+    }
+  }
+
+  return result;
 }
 
 // Exports for tests.
