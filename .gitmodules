@@ -136,3 +136,6 @@
 [submodule "vendor/SwiftGuide"]
 	path = vendor/SwiftGuide
 	url = https://github.com/ipader/SwiftGuide.git
+[submodule "vendor/teorth-analysis"]
+	path = vendor/teorth-analysis
+	url = https://github.com/teorth/analysis.git
