@@ -143,6 +143,8 @@
     code: 'background:#010409;color:#3DA876;padding:8px 12px;border-radius:4px;font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;',
     label:
       'font-size:11px;color:#8b949e;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;',
+    input:
+      'padding:6px 10px;background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:6px;font-size:11px;',
   };
 
   // ────────────────────────────────────────────────────────────────
@@ -999,6 +1001,78 @@
     `;
   }
 
+  // ────────────────────────────────────────────────────────────────
+  // TIER C OPS PANEL — clamp suggestion log, deferred outbound queue,
+  // and break-glass override. Each sub-card lets the MLRO list pending
+  // items and (where applicable) accept / reject / release / approve
+  // via the orchestrator. Tier C is the safe-equivalent layer for
+  // operations that would otherwise create regulatory liability:
+  //
+  //   - Clamp suggestions (NIST AI RMF GOVERN-4) — auto-tuning
+  //     thresholds is illegal; suggestions queue for MLRO sign-off
+  //   - Outbound queue (FDL Art.29) — auto-sending customer messages
+  //     would be tipping off; messages queue for CO release
+  //   - Break-glass override (Cabinet Res 134/2025 Art.12-14) —
+  //     single-user verdict overrides break four-eyes; pairs A and B
+  //
+  // Cards are intentionally read-only by default. Action buttons
+  // require the operator to first paste the target item id into the
+  // input next to the action. This avoids accidental mutations from
+  // a stray click.
+  // ────────────────────────────────────────────────────────────────
+
+  function renderTierCOpsCard() {
+    return `
+      <div style="${STYLE.panel}">
+        <div style="${STYLE.label}">TIER C OPS — SAFE EQUIVALENTS</div>
+        <div style="font-size:10px;color:#8b949e;margin-top:4px;line-height:1.6;">
+          Read-only inspection of the Tier C blob stores. Mutations require pasting the target id and confirming. Every Tier C action is audit-logged with citation.
+        </div>
+
+        <!-- Clamp suggestion sub-card -->
+        <div style="${STYLE.cardNeutral}margin-top:10px;">
+          <strong style="color:#d4a843;">🔧 CLAMP SUGGESTION LOG</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">NIST AI RMF GOVERN-4 — auto-tune proposals queued for MLRO review</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn btn-sm btn-blue" data-action="brainConsoleClampList" title="List clamp suggestions awaiting MLRO review">↻ List pending</button>
+            <input type="text" id="brain-tierc-clamp-id" placeholder="suggestion:key:ts" style="${STYLE.input}flex:1;min-width:200px;font-size:10px;font-family:monospace;">
+            <button class="btn btn-sm btn-green" data-action="brainConsoleClampDecide" data-arg="accepted" title="Mark the pasted suggestion as accepted (still needs a PR)">✓ Accept</button>
+            <button class="btn btn-sm btn-red" data-action="brainConsoleClampDecide" data-arg="rejected" title="Mark the pasted suggestion as rejected">✗ Reject</button>
+          </div>
+          <div id="brain-tierc-clamp-result" style="margin-top:8px;font-size:10px;color:#8b949e;font-family:monospace;max-height:200px;overflow:auto;"></div>
+        </div>
+
+        <!-- Outbound queue sub-card -->
+        <div style="${STYLE.cardNeutral}margin-top:10px;">
+          <strong style="color:#d4a843;">📤 DEFERRED OUTBOUND QUEUE</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">FDL Art.29 — customer messages pending CO release (tipping-off-safe)</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+            <input type="text" id="brain-tierc-outbound-tenant" placeholder="tenantId" style="${STYLE.input}flex:1;min-width:140px;font-size:10px;font-family:monospace;">
+            <button class="btn btn-sm btn-blue" data-action="brainConsoleOutboundList" title="List outbound items awaiting CO release for this tenant">↻ List pending</button>
+            <input type="text" id="brain-tierc-outbound-id" placeholder="outbound:..." style="${STYLE.input}flex:1;min-width:200px;font-size:10px;font-family:monospace;">
+            <button class="btn btn-sm btn-green" data-action="brainConsoleOutboundAction" data-arg="release" title="Release the pasted outbound item (CO only)">▶ Release</button>
+            <button class="btn btn-sm btn-red" data-action="brainConsoleOutboundAction" data-arg="cancel" title="Cancel the pasted outbound item">✗ Cancel</button>
+          </div>
+          <div id="brain-tierc-outbound-result" style="margin-top:8px;font-size:10px;color:#8b949e;font-family:monospace;max-height:200px;overflow:auto;"></div>
+        </div>
+
+        <!-- Break-glass sub-card -->
+        <div style="${STYLE.cardNeutral}margin-top:10px;">
+          <strong style="color:#d4a843;">🚨 BREAK-GLASS OVERRIDE</strong>
+          <div style="font-size:10px;color:#8b949e;margin-top:4px;">Cabinet Res 134/2025 Art.12-14 — two-person approval. Self-approval rejected by construction.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+            <input type="text" id="brain-tierc-bg-tenant" placeholder="tenantId" style="${STYLE.input}flex:1;min-width:140px;font-size:10px;font-family:monospace;">
+            <button class="btn btn-sm btn-blue" data-action="brainConsoleBreakGlassList" title="List break-glass requests awaiting a second approver">↻ List pending</button>
+            <input type="text" id="brain-tierc-bg-id" placeholder="breakglass:..." style="${STYLE.input}flex:1;min-width:200px;font-size:10px;font-family:monospace;">
+            <input type="text" id="brain-tierc-bg-approver" placeholder="approverId" style="${STYLE.input}flex:1;min-width:140px;font-size:10px;font-family:monospace;">
+            <button class="btn btn-sm btn-green" data-action="brainConsoleBreakGlassApprove" title="Approve the pasted break-glass request — must be a different user from the requester">✓ Approve</button>
+          </div>
+          <div id="brain-tierc-bg-result" style="margin-top:8px;font-size:10px;color:#8b949e;font-family:monospace;max-height:200px;overflow:auto;"></div>
+        </div>
+      </div>
+    `;
+  }
+
   function renderCaseToolsCard(decision) {
     if (!decision) return '';
     const tenantId = decision.tenantId || '';
@@ -1220,6 +1294,7 @@
         <div style="${STYLE.label}">CRON HEALTH</div>
         <div id="brain-cron-list" style="margin-top:10px;"></div>
       </div>
+      ${renderTierCOpsCard()}
       ${renderTierSummary()}
     `;
 
@@ -1231,6 +1306,32 @@
     });
     document.getElementById('brain-analyze-run').addEventListener('click', runAnalysis);
     document.getElementById('brain-analyze-clear').addEventListener('click', clearAnalysis);
+
+    // Local data-action delegate scoped to the brain tab. The legacy
+    // app-core.js switch only knows about app-wide actions; brain
+    // console actions (replay, evidence bundle, Tier C ops) are
+    // handled here so they do not pollute the global switch and so
+    // the brain tab stays self-contained.
+    container.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn || !container.contains(btn)) return;
+      const action = btn.getAttribute('data-action');
+      if (!action || !action.startsWith('brainConsole')) return;
+      const fn = window[action];
+      if (typeof fn !== 'function') return;
+      e.preventDefault();
+      e.stopPropagation();
+      const arg = btn.getAttribute('data-arg');
+      const arg2 = btn.getAttribute('data-arg2');
+      try {
+        // Forward up to two args — covers all current callers.
+        if (arg2 !== null && arg2 !== undefined) fn(arg, arg2);
+        else if (arg !== null && arg !== undefined) fn(arg);
+        else fn();
+      } catch (err) {
+        console.warn('[BrainConsole] action handler threw:', err);
+      }
+    });
 
     renderCronList();
 
@@ -1288,6 +1389,137 @@
   window.brainConsoleReplay = brainConsoleReplay;
   window.brainConsoleEvidenceBundle = brainConsoleEvidenceBundle;
 
+  // ─── Tier C ops handlers — clamp, outbound, break-glass ────────────
+  //
+  // Each handler is a thin shim over the corresponding /api/brain/*
+  // endpoint. The shims:
+  //   - read the operator-supplied id from the input next to the button
+  //   - check that HAWKEYE_BRAIN_TOKEN is set
+  //   - POST through the orchestrator-bound endpoint (NEVER directly)
+  //   - render the JSON response into the sub-card result element
+  //
+  // None of these handlers can bypass the endpoint's own validation
+  // (auth, rate limit, self-approval rejection on break-glass).
+
+  async function tierCFetch(path, body, resultElId) {
+    const out = document.getElementById(resultElId);
+    const token = window.HAWKEYE_BRAIN_TOKEN;
+    if (!token) {
+      if (out) out.textContent = 'HAWKEYE_BRAIN_TOKEN missing — set it in Settings.';
+      return;
+    }
+    if (out) out.textContent = `Calling ${path}…`;
+    try {
+      const response = await fetch(NETLIFY_BASE + path, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (out) out.textContent = JSON.stringify(json, null, 2);
+    } catch (err) {
+      if (out)
+        out.textContent = 'fetch failed: ' + (err && err.message ? err.message : String(err));
+    }
+  }
+
+  async function brainConsoleClampList() {
+    return tierCFetch(
+      '/api/brain/clamp-suggestion',
+      { action: 'list', statusFilter: 'pending_mlro_review' },
+      'brain-tierc-clamp-result'
+    );
+  }
+  async function brainConsoleClampDecide(status) {
+    const idEl = document.getElementById('brain-tierc-clamp-id');
+    const id = idEl ? idEl.value.trim() : '';
+    if (!id) {
+      const out = document.getElementById('brain-tierc-clamp-result');
+      if (out) out.textContent = 'Paste a suggestion id first.';
+      return;
+    }
+    return tierCFetch(
+      '/api/brain/clamp-suggestion',
+      { action: 'decide', id, status },
+      'brain-tierc-clamp-result'
+    );
+  }
+
+  async function brainConsoleOutboundList() {
+    const tenantEl = document.getElementById('brain-tierc-outbound-tenant');
+    const tenantId = tenantEl ? tenantEl.value.trim() : '';
+    if (!tenantId) {
+      const out = document.getElementById('brain-tierc-outbound-result');
+      if (out) out.textContent = 'Enter a tenantId first.';
+      return;
+    }
+    return tierCFetch(
+      '/api/brain/outbound-queue',
+      { action: 'pending', tenantId },
+      'brain-tierc-outbound-result'
+    );
+  }
+  async function brainConsoleOutboundAction(action) {
+    const tenantEl = document.getElementById('brain-tierc-outbound-tenant');
+    const idEl = document.getElementById('brain-tierc-outbound-id');
+    const tenantId = tenantEl ? tenantEl.value.trim() : '';
+    const id = idEl ? idEl.value.trim() : '';
+    if (!tenantId || !id) {
+      const out = document.getElementById('brain-tierc-outbound-result');
+      if (out) out.textContent = 'tenantId + outbound id are both required.';
+      return;
+    }
+    return tierCFetch(
+      '/api/brain/outbound-queue',
+      { action, tenantId, id },
+      'brain-tierc-outbound-result'
+    );
+  }
+
+  async function brainConsoleBreakGlassList() {
+    const tenantEl = document.getElementById('brain-tierc-bg-tenant');
+    const tenantId = tenantEl ? tenantEl.value.trim() : '';
+    if (!tenantId) {
+      const out = document.getElementById('brain-tierc-bg-result');
+      if (out) out.textContent = 'Enter a tenantId first.';
+      return;
+    }
+    return tierCFetch(
+      '/api/brain/break-glass',
+      { action: 'pending', tenantId },
+      'brain-tierc-bg-result'
+    );
+  }
+  async function brainConsoleBreakGlassApprove() {
+    const tenantEl = document.getElementById('brain-tierc-bg-tenant');
+    const idEl = document.getElementById('brain-tierc-bg-id');
+    const approverEl = document.getElementById('brain-tierc-bg-approver');
+    const tenantId = tenantEl ? tenantEl.value.trim() : '';
+    const id = idEl ? idEl.value.trim() : '';
+    const approverId = approverEl ? approverEl.value.trim() : '';
+    if (!tenantId || !id || !approverId) {
+      const out = document.getElementById('brain-tierc-bg-result');
+      if (out) out.textContent = 'tenantId + break-glass id + approverId are all required.';
+      return;
+    }
+    return tierCFetch(
+      '/api/brain/break-glass',
+      { action: 'approve', tenantId, id, approverId },
+      'brain-tierc-bg-result'
+    );
+  }
+
+  // Expose for the data-action delegate.
+  window.brainConsoleClampList = brainConsoleClampList;
+  window.brainConsoleClampDecide = brainConsoleClampDecide;
+  window.brainConsoleOutboundList = brainConsoleOutboundList;
+  window.brainConsoleOutboundAction = brainConsoleOutboundAction;
+  window.brainConsoleBreakGlassList = brainConsoleBreakGlassList;
+  window.brainConsoleBreakGlassApprove = brainConsoleBreakGlassApprove;
+
   // Expose the public API
   window.BrainConsole = {
     init: init,
@@ -1298,5 +1530,11 @@
     lastAnalysis: () => lastAnalysisResult,
     replay: brainConsoleReplay,
     evidenceBundle: brainConsoleEvidenceBundle,
+    clampList: brainConsoleClampList,
+    clampDecide: brainConsoleClampDecide,
+    outboundList: brainConsoleOutboundList,
+    outboundAction: brainConsoleOutboundAction,
+    breakGlassList: brainConsoleBreakGlassList,
+    breakGlassApprove: brainConsoleBreakGlassApprove,
   };
 })();
