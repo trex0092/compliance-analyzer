@@ -76,7 +76,7 @@ import { CaseReplayStore } from '../../src/services/caseReplayStore';
 const anthropicAdvisor = createAnthropicAdvisor({
   proxyUrl:
     (typeof process !== 'undefined' && process.env?.HAWKEYE_AI_PROXY_URL) ||
-    'https://compliance-analyzer.netlify.app/api/ai-proxy',
+    'https://hawkeye-sterling-v2.netlify.app/api/ai-proxy',
   bearerToken: typeof process !== 'undefined' ? process.env?.HAWKEYE_BRAIN_TOKEN : undefined,
 });
 
@@ -197,7 +197,7 @@ async function ensureTenantHydrated(tenantId: string): Promise<void> {
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':
-    process.env.HAWKEYE_ALLOWED_ORIGIN ?? 'https://compliance-analyzer.netlify.app',
+    process.env.HAWKEYE_ALLOWED_ORIGIN ?? 'https://hawkeye-sterling-v2.netlify.app',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   'Access-Control-Max-Age': '600',

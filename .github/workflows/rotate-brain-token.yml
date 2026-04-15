@@ -64,7 +64,7 @@ jobs:
             echo "   value above → **Update secret**."
             echo
             echo "2. **Netlify env var** —"
-            echo "   https://app.netlify.com/sites/compliance-analyzer/configuration/env"
+            echo "   https://app.netlify.com/sites/hawkeye-sterling-v2/configuration/env"
             echo "   Find \`HAWKEYE_BRAIN_TOKEN\` → click Options → **Edit**"
             echo "   → paste the value → **Save**. Then go to the Deploys"
             echo "   tab and click **Trigger deploy → Deploy site** so"

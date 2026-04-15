@@ -52,7 +52,7 @@ The install script:
 ```bash
 # Orchestrator env vars — host-side only, never mounted to the agent
 export ANTHROPIC_API_KEY=sk-ant-...
-export HAWKEYE_BRAIN_URL=https://compliance-analyzer.netlify.app
+export HAWKEYE_BRAIN_URL=https://hawkeye-sterling-v2.netlify.app
 export HAWKEYE_BRAIN_TOKEN=<32+ hex bearer token>
 export CACHET_BASE_URL=https://status.example.com   # optional
 export CACHET_API_TOKEN=<from Cachet Settings>       # optional

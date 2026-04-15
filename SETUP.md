@@ -18,7 +18,7 @@ The wizard:
 
 ```bash
 npx netlify-cli login        # browser opens → click Authorize
-npx netlify-cli link         # pick the compliance-analyzer site
+npx netlify-cli link         # pick the hawkeye-sterling-v2 site
 npx netlify-cli env:import .env
 ```
 
@@ -33,7 +33,7 @@ git commit --allow-empty -m "redeploy with new env vars" && git push
 ## Verify it's alive
 
 ```bash
-curl https://compliance-analyzer.netlify.app/.netlify/functions/asana-super-brain-autopilot-cron
+curl https://hawkeye-sterling-v2.netlify.app/.netlify/functions/asana-super-brain-autopilot-cron
 ```
 
 Expected response: `{"ok":true,"dispatched":N,...}`

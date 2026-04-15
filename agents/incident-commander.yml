@@ -233,7 +233,7 @@ skills:
 # orchestrator (scripts/agent-orchestrator.mjs) forwards them with auth.
 #
 #   ANTHROPIC_API_KEY      — to create agents, environments, sessions
-#   HAWKEYE_BRAIN_URL      — e.g. https://compliance-analyzer.netlify.app
+#   HAWKEYE_BRAIN_URL      — e.g. https://hawkeye-sterling-v2.netlify.app
 #   HAWKEYE_BRAIN_TOKEN    — 32+ hex-char bearer token for /api/brain
 #   CACHET_BASE_URL        — https://status.example.com
 #   CACHET_API_TOKEN       — Cachet UI → Settings → API

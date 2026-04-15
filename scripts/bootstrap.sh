@@ -105,7 +105,7 @@ fi
 
 # -- HAWKEYE_BRAIN_URL -----------------------------------------------------
 if [[ -z "${HAWKEYE_BRAIN_URL:-}" ]]; then
-  HAWKEYE_BRAIN_URL="https://compliance-analyzer.netlify.app"
+  HAWKEYE_BRAIN_URL="https://hawkeye-sterling-v2.netlify.app"
   grep -v '^HAWKEYE_BRAIN_URL=' .env.local > .env.local.tmp 2>/dev/null || true
   printf 'HAWKEYE_BRAIN_URL=%s\n' "$HAWKEYE_BRAIN_URL" >> .env.local.tmp
   mv .env.local.tmp .env.local
@@ -120,7 +120,7 @@ printf '  /api/brain accepts the orchestrator requests.\n\n'
 printf '  Option A — Netlify CLI (if installed):\n'
 printf '    %snpx netlify env:set HAWKEYE_BRAIN_TOKEN "%s"%s\n\n' "$CYN" "$HAWKEYE_BRAIN_TOKEN" "$RST"
 printf '  Option B — Netlify web UI:\n'
-printf '    https://app.netlify.com/sites/compliance-analyzer/settings/env\n'
+printf '    https://app.netlify.com/sites/hawkeye-sterling-v2/settings/env\n'
 printf '    Key:   HAWKEYE_BRAIN_TOKEN\n'
 printf '    Value: %s%s%s\n' "$BOLD" "$HAWKEYE_BRAIN_TOKEN" "$RST"
 

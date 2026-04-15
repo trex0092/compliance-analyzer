@@ -30,7 +30,7 @@ name: Scheduled Screening — Twice Daily
 #   ASANA_DEFAULT_ASSIGNEE_NAME   = Luisa Fernanda
 #
 # Optional variable (in the Variables tab — or also set as a secret, same effect):
-#   HAWKEYE_BRAIN_URL             defaults to compliance-analyzer.netlify.app
+#   HAWKEYE_BRAIN_URL             defaults to hawkeye-sterling-v2.netlify.app
 #
 # Regulatory basis:
 #   - FATF Rec 10 (ongoing customer due diligence)
@@ -85,8 +85,8 @@ jobs:
       - name: Run scheduled screening
         env:
           # Endpoint URL — reads from vars first (non-sensitive) with a
-          # safe default for compliance-analyzer.netlify.app.
-          HAWKEYE_BRAIN_URL: ${{ vars.HAWKEYE_BRAIN_URL || 'https://compliance-analyzer.netlify.app' }}
+          # safe default for hawkeye-sterling-v2.netlify.app.
+          HAWKEYE_BRAIN_URL: ${{ vars.HAWKEYE_BRAIN_URL || 'https://hawkeye-sterling-v2.netlify.app' }}
           # All other config read from secrets.* regardless of whether
           # the value is technically sensitive. This keeps setup simple
           # — you only touch ONE tab in GitHub Actions settings.

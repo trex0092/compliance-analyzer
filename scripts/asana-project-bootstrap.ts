@@ -25,12 +25,12 @@
  * Usage:
  *   ASANA_TOKEN=xxx \
  *   ASANA_WORKSPACE_GID=xxx \
- *   PUBLIC_BASE_URL=https://compliance-analyzer.netlify.app \
+ *   PUBLIC_BASE_URL=https://hawkeye-sterling-v2.netlify.app \
  *   npx tsx scripts/asana-project-bootstrap.ts                 # dry-run
  *
  *   ASANA_TOKEN=xxx \
  *   ASANA_WORKSPACE_GID=xxx \
- *   PUBLIC_BASE_URL=https://compliance-analyzer.netlify.app \
+ *   PUBLIC_BASE_URL=https://hawkeye-sterling-v2.netlify.app \
  *   npx tsx scripts/asana-project-bootstrap.ts --apply         # write
  *
  * Each step is idempotent — re-running after a partial run is safe

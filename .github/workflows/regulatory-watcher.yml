@@ -46,7 +46,7 @@ jobs:
 
       - name: Run regulatory watcher
         env:
-          HAWKEYE_BRAIN_URL: ${{ secrets.HAWKEYE_BRAIN_URL || 'https://compliance-analyzer.netlify.app' }}
+          HAWKEYE_BRAIN_URL: ${{ secrets.HAWKEYE_BRAIN_URL || 'https://hawkeye-sterling-v2.netlify.app' }}
           HAWKEYE_BRAIN_TOKEN: ${{ secrets.HAWKEYE_BRAIN_TOKEN }}
         run: |
           mkdir -p artifacts data

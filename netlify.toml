@@ -1,21 +1,24 @@
 [build]
   publish = "."
   command = "echo deploy-v3.0-enhancements"
-  # Deploy-preview deduplication.
+  # Deploy-preview deduplication (belt-and-braces safety net).
   #
-  # This repo is linked to two Netlify sites:
-  #   1. "compliance-analyzer"  — legacy site, still the production
-  #      brain backend referenced by .github/workflows/*.yml
-  #      (autopilot, agent-run, regulatory-watcher, scheduled-screening,
-  #      lbma-audit-pack) via https://compliance-analyzer.netlify.app
-  #   2. "hawkeye-sterling-v2"  — current site, the canonical UI target
+  # Canonical site: "hawkeye-sterling-v2" (hawkeye-sterling-v2.netlify.app).
+  # All code, workflows, docs, and env var defaults have been migrated to
+  # this site. The legacy "compliance-analyzer" and "hawkeye-sterling"
+  # Netlify sites are expected to be blocked ("Stop builds") in the
+  # Netlify dashboard after merge.
   #
-  # Before this rule, every PR posted two deploy-preview comments
-  # (one per site) which was noisy. We cannot unlink the legacy site
-  # without breaking the GitHub workflows that hit its production URL,
-  # so we keep the site linked but suppress only its deploy-preview
-  # builds. Production (CONTEXT=production) and branch deploys
-  # (CONTEXT=branch-deploy) on either site are unaffected.
+  # This ignore rule is a second line of defense: if someone ever
+  # re-enables builds on the legacy "compliance-analyzer" site in the
+  # dashboard by mistake, it will still skip deploy-preview builds so
+  # PRs only post one preview comment. Production (CONTEXT=production)
+  # and branch deploys (CONTEXT=branch-deploy) are unaffected — they
+  # pass through and build normally, which is what you want while the
+  # legacy site is being decommissioned.
+  #
+  # Once the legacy site is fully deleted in the Netlify dashboard,
+  # this rule becomes a no-op and can be removed in a follow-up.
   #
   # Netlify ignore command: exit 0 = cancel the build, exit 1 = proceed.
   # Both SITE_NAME and CONTEXT are read-only env vars injected by

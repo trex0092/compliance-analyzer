@@ -49,7 +49,7 @@ jobs:
           # Brain HTTP endpoint — autopilot posts each critical alert
           # to /api/brain for persistent routing + agent consumption.
           # Skipped silently if either var is unset.
-          HAWKEYE_BRAIN_URL: ${{ secrets.HAWKEYE_BRAIN_URL || 'https://compliance-analyzer.netlify.app' }}
+          HAWKEYE_BRAIN_URL: ${{ secrets.HAWKEYE_BRAIN_URL || 'https://hawkeye-sterling-v2.netlify.app' }}
           HAWKEYE_BRAIN_TOKEN: ${{ secrets.HAWKEYE_BRAIN_TOKEN }}
           # Cachet status page — publish CRITICAL alerts if configured.
           CACHET_BASE_URL: ${{ secrets.CACHET_BASE_URL }}

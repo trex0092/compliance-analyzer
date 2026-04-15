@@ -204,7 +204,7 @@ async function main() {
     }
   }
   if (!env.HAWKEYE_BRAIN_URL) {
-    env.HAWKEYE_BRAIN_URL = 'https://compliance-analyzer.netlify.app';
+    env.HAWKEYE_BRAIN_URL = 'https://hawkeye-sterling-v2.netlify.app';
   }
   if (!env.PUBLIC_BASE_URL) {
     env.PUBLIC_BASE_URL = env.HAWKEYE_BRAIN_URL;
@@ -333,14 +333,14 @@ async function main() {
   console.log('Option B — Netlify dashboard:');
   console.log('');
   console.log('   1. Open https://app.netlify.com');
-  console.log('   2. Pick the compliance-analyzer site');
+  console.log('   2. Pick the hawkeye-sterling-v2 site');
   console.log('   3. Site settings → Environment variables');
   console.log('   4. Paste each KEY=VALUE from .env');
   console.log('   5. Click "Trigger redeploy"');
   console.log('');
   console.log('STEP 6 — Smoke-test the autopilot after the redeploy:');
   console.log('');
-  console.log('   curl https://compliance-analyzer.netlify.app/.netlify/functions/asana-super-brain-autopilot-cron');
+  console.log('   curl https://hawkeye-sterling-v2.netlify.app/.netlify/functions/asana-super-brain-autopilot-cron');
   console.log('');
   console.log('Expected: {"ok":true,"dispatched":N,...}');
   console.log('');

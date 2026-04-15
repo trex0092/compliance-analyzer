@@ -47,7 +47,7 @@
  *   ASANA_SCREENINGS_PROJECT_GID       Target project for alert tasks
  *   ASANA_WORKSPACE_GID                Workspace for user resolution
  *   ASANA_DEFAULT_ASSIGNEE_NAME        e.g. "Luisa Fernanda"
- *   HAWKEYE_BRAIN_URL                  defaults to compliance-analyzer.netlify.app
+ *   HAWKEYE_BRAIN_URL                  defaults to hawkeye-sterling-v2.netlify.app
  *   HAWKEYE_BRAIN_TOKEN                Bearer for /api/watchlist and /api/brain
  *   SCHEDULED_SCREENING_DRY_RUN        =1 to skip Asana + brain dispatches
  *   SCHEDULED_SCREENING_OFFLINE        =1 to skip adverse-media HTTP calls
@@ -98,7 +98,7 @@ interface RunConfig {
 
 function loadConfig(): RunConfig {
   return {
-    brainUrl: process.env.HAWKEYE_BRAIN_URL ?? 'https://compliance-analyzer.netlify.app',
+    brainUrl: process.env.HAWKEYE_BRAIN_URL ?? 'https://hawkeye-sterling-v2.netlify.app',
     brainToken: process.env.HAWKEYE_BRAIN_TOKEN,
     asanaToken: process.env.ASANA_TOKEN,
     asanaProjectGid: process.env.ASANA_SCREENINGS_PROJECT_GID,

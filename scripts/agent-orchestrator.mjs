@@ -16,7 +16,7 @@
  *
  * Environment (orchestrator, host-side — never mounted to the agent):
  *   ANTHROPIC_API_KEY   — required
- *   HAWKEYE_BRAIN_URL   — e.g. https://compliance-analyzer.netlify.app
+ *   HAWKEYE_BRAIN_URL   — e.g. https://hawkeye-sterling-v2.netlify.app
  *   HAWKEYE_BRAIN_TOKEN — 32+ hex bearer token
  *   CACHET_BASE_URL     — optional
  *   CACHET_API_TOKEN    — optional

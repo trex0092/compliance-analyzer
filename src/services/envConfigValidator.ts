@@ -171,7 +171,7 @@ const SPEC: readonly EnvVarSpec[] = [
     category: 'brain',
     requirement: 'required',
     description: 'CORS origin allowlist. Comma-separated HTTPS URLs.',
-    example: 'https://compliance-analyzer.netlify.app',
+    example: 'https://hawkeye-sterling-v2.netlify.app',
     validate: nonEmpty('HAWKEYE_ALLOWED_ORIGIN'),
   },
   {
@@ -196,9 +196,9 @@ const SPEC: readonly EnvVarSpec[] = [
     category: 'proxy',
     requirement: 'optional',
     description: 'Proxy URL for the advisor call. Defaults to the same-site /api/ai-proxy.',
-    example: 'https://compliance-analyzer.netlify.app/api/ai-proxy',
+    example: 'https://hawkeye-sterling-v2.netlify.app/api/ai-proxy',
     validate: urlLike('HAWKEYE_AI_PROXY_URL'),
-    defaultFallback: 'https://compliance-analyzer.netlify.app/api/ai-proxy',
+    defaultFallback: 'https://hawkeye-sterling-v2.netlify.app/api/ai-proxy',
   },
   // Asana
   {

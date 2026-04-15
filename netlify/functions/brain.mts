@@ -30,7 +30,7 @@ import { authenticate } from "./middleware/auth.mts";
 // allow-origin per env var so cross-site requests can't forge identity.
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin":
-    process.env.HAWKEYE_ALLOWED_ORIGIN ?? "https://compliance-analyzer.netlify.app",
+    process.env.HAWKEYE_ALLOWED_ORIGIN ?? "https://hawkeye-sterling-v2.netlify.app",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
   "Access-Control-Max-Age": "600",

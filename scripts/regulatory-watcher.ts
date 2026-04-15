@@ -18,7 +18,7 @@
  * (`.github/workflows/regulatory-watcher.yml`).
  *
  * Environment:
- *   HAWKEYE_BRAIN_URL     — optional, defaults to compliance-analyzer.netlify.app
+ *   HAWKEYE_BRAIN_URL     — optional, defaults to hawkeye-sterling-v2.netlify.app
  *   HAWKEYE_BRAIN_TOKEN   — required to post brain events (otherwise skipped)
  *   REGULATORY_WATCH_OFFLINE=1 — skip HTTP fetches, use only local snapshots
  *
@@ -124,7 +124,7 @@ async function fetchContent(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Hawkeye-Sterling-RegulatoryWatcher/1.0 (+compliance-analyzer.netlify.app)',
+        'User-Agent': 'Hawkeye-Sterling-RegulatoryWatcher/1.0 (+hawkeye-sterling-v2.netlify.app)',
         Accept: 'text/html,application/json,*/*',
       },
       signal: ctrl.signal,
@@ -171,7 +171,7 @@ async function publishChangeToBrain(
   oldHash: string | null,
   newHash: string,
 ): Promise<boolean> {
-  const base = process.env.HAWKEYE_BRAIN_URL ?? 'https://compliance-analyzer.netlify.app';
+  const base = process.env.HAWKEYE_BRAIN_URL ?? 'https://hawkeye-sterling-v2.netlify.app';
   const token = process.env.HAWKEYE_BRAIN_TOKEN;
   if (!token) {
     console.log(`  skip: HAWKEYE_BRAIN_TOKEN not set — event not published`);
