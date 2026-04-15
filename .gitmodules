@@ -148,3 +148,12 @@
 [submodule "vendor/tree-of-thought-llm"]
 	path = vendor/tree-of-thought-llm
 	url = https://github.com/princeton-nlp/tree-of-thought-llm.git
+[submodule "vendor/reasoning-from-scratch"]
+	path = vendor/reasoning-from-scratch
+	url = https://github.com/rasbt/reasoning-from-scratch.git
+[submodule "vendor/awesome-kg-reasoning"]
+	path = vendor/awesome-kg-reasoning
+	url = https://github.com/LIANGKE23/Awesome-Knowledge-Graph-Reasoning.git
+[submodule "vendor/pgmpy"]
+	path = vendor/pgmpy
+	url = https://github.com/pgmpy/pgmpy.git
