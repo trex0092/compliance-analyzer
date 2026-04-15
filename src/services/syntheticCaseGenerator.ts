@@ -75,7 +75,9 @@ function jitter(rng: () => number, base: number, pct: number): number {
 // Persona templates
 // ---------------------------------------------------------------------------
 
-const PERSONAS: Readonly<Record<PersonaId, (rng: () => number) => Omit<SyntheticCase, 'id' | 'synthetic'>>> = {
+const PERSONAS: Readonly<
+  Record<PersonaId, (rng: () => number) => Omit<SyntheticCase, 'id' | 'synthetic'>>
+> = {
   clean_retail: (rng) => ({
     personaId: 'clean_retail',
     features: {

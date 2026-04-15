@@ -146,9 +146,7 @@ export function signPolicyVersion(input: SignInput): PolicyVersion {
   }
   // Enforce role-specific single-slot semantics — each role signs once.
   if (input.version.signatures.some((s) => s.signerRole === input.signerRole)) {
-    throw new Error(
-      `signPolicyVersion: role ${input.signerRole} already signed this version`
-    );
+    throw new Error(`signPolicyVersion: role ${input.signerRole} already signed this version`);
   }
   const now = (input.now ?? (() => new Date()))();
   const signatures: PolicySignature[] = [

@@ -53,12 +53,7 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type GraphAnomalyKind =
-  | 'mule'
-  | 'fan_out_hub'
-  | 'ring'
-  | 'bridge'
-  | 'self_loop';
+export type GraphAnomalyKind = 'mule' | 'fan_out_hub' | 'ring' | 'bridge' | 'self_loop';
 
 export interface GraphAnomaly {
   kind: GraphAnomalyKind;
@@ -75,11 +70,7 @@ export interface GraphAnomaly {
    * Recommended downstream action for the SLA enforcer / orchestrator.
    * MLROs override freely — this is a starting point not a verdict.
    */
-  recommendedAction:
-    | 'monitor'
-    | 'enrich_cdd'
-    | 'co_review'
-    | 'freeze_review';
+  recommendedAction: 'monitor' | 'enrich_cdd' | 'co_review' | 'freeze_review';
 }
 
 export interface GraphRiskReport {
@@ -282,13 +273,9 @@ export function scoreGraphRisk(
   //   - 30 pts: count of high+critical findings (saturates at 10)
   //   - 20 pts: structural coverage (fraction of nodes flagged)
   const maxSev = anomalies.length > 0 ? anomalies[0]!.severity : 0;
-  const highOrCritical = anomalies.filter(
-    (a) => a.band === 'high' || a.band === 'critical'
-  ).length;
+  const highOrCritical = anomalies.filter((a) => a.band === 'high' || a.band === 'critical').length;
   const coverage =
-    embedding.nodeCount > 0
-      ? new Set(anomalies.map((a) => a.node)).size / embedding.nodeCount
-      : 0;
+    embedding.nodeCount > 0 ? new Set(anomalies.map((a) => a.node)).size / embedding.nodeCount : 0;
   const score = Math.round(
     Math.min(100, maxSev * 50 + Math.min(10, highOrCritical) * 3 + coverage * 20)
   );

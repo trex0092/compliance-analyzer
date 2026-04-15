@@ -89,10 +89,7 @@ export function computeTrainingCompliance(
   for (const member of staff) {
     if (!member.active) continue;
     const memberSessions = sessions.filter(
-      (s) =>
-        s.staffId === member.id &&
-        s.completedAtIso >= yearStart &&
-        s.completedAtIso <= yearEnd
+      (s) => s.staffId === member.id && s.completedAtIso >= yearStart && s.completedAtIso <= yearEnd
     );
     const completedHours = memberSessions.reduce((a, b) => a + b.durationHours, 0);
     const required = PF_ANNUAL_TRAINING_HOURS;
@@ -100,10 +97,11 @@ export function computeTrainingCompliance(
     if (meetsMinimum) meeting += 1;
     else below += 1;
 
-    const lastSession = memberSessions
-      .map((s) => s.completedAtIso)
-      .sort()
-      .pop() ?? null;
+    const lastSession =
+      memberSessions
+        .map((s) => s.completedAtIso)
+        .sort()
+        .pop() ?? null;
 
     perStaff.push({
       staffId: member.id,

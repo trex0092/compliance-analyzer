@@ -123,10 +123,7 @@ export const PROHIBITED_AI_TOOLS: readonly string[] = [
 ];
 
 /** Tolerated SDKs — allowed but flagged for quarterly review. */
-export const TOLERATED_AI_TOOLS: readonly string[] = [
-  'genaiscript',
-  'claude-mem',
-];
+export const TOLERATED_AI_TOOLS: readonly string[] = ['genaiscript', 'claude-mem'];
 
 // ---------------------------------------------------------------------------
 // Classifier
@@ -187,8 +184,7 @@ export function scanShadowAi(
     };
   });
 
-  const count = (sev: ShadowSeverity) =>
-    findings.filter((f) => f.severity === sev).length;
+  const count = (sev: ShadowSeverity) => findings.filter((f) => f.severity === sev).length;
 
   const prohibited = count('prohibited');
   const unknown = count('unknown');

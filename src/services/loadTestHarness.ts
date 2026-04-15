@@ -99,7 +99,7 @@ export async function runLoadTest(
   let abortReason: string | null = null;
 
   async function worker(): Promise<void> {
-    while (true) {
+    for (;;) {
       if (abortReason) return;
       const i = nextIndex++;
       if (i >= cases.length) return;
@@ -170,10 +170,6 @@ export async function runLoadTest(
       `(${throughput.toFixed(1)} req/s). ` +
       `p50=${latency.p50}ms p95=${latency.p95}ms. ` +
       `${successful} ok / ${failed} failed.`,
-    regulatory: [
-      'NIST AI RMF 1.0 MEASURE-4',
-      'EU AI Act Art.15',
-      'ISO/IEC 27001 A.17',
-    ],
+    regulatory: ['NIST AI RMF 1.0 MEASURE-4', 'EU AI Act Art.15', 'ISO/IEC 27001 A.17'],
   };
 }

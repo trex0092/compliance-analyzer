@@ -179,9 +179,12 @@ function extractTradeLicence(text: string): KycExtractionField[] {
     });
   }
   // Entity name heuristic — first ALL-CAPS line ≥ 4 chars.
-  const lines = text.split(/\n/).map((l) => l.trim()).filter(Boolean);
+  const lines = text
+    .split(/\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
   for (const line of lines) {
-    if (/^[A-Z0-9 .,&'\-]{4,}$/.test(line) && /[A-Z]/.test(line)) {
+    if (/^[A-Z0-9 .,&'-]{4,}$/.test(line) && /[A-Z]/.test(line)) {
       out.push({
         name: 'entityName',
         value: line,

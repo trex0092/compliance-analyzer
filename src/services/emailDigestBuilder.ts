@@ -101,10 +101,18 @@ export function buildDigest(input: DigestInput): DigestOutput {
   textLines.push(`Recipient: ${input.recipientName}`);
   textLines.push('');
   textLines.push(`Total decisions: ${input.totalDecisions}`);
-  textLines.push(`  pass:     ${verdictCounts.pass} (${pct(verdictCounts.pass, input.totalDecisions)})`);
-  textLines.push(`  flag:     ${verdictCounts.flag} (${pct(verdictCounts.flag, input.totalDecisions)})`);
-  textLines.push(`  escalate: ${verdictCounts.escalate} (${pct(verdictCounts.escalate, input.totalDecisions)})`);
-  textLines.push(`  freeze:   ${verdictCounts.freeze} (${pct(verdictCounts.freeze, input.totalDecisions)})`);
+  textLines.push(
+    `  pass:     ${verdictCounts.pass} (${pct(verdictCounts.pass, input.totalDecisions)})`
+  );
+  textLines.push(
+    `  flag:     ${verdictCounts.flag} (${pct(verdictCounts.flag, input.totalDecisions)})`
+  );
+  textLines.push(
+    `  escalate: ${verdictCounts.escalate} (${pct(verdictCounts.escalate, input.totalDecisions)})`
+  );
+  textLines.push(
+    `  freeze:   ${verdictCounts.freeze} (${pct(verdictCounts.freeze, input.totalDecisions)})`
+  );
   textLines.push('');
   textLines.push(`STR drafts created: ${input.strDraftsCreated}`);
   textLines.push(`SLA breaches:       ${input.slaBreaches}${input.slaBreaches > 0 ? ' ⚠' : ''}`);

@@ -168,9 +168,9 @@ const MAX_RATIONALE_LEN = 2000;
 // Validation
 // ---------------------------------------------------------------------------
 
-export function validateOverrideRecord(record: unknown):
-  | { ok: true; record: MlroOverrideRecord }
-  | { ok: false; error: string } {
+export function validateOverrideRecord(
+  record: unknown
+): { ok: true; record: MlroOverrideRecord } | { ok: false; error: string } {
   if (!record || typeof record !== 'object') {
     return { ok: false, error: 'record must be an object' };
   }
@@ -190,16 +190,10 @@ export function validateOverrideRecord(record: unknown):
   if (typeof r.mlroUserId !== 'string' || r.mlroUserId.length === 0) {
     return { ok: false, error: 'mlroUserId required' };
   }
-  if (
-    typeof r.brainVerdict !== 'string' ||
-    !(r.brainVerdict in VERDICT_RANK)
-  ) {
+  if (typeof r.brainVerdict !== 'string' || !(r.brainVerdict in VERDICT_RANK)) {
     return { ok: false, error: 'brainVerdict must be pass|flag|escalate|freeze' };
   }
-  if (
-    typeof r.humanVerdict !== 'string' ||
-    !(r.humanVerdict in VERDICT_RANK)
-  ) {
+  if (typeof r.humanVerdict !== 'string' || !(r.humanVerdict in VERDICT_RANK)) {
     return { ok: false, error: 'humanVerdict must be pass|flag|escalate|freeze' };
   }
   if (!r.features || typeof r.features !== 'object') {
@@ -266,10 +260,7 @@ export function rollupWeightDelta(
   overrides: readonly MlroOverrideRecord[]
 ): RollupReport {
   let ignored = 0;
-  const featureBuckets = new Map<
-    string,
-    { values: number[]; disagreements: number[] }
-  >();
+  const featureBuckets = new Map<string, { values: number[]; disagreements: number[] }>();
 
   for (const o of overrides) {
     const direction = VERDICT_RANK[o.humanVerdict] - VERDICT_RANK[o.brainVerdict];
@@ -298,8 +289,7 @@ export function rollupWeightDelta(
       ignored += bucket.values.length;
       continue;
     }
-    const meanMagnitude =
-      bucket.values.reduce((a, b) => a + b, 0) / bucket.values.length;
+    const meanMagnitude = bucket.values.reduce((a, b) => a + b, 0) / bucket.values.length;
     const meanDisagreement =
       bucket.disagreements.reduce((a, b) => a + b, 0) / bucket.disagreements.length;
     // Learning rate baked in at 0.05 — combined with the ±15% cap

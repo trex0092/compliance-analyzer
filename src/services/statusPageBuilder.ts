@@ -214,11 +214,7 @@ export function buildStatusPage(health: HealthReport): StatusPage {
     badges,
     json: JSON.stringify(jsonPayload, null, 2),
     html,
-    regulatory: [
-      'FDL No.10/2025 Art.20-22',
-      'NIST AI RMF 1.0 GOVERN-3',
-      'EU AI Act Art.13',
-    ],
+    regulatory: ['FDL No.10/2025 Art.20-22', 'NIST AI RMF 1.0 GOVERN-3', 'EU AI Act Art.13'],
   };
 }
 

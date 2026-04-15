@@ -138,8 +138,7 @@ export function clusterCases(
       }
     }
     if (members.length < 2) continue; // singleton — handled below
-    const meanConfidence =
-      members.reduce((acc, c) => acc + c.confidence, 0) / members.length;
+    const meanConfidence = members.reduce((acc, c) => acc + c.confidence, 0) / members.length;
     const cluster: CaseCluster = {
       id: `cluster:${seed.tenantId}:${seed.id}`,
       representativeCaseId: seed.id,
@@ -154,7 +153,9 @@ export function clusterCases(
     clusters.push(cluster);
   }
 
-  const singletons = sorted.filter((c) => !clusters.some((cl) => cl.caseIds.includes(c.id))).map((c) => c.id);
+  const singletons = sorted
+    .filter((c) => !clusters.some((cl) => cl.caseIds.includes(c.id)))
+    .map((c) => c.id);
 
   const summary =
     clusters.length === 0

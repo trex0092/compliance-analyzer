@@ -212,7 +212,10 @@ export function emptyChordState(): PendingChordState {
   return { buffer: [], lastPressedAt: 0 };
 }
 
-function modifiersMatch(a: ShortcutModifiers | undefined, b: ShortcutModifiers | undefined): boolean {
+function modifiersMatch(
+  a: ShortcutModifiers | undefined,
+  b: ShortcutModifiers | undefined
+): boolean {
   const aFlags = {
     ctrl: Boolean(a?.ctrl),
     shift: Boolean(a?.shift),

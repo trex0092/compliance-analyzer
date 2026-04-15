@@ -126,7 +126,7 @@ export function normaliseBulletinText(raw: string): string {
 
 /** AED amounts — supports "AED 55,000" / "AED 55K" / "55,000 AED" / etc. */
 const AED_RE =
-  /(?:AED|aed|د\.إ)\s*([0-9][0-9,\.]*)\s*(?:K|k|M|m)?|([0-9][0-9,\.]*)\s*(?:K|k|M|m)?\s*(?:AED|aed)/g;
+  /(?:AED|aed|د\.إ)\s*([0-9][0-9,.]*)\s*(?:K|k|M|m)?|([0-9][0-9,.]*)\s*(?:K|k|M|m)?\s*(?:AED|aed)/g;
 
 /** Day expressions — "5 business days", "10 working days", "30 calendar days". */
 const DAYS_RE = /(\d{1,3})\s*(business|working|calendar|clock)?\s*(days?|hours?)/gi;
@@ -286,7 +286,7 @@ export function ingestBulletin(
       unit: hit.unit,
       confidence: matched?.score ?? 0.1,
       finding: matched
-        ? `Bulletin "${doc.title}" mentions ${hit.value} ${hit.unit} near "${(matched.binding.aliases[0] ?? matched.binding.key)}". ` +
+        ? `Bulletin "${doc.title}" mentions ${hit.value} ${hit.unit} near "${matched.binding.aliases[0] ?? matched.binding.key}". ` +
           `Current constant ${matched.binding.key} = ${matched.binding.value}. ` +
           `${matched.binding.value === hit.value ? 'No change required.' : 'Candidate change.'}`
         : `Bulletin "${doc.title}" mentions ${hit.value} ${hit.unit} but no matching constant was found in the binding list. MLRO must classify manually.`,

@@ -81,7 +81,10 @@ export interface CostReport {
   totalOutputTokens: number;
   totalUsdCost: number;
   /** Cost rolled up by model. */
-  byModel: Record<string, { events: number; inputTokens: number; outputTokens: number; usdCost: number }>;
+  byModel: Record<
+    string,
+    { events: number; inputTokens: number; outputTokens: number; usdCost: number }
+  >;
   /** Cost rolled up by verdict (or 'unknown' when the verdict was missing). */
   byVerdict: Record<string, { events: number; usdCost: number }>;
   /** Cost rolled up by trigger reason. */
@@ -201,11 +204,7 @@ export function aggregateAdvisorCost(events: readonly CostEvent[]): CostReport {
     byTrigger,
     byTenant,
     summary,
-    regulatory: [
-      'NIST AI RMF 1.0 GOVERN-3',
-      'NIST AI RMF 1.0 MEASURE-4',
-      'EU AI Act Art.15',
-    ],
+    regulatory: ['NIST AI RMF 1.0 GOVERN-3', 'NIST AI RMF 1.0 MEASURE-4', 'EU AI Act Art.15'],
   };
 }
 

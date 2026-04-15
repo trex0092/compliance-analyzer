@@ -117,7 +117,7 @@ const SUBSYSTEM_LINEAGES: readonly SubsystemLineage[] = [
     posture: 'provider_forwarded',
     sourceFile: 'src/services/advisorStrategy.ts',
     providerAttestation:
-      'Anthropic EU AI Act disclosure — training data posture is the provider\'s responsibility under Art.28 (operator obligations delegated to provider)',
+      "Anthropic EU AI Act disclosure — training data posture is the provider's responsibility under Art.28 (operator obligations delegated to provider)",
     regulatory: 'EU AI Act Art.28 — provider obligations',
   },
 ];
@@ -127,12 +127,8 @@ const SUBSYSTEM_LINEAGES: readonly SubsystemLineage[] = [
 // ---------------------------------------------------------------------------
 
 export function buildTrainingDataLineageReport(): TrainingDataLineageReport {
-  const ruleBased = SUBSYSTEM_LINEAGES.filter(
-    (s) => s.posture === 'rule_based_no_training'
-  ).length;
-  const forwarded = SUBSYSTEM_LINEAGES.filter(
-    (s) => s.posture === 'provider_forwarded'
-  ).length;
+  const ruleBased = SUBSYSTEM_LINEAGES.filter((s) => s.posture === 'rule_based_no_training').length;
+  const forwarded = SUBSYSTEM_LINEAGES.filter((s) => s.posture === 'provider_forwarded').length;
 
   return {
     schemaVersion: 1,

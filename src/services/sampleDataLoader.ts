@@ -37,7 +37,12 @@
  *   EU AI Act Art.15         (accuracy + robustness via drills)
  */
 
-import { generateCase, PERSONA_IDS, type PersonaId, type SyntheticCase } from './syntheticCaseGenerator';
+import {
+  generateCase,
+  PERSONA_IDS,
+  type PersonaId,
+  type SyntheticCase,
+} from './syntheticCaseGenerator';
 import type { BrainTelemetryEntry } from './brainTelemetryStore';
 
 // ---------------------------------------------------------------------------
@@ -230,8 +235,7 @@ function generateClampSuggestions(): DemoClampSuggestion[] {
       currentValue: 1.0,
       proposedValue: 1.05,
       status: 'pending_mlro_review',
-      rationale:
-        '6 MLRO escalation overrides on structuring feature. Clamped to +5%.',
+      rationale: '6 MLRO escalation overrides on structuring feature. Clamped to +5%.',
     },
   ];
 }
@@ -311,11 +315,7 @@ export function buildDemoDataset(): DemoDataset {
     outboundQueue,
     breakGlassRequests,
     summary,
-    regulatory: [
-      'FDL No.10/2025 Art.20-22',
-      'NIST AI RMF 1.0 MEASURE-4',
-      'EU AI Act Art.15',
-    ],
+    regulatory: ['FDL No.10/2025 Art.20-22', 'NIST AI RMF 1.0 MEASURE-4', 'EU AI Act Art.15'],
   };
 }
 

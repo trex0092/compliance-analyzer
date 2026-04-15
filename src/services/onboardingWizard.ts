@@ -210,7 +210,11 @@ export function reduceWizard(state: WizardState, event: WizardEvent): StepTransi
         return {
           nextState: state,
           actions: [
-            { type: 'emit_audit', event: 'wizard.asana_handshake_failed', detail: 'No X-Hook-Secret echoed' },
+            {
+              type: 'emit_audit',
+              event: 'wizard.asana_handshake_failed',
+              detail: 'No X-Hook-Secret echoed',
+            },
             { type: 'attempt_asana_handshake', workspaceGid: event.payload.workspaceGid },
           ],
         };
@@ -240,9 +244,12 @@ export function reduceWizard(state: WizardState, event: WizardEvent): StepTransi
       const next: WizardState = {
         ...state,
         currentStep: 'complete',
-        completedSteps: markCompleted(markCompleted(state, 'sample_data').length === state.completedSteps.length + 1
-          ? { ...state, completedSteps: [...state.completedSteps, 'sample_data'] }
-          : state, 'complete'),
+        completedSteps: markCompleted(
+          markCompleted(state, 'sample_data').length === state.completedSteps.length + 1
+            ? { ...state, completedSteps: [...state.completedSteps, 'sample_data'] }
+            : state,
+          'complete'
+        ),
         sampleDataLoaded: event.load,
         lastTransitionAtIso: tsIso,
       };

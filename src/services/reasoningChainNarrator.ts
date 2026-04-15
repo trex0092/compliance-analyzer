@@ -79,10 +79,7 @@ export interface NarrativeReport {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function nodesByKind(
-  chain: ReasoningChain,
-  kind: ChainNode['kind']
-): ChainNode[] {
+function nodesByKind(chain: ReasoningChain, kind: ChainNode['kind']): ChainNode[] {
   return chain.nodes.filter((n) => n.kind === kind);
 }
 
@@ -173,14 +170,10 @@ export function narrateReasoningChain(chain: ReasoningChain): NarrativeReport {
   }
 
   // Edge summary — describe up to 5 of the most relevant edges.
-  const interestingEdges = chain.edges
-    .filter((e) => e.relation !== 'depends_on')
-    .slice(0, 5);
+  const interestingEdges = chain.edges.filter((e) => e.relation !== 'depends_on').slice(0, 5);
   if (interestingEdges.length > 0) {
     steps.push(
-      `Key relationships: ` +
-        interestingEdges.map((e) => describeEdge(e, chain)).join('; ') +
-        '.'
+      `Key relationships: ` + interestingEdges.map((e) => describeEdge(e, chain)).join('; ') + '.'
     );
   }
 

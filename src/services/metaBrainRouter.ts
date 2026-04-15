@@ -265,8 +265,7 @@ export const DEFAULT_ROUTING_RULES: readonly RoutingRule[] = [
   {
     subsystem: 'regulatoryDriftWatchdog',
     reason: 'Fires on high-severity verdicts to validate against baseline',
-    predicate: (s) =>
-      s.sanctionsMatchScore >= 0.5 || s.isPep || s.priorAlerts90d >= 3,
+    predicate: (s) => s.sanctionsMatchScore >= 0.5 || s.isPep || s.priorAlerts90d >= 3,
     regulatory: 'FDL Art.22',
   },
   {

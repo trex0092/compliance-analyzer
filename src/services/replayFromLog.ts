@@ -108,10 +108,7 @@ export function extractCaseInput(line: LogLine): BrainCaseInput | null {
 
   if (typeof tenantId !== 'string' || typeof entityId !== 'string') return null;
   if (!features || typeof features !== 'object') return null;
-  if (
-    typeof verdict !== 'string' ||
-    !['pass', 'flag', 'escalate', 'freeze'].includes(verdict)
-  ) {
+  if (typeof verdict !== 'string' || !['pass', 'flag', 'escalate', 'freeze'].includes(verdict)) {
     return null;
   }
 

@@ -77,10 +77,7 @@ export interface AssignmentResult {
   /** Chosen assignee — null when no eligible candidate exists. */
   assigneeGid: string | null;
   /** Strategy actually used to pick the assignee. */
-  strategy:
-    | 'load-balanced'
-    | 'round-robin-fallback'
-    | 'no-eligible-candidate';
+  strategy: 'load-balanced' | 'round-robin-fallback' | 'no-eligible-candidate';
   /** Plain-English reason for the audit log. */
   reason: string;
   /** Eligible pool size after exclusion + role filter. */

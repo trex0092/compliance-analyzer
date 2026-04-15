@@ -101,12 +101,17 @@ const FX_TO_AED = {
   EUR: 3.9, // conservative
 };
 
-const RULE_TABLE: Readonly<Record<Jurisdiction, ReadonlyArray<{
-  dimension: RuleDimension;
-  value: number;
-  citation: string;
-  strictnessDirection: 'lower' | 'higher';
-}>>> = {
+const RULE_TABLE: Readonly<
+  Record<
+    Jurisdiction,
+    ReadonlyArray<{
+      dimension: RuleDimension;
+      value: number;
+      citation: string;
+      strictnessDirection: 'lower' | 'higher';
+    }>
+  >
+> = {
   UAE: [
     {
       dimension: 'cash_transaction_threshold_aed',
@@ -256,9 +261,33 @@ export function jurisdictionFor(countryCode: string): Jurisdiction {
   if (cc === 'US') return 'US';
   // EU member states
   const EU_CODES = new Set([
-    'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE',
-    'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT',
-    'RO', 'SK', 'SI', 'ES', 'SE',
+    'AT',
+    'BE',
+    'BG',
+    'HR',
+    'CY',
+    'CZ',
+    'DK',
+    'EE',
+    'FI',
+    'FR',
+    'DE',
+    'GR',
+    'HU',
+    'IE',
+    'IT',
+    'LV',
+    'LT',
+    'LU',
+    'MT',
+    'NL',
+    'PL',
+    'PT',
+    'RO',
+    'SK',
+    'SI',
+    'ES',
+    'SE',
   ]);
   if (EU_CODES.has(cc)) return 'EU';
   return 'UAE';
@@ -276,9 +305,7 @@ function pickStrictest(rules: readonly JurisdictionRule[]): JurisdictionRule {
   return best;
 }
 
-export function evaluateMultiJurisdiction(
-  input: CrossJurisdictionInput
-): MultiJurisdictionReport {
+export function evaluateMultiJurisdiction(input: CrossJurisdictionInput): MultiJurisdictionReport {
   // Always include UAE — the home regime — even if the customer
   // is purely foreign. UAE law applies to UAE-resident DPMS firms.
   const applicable = new Set<Jurisdiction>(['UAE']);

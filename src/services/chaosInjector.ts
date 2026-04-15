@@ -41,12 +41,7 @@ export type FaultKind =
 export interface ChaosRule {
   id: string;
   /** Which subsystem this rule affects. */
-  subsystem:
-    | 'asana'
-    | 'blob-store'
-    | 'advisor-proxy'
-    | 'drift-watchdog'
-    | 'sanctions-ingest';
+  subsystem: 'asana' | 'blob-store' | 'advisor-proxy' | 'drift-watchdog' | 'sanctions-ingest';
   fault: FaultKind;
   /** Probability in [0, 1] that the fault fires per call. */
   probability: number;

@@ -56,10 +56,7 @@ export interface VerdictDistribution {
   freeze: number;
 }
 
-export type DriftStatus =
-  | 'stable'
-  | 'drift_detected'
-  | 'insufficient_data';
+export type DriftStatus = 'stable' | 'drift_detected' | 'insufficient_data';
 
 export type DriftSeverity = 'none' | 'low' | 'medium' | 'high' | 'critical';
 
@@ -123,10 +120,7 @@ function asCdf(p: Record<Verdict, number>): Record<Verdict, number> {
   return out;
 }
 
-export function ksDistance(
-  a: VerdictDistribution,
-  b: VerdictDistribution
-): number {
+export function ksDistance(a: VerdictDistribution, b: VerdictDistribution): number {
   const cdfA = asCdf(asProbabilities(a));
   const cdfB = asCdf(asProbabilities(b));
   let maxDiff = 0;
@@ -194,10 +188,7 @@ export function detectVerdictDrift(
         `Insufficient sample size for drift test ` +
         `(baseline=${baselineN}, current=${currentN}, min=${minSamples}). ` +
         `KS statistic ${ksStatistic.toFixed(3)} reported but not actionable.`,
-      regulatory: [
-        'FDL No.10/2025 Art.20-22',
-        'NIST AI RMF 1.0 MEASURE-4',
-      ],
+      regulatory: ['FDL No.10/2025 Art.20-22', 'NIST AI RMF 1.0 MEASURE-4'],
     };
   }
 

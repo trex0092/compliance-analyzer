@@ -67,7 +67,15 @@ export interface TransactionImportReport {
 }
 
 export const MAX_TX_ROWS = 250_000;
-const REQUIRED = ['txid', 'date', 'fromentityref', 'toentityref', 'amountaed', 'currency', 'channel'];
+const REQUIRED = [
+  'txid',
+  'date',
+  'fromentityref',
+  'toentityref',
+  'amountaed',
+  'currency',
+  'channel',
+];
 
 // ---------------------------------------------------------------------------
 // Delimiter detection + minimal parser
@@ -155,7 +163,8 @@ function validateRow(
   }
 
   const currency = (values.currency ?? '').toUpperCase();
-  if (!CURRENCY_RE.test(currency)) return { ok: false, reason: `currency must be ISO 4217 (${currency})` };
+  if (!CURRENCY_RE.test(currency))
+    return { ok: false, reason: `currency must be ISO 4217 (${currency})` };
 
   const channelRaw = (values.channel ?? '').toLowerCase();
   if (!VALID_CHANNELS.has(channelRaw)) {
@@ -201,10 +210,7 @@ export interface ImportOptions {
   maxRows?: number;
 }
 
-export function importTransactionSheet(
-  raw: string,
-  opts: ImportOptions
-): TransactionImportReport {
+export function importTransactionSheet(raw: string, opts: ImportOptions): TransactionImportReport {
   const warnings: string[] = [];
   if (!raw || raw.trim().length === 0) {
     return {
