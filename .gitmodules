@@ -130,3 +130,6 @@
 [submodule "vendor/anthropics-courses"]
 	path = vendor/anthropics-courses
 	url = https://github.com/anthropics/courses.git
+[submodule "vendor/claude-token-efficient"]
+	path = vendor/claude-token-efficient
+	url = https://github.com/drona23/claude-token-efficient.git

@@ -271,6 +271,48 @@ The following multi-agent frameworks are vendored for reference and integration 
 | MiroFish | `vendor/MiroFish` | Multi-agent simulation / prediction engine — Python + Vue + Zep Cloud memory + GraphRAG knowledge representation | Reference for agent-behaviour sandboxing (policy-change dry-run before production deploy) and GraphRAG as an alternative to our xyflow reasoningChain visualisation when the agent count grows beyond ~40 nodes. |
 | Multi-Agent-AI-System | `vendor/multi-agent-ai-system` | LangGraph + LangSmith customer-support workflow — supervisor + specialist sub-agents + short/long-term memory + human-in-the-loop + full tracing | Reference for the four-eyes approval + MLRO override patterns: demonstrates explicit state-management, LangSmith-style execution tracing, and human-gated handoffs that directly map to our `src/agents/orchestration/` engine and the Phase 5 AI Governance agent's self-audit pattern. |
 | oca-reporting-engine | `vendor/oca-reporting-engine` | 32 Odoo community addons for advanced reporting (report_xlsx, report_py3o, bi_sql_editor, report_csv, report_qweb_*, base_comment_template, pdf_xml_attachment, report_layout_config) | Reference for multi-format export pipelines (XLSX, ODT/DOCX via py3o, CSV), template-driven document generation (QWeb + base_comment_template Mako), BI layer abstraction (bi_sql_editor materialised/normal SQL views), scheduled report execution, and PDF post-processing (watermarks, covers, encryption). Patterns inform `xlsxReportExporter.ts`, `reportTemplateEngine.ts`, and `scheduledComplianceReports.ts`. |
+| claude-token-efficient | `vendor/claude-token-efficient` | Minimal CLAUDE.md rule sets that cut Claude's output verbosity (universal + coding/agents/analysis/benchmark profiles + three versioned configs J-v5/K-v6/M-v8). Independent benchmark: -17.4% cost vs C-structured baseline on coding challenges. | Source of truth for the "Token-Efficient Output Rules" section below. Profiles inform future per-skill output styles (e.g. `/kpi-report` can adopt the analysis profile, `/agent-orchestrate` the agents profile). Do NOT copy its `.claude/settings.json` PreCompact hook — it uses `--no-verify` which §9 forbids. |
+
+## Token-Efficient Output Rules
+
+These rules apply to all Claude output on this project. They complement
+(but do not replace) the "Token-Efficient Workflow" section at the top,
+which governs *context reads*. This section governs *output writes*.
+
+Source: `vendor/claude-token-efficient` (drona23/claude-token-efficient, MIT).
+
+### Approach
+- Think before acting. Read existing files before writing code.
+- Be concise in output but thorough in reasoning.
+- Prefer editing over rewriting whole files.
+- Do not re-read files you have already read unless the file may have changed.
+- Skip files over 100KB unless explicitly required (reinforces §7 context budget).
+- No sycophantic openers or closing fluff. No "Great question!", "Absolutely!", "I hope this helps!".
+- Keep solutions simple and direct. No speculative abstractions. No "you might also want…".
+- State the bug. Show the fix. Stop.
+- If a cause is unclear: say so. Do not guess.
+- User instructions always override these rules.
+
+### Formatting
+- No em dashes, smart quotes, or decorative Unicode symbols in prose.
+- Plain hyphens and straight quotes only.
+- Code output must be copy-paste safe.
+- Natural-language characters (accented letters, CJK, Arabic for UAE content) are fine when the content requires them.
+
+### Compliance Carve-Outs (non-negotiable)
+
+Terse output never overrides regulatory content. The following MUST remain
+verbose and fully cited even when terse rules apply:
+
+- STR / SAR / CTR / DPMSR / CNMR narrative drafting (FDL Art.26-27).
+- Sanctions-match rationale and freeze justification (Cabinet Res 74/2020 Art.4-7).
+- Four-eyes approval reasoning and MLRO override explanations.
+- Commit messages touching compliance logic — full citation required per §8.
+- PR descriptions for regulatory changes — full article/circular references required.
+- AI Governance audit outputs (EU AI Act, NIST AI RMF, ISO/IEC 42001, UAE AI audit).
+
+Rule of thumb: compress *how* you explain your own work; never compress
+*what* the regulation says or *why* a decision was made.
 
 ## Hooks
 
