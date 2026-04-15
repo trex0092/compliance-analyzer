@@ -324,8 +324,21 @@ cust-2,Bob Smith,tenant-a,Robert Smith,1985-04-15,GB,2026-04-10T00:00:00Z</pre>
 
   <!-- STEP 9 -->
   <div class="step">
-    <h2>Step 9 — You are live 🎉</h2>
-    <p>When Steps 6, 7 and 8 all show <span class="status ok">OK</span>, open the tool in a new tab and start using it.</p>
+    <h2>Step 9 — Provision KYC / CDD Tracker sections</h2>
+    <p class="muted">One click to provision the tenant-agnostic "KYC / CDD TRACKER — ALL ENTITIES" Asana project with all 16 canonical workflow sections (intake, exception lanes, CDD, EDD, approvals, terminal). Idempotent: existing sections are reused by name, the empty "Untitled section" placeholder is removed, and operator custom sections are preserved untouched.</p>
+    <label>KYC/CDD Tracker Asana project GID</label>
+    <input type="text" id="input-kyc-cdd-project-gid" placeholder="1234567890123456 (digits only, from the Asana project URL)">
+    <div class="row">
+      <button class="primary" id="btn-kyc-cdd-sections">📋 Provision KYC/CDD Tracker sections</button>
+      <span id="kyc-cdd-sections-status"></span>
+    </div>
+    <div class="output" id="kyc-cdd-sections-output">(enter project GID and click to provision)</div>
+  </div>
+
+  <!-- STEP 10 -->
+  <div class="step">
+    <h2>Step 10 — You are live 🎉</h2>
+    <p>When Steps 6, 7, 8 and 9 all show <span class="status ok">OK</span>, open the tool in a new tab and start using it.</p>
     <p><a id="link-tool" target="_blank">→ Open HAWKEYE STERLING</a></p>
     <p><a id="link-brain" target="_blank">→ Open Brain Console</a></p>
     <p><a id="link-status" target="_blank">→ Open public status page</a></p>
@@ -334,9 +347,9 @@ cust-2,Bob Smith,tenant-a,Robert Smith,1985-04-15,GB,2026-04-10T00:00:00Z</pre>
     </div>
   </div>
 
-  <!-- STEP 10 -->
+  <!-- STEP 11 -->
   <div class="step">
-    <h2>Step 10 — Post-setup checklist (human work, not the tool)</h2>
+    <h2>Step 11 — Post-setup checklist (human work, not the tool)</h2>
     <ul>
       <li>Register your firm with the <a href="https://goaml.uaefiu.gov.ae/" target="_blank">UAE FIU goAML portal</a></li>
       <li>Sign the <a href="https://www.anthropic.com/legal/data-processing" target="_blank">Anthropic Data Processing Agreement</a> (required for any EU-resident customer)</li>

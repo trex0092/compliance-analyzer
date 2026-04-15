@@ -299,6 +299,36 @@
     });
   });
 
+  // --- Step 9: provision KYC/CDD Tracker sections ---
+  byId('btn-kyc-cdd-sections').addEventListener('click', function () {
+    readInputs();
+    var projectGid = byId('input-kyc-cdd-project-gid').value.trim();
+    if (!projectGid) {
+      setStatus('kyc-cdd-sections-status', 'err', 'Project GID required');
+      return;
+    }
+    if (!/^\d+$/.test(projectGid)) {
+      setStatus('kyc-cdd-sections-status', 'err', 'GID must be digits only');
+      return;
+    }
+    setStatus('kyc-cdd-sections-status', 'pending', 'Provisioning sections…');
+    var token = state.brainToken;
+    fetch(apiBase() + '/api/setup/kyc-cdd-tracker-sections', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectGid: projectGid }),
+    }).then(function (r) {
+      return r.json().then(function (body) { return { status: r.status, body: body }; });
+    }).then(function (res) {
+      var ok = res.status < 400 && res.body && res.body.ok !== false;
+      setStatus('kyc-cdd-sections-status', ok ? 'ok' : 'err', ok ? 'Ready' : 'Failed');
+      writeOutput('kyc-cdd-sections-output', JSON.stringify(res.body, null, 2));
+    }).catch(function (err) {
+      setStatus('kyc-cdd-sections-status', 'err', 'Network error');
+      writeOutput('kyc-cdd-sections-output', String(err));
+    });
+  });
+
   // --- Live links ---
   function updateLinks() {
     var base = apiBase();
