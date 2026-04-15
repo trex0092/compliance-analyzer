@@ -133,3 +133,27 @@
 [submodule "vendor/claude-token-efficient"]
 	path = vendor/claude-token-efficient
 	url = https://github.com/drona23/claude-token-efficient.git
+[submodule "vendor/SwiftGuide"]
+	path = vendor/SwiftGuide
+	url = https://github.com/ipader/SwiftGuide.git
+[submodule "vendor/teorth-analysis"]
+	path = vendor/teorth-analysis
+	url = https://github.com/teorth/analysis.git
+[submodule "vendor/graphrag"]
+	path = vendor/graphrag
+	url = https://github.com/microsoft/graphrag.git
+[submodule "vendor/dspy"]
+	path = vendor/dspy
+	url = https://github.com/stanfordnlp/dspy.git
+[submodule "vendor/tree-of-thought-llm"]
+	path = vendor/tree-of-thought-llm
+	url = https://github.com/princeton-nlp/tree-of-thought-llm.git
+[submodule "vendor/reasoning-from-scratch"]
+	path = vendor/reasoning-from-scratch
+	url = https://github.com/rasbt/reasoning-from-scratch.git
+[submodule "vendor/awesome-kg-reasoning"]
+	path = vendor/awesome-kg-reasoning
+	url = https://github.com/LIANGKE23/Awesome-Knowledge-Graph-Reasoning.git
+[submodule "vendor/pgmpy"]
+	path = vendor/pgmpy
+	url = https://github.com/pgmpy/pgmpy.git
