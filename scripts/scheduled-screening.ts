@@ -68,6 +68,7 @@
  */
 
 import { searchAdverseMedia, type AdverseMediaHit } from '../src/services/adverseMediaSearch';
+import { normalizeBrainUrl } from '../src/utils/normalizeBrainUrl';
 import {
   deserialiseWatchlist,
   listDueSubjects,
@@ -98,7 +99,7 @@ interface RunConfig {
 
 function loadConfig(): RunConfig {
   return {
-    brainUrl: process.env.HAWKEYE_BRAIN_URL ?? 'https://hawkeye-sterling-v2.netlify.app',
+    brainUrl: normalizeBrainUrl(process.env.HAWKEYE_BRAIN_URL),
     brainToken: process.env.HAWKEYE_BRAIN_TOKEN,
     asanaToken: process.env.ASANA_TOKEN,
     asanaProjectGid: process.env.ASANA_SCREENINGS_PROJECT_GID,
@@ -127,7 +128,11 @@ async function fetchWatchlist(cfg: RunConfig): Promise<SerialisedWatchlist> {
     const body = await res.text();
     throw new Error(`fetchWatchlist: HTTP ${res.status} ${body.slice(0, 200)}`);
   }
-  const data = (await res.json()) as { ok: boolean; watchlist?: SerialisedWatchlist; error?: string };
+  const data = (await res.json()) as {
+    ok: boolean;
+    watchlist?: SerialisedWatchlist;
+    error?: string;
+  };
   if (!data.ok || !data.watchlist) {
     throw new Error(`fetchWatchlist: ${data.error ?? 'malformed response'}`);
   }
@@ -180,7 +185,9 @@ async function uploadScreeningAttachment(
   content: string
 ): Promise<{ ok: boolean; error?: string }> {
   if (cfg.dryRun || taskGid === 'dry-run') {
-    console.log(`[dry-run] would upload attachment ${fileName} (${contentType}) to task ${taskGid}`);
+    console.log(
+      `[dry-run] would upload attachment ${fileName} (${contentType}) to task ${taskGid}`
+    );
     return { ok: true };
   }
   if (!cfg.asanaToken) {
@@ -289,7 +296,9 @@ async function resolveAssigneeGid(cfg: RunConfig): Promise<string | undefined> {
       );
       return undefined;
     }
-    console.log(`[resolveAssignee] resolved "${cfg.asanaAssigneeName}" → ${match.gid} (${match.name})`);
+    console.log(
+      `[resolveAssignee] resolved "${cfg.asanaAssigneeName}" → ${match.gid} (${match.name})`
+    );
     return match.gid;
   } catch (err) {
     console.warn(`[resolveAssignee] failed: ${(err as Error).message}`);
@@ -302,8 +311,7 @@ async function resolveAssigneeGid(cfg: RunConfig): Promise<string | undefined> {
 // ---------------------------------------------------------------------------
 
 function buildAlertTaskName(entry: WatchlistEntry, newHitCount: number): string {
-  const severity =
-    newHitCount >= 3 ? 'CRITICAL' : newHitCount >= 2 ? 'HIGH' : 'MEDIUM';
+  const severity = newHitCount >= 3 ? 'CRITICAL' : newHitCount >= 2 ? 'HIGH' : 'MEDIUM';
   return `[${severity}] Adverse media — ${entry.subjectName} — ${newHitCount} new hit${newHitCount === 1 ? '' : 's'}`;
 }
 
@@ -355,7 +363,11 @@ function buildAlertTaskNotes(
   return lines.join('\n');
 }
 
-function buildHeartbeatTaskName(runAtIso: string, totalChecked: number, alertCount: number): string {
+function buildHeartbeatTaskName(
+  runAtIso: string,
+  totalChecked: number,
+  alertCount: number
+): string {
   const date = runAtIso.slice(0, 10);
   const time = runAtIso.slice(11, 16);
   return `Monitoring summary ${date} ${time} UTC — ${totalChecked} checked, ${alertCount} alert${alertCount === 1 ? '' : 's'}`;
@@ -365,7 +377,12 @@ interface RunSummary {
   runAtIso: string;
   totalChecked: number;
   totalNewHits: number;
-  subjectsWithAlerts: Array<{ id: string; subjectName: string; newHitCount: number; asanaGid?: string }>;
+  subjectsWithAlerts: Array<{
+    id: string;
+    subjectName: string;
+    newHitCount: number;
+    asanaGid?: string;
+  }>;
   subjectsWithErrors: Array<{ id: string; subjectName: string; error: string }>;
   subjectsClean: Array<{ id: string; subjectName: string }>;
 }
@@ -383,7 +400,9 @@ function buildHeartbeatTaskNotes(summary: RunSummary): string {
     lines.push('SUBJECTS WITH NEW HITS:');
     for (const s of summary.subjectsWithAlerts) {
       const gidSuffix = s.asanaGid && s.asanaGid !== 'dry-run' ? ` (task: ${s.asanaGid})` : '';
-      lines.push(`  • ${s.subjectName} — ${s.newHitCount} new hit${s.newHitCount === 1 ? '' : 's'}${gidSuffix}`);
+      lines.push(
+        `  • ${s.subjectName} — ${s.newHitCount} new hit${s.newHitCount === 1 ? '' : 's'}${gidSuffix}`
+      );
     }
     lines.push('');
   }
@@ -419,17 +438,12 @@ function buildHeartbeatTaskNotes(summary: RunSummary): string {
 export async function screenOneSubject(
   entry: WatchlistEntry,
   cfg: RunConfig
-): Promise<
-  | { ok: true; newHits: AdverseMediaHit[] }
-  | { ok: false; error: string }
-> {
+): Promise<{ ok: true; newHits: AdverseMediaHit[] } | { ok: false; error: string }> {
   if (cfg.offline) {
     return { ok: true, newHits: [] };
   }
 
-  const sinceDate = entry.lastScreenedAtIso
-    ? entry.lastScreenedAtIso.slice(0, 10)
-    : undefined; // undefined → module default (30 days)
+  const sinceDate = entry.lastScreenedAtIso ? entry.lastScreenedAtIso.slice(0, 10) : undefined; // undefined → module default (30 days)
 
   try {
     const result = await searchAdverseMedia(entry.subjectName, { sinceDate });
@@ -610,7 +624,11 @@ export async function runScheduledScreening(cfg?: RunConfig): Promise<RunSummary
   // 5. Create the heartbeat summary task (always — on zero-alert days too)
   //    and attach a MoE/FIU/EOCN-compliant report bundle (HTML + JSON + MD)
   //    so every task carries a self-contained audit-grade evidence pack.
-  const heartbeatName = buildHeartbeatTaskName(runAtIso, summary.totalChecked, summary.subjectsWithAlerts.length);
+  const heartbeatName = buildHeartbeatTaskName(
+    runAtIso,
+    summary.totalChecked,
+    summary.subjectsWithAlerts.length
+  );
   const heartbeatNotes = buildHeartbeatTaskNotes(summary);
   const heartbeatDispatch = await createScreeningTask(
     runCfg,
@@ -658,7 +676,13 @@ export async function runScheduledScreening(cfg?: RunConfig): Promise<RunSummary
         { name: report.filenames.markdown, type: 'text/markdown', body: report.markdown },
       ];
       for (const u of uploads) {
-        const r = await uploadScreeningAttachment(runCfg, heartbeatDispatch.gid, u.name, u.type, u.body);
+        const r = await uploadScreeningAttachment(
+          runCfg,
+          heartbeatDispatch.gid,
+          u.name,
+          u.type,
+          u.body
+        );
         if (!r.ok) {
           console.warn(`[scheduled-screening] attachment ${u.name} failed: ${r.error}`);
         }
