@@ -273,6 +273,36 @@
     });
   });
 
+  // --- Step 9: scan for lumped entity tasks ---
+  byId('btn-scan-lumped').addEventListener('click', function () {
+    readInputs();
+    var projectGid = byId('input-scan-project-gid').value.trim();
+    if (!projectGid) {
+      setStatus('scan-lumped-status', 'err', 'Project GID required');
+      return;
+    }
+    if (!/^\d+$/.test(projectGid)) {
+      setStatus('scan-lumped-status', 'err', 'GID must be digits only');
+      return;
+    }
+    setStatus('scan-lumped-status', 'pending', 'Scanning…');
+    var token = state.brainToken;
+    fetch(apiBase() + '/api/setup/scan-lumped-tasks', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectGid: projectGid }),
+    }).then(function (r) {
+      return r.json().then(function (body) { return { status: r.status, body: body }; });
+    }).then(function (res) {
+      var ok = res.status < 400 && res.body && res.body.ok !== false;
+      setStatus('scan-lumped-status', ok ? 'ok' : 'err', ok ? 'Clean' : 'Findings');
+      writeOutput('scan-lumped-output', JSON.stringify(res.body, null, 2));
+    }).catch(function (err) {
+      setStatus('scan-lumped-status', 'err', 'Network error');
+      writeOutput('scan-lumped-output', String(err));
+    });
+  });
+
   // --- Step 8: bootstrap Asana ---
   byId('btn-bootstrap').addEventListener('click', function () {
     readInputs();
