@@ -162,7 +162,7 @@ function generateTelemetry(cases: readonly SyntheticCase[]): BrainTelemetryEntry
       ensembleUnstable: i % 13 === 0,
       typologyIds: i % 5 === 0 ? ['T-DPMS-01'] : [],
       crossCaseFindingCount: i % 7 === 0 ? 2 : 0,
-      velocitySeverity: i % 11 === 0 ? 'medium' : 'none',
+      velocitySeverity: i % 11 === 0 ? 'medium' : null,
       driftSeverity: i % 19 === 0 ? 'low' : 'none',
       requiresHumanReview: c.expectedVerdict !== 'pass',
     });
