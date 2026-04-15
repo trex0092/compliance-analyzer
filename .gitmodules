@@ -139,3 +139,6 @@
 [submodule "vendor/teorth-analysis"]
 	path = vendor/teorth-analysis
 	url = https://github.com/teorth/analysis.git
+[submodule "vendor/graphrag"]
+	path = vendor/graphrag
+	url = https://github.com/microsoft/graphrag.git
