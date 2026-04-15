@@ -100,5 +100,4 @@ messages — those are deliberate liability gates, not gaps.
 ## Source repo
 
 `https://github.com/trex0092/compliance-analyzer`
-Branch shipped today: `main` at commit `f67cecf`.
-Active dev branch: `claude/review-compliance-analyzer-Am97j`.
+All work lands on `main`. No long-lived feature branches.
