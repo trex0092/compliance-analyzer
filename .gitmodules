@@ -142,3 +142,9 @@
 [submodule "vendor/graphrag"]
 	path = vendor/graphrag
 	url = https://github.com/microsoft/graphrag.git
+[submodule "vendor/dspy"]
+	path = vendor/dspy
+	url = https://github.com/stanfordnlp/dspy.git
+[submodule "vendor/tree-of-thought-llm"]
+	path = vendor/tree-of-thought-llm
+	url = https://github.com/princeton-nlp/tree-of-thought-llm.git
