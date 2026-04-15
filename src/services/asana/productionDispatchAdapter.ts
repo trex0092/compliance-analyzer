@@ -41,6 +41,7 @@
  */
 
 import { lintForTippingOff } from '../tippingOffLinter';
+import { lintTaskTitle } from './entityLumpingLinter';
 import type { ProjectEnvKey } from './asanaBrainTaskTemplate';
 import type { TemplateDispatchAdapter } from './orchestrator';
 // AsanaBrainTaskTemplate + BrainVerdictLike are referenced transitively
@@ -171,6 +172,22 @@ export function createProductionAsanaDispatchAdapter(
     const lint = lintForTippingOff(template.notes);
     if (!lint.clean && (lint.topSeverity === 'critical' || lint.topSeverity === 'high')) {
       const reason = `tipping_off_blocked:${lint.findings.map((f) => f.patternId).join(',')}`;
+      logDispatch({ projectGid, taskGid: null, skipped: reason });
+      return { skipped: reason };
+    }
+
+    // Entity-lumping tripwire — compliance rule: each legal entity
+    // must have its own dedicated task per FDL Art.12-14 / Art.24 /
+    // Cabinet Res 134/2025 Art.7-10. A task title that mentions 2+
+    // entities from COMPANY_REGISTRY (e.g. "GRAMALTIN AS / NAPLES LLC
+    // / ZOE FZE — review") breaks the per-entity audit trail, the
+    // four-eyes approver chain, and the SLA enforcer. Block at
+    // write time so the violation never reaches Asana.
+    const entityLint = lintTaskTitle(template.name);
+    if (entityLint.isLumped) {
+      const reason = `entity_lumping_blocked:${entityLint.matches
+        .map((m) => m.displayName)
+        .join('+')}`;
       logDispatch({ projectGid, taskGid: null, skipped: reason });
       return { skipped: reason };
     }
