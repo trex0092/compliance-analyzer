@@ -47,6 +47,23 @@
     state.siteUrl = byId('input-site-url').value.trim().replace(/\/+$/, '');
   }
 
+  // Always return an absolute URL we can safely concatenate '/api/...' to.
+  // Prefer an explicit Site URL from Step 4 if the user typed a valid
+  // https://... origin. Otherwise fall back to window.location.origin so
+  // the wizard just works when served from the same site it's calling.
+  // This makes the wizard bulletproof against empty / malformed input.
+  function apiBase() {
+    var s = state.siteUrl || '';
+    if (/^https?:\/\/[^/]+/i.test(s)) {
+      // Keep only the origin, strip any accidental /setup.html or trailing path.
+      try {
+        var u = new URL(s);
+        return u.origin;
+      } catch (_) { /* fall through */ }
+    }
+    return window.location.origin;
+  }
+
   function renderEnvBlock() {
     if (!state.brainToken) {
       writeOutput('env-output', '(click "Generate secrets" above to see your env var block)');
@@ -100,30 +117,31 @@
   // --- Step 6: verify ---
   byId('btn-verify').addEventListener('click', function () {
     readInputs();
-    if (!state.siteUrl) {
-      setStatus('verify-status', 'err', 'No site URL');
-      return;
-    }
     if (!state.brainToken) {
       setStatus('verify-status', 'err', 'Generate secrets first');
       return;
     }
+    var base = apiBase();
     setStatus('verify-status', 'pending', 'Checking…');
-    writeOutput('verify-output', 'Checking ' + state.siteUrl + ' …');
+    writeOutput('verify-output', 'Checking ' + base + ' …');
     var token = state.brainToken;
     Promise.all([
-      fetch(state.siteUrl + '/api/brain/diagnostics', {
+      fetch(base + '/api/brain/diagnostics', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: '{}',
       }).then(function (r) { return { name: 'brain-diagnostics', status: r.status }; }).catch(function (e) { return { name: 'brain-diagnostics', err: String(e) }; }),
-      fetch(state.siteUrl + '/api/brain/health', {
+      fetch(base + '/api/brain/health', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: '{}',
       }).then(function (r) { return { name: 'brain-health', status: r.status }; }).catch(function (e) { return { name: 'brain-health', err: String(e) }; }),
     ]).then(function (results) {
-      var allOk = results.every(function (r) { return r.status && r.status < 500; });
+      // Consider the deploy "live" when at least the health endpoint
+      // answers with < 500. brain-diagnostics imports heavy subsystems
+      // and can legitimately be down without blocking the wizard.
+      var healthRow = results.find(function (r) { return r.name === 'brain-health'; });
+      var allOk = healthRow && healthRow.status && healthRow.status < 500;
       setStatus('verify-status', allOk ? 'ok' : 'err', allOk ? 'Live' : 'Degraded');
       writeOutput('verify-output', JSON.stringify(results, null, 2));
       updateLinks();
@@ -141,7 +159,7 @@
     }
     setStatus('cohort-status', 'pending', 'Uploading…');
     var token = state.brainToken;
-    fetch(state.siteUrl + '/api/setup/cohort-upload', {
+    fetch(apiBase() + '/api/setup/cohort-upload', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ tenantId: tenantId, csv: csv }),
@@ -167,7 +185,7 @@
     }
     setStatus('bootstrap-status', 'pending', 'Provisioning…');
     var token = state.brainToken;
-    fetch(state.siteUrl + '/api/setup/asana-bootstrap', {
+    fetch(apiBase() + '/api/setup/asana-bootstrap', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ tenantId: tenantId }),
@@ -185,12 +203,12 @@
 
   // --- Live links ---
   function updateLinks() {
-    if (!state.siteUrl) return;
-    byId('link-tool').href = state.siteUrl + '/';
-    byId('link-tool').textContent = '→ Open ' + state.siteUrl;
-    byId('link-brain').href = state.siteUrl + '/#tab-brain';
-    byId('link-brain').textContent = '→ Open Brain Console at ' + state.siteUrl;
-    byId('link-status').href = state.siteUrl + '/status.html';
-    byId('link-status').textContent = '→ Public status page at ' + state.siteUrl + '/status.html';
+    var base = apiBase();
+    byId('link-tool').href = base + '/';
+    byId('link-tool').textContent = '→ Open ' + base;
+    byId('link-brain').href = base + '/#tab-brain';
+    byId('link-brain').textContent = '→ Open Brain Console at ' + base;
+    byId('link-status').href = base + '/status.html';
+    byId('link-status').textContent = '→ Public status page at ' + base + '/status.html';
   }
 })();
