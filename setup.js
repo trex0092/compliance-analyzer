@@ -19,6 +19,49 @@
     siteUrl: '',
   };
 
+  // --- Persistence ---
+  // The wizard regenerates fresh tokens on every Generate click, but the
+  // Netlify env vars only get updated when the operator imports the env
+  // block. If the operator refreshes the wizard tab between Generate and
+  // the next deploy, the in-memory token is wiped and the new browser
+  // token no longer matches HAWKEYE_BRAIN_TOKEN → "Invalid token" 401.
+  //
+  // Persist the generated secrets in localStorage so they survive
+  // refreshes. The stored token only ever changes when the operator
+  // explicitly clicks Generate again, so as long as they sync once,
+  // every subsequent click of Verify / Upload / Bootstrap works.
+  //
+  // localStorage is same-origin, never sent over the network, and the
+  // wizard is operator-only behind /setup.html which has noindex/nofollow.
+  var STORAGE_KEY = 'hawkeye-setup-wizard-v1';
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        brainToken: state.brainToken,
+        crossSalt: state.crossSalt,
+        jwtSecret: state.jwtSecret,
+        bcryptPepper: state.bcryptPepper,
+      }));
+    } catch (_) { /* localStorage may be disabled — fail silent */ }
+  }
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      var saved = JSON.parse(raw);
+      if (saved && typeof saved.brainToken === 'string' && saved.brainToken) {
+        state.brainToken = saved.brainToken;
+        state.crossSalt = saved.crossSalt || '';
+        state.jwtSecret = saved.jwtSecret || '';
+        state.bcryptPepper = saved.bcryptPepper || '';
+        return true;
+      }
+    } catch (_) { /* corrupt JSON — ignore */ }
+    return false;
+  }
+
   // --- Helpers ---
   function randHex(bytes) {
     var arr = new Uint8Array(bytes);
@@ -92,6 +135,7 @@
     state.crossSalt = randHex(16);
     state.jwtSecret = randHex(32);
     state.bcryptPepper = randHex(16);
+    saveState();
     setStatus('generate-status', 'ok', 'Generated');
     readInputs();
     renderEnvBlock();
@@ -210,5 +254,17 @@
     byId('link-brain').textContent = '→ Open Brain Console at ' + base;
     byId('link-status').href = base + '/status.html';
     byId('link-status').textContent = '→ Public status page at ' + base + '/status.html';
+  }
+
+  // --- Init ---
+  // Restore previously generated secrets from localStorage so the
+  // operator can refresh the wizard tab without losing the in-memory
+  // token (which would otherwise stop matching Netlify's
+  // HAWKEYE_BRAIN_TOKEN env var until they re-imported the env block).
+  if (loadState()) {
+    setStatus('generate-status', 'ok', 'Restored from previous session');
+    readInputs();
+    renderEnvBlock();
+    updateLinks();
   }
 })();
