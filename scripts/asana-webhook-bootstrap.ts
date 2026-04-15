@@ -53,6 +53,7 @@
  */
 
 import { COMPANY_REGISTRY } from '../src/domain/customers';
+import { normalizeBrainUrl } from '../src/utils/normalizeBrainUrl';
 
 interface AsanaWebhook {
   gid: string;
@@ -92,10 +93,7 @@ const WEBHOOK_FILTERS: ReadonlyArray<Record<string, string>> = [
   { action: 'added', resource_type: 'story', resource_subtype: 'comment_added' },
 ];
 
-async function listExistingWebhooks(
-  token: string,
-  workspaceGid: string
-): Promise<AsanaWebhook[]> {
+async function listExistingWebhooks(token: string, workspaceGid: string): Promise<AsanaWebhook[]> {
   const res = await fetch(
     `https://app.asana.com/api/1.0/webhooks?workspace=${encodeURIComponent(workspaceGid)}&opt_fields=gid,resource.gid,resource.name,target,active&limit=100`,
     { headers: { Authorization: `Bearer ${token}` } }
@@ -164,9 +162,7 @@ async function bootstrapProjectWebhook(
     errors: [],
   };
 
-  const match = existing.find(
-    (wh) => wh.resource?.gid === projectGid && wh.target === target
-  );
+  const match = existing.find((wh) => wh.resource?.gid === projectGid && wh.target === target);
   if (match) {
     result.alreadySubscribed = true;
     result.created = `existing webhook ${match.gid} (active=${match.active ?? 'unknown'})`;
@@ -191,14 +187,20 @@ async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   const token = process.env.ASANA_TOKEN;
   const workspaceGid = process.env.ASANA_WORKSPACE_GID;
-  const publicBaseUrl = process.env.PUBLIC_BASE_URL || process.env.HAWKEYE_BRAIN_URL;
+  // Normalize the raw env value: strip trailing slashes/dots, trim
+  // whitespace, prepend https:// if the operator pasted a bare host.
+  // This defends against the mobile-dashboard typo classes (see
+  // src/utils/normalizeBrainUrl.ts).
+  const rawBaseUrl = process.env.PUBLIC_BASE_URL || process.env.HAWKEYE_BRAIN_URL;
 
-  if (!token || !workspaceGid || !publicBaseUrl) {
+  if (!token || !workspaceGid || !rawBaseUrl) {
     console.error(
       'ASANA_TOKEN, ASANA_WORKSPACE_GID, and PUBLIC_BASE_URL (or HAWKEYE_BRAIN_URL) must be set'
     );
     process.exit(2);
   }
+
+  const publicBaseUrl = normalizeBrainUrl(rawBaseUrl);
 
   // Validate that the URL is HTTPS — Asana refuses HTTP webhook
   // targets, and it's also a CLAUDE.md security guarantee.

@@ -32,6 +32,7 @@ import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { normalizeBrainUrl } from '../src/utils/normalizeBrainUrl';
 
 // ---------------------------------------------------------------------------
 // Sources — the regulatory pages we monitor
@@ -155,9 +156,9 @@ function hashContent(content: string, extract?: RegExp): string {
   material = material
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/>\s+/g, '>')     // strip whitespace immediately after a tag
-    .replace(/\s+</g, '<')     // strip whitespace immediately before a tag
-    .replace(/\s+/g, ' ')      // collapse remaining internal whitespace runs
+    .replace(/>\s+/g, '>') // strip whitespace immediately after a tag
+    .replace(/\s+</g, '<') // strip whitespace immediately before a tag
+    .replace(/\s+/g, ' ') // collapse remaining internal whitespace runs
     .trim();
   return createHash('sha256').update(material).digest('hex');
 }
@@ -169,9 +170,9 @@ function hashContent(content: string, extract?: RegExp): string {
 async function publishChangeToBrain(
   source: RegulatorySource,
   oldHash: string | null,
-  newHash: string,
+  newHash: string
 ): Promise<boolean> {
-  const base = process.env.HAWKEYE_BRAIN_URL ?? 'https://hawkeye-sterling-v2.netlify.app';
+  const base = normalizeBrainUrl(process.env.HAWKEYE_BRAIN_URL);
   const token = process.env.HAWKEYE_BRAIN_TOKEN;
   if (!token) {
     console.log(`  skip: HAWKEYE_BRAIN_TOKEN not set — event not published`);
@@ -296,7 +297,7 @@ async function main(): Promise<Summary> {
 
   console.log();
   console.log(
-    `  \x1b[36msummary:\x1b[0m ${summary.checked}/${summary.total} checked, ${summary.changed} changed, ${summary.new} new, ${summary.published} published, ${summary.failures} failures`,
+    `  \x1b[36msummary:\x1b[0m ${summary.checked}/${summary.total} checked, ${summary.changed} changed, ${summary.new} new, ${summary.published} published, ${summary.failures} failures`
   );
 
   return summary;
