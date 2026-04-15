@@ -1,6 +1,26 @@
 [build]
   publish = "."
   command = "echo deploy-v3.0-enhancements"
+  # Deploy-preview deduplication.
+  #
+  # This repo is linked to two Netlify sites:
+  #   1. "compliance-analyzer"  — legacy site, still the production
+  #      brain backend referenced by .github/workflows/*.yml
+  #      (autopilot, agent-run, regulatory-watcher, scheduled-screening,
+  #      lbma-audit-pack) via https://compliance-analyzer.netlify.app
+  #   2. "hawkeye-sterling-v2"  — current site, the canonical UI target
+  #
+  # Before this rule, every PR posted two deploy-preview comments
+  # (one per site) which was noisy. We cannot unlink the legacy site
+  # without breaking the GitHub workflows that hit its production URL,
+  # so we keep the site linked but suppress only its deploy-preview
+  # builds. Production (CONTEXT=production) and branch deploys
+  # (CONTEXT=branch-deploy) on either site are unaffected.
+  #
+  # Netlify ignore command: exit 0 = cancel the build, exit 1 = proceed.
+  # Both SITE_NAME and CONTEXT are read-only env vars injected by
+  # Netlify (see https://docs.netlify.com/configure-builds/environment-variables/).
+  ignore = "if [ \"$CONTEXT\" = \"deploy-preview\" ] && [ \"$SITE_NAME\" = \"compliance-analyzer\" ]; then echo 'skipping duplicate deploy-preview on legacy compliance-analyzer site'; exit 0; else exit 1; fi"
 
 [build.environment]
   # Exclude vendored third-party reference code from secrets scanning.
