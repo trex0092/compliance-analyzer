@@ -337,8 +337,21 @@ cust-2,Bob Smith,tenant-a,Robert Smith,1985-04-15,GB,2026-04-10T00:00:00Z</pre>
 
   <!-- STEP 10 -->
   <div class="step">
-    <h2>Step 10 — You are live 🎉</h2>
-    <p>When Steps 6, 7, 8 and 9 all show <span class="status ok">OK</span>, open the tool in a new tab and start using it.</p>
+    <h2>Step 10 — Scan for lumped entity tasks</h2>
+    <p class="muted">Compliance rule: <b>each legal entity must have its own dedicated Asana task.</b> Lumping multiple entities (e.g. "GRAMALTIN AS / NAPLES LLC / ZOE FZE — review") into one task breaks the per-entity audit trail required by FDL Art.24 and Cabinet Res 134/2025 Art.7-10. This scanner is read-only: it lists every task in the project whose title mentions 2+ entities, so you can split them manually in Asana.</p>
+    <label>Asana project GID to scan</label>
+    <input type="text" id="input-scan-project-gid" placeholder="1234567890123456 (digits only, from the Asana project URL)">
+    <div class="row">
+      <button class="primary" id="btn-scan-lumped">🔍 Scan for lumped tasks</button>
+      <span id="scan-lumped-status"></span>
+    </div>
+    <div class="output" id="scan-lumped-output">(enter project GID and click to scan)</div>
+  </div>
+
+  <!-- STEP 11 -->
+  <div class="step">
+    <h2>Step 11 — You are live 🎉</h2>
+    <p>When Steps 6, 7, 8, 9 and 10 all show <span class="status ok">OK</span>, open the tool in a new tab and start using it.</p>
     <p><a id="link-tool" target="_blank">→ Open HAWKEYE STERLING</a></p>
     <p><a id="link-brain" target="_blank">→ Open Brain Console</a></p>
     <p><a id="link-status" target="_blank">→ Open public status page</a></p>
@@ -347,9 +360,9 @@ cust-2,Bob Smith,tenant-a,Robert Smith,1985-04-15,GB,2026-04-10T00:00:00Z</pre>
     </div>
   </div>
 
-  <!-- STEP 11 -->
+  <!-- STEP 12 -->
   <div class="step">
-    <h2>Step 11 — Post-setup checklist (human work, not the tool)</h2>
+    <h2>Step 12 — Post-setup checklist (human work, not the tool)</h2>
     <ul>
       <li>Register your firm with the <a href="https://goaml.uaefiu.gov.ae/" target="_blank">UAE FIU goAML portal</a></li>
       <li>Sign the <a href="https://www.anthropic.com/legal/data-processing" target="_blank">Anthropic Data Processing Agreement</a> (required for any EU-resident customer)</li>
