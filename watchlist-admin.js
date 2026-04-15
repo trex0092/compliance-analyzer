@@ -409,11 +409,12 @@
 
   // On initial load: if a token is already saved from a previous session,
   // auto-validate it so the user immediately sees whether it still works.
-  // Otherwise just refresh the list (which will show the "token required"
-  // message if no token is set).
+  // Always refresh the list afterwards — even on validation failure —
+  // so the stat box never sits on its HTML default "—" and the user
+  // gets an actionable error instead of a silent-looking page.
   if (tokenInput.value.trim()) {
-    validateToken().then(function (ok) {
-      if (ok) refreshList();
+    validateToken().finally(function () {
+      refreshList();
     });
   } else {
     refreshList();
