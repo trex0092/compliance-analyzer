@@ -37,29 +37,76 @@
 
   function saveState() {
     try {
+      // Snapshot the free-text fields too (tenant + cohort tenant) so a
+      // mid-wizard refresh never wipes a half-finished flow.
+      var tenantEl = byId('input-tenant');
+      var bootstrapEl = byId('input-bootstrap-tenant');
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         brainToken: state.brainToken,
         crossSalt: state.crossSalt,
         jwtSecret: state.jwtSecret,
         bcryptPepper: state.bcryptPepper,
+        anthropic: state.anthropic,
+        asanaToken: state.asanaToken,
+        asanaGid: state.asanaGid,
+        siteUrl: state.siteUrl,
+        tenantId: tenantEl ? tenantEl.value.trim() : '',
+        bootstrapTenantId: bootstrapEl ? bootstrapEl.value.trim() : '',
       }));
     } catch (_) { /* localStorage may be disabled — fail silent */ }
   }
 
   function loadState() {
+    var restoredSomething = false;
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return false;
       var saved = JSON.parse(raw);
-      if (saved && typeof saved.brainToken === 'string' && saved.brainToken) {
+      if (!saved || typeof saved !== 'object') return false;
+
+      // Generated secrets — only count the wizard as "restored" when the
+      // brain token itself was saved, to preserve the existing status
+      // message semantics in the init block.
+      if (typeof saved.brainToken === 'string' && saved.brainToken) {
         state.brainToken = saved.brainToken;
         state.crossSalt = saved.crossSalt || '';
         state.jwtSecret = saved.jwtSecret || '';
         state.bcryptPepper = saved.bcryptPepper || '';
-        return true;
+        restoredSomething = true;
+      }
+
+      // User-typed inputs — always repopulate the DOM so the operator
+      // never has to re-paste their Anthropic key, Asana token, workspace
+      // GID, or Netlify site URL between tab reloads.
+      state.anthropic = saved.anthropic || '';
+      state.asanaToken = saved.asanaToken || '';
+      state.asanaGid = saved.asanaGid || '';
+      state.siteUrl = saved.siteUrl || '';
+      var fieldMap = {
+        'input-anthropic': state.anthropic,
+        'input-asana-token': state.asanaToken,
+        'input-asana-gid': state.asanaGid,
+        'input-site-url': state.siteUrl,
+      };
+      Object.keys(fieldMap).forEach(function (id) {
+        var el = byId(id);
+        if (el && fieldMap[id]) el.value = fieldMap[id];
+      });
+      // Tenant fields have their own default values in the HTML — only
+      // overwrite if the operator had explicitly customised them.
+      if (saved.tenantId) {
+        var tEl = byId('input-tenant');
+        if (tEl) tEl.value = saved.tenantId;
+      }
+      if (saved.bootstrapTenantId) {
+        var bEl = byId('input-bootstrap-tenant');
+        if (bEl) bEl.value = saved.bootstrapTenantId;
+      }
+      if (state.anthropic || state.asanaToken || state.asanaGid || state.siteUrl) {
+        restoredSomething = true;
       }
     } catch (_) { /* corrupt JSON — ignore */ }
-    return false;
+    return restoredSomething;
   }
 
   // --- Helpers ---
@@ -144,9 +191,16 @@
   ['input-anthropic', 'input-asana-token', 'input-asana-gid', 'input-site-url'].forEach(function (id) {
     byId(id).addEventListener('input', function () {
       readInputs();
+      saveState(); // paste once, survive every refresh
       renderEnvBlock();
       updateLinks();
     });
+  });
+
+  // Persist the Step 7 + Step 8 tenant fields on every keystroke too.
+  ['input-tenant', 'input-bootstrap-tenant'].forEach(function (id) {
+    var el = byId(id);
+    if (el) el.addEventListener('input', saveState);
   });
 
   // --- Step 5: copy env block ---
