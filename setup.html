@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>HAWKEYE STERLING — Setup Wizard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #21262d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --gold: #d4a843;
+      --green: #3DA876;
+      --amber: #E8A030;
+      --red: #D94F4F;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, Segoe UI, Roboto, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    main {
+      max-width: 820px;
+      margin: 40px auto;
+      padding: 0 20px 80px;
+    }
+    h1 {
+      color: var(--gold);
+      font-size: 24px;
+      margin: 0 0 4px;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 24px;
+    }
+    .step {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--gold);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .step h2 {
+      font-size: 16px;
+      margin: 0 0 8px;
+      color: var(--gold);
+    }
+    .step p {
+      font-size: 13px;
+      color: var(--text);
+      margin: 4px 0;
+    }
+    .step p.muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    ol, ul {
+      margin: 8px 0;
+      padding-left: 20px;
+      color: var(--text);
+      font-size: 13px;
+    }
+    li {
+      margin: 4px 0;
+    }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+    }
+    code {
+      background: #010409;
+      color: var(--green);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre {
+      background: #010409;
+      color: var(--green);
+      padding: 12px 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      white-space: pre;
+      border: 1px solid var(--border);
+    }
+    .env-block {
+      position: relative;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--gold);
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--gold);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    button.secondary {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    input[type=text], input[type=password], textarea {
+      width: 100%;
+      padding: 8px 10px;
+      background: #0d1117;
+      color: var(--text);
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: ui-monospace, monospace;
+      margin: 4px 0 8px;
+    }
+    textarea { height: 120px; resize: vertical; }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .row > * { flex: 1; min-width: 200px; }
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .status.ok { background: #0f2a1b; color: var(--green); border: 1px solid #3DA87644; }
+    .status.err { background: #2a1012; color: var(--red); border: 1px solid #D94F4F44; }
+    .status.pending { background: #1f2933; color: var(--amber); border: 1px solid #E8A03044; }
+    .output {
+      background: #010409;
+      color: var(--muted);
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+      max-height: 260px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 8px;
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 8px;
+    }
+    .warning {
+      background: #2a1e12;
+      border: 1px solid #E8A03044;
+      border-left: 4px solid var(--amber);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      font-size: 12px;
+      color: #E8A030;
+    }
+    .success {
+      background: #0f2a1b;
+      border: 1px solid #3DA87644;
+      border-left: 4px solid var(--green);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      font-size: 12px;
+      color: var(--green);
+    }
+    a { color: var(--gold); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>🛡 HAWKEYE STERLING — Setup Wizard</h1>
+  <div class="subtitle">Browser-only setup. No terminal. No command line. Zero developer intervention.</div>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <h2>Step 1 — Accounts you need (open in new tabs)</h2>
+    <p class="muted">Create each account in its own tab. Come back here when you have all four values.</p>
+    <ol>
+      <li><a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic Console → API Keys</a> — click <b>Create Key</b>, label it <code>hawkeye</code>, copy the <code>sk-ant-…</code> value</li>
+      <li><a href="https://app.netlify.com/signup" target="_blank">Netlify</a> — sign up (free tier is enough)</li>
+      <li><a href="https://app.asana.com/0/my-apps" target="_blank">Asana Developer Console</a> — click <b>+ New access token</b>, copy the <code>1/…</code> value</li>
+      <li>In Asana, open your workspace home. The URL contains the workspace ID (the long number after <code>/0/</code>). Copy that too.</li>
+    </ol>
+    <div class="warning">
+      <b>Save the four values somewhere.</b> You'll paste them into Step 4 below.
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <h2>Step 2 — Fork the repo on GitHub</h2>
+    <p class="muted">This is a pure click-through, no terminal.</p>
+    <ol>
+      <li>Open <a href="https://github.com/trex0092/compliance-analyzer" target="_blank">github.com/trex0092/compliance-analyzer</a></li>
+      <li>Click the <b>Fork</b> button (top right)</li>
+      <li>Accept the defaults → click <b>Create fork</b></li>
+      <li>Wait ~10 seconds for GitHub to copy the repo into your account</li>
+      <li>Leave the forked repo tab open — you'll use it in Step 3</li>
+    </ol>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <h2>Step 3 — Connect Netlify to your GitHub fork</h2>
+    <ol>
+      <li>Open <a href="https://app.netlify.com/" target="_blank">Netlify dashboard</a></li>
+      <li>Click <b>Add new site</b> → <b>Import an existing project</b></li>
+      <li>Click <b>Deploy with GitHub</b> → authorise Netlify to access your GitHub</li>
+      <li>Pick the <b>compliance-analyzer</b> fork from the list</li>
+      <li>Leave every default → click <b>Deploy site</b></li>
+      <li>Wait 3-5 minutes. The first deploy will succeed but some endpoints return 503 because env vars aren't set yet — that's expected and fine.</li>
+      <li>When the deploy finishes, copy your site URL (something like <code>https://dreamy-banana-123abc.netlify.app</code>)</li>
+    </ol>
+    <div class="warning">
+      After the first deploy, the tool will warn about missing env vars. Ignore the warnings for now — Step 5 fixes them.
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step">
+    <h2>Step 4 — Generate your secrets</h2>
+    <p>Click the button. Your browser will generate cryptographically secure random values using <code>crypto.getRandomValues()</code> — the same primitive Netlify's own secret generator uses. <b>Nothing is sent to the network.</b></p>
+    <div class="row">
+      <button class="primary" id="btn-generate">🎲 Generate secrets</button>
+      <span id="generate-status"></span>
+    </div>
+    <label>Your Anthropic API key (paste from Step 1)</label>
+    <input type="password" id="input-anthropic" placeholder="sk-ant-api03-...">
+    <label>Your Asana personal access token (paste from Step 1)</label>
+    <input type="password" id="input-asana-token" placeholder="1/0123456789:...">
+    <label>Your Asana workspace GID (paste from Step 1)</label>
+    <input type="text" id="input-asana-gid" placeholder="1234567890123456">
+    <label>Your Netlify site URL (paste from Step 3)</label>
+    <input type="text" id="input-site-url" placeholder="https://dreamy-banana-123abc.netlify.app">
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step">
+    <h2>Step 5 — Paste these into Netlify env vars</h2>
+    <p class="muted">Click <b>Copy</b> below, then open <a href="https://app.netlify.com/" target="_blank">Netlify</a> → your site → <b>Site configuration</b> → <b>Environment variables</b> → <b>Import from a .env file</b> → paste.</p>
+    <div class="env-block">
+      <button class="copy-btn" id="btn-copy-env">Copy</button>
+      <pre id="env-output">(click "Generate secrets" above to see your env var block)</pre>
+    </div>
+    <p class="muted">After you paste + save in Netlify, Netlify will automatically redeploy. Wait ~2 minutes.</p>
+  </div>
+
+  <!-- STEP 6 -->
+  <div class="step">
+    <h2>Step 6 — Verify the tool is alive</h2>
+    <p class="muted">Once Netlify finishes the redeploy, click the button below to verify every endpoint is responding.</p>
+    <div class="row">
+      <button class="primary" id="btn-verify">🔎 Verify deployment</button>
+      <span id="verify-status"></span>
+    </div>
+    <div class="output" id="verify-output">(click verify to check)</div>
+  </div>
+
+  <!-- STEP 7 -->
+  <div class="step">
+    <h2>Step 7 — Upload your first customer cohort</h2>
+    <p class="muted">Paste your CSV in the exact schema below. Rows with errors are reported per-row; the whole import does not fail.</p>
+    <pre>id,name,tenantId,aliases,dateOfBirth,nationality,lastScreenedAtIso
+cust-1,Acme Trading LLC,tenant-a,ACME;Acme Trading,,AE,
+cust-2,Bob Smith,tenant-a,Robert Smith,1985-04-15,GB,2026-04-10T00:00:00Z</pre>
+    <label>Target tenant id</label>
+    <input type="text" id="input-tenant" value="tenant-a">
+    <label>Your CSV content (paste)</label>
+    <textarea id="input-csv" placeholder="id,name,tenantId..."></textarea>
+    <div class="row">
+      <button class="primary" id="btn-upload-cohort">📤 Upload cohort</button>
+      <span id="cohort-status"></span>
+    </div>
+    <div class="output" id="cohort-output">(paste a CSV and click upload)</div>
+  </div>
+
+  <!-- STEP 8 -->
+  <div class="step">
+    <h2>Step 8 — Bootstrap Asana for this tenant</h2>
+    <p class="muted">This creates the Asana project, the 14 standard sections, the 15 workspace custom fields, and the webhook — all in one click. Idempotent: safe to re-run.</p>
+    <label>Tenant id to provision</label>
+    <input type="text" id="input-bootstrap-tenant" value="tenant-a">
+    <div class="row">
+      <button class="primary" id="btn-bootstrap">🏗 Bootstrap Asana tenant</button>
+      <span id="bootstrap-status"></span>
+    </div>
+    <div class="output" id="bootstrap-output">(click to provision)</div>
+  </div>
+
+  <!-- STEP 9 -->
+  <div class="step">
+    <h2>Step 9 — You are live 🎉</h2>
+    <p>When Steps 6, 7 and 8 all show <span class="status ok">OK</span>, open the tool in a new tab and start using it.</p>
+    <p><a id="link-tool" target="_blank">→ Open HAWKEYE STERLING</a></p>
+    <p><a id="link-brain" target="_blank">→ Open Brain Console</a></p>
+    <p><a id="link-status" target="_blank">→ Open public status page</a></p>
+    <div class="success">
+      <b>Remember:</b> every env var you pasted is stored in Netlify, never in GitHub. Rotating secrets later is just "change the Netlify env var and redeploy".
+    </div>
+  </div>
+
+  <!-- STEP 10 -->
+  <div class="step">
+    <h2>Step 10 — Post-setup checklist (human work, not the tool)</h2>
+    <ul>
+      <li>Register your firm with the <a href="https://goaml.uaefiu.gov.ae/" target="_blank">UAE FIU goAML portal</a></li>
+      <li>Sign the <a href="https://www.anthropic.com/legal/data-processing" target="_blank">Anthropic Data Processing Agreement</a> (required for any EU-resident customer)</li>
+      <li>Train your MLRO + CO + Board — run a drill in demo mode first</li>
+      <li>Publish your AML policy via the policy editor (3-signature flow: MLRO → CO → Board)</li>
+      <li>Set the CO's email / Slack webhook for alerts (<code>HAWKEYE_ALERT_EMAIL</code> / <code>HAWKEYE_ALERT_SLACK_URL</code> in Netlify env vars)</li>
+    </ul>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // --- State ---
+  var state = {
+    brainToken: '',
+    crossSalt: '',
+    jwtSecret: '',
+    bcryptPepper: '',
+    anthropic: '',
+    asanaToken: '',
+    asanaGid: '',
+    siteUrl: '',
+  };
+
+  // --- Helpers ---
+  function randHex(bytes) {
+    var arr = new Uint8Array(bytes);
+    crypto.getRandomValues(arr);
+    return Array.from(arr).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
+
+  function byId(id) { return document.getElementById(id); }
+
+  function setStatus(id, kind, text) {
+    var el = byId(id);
+    if (!el) return;
+    el.className = 'status ' + kind;
+    el.textContent = text;
+  }
+
+  function writeOutput(id, text) {
+    var el = byId(id);
+    if (el) el.textContent = text;
+  }
+
+  function readInputs() {
+    state.anthropic = byId('input-anthropic').value.trim();
+    state.asanaToken = byId('input-asana-token').value.trim();
+    state.asanaGid = byId('input-asana-gid').value.trim();
+    state.siteUrl = byId('input-site-url').value.trim().replace(/\/+$/, '');
+  }
+
+  function renderEnvBlock() {
+    if (!state.brainToken) {
+      writeOutput('env-output', '(click "Generate secrets" above to see your env var block)');
+      return;
+    }
+    var lines = [
+      'ANTHROPIC_API_KEY=' + (state.anthropic || 'sk-ant-PASTE-YOURS'),
+      'HAWKEYE_BRAIN_TOKEN=hk-' + state.brainToken,
+      'HAWKEYE_ALLOWED_ORIGIN=' + (state.siteUrl || 'https://YOUR-SITE.netlify.app'),
+      'HAWKEYE_CROSS_TENANT_SALT=v2026Q2-' + state.crossSalt,
+      'ASANA_ACCESS_TOKEN=' + (state.asanaToken || '1/PASTE-YOURS'),
+      'ASANA_WORKSPACE_GID=' + (state.asanaGid || 'PASTE-16-DIGITS'),
+      'JWT_SIGNING_SECRET=' + state.jwtSecret,
+      'BCRYPT_PEPPER=' + state.bcryptPepper,
+      'BRAIN_TELEMETRY_ENABLED=true',
+      'BRAIN_RATE_LIMIT_PER_15MIN=100',
+      'HAWKEYE_CLAMP_CRON_TENANTS=tenant-a',
+      'HAWKEYE_DELTA_SCREEN_TENANTS=tenant-a',
+    ];
+    writeOutput('env-output', lines.join('\n'));
+  }
+
+  // --- Step 4: generate secrets ---
+  byId('btn-generate').addEventListener('click', function () {
+    state.brainToken = randHex(32);
+    state.crossSalt = randHex(16);
+    state.jwtSecret = randHex(32);
+    state.bcryptPepper = randHex(16);
+    setStatus('generate-status', 'ok', 'Generated');
+    readInputs();
+    renderEnvBlock();
+  });
+
+  ['input-anthropic', 'input-asana-token', 'input-asana-gid', 'input-site-url'].forEach(function (id) {
+    byId(id).addEventListener('input', function () {
+      readInputs();
+      renderEnvBlock();
+      updateLinks();
+    });
+  });
+
+  // --- Step 5: copy env block ---
+  byId('btn-copy-env').addEventListener('click', function () {
+    var text = byId('env-output').textContent;
+    navigator.clipboard.writeText(text).then(function () {
+      byId('btn-copy-env').textContent = 'Copied!';
+      setTimeout(function () { byId('btn-copy-env').textContent = 'Copy'; }, 2000);
+    });
+  });
+
+  // --- Step 6: verify ---
+  byId('btn-verify').addEventListener('click', function () {
+    readInputs();
+    if (!state.siteUrl) {
+      setStatus('verify-status', 'err', 'No site URL');
+      return;
+    }
+    if (!state.brainToken) {
+      setStatus('verify-status', 'err', 'Generate secrets first');
+      return;
+    }
+    setStatus('verify-status', 'pending', 'Checking…');
+    writeOutput('verify-output', 'Checking ' + state.siteUrl + ' …');
+    var token = 'hk-' + state.brainToken;
+    Promise.all([
+      fetch(state.siteUrl + '/api/brain/diagnostics', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: '{}',
+      }).then(function (r) { return { name: 'brain-diagnostics', status: r.status }; }).catch(function (e) { return { name: 'brain-diagnostics', err: String(e) }; }),
+      fetch(state.siteUrl + '/api/brain/health', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: '{}',
+      }).then(function (r) { return { name: 'brain-health', status: r.status }; }).catch(function (e) { return { name: 'brain-health', err: String(e) }; }),
+    ]).then(function (results) {
+      var allOk = results.every(function (r) { return r.status && r.status < 500; });
+      setStatus('verify-status', allOk ? 'ok' : 'err', allOk ? 'Live' : 'Degraded');
+      writeOutput('verify-output', JSON.stringify(results, null, 2));
+      updateLinks();
+    });
+  });
+
+  // --- Step 7: upload cohort ---
+  byId('btn-upload-cohort').addEventListener('click', function () {
+    readInputs();
+    var tenantId = byId('input-tenant').value.trim();
+    var csv = byId('input-csv').value;
+    if (!tenantId || !csv) {
+      setStatus('cohort-status', 'err', 'Tenant + CSV required');
+      return;
+    }
+    setStatus('cohort-status', 'pending', 'Uploading…');
+    var token = 'hk-' + state.brainToken;
+    fetch(state.siteUrl + '/api/setup/cohort-upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenantId: tenantId, csv: csv }),
+    }).then(function (r) {
+      return r.json().then(function (body) { return { status: r.status, body: body }; });
+    }).then(function (res) {
+      var ok = res.status < 400 && res.body && res.body.ok !== false;
+      setStatus('cohort-status', ok ? 'ok' : 'err', ok ? 'Uploaded' : 'Failed');
+      writeOutput('cohort-output', JSON.stringify(res.body, null, 2));
+    }).catch(function (err) {
+      setStatus('cohort-status', 'err', 'Network error');
+      writeOutput('cohort-output', String(err));
+    });
+  });
+
+  // --- Step 8: bootstrap Asana ---
+  byId('btn-bootstrap').addEventListener('click', function () {
+    readInputs();
+    var tenantId = byId('input-bootstrap-tenant').value.trim();
+    if (!tenantId) {
+      setStatus('bootstrap-status', 'err', 'Tenant required');
+      return;
+    }
+    setStatus('bootstrap-status', 'pending', 'Provisioning…');
+    var token = 'hk-' + state.brainToken;
+    fetch(state.siteUrl + '/api/setup/asana-bootstrap', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenantId: tenantId }),
+    }).then(function (r) {
+      return r.json().then(function (body) { return { status: r.status, body: body }; });
+    }).then(function (res) {
+      var ok = res.status < 400 && res.body && res.body.ok !== false;
+      setStatus('bootstrap-status', ok ? 'ok' : 'err', ok ? 'Ready' : 'Failed');
+      writeOutput('bootstrap-output', JSON.stringify(res.body, null, 2));
+    }).catch(function (err) {
+      setStatus('bootstrap-status', 'err', 'Network error');
+      writeOutput('bootstrap-output', String(err));
+    });
+  });
+
+  // --- Live links ---
+  function updateLinks() {
+    if (!state.siteUrl) return;
+    byId('link-tool').href = state.siteUrl + '/';
+    byId('link-tool').textContent = '→ Open ' + state.siteUrl;
+    byId('link-brain').href = state.siteUrl + '/#tab-brain';
+    byId('link-brain').textContent = '→ Open Brain Console at ' + state.siteUrl;
+    byId('link-status').href = state.siteUrl + '/status.html';
+    byId('link-status').textContent = '→ Public status page at ' + state.siteUrl + '/status.html';
+  }
+})();
+</script>
+</body>
+</html>
