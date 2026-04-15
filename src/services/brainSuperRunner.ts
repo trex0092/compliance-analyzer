@@ -65,6 +65,11 @@ import { matchFatfTypologies, type TypologyReport } from './fatfTypologyMatcher'
 import { analyseBehaviouralVelocity, type VelocityReport } from './behaviouralVelocityDetector';
 import { runBrainEnsemble, type EnsembleReport } from './brainConsensusEnsemble';
 import { deriveUncertaintyInterval, type UncertaintyInterval } from './uncertaintyInterval';
+import {
+  conformalIntervalForConfidence,
+  type ConformalInterval,
+} from './conformalPrediction';
+import type { BrainTelemetryEntry } from './brainTelemetryStore';
 import { runAdversarialDebate, shouldDebate, type DebateReport } from './brainAdversarialDebate';
 import {
   emptyDigest,
@@ -312,6 +317,27 @@ export interface SuperRunnerOptions {
    * want to bypass caching.
    */
   forceFresh?: boolean;
+  /**
+   * Calibration set for the split-conformal prediction interval on
+   * the decision confidence. Typically the most recent N telemetry
+   * entries for the tenant — see brainTelemetryStore.readRange().
+   *
+   * When omitted or shorter than the conformalPrediction module's
+   * MIN_CALIBRATION threshold, the SuperDecision.conformal field
+   * is still populated but the interval collapses to the point
+   * estimate with `coverage='exact'` and a "uncalibrated" summary.
+   *
+   * Regulatory basis:
+   *   EU AI Act Art.15        (accuracy + robustness for high-risk AI)
+   *   NIST AI RMF 1.0 MEASURE-2 (quantitative AI risk measurement)
+   */
+  conformalCalibration?: readonly BrainTelemetryEntry[];
+  /**
+   * Target miscoverage rate for the split-conformal interval.
+   * Default 0.1 (i.e. 90% coverage). Forwarded to
+   * conformalIntervalForConfidence().
+   */
+  conformalAlpha?: number;
 }
 
 export interface SuperDecision {
@@ -387,6 +413,23 @@ export interface SuperDecision {
    * debate would add no signal. See brainAdversarialDebate.ts.
    */
   debate: DebateReport | null;
+  /**
+   * Split-conformal prediction interval on the decision confidence,
+   * derived from the calibration set passed via
+   * SuperRunnerOptions.conformalCalibration. Always present (the
+   * pure function returns a degenerate point interval when the
+   * calibration set is too small).
+   *
+   * The conformal interval is COMPLEMENTARY to `uncertainty`:
+   *   - uncertainty = variance envelope from ensemble perturbation
+   *     (no statistical guarantee, no exchangeability assumption)
+   *   - conformal   = (1 - alpha) coverage guarantee under the
+   *     exchangeability assumption (defensible under EU AI Act
+   *     Art.15 + NIST AI RMF MEASURE-2)
+   *
+   * MLROs render both. Inspectors care about the conformal one.
+   */
+  conformal: ConformalInterval;
 }
 
 /**
@@ -555,6 +598,19 @@ export async function runSuperDecision(
 
   const uncertainty = deriveUncertaintyInterval(ensemble, decision.confidence);
 
+  // Split-conformal prediction interval — distribution-free coverage
+  // guarantee on the confidence point estimate. Calibration set is
+  // typically the most recent ~30 days of telemetry for the tenant
+  // (passed in by the caller). When absent or too small, the
+  // function returns a degenerate point interval marked
+  // "uncalibrated" so MLROs see the gap rather than a false claim.
+  // Pure function — never throws.
+  const conformal = conformalIntervalForConfidence(
+    decision.confidence,
+    opts.conformalCalibration ?? [],
+    typeof opts.conformalAlpha === 'number' ? { alpha: opts.conformalAlpha } : {}
+  );
+
   // Adversarial debate — cost-gated. Only borderline / ambiguous
   // cases trigger the prosecution/defence pass so audit logs stay lean.
   const debate: DebateReport | null = shouldDebate(decision.confidence, uncertainty)
@@ -575,6 +631,7 @@ export async function runSuperDecision(
     recordedSnapshot,
     uncertainty,
     debate,
+    conformal,
   };
 
   // Store in the fingerprint cache so the next call with identical

@@ -62,7 +62,10 @@ import {
 } from '../../src/services/brainMemoryBlobStore';
 import { BrainMemoryDigestBlobStore } from '../../src/services/brainMemoryDigestBlobStore';
 import { emptyDigest } from '../../src/services/brainMemoryDigest';
-import { BrainTelemetryStore } from '../../src/services/brainTelemetryStore';
+import {
+  BrainTelemetryStore,
+  type BrainTelemetryEntry,
+} from '../../src/services/brainTelemetryStore';
 import { CaseReplayStore } from '../../src/services/caseReplayStore';
 
 // ---------------------------------------------------------------------------
@@ -586,6 +589,19 @@ export default async (req: Request, context: Context) => {
     summary: string;
     regulatory: string;
   } | null = null;
+  let conformalSummary: {
+    kind: 'conformal_split';
+    alpha: number;
+    calibrationSize: number;
+    qHat: number;
+    pointEstimate: number;
+    lower: number;
+    upper: number;
+    width: number;
+    coverage: 'exact' | 'narrow' | 'moderate' | 'wide' | 'critical';
+    summary: string;
+    regulatory: string;
+  } | null = null;
   let debateSummary: {
     outcome: 'prosecution_wins' | 'defence_wins' | 'undetermined';
     gap: number;
@@ -611,6 +627,32 @@ export default async (req: Request, context: Context) => {
       ? await brainDigestBlob.load(request.tenantId)
       : emptyDigest(request.tenantId);
 
+    // Load the conformal-prediction calibration set: the most
+    // recent ~30 days of telemetry for the tenant. The conformal
+    // module needs at least MIN_CALIBRATION (20) entries to
+    // produce a meaningful interval; cold tenants get a degenerate
+    // point interval marked "uncalibrated" instead of a false
+    // claim. Read failure → empty set → uncalibrated. Never blocks
+    // the decision path.
+    let conformalCalibration: readonly BrainTelemetryEntry[] = [];
+    if (brainTelemetry) {
+      try {
+        const endIso = new Date().toISOString();
+        const startIso = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+        conformalCalibration = await brainTelemetry.readRange(
+          request.tenantId,
+          startIso,
+          endIso
+        );
+      } catch (err) {
+        console.warn(
+          '[brain-analyze] conformal calibration read failed:',
+          err instanceof Error ? err.message : String(err)
+        );
+        conformalCalibration = [];
+      }
+    }
+
     // Run the full super-brain pipeline:
     //   - Weaponized brain (MegaBrain + 30+ subsystems)
     //   - Auto-wired Anthropic advisor (falls back to deterministic)
@@ -624,6 +666,7 @@ export default async (req: Request, context: Context) => {
       advisor: anthropicAdvisor,
       memory: brainMemoryBlob ?? undefined,
       digest: loadedDigest,
+      conformalCalibration,
     });
 
     // Persist the updated digest. Fire-and-forget — the save
@@ -778,6 +821,19 @@ export default async (req: Request, context: Context) => {
       summary: superResult.uncertainty.summary,
       regulatory: superResult.uncertainty.regulatory,
     };
+    conformalSummary = {
+      kind: superResult.conformal.kind,
+      alpha: superResult.conformal.alpha,
+      calibrationSize: superResult.conformal.calibrationSize,
+      qHat: superResult.conformal.qHat,
+      pointEstimate: superResult.conformal.pointEstimate,
+      lower: superResult.conformal.lower,
+      upper: superResult.conformal.upper,
+      width: superResult.conformal.width,
+      coverage: superResult.conformal.coverage,
+      summary: superResult.conformal.summary,
+      regulatory: superResult.conformal.regulatory,
+    };
     if (superResult.debate) {
       debateSummary = {
         outcome: superResult.debate.outcome,
@@ -857,6 +913,7 @@ export default async (req: Request, context: Context) => {
     velocity: velocitySummary,
     ensemble: ensembleSummary,
     uncertainty: uncertaintySummary,
+    conformal: conformalSummary,
     debate: debateSummary,
     precedents: precedentSummary,
     regulatoryDrift: {

@@ -42,6 +42,33 @@ describe('nameVariantExpander', () => {
     const r = expandNameVariants('Michael Smith');
     expect(r.initialSwap).toBe('m smith');
   });
+
+  it('romanises Mandarin (Han) input via pinyin lookup', () => {
+    const r = expandNameVariants('王伟');
+    expect(r.cjkRoman.length).toBeGreaterThan(0);
+    // First character "王" → "wang"; given character "伟" → "wei"
+    expect(r.cjkRoman.some((v) => v.includes('wang'))).toBe(true);
+    expect(r.cjkRoman.some((v) => v.includes('wei'))).toBe(true);
+    // Romanisations must also flow into the variants set.
+    expect(r.variants.some((v) => v.includes('wang'))).toBe(true);
+  });
+
+  it('romanises Korean Hangul input via Revised Romanisation', () => {
+    const r = expandNameVariants('김민');
+    expect(r.cjkRoman.length).toBeGreaterThan(0);
+    expect(r.cjkRoman.some((v) => v.includes('kim'))).toBe(true);
+  });
+
+  it('romanises Japanese surname via Hepburn lookup', () => {
+    const r = expandNameVariants('田中太郎');
+    expect(r.cjkRoman.length).toBeGreaterThan(0);
+    expect(r.cjkRoman.some((v) => v.startsWith('tanaka'))).toBe(true);
+  });
+
+  it('returns empty cjkRoman for pure Latin input', () => {
+    const r = expandNameVariants('Michael Smith');
+    expect(r.cjkRoman).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------
