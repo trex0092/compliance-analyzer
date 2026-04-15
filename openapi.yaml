@@ -28,7 +28,7 @@ info:
   license:
     name: Proprietary
 servers:
-  - url: https://compliance-analyzer.netlify.app
+  - url: https://hawkeye-sterling-v2.netlify.app
     description: Production
   - url: http://localhost:8888
     description: Local Netlify Dev

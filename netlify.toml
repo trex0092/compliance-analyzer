@@ -1,6 +1,29 @@
 [build]
   publish = "."
   command = "echo deploy-v3.0-enhancements"
+  # Deploy-preview deduplication (belt-and-braces safety net).
+  #
+  # Canonical site: "hawkeye-sterling-v2" (hawkeye-sterling-v2.netlify.app).
+  # All code, workflows, docs, and env var defaults have been migrated to
+  # this site. The legacy "compliance-analyzer" and "hawkeye-sterling"
+  # Netlify sites are expected to be blocked ("Stop builds") in the
+  # Netlify dashboard after merge.
+  #
+  # This ignore rule is a second line of defense: if someone ever
+  # re-enables builds on the legacy "compliance-analyzer" site in the
+  # dashboard by mistake, it will still skip deploy-preview builds so
+  # PRs only post one preview comment. Production (CONTEXT=production)
+  # and branch deploys (CONTEXT=branch-deploy) are unaffected — they
+  # pass through and build normally, which is what you want while the
+  # legacy site is being decommissioned.
+  #
+  # Once the legacy site is fully deleted in the Netlify dashboard,
+  # this rule becomes a no-op and can be removed in a follow-up.
+  #
+  # Netlify ignore command: exit 0 = cancel the build, exit 1 = proceed.
+  # Both SITE_NAME and CONTEXT are read-only env vars injected by
+  # Netlify (see https://docs.netlify.com/configure-builds/environment-variables/).
+  ignore = "if [ \"$CONTEXT\" = \"deploy-preview\" ] && [ \"$SITE_NAME\" = \"compliance-analyzer\" ]; then echo 'skipping duplicate deploy-preview on legacy compliance-analyzer site'; exit 0; else exit 1; fi"
 
 [build.environment]
   # Exclude vendored third-party reference code from secrets scanning.

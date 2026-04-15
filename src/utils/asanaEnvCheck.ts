@@ -415,7 +415,7 @@ function checkPublicUrl(ctx: CheckContext): void {
       envKey: 'PUBLIC_BASE_URL,HAWKEYE_BRAIN_URL',
       detail:
         'The webhook bootstrap script computes the receiver target from this. Without it, `npm run asana:bootstrap:webhooks` cannot subscribe webhooks.',
-      fix: 'Set PUBLIC_BASE_URL=https://compliance-analyzer.netlify.app in Netlify env vars.',
+      fix: 'Set PUBLIC_BASE_URL=https://hawkeye-sterling-v2.netlify.app in Netlify env vars.',
     });
     return;
   }

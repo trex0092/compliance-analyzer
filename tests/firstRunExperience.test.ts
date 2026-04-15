@@ -217,7 +217,7 @@ describe('emptyStates catalogue', () => {
 describe('envConfigValidator', () => {
   const goodEnv = {
     HAWKEYE_BRAIN_TOKEN: 'hk-brain-aaaaaaaaaaaaaaaaaaaaaaaaa', // ≥24 chars
-    HAWKEYE_ALLOWED_ORIGIN: 'https://compliance-analyzer.netlify.app',
+    HAWKEYE_ALLOWED_ORIGIN: 'https://hawkeye-sterling-v2.netlify.app',
     HAWKEYE_CROSS_TENANT_SALT: 'v2026Q2-salt-abcdefghij',
     ANTHROPIC_API_KEY: 'sk-ant-api03-XXXXXXXXXXXXXXXXX',
     ASANA_ACCESS_TOKEN: '1/0123456789012345:AAAAAAAAAAAAAAAAAA',

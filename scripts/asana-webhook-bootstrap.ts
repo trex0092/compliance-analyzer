@@ -30,7 +30,7 @@
  *
  * Usage:
  *   ASANA_TOKEN=xxx \
- *   PUBLIC_BASE_URL=https://compliance-analyzer.netlify.app \
+ *   PUBLIC_BASE_URL=https://hawkeye-sterling-v2.netlify.app \
  *   ASANA_WORKSPACE_GID=xxx \
  *   npx tsx scripts/asana-webhook-bootstrap.ts
  *

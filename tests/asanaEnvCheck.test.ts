@@ -19,7 +19,7 @@ function baselineEnv(): Record<string, string> {
   return {
     ASANA_TOKEN: 'tok',
     ASANA_WORKSPACE_GID: 'workspace-1',
-    PUBLIC_BASE_URL: 'https://compliance-analyzer.netlify.app',
+    PUBLIC_BASE_URL: 'https://hawkeye-sterling-v2.netlify.app',
     HAWKEYE_APPROVER_KEYS: 'user-mlro:abcdef0123456789,user-deputy:1111222233334444',
     // CFs — risk_level
     ASANA_CF_RISK_LEVEL_GID: 'cf-rl',
@@ -278,7 +278,7 @@ describe('checkAsanaDeployReadiness — webhook receiver URL', () => {
 
   it('blocks when PUBLIC_BASE_URL is HTTP not HTTPS', () => {
     const env = baselineEnv();
-    env.PUBLIC_BASE_URL = 'http://compliance-analyzer.netlify.app';
+    env.PUBLIC_BASE_URL = 'http://hawkeye-sterling-v2.netlify.app';
     const result = checkAsanaDeployReadiness(env);
     expect(result.ok).toBe(false);
     expect(
@@ -291,7 +291,7 @@ describe('checkAsanaDeployReadiness — webhook receiver URL', () => {
   it('falls back to HAWKEYE_BRAIN_URL when PUBLIC_BASE_URL is unset', () => {
     const env = baselineEnv();
     delete env.PUBLIC_BASE_URL;
-    env.HAWKEYE_BRAIN_URL = 'https://compliance-analyzer.netlify.app';
+    env.HAWKEYE_BRAIN_URL = 'https://hawkeye-sterling-v2.netlify.app';
     const result = checkAsanaDeployReadiness(env);
     expect(result.ok).toBe(true);
     expect(

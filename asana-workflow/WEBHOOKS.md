@@ -17,7 +17,7 @@ Configured in Asana via:
 curl -X POST https://app.asana.com/api/1.0/webhooks \
   -H "Authorization: Bearer $ASANA_ACCESS_TOKEN" \
   -F "resource=$ASANA_WORKSPACE_GID" \
-  -F "target=https://compliance-analyzer.netlify.app/api/asana-webhook"
+  -F "target=https://hawkeye-sterling-v2.netlify.app/api/asana-webhook"
 ```
 
 ---

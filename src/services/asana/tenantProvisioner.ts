@@ -288,7 +288,7 @@ function colorForTenant(tenantId: string): string {
 }
 
 const DEFAULT_WEBHOOK_TARGET =
-  'https://compliance-analyzer.netlify.app/api/asana-webhook';
+  'https://hawkeye-sterling-v2.netlify.app/api/asana-webhook';
 
 /**
  * Build the full provisioning plan for a tenant. Pure function. Same

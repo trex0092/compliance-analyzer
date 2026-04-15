@@ -58,7 +58,7 @@ const MAX_BODY_SIZE = 256 * 1024; // 256 KB — generous for ~5000 subjects
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':
-    process.env.HAWKEYE_ALLOWED_ORIGIN ?? 'https://compliance-analyzer.netlify.app',
+    process.env.HAWKEYE_ALLOWED_ORIGIN ?? 'https://hawkeye-sterling-v2.netlify.app',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   'Access-Control-Max-Age': '600',

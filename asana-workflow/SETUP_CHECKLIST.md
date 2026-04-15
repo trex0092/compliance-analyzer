@@ -110,7 +110,7 @@ Each project needs a webhook pointing at our webhook receiver:
 ```bash
 node scripts/asana-webhook-bootstrap.ts \
   --project $PROJECT_GID \
-  --target https://compliance-analyzer.netlify.app/api/asana-webhook
+  --target https://hawkeye-sterling-v2.netlify.app/api/asana-webhook
 ```
 
 The bootstrap script:
@@ -200,7 +200,7 @@ netlify functions:list --site $SITE_ID | grep cron
 Once everything is provisioned, run the smoke test:
 
 ```bash
-BASE_URL=https://compliance-analyzer.netlify.app \
+BASE_URL=https://hawkeye-sterling-v2.netlify.app \
 TENANT_ID=tenant-a \
   npm run smoke:asana
 ```

@@ -193,7 +193,7 @@ root cause per CLAUDE.md §9.
 After Netlify reports a successful deploy, run the smoke suite:
 
 ```bash
-BASE_URL=https://compliance-analyzer.netlify.app \
+BASE_URL=https://hawkeye-sterling-v2.netlify.app \
   npm run smoke
 ```
 
@@ -219,7 +219,7 @@ netlify deploy:list --site $SITE_ID | head -5
 netlify rollback --site $SITE_ID --deploy <good-deploy-id>
 
 # Verify
-curl -fsSL https://compliance-analyzer.netlify.app/ > /dev/null
+curl -fsSL https://hawkeye-sterling-v2.netlify.app/ > /dev/null
 ```
 
 Rollback never resets blob state — only the function code. So a

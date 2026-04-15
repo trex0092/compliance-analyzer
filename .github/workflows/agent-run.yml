@@ -10,7 +10,7 @@ name: Run Managed Agent
 #   HAWKEYE_BRAIN_TOKEN   — same value that's set in Netlify env vars
 #
 # Optional secrets:
-#   HAWKEYE_BRAIN_URL     — defaults to https://compliance-analyzer.netlify.app
+#   HAWKEYE_BRAIN_URL     — defaults to https://hawkeye-sterling-v2.netlify.app
 #   CACHET_BASE_URL       — if you want Cachet publishing
 #   CACHET_API_TOKEN      — pair with CACHET_BASE_URL
 #
@@ -63,7 +63,7 @@ jobs:
         id: run
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          HAWKEYE_BRAIN_URL: ${{ secrets.HAWKEYE_BRAIN_URL || 'https://compliance-analyzer.netlify.app' }}
+          HAWKEYE_BRAIN_URL: ${{ secrets.HAWKEYE_BRAIN_URL || 'https://hawkeye-sterling-v2.netlify.app' }}
           HAWKEYE_BRAIN_TOKEN: ${{ secrets.HAWKEYE_BRAIN_TOKEN }}
           CACHET_BASE_URL: ${{ secrets.CACHET_BASE_URL }}
           CACHET_API_TOKEN: ${{ secrets.CACHET_API_TOKEN }}

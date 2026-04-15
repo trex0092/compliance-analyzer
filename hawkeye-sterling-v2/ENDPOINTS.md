@@ -7,7 +7,7 @@ All endpoints share:
 - CORS origin via `HAWKEYE_ALLOWED_ORIGIN`
 - Strict input validation (each endpoint exports `__test__.validate`)
 
-Base URL: `https://compliance-analyzer.netlify.app`
+Base URL: `https://hawkeye-sterling-v2.netlify.app`
 
 ---
 
