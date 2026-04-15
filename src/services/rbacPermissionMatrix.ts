@@ -117,7 +117,11 @@ const RULES: readonly PermissionRule[] = [
   { action: 'tierC.outbound.enqueue', minRole: 'analyst', citation: 'FDL Art.29' },
   { action: 'tierC.outbound.release', minRole: 'co', citation: 'FDL Art.29' },
   { action: 'tierC.outbound.cancel', minRole: 'mlro', citation: 'FDL Art.29' },
-  { action: 'tierC.breakGlass.request', minRole: 'mlro', citation: 'Cabinet Res 134/2025 Art.12-14' },
+  {
+    action: 'tierC.breakGlass.request',
+    minRole: 'mlro',
+    citation: 'Cabinet Res 134/2025 Art.12-14',
+  },
   { action: 'tierC.breakGlass.approve', minRole: 'co', citation: 'Cabinet Res 134/2025 Art.12-14' },
   { action: 'tierC.zkCrossTenant.commit', minRole: 'analyst', citation: 'EU GDPR Art.25' },
   { action: 'tierC.zkCrossTenant.aggregate', minRole: 'mlro', citation: 'EU GDPR Art.25' },

@@ -90,10 +90,7 @@ export interface RevokeInput {
   now?: () => Date;
 }
 
-export function revokeSession(
-  snapshot: SessionSnapshot,
-  input: RevokeInput
-): SessionSnapshot {
+export function revokeSession(snapshot: SessionSnapshot, input: RevokeInput): SessionSnapshot {
   if (!input.reason || input.reason.length < 5) {
     throw new Error('revokeSession: reason ≥5 chars required');
   }

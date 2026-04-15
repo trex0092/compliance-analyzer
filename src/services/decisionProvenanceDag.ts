@@ -68,7 +68,12 @@ export interface ProvenanceInput {
     /** Inputs it read. */
     readInputs: readonly string[];
     /** Outputs it produced. */
-    outputs: ReadonlyArray<{ name: string; value: string | number | boolean; weight: number; reason: string }>;
+    outputs: ReadonlyArray<{
+      name: string;
+      value: string | number | boolean;
+      weight: number;
+      reason: string;
+    }>;
   }>;
   /** Final output field names that the decision carries. */
   outputFields: readonly string[];
@@ -201,10 +206,7 @@ export function buildProvenanceDag(input: ProvenanceInput): ProvenanceDag {
  * Given a DAG + a specific output field, trace back every input
  * that ultimately contributed to it (via any subsystem path).
  */
-export function traceOutputProvenance(
-  dag: ProvenanceDag,
-  outputField: string
-): readonly string[] {
+export function traceOutputProvenance(dag: ProvenanceDag, outputField: string): readonly string[] {
   const targetId = `output:${outputField}`;
   const ancestors = new Set<string>();
   const queue: string[] = [targetId];

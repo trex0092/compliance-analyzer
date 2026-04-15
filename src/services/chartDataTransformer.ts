@@ -120,7 +120,7 @@ export function verdictDistributionChart(input: VerdictTimeseriesInput): LineCha
     color: VERDICT_COLORS[v]!,
     points: sortedBuckets.map((b) => ({ x: b, y: perVerdict[v]!.get(b) ?? 0 })),
   }));
-  let yMin = 0;
+  const yMin = 0;
   let yMax = 0;
   for (const s of series) for (const p of s.points) if (p.y > yMax) yMax = p.y;
 
@@ -239,10 +239,7 @@ export function renderLineChartSvg(spec: LineChartSpec, width = 640, height = 24
 }
 
 function escapeSvg(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // Exports for tests.

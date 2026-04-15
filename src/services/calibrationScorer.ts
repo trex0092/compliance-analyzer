@@ -105,8 +105,9 @@ export function scoreCalibration(
     });
   }
 
-  const bucketData: { confSum: number; correctCount: number; count: number }[] =
-    buckets.map(() => ({ confSum: 0, correctCount: 0, count: 0 }));
+  const bucketData: { confSum: number; correctCount: number; count: number }[] = buckets.map(
+    () => ({ confSum: 0, correctCount: 0, count: 0 })
+  );
 
   for (const s of samples) {
     if (!Number.isFinite(s.reportedConfidence)) continue;

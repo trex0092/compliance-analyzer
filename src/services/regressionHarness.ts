@@ -151,11 +151,15 @@ export function formatRegressionReport(report: RegressionReport): string {
   lines.push('='.repeat(60));
   lines.push(`HAWKEYE STERLING — Regression Report`);
   lines.push(`Run at: ${report.runAtIso}`);
-  lines.push(`Result: ${report.pass ? 'PASS' : 'FAIL'} (${report.passedCases}/${report.totalCases})`);
+  lines.push(
+    `Result: ${report.pass ? 'PASS' : 'FAIL'} (${report.passedCases}/${report.totalCases})`
+  );
   lines.push('='.repeat(60));
   for (const r of report.results) {
     const marker = r.pass ? '✓' : '✗';
-    lines.push(`${marker} ${r.id.padEnd(24)} ${r.expectedVerdict}→${r.actualVerdict} ${r.description}`);
+    lines.push(
+      `${marker} ${r.id.padEnd(24)} ${r.expectedVerdict}→${r.actualVerdict} ${r.description}`
+    );
     if (!r.pass) {
       if (!r.verdictMatch) {
         lines.push(`    verdict drift: expected ${r.expectedVerdict}, got ${r.actualVerdict}`);

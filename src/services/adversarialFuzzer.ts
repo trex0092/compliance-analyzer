@@ -302,7 +302,7 @@ export async function runAdversarialFuzz(
     perturbation.length > 0
       ? (perturbation.length - perturbationFragile.length) / perturbation.length
       : 1;
-  const robustnessScore = Math.round((boundaryScore * 50 + perturbationScore * 50));
+  const robustnessScore = Math.round(boundaryScore * 50 + perturbationScore * 50);
 
   const summary =
     `Fuzz: ${boundary.length} boundary probes (${boundaryStuck.length} stuck), ` +

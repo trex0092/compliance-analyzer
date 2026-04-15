@@ -213,9 +213,7 @@ async function safeDependency(
   }
 }
 
-async function safeCrons(
-  fn: () => Promise<readonly CronStatus[]>
-): Promise<readonly CronStatus[]> {
+async function safeCrons(fn: () => Promise<readonly CronStatus[]>): Promise<readonly CronStatus[]> {
   try {
     return await fn();
   } catch {

@@ -152,10 +152,7 @@ export function reconcileWebhooks(
       });
       continue;
     }
-    if (
-      reg.lastDeliveryIso !== null &&
-      Date.parse(reg.lastDeliveryIso) < staleCutoffMs
-    ) {
+    if (reg.lastDeliveryIso !== null && Date.parse(reg.lastDeliveryIso) < staleCutoffMs) {
       stale += 1;
       actions.push({
         kind: 'replace_stale_webhook',

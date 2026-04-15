@@ -104,8 +104,7 @@ export function rankPendingTasks(tasks: readonly PendingTask[]): PriorityReport 
     // Load-averse: higher CO load reduces priority of THIS task (spread the pain).
     const loadPenalty = Math.min(2, t.assignedCoLoad / 10);
 
-    const priority =
-      slaUrgency * 3 + verdictWeight * 2 + tierWeight + feedbackWeight - loadPenalty;
+    const priority = slaUrgency * 3 + verdictWeight * 2 + tierWeight + feedbackWeight - loadPenalty;
 
     return {
       task: t,

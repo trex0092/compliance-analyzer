@@ -90,9 +90,7 @@ function canonicalStringify(value: unknown): string {
     const rec = value as Record<string, unknown>;
     const keys = Object.keys(rec).sort();
     return (
-      '{' +
-      keys.map((k) => JSON.stringify(k) + ':' + canonicalStringify(rec[k])).join(',') +
-      '}'
+      '{' + keys.map((k) => JSON.stringify(k) + ':' + canonicalStringify(rec[k])).join(',') + '}'
     );
   }
   return 'null';

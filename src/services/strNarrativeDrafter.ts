@@ -98,10 +98,7 @@ export interface NarrativeDraftInput {
   };
 }
 
-export type DraftStatus =
-  | 'draft_ready'
-  | 'tipping_off_blocked'
-  | 'invalid_input';
+export type DraftStatus = 'draft_ready' | 'tipping_off_blocked' | 'invalid_input';
 
 export interface NarrativeDraftReport {
   schemaVersion: 1;
@@ -149,10 +146,7 @@ function bandConfidence(c: number): string {
   return 'low';
 }
 
-function topFactorBullets(
-  factors: NarrativeDraftInput['topFactors'],
-  max = 5
-): string {
+function topFactorBullets(factors: NarrativeDraftInput['topFactors'], max = 5): string {
   return factors
     .slice(0, max)
     .map(
@@ -163,10 +157,7 @@ function topFactorBullets(
     .join('\n');
 }
 
-function typologyBullets(
-  typologies: NarrativeDraftInput['typologies'],
-  max = 5
-): string {
+function typologyBullets(typologies: NarrativeDraftInput['typologies'], max = 5): string {
   if (!typologies || typologies.length === 0) return '  (no typology matches)';
   return typologies
     .slice(0, max)

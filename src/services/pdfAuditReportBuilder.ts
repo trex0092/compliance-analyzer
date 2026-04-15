@@ -98,9 +98,7 @@ function canonicalStringify(value: unknown): string {
     const rec = value as Record<string, unknown>;
     const keys = Object.keys(rec).sort();
     return (
-      '{' +
-      keys.map((k) => JSON.stringify(k) + ':' + canonicalStringify(rec[k])).join(',') +
-      '}'
+      '{' + keys.map((k) => JSON.stringify(k) + ':' + canonicalStringify(rec[k])).join(',') + '}'
     );
   }
   return 'null';
@@ -112,10 +110,10 @@ function canonicalStringify(value: unknown): string {
 
 function buildCoverPairs(bundle: EvidenceBundle, extras: ReportExtras): Record<string, string> {
   return {
-    'Tenant': bundle.tenantId,
+    Tenant: bundle.tenantId,
     'Case ID': bundle.caseId,
     'Verdict at time': bundle.replay?.verdictAtTime ?? 'n/a',
-    'Conclusion': bundle.conclusion,
+    Conclusion: bundle.conclusion,
     'Exported at': bundle.exportedAtIso,
     'Evidence hash': bundle.integrity.hashHex.slice(0, 32) + '...',
     'Prepared for': extras.recipient,
@@ -177,12 +175,9 @@ function buildDriftSection(bundle: EvidenceBundle): PdfSection {
     blocks.push({
       kind: 'table',
       headers: ['Key', 'Previous', 'Current', 'Severity'],
-      rows: bundle.drift.findings.slice(0, 20).map((f) => [
-        f.key,
-        String(f.previous),
-        String(f.current),
-        f.severity,
-      ]),
+      rows: bundle.drift.findings
+        .slice(0, 20)
+        .map((f) => [f.key, String(f.previous), String(f.current), f.severity]),
     });
   }
   return { id: 'drift', title: 'Regulatory drift', blocks };
@@ -211,10 +206,7 @@ export interface ReportExtras {
   now?: () => Date;
 }
 
-export function buildAuditReport(
-  bundle: EvidenceBundle,
-  extras: ReportExtras
-): PdfDocument {
+export function buildAuditReport(bundle: EvidenceBundle, extras: ReportExtras): PdfDocument {
   const now = (extras.now ?? (() => new Date()))();
   const sections: PdfSection[] = [
     buildExecutiveSummary(bundle),

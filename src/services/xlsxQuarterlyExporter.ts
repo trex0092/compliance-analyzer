@@ -100,7 +100,10 @@ function csvRow(cells: readonly (string | number)[]): string {
   return cells.map(escapeCsvCell).join(',');
 }
 
-function csvSheet(header: readonly string[], rows: readonly (readonly (string | number)[])[]): string {
+function csvSheet(
+  header: readonly string[],
+  rows: readonly (readonly (string | number)[])[]
+): string {
   return [csvRow(header), ...rows.map(csvRow)].join('\n');
 }
 
@@ -177,12 +180,7 @@ function buildTransactionsSheet(input: QuarterlyReportInput): string {
 
 function buildEntitiesSheet(input: QuarterlyReportInput): string {
   const header = ['Entity Ref', 'Legal Name', 'Risk Tier', 'CDD Review Due'];
-  const rows = input.entities.map((e) => [
-    e.entityRef,
-    e.legalName,
-    e.riskTier,
-    e.cddReviewDueIso,
-  ]);
+  const rows = input.entities.map((e) => [e.entityRef, e.legalName, e.riskTier, e.cddReviewDueIso]);
   return csvSheet(header, rows);
 }
 

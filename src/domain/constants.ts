@@ -327,10 +327,10 @@ export const PF_PAUSE_REPORT_CLOCK_HOURS = 24;
  * dropped from the screening loop.
  */
 export const PF_DESIGNATION_LISTS = [
-  'UNSC-1718',  // DPRK
-  'UNSC-2231',  // Iran JCPOA / E3+3
-  'UNSC-1540',  // International PF framework
-  'EOCN-PF',    // UAE Executive Office for Control & Non-Proliferation PF list
+  'UNSC-1718', // DPRK
+  'UNSC-2231', // Iran JCPOA / E3+3
+  'UNSC-1540', // International PF framework
+  'EOCN-PF', // UAE Executive Office for Control & Non-Proliferation PF list
 ] as const;
 
 /**

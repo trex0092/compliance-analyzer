@@ -194,10 +194,7 @@ export function auditBias(
   for (const r of records) addVerdict(overall, r.verdict);
 
   // Per-(attribute, value) aggregation.
-  const perAttrGroups = new Map<
-    ProtectedAttribute,
-    Map<string, VerdictCounts>
-  >();
+  const perAttrGroups = new Map<ProtectedAttribute, Map<string, VerdictCounts>>();
   for (const attr of attributes) perAttrGroups.set(attr, new Map());
 
   for (const r of records) {
@@ -245,8 +242,7 @@ export function auditBias(
     // match the classical EEOC framing.
     const selectionDisadvantaged = 1 - disadvantaged.adverseRate;
     const selectionReference = 1 - reference.adverseRate;
-    const ratio =
-      selectionReference === 0 ? 1 : selectionDisadvantaged / selectionReference;
+    const ratio = selectionReference === 0 ? 1 : selectionDisadvantaged / selectionReference;
     const fails = ratio < threshold;
 
     const zScore = twoProportionZ(

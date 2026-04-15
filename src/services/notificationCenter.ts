@@ -33,13 +33,7 @@
 
 export type NotificationSeverity = 'info' | 'warning' | 'critical' | 'page';
 
-export type NotificationCategory =
-  | 'alert'
-  | 'tier-c'
-  | 'sla'
-  | 'brain'
-  | 'asana'
-  | 'system';
+export type NotificationCategory = 'alert' | 'tier-c' | 'sla' | 'brain' | 'asana' | 'system';
 
 export interface Notification {
   id: string;
@@ -130,7 +124,11 @@ export class NotificationCenter {
     });
   }
 
-  async markRead(notificationId: string, userId: string, now: () => Date = () => new Date()): Promise<void> {
+  async markRead(
+    notificationId: string,
+    userId: string,
+    now: () => Date = () => new Date()
+  ): Promise<void> {
     const snap = await this.store.load();
     if (snap.readReceipts.some((r) => r.notificationId === notificationId && r.userId === userId)) {
       return; // already read
@@ -164,7 +162,11 @@ export class NotificationCenter {
     });
   }
 
-  async dismiss(notificationId: string, userId: string, now: () => Date = () => new Date()): Promise<void> {
+  async dismiss(
+    notificationId: string,
+    userId: string,
+    now: () => Date = () => new Date()
+  ): Promise<void> {
     const snap = await this.store.load();
     if (snap.dismissals.some((d) => d.notificationId === notificationId && d.userId === userId)) {
       return;
@@ -204,17 +206,13 @@ export class NotificationCenter {
       filter.userId === undefined
         ? new Set<string>()
         : new Set(
-            snap.readReceipts
-              .filter((r) => r.userId === filter.userId)
-              .map((r) => r.notificationId)
+            snap.readReceipts.filter((r) => r.userId === filter.userId).map((r) => r.notificationId)
           );
     const dismissedIds =
       filter.userId === undefined
         ? new Set<string>()
         : new Set(
-            snap.dismissals
-              .filter((d) => d.userId === filter.userId)
-              .map((d) => d.notificationId)
+            snap.dismissals.filter((d) => d.userId === filter.userId).map((d) => d.notificationId)
           );
     return snap.notifications
       .filter((n) => {

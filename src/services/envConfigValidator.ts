@@ -31,13 +31,7 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export type EnvCategory =
-  | 'brain'
-  | 'asana'
-  | 'auth'
-  | 'proxy'
-  | 'tierC'
-  | 'ops';
+export type EnvCategory = 'brain' | 'asana' | 'auth' | 'proxy' | 'tierC' | 'ops';
 
 export type EnvRequirement = 'required' | 'optional';
 
@@ -317,7 +311,9 @@ function previewValue(name: string, value: string): string {
  * Validate a snapshot of env vars. Pure function. Returns the full
  * report — overall health, per-var status, missing-required list.
  */
-export function validateEnv(env: Readonly<Record<string, string | undefined>>): EnvValidationReport {
+export function validateEnv(
+  env: Readonly<Record<string, string | undefined>>
+): EnvValidationReport {
   const statuses: EnvVarStatus[] = [];
   const missingRequired: string[] = [];
   const invalidVars: string[] = [];

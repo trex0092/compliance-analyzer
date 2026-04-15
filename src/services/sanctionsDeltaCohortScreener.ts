@@ -98,10 +98,7 @@ export interface DeltaScreenHit {
    * Recommended downstream action. The autoRemediationExecutor
    * consumes this verbatim.
    */
-  recommendedAction:
-    | 'freeze_immediately'
-    | 'gate_for_co_review'
-    | 'escalate_for_review';
+  recommendedAction: 'freeze_immediately' | 'gate_for_co_review' | 'escalate_for_review';
   /** Regulatory anchor for this specific hit. */
   regulatory: readonly string[];
 }
@@ -202,10 +199,7 @@ function matchAlias(customer: CohortCustomer, sanctioned: SanctionsEntry): boole
   return false;
 }
 
-function matchDobAndNationality(
-  customer: CohortCustomer,
-  sanctioned: SanctionsEntry
-): boolean {
+function matchDobAndNationality(customer: CohortCustomer, sanctioned: SanctionsEntry): boolean {
   if (!customer.dateOfBirth || !customer.nationality) return false;
   if (!sanctioned.dateOfBirth || !sanctioned.nationality) return false;
   return (
@@ -288,11 +282,7 @@ export function screenCohortAgainstDelta(
         matchScore: score,
         confidence: deriveBand(score),
         recommendedAction: deriveAction(score),
-        regulatory: [
-          'FDL No.10/2025 Art.35',
-          'Cabinet Res 74/2020 Art.4-7',
-          'FATF Rec 6',
-        ],
+        regulatory: ['FDL No.10/2025 Art.35', 'Cabinet Res 74/2020 Art.4-7', 'FATF Rec 6'],
       });
     }
   }

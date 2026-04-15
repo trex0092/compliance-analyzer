@@ -287,8 +287,7 @@ function colorForTenant(tenantId: string): string {
   return PROJECT_PALETTE[fnv1a(tenantId) % PROJECT_PALETTE.length]!;
 }
 
-const DEFAULT_WEBHOOK_TARGET =
-  'https://hawkeye-sterling-v2.netlify.app/api/asana-webhook';
+const DEFAULT_WEBHOOK_TARGET = 'https://hawkeye-sterling-v2.netlify.app/api/asana-webhook';
 
 /**
  * Build the full provisioning plan for a tenant. Pure function. Same
@@ -375,11 +374,7 @@ export interface AsanaProvisionDispatcher {
 
 /** Per-step record written to the audit trail. */
 export interface ProvisionStepRecord {
-  step:
-    | 'project'
-    | 'section'
-    | 'customField'
-    | 'webhook';
+  step: 'project' | 'section' | 'customField' | 'webhook';
   ok: boolean;
   created: boolean;
   gid?: string;

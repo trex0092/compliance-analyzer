@@ -59,7 +59,9 @@ export interface ConsentSnapshot {
 // Purpose catalogue
 // ---------------------------------------------------------------------------
 
-export const DEFAULT_PURPOSES: Readonly<Record<ConsentPurpose, { label: string; lawfulBasisDefault: ConsentRecord['lawfulBasis'] }>> = {
+export const DEFAULT_PURPOSES: Readonly<
+  Record<ConsentPurpose, { label: string; lawfulBasisDefault: ConsentRecord['lawfulBasis'] }>
+> = {
   service_delivery: { label: 'Service delivery', lawfulBasisDefault: 'contract' },
   aml_screening: { label: 'AML/CFT screening', lawfulBasisDefault: 'legal_obligation' },
   marketing: { label: 'Marketing communications', lawfulBasisDefault: 'consent' },
@@ -82,10 +84,7 @@ export interface GrantInput {
   now?: () => Date;
 }
 
-export function grantConsent(
-  snapshot: ConsentSnapshot,
-  input: GrantInput
-): ConsentSnapshot {
+export function grantConsent(snapshot: ConsentSnapshot, input: GrantInput): ConsentSnapshot {
   if (!input.subjectId) throw new Error('grantConsent: subjectId required');
   if (!input.reason || input.reason.length < 5) {
     throw new Error('grantConsent: reason ≥5 chars required');
@@ -129,10 +128,7 @@ export interface WithdrawInput {
   now?: () => Date;
 }
 
-export function withdrawConsent(
-  snapshot: ConsentSnapshot,
-  input: WithdrawInput
-): ConsentSnapshot {
+export function withdrawConsent(snapshot: ConsentSnapshot, input: WithdrawInput): ConsentSnapshot {
   const now = (input.now ?? (() => new Date()))();
   const ts = now.toISOString();
   const records = snapshot.records.map((r) => {

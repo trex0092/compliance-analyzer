@@ -279,10 +279,7 @@ export interface ImportOptions {
   maxRows?: number;
 }
 
-export function importCohortCsv(
-  rawCsv: string,
-  opts: ImportOptions
-): CsvImportReport {
+export function importCohortCsv(rawCsv: string, opts: ImportOptions): CsvImportReport {
   const maxRows = opts.maxRows ?? MAX_COHORT_SIZE;
   const warnings: string[] = [];
 

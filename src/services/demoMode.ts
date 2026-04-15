@@ -180,10 +180,7 @@ export async function disableDemoMode(
   return snapshot;
 }
 
-export async function resetDemoData(
-  store: DemoStateStore,
-  req: ToggleRequest
-): Promise<void> {
+export async function resetDemoData(store: DemoStateStore, req: ToggleRequest): Promise<void> {
   const v = validateToggle(req);
   if (!v.ok) throw new Error(`resetDemoData: ${v.error}`);
   const now = (req.now ?? (() => new Date()))();

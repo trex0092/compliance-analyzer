@@ -154,9 +154,7 @@ const POINTS_PER_LAYER = 10;
 // Scoring
 // ---------------------------------------------------------------------------
 
-function scoreLayers(
-  layers: ReadonlyArray<{ label: string; active: boolean }>
-): {
+function scoreLayers(layers: ReadonlyArray<{ label: string; active: boolean }>): {
   score: number;
   breakdown: ReadonlyArray<{ label: string; points: number; max: number }>;
 } {

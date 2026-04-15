@@ -65,10 +65,7 @@ import { matchFatfTypologies, type TypologyReport } from './fatfTypologyMatcher'
 import { analyseBehaviouralVelocity, type VelocityReport } from './behaviouralVelocityDetector';
 import { runBrainEnsemble, type EnsembleReport } from './brainConsensusEnsemble';
 import { deriveUncertaintyInterval, type UncertaintyInterval } from './uncertaintyInterval';
-import {
-  conformalIntervalForConfidence,
-  type ConformalInterval,
-} from './conformalPrediction';
+import { conformalIntervalForConfidence, type ConformalInterval } from './conformalPrediction';
 import type { BrainTelemetryEntry } from './brainTelemetryStore';
 import { runAdversarialDebate, shouldDebate, type DebateReport } from './brainAdversarialDebate';
 import {

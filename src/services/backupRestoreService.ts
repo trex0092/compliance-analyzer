@@ -92,9 +92,7 @@ function canonicalStringify(value: unknown): string {
     const rec = value as Record<string, unknown>;
     const keys = Object.keys(rec).sort();
     return (
-      '{' +
-      keys.map((k) => JSON.stringify(k) + ':' + canonicalStringify(rec[k])).join(',') +
-      '}'
+      '{' + keys.map((k) => JSON.stringify(k) + ':' + canonicalStringify(rec[k])).join(',') + '}'
     );
   }
   return 'null';
@@ -177,7 +175,11 @@ export function verifyRestoreSet(
   // Missing: present in manifest, not in provided.
   for (const [k, e] of manifestByKey) {
     if (!providedByKey.has(k)) {
-      discrepancies.push({ key: k, kind: 'missing', detail: `manifest has ${k} but restore set does not` });
+      discrepancies.push({
+        key: k,
+        kind: 'missing',
+        detail: `manifest has ${k} but restore set does not`,
+      });
       continue;
     }
     const provided = providedByKey.get(k)!;
@@ -193,7 +195,11 @@ export function verifyRestoreSet(
   // Extra: present in provided, not in manifest.
   for (const k of providedByKey.keys()) {
     if (!manifestByKey.has(k)) {
-      discrepancies.push({ key: k, kind: 'extra', detail: `restore set has ${k} but manifest does not` });
+      discrepancies.push({
+        key: k,
+        kind: 'extra',
+        detail: `restore set has ${k} but manifest does not`,
+      });
     }
   }
 
