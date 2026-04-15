@@ -21,7 +21,7 @@ import {
 
 import {
   buildIntelligenceScorecard,
-  AUTONOMY_CEILING,
+  buildMaxActiveInputs,
   type IntelligenceInput,
   type SmartInput,
   type AutonomousInput,
@@ -248,98 +248,92 @@ describe('biasAuditor', () => {
 });
 
 // ===========================================================================
-// intelligenceScorecard
+// intelligenceScorecard v2 — normalized to 100 per axis
 // ===========================================================================
 
-describe('intelligenceScorecard', () => {
-  function makeInputs(
-    overrides: {
-      intelligence?: Partial<IntelligenceInput>;
-      smart?: Partial<SmartInput>;
-      autonomous?: Partial<AutonomousInput>;
-    } = {}
-  ): [IntelligenceInput, SmartInput, AutonomousInput] {
-    const intelligence: IntelligenceInput = {
-      subsystemsFired: 25,
-      totalSubsystems: 80,
-      bayesianInvoked: true,
-      causalInvoked: true,
-      debateInvoked: true,
-      counterfactualInvoked: true,
-      advisorInvoked: true,
-      graphRiskInvoked: true,
-      multiJurisdictionInvoked: true,
-      feedbackLoopActive: true,
-      ...overrides.intelligence,
-    };
-    const smart: SmartInput = {
-      powerScore: 85,
-      confidence: 0.82,
-      conformalBounded: true,
-      driftChecked: true,
-      reasoningChainNonEmpty: true,
-      explainableScoring: true,
-      citationsCount: 5,
-      fourEyesActive: true,
-      tippingOffLinted: true,
-      ...overrides.smart,
-    };
-    const autonomous: AutonomousInput = {
-      autoDispatched: true,
-      autoRemediated: false,
-      autoReScreened: true,
-      producedByCron: false,
-      alertAutoDelivered: true,
-      tierCViolations: 0,
-      ...overrides.autonomous,
-    };
-    return [intelligence, smart, autonomous];
-  }
-
-  it('fully active pipeline produces high scores', () => {
-    const [i, s, a] = makeInputs();
-    const sc = buildIntelligenceScorecard(i, s, a);
-    expect(sc.intelligent).toBeGreaterThan(70);
-    expect(sc.smart).toBeGreaterThan(80);
-    expect(sc.autonomous).toBeGreaterThanOrEqual(40);
-    expect(sc.composite).toBeGreaterThan(60);
+describe('intelligenceScorecard v2', () => {
+  it('fully active inputs report 100/100/100 on every axis', () => {
+    const { intelligence, smart, autonomous } = buildMaxActiveInputs();
+    const sc = buildIntelligenceScorecard(intelligence, smart, autonomous);
+    expect(sc.intelligent).toBe(100);
+    expect(sc.smart).toBe(100);
+    expect(sc.autonomous).toBe(100);
+    expect(sc.composite).toBe(100);
   });
 
-  it('autonomy is hard-capped at AUTONOMY_CEILING', () => {
-    const [i, s, a] = makeInputs({
-      autonomous: {
-        autoDispatched: true,
-        autoRemediated: true,
-        autoReScreened: true,
-        producedByCron: true,
-        alertAutoDelivered: true,
-        tierCViolations: 0,
-      },
-    });
-    const sc = buildIntelligenceScorecard(i, s, a);
-    expect(sc.autonomous).toBeLessThanOrEqual(AUTONOMY_CEILING);
+  it('schemaVersion is 2', () => {
+    const { intelligence, smart, autonomous } = buildMaxActiveInputs();
+    const sc = buildIntelligenceScorecard(intelligence, smart, autonomous);
+    expect(sc.schemaVersion).toBe(2);
   });
 
-  it('Tier C violation zeroes autonomy', () => {
-    const [i, s, a] = makeInputs({
-      autonomous: {
-        autoDispatched: true,
-        autoRemediated: true,
-        autoReScreened: true,
-        producedByCron: true,
-        alertAutoDelivered: true,
-        tierCViolations: 1,
-      },
+  it('every axis has exactly 10 layers', () => {
+    const { intelligence, smart, autonomous } = buildMaxActiveInputs();
+    const sc = buildIntelligenceScorecard(intelligence, smart, autonomous);
+    expect(sc.breakdown.intelligent.length).toBe(10);
+    expect(sc.breakdown.smart.length).toBe(10);
+    expect(sc.breakdown.autonomous.length).toBe(10);
+  });
+
+  it('disabling one intelligence layer drops the score by exactly 10', () => {
+    const full = buildMaxActiveInputs();
+    const scFull = buildIntelligenceScorecard(full.intelligence, full.smart, full.autonomous);
+    const one = {
+      ...full,
+      intelligence: { ...full.intelligence, bayesianInvoked: false },
+    };
+    const scOne = buildIntelligenceScorecard(one.intelligence, one.smart, one.autonomous);
+    expect(scFull.intelligent - scOne.intelligent).toBe(10);
+  });
+
+  it('disabling one smart layer drops the score by exactly 10', () => {
+    const full = buildMaxActiveInputs();
+    const scFull = buildIntelligenceScorecard(full.intelligence, full.smart, full.autonomous);
+    const one = { ...full, smart: { ...full.smart, driftChecked: false } };
+    const scOne = buildIntelligenceScorecard(one.intelligence, one.smart, one.autonomous);
+    expect(scFull.smart - scOne.smart).toBe(10);
+  });
+
+  it('disabling one autonomous layer drops the score by exactly 10', () => {
+    const full = buildMaxActiveInputs();
+    const scFull = buildIntelligenceScorecard(full.intelligence, full.smart, full.autonomous);
+    const one = {
+      ...full,
+      autonomous: { ...full.autonomous, autoDispatched: false },
+    };
+    const scOne = buildIntelligenceScorecard(one.intelligence, one.smart, one.autonomous);
+    expect(scFull.autonomous - scOne.autonomous).toBe(10);
+  });
+
+  it('Tier C violation zeroes autonomy even when every other axis is 100', () => {
+    const { intelligence, smart, autonomous } = buildMaxActiveInputs();
+    const sc = buildIntelligenceScorecard(intelligence, smart, {
+      ...autonomous,
+      tierCViolations: 1,
     });
-    const sc = buildIntelligenceScorecard(i, s, a);
     expect(sc.autonomous).toBe(0);
     expect(sc.breakdown.autonomous[0]!.label).toMatch(/Tier C violation/);
+    // Other axes still at 100
+    expect(sc.intelligent).toBe(100);
+    expect(sc.smart).toBe(100);
   });
 
-  it('disabled reasoning layers drop the intelligence score', () => {
-    const [iFull, sFull, aFull] = makeInputs();
-    const [iMin] = makeInputs({
+  it('composite equals arithmetic mean rounded', () => {
+    const { intelligence, smart, autonomous } = buildMaxActiveInputs();
+    const sc = buildIntelligenceScorecard(intelligence, smart, {
+      ...autonomous,
+      autoDispatched: false, // autonomy becomes 90
+    });
+    expect(sc.intelligent).toBe(100);
+    expect(sc.smart).toBe(100);
+    expect(sc.autonomous).toBe(90);
+    expect(sc.composite).toBe(97); // round((100+100+90)/3)
+  });
+
+  it('all-false inputs report 0/0/0', () => {
+    const allFalse = {
       intelligence: {
+        megaBrain: false,
         bayesianInvoked: false,
         causalInvoked: false,
         debateInvoked: false,
@@ -348,34 +342,52 @@ describe('intelligenceScorecard', () => {
         graphRiskInvoked: false,
         multiJurisdictionInvoked: false,
         feedbackLoopActive: false,
-        subsystemsFired: 5,
-      },
-    });
-    const scFull = buildIntelligenceScorecard(iFull, sFull, aFull);
-    const scMin = buildIntelligenceScorecard(iMin, sFull, aFull);
-    expect(scMin.intelligent).toBeLessThan(scFull.intelligent);
+        metaRouterApplied: false,
+      } satisfies IntelligenceInput,
+      smart: {
+        powerScoreAtLeast70: false,
+        conformalBounded: false,
+        driftChecked: false,
+        reasoningChainNonEmpty: false,
+        explainableScoring: false,
+        citationsAtLeast5: false,
+        fourEyesActive: false,
+        tippingOffLinted: false,
+        biasAuditCurrent: false,
+        scorecardEmitted: false,
+      } satisfies SmartInput,
+      autonomous: {
+        autoDispatched: false,
+        autoRemediated: false,
+        autoReScreened: false,
+        producedByCron: false,
+        alertAutoDelivered: false,
+        strDraftAutoGenerated: false,
+        counterfactualAutoProduced: false,
+        evidenceBundleAutoSealed: false,
+        metaRouterAutoApplied: false,
+        notificationAutoPosted: false,
+        tierCViolations: 0,
+      } satisfies AutonomousInput,
+    };
+    const sc = buildIntelligenceScorecard(
+      allFalse.intelligence,
+      allFalse.smart,
+      allFalse.autonomous
+    );
+    expect(sc.intelligent).toBe(0);
+    expect(sc.smart).toBe(0);
+    expect(sc.autonomous).toBe(0);
+    expect(sc.composite).toBe(0);
   });
 
-  it('low power score drops the smart axis', () => {
-    const [i, sFull, a] = makeInputs();
-    const [, sLow] = makeInputs({ smart: { powerScore: 20, confidence: 0.3 } });
-    const scFull = buildIntelligenceScorecard(i, sFull, a);
-    const scLow = buildIntelligenceScorecard(i, sLow, a);
-    expect(scLow.smart).toBeLessThan(scFull.smart);
-  });
-
-  it('composite is the arithmetic mean of the three axes', () => {
-    const [i, s, a] = makeInputs();
-    const sc = buildIntelligenceScorecard(i, s, a);
-    const expected = Math.round((sc.intelligent + sc.smart + sc.autonomous) / 3);
-    expect(sc.composite).toBe(expected);
-  });
-
-  it('carries regulatory anchors', () => {
-    const [i, s, a] = makeInputs();
-    const sc = buildIntelligenceScorecard(i, s, a);
+  it('carries v2 regulatory anchors', () => {
+    const { intelligence, smart, autonomous } = buildMaxActiveInputs();
+    const sc = buildIntelligenceScorecard(intelligence, smart, autonomous);
     expect(sc.regulatory).toContain('EU AI Act Art.13');
     expect(sc.regulatory).toContain('NIST AI RMF 1.0 MEASURE-2');
     expect(sc.regulatory).toContain('ISO/IEC 42001');
+    expect(sc.regulatory).toContain('FDL No.10/2025 Art.29');
+    expect(sc.regulatory).toContain('Cabinet Res 134/2025 Art.12-14');
   });
 });
