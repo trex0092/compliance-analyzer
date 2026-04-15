@@ -70,11 +70,30 @@ export interface CrossTenantMatchReport {
   totalCommitments: number;
   /** Number of distinct hashes. */
   distinctHashes: number;
-  /** Commitments that collided with at least one other tenant. */
+  /**
+   * Effective k-anonymity threshold applied to this report. Hashes
+   * with fewer than k contributing tenants are SUPPRESSED from
+   * `collisions` and only counted in `suppressedBelowK`.
+   */
+  kAnonymity: number;
+  /**
+   * Commitments that meet the k-anonymity threshold. Tenant IDs
+   * remain visible because reaching k contributing parties means
+   * no single tenant is uniquely re-identifiable from the result.
+   */
   collisions: ReadonlyArray<{
     commitHash: string;
+    tenantCount: number;
     tenantIds: readonly string[];
   }>;
+  /**
+   * Number of hash buckets that DID collide (>=2 tenants) but were
+   * suppressed because they fell below the k-anonymity threshold.
+   * MLROs see the bucket count without learning which tenants were
+   * involved — protects against re-identification when a small
+   * cross-tenant overlap would otherwise deanonymise a single party.
+   */
+  suppressedBelowK: number;
   /** Plain-English summary. */
   summary: string;
   regulatory: readonly string[];
@@ -126,12 +145,48 @@ export function commitCrossTenantObservation(
 }
 
 /**
+ * Default k-anonymity threshold for cross-tenant collision reports.
+ * k=3 means a hash is only revealed once at least three distinct
+ * tenants have committed to it. With k=2 a single shared customer
+ * could be re-identified by the OTHER party in a 2-tenant overlap;
+ * k=3 guarantees that no single tenant can deduce which other
+ * specific tenant contributed the colliding observation.
+ *
+ * This default is conservative — operators may raise it via the
+ * options bag, but should never lower it below 2.
+ *
+ * Regulatory basis:
+ *   FDL No.10/2025 Art.14 (data protection)
+ *   EU GDPR Art.25 (data minimisation by design)
+ *   FATF Rec 2 (national cooperation without re-identification)
+ */
+export const DEFAULT_K_ANONYMITY = 3;
+
+/** Hard floor — k below this is rejected as unsafe. */
+export const MIN_K_ANONYMITY = 2;
+
+export interface AggregateOptions {
+  /** k-anonymity threshold. Defaults to DEFAULT_K_ANONYMITY (3). */
+  kAnonymity?: number;
+}
+
+/**
  * Aggregate commitments from multiple tenants. Returns the
- * collisions without revealing any tenant's subjectKey.
+ * collisions without revealing any tenant's subjectKey, and
+ * suppresses any collision bucket below the k-anonymity threshold
+ * so single-shared-subject re-identification is impossible.
  */
 export function aggregateCrossTenantCommitments(
-  commitments: readonly CrossTenantCommitment[]
+  commitments: readonly CrossTenantCommitment[],
+  opts: AggregateOptions = {}
 ): CrossTenantMatchReport {
+  const requestedK =
+    typeof opts.kAnonymity === 'number' && Number.isFinite(opts.kAnonymity)
+      ? Math.floor(opts.kAnonymity)
+      : DEFAULT_K_ANONYMITY;
+  // Clamp to the hard floor — we never reveal collisions with k=1.
+  const k = Math.max(MIN_K_ANONYMITY, requestedK);
+
   const byHash = new Map<string, Set<string>>();
   for (const c of commitments) {
     if (!c || typeof c.commitHash !== 'string') continue;
@@ -143,22 +198,46 @@ export function aggregateCrossTenantCommitments(
     set.add(c.tenantId);
   }
 
-  const collisions: Array<{ commitHash: string; tenantIds: readonly string[] }> = [];
+  const collisions: Array<{
+    commitHash: string;
+    tenantCount: number;
+    tenantIds: readonly string[];
+  }> = [];
+  let suppressedBelowK = 0;
   for (const [hash, tenants] of byHash) {
-    if (tenants.size >= 2) {
-      collisions.push({ commitHash: hash, tenantIds: Array.from(tenants).sort() });
+    if (tenants.size < 2) continue; // not a collision at all
+    if (tenants.size < k) {
+      suppressedBelowK += 1;
+      continue;
     }
+    collisions.push({
+      commitHash: hash,
+      tenantCount: tenants.size,
+      tenantIds: Array.from(tenants).sort(),
+    });
   }
-  collisions.sort((a, b) => b.tenantIds.length - a.tenantIds.length);
+  collisions.sort((a, b) => b.tenantCount - a.tenantCount);
+
+  let summary: string;
+  if (collisions.length === 0 && suppressedBelowK === 0) {
+    summary = `No cross-tenant collisions across ${commitments.length} commitment(s).`;
+  } else if (collisions.length === 0) {
+    summary =
+      `No collisions met the k=${k} anonymity threshold ` +
+      `(${suppressedBelowK} bucket(s) suppressed for re-identification safety).`;
+  } else {
+    summary =
+      `${collisions.length} cross-tenant collision(s) at k=${k} across ${commitments.length} commitment(s)` +
+      (suppressedBelowK > 0 ? ` (${suppressedBelowK} sub-k bucket(s) suppressed).` : '.');
+  }
 
   return {
     totalCommitments: commitments.length,
     distinctHashes: byHash.size,
+    kAnonymity: k,
     collisions,
-    summary:
-      collisions.length === 0
-        ? `No cross-tenant collisions across ${commitments.length} commitment(s).`
-        : `${collisions.length} cross-tenant collision(s) across ${commitments.length} commitment(s).`,
+    suppressedBelowK,
+    summary,
     regulatory: [
       'FDL No.10/2025 Art.14',
       'FDL No.10/2025 Art.20-22',
@@ -171,4 +250,4 @@ export function aggregateCrossTenantCommitments(
 }
 
 // Exports for tests.
-export const __test__ = { preimage };
+export const __test__ = { preimage, DEFAULT_K_ANONYMITY, MIN_K_ANONYMITY };

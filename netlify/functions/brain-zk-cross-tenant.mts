@@ -28,6 +28,8 @@ import { authenticate } from './middleware/auth.mts';
 import {
   commitCrossTenantObservation,
   aggregateCrossTenantCommitments,
+  DEFAULT_K_ANONYMITY,
+  MIN_K_ANONYMITY,
   type CrossTenantObservation,
 } from '../../src/services/zkCrossTenantAttestation';
 import { CrossTenantCommitmentBlobStore } from '../../src/services/tierCBlobStores';
@@ -73,7 +75,7 @@ function validate(raw: unknown):
       observation: CrossTenantObservation;
       saltVersion: string;
     }
-  | { ok: true; action: 'aggregate'; saltVersion: string }
+  | { ok: true; action: 'aggregate'; saltVersion: string; kAnonymity: number }
   | { ok: false; error: string } {
   if (!raw || typeof raw !== 'object') return { ok: false, error: 'body must be an object' };
   const r = raw as Record<string, unknown>;
@@ -87,7 +89,26 @@ function validate(raw: unknown):
   }
 
   if (action === 'aggregate') {
-    return { ok: true, action, saltVersion: r.saltVersion };
+    // Optional kAnonymity override — clamped to the safety floor by
+    // the aggregator, so a caller cannot ask for k=1.
+    let kAnonymity = DEFAULT_K_ANONYMITY;
+    if (r.kAnonymity !== undefined) {
+      if (typeof r.kAnonymity !== 'number' || !Number.isFinite(r.kAnonymity)) {
+        return { ok: false, error: 'kAnonymity must be a finite number' };
+      }
+      const requested = Math.floor(r.kAnonymity);
+      if (requested < MIN_K_ANONYMITY) {
+        return {
+          ok: false,
+          error: `kAnonymity must be >= ${MIN_K_ANONYMITY} (re-identification safety)`,
+        };
+      }
+      if (requested > 100) {
+        return { ok: false, error: 'kAnonymity must be <= 100' };
+      }
+      kAnonymity = requested;
+    }
+    return { ok: true, action, saltVersion: r.saltVersion, kAnonymity };
   }
 
   if (action === 'commit') {
@@ -180,7 +201,9 @@ export default async (req: Request, context: Context) => {
 
   // aggregate
   const commitments = await store.forSaltVersion(v.saltVersion);
-  const report = aggregateCrossTenantCommitments(commitments);
+  const report = aggregateCrossTenantCommitments(commitments, {
+    kAnonymity: v.kAnonymity,
+  });
   return jsonResponse({ ok: true, report });
 };
 

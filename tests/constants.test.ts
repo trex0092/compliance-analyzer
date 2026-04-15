@@ -228,6 +228,83 @@ describe('Regulatory Constants Version', () => {
   });
 });
 
+describe('Cabinet Res 156/2025 PF deep-dive constants', () => {
+  it('exposes annual full re-baseline cadence', async () => {
+    const m = await import('../src/domain/constants');
+    expect(m.PF_RISK_ASSESSMENT_REBASELINE_MONTHS).toBe(12);
+  });
+
+  it('exposes mid-cycle review cadence', async () => {
+    const m = await import('../src/domain/constants');
+    expect(m.PF_RISK_REVIEW_MONTHS).toBe(6);
+  });
+
+  it('escalation score is in [0, 1]', async () => {
+    const m = await import('../src/domain/constants');
+    expect(m.PF_RISK_ESCALATION_SCORE).toBeGreaterThan(0);
+    expect(m.PF_RISK_ESCALATION_SCORE).toBeLessThanOrEqual(1);
+  });
+
+  it('CO review deadline is in business days', async () => {
+    const m = await import('../src/domain/constants');
+    expect(m.PF_REVIEW_DEADLINE_BUSINESS_DAYS).toBeGreaterThan(0);
+    expect(m.PF_REVIEW_DEADLINE_BUSINESS_DAYS).toBeLessThanOrEqual(15);
+  });
+
+  it('strategic-goods declaration deadline is short and non-zero', async () => {
+    const m = await import('../src/domain/constants');
+    expect(m.STRATEGIC_GOODS_DECLARATION_BUSINESS_DAYS).toBeGreaterThan(0);
+    expect(m.STRATEGIC_GOODS_DECLARATION_BUSINESS_DAYS).toBeLessThanOrEqual(5);
+  });
+
+  it('PF pause-and-report uses CLOCK hours, not business days', async () => {
+    const m = await import('../src/domain/constants');
+    expect(m.PF_PAUSE_REPORT_CLOCK_HOURS).toBe(24);
+  });
+
+  it('lists every UNSC + EOCN designation list in the PF screening loop', async () => {
+    const m = await import('../src/domain/constants');
+    expect(m.PF_DESIGNATION_LISTS).toContain('UNSC-1718');
+    expect(m.PF_DESIGNATION_LISTS).toContain('UNSC-2231');
+    expect(m.PF_DESIGNATION_LISTS).toContain('UNSC-1540');
+    expect(m.PF_DESIGNATION_LISTS).toContain('EOCN-PF');
+  });
+
+  it('end-use red flags is a non-empty list of strings', async () => {
+    const m = await import('../src/domain/constants');
+    expect(Array.isArray(m.PF_END_USE_RED_FLAGS)).toBe(true);
+    expect(m.PF_END_USE_RED_FLAGS.length).toBeGreaterThan(0);
+    for (const f of m.PF_END_USE_RED_FLAGS) {
+      expect(typeof f).toBe('string');
+      expect(f.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('end-use flag weight is bounded so a maximally-flagged case meets escalation', async () => {
+    const m = await import('../src/domain/constants');
+    expect(m.PF_END_USE_FLAG_WEIGHT).toBeGreaterThan(0);
+    expect(m.PF_END_USE_FLAG_WEIGHT).toBeLessThanOrEqual(1);
+    // Sanity: a few flags at the per-flag weight should be enough to
+    // reach the escalation floor.
+    expect(m.PF_END_USE_FLAG_WEIGHT * 5).toBeGreaterThanOrEqual(
+      m.PF_RISK_ESCALATION_SCORE,
+    );
+  });
+
+  it('annual training hours is a positive integer', async () => {
+    const m = await import('../src/domain/constants');
+    expect(m.PF_ANNUAL_TRAINING_HOURS).toBeGreaterThan(0);
+    expect(Number.isInteger(m.PF_ANNUAL_TRAINING_HOURS)).toBe(true);
+  });
+
+  it('PF risk assessment max age in days exceeds the rebaseline cadence', async () => {
+    const m = await import('../src/domain/constants');
+    expect(m.PF_RISK_ASSESSMENT_MAX_AGE_DAYS).toBeGreaterThan(
+      m.PF_RISK_ASSESSMENT_REBASELINE_MONTHS * 30,
+    );
+  });
+});
+
 describe('Supply Chain Risk Points', () => {
   it('maxScore is 100', () => {
     expect(SUPPLY_CHAIN_RISK_POINTS.maxScore).toBe(100);

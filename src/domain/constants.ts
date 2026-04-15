@@ -258,9 +258,122 @@ export const DUAL_USE_KEYWORDS = [
   'vanadium',
 ] as const;
 
+// ─── Cabinet Res 156/2025 — PF & Dual-Use Controls (deep-dive) ──────────────
+//
+// Cabinet Resolution 156/2025 supplements FDL No.10/2025 Art.35 with explicit
+// proliferation-financing (PF) controls covering: PF risk assessment cycle,
+// strategic-goods screening obligations, end-user/end-use scrutiny, and
+// pause-and-report duties for ambiguous shipments to high-risk jurisdictions.
+//
+// These constants encode the deadlines, score floors, and review cadences
+// that the resolution makes operational. They are imported by:
+//   - src/services/pfRiskAssessment.ts (annual + event-driven cycles)
+//   - src/services/strategicGoodsScreening.ts (keyword + HS-code matching)
+//   - src/services/multiModelScreening.ts (PF list inclusion)
+//
+// Regulatory basis:
+//   Cabinet Res 156/2025 (UAE PF & Dual-Use Controls)
+//   FDL No.10/2025 Art.35 (TFS — sanctions umbrella)
+//   UNSC Res 1540 (international PF framework)
+//   UNSC Res 1718 / 2231 (DPRK + Iran sanctions)
+//   FATF Rec 7 (PF-specific TFS)
+
+/** PF risk assessment full re-baseline cadence — months. */
+export const PF_RISK_ASSESSMENT_REBASELINE_MONTHS = 12;
+
+/**
+ * PF risk assessment review cadence — months. The lighter mid-cycle
+ * review that happens between full re-baselines (Cabinet Res 156/2025
+ * Art.7).
+ */
+export const PF_RISK_REVIEW_MONTHS = 6;
+
+/**
+ * Score floor on the PF risk register that triggers a mandatory
+ * Compliance Officer escalation. Below this score the case stays in
+ * routine monitoring; at or above it the CO must review and document
+ * a decision within PF_REVIEW_DEADLINE_BUSINESS_DAYS.
+ */
+export const PF_RISK_ESCALATION_SCORE = 0.65;
+
+/**
+ * Deadline (business days) for CO review of a flagged PF case. Aligns
+ * with the general internal review cadence under Cabinet Res 134/2025
+ * Art.19 but is set explicitly here so PF-specific reporting paths
+ * cannot drift from the broader compliance schedule.
+ */
+export const PF_REVIEW_DEADLINE_BUSINESS_DAYS = 5;
+
+/**
+ * Strategic-goods declaration deadline — business days from the date
+ * a dual-use keyword match is confirmed to the date the declaration
+ * must be filed with the Ministry of Economy + the Federal Authority
+ * for Nuclear Regulation (FANR) where applicable.
+ */
+export const STRATEGIC_GOODS_DECLARATION_BUSINESS_DAYS = 3;
+
+/**
+ * Pause-and-report duration for ambiguous PF shipments. When a case
+ * matches one or more dual-use keywords AND a high-risk jurisdiction
+ * but does not yet rise to confirmed PF, the operator MUST pause the
+ * transaction for this many clock hours while screening completes.
+ * Cabinet Res 156/2025 Art.9.
+ */
+export const PF_PAUSE_REPORT_CLOCK_HOURS = 24;
+
+/**
+ * UNSC PF designation lists that the screening pipeline MUST cover.
+ * Used by multiModelScreening.ts to assert no list is silently
+ * dropped from the screening loop.
+ */
+export const PF_DESIGNATION_LISTS = [
+  'UNSC-1718',  // DPRK
+  'UNSC-2231',  // Iran JCPOA / E3+3
+  'UNSC-1540',  // International PF framework
+  'EOCN-PF',    // UAE Executive Office for Control & Non-Proliferation PF list
+] as const;
+
+/**
+ * End-use red flags — keywords whose appearance in a customer's stated
+ * end-use narrative escalates the PF risk score by EU_END_USE_FLAG_WEIGHT.
+ * Cabinet Res 156/2025 Art.10 (end-user / end-use scrutiny).
+ */
+export const PF_END_USE_RED_FLAGS = [
+  'unspecified end-use',
+  'reseller — final destination unknown',
+  'transit only',
+  'free zone re-export',
+  'broker on behalf of undisclosed buyer',
+  'cash purchase, no delivery address',
+  'evasive about destination',
+  'requested non-standard documentation',
+] as const;
+
+/**
+ * Per-flag weight added to the PF risk score for each end-use red
+ * flag triggered. Capped at 1.0 in the scorer so a maximally-flagged
+ * case lands cleanly on PF_RISK_ESCALATION_SCORE without over-firing.
+ */
+export const PF_END_USE_FLAG_WEIGHT = 0.15;
+
+/**
+ * Annual PF training requirement for all customer-facing staff —
+ * minimum hours per calendar year. Cabinet Res 156/2025 Art.13.
+ */
+export const PF_ANNUAL_TRAINING_HOURS = 4;
+
+/**
+ * Maximum age (calendar days) of an "active" PF risk assessment
+ * before it is considered stale and a re-baseline is forced. Aligns
+ * with the rebase cadence above but is enforced as a calendar
+ * deadline so a missed business-day window cannot mask an overdue
+ * assessment.
+ */
+export const PF_RISK_ASSESSMENT_MAX_AGE_DAYS = 400;
+
 // ─── Version ────────────────────────────────────────────────────────────────
 
 /** Last regulatory update date — update when any constant changes */
-export const REGULATORY_CONSTANTS_VERSION = '2026-04-08';
+export const REGULATORY_CONSTANTS_VERSION = '2026-04-15';
 export const REGULATORY_CONSTANTS_NOTES =
-  'Updated: record retention 5yr→10yr (MoE DPMS Guidance), STR filing to "without delay" (FIU), asset freeze to immediate (EOCN TFS Guidance July 2025). FDL No.10/2025, Cabinet Res 134/2025, 74/2020, 156/2025, 71/2024, 109/2023.';
+  'Updated: record retention 5yr→10yr (MoE DPMS Guidance), STR filing to "without delay" (FIU), asset freeze to immediate (EOCN TFS Guidance July 2025), Cabinet Res 156/2025 PF deep-dive constants (review cadence, escalation score, strategic-goods declaration deadline, pause-and-report duration, designation lists, end-use red flags, annual training hours). FDL No.10/2025, Cabinet Res 134/2025, 74/2020, 156/2025, 71/2024, 109/2023.';

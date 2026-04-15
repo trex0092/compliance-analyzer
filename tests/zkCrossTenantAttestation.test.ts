@@ -95,7 +95,26 @@ describe('aggregateCrossTenantCommitments', () => {
     expect(r.collisions).toHaveLength(0);
   });
 
-  it('detects a cross-tenant collision', () => {
+  it('detects a 2-tenant collision when k=2 is explicitly requested', () => {
+    const a = commitCrossTenantObservation(obs(), {
+      tenantId: 'tenant-a',
+      saltVersion,
+      sharedSalt,
+    });
+    const b = commitCrossTenantObservation(obs(), {
+      tenantId: 'tenant-b',
+      saltVersion,
+      sharedSalt,
+    });
+    const r = aggregateCrossTenantCommitments([a, b], { kAnonymity: 2 });
+    expect(r.collisions).toHaveLength(1);
+    expect(r.collisions[0]!.tenantIds).toEqual(['tenant-a', 'tenant-b']);
+    expect(r.collisions[0]!.tenantCount).toBe(2);
+    expect(r.kAnonymity).toBe(2);
+    expect(r.suppressedBelowK).toBe(0);
+  });
+
+  it('suppresses 2-tenant collisions at default k=3 (re-identification safety)', () => {
     const a = commitCrossTenantObservation(obs(), {
       tenantId: 'tenant-a',
       saltVersion,
@@ -107,8 +126,51 @@ describe('aggregateCrossTenantCommitments', () => {
       sharedSalt,
     });
     const r = aggregateCrossTenantCommitments([a, b]);
+    // Default k=3 means a 2-tenant overlap is below threshold and
+    // is reported only as a suppressed-bucket count, never with
+    // tenant identities.
+    expect(r.collisions).toHaveLength(0);
+    expect(r.suppressedBelowK).toBe(1);
+    expect(r.kAnonymity).toBe(3);
+  });
+
+  it('reveals a 3-tenant collision at default k=3', () => {
+    const a = commitCrossTenantObservation(obs(), {
+      tenantId: 'tenant-a',
+      saltVersion,
+      sharedSalt,
+    });
+    const b = commitCrossTenantObservation(obs(), {
+      tenantId: 'tenant-b',
+      saltVersion,
+      sharedSalt,
+    });
+    const c = commitCrossTenantObservation(obs(), {
+      tenantId: 'tenant-c',
+      saltVersion,
+      sharedSalt,
+    });
+    const r = aggregateCrossTenantCommitments([a, b, c]);
     expect(r.collisions).toHaveLength(1);
-    expect(r.collisions[0]!.tenantIds).toEqual(['tenant-a', 'tenant-b']);
+    expect(r.collisions[0]!.tenantCount).toBe(3);
+    expect(r.suppressedBelowK).toBe(0);
+  });
+
+  it('clamps requested k below the safety floor up to MIN_K_ANONYMITY (=2)', () => {
+    const a = commitCrossTenantObservation(obs(), {
+      tenantId: 'tenant-a',
+      saltVersion,
+      sharedSalt,
+    });
+    const b = commitCrossTenantObservation(obs(), {
+      tenantId: 'tenant-b',
+      saltVersion,
+      sharedSalt,
+    });
+    // Caller asks for k=1 — the aggregator silently raises it to 2.
+    const r = aggregateCrossTenantCommitments([a, b], { kAnonymity: 1 });
+    expect(r.kAnonymity).toBe(2);
+    expect(r.collisions).toHaveLength(1);
   });
 
   it('does not flag single-tenant duplicates as cross-tenant', () => {
@@ -122,8 +184,9 @@ describe('aggregateCrossTenantCommitments', () => {
       saltVersion,
       sharedSalt,
     });
-    const r = aggregateCrossTenantCommitments([a, b]);
+    const r = aggregateCrossTenantCommitments([a, b], { kAnonymity: 2 });
     expect(r.collisions).toHaveLength(0);
+    expect(r.suppressedBelowK).toBe(0);
   });
 
   it('carries the regulatory citations', () => {
