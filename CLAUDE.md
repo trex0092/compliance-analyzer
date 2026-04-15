@@ -272,6 +272,7 @@ The following multi-agent frameworks are vendored for reference and integration 
 | Multi-Agent-AI-System | `vendor/multi-agent-ai-system` | LangGraph + LangSmith customer-support workflow — supervisor + specialist sub-agents + short/long-term memory + human-in-the-loop + full tracing | Reference for the four-eyes approval + MLRO override patterns: demonstrates explicit state-management, LangSmith-style execution tracing, and human-gated handoffs that directly map to our `src/agents/orchestration/` engine and the Phase 5 AI Governance agent's self-audit pattern. |
 | oca-reporting-engine | `vendor/oca-reporting-engine` | 32 Odoo community addons for advanced reporting (report_xlsx, report_py3o, bi_sql_editor, report_csv, report_qweb_*, base_comment_template, pdf_xml_attachment, report_layout_config) | Reference for multi-format export pipelines (XLSX, ODT/DOCX via py3o, CSV), template-driven document generation (QWeb + base_comment_template Mako), BI layer abstraction (bi_sql_editor materialised/normal SQL views), scheduled report execution, and PDF post-processing (watermarks, covers, encryption). Patterns inform `xlsxReportExporter.ts`, `reportTemplateEngine.ts`, and `scheduledComplianceReports.ts`. |
 | claude-token-efficient | `vendor/claude-token-efficient` | Minimal CLAUDE.md rule sets that cut Claude's output verbosity (universal + coding/agents/analysis/benchmark profiles + three versioned configs J-v5/K-v6/M-v8). Independent benchmark: -17.4% cost vs C-structured baseline on coding challenges. | Source of truth for the "Token-Efficient Output Rules" section below. Profiles inform future per-skill output styles (e.g. `/kpi-report` can adopt the analysis profile, `/agent-orchestrate` the agents profile). Do NOT copy its `.claude/settings.json` PreCompact hook — it uses `--no-verify` which §9 forbids. |
+| SwiftGuide | `vendor/SwiftGuide` | Curated index of Swift/iOS featured projects + weekly digests (ipader/SwiftGuide, markdown-heavy). Not code to integrate — a reading list. | Off-scope for the JS/TS compliance-analyzer core. Kept as a reference library only. If we ever ship a native iOS MLRO companion app or a Swift-based DPMS ingestion tool (neither currently planned), this is where to start looking for vetted libraries. Until then, do not read it in normal sessions — it is a context budget sink per §7. |
 
 ## Token-Efficient Output Rules
 
@@ -291,6 +292,7 @@ Source: `vendor/claude-token-efficient` (drona23/claude-token-efficient, MIT).
 - Keep solutions simple and direct. No speculative abstractions. No "you might also want…".
 - State the bug. Show the fix. Stop.
 - If a cause is unclear: say so. Do not guess.
+- When reverting a workaround, keep a stripped-down diagnostic log so the underlying condition stays observable. A silent `null` is worse than a logged one. (Source: claude bot review on thedotmack/claude-mem#1850 — applies to all revert PRs on this project.)
 - User instructions always override these rules.
 
 ### Formatting

@@ -133,3 +133,6 @@
 [submodule "vendor/claude-token-efficient"]
 	path = vendor/claude-token-efficient
 	url = https://github.com/drona23/claude-token-efficient.git
+[submodule "vendor/SwiftGuide"]
+	path = vendor/SwiftGuide
+	url = https://github.com/ipader/SwiftGuide.git
