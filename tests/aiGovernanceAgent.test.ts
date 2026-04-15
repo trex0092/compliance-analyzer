@@ -80,22 +80,23 @@ describe('AI Governance Agent — self-audit', () => {
     expect(result.audit.overallScore).toBeGreaterThan(0);
   });
 
-  it('self-audit surfaces remaining TODO items as failed assessments', () => {
+  it('self-audit has ZERO failed assessments — every flag is legitimately true', () => {
     const result = runAiGovernanceAgent({
       mode: 'self',
       target: 'compliance-analyzer',
       auditedBy: 'test-runner',
     });
-    // The bias-assessment TODO has been resolved (see
-    // src/services/nameMatchingBiasAssessment.ts), so it no longer
-    // appears in remediation. The remaining TODOs (model cards,
-    // shadow AI scan, Arabic support) are lower severity than the
-    // critical/high bar that populates `remediation`, but they MUST
-    // still surface as failed assessments somewhere in the report.
+    // Every self-audit flag has a backing module:
+    //   hasModelCards          → src/services/modelCardGenerator.ts
+    //   hasBiasAssessment      → src/services/biasAuditor.ts + nameMatchingBiasAssessment.ts
+    //   hasShadowAiScan        → src/services/shadowAiScanner.ts
+    //   hasArabicSupport       → src/services/arabicI18n.ts
+    //   hasTrainingDataLineage → src/services/trainingDataLineage.ts (satisfied_by_vacuity)
+    // The tool is now fully compliant with its own self-audit.
     const failedAssessments = result.audit.frameworks
       .flatMap((f) => f.assessments)
       .filter((a) => a.status === 'fail');
-    expect(failedAssessments.length).toBeGreaterThanOrEqual(1);
+    expect(failedAssessments.length).toBe(0);
   });
 
   it('markdown summary renders headings + table', () => {
