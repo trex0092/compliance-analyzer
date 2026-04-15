@@ -134,23 +134,34 @@ function makeAsanaDispatcher(accessToken: string): AsanaProvisionDispatcher {
       const match = existing.find((f) => f.name === field.name);
       if (match) return { fieldGid: match.gid, created: false };
 
+      // Build the data payload — the shape depends on the field type.
+      // Asana rejects unrecognised colors (e.g. `light-gray`) with 403,
+      // and rejects number fields without `precision` with 400 — so we
+      // omit color entirely (Asana picks a default) and always pass
+      // precision for number fields.
+      const data: Record<string, unknown> = {
+        workspace: workspaceGid,
+        name: field.name,
+        resource_subtype: mapFieldType(field),
+      };
+      if (field.type === 'enum') {
+        data.enum_options = (field.enumValues ?? []).map((v) => ({
+          name: v,
+          // Use 'cool-gray' — the only neutral gray Asana actually
+          // accepts. Omitting color entirely also works but the API
+          // is undocumented on what it picks; cool-gray is explicit.
+          color: 'cool-gray',
+        }));
+      } else if (field.type === 'number') {
+        // Asana requires precision (decimal places) on number fields.
+        // 2 covers Confidence (0.00..1.00) and Power Score (0.00..100.00)
+        // and any other 2-decimal metric we currently use.
+        data.precision = 2;
+      }
+
       const created = await asanaRequest<{ gid: string }>('/custom_fields', {
         method: 'POST',
-        body: JSON.stringify({
-          data: {
-            workspace: workspaceGid,
-            name: field.name,
-            resource_subtype: mapFieldType(field),
-            ...(field.type === 'enum'
-              ? {
-                  enum_options: (field.enumValues ?? []).map((v) => ({
-                    name: v,
-                    color: 'light-gray',
-                  })),
-                }
-              : {}),
-          },
-        }),
+        body: JSON.stringify({ data }),
       });
       return { fieldGid: created.gid, created: true };
     },
@@ -272,8 +283,15 @@ export default async (req: Request, context: Context): Promise<Response> => {
 
   const accessToken = process.env.ASANA_ACCESS_TOKEN;
   const workspaceGid = process.env.ASANA_WORKSPACE_GID;
-  const webhookTarget =
-    (process.env.HAWKEYE_ALLOWED_ORIGIN ?? '') + '/api/asana-webhook';
+  // The receiver function lives at /api/asana/webhook (see
+  // netlify/functions/asana-webhook.mts) and expects ?workspaceGid=<gid>
+  // as a query param so it can look up the right webhook secret per
+  // workspace. The previous /api/asana-webhook URL was a 404 →
+  // Asana's handshake POST got 404 → registration failed.
+  const origin = (process.env.HAWKEYE_ALLOWED_ORIGIN ?? '').replace(/\/+$/, '');
+  const webhookTarget = workspaceGid
+    ? `${origin}/api/asana/webhook?workspaceGid=${encodeURIComponent(workspaceGid)}`
+    : `${origin}/api/asana/webhook`;
 
   if (!accessToken || accessToken.length < 16) {
     return jsonResponse(
