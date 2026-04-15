@@ -31,6 +31,28 @@ const ENV_PATH = resolve(__dirname, '..', '.env');
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
+/**
+ * Defensive URL normalizer — mirrors src/utils/normalizeBrainUrl.ts.
+ * Inlined here because this file is plain JS (.mjs) and cannot
+ * import from the TypeScript source tree at runtime. If you edit
+ * the logic, also edit src/utils/normalizeBrainUrl.ts to keep them
+ * in sync. Covers: trailing slashes, trailing dots, whitespace,
+ * missing scheme, bare-scheme fragments.
+ */
+const CANONICAL_BRAIN_URL = 'https://hawkeye-sterling-v2.netlify.app';
+function normalizeBrainUrl(raw) {
+  if (raw === undefined || raw === null) return CANONICAL_BRAIN_URL;
+  let u = String(raw).trim();
+  if (u.length === 0) return CANONICAL_BRAIN_URL;
+  if (/^https?:?\/?\/?$/i.test(u)) return CANONICAL_BRAIN_URL;
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  while (u.length > 0 && (u.endsWith('/') || u.endsWith('.'))) {
+    u = u.slice(0, -1);
+  }
+  if (/^https?:?\/?\/?$/i.test(u)) return CANONICAL_BRAIN_URL;
+  return u;
+}
+
 function hex(bytes) {
   return randomBytes(bytes).toString('hex');
 }
@@ -96,29 +118,90 @@ function writeEnvFile(env) {
     '',
   ];
   const sections = [
-    ['Asana (REQUIRED)', ['ASANA_TOKEN', 'ASANA_WORKSPACE_GID', 'ASANA_PROXY_URL', 'ASANA_DEFAULT_ASSIGNEE_NAME', 'ASANA_SCREENINGS_PROJECT_GID', 'ASANA_AI_GOVERNANCE_PROJECT_GID', 'PUBLIC_BASE_URL']],
-    ['Server-side auth (REQUIRED, auto-generated)', ['HAWKEYE_BRAIN_TOKEN', 'HAWKEYE_APPROVER_KEYS', 'HAWKEYE_SOLO_MLRO_MODE', 'HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS', 'AUTH_SIGNING_SECRET', 'HAWKEYE_BRAIN_URL']],
-    ['Asana custom field GIDs (run `npm run asana:bootstrap:cf -- --apply` to populate)', [
-      'ASANA_CF_RISK_LEVEL_GID','ASANA_CF_RISK_LEVEL_CRITICAL','ASANA_CF_RISK_LEVEL_HIGH','ASANA_CF_RISK_LEVEL_MEDIUM','ASANA_CF_RISK_LEVEL_LOW',
-      'ASANA_CF_VERDICT_GID','ASANA_CF_VERDICT_PASS','ASANA_CF_VERDICT_FLAG','ASANA_CF_VERDICT_ESCALATE','ASANA_CF_VERDICT_FREEZE',
-      'ASANA_CF_CASE_ID_GID',
-      'ASANA_CF_DEADLINE_TYPE_GID','ASANA_CF_DEADLINE_TYPE_STR','ASANA_CF_DEADLINE_TYPE_CTR','ASANA_CF_DEADLINE_TYPE_CNMR','ASANA_CF_DEADLINE_TYPE_DPMSR','ASANA_CF_DEADLINE_TYPE_EOCN',
-      'ASANA_CF_DAYS_REMAINING_GID','ASANA_CF_CONFIDENCE_GID','ASANA_CF_REGULATION_GID',
-      'ASANA_CF_CUSTOMER_NAME_GID','ASANA_CF_JURISDICTION_GID','ASANA_CF_UBO_COUNT_GID',
-      'ASANA_CF_PEP_FLAG_GID','ASANA_CF_PEP_FLAG_CLEAR','ASANA_CF_PEP_FLAG_POTENTIAL','ASANA_CF_PEP_FLAG_MATCH',
-      'ASANA_CF_MANUAL_ACTION_GID','ASANA_CF_MANUAL_ACTION_PENDING','ASANA_CF_MANUAL_ACTION_DONE',
-    ]],
-    ['Cross-project mirror destinations (create projects manually in Asana, paste GIDs here)', [
-      'ASANA_CENTRAL_MLRO_PROJECT_GID',
-      'ASANA_AUDIT_LOG_PROJECT_GID',
-      'ASANA_INSPECTOR_PROJECT_GID',
-      'ASANA_INSPECTOR_TEAM_GID',
-    ]],
-    ['Notification bridge', ['TEAMS_WEBHOOK_URL', 'EMAIL_SERVICE_URL', 'EMAIL_FROM', 'EMAIL_TO_CO']],
-    ['Regulatory feeds (STUB-OK — set to a real URL/key when available)', ['EOCN_FEED_URL', 'GOAML_PORTAL_API_KEY', 'GOAML_PORTAL_BASE_URL']],
+    [
+      'Asana (REQUIRED)',
+      [
+        'ASANA_TOKEN',
+        'ASANA_WORKSPACE_GID',
+        'ASANA_PROXY_URL',
+        'ASANA_DEFAULT_ASSIGNEE_NAME',
+        'ASANA_SCREENINGS_PROJECT_GID',
+        'ASANA_AI_GOVERNANCE_PROJECT_GID',
+        'PUBLIC_BASE_URL',
+      ],
+    ],
+    [
+      'Server-side auth (REQUIRED, auto-generated)',
+      [
+        'HAWKEYE_BRAIN_TOKEN',
+        'HAWKEYE_APPROVER_KEYS',
+        'HAWKEYE_SOLO_MLRO_MODE',
+        'HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS',
+        'AUTH_SIGNING_SECRET',
+        'HAWKEYE_BRAIN_URL',
+      ],
+    ],
+    [
+      'Asana custom field GIDs (run `npm run asana:bootstrap:cf -- --apply` to populate)',
+      [
+        'ASANA_CF_RISK_LEVEL_GID',
+        'ASANA_CF_RISK_LEVEL_CRITICAL',
+        'ASANA_CF_RISK_LEVEL_HIGH',
+        'ASANA_CF_RISK_LEVEL_MEDIUM',
+        'ASANA_CF_RISK_LEVEL_LOW',
+        'ASANA_CF_VERDICT_GID',
+        'ASANA_CF_VERDICT_PASS',
+        'ASANA_CF_VERDICT_FLAG',
+        'ASANA_CF_VERDICT_ESCALATE',
+        'ASANA_CF_VERDICT_FREEZE',
+        'ASANA_CF_CASE_ID_GID',
+        'ASANA_CF_DEADLINE_TYPE_GID',
+        'ASANA_CF_DEADLINE_TYPE_STR',
+        'ASANA_CF_DEADLINE_TYPE_CTR',
+        'ASANA_CF_DEADLINE_TYPE_CNMR',
+        'ASANA_CF_DEADLINE_TYPE_DPMSR',
+        'ASANA_CF_DEADLINE_TYPE_EOCN',
+        'ASANA_CF_DAYS_REMAINING_GID',
+        'ASANA_CF_CONFIDENCE_GID',
+        'ASANA_CF_REGULATION_GID',
+        'ASANA_CF_CUSTOMER_NAME_GID',
+        'ASANA_CF_JURISDICTION_GID',
+        'ASANA_CF_UBO_COUNT_GID',
+        'ASANA_CF_PEP_FLAG_GID',
+        'ASANA_CF_PEP_FLAG_CLEAR',
+        'ASANA_CF_PEP_FLAG_POTENTIAL',
+        'ASANA_CF_PEP_FLAG_MATCH',
+        'ASANA_CF_MANUAL_ACTION_GID',
+        'ASANA_CF_MANUAL_ACTION_PENDING',
+        'ASANA_CF_MANUAL_ACTION_DONE',
+      ],
+    ],
+    [
+      'Cross-project mirror destinations (create projects manually in Asana, paste GIDs here)',
+      [
+        'ASANA_CENTRAL_MLRO_PROJECT_GID',
+        'ASANA_AUDIT_LOG_PROJECT_GID',
+        'ASANA_INSPECTOR_PROJECT_GID',
+        'ASANA_INSPECTOR_TEAM_GID',
+      ],
+    ],
+    [
+      'Notification bridge',
+      ['TEAMS_WEBHOOK_URL', 'EMAIL_SERVICE_URL', 'EMAIL_FROM', 'EMAIL_TO_CO'],
+    ],
+    [
+      'Regulatory feeds (STUB-OK — set to a real URL/key when available)',
+      ['EOCN_FEED_URL', 'GOAML_PORTAL_API_KEY', 'GOAML_PORTAL_BASE_URL'],
+    ],
     ['Banking rail (STUB-OK)', ['BANKING_FREEZE_API_KEY', 'BANKING_FREEZE_BASE_URL']],
-    ['Spot price feeds (STUB-OK)', ['REUTERS_REFINITIV_API_KEY', 'REUTERS_REFINITIV_BASE_URL', 'METAL_PRICE_API_KEY']],
-    ['LLM providers (optional)', ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_AI_API_KEY', 'OPENROUTER_API_KEY']],
+    [
+      'Spot price feeds (STUB-OK)',
+      ['REUTERS_REFINITIV_API_KEY', 'REUTERS_REFINITIV_BASE_URL', 'METAL_PRICE_API_KEY'],
+    ],
+    [
+      'LLM providers (optional)',
+      ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_AI_API_KEY', 'OPENROUTER_API_KEY'],
+    ],
   ];
   for (const [title, keys] of sections) {
     lines.push(`# ─── ${title} ───`);
@@ -193,7 +276,7 @@ async function main() {
       env.HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS = env.HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS || '24';
       console.log('✓ Generated HAWKEYE_APPROVER_KEYS (1 solo MLRO + 24h cooldown)');
       console.log('  HAWKEYE_SOLO_MLRO_MODE=true — Cabinet Res 134/2025 Art.19 fresh-eyes');
-      console.log('  enforced via 24h delay between the same MLRO\'s two votes.');
+      console.log("  enforced via 24h delay between the same MLRO's two votes.");
     } else {
       // Standard dual-MLRO setup: two distinct approvers.
       const k1 = hex(16);
@@ -203,11 +286,15 @@ async function main() {
       console.log('  Pass --solo-mlro to setup if you operate without a deputy.');
     }
   }
-  if (!env.HAWKEYE_BRAIN_URL) {
-    env.HAWKEYE_BRAIN_URL = 'https://hawkeye-sterling-v2.netlify.app';
-  }
+  // Normalize whatever the operator pasted so trailing slashes,
+  // dots, whitespace, angle brackets, and bare hosts don't break
+  // the CORS allowlist or webhook target comparison. Unset values
+  // collapse to the canonical URL automatically.
+  env.HAWKEYE_BRAIN_URL = normalizeBrainUrl(env.HAWKEYE_BRAIN_URL);
   if (!env.PUBLIC_BASE_URL) {
     env.PUBLIC_BASE_URL = env.HAWKEYE_BRAIN_URL;
+  } else {
+    env.PUBLIC_BASE_URL = normalizeBrainUrl(env.PUBLIC_BASE_URL);
   }
   if (!env.ASANA_DEFAULT_ASSIGNEE_NAME) {
     env.ASANA_DEFAULT_ASSIGNEE_NAME = 'Luisa Fernanda';
@@ -260,14 +347,18 @@ async function main() {
     console.log('  Stubbed integrations (set when credentials arrive)');
     console.log('───────────────────────────────────────────────────────────');
     console.log('');
-    const stubAll = await confirm(rl,
+    const stubAll = await confirm(
+      rl,
       'Stub every paid integration (EOCN/goAML/banking/Reuters/Teams)?',
       true
     );
     if (stubAll) {
       for (const key of [
-        'EOCN_FEED_URL', 'GOAML_PORTAL_API_KEY', 'BANKING_FREEZE_API_KEY',
-        'REUTERS_REFINITIV_API_KEY', 'TEAMS_WEBHOOK_URL',
+        'EOCN_FEED_URL',
+        'GOAML_PORTAL_API_KEY',
+        'BANKING_FREEZE_API_KEY',
+        'REUTERS_REFINITIV_API_KEY',
+        'TEAMS_WEBHOOK_URL',
       ]) {
         if (!env[key]) env[key] = 'STUB';
       }
@@ -340,7 +431,9 @@ async function main() {
   console.log('');
   console.log('STEP 6 — Smoke-test the autopilot after the redeploy:');
   console.log('');
-  console.log('   curl https://hawkeye-sterling-v2.netlify.app/.netlify/functions/asana-super-brain-autopilot-cron');
+  console.log(
+    '   curl https://hawkeye-sterling-v2.netlify.app/.netlify/functions/asana-super-brain-autopilot-cron'
+  );
   console.log('');
   console.log('Expected: {"ok":true,"dispatched":N,...}');
   console.log('');

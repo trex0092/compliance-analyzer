@@ -27,6 +27,8 @@
  *   EU AI Act Art.15         (robustness — fail fast, not in prod)
  */
 
+import { containsLegacyBrainHost } from '../utils/normalizeBrainUrl';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -344,6 +346,13 @@ export function validateEnv(
       continue;
     }
     const err = spec.validate(raw);
+    // Legacy-URL drift detection. Any env var value referencing the
+    // retired compliance-analyzer.netlify.app host is treated as
+    // invalid so the deploy preflight fails loudly instead of
+    // silently routing traffic to a dead/frozen site. Only fires on
+    // URL-shaped vars to avoid false positives on unrelated values.
+    const legacyDrift =
+      !err && /url|origin|proxy|base_url/i.test(spec.name) && containsLegacyBrainHost(raw);
     if (err) {
       invalidVars.push(spec.name);
       statuses.push({
@@ -353,6 +362,17 @@ export function validateEnv(
         state: 'invalid',
         valuePreview: previewValue(spec.name, raw),
         errorMessage: err,
+      });
+    } else if (legacyDrift) {
+      invalidVars.push(spec.name);
+      statuses.push({
+        name: spec.name,
+        category: spec.category,
+        requirement: spec.requirement,
+        state: 'invalid',
+        valuePreview: previewValue(spec.name, raw),
+        errorMessage:
+          'references the retired compliance-analyzer.netlify.app host — update to https://hawkeye-sterling-v2.netlify.app',
       });
     } else {
       statuses.push({

@@ -28,6 +28,8 @@
  *     configuration drift is itself an inspector finding)
  */
 
+import { containsLegacyBrainHost, normalizeBrainUrl } from './normalizeBrainUrl';
+
 export type CheckSeverity = 'blocker' | 'warning' | 'info';
 
 export interface EnvCheckEntry {
@@ -407,8 +409,8 @@ function checkFourEyes(ctx: CheckContext): void {
 // ---- Webhook receiver public URL ----
 
 function checkPublicUrl(ctx: CheckContext): void {
-  const url = ctx.env.PUBLIC_BASE_URL ?? ctx.env.HAWKEYE_BRAIN_URL;
-  if (!url) {
+  const rawUrl = ctx.env.PUBLIC_BASE_URL ?? ctx.env.HAWKEYE_BRAIN_URL;
+  if (!rawUrl) {
     pushWarning(ctx, {
       category: 'Webhooks',
       title: 'PUBLIC_BASE_URL / HAWKEYE_BRAIN_URL unset',
@@ -419,7 +421,11 @@ function checkPublicUrl(ctx: CheckContext): void {
     });
     return;
   }
-  if (!url.startsWith('https://')) {
+  // HTTPS check runs against the RAW value so a typo like
+  // `http://…` is still caught even if normalization would strip
+  // surrounding junk. Normalization is only used for the rest of
+  // the pipeline that needs a canonical URL.
+  if (!rawUrl.trim().toLowerCase().startsWith('https://')) {
     pushBlocker(ctx, {
       category: 'Webhooks',
       title: 'PUBLIC_BASE_URL is not HTTPS',
@@ -430,6 +436,25 @@ function checkPublicUrl(ctx: CheckContext): void {
     });
     return;
   }
+  // Legacy-URL drift detection. If the operator pasted the retired
+  // compliance-analyzer.netlify.app URL into the env var, flag it as
+  // a blocker — the scheduled workflows would silently call a dead
+  // or frozen site instead of the canonical hawkeye-sterling-v2.
+  if (containsLegacyBrainHost(rawUrl)) {
+    pushBlocker(ctx, {
+      category: 'Webhooks',
+      title: 'PUBLIC_BASE_URL still points at the retired legacy site',
+      envKey: 'PUBLIC_BASE_URL',
+      detail:
+        'The env var references compliance-analyzer.netlify.app which has been retired. Every scheduled workflow and the brain-to-Asana webhook flow will call a dead URL until this is updated.',
+      fix: 'Set PUBLIC_BASE_URL=https://hawkeye-sterling-v2.netlify.app in the Netlify dashboard and trigger a redeploy.',
+    });
+    return;
+  }
+  // Normalize downstream — strips trailing slashes/dots/whitespace,
+  // prepends https:// for a bare host, and returns the canonical
+  // default for unsalvageable input.
+  const url = normalizeBrainUrl(rawUrl);
   pushInfo(ctx, {
     category: 'Webhooks',
     title: 'Public base URL configured',
