@@ -1,0 +1,161 @@
+{
+  "info": {
+    "name": "HAWKEYE STERLING Brain API",
+    "description": "Full production endpoint set for the HAWKEYE STERLING compliance brain. Every request uses the {{HAWKEYE_BRAIN_TOKEN}} environment variable for the Bearer header. Import this collection + set the `baseUrl` and `HAWKEYE_BRAIN_TOKEN` environment variables before running.\n\nRegulatory basis:\n- FDL No.10/2025 Art.20-22, Art.24, Art.29\n- Cabinet Res 134/2025 Art.12-14, Art.19\n- Cabinet Res 74/2020 Art.4-7\n- FATF Rec 1/6/10/11/20/22/23\n- NIST AI RMF 1.0\n- EU AI Act Art.13/14/15\n- EU GDPR Art.25",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://compliance-analyzer.netlify.app", "type": "string" },
+    { "key": "HAWKEYE_BRAIN_TOKEN", "value": "hk-brain-<replace-me>", "type": "string" },
+    { "key": "tenantId", "value": "tenant-a", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{HAWKEYE_BRAIN_TOKEN}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Brain",
+      "item": [
+        {
+          "name": "Analyze — full brain pipeline",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"topic\": \"DPMS gold purchase 65K AED cash\",\n  \"entity\": {\n    \"id\": \"ent-1\",\n    \"name\": \"Customer Inc\",\n    \"features\": {\n      \"priorAlerts90d\": 0,\n      \"txValue30dAED\": 65000,\n      \"nearThresholdCount30d\": 0,\n      \"crossBorderRatio30d\": 0.1,\n      \"isPep\": false,\n      \"highRiskJurisdiction\": false,\n      \"hasAdverseMedia\": false,\n      \"daysSinceOnboarding\": 365,\n      \"sanctionsMatchScore\": 0,\n      \"cashRatio30d\": 0.8\n    }\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/brain/analyze", "host": ["{{baseUrl}}"], "path": ["api", "brain", "analyze"] }
+          }
+        },
+        {
+          "name": "Diagnostics",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/api/brain/diagnostics", "host": ["{{baseUrl}}"], "path": ["api", "brain", "diagnostics"] }
+          }
+        },
+        {
+          "name": "Hydrate tenant memory",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"tenantId\": \"{{tenantId}}\" }" },
+            "url": { "raw": "{{baseUrl}}/api/brain/hydrate", "host": ["{{baseUrl}}"], "path": ["api", "brain", "hydrate"] }
+          }
+        },
+        {
+          "name": "Health (unified)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/api/brain/health", "host": ["{{baseUrl}}"], "path": ["api", "brain", "health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Observability",
+      "item": [
+        {
+          "name": "Telemetry — 14-day aggregate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"tenantId\": \"{{tenantId}}\", \"startIso\": \"2026-04-01\", \"endIso\": \"2026-04-14\" }"
+            },
+            "url": { "raw": "{{baseUrl}}/api/brain/telemetry", "host": ["{{baseUrl}}"], "path": ["api", "brain", "telemetry"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit",
+      "item": [
+        {
+          "name": "Replay historical case",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"tenantId\": \"{{tenantId}}\", \"caseId\": \"case-uuid-1\" }" },
+            "url": { "raw": "{{baseUrl}}/api/brain/replay", "host": ["{{baseUrl}}"], "path": ["api", "brain", "replay"] }
+          }
+        },
+        {
+          "name": "Evidence Bundle (SHA3-512 sealed)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"tenantId\": \"{{tenantId}}\", \"caseId\": \"case-uuid-1\" }" },
+            "url": { "raw": "{{baseUrl}}/api/brain/evidence-bundle", "host": ["{{baseUrl}}"], "path": ["api", "brain", "evidence-bundle"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tier C",
+      "item": [
+        {
+          "name": "Clamp suggestion — list pending",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"action\": \"list\", \"statusFilter\": \"pending_mlro_review\" }" },
+            "url": { "raw": "{{baseUrl}}/api/brain/clamp-suggestion", "host": ["{{baseUrl}}"], "path": ["api", "brain", "clamp-suggestion"] }
+          }
+        },
+        {
+          "name": "Outbound queue — enqueue (linted)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"enqueue\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"recipientRef\": \"cust-1\",\n  \"channel\": \"email\",\n  \"subject\": \"Your invoice\",\n  \"body\": \"Please find your invoice attached.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/brain/outbound-queue", "host": ["{{baseUrl}}"], "path": ["api", "brain", "outbound-queue"] }
+          }
+        },
+        {
+          "name": "Break-glass — request override",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"request\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"caseId\": \"case-1\",\n  \"fromVerdict\": \"freeze\",\n  \"toVerdict\": \"escalate\",\n  \"justification\": \"Manual review established false-positive on legitimate high-value customer.\",\n  \"regulatoryCitation\": \"FDL Art.20\",\n  \"requestedBy\": \"mlro-1\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/brain/break-glass", "host": ["{{baseUrl}}"], "path": ["api", "brain", "break-glass"] }
+          }
+        },
+        {
+          "name": "zk Cross-tenant — commit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"commit\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"saltVersion\": \"v2026Q2\",\n  \"observation\": {\n    \"subjectKey\": \"sha3-of-internal-id\",\n    \"tsDay\": \"2026-04-14\",\n    \"listName\": \"UN\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/brain/zk-cross-tenant", "host": ["{{baseUrl}}"], "path": ["api", "brain", "zk-cross-tenant"] }
+          }
+        },
+        {
+          "name": "zk Cross-tenant — aggregate (k=3)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"action\": \"aggregate\", \"saltVersion\": \"v2026Q2\", \"kAnonymity\": 3 }" },
+            "url": { "raw": "{{baseUrl}}/api/brain/zk-cross-tenant", "host": ["{{baseUrl}}"], "path": ["api", "brain", "zk-cross-tenant"] }
+          }
+        }
+      ]
+    }
+  ]
+}

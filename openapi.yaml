@@ -1,0 +1,472 @@
+openapi: 3.1.0
+info:
+  title: HAWKEYE STERLING Brain API
+  version: "2.0.0"
+  description: |
+    UAE AML/CFT/CPF compliance brain — production endpoints.
+
+    Every endpoint is:
+      - POST-only (plus OPTIONS preflight)
+      - Bearer-authenticated via `HAWKEYE_BRAIN_TOKEN`
+      - Rate-limited per IP (default 100/15min, 10/15min for sensitive endpoints)
+      - CORS-restricted to `HAWKEYE_ALLOWED_ORIGIN`
+      - Structured-input-validated with explicit error responses
+
+    Regulatory basis:
+      - FDL No.10/2025 Art.20-22 (CO reasoned decision + audit trail)
+      - FDL No.10/2025 Art.24 (10-year record retention)
+      - FDL No.10/2025 Art.29 (no tipping off)
+      - Cabinet Res 74/2020 Art.4-7 (TFS + 24h freeze + 5 BD CNMR)
+      - Cabinet Res 134/2025 Art.12-14, Art.19 (four-eyes, internal review)
+      - FATF Rec 1/6/10/11/20/22/23
+      - NIST AI RMF 1.0 (GOVERN/MEASURE/MANAGE functions)
+      - EU AI Act Art.13/14/15
+      - EU GDPR Art.25
+  contact:
+    name: HAWKEYE STERLING MLRO
+    url: https://github.com/trex0092/compliance-analyzer
+  license:
+    name: Proprietary
+servers:
+  - url: https://compliance-analyzer.netlify.app
+    description: Production
+  - url: http://localhost:8888
+    description: Local Netlify Dev
+tags:
+  - name: brain
+    description: Core brain decision endpoints
+  - name: observability
+    description: Telemetry, diagnostics, health
+  - name: audit
+    description: Replay, evidence, drift
+  - name: tierC
+    description: Safe-equivalent Tier C ops endpoints
+
+components:
+  securitySchemes:
+    hawkeyeBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: HAWKEYE_BRAIN_TOKEN
+      description: |
+        Every brain endpoint requires an `Authorization: Bearer <token>`
+        header. The token is the value of the `HAWKEYE_BRAIN_TOKEN`
+        environment variable.
+
+  parameters:
+    TenantIdHeader:
+      name: X-Tenant-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 64
+      description: Optional tenant override for multi-tenant deployments.
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Short error code or message
+        reason:
+          type: string
+          description: Human-readable detail
+        retryAfter:
+          type: integer
+          description: (429 only) seconds to wait
+
+    StrFeatures:
+      type: object
+      required:
+        - priorAlerts90d
+        - txValue30dAED
+        - nearThresholdCount30d
+        - crossBorderRatio30d
+        - isPep
+        - highRiskJurisdiction
+        - hasAdverseMedia
+        - daysSinceOnboarding
+        - sanctionsMatchScore
+        - cashRatio30d
+      properties:
+        priorAlerts90d: { type: integer, minimum: 0 }
+        txValue30dAED: { type: number, minimum: 0 }
+        nearThresholdCount30d: { type: integer, minimum: 0 }
+        crossBorderRatio30d: { type: number, minimum: 0, maximum: 1 }
+        isPep: { type: boolean }
+        highRiskJurisdiction: { type: boolean }
+        hasAdverseMedia: { type: boolean }
+        daysSinceOnboarding: { type: integer, minimum: 0 }
+        sanctionsMatchScore: { type: number, minimum: 0, maximum: 1 }
+        cashRatio30d: { type: number, minimum: 0, maximum: 1 }
+
+    AnalyzeRequest:
+      type: object
+      required: [tenantId, topic, entity]
+      properties:
+        tenantId:
+          type: string
+          maxLength: 64
+        topic:
+          type: string
+          maxLength: 200
+          description: Short topic label for the decision (audit context)
+        entity:
+          type: object
+          required: [id, name, features]
+          properties:
+            id: { type: string, maxLength: 128 }
+            name: { type: string, maxLength: 256 }
+            features: { $ref: "#/components/schemas/StrFeatures" }
+            isSanctionsConfirmed:
+              type: boolean
+              description: When true, forces the freeze verdict path
+        sealAttestation:
+          type: boolean
+          default: true
+
+    Verdict:
+      type: string
+      enum: [pass, flag, escalate, freeze]
+
+    AnalyzeResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        decision:
+          type: object
+          properties:
+            id: { type: string }
+            tenantId: { type: string }
+            verdict: { $ref: "#/components/schemas/Verdict" }
+            confidence: { type: number, minimum: 0, maximum: 1 }
+            requiresHumanReview: { type: boolean }
+            recommendedAction: { type: string }
+            auditNarrative: { type: string }
+        powerScore:
+          type: object
+          properties:
+            score: { type: integer, minimum: 0, maximum: 100 }
+            verdict: { type: string, enum: [thin, standard, advanced, weaponized] }
+        conformal:
+          type: object
+          description: Split-conformal prediction interval (EU AI Act Art.15)
+        uncertainty:
+          type: object
+          description: Variance envelope from ensemble perturbation
+        debate:
+          type: object
+          nullable: true
+          description: Adversarial debate report (null for clear-cut cases)
+
+    TelemetryRequest:
+      type: object
+      required: [tenantId, startIso, endIso]
+      properties:
+        tenantId: { type: string, maxLength: 64 }
+        startIso: { type: string, format: date-time }
+        endIso: { type: string, format: date-time }
+
+    TelemetryResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        aggregate:
+          type: object
+
+    ReplayRequest:
+      type: object
+      required: [tenantId, caseId]
+      properties:
+        tenantId: { type: string, maxLength: 64 }
+        caseId: { type: string, maxLength: 256 }
+
+    EvidenceBundleRequest:
+      type: object
+      required: [tenantId, caseId]
+      properties:
+        tenantId: { type: string, maxLength: 64 }
+        caseId: { type: string, maxLength: 256 }
+
+    ClampSuggestionRequest:
+      oneOf:
+        - type: object
+          required: [action, clampKey, currentValue]
+          properties:
+            action: { type: string, enum: [propose] }
+            clampKey: { type: string }
+            currentValue: { type: number }
+            minValue: { type: number }
+            maxValue: { type: number }
+            step: { type: number }
+            regulatory: { type: string }
+            evidence: { type: object }
+        - type: object
+          required: [action, id, status]
+          properties:
+            action: { type: string, enum: [decide] }
+            id: { type: string }
+            status: { type: string, enum: [accepted, rejected] }
+        - type: object
+          required: [action]
+          properties:
+            action: { type: string, enum: [list] }
+            statusFilter: { type: string }
+
+    OutboundQueueRequest:
+      oneOf:
+        - type: object
+          required: [action, tenantId, recipientRef, channel, subject, body]
+          properties:
+            action: { type: string, enum: [enqueue] }
+            tenantId: { type: string }
+            recipientRef: { type: string }
+            channel: { type: string, enum: [email, sms] }
+            subject: { type: string }
+            body: { type: string }
+        - type: object
+          required: [action, tenantId, id]
+          properties:
+            action: { type: string, enum: [release, cancel] }
+            tenantId: { type: string }
+            id: { type: string }
+        - type: object
+          required: [action, tenantId]
+          properties:
+            action: { type: string, enum: [pending] }
+            tenantId: { type: string }
+
+    BreakGlassRequest:
+      oneOf:
+        - type: object
+          required: [action, tenantId, caseId, fromVerdict, toVerdict, justification, regulatoryCitation, requestedBy]
+          properties:
+            action: { type: string, enum: [request] }
+            tenantId: { type: string }
+            caseId: { type: string }
+            fromVerdict: { $ref: "#/components/schemas/Verdict" }
+            toVerdict: { $ref: "#/components/schemas/Verdict" }
+            justification: { type: string, minLength: 40 }
+            regulatoryCitation: { type: string }
+            requestedBy: { type: string }
+        - type: object
+          required: [action, tenantId, id, approverId]
+          properties:
+            action: { type: string, enum: [approve] }
+            tenantId: { type: string }
+            id: { type: string }
+            approverId: { type: string }
+
+    ZkCrossTenantRequest:
+      oneOf:
+        - type: object
+          required: [action, tenantId, saltVersion, observation]
+          properties:
+            action: { type: string, enum: [commit] }
+            tenantId: { type: string }
+            saltVersion: { type: string }
+            observation:
+              type: object
+              required: [subjectKey, tsDay, listName]
+              properties:
+                subjectKey: { type: string }
+                tsDay: { type: string, format: date }
+                listName:
+                  type: string
+                  enum: [UN, OFAC, EU, UK, UAE, EOCN]
+        - type: object
+          required: [action, saltVersion]
+          properties:
+            action: { type: string, enum: [aggregate] }
+            saltVersion: { type: string }
+            kAnonymity:
+              type: integer
+              minimum: 2
+              description: k-anonymity floor (default 3)
+
+    HealthResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        overall:
+          type: string
+          enum: [ok, degraded, broken]
+        summary: { type: string }
+
+security:
+  - hawkeyeBearer: []
+
+paths:
+  /api/brain/analyze:
+    post:
+      tags: [brain]
+      summary: Run the full compliance decision pipeline
+      description: |
+        End-to-end brain dispatch — MegaBrain + 30+ subsystems + advisor
+        escalation + four-eyes gate + Asana dispatch + attestation.
+        Rate-limited at 10/15min per IP (sensitive bucket).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnalyzeRequest" }
+      responses:
+        "200":
+          description: Decision emitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnalyzeResponse" }
+        "400": { description: Input validation failed, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { description: Missing or invalid bearer, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { description: Rate limited, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "451":
+          description: Tipping-off guard blocked the response (FDL Art.29)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "500": { description: Brain failure, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /api/brain/telemetry:
+    post:
+      tags: [observability]
+      summary: Time-series aggregate over a date range
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TelemetryRequest" }
+      responses:
+        "200":
+          description: Aggregate report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TelemetryResponse" }
+        "400": { description: Input validation failed }
+        "401": { description: Unauthorized }
+
+  /api/brain/replay:
+    post:
+      tags: [audit]
+      summary: Re-validate a stored case against the current regulatory baseline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReplayRequest" }
+      responses:
+        "200":
+          description: Replay report
+        "400": { description: Input validation failed }
+        "404": { description: Case not found }
+
+  /api/brain/evidence-bundle:
+    post:
+      tags: [audit]
+      summary: Produce a SHA3-512-sealed audit bundle for a historical case
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EvidenceBundleRequest" }
+      responses:
+        "200": { description: Bundle emitted }
+        "404": { description: Case not found }
+
+  /api/brain/clamp-suggestion:
+    post:
+      tags: [tierC]
+      summary: Tier C clamp-threshold tuning (propose / decide / list)
+      description: |
+        Clamp suggestions NEVER auto-apply. MLRO accepts, then a human
+        opens a PR to src/domain/constants.ts with a regulatory
+        citation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClampSuggestionRequest" }
+      responses:
+        "200": { description: Action accepted }
+        "400": { description: Validation failed }
+
+  /api/brain/outbound-queue:
+    post:
+      tags: [tierC]
+      summary: Tier C tipping-off-safe customer message dispatch
+      description: |
+        Every enqueued message is run through the tipping-off linter.
+        Messages only leave the queue when a CO (not the author)
+        explicitly releases them. FDL Art.29.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OutboundQueueRequest" }
+      responses:
+        "200": { description: Action accepted }
+
+  /api/brain/break-glass:
+    post:
+      tags: [tierC]
+      summary: Tier C two-person approval override of a brain verdict
+      description: |
+        Self-approval is rejected by construction (HTTP 400). The
+        approver must be a different user from the requester. Cabinet
+        Res 134/2025 Art.12-14.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BreakGlassRequest" }
+      responses:
+        "200": { description: Action accepted }
+        "400": { description: Self-approval rejected or validation failed }
+
+  /api/brain/zk-cross-tenant:
+    post:
+      tags: [tierC]
+      summary: Tier C commit-only cross-tenant sanctions collision attestation
+      description: |
+        k-anonymity threshold enforced (default k=3, minimum k=2).
+        Collisions below k are suppressed — only the bucket count is
+        reported. EU GDPR Art.25 / FDL Art.14.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ZkCrossTenantRequest" }
+      responses:
+        "200": { description: Action accepted }
+
+  /api/brain/diagnostics:
+    post:
+      tags: [observability]
+      summary: Point-in-time brain health snapshot
+      responses:
+        "200": { description: Diagnostic report }
+
+  /api/brain/hydrate:
+    post:
+      tags: [observability]
+      summary: Force-hydrate the per-tenant memory cache
+      responses:
+        "200": { description: Hydrate complete }
+
+  /api/brain/correlate:
+    post:
+      tags: [observability]
+      summary: Cross-case pattern correlator (manual trigger)
+      responses:
+        "200": { description: Correlation report }
+
+  /api/brain/health:
+    post:
+      tags: [observability]
+      summary: Unified brain health report (env + dependencies + crons + Tier C)
+      responses:
+        "200":
+          description: Health report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
