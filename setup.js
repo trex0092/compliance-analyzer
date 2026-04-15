@@ -54,7 +54,7 @@
     }
     var lines = [
       'ANTHROPIC_API_KEY=' + (state.anthropic || 'sk-ant-PASTE-YOURS'),
-      'HAWKEYE_BRAIN_TOKEN=hk-' + state.brainToken,
+      'HAWKEYE_BRAIN_TOKEN=' + state.brainToken,
       'HAWKEYE_ALLOWED_ORIGIN=' + (state.siteUrl || 'https://YOUR-SITE.netlify.app'),
       'HAWKEYE_CROSS_TENANT_SALT=v2026Q2-' + state.crossSalt,
       'ASANA_ACCESS_TOKEN=' + (state.asanaToken || '1/PASTE-YOURS'),
@@ -110,7 +110,7 @@
     }
     setStatus('verify-status', 'pending', 'Checking…');
     writeOutput('verify-output', 'Checking ' + state.siteUrl + ' …');
-    var token = 'hk-' + state.brainToken;
+    var token = state.brainToken;
     Promise.all([
       fetch(state.siteUrl + '/api/brain/diagnostics', {
         method: 'POST',
@@ -140,7 +140,7 @@
       return;
     }
     setStatus('cohort-status', 'pending', 'Uploading…');
-    var token = 'hk-' + state.brainToken;
+    var token = state.brainToken;
     fetch(state.siteUrl + '/api/setup/cohort-upload', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -166,7 +166,7 @@
       return;
     }
     setStatus('bootstrap-status', 'pending', 'Provisioning…');
-    var token = 'hk-' + state.brainToken;
+    var token = state.brainToken;
     fetch(state.siteUrl + '/api/setup/asana-bootstrap', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
