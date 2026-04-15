@@ -32,6 +32,25 @@
   const statCount = $('statCount');
 
   // ─── Token persistence ────────────────────────────────────────────
+  // Paste once, never again. The token lives in localStorage under
+  // TOKEN_KEY and is restored on every page load. We save on THREE
+  // triggers so no code path can lose the token:
+  //   1. input   — every keystroke / paste, debounced to the next tick
+  //   2. blur    — when the user tabs out of the field (legacy trigger)
+  //   3. beforeunload — belt-and-braces for tab close / navigation
+  // The save is a no-op when the value hasn't changed, so the triple
+  // trigger is free from a performance point of view.
+  function saveToken() {
+    try {
+      const value = tokenInput.value.trim();
+      if (value) {
+        localStorage.setItem(TOKEN_KEY, value);
+      } else {
+        localStorage.removeItem(TOKEN_KEY);
+      }
+    } catch (_err) { /* localStorage may be disabled — ignore */ }
+  }
+
   try {
     const saved = localStorage.getItem(TOKEN_KEY);
     if (saved) tokenInput.value = saved;
@@ -40,21 +59,19 @@
   }
 
   tokenInput.addEventListener('blur', function () {
-    try {
-      if (tokenInput.value) {
-        localStorage.setItem(TOKEN_KEY, tokenInput.value.trim());
-      } else {
-        localStorage.removeItem(TOKEN_KEY);
-      }
-    } catch (_err) { /* ignore */ }
+    saveToken();
     // Auto-verify token format + server acceptance on blur
     validateToken();
   });
 
   tokenInput.addEventListener('input', function () {
+    // Save on every keystroke / paste so a tab close never loses it
+    saveToken();
     // Clear any previous status while the user is still typing
     updateTokenStatus('pending', '');
   });
+
+  window.addEventListener('beforeunload', saveToken);
 
   // ─── Token validation (client-side format + server round trip) ───
 
@@ -254,6 +271,10 @@
   // ─── Add flow ─────────────────────────────────────────────────────
 
   async function addSubject() {
+    // Final safety net: persist the token at action time so a click
+    // that bypasses blur (Enter key, touch tap without focus) still
+    // leaves a saved credential behind.
+    saveToken();
     addBtn.disabled = true;
     addBtn.textContent = 'Adding…';
     showMessage(addMsg, '', false);

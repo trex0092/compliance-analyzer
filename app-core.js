@@ -768,12 +768,14 @@ function clearAppData() {
 }
 
 // ======= SETUP =======
+// Always persist credentials in localStorage. The opt-in "Remember keys"
+// checkbox was dead UI (no matching element in index.html), so every save
+// silently dropped the real secrets and forced users to re-paste their
+// API keys and HAWKEYE brain token every session. The setup panel already
+// warns that keys are stored only in this browser (see index.html:2216),
+// which is exactly the contract of localStorage — so persist by default.
+// Users who want to clear them can still use clearAppData().
 function persistKeys() {
-  if (!REMEMBER_KEYS) {
-    localStorage.setItem(KEYS_STORAGE, JSON.stringify({ proxyUrl: PROXY_URL, asanaToken: ASANA_TOKEN, aiProvider: AI_PROVIDER, gdriveFolderId: GDRIVE_FOLDER_ID, gdriveClientId: GDRIVE_CLIENT_ID, rememberKeys: false }));
-    return;
-  }
-
   localStorage.setItem(KEYS_STORAGE, JSON.stringify({
     anthropicKey: ANTHROPIC_KEY,
     openaiKey: OPENAI_KEY,
@@ -787,7 +789,7 @@ function persistKeys() {
     hawkeyeBrainToken: HAWKEYE_BRAIN_TOKEN_VALUE,
     gdriveClientId: GDRIVE_CLIENT_ID,
     gdriveFolderId: GDRIVE_FOLDER_ID,
-    rememberKeys: REMEMBER_KEYS
+    rememberKeys: true
   }));
 }
 
@@ -814,7 +816,11 @@ function setRememberKeys(enabled) {
 function hydrateKeys() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEYS_STORAGE) || '{}'); } catch (_) { saved = {}; }
-  REMEMBER_KEYS = saved.rememberKeys === true;
+  // Credentials are always persisted now (see persistKeys() comment).
+  // Keeping REMEMBER_KEYS as a true constant preserves the existing
+  // UI hooks that read it (syncRememberCheckboxes, setRememberKeys)
+  // without forcing a broader rename.
+  REMEMBER_KEYS = true;
   ANTHROPIC_KEY = (saved.anthropicKey || '').trim();
   ASANA_TOKEN = (saved.asanaToken || '').trim();
   SCHEDULE_EMAIL = (saved.scheduleEmail || '').trim();
@@ -892,7 +898,7 @@ function saveSetup() {
   PROXY_URL = normaliseProxyUrl(document.getElementById('proxyUrl')?.value || '');
   GDRIVE_CLIENT_ID = document.getElementById('gdriveClientId')?.value.trim() || '';
   GDRIVE_FOLDER_ID = document.getElementById('gdriveFolderId')?.value.trim() || '';
-  REMEMBER_KEYS = !!document.getElementById('rememberKeys')?.checked;
+  REMEMBER_KEYS = true; // always persist — the opt-in checkbox was dead UI
   if (!ANTHROPIC_KEY && !PROXY_URL) { toast('No API key set — AI analysis disabled. Add a key in Settings anytime.','info',5000); }
   else if (ANTHROPIC_KEY && !PROXY_URL) { toast('⚠ Direct browser API access — use a Proxy URL for production security.','error',8000); }
   persistKeys();
