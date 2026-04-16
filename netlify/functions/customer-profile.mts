@@ -82,8 +82,14 @@ interface GetRequest extends BaseRequest {
   action: 'get';
   id: string;
 }
+interface ListFilter {
+  readonly riskRating?: string;
+  readonly country?: string;
+  readonly legalNameContains?: string;
+}
 interface ListRequest extends BaseRequest {
   action: 'list';
+  filter?: ListFilter;
 }
 interface UpdateRequest extends BaseRequest {
   action: 'update';
@@ -121,7 +127,24 @@ function validateRequest(
     return { ok: true, req: { action: 'get', id: r.id } };
   }
   if (action === 'list') {
-    return { ok: true, req: { action: 'list' } };
+    let filter: ListFilter | undefined;
+    if (r.filter && typeof r.filter === 'object') {
+      const f = r.filter as Record<string, unknown>;
+      filter = {};
+      if (f.riskRating !== undefined) {
+        if (typeof f.riskRating !== 'string') return { ok: false, error: 'filter.riskRating must be a string' };
+        filter = { ...filter, riskRating: f.riskRating };
+      }
+      if (f.country !== undefined) {
+        if (typeof f.country !== 'string') return { ok: false, error: 'filter.country must be a string' };
+        filter = { ...filter, country: f.country };
+      }
+      if (f.legalNameContains !== undefined) {
+        if (typeof f.legalNameContains !== 'string') return { ok: false, error: 'filter.legalNameContains must be a string' };
+        filter = { ...filter, legalNameContains: f.legalNameContains };
+      }
+    }
+    return { ok: true, req: { action: 'list', filter } };
   }
   if (action === 'update') {
     if (typeof r.id !== 'string' || r.id.length === 0) {
@@ -250,7 +273,7 @@ export async function handleGet(
 }
 
 export async function handleList(
-  _req: ListRequest,
+  req: ListRequest,
   deps: HandlerDeps
 ): Promise<{ status: number; body: unknown }> {
   const keys = await deps.store.list();
@@ -270,19 +293,29 @@ export async function handleList(
     licenseExpiryDate: string;
     country: string;
   }> = [];
+  const filter = req.filter;
   for (const id of ids) {
     const p = await deps.store.get(id);
-    if (p) {
-      summaries.push({
-        id: p.id,
-        legalName: p.legalName,
-        riskRating: p.riskRating,
-        licenseExpiryDate: p.licenseExpiryDate,
-        country: p.country,
-      });
-    }
+    if (!p) continue;
+    // Apply server-side filters if provided.
+    if (filter?.riskRating && p.riskRating !== filter.riskRating) continue;
+    if (filter?.country && p.country !== filter.country) continue;
+    if (
+      filter?.legalNameContains &&
+      !p.legalName.toLowerCase().includes(filter.legalNameContains.toLowerCase())
+    ) continue;
+    summaries.push({
+      id: p.id,
+      legalName: p.legalName,
+      riskRating: p.riskRating,
+      licenseExpiryDate: p.licenseExpiryDate,
+      country: p.country,
+    });
   }
-  return { status: 200, body: { ok: true, count: summaries.length, profiles: summaries } };
+  return {
+    status: 200,
+    body: { ok: true, count: summaries.length, profiles: summaries, filter: filter ?? null },
+  };
 }
 
 export async function handleUpdate(

@@ -201,6 +201,23 @@ describe('validateRequest', () => {
     expect(validateRequest({ action: 'list' }).ok).toBe(true);
   });
 
+  it('accepts list with valid filter', () => {
+    const res = validateRequest({
+      action: 'list',
+      filter: { riskRating: 'high', country: 'AE', legalNameContains: 'naples' },
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.req.action).toBe('list');
+    }
+  });
+
+  it('rejects list with non-string filter fields', () => {
+    expect(validateRequest({ action: 'list', filter: { riskRating: 123 } }).ok).toBe(false);
+    expect(validateRequest({ action: 'list', filter: { country: true } }).ok).toBe(false);
+    expect(validateRequest({ action: 'list', filter: { legalNameContains: 99 } }).ok).toBe(false);
+  });
+
   it('rejects update without patch', () => {
     expect(validateRequest({ action: 'update', id: 'x' }).ok).toBe(false);
   });
@@ -346,6 +363,74 @@ describe('handleList', () => {
       expect(p).toHaveProperty('licenseExpiryDate');
       expect(p).toHaveProperty('country');
     }
+  });
+
+  it('filters by riskRating', async () => {
+    store.state.set('c1', makeValidProfile('c1'));
+    store.state.set('c2', { ...makeValidProfile('c2'), riskRating: 'high' });
+    store.state.set('c3', { ...makeValidProfile('c3'), riskRating: 'high' });
+    const result = await handleList(
+      { action: 'list', filter: { riskRating: 'high' } },
+      deps
+    );
+    const body = result.body as { count: number; profiles: Array<{ id: string }> };
+    expect(body.count).toBe(2);
+    expect(body.profiles.map((p) => p.id).sort()).toEqual(['c2', 'c3']);
+  });
+
+  it('filters by country', async () => {
+    store.state.set('c1', makeValidProfile('c1'));
+    store.state.set('c2', { ...makeValidProfile('c2'), country: 'GB' });
+    const result = await handleList(
+      { action: 'list', filter: { country: 'AE' } },
+      deps
+    );
+    const body = result.body as { count: number; profiles: Array<{ id: string }> };
+    expect(body.count).toBe(1);
+    expect(body.profiles[0]!.id).toBe('c1');
+  });
+
+  it('filters by legalNameContains (case-insensitive)', async () => {
+    store.state.set('c1', makeValidProfile('c1'));
+    store.state.set('c2', { ...makeValidProfile('c2'), legalName: 'NAPLES GOLD LLC' });
+    store.state.set('c3', { ...makeValidProfile('c3'), legalName: 'naples trading' });
+    const result = await handleList(
+      { action: 'list', filter: { legalNameContains: 'naples' } },
+      deps
+    );
+    const body = result.body as { count: number; profiles: Array<{ id: string }> };
+    expect(body.count).toBe(2);
+    expect(body.profiles.map((p) => p.id).sort()).toEqual(['c2', 'c3']);
+  });
+
+  it('combines multiple filters (AND logic)', async () => {
+    store.state.set('c1', { ...makeValidProfile('c1'), riskRating: 'high', country: 'AE' });
+    store.state.set('c2', { ...makeValidProfile('c2'), riskRating: 'high', country: 'GB' });
+    store.state.set('c3', { ...makeValidProfile('c3'), riskRating: 'medium', country: 'AE' });
+    const result = await handleList(
+      { action: 'list', filter: { riskRating: 'high', country: 'AE' } },
+      deps
+    );
+    const body = result.body as { count: number; profiles: Array<{ id: string }> };
+    expect(body.count).toBe(1);
+    expect(body.profiles[0]!.id).toBe('c1');
+  });
+
+  it('returns all profiles when filter is empty object', async () => {
+    store.state.set('c1', makeValidProfile('c1'));
+    store.state.set('c2', makeValidProfile('c2'));
+    const result = await handleList({ action: 'list', filter: {} }, deps);
+    const body = result.body as { count: number };
+    expect(body.count).toBe(2);
+  });
+
+  it('includes filter in response payload', async () => {
+    const result = await handleList(
+      { action: 'list', filter: { riskRating: 'high' } },
+      deps
+    );
+    const body = result.body as { filter: { riskRating: string } | null };
+    expect(body.filter).toEqual({ riskRating: 'high' });
   });
 });
 

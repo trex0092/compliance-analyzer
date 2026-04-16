@@ -359,6 +359,29 @@
     });
   });
 
+  // --- Step 11: TM scan ---
+  byId('btn-tm-scan').addEventListener('click', function () {
+    readInputs();
+    var dispatch = byId('input-tm-dispatch').checked;
+    setStatus('tm-scan-status', 'pending', 'Scanning…');
+    var token = state.brainToken;
+    fetch(apiBase() + '/api/tm-scan', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dispatch: dispatch }),
+    }).then(function (r) {
+      return r.json().then(function (body) { return { status: r.status, body: body }; });
+    }).then(function (res) {
+      var ok = res.status < 400 && res.body && res.body.ok !== false;
+      var flagged = (res.body && res.body.flaggedCustomers) || 0;
+      setStatus('tm-scan-status', ok ? 'ok' : 'err', ok ? (flagged > 0 ? flagged + ' flagged' : 'Clean') : 'Failed');
+      writeOutput('tm-scan-output', JSON.stringify(res.body, null, 2));
+    }).catch(function (err) {
+      setStatus('tm-scan-status', 'err', 'Network error');
+      writeOutput('tm-scan-output', String(err));
+    });
+  });
+
   // --- Live links ---
   function updateLinks() {
     var base = apiBase();

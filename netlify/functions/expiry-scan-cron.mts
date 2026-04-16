@@ -244,21 +244,27 @@ export default async (req: Request, context: Context): Promise<Response> => {
       });
     }
 
-    // Step 2: list existing task names for idempotency check.
+    // Step 2: list ALL existing task names for idempotency check.
+    // Asana paginates at 100 items — we must follow next_page to
+    // avoid missing tasks and creating duplicates.
     let existingTaskNames: Set<string>;
     try {
-      const tasksRes = await fetch(
-        `https://app.asana.com/api/1.0/projects/${encodeURIComponent(kycProjectGid)}/tasks?opt_fields=name&limit=100`,
-        {
+      existingTaskNames = new Set<string>();
+      let nextUrl: string | null =
+        `https://app.asana.com/api/1.0/projects/${encodeURIComponent(kycProjectGid)}/tasks?opt_fields=name&limit=100`;
+      while (nextUrl) {
+        const tasksRes = await fetch(nextUrl, {
           headers: { Authorization: `Bearer ${asanaToken}`, Accept: 'application/json' },
           signal: AbortSignal.timeout(20_000),
-        }
-      );
-      if (!tasksRes.ok) throw new Error(`HTTP ${tasksRes.status}`);
-      const tasksJson = (await tasksRes.json()) as {
-        data: Array<{ name: string }>;
-      };
-      existingTaskNames = new Set(tasksJson.data.map((t) => t.name));
+        });
+        if (!tasksRes.ok) throw new Error(`HTTP ${tasksRes.status}`);
+        const tasksJson = (await tasksRes.json()) as {
+          data: Array<{ name: string }>;
+          next_page: { uri: string } | null;
+        };
+        for (const t of tasksJson.data) existingTaskNames.add(t.name);
+        nextUrl = tasksJson.next_page?.uri ?? null;
+      }
     } catch {
       existingTaskNames = new Set(); // best-effort — allow dupes rather than fail
     }
@@ -282,7 +288,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
       const dueOn = dueParts ? `${dueParts[3]}-${dueParts[2]}-${dueParts[1]}` : undefined;
 
       try {
-        await fetch('https://app.asana.com/api/1.0/tasks', {
+        const createRes = await fetch('https://app.asana.com/api/1.0/tasks', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${asanaToken}`,
@@ -301,8 +307,13 @@ export default async (req: Request, context: Context): Promise<Response> => {
           }),
           signal: AbortSignal.timeout(15_000),
         });
-        dispatched++;
-        existingTaskNames.add(draft.taskName); // prevent duplicates within the same run
+        if (!createRes.ok) {
+          // HTTP error (400, 401, 429, 500 etc.) — count as dispatch error.
+          dispatchErrors++;
+        } else {
+          dispatched++;
+          existingTaskNames.add(draft.taskName); // prevent duplicates within the same run
+        }
       } catch {
         dispatchErrors++;
       }
