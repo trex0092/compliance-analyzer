@@ -38,8 +38,11 @@ import { getStore } from '@netlify/blobs';
 import { checkRateLimit } from './middleware/rate-limit.mts';
 import { authenticate } from './middleware/auth.mts';
 import type { CustomerProfileV2 } from '../../src/domain/customerProfile';
-import { scanExpiries } from '../../src/services/customerExpiryAlerter';
-import { buildExpiryEmitReport } from '../../src/services/expiryAsanaEmitter';
+import { scanExpiries, type ExpiryReport } from '../../src/services/customerExpiryAlerter';
+import {
+  buildExpiryEmitReport,
+  type ExpiryEmitReport,
+} from '../../src/services/expiryAsanaEmitter';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':
@@ -110,6 +113,34 @@ function validateRequest(
   return { ok: true, req };
 }
 
+// ---------------------------------------------------------------------------
+// Response payload builder (shared by all exit paths)
+// ---------------------------------------------------------------------------
+
+function buildResponsePayload(
+  scan: ExpiryReport,
+  report: ExpiryEmitReport,
+  dispatched: number,
+  skipped: number,
+  dispatchErrors: number
+) {
+  return {
+    asOfIso: scan.asOfIso,
+    scannedProfiles: scan.scannedProfiles,
+    alertCount: scan.alerts.length,
+    bySeverity: scan.counts,
+    summary: scan.summary,
+    emitSummary: report.summary,
+    draftCount: report.draftCount,
+    bySection: report.bySection,
+    drafts: report.drafts,
+    dispatched,
+    skipped,
+    dispatchErrors,
+    regulatory: scan.regulatory,
+  };
+}
+
 export default async (req: Request, context: Context): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -176,27 +207,126 @@ export default async (req: Request, context: Context): Promise<Response> => {
     // non-fatal
   }
 
-  // NOTE: actual Asana dispatch is deliberately left for a
-  // follow-up commit once the operator confirms the section
-  // routing is right. For now we return the draft list so the
-  // operator can eyeball it.
-  const dispatchNote = dispatch
-    ? 'dispatch=true was requested but is a no-op in this release — the draft list is returned for operator review. A follow-up commit will wire this to the Asana production dispatcher.'
-    : 'Dry-run: the draft list is returned for operator review. Pass { "dispatch": true } to enable dispatch (currently a no-op).';
+  // ---------------------------------------------------------------------------
+  // Live Asana dispatch (when dispatch=true AND env vars are set)
+  // ---------------------------------------------------------------------------
+  let dispatched = 0;
+  let skipped = 0;
+  let dispatchErrors = 0;
+  let dispatchNote = '';
+
+  const kycProjectGid = process.env.ASANA_KYC_CDD_TRACKER_PROJECT_GID;
+  const asanaToken = process.env.ASANA_ACCESS_TOKEN;
+
+  if (dispatch && kycProjectGid && asanaToken && asanaToken.length >= 16) {
+    // Step 1: list existing sections to resolve section names → GIDs.
+    let sectionMap: Map<string, string>;
+    try {
+      const sectionsRes = await fetch(
+        `https://app.asana.com/api/1.0/projects/${encodeURIComponent(kycProjectGid)}/sections?opt_fields=gid,name&limit=100`,
+        {
+          headers: { Authorization: `Bearer ${asanaToken}`, Accept: 'application/json' },
+          signal: AbortSignal.timeout(20_000),
+        }
+      );
+      if (!sectionsRes.ok) throw new Error(`HTTP ${sectionsRes.status}`);
+      const sectionsJson = (await sectionsRes.json()) as {
+        data: Array<{ gid: string; name: string }>;
+      };
+      sectionMap = new Map(sectionsJson.data.map((s) => [s.name, s.gid]));
+    } catch (err) {
+      dispatchNote = `dispatch=true but failed to list Asana sections: ${err instanceof Error ? err.message : String(err)}. Drafts returned for manual review.`;
+      return jsonResponse({
+        ok: false,
+        error: 'asana_section_list_failed',
+        dispatchNote,
+        ...buildResponsePayload(scan, report, dispatched, skipped, dispatchErrors),
+      });
+    }
+
+    // Step 2: list existing task names for idempotency check.
+    let existingTaskNames: Set<string>;
+    try {
+      const tasksRes = await fetch(
+        `https://app.asana.com/api/1.0/projects/${encodeURIComponent(kycProjectGid)}/tasks?opt_fields=name&limit=100`,
+        {
+          headers: { Authorization: `Bearer ${asanaToken}`, Accept: 'application/json' },
+          signal: AbortSignal.timeout(20_000),
+        }
+      );
+      if (!tasksRes.ok) throw new Error(`HTTP ${tasksRes.status}`);
+      const tasksJson = (await tasksRes.json()) as {
+        data: Array<{ name: string }>;
+      };
+      existingTaskNames = new Set(tasksJson.data.map((t) => t.name));
+    } catch {
+      existingTaskNames = new Set(); // best-effort — allow dupes rather than fail
+    }
+
+    // Step 3: create tasks for each draft.
+    for (const draft of report.drafts) {
+      // Idempotency: skip if a task with the same name already exists.
+      if (existingTaskNames.has(draft.taskName)) {
+        skipped++;
+        continue;
+      }
+
+      const sectionGid = sectionMap.get(draft.sectionName);
+      if (!sectionGid) {
+        skipped++;
+        continue;
+      }
+
+      // Convert dd/mm/yyyy → yyyy-mm-dd for Asana due_on.
+      const dueParts = draft.dueDateDdMmYyyy.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      const dueOn = dueParts ? `${dueParts[3]}-${dueParts[2]}-${dueParts[1]}` : undefined;
+
+      try {
+        await fetch('https://app.asana.com/api/1.0/tasks', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${asanaToken}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            data: {
+              name: draft.taskName,
+              notes: draft.taskBody,
+              projects: [kycProjectGid],
+              memberships: [{ project: kycProjectGid, section: sectionGid }],
+              ...(dueOn ? { due_on: dueOn } : {}),
+              tags: [],
+            },
+          }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        dispatched++;
+        existingTaskNames.add(draft.taskName); // prevent duplicates within the same run
+      } catch {
+        dispatchErrors++;
+      }
+    }
+
+    dispatchNote =
+      `Dispatched ${dispatched} task(s) to Asana project ${kycProjectGid}. ` +
+      `${skipped} skipped (already exist or section not found). ` +
+      `${dispatchErrors} error(s).`;
+  } else if (dispatch && !kycProjectGid) {
+    dispatchNote =
+      'dispatch=true but ASANA_KYC_CDD_TRACKER_PROJECT_GID is not set. Set it in Netlify env vars to enable live dispatch. Drafts returned for manual review.';
+  } else if (dispatch && (!asanaToken || asanaToken.length < 16)) {
+    dispatchNote =
+      'dispatch=true but ASANA_ACCESS_TOKEN is missing or too short. Drafts returned for manual review.';
+  } else {
+    dispatchNote =
+      'Dry-run: the draft list is returned for operator review. Pass { "dispatch": true } to create tasks in Asana.';
+  }
 
   return jsonResponse({
     ok: true,
-    asOfIso: asOf.toISOString(),
-    scannedProfiles: scan.scannedProfiles,
-    alertCount: scan.alerts.length,
-    bySeverity: scan.counts,
-    summary: scan.summary,
-    emitSummary: report.summary,
-    draftCount: report.draftCount,
-    bySection: report.bySection,
-    drafts: report.drafts,
+    ...buildResponsePayload(scan, report, dispatched, skipped, dispatchErrors),
     dispatchNote,
-    regulatory: scan.regulatory,
   });
 };
 
