@@ -269,7 +269,12 @@ export function buildMorningBriefingReport(input: MorningBriefingInput): Morning
       });
       continue;
     }
-    if (f.status === 'pending' && isSameDate(check.deadlineDate, now) && !f.deadlineMet === false) {
+    // By this point, filings with `!f.deadlineMet` or `status === 'overdue'`
+    // have already been bucketed into `overdueFilings` and the loop
+    // continued. Any pending filing that reaches here has `deadlineMet`
+    // true, so the only remaining check is whether the deadline lands
+    // today.
+    if (f.status === 'pending' && isSameDate(check.deadlineDate, now)) {
       filingsDueToday.push({
         filingType: f.filingType,
         referenceNumber: f.referenceNumber,

@@ -180,8 +180,17 @@ function narrowSource(input: string): RequiredSource | null {
     : null;
 }
 
-function toHitView(hit: DeltaScreenHit): HitView {
-  const source = narrowSource(hit.matchedAgainst.source) ?? 'UN';
+/**
+ * Convert a `DeltaScreenHit` to the MLRO-facing `HitView`. Returns
+ * `null` when the hit's source cannot be narrowed to one of the six
+ * REQUIRED_SOURCES — rather than silently mislabelling it as 'UN',
+ * drop it so data-quality drift surfaces as a missing row instead of
+ * a wrong one. In practice `SanctionsEntry.source` and `RequiredSource`
+ * share the same six members, so this branch is defensive only.
+ */
+function toHitView(hit: DeltaScreenHit): HitView | null {
+  const source = narrowSource(hit.matchedAgainst.source);
+  if (!source) return null;
   return {
     customerId: hit.customerId,
     matchedName: hit.matchedAgainst.name,
@@ -218,6 +227,7 @@ export function buildSanctionsWatchReport(input: SanctionsWatchInput): Sanctions
   const lowHits: HitView[] = [];
   for (const h of hits) {
     const view = toHitView(h);
+    if (!view) continue;
     if (h.confidence === 'confirmed') confirmedHits.push(view);
     else if (h.confidence === 'likely') likelyHits.push(view);
     else if (h.confidence === 'potential') potentialHits.push(view);
