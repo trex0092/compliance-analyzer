@@ -71,6 +71,17 @@ export const SCHEDULED_REPORTS: readonly ScheduledReportDefinition[] = [
     dispatchTo: 'mlro',
   },
   {
+    id: 'weekday_morning_briefing',
+    name: 'Compliance Morning Briefing',
+    cadence: 'daily',
+    purpose:
+      'Weekday 08:00 Dubai MLRO briefing: critical items today (imminent EOCN/CNMR breaches, filings due today, reviews due today), overnight activity summary, system health per-cron, action list (approvals >48h, overdue filings), six-list coverage',
+    citation:
+      'FDL No.10/2025 Art.20-22, Art.24, Art.29, Art.35; Cabinet Res 74/2020 Art.4-7; Cabinet Res 134/2025 Art.14, Art.19; MoE Circular 08/AML/2021',
+    outputs: ['markdown', 'json'],
+    dispatchTo: 'mlro',
+  },
+  {
     id: 'weekly_sla_rollup',
     name: 'Weekly SLA rollup',
     cadence: 'weekly',
