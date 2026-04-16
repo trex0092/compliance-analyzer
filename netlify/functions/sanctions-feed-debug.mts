@@ -43,9 +43,21 @@ const SOURCE_URLS: Record<string, string> = {
 function isAuthorised(req: Request): boolean {
   const expected = process.env.SANCTIONS_UPLOAD_TOKEN;
   if (!expected) return true; // auth disabled when env var absent
+  // Accept the token either as a Bearer header or as a `?token=`
+  // query parameter. The query-param path exists so operators can
+  // hit the endpoint from a browser address bar when terminals /
+  // curl aren't available. Header is preferred; query param is a
+  // pragmatic fallback for on-demand diagnostics only.
   const header = req.headers.get('authorization') ?? '';
   const match = header.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] === expected;
+  if (match?.[1] === expected) return true;
+  try {
+    const url = new URL(req.url);
+    if (url.searchParams.get('token') === expected) return true;
+  } catch {
+    /* fall through */
+  }
+  return false;
 }
 
 export default async (req: Request): Promise<Response> => {
