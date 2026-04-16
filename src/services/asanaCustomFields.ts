@@ -196,7 +196,8 @@ export function buildComplianceCustomFields(
       out[fieldGid] = optionGid;
     } else {
       if (!fieldGid) warnMissing('ASANA_CF_DEADLINE_TYPE_GID', 'deadline_type field');
-      if (fieldGid && !optionGid) warnMissing(optionKey, `deadline_type option ${input.deadlineType}`);
+      if (fieldGid && !optionGid)
+        warnMissing(optionKey, `deadline_type option ${input.deadlineType}`);
     }
   }
 
