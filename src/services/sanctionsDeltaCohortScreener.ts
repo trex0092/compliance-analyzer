@@ -287,6 +287,44 @@ export function screenCohortAgainstDelta(
     }
   }
 
+  // Cross-source correlation pass. A subject that hits on TWO or
+  // more independent sanctions sources in the same delta is a much
+  // stronger signal than one that hits on a single source — a UN
+  // designation that also appears on OFAC SDN and EU is, in practice,
+  // confirmed. Boost matchScore by +0.2 per additional distinct
+  // source (cap 0.99) and re-derive band + recommended action so
+  // the downstream MLRO view escalates appropriately.
+  //
+  // Regulatory anchor: FATF Rec 6 (timely UN sanctions implementation
+  // — multi-source confirmation removes ambiguity about whether the
+  // listing is current); CLAUDE.md "never skip a list" rule (the
+  // cross-source signal only exists when all six lists are screened).
+  const sourcesByCustomer = new Map<string, Set<string>>();
+  for (const h of hits) {
+    let set = sourcesByCustomer.get(h.customerId);
+    if (!set) {
+      set = new Set();
+      sourcesByCustomer.set(h.customerId, set);
+    }
+    set.add(h.matchedAgainst.source);
+  }
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i]!;
+    const sources = sourcesByCustomer.get(h.customerId)!;
+    if (sources.size < 2) continue;
+    const boost = Math.min(0.4, 0.2 * (sources.size - 1));
+    const newScore = Math.min(0.99, h.matchScore + boost);
+    if (newScore !== h.matchScore) {
+      hits[i] = {
+        ...h,
+        matchScore: newScore,
+        confidence: deriveBand(newScore),
+        recommendedAction: deriveAction(newScore),
+        matchReasons: [...h.matchReasons, `cross-source-x${sources.size}`],
+      };
+    }
+  }
+
   hits.sort((a, b) => b.matchScore - a.matchScore);
 
   const summary =

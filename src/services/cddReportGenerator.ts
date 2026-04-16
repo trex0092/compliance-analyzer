@@ -135,6 +135,12 @@ export interface WeeklyCddReportInput {
   filings: ReadonlyArray<FilingRecord>;
   /** Screening runs resolved in any outcome. Week-in-review applied. */
   screeningRuns: ReadonlyArray<ScreeningRun>;
+  /**
+   * Names of data sources NOT yet wired into a persistence layer.
+   * Surfaced as a loud "INCOMPLETE BRIEFING" banner so the MLRO does
+   * not infer "all clear" from a wiring gap (FDL Art.20-22).
+   */
+  unwiredDataSources?: ReadonlyArray<string>;
 }
 
 export interface WeeklyCddReport {
@@ -146,6 +152,7 @@ export interface WeeklyCddReport {
   pendingApprovals: PendingApproval[];
   filingSnapshot: FilingSnapshot;
   sanctionsResolvedThisWeek: SanctionsResolution[];
+  unwiredDataSources: ReadonlyArray<string>;
   /** Regulatory citations this report attests to. */
   citations: ReadonlyArray<string>;
 }
@@ -323,6 +330,7 @@ export function buildWeeklyCddReport(input: WeeklyCddReportInput): WeeklyCddRepo
     pendingApprovals,
     filingSnapshot: { countsByType, filedThisWeek, overdue },
     sanctionsResolvedThisWeek,
+    unwiredDataSources: input.unwiredDataSources ?? [],
     citations: [
       'FDL No.10/2025 Art.12-14 (CDD tiers, review cadence)',
       'FDL No.10/2025 Art.14 (PEP enhanced due diligence)',
@@ -365,6 +373,16 @@ export function renderWeeklyCddReportMarkdown(report: WeeklyCddReport): string {
   lines.push(`Window: ${fromDisplay} to ${toDisplay}`);
   lines.push(`Generated: ${formatDateDDMMYYYY(report.generatedAtIso)}`);
   lines.push('');
+
+  if (report.unwiredDataSources.length > 0) {
+    lines.push(
+      `**⚠ INCOMPLETE BRIEFING — ${report.unwiredDataSources.length} data source(s) not yet wired: ${report.unwiredDataSources.join(', ')}.**`
+    );
+    lines.push(
+      'Empty sections below for these sources do NOT mean "all clear" — verify manually until the persistence layer ships (FDL Art.20-22).'
+    );
+    lines.push('');
+  }
 
   // 1) Tier rollup.
   lines.push('## 1. CDD tier rollup');

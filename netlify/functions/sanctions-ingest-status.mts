@@ -32,6 +32,22 @@
 
 import { getStore } from '@netlify/blobs';
 
+/** Walk every page of a blob-store listing — the SDK paginates by default. */
+async function listAllBlobs(
+  store: ReturnType<typeof getStore>,
+  prefix: string
+): Promise<Array<{ key: string }>> {
+  const all: Array<{ key: string }> = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const iter = (store as any).list({ prefix, paginate: true }) as AsyncIterable<{
+    blobs?: Array<{ key: string }>;
+  }>;
+  for await (const page of iter) {
+    if (page.blobs) for (const b of page.blobs) all.push(b);
+  }
+  return all;
+}
+
 const INGEST_AUDIT_STORE = 'sanctions-ingest-audit';
 
 type SanctionsSource = 'OFAC_SDN' | 'OFAC_CONS' | 'UN' | 'EU' | 'UK_OFSI' | 'UAE_EOCN';
@@ -74,8 +90,8 @@ export default async (): Promise<Response> => {
   try {
     const store = getStore(INGEST_AUDIT_STORE);
     for (const prefix of [today, yesterday]) {
-      const listing = await store.list({ prefix: `${prefix}/` });
-      for (const blob of listing.blobs ?? []) {
+      const blobs = await listAllBlobs(store, `${prefix}/`);
+      for (const blob of blobs) {
         const body = (await store.get(blob.key, { type: 'json' })) as AuditEntry | null;
         if (!body || !Array.isArray(body.results)) continue;
         totalAuditEntries += 1;
