@@ -92,10 +92,16 @@ function getConfig(): AsanaConfig {
   const browserProjectId =
     (typeof localStorage !== 'undefined' && localStorage.getItem('asanaProjectId')) || undefined;
 
-  // Server-side (new — reads from Netlify env vars / Node env)
+  // Server-side (new — reads from Netlify env vars / Node env).
+  // Accept three legacy env var names for the Asana PAT: ASANA_TOKEN
+  // (canonical), ASANA_ACCESS_TOKEN and ASANA_API_TOKEN (both in use
+  // across existing crons + setup scripts). First hit wins.
   const serverToken =
-    typeof process !== 'undefined' && process.env?.ASANA_TOKEN
-      ? process.env.ASANA_TOKEN
+    typeof process !== 'undefined'
+      ? process.env?.ASANA_TOKEN ||
+        process.env?.ASANA_ACCESS_TOKEN ||
+        process.env?.ASANA_API_TOKEN ||
+        undefined
       : undefined;
   const serverProjectId =
     typeof process !== 'undefined' && process.env?.ASANA_SCREENINGS_PROJECT_GID

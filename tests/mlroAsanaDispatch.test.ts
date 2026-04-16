@@ -39,10 +39,14 @@ describe('deriveStatusColor', () => {
 describe('postMlroStatusUpdate — skip paths', () => {
   const originalProjectGid = process.env.ASANA_CENTRAL_MLRO_PROJECT_GID;
   const originalToken = process.env.ASANA_TOKEN;
+  const originalAccessToken = process.env.ASANA_ACCESS_TOKEN;
+  const originalApiToken = process.env.ASANA_API_TOKEN;
 
   beforeEach(() => {
     delete process.env.ASANA_CENTRAL_MLRO_PROJECT_GID;
     delete process.env.ASANA_TOKEN;
+    delete process.env.ASANA_ACCESS_TOKEN;
+    delete process.env.ASANA_API_TOKEN;
   });
 
   afterEach(() => {
@@ -51,11 +55,12 @@ describe('postMlroStatusUpdate — skip paths', () => {
     } else {
       delete process.env.ASANA_CENTRAL_MLRO_PROJECT_GID;
     }
-    if (originalToken !== undefined) {
-      process.env.ASANA_TOKEN = originalToken;
-    } else {
-      delete process.env.ASANA_TOKEN;
-    }
+    if (originalToken !== undefined) process.env.ASANA_TOKEN = originalToken;
+    else delete process.env.ASANA_TOKEN;
+    if (originalAccessToken !== undefined) process.env.ASANA_ACCESS_TOKEN = originalAccessToken;
+    else delete process.env.ASANA_ACCESS_TOKEN;
+    if (originalApiToken !== undefined) process.env.ASANA_API_TOKEN = originalApiToken;
+    else delete process.env.ASANA_API_TOKEN;
   });
 
   it('skips gracefully when no MLRO project GID is configured', async () => {

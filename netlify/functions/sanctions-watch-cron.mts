@@ -40,6 +40,11 @@ interface CronResult {
   reportKey?: string;
   anyListMissing?: boolean;
   hitCount?: number;
+  /**
+   * Rendered markdown report. Returned inline so Claude Code routines
+   * can fetch the cron URL and present the briefing directly.
+   */
+  markdown?: string;
   mlroDispatch?: {
     ok: boolean;
     skipped?: string;
@@ -224,6 +229,7 @@ export default async (): Promise<Response> => {
       reportKey: key,
       anyListMissing: report.anyListMissing,
       hitCount: hits.length,
+      markdown,
       mlroDispatch,
     };
     return Response.json(result);

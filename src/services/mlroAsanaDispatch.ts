@@ -71,7 +71,11 @@ export async function postMlroStatusUpdate(input: MlroDispatchInput): Promise<Ml
   // asanaRequestWithRetry reports a config error when the token is
   // absent. Honour the same contract explicitly so callers can tell
   // "MLRO dispatch intentionally skipped" apart from "Asana down".
-  if (!process.env.ASANA_TOKEN) {
+  // Accept the three legacy env var names the rest of the codebase
+  // uses — ASANA_TOKEN (canonical), ASANA_ACCESS_TOKEN, ASANA_API_TOKEN.
+  const hasToken =
+    !!process.env.ASANA_TOKEN || !!process.env.ASANA_ACCESS_TOKEN || !!process.env.ASANA_API_TOKEN;
+  if (!hasToken) {
     return { ok: true, skipped: 'no-asana-token' };
   }
 

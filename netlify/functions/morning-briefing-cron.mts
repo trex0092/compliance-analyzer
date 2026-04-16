@@ -44,6 +44,12 @@ interface CronResult {
   ok: boolean;
   startedAt: string;
   reportKey?: string;
+  /**
+   * Rendered markdown report. Returned inline so Claude Code routines
+   * can fetch the cron URL and present the briefing directly, without
+   * needing Netlify blob SDK access.
+   */
+  markdown?: string;
   mlroDispatch?: { ok: boolean; skipped?: string; statusUpdateGid?: string; error?: string };
   error?: string;
 }
@@ -330,6 +336,7 @@ export default async (): Promise<Response> => {
       ok: true,
       startedAt,
       reportKey: key,
+      markdown,
       mlroDispatch,
     };
     return Response.json(result);
