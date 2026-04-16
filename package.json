@@ -26,6 +26,7 @@
   "dependencies": {
     "@netlify/blobs": "^10.7.4",
     "@netlify/functions": "^5.1.5",
+    "docx": "^9.6.1",
     "dotenv": "^17.4.1",
     "hash-wasm": "^4.12.0"
   },
