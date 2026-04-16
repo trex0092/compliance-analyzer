@@ -350,8 +350,22 @@ cust-2,Bob Smith,tenant-a,Robert Smith,1985-04-15,GB,2026-04-10T00:00:00Z</pre>
 
   <!-- STEP 11 -->
   <div class="step">
-    <h2>Step 11 — You are live 🎉</h2>
-    <p>When Steps 6, 7, 8, 9 and 10 all show <span class="status ok">OK</span>, open the tool in a new tab and start using it.</p>
+    <h2>Step 11 — Run TM scan (Transaction Monitoring)</h2>
+    <p class="muted">Runs the Transaction Monitoring Brain across all customer transactions in the blob store. The brain applies 6 threshold rules (FDL Art.15-16, MoE Circular 08/AML/2021), 6 FATF typology patterns (smurfing, layering, round-trip, TBML, hawala, shell-passthrough), and 4 statistical detectors (Benford, Z-score, velocity burst, dormancy break). Default is dry-run; tick "Dispatch" to create Asana tasks for flagged customers.</p>
+    <div class="row">
+      <label><input type="checkbox" id="input-tm-dispatch"> Dispatch tasks to Asana</label>
+    </div>
+    <div class="row">
+      <button class="primary" id="btn-tm-scan">🔎 Run TM scan</button>
+      <span id="tm-scan-status"></span>
+    </div>
+    <div class="output" id="tm-scan-output">(click to run transaction monitoring scan)</div>
+  </div>
+
+  <!-- STEP 12 -->
+  <div class="step">
+    <h2>Step 12 — You are live 🎉</h2>
+    <p>When Steps 6, 7, 8, 9, 10 and 11 all show <span class="status ok">OK</span>, open the tool in a new tab and start using it.</p>
     <p><a id="link-tool" target="_blank">→ Open HAWKEYE STERLING</a></p>
     <p><a id="link-brain" target="_blank">→ Open Brain Console</a></p>
     <p><a id="link-status" target="_blank">→ Open public status page</a></p>
@@ -360,9 +374,9 @@ cust-2,Bob Smith,tenant-a,Robert Smith,1985-04-15,GB,2026-04-10T00:00:00Z</pre>
     </div>
   </div>
 
-  <!-- STEP 12 -->
+  <!-- STEP 13 -->
   <div class="step">
-    <h2>Step 12 — Post-setup checklist (human work, not the tool)</h2>
+    <h2>Step 13 — Post-setup checklist (human work, not the tool)</h2>
     <ul>
       <li>Register your firm with the <a href="https://goaml.uaefiu.gov.ae/" target="_blank">UAE FIU goAML portal</a></li>
       <li>Sign the <a href="https://www.anthropic.com/legal/data-processing" target="_blank">Anthropic Data Processing Agreement</a> (required for any EU-resident customer)</li>
