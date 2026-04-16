@@ -77,3 +77,25 @@
   for = "/manifest.json"
   [headers.values]
     Content-Type = "application/manifest+json"
+
+# CORS for all API endpoints — ensures browser-based calls from the
+# SPA (index.html, setup.html) can reach every Netlify function.
+# Individual functions that set their own Access-Control-Allow-Origin
+# will override this default (Netlify: function headers > toml headers).
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "https://hawkeye-sterling-v2.netlify.app"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Authorization, Content-Type"
+    Access-Control-Max-Age = "600"
+    Vary = "Origin"
+
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "https://hawkeye-sterling-v2.netlify.app"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Authorization, Content-Type"
+    Access-Control-Max-Age = "600"
+    Vary = "Origin"
