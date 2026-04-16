@@ -6,24 +6,17 @@
  * reads the latest blob produced here to brief the MLRO without having
  * to re-aggregate the raw hits itself.
  *
- * This cron does NOT re-run screening. The existing
- * netlify/functions/sanctions-delta-screen-cron.mts handles that every
- * 4 hours and persists hits + audit records. This cron only aggregates
- * an MLRO-facing view over whatever those stores already contain.
+ * This cron re-runs the pure cohort screener against the latest
+ * sanctions delta so the MLRO view contains real per-customer hit
+ * detail rather than counts-only. The existing
+ * netlify/functions/sanctions-delta-screen-cron.mts handles dispatch
+ * every 4 hours and persists audit counts; the MLRO view is
+ * reconstructed here so we never risk divergence between the dispatch
+ * audit and the briefing the MLRO reads.
  *
- * The initial implementation passes empty hit / frozen / false-positive
- * arrays for customer data we have not yet wired from the blob stores.
- * The generator tolerates empty collections and will render an "all
- * clear" report — which is still useful because it exercises the list-
- * coverage alert path.
- *
- * Follow-up (intentional, not a blocker for the routine):
- *   - Load latest DeltaScreenHit records from the sanctions-delta-
- *     screen audit store for the past 24h and pass as `hits`.
- *   - Load confirmed-freeze records from auto-remediation audit and
- *     pass as `frozenSubjects`.
- *   - Load dismissed hits from the screening audit store and pass as
- *     `recentFalsePositives`.
+ * Frozen-subject and false-positive data are still empty in this
+ * revision because no persistence layer exists for either. Wiring
+ * those is a tracked follow-up that does not block the routine.
  *
  * Regulatory basis:
  *   - FDL No.10/2025 Art.20-22, Art.24, Art.29, Art.35
@@ -38,12 +31,21 @@ import { getStore } from '@netlify/blobs';
 const REPORT_STORE = 'sanctions-watch-reports';
 const AUDIT_STORE = 'sanctions-watch-audit';
 const SNAPSHOT_STORE = 'sanctions-snapshots';
+const COHORT_STORE = 'sanctions-cohort';
+const DELTA_STORE = 'sanctions-deltas';
 
 interface CronResult {
   ok: boolean;
   startedAt: string;
   reportKey?: string;
   anyListMissing?: boolean;
+  hitCount?: number;
+  mlroDispatch?: {
+    ok: boolean;
+    skipped?: string;
+    statusUpdateGid?: string;
+    error?: string;
+  };
   error?: string;
 }
 
@@ -117,6 +119,49 @@ async function probeCoverage(
   >;
 }
 
+/**
+ * Load the latest sanctions delta + every tenant cohort and re-run the
+ * pure cohort screener so the MLRO view contains live per-customer hit
+ * detail. Best-effort: if either store is missing, returns an empty
+ * array and the failure is captured in the audit store.
+ */
+async function loadLiveHits(): Promise<
+  import('../../src/services/sanctionsDeltaCohortScreener').DeltaScreenHit[]
+> {
+  try {
+    const { screenCohortAgainstDelta } =
+      await import('../../src/services/sanctionsDeltaCohortScreener');
+    const deltaStore = getStore(DELTA_STORE);
+    const delta = (await deltaStore.get('latest.json', { type: 'json' })) as
+      | import('../../src/services/sanctionsDelta').SanctionsDelta
+      | null;
+    if (!delta) return [];
+
+    const cohortStore = getStore(COHORT_STORE);
+    const cohortListing = await cohortStore.list({ prefix: '' });
+    const tenantCohortKeys = (cohortListing.blobs ?? [])
+      .map((b) => b.key)
+      .filter((k) => k.endsWith('/cohort.json'));
+
+    const hits: import('../../src/services/sanctionsDeltaCohortScreener').DeltaScreenHit[] = [];
+    for (const key of tenantCohortKeys) {
+      const cohort = (await cohortStore.get(key, { type: 'json' })) as
+        | import('../../src/services/sanctionsDeltaCohortScreener').CohortCustomer[]
+        | null;
+      if (!Array.isArray(cohort)) continue;
+      const report = screenCohortAgainstDelta(cohort, delta);
+      for (const h of report.hits) hits.push(h);
+    }
+    return hits;
+  } catch (err) {
+    await writeAudit({
+      event: 'sanctions_watch_load_hits_failed',
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+}
+
 export default async (): Promise<Response> => {
   const startedAt = new Date().toISOString();
   const now = new Date(startedAt);
@@ -124,15 +169,19 @@ export default async (): Promise<Response> => {
   const { COMPANY_REGISTRY } = await import('../../src/domain/customers');
   const { buildSanctionsWatchReport, renderSanctionsWatchMarkdown } =
     await import('../../src/services/sanctionsWatchGenerator');
+  const { postMlroStatusUpdate, deriveStatusColor } =
+    await import('../../src/services/mlroAsanaDispatch');
 
   try {
-    const coverage = await probeCoverage(now);
+    const [coverage, hits] = await Promise.all([probeCoverage(now), loadLiveHits()]);
 
     const report = buildSanctionsWatchReport({
       now,
       portfolioSize: COMPANY_REGISTRY.length,
       listCoverage: coverage,
-      hits: [],
+      hits,
+      // Frozen-subject and false-positive persistence does not yet exist.
+      // See PR description for the tracked follow-up.
       frozenSubjects: [],
       recentFalsePositives: [],
     });
@@ -146,6 +195,17 @@ export default async (): Promise<Response> => {
       markdown,
     });
 
+    const mlroDispatch = await postMlroStatusUpdate({
+      title: `Sanctions Watch — ${startedAt.slice(0, 10)}`,
+      markdown,
+      statusType: deriveStatusColor({
+        anyListMissing: report.anyListMissing,
+        confirmedHits: report.bandCounts.confirmed,
+        imminentBreaches: report.freezeCountdowns.filter((f) => f.eocnBreached || f.cnmrBreached)
+          .length,
+      }),
+    });
+
     await writeAudit({
       event: 'sanctions_watch_report_generated',
       reportKey: key,
@@ -154,6 +214,8 @@ export default async (): Promise<Response> => {
       missingSources: report.missingSources,
       bandCounts: report.bandCounts,
       freezeCount: report.freezeCountdowns.length,
+      hitsTotal: hits.length,
+      mlroDispatch,
     });
 
     const result: CronResult = {
@@ -161,6 +223,8 @@ export default async (): Promise<Response> => {
       startedAt,
       reportKey: key,
       anyListMissing: report.anyListMissing,
+      hitCount: hits.length,
+      mlroDispatch,
     };
     return Response.json(result);
   } catch (err) {

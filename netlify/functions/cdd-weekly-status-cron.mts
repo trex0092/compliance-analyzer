@@ -39,6 +39,12 @@ interface CronResult {
   startedAt: string;
   customers: number;
   reportKey?: string;
+  mlroDispatch?: {
+    ok: boolean;
+    skipped?: string;
+    statusUpdateGid?: string;
+    error?: string;
+  };
   error?: string;
 }
 
@@ -64,6 +70,8 @@ export default async (): Promise<Response> => {
   const { createReviewSchedule } = await import('../../src/domain/periodicReview');
   const { buildWeeklyCddReport, renderWeeklyCddReportMarkdown } =
     await import('../../src/services/cddReportGenerator');
+  const { postMlroStatusUpdate, deriveStatusColor } =
+    await import('../../src/services/mlroAsanaDispatch');
 
   try {
     const customers = COMPANY_REGISTRY.map((c) => ({
@@ -95,6 +103,14 @@ export default async (): Promise<Response> => {
       markdown,
     });
 
+    const mlroDispatch = await postMlroStatusUpdate({
+      title: `Weekly CDD Status Report — ${startedAt.slice(0, 10)}`,
+      markdown,
+      statusType: deriveStatusColor({
+        overdueFilings: report.filingSnapshot.overdue.length,
+      }),
+    });
+
     await writeAudit({
       event: 'cdd_weekly_status_report_generated',
       reportKey: key,
@@ -103,6 +119,7 @@ export default async (): Promise<Response> => {
       pendingApprovalsCount: report.pendingApprovals.length,
       overdueFilingsCount: report.filingSnapshot.overdue.length,
       sanctionsResolvedCount: report.sanctionsResolvedThisWeek.length,
+      mlroDispatch,
     });
 
     const result: CronResult = {
@@ -110,6 +127,7 @@ export default async (): Promise<Response> => {
       startedAt,
       customers: customers.length,
       reportKey: key,
+      mlroDispatch,
     };
     return Response.json(result);
   } catch (err) {
