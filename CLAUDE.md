@@ -236,6 +236,23 @@ This is the single source of truth. When a regulation changes:
 | `/regulatory-spec` | Spec-first chain (Regulation → Spec → Code → Test → Evidence) | New regulation/circular requiring a structural feature, not just a constant bump (use `/regulatory-update` for value changes) |
 | AI Governance agent | EU AI Act + NIST AI RMF + ISO/IEC 42001 + UAE AI audit | Self-audit of the analyzer itself or customer AI audits. Invoke via `ComplianceHarness.runAiGovernanceAudit({ mode: 'self' \| 'customer', ... })` or directly via `runAiGovernanceAgent()` — src/agents/definitions/ai-governance-agent.ts |
 
+## External Claude Code Skills — Triaged
+
+These are Claude Code skills published on the `npx skills`
+marketplace. They are NOT auto-installed in this repo; each one
+carries a regulatory / security gate that must be cleared before
+it is added to an active MLRO session on this codebase. Entries
+follow the same triage rubric as the "Integrated Agent Frameworks"
+table below.
+
+| Skill | Install | Fit for this repo | Gate before use |
+|-------|---------|-------------------|-----------------|
+| `anthropics/claude-code --skill frontend-design` (01) | `npx skills add anthropics/claude-code --skill frontend-design` | UI work in `src/` React components (MLRO war room, approvals queue, xyflow reasoning-chain viewer). 277k+ installs. | Low risk, install on dev branch only. Not to be used on compliance-decision code without code review. |
+| `browser-use/browser-use` (02) | `npx skills add https://github.com/browser-use/browser-use --skill browser-use` | Potential fit for adverse-media hot ingest (Phase 17 `runAdverseMediaHotIngest`) — replaces dep-injected fetcher with a real browser. | **BLOCK until** FDL Art.29 no-tipping-off review on every query the skill sends out, CSP review (no subject data in cleartext to third-party browser hosts), and CLAUDE.md §3 audit-trail wiring. Plan via `/regulatory-spec` before vendoring. |
+| `anthropics/claude-code --skill simplify` (03) | `npx skills add anthropics/claude-code --skill simplify` | Structured quality pass on PR output. Complements existing `/review-pr` skill. | Low risk. Safe to use on non-compliance PRs immediately; use on compliance-logic PRs only after a human has read the same diff. |
+| `@googleworkspace/cli gws mcp` (04) | `npm install -g @googleworkspace/cli gws mcp -s drive,gmail,calendar,sheets` | 50+ Google APIs in one MCP server. Possible fit for MLRO monthly-report delivery + records-retention archive. | **BLOCK until** (a) OAuth scope review (minimum-privilege: read-only where possible, no `drive.all`), (b) UAE data-residency review (Google Workspace region pinning for subject data), (c) CLAUDE.md §3 audit-trail wiring on every API call. Not to be used on tenant data without explicit MLRO sign-off. |
+| `unicodeveloper/shannon` — AI Pentester (05) | `npx skills add unicodeveloper/shannon` | Autonomous pen tester against local / staging. Useful for pre-prod hardening of `netlify/functions/*` and approval endpoints. | **HIGHEST RISK.** Only run against `localhost` or explicitly-owned staging (per the skill's own warning). MUST NOT run against production or any third-party system. CO + InfoSec sign-off required before each run. Log every invocation in the audit chain (FDL Art.24). Never run on a branch that carries live customer data fixtures. |
+
 ## Integrated Agent Frameworks
 
 The following multi-agent frameworks are vendored for reference and integration patterns:
