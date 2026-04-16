@@ -73,23 +73,23 @@ async function writeAudit(payload: Record<string, unknown>): Promise<void> {
  * if a snapshot exists within the past 24h, 'stale' if older, and
  * 'missing' if nothing is there. Never throws.
  */
+type ProbeStatus = 'ok' | 'stale' | 'missing' | 'manual-pending';
+type ProbeEntry = { status: ProbeStatus; lastCheckedAt?: string; note?: string };
+
+// Sources that only exist as manual uploads (no public stable URL).
+// If no snapshot exists they surface as `manual-pending`, not `missing`.
+const MANUAL_ONLY_SOURCES = new Set<'UAE' | 'EOCN'>(['UAE', 'EOCN']);
+
 async function probeCoverage(
   now: Date
-): Promise<
-  Record<
-    'UN' | 'OFAC' | 'EU' | 'UK' | 'UAE' | 'EOCN',
-    { status: 'ok' | 'stale' | 'missing'; lastCheckedAt?: string; note?: string }
-  >
-> {
+): Promise<Record<'UN' | 'OFAC' | 'EU' | 'UK' | 'UAE' | 'EOCN', ProbeEntry>> {
   const sources = ['UN', 'OFAC', 'EU', 'UK', 'UAE', 'EOCN'] as const;
   const store = getStore(SNAPSHOT_STORE);
   const cutoffMs = now.getTime() - 24 * 60 * 60 * 1000;
 
-  const results: Record<
-    string,
-    { status: 'ok' | 'stale' | 'missing'; lastCheckedAt?: string; note?: string }
-  > = {};
+  const results: Record<string, ProbeEntry> = {};
   for (const source of sources) {
+    const manualOnly = MANUAL_ONLY_SOURCES.has(source as 'UAE' | 'EOCN');
     try {
       const listing = await store.list({ prefix: `${source}/` });
       const blobs = (listing.blobs ?? []).slice().sort((a, b) => {
@@ -97,7 +97,9 @@ async function probeCoverage(
       });
       const latest = blobs[0];
       if (!latest) {
-        results[source] = { status: 'missing', note: 'no snapshot in store' };
+        results[source] = manualOnly
+          ? { status: 'manual-pending', note: 'awaiting manual upload' }
+          : { status: 'missing', note: 'no snapshot in store' };
         continue;
       }
       // Keys look like "<SOURCE>/<YYYY-MM-DD>/<timestamp>.json" —
@@ -115,13 +117,12 @@ async function probeCoverage(
       };
     } catch (err) {
       const note = err instanceof Error ? err.message : String(err);
-      results[source] = { status: 'missing', note };
+      results[source] = manualOnly
+        ? { status: 'manual-pending', note }
+        : { status: 'missing', note };
     }
   }
-  return results as Record<
-    'UN' | 'OFAC' | 'EU' | 'UK' | 'UAE' | 'EOCN',
-    { status: 'ok' | 'stale' | 'missing'; lastCheckedAt?: string; note?: string }
-  >;
+  return results as Record<'UN' | 'OFAC' | 'EU' | 'UK' | 'UAE' | 'EOCN', ProbeEntry>;
 }
 
 /**

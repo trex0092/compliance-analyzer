@@ -55,8 +55,27 @@ interface IngestResult {
   durationMs: number;
 }
 
+/**
+ * Canonical User-Agent for all sanctions-list fetches.
+ *
+ * Several of the source servers (notably treasury.gov / OFAC) return
+ * 403 Forbidden to fetches without a browser-like UA. The default
+ * Node fetch UA (`node` or undefined) has triggered that path in
+ * production — every 15 min for weeks — so we pin a stable,
+ * identifiable UA here. The URL in the UA points at our compliance
+ * repo so the list maintainers can reach us if they need to.
+ */
+const INGEST_USER_AGENT =
+  'Mozilla/5.0 (compatible; HawkeyeSterlingComplianceBot/1.0; +https://github.com/trex0092/compliance-analyzer)';
+
 async function fetchWithTimeout(url: string, timeoutMs: number): Promise<string> {
-  const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(timeoutMs),
+    headers: {
+      'User-Agent': INGEST_USER_AGENT,
+      Accept: 'text/csv, application/xml, text/xml, */*',
+    },
+  });
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText}`);
   }
