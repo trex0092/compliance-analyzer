@@ -36,8 +36,30 @@ import {
 
 const MAX_BODY_BYTES = 512 * 1024;
 
+/**
+ * Heartbeat cadence. SSE comment frames (lines starting with `:`) are
+ * ignored by `EventSource` but keep the TCP connection alive and reset
+ * idle timers in any intermediate proxy / CDN / Netlify edge layer.
+ * Without these, long `runComplianceDecision()` awaits produce
+ * "Stream idle timeout - partial response received" on the client.
+ */
+const HEARTBEAT_MS = 5_000;
+
+/**
+ * Hard cap on total stream duration. Netlify standard functions abort
+ * after ~26s wall time; we close cleanly at 24s so the client receives
+ * a terminal `timeout` event rather than a truncated TCP stream.
+ * Consumers should retry on this event.
+ */
+const MAX_STREAM_MS = 24_000;
+
 function sseFrame(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+/** SSE comment frame — keep-alive ping that EventSource silently ignores. */
+function sseHeartbeat(): string {
+  return `: heartbeat ${Date.now()}\n\n`;
 }
 
 function coerceInput(raw: unknown): ComplianceCaseInput | { error: string } {
@@ -85,12 +107,61 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const input = coerceInput(parsed);
   if ('error' in input) return Response.json({ error: input.error }, { status: 400 });
 
+  const clientSignal = (req as unknown as { signal?: AbortSignal }).signal;
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const enc = new TextEncoder();
-      const emit = (event: string, data: unknown) => {
-        controller.enqueue(enc.encode(sseFrame(event, data)));
+      let closed = false;
+      let heartbeat: ReturnType<typeof setInterval> | null = null;
+      let deadline: ReturnType<typeof setTimeout> | null = null;
+
+      const safeEnqueue = (chunk: Uint8Array) => {
+        if (closed) return;
+        try {
+          controller.enqueue(chunk);
+        } catch {
+          // Controller already closed (client disconnect). Stop further writes.
+          closed = true;
+        }
       };
+      const emit = (event: string, data: unknown) => {
+        safeEnqueue(enc.encode(sseFrame(event, data)));
+      };
+
+      const cleanup = () => {
+        if (closed) return;
+        closed = true;
+        if (heartbeat) clearInterval(heartbeat);
+        if (deadline) clearTimeout(deadline);
+        if (clientSignal) clientSignal.removeEventListener('abort', onAbort);
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
+      };
+
+      function onAbort() {
+        cleanup();
+      }
+      if (clientSignal) clientSignal.addEventListener('abort', onAbort);
+
+      // Keep-alive heartbeat during the long-running runComplianceDecision
+      // await. Prevents idle-timeout on any intermediate proxy.
+      heartbeat = setInterval(() => {
+        safeEnqueue(enc.encode(sseHeartbeat()));
+      }, HEARTBEAT_MS);
+
+      // Hard deadline: close with a terminal `timeout` event before the
+      // Netlify wall-clock kills the function. Client should retry.
+      deadline = setTimeout(() => {
+        emit('timeout', {
+          reason: 'max-stream-duration',
+          maxStreamMs: MAX_STREAM_MS,
+        });
+        cleanup();
+      }, MAX_STREAM_MS);
 
       try {
         emit('plan:start', {
@@ -120,7 +191,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
         const message = err instanceof Error ? err.message : String(err);
         emit('error', { message });
       } finally {
-        controller.close();
+        cleanup();
       }
     },
   });
