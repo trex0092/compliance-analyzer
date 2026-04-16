@@ -26,6 +26,7 @@ import { checkRateLimit } from './middleware/rate-limit.mts';
 import {
   planSchemaMigration,
   type ExistingField,
+  type FieldDelta,
   type FieldType,
 } from '../../src/services/asanaSchemaMigrator';
 
@@ -39,6 +40,10 @@ interface AsanaField {
   resource_subtype: string;
   type?: string;
   enum_options?: Array<{ gid: string; name: string }>;
+}
+
+interface AsanaFieldFull extends AsanaField {
+  /** Present when Asana returns the full field record (create / lookup). */
 }
 
 async function fetchExistingFields(
@@ -70,6 +75,100 @@ async function writeAudit(payload: Record<string, unknown>): Promise<void> {
     ...payload,
     recordedAt: iso,
   });
+}
+
+/**
+ * Fetch workspace custom fields with GIDs included. Used by the apply
+ * path so add-options deltas know which field GID to target.
+ */
+async function fetchExistingFieldsWithGids(
+  workspaceGid: string,
+  token: string
+): Promise<AsanaFieldFull[]> {
+  const url = `${ASANA_BASE_URL}/workspaces/${workspaceGid}/custom_fields?opt_fields=name,type,resource_subtype,enum_options.gid,enum_options.name`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    throw new Error(`Asana fetch failed: ${res.status} ${res.statusText}`);
+  }
+  const body = (await res.json()) as { data?: AsanaFieldFull[] };
+  return body.data ?? [];
+}
+
+/**
+ * Create a custom field on the workspace. Idempotent at the application
+ * level because callers compute the plan from a fresh fetch.
+ */
+async function createCustomField(
+  workspaceGid: string,
+  token: string,
+  delta: FieldDelta
+): Promise<{ gid: string; name: string }> {
+  // Asana resource_subtype values map to: 'enum' | 'text' | 'number' | 'date' | 'multi_enum' | 'people'
+  const data: Record<string, unknown> = {
+    workspace: workspaceGid,
+    name: delta.name,
+    resource_subtype: delta.type,
+    description: delta.description ?? '',
+  };
+  if (delta.type === 'enum' && delta.missingOptions && delta.missingOptions.length > 0) {
+    data.enum_options = delta.missingOptions.map((name) => ({ name }));
+  }
+  const res = await fetch(`${ASANA_BASE_URL}/custom_fields`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ data }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(
+      `Asana create_custom_field failed: ${res.status} ${res.statusText} ${text.slice(0, 300)}`
+    );
+  }
+  const body = (await res.json()) as { data: { gid: string; name: string } };
+  return body.data;
+}
+
+/**
+ * Add enum options to an existing enum custom field.
+ */
+async function addEnumOptions(
+  fieldGid: string,
+  token: string,
+  optionNames: readonly string[]
+): Promise<number> {
+  let added = 0;
+  for (const name of optionNames) {
+    const res = await fetch(
+      `${ASANA_BASE_URL}/custom_fields/${fieldGid}/enum_options`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data: { name } }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      }
+    );
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(
+        `Asana add_enum_option failed for ${name}: ${res.status} ${res.statusText} ${text.slice(0, 300)}`
+      );
+    }
+    added++;
+  }
+  return added;
 }
 
 export default async (req: Request, context: Context): Promise<Response> => {
@@ -127,30 +226,80 @@ export default async (req: Request, context: Context): Promise<Response> => {
     alreadyOk: plan.alreadyOk,
   });
 
-  // Apply flag — when set, the endpoint actually creates the missing
-  // custom fields and adds the missing enum options. The apply path
-  // is intentionally a stub today: wiring the actual create-custom-
-  // field call requires confirming the Asana API shape for enum
-  // option GIDs, which is a per-workspace concern. The plan is
-  // persisted to the audit store so an operator can apply it manually
-  // if needed.
+  // Apply flag — when set, the endpoint executes the plan: creates
+  // missing custom fields and adds missing enum options. Idempotent:
+  // the plan is computed fresh from the live workspace on every call,
+  // so re-running after a partial success is safe and only finishes
+  // the outstanding work.
   const shouldApply = url.searchParams.get('apply') === '1';
+  const applyResult: {
+    created: Array<{ name: string; gid: string }>;
+    optionsAdded: Array<{ field: string; options: readonly string[] }>;
+    skipped: Array<{ name: string; reason: string }>;
+    errors: Array<{ name: string; error: string }>;
+  } = { created: [], optionsAdded: [], skipped: [], errors: [] };
+
   if (shouldApply && (plan.toCreate > 0 || plan.toUpdate > 0)) {
+    // Fetch once with GIDs for add-options lookups.
+    let fullFields: AsanaFieldFull[] = [];
+    try {
+      fullFields = await fetchExistingFieldsWithGids(workspaceGid, token);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await writeAudit({
+        event: 'asana_migrate_apply_fetch_failed',
+        workspaceGid,
+        error: message,
+      });
+      return Response.json({ ok: false, error: message }, { status: 502 });
+    }
+    const fieldGidByName = new Map<string, string>();
+    for (const f of fullFields) fieldGidByName.set(f.name, f.gid);
+
+    for (const delta of plan.deltas) {
+      if (delta.action === 'ok') continue;
+      try {
+        if (delta.action === 'create') {
+          const created = await createCustomField(workspaceGid, token, delta);
+          applyResult.created.push({ name: created.name, gid: created.gid });
+        } else if (delta.action === 'add-options') {
+          const fieldGid = fieldGidByName.get(delta.name);
+          if (!fieldGid) {
+            applyResult.skipped.push({
+              name: delta.name,
+              reason: 'field gid not found on workspace at apply time',
+            });
+            continue;
+          }
+          const opts = delta.missingOptions ?? [];
+          if (opts.length === 0) continue;
+          await addEnumOptions(fieldGid, token, opts);
+          applyResult.optionsAdded.push({ field: delta.name, options: opts });
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        applyResult.errors.push({ name: delta.name, error: message });
+      }
+    }
+
     await writeAudit({
-      event: 'asana_migrate_apply_requested',
+      event: 'asana_migrate_applied',
       workspaceGid,
-      note: 'Apply path is not yet wired — plan persisted to audit store for manual execution.',
+      ...applyResult,
     });
   }
 
-  return new Response(JSON.stringify({ ok: true, plan }), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Content-Type-Options': 'nosniff',
-      'Cache-Control': 'no-store',
-    },
-  });
+  return new Response(
+    JSON.stringify({ ok: true, plan, ...(shouldApply ? { apply: applyResult } : {}) }),
+    {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store',
+      },
+    }
+  );
 };
 
 export const config: Config = {
