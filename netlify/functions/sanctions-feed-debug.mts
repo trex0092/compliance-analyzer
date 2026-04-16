@@ -93,6 +93,29 @@ export default async (req: Request): Promise<Response> => {
       },
     });
     const body = await res.text();
+
+    // Run the actual ingest parser against the live body so we see
+    // exactly how many records the production pipeline would emit —
+    // and the first 3 records so we can eyeball fields.
+    let parserRecordCount: number | undefined;
+    let firstParsedRecords: unknown;
+    let parserError: string | undefined;
+    try {
+      const ing = await import('../../src/services/sanctionsIngest');
+      let parsed: unknown[] | undefined;
+      if (source === 'OFAC_SDN') parsed = ing.parseOfacSdnCsv(body);
+      else if (source === 'OFAC_CONS') parsed = ing.parseOfacConsCsv(body);
+      else if (source === 'UN') parsed = ing.parseUnConsolidatedXml(body);
+      else if (source === 'EU') parsed = ing.parseEuSanctionsXml(body);
+      else if (source === 'UK_OFSI') parsed = ing.parseUkOfsiCsv(body);
+      if (parsed) {
+        parserRecordCount = parsed.length;
+        firstParsedRecords = parsed.slice(0, 3);
+      }
+    } catch (err) {
+      parserError = err instanceof Error ? err.message : String(err);
+    }
+
     return Response.json({
       ok: true,
       startedAt,
@@ -104,6 +127,9 @@ export default async (req: Request): Promise<Response> => {
       byteLength: body.length,
       firstLines: body.split(/\r?\n/).slice(0, 20),
       first2000Chars: body.slice(0, 2000),
+      parserRecordCount,
+      firstParsedRecords,
+      parserError,
     });
   } catch (err) {
     return Response.json(
