@@ -32,6 +32,7 @@
 import type { Config, Context } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import { checkRateLimit } from './middleware/rate-limit.mts';
+import { authenticate } from './middleware/auth.mts';
 
 const CODE_STORE = 'regulator-codes';
 const ACCESS_AUDIT_STORE = 'regulator-access-audit';
@@ -279,6 +280,11 @@ export default async (req: Request, context: Context): Promise<Response> => {
     namespace: 'regulator-portal',
   });
   if (rl) return rl;
+
+  // FDL Art.20-22 — CO oversight; regulator portal must be authenticated
+  // to prevent unauthorized access to compliance summaries and events.
+  const auth = authenticate(req);
+  if (!auth.ok) return auth.response!;
 
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/api\/regulator/, '') || '/';
