@@ -1,8 +1,8 @@
 # ASANA WORKFLOW — Idempotency
 
 The orchestrator is idempotent by construction. Every dispatch
-computes a key from the request shape; replaying the same key within
-30 days returns the cached response without writing to Asana.
+computes a key from the verdict identity; replaying the same key
+within 30 days returns the cached response without writing to Asana.
 
 This is the load-bearing guarantee that makes webhook double-delivery,
 cron retries, and network jitter safe.
@@ -11,23 +11,32 @@ cron retries, and network jitter safe.
 
 ## Key shape
 
+```typescript
+`${tenantId}:${verdictId}`
 ```
-sha3_512(
-  tenantId        + '|' +
-  caseId          + '|' +
-  dispatchKind    + '|' +
-  Math.floor(Date.now() / 3_600_000) + '|' +    // hour bucket
-  sha3_512(JSON.stringify(payload))
-)
-```
+
+Source of truth: `makeIdempotencyKey()` in
+`src/services/asana/orchestrator.ts`.
 
 | Field | Why it's in the key |
 |---|---|
 | `tenantId` | Tasks are scoped per tenant. No cross-tenant collisions. |
-| `caseId` | Same case, different verdicts → different tasks. |
-| `dispatchKind` | A four-eyes pair and a brain-verdict task for the same case are different keys. |
-| `hour bucket` | Same call within the same hour deduplicates; an hour later is a fresh event. |
-| `payload hash` | If the verdict changes, the key changes. |
+| `verdictId` | Unique per brain decision. A fresh decision produces a fresh id, and a fresh id produces a fresh key. |
+
+The key is intentionally simple. It relies on `verdictId` being
+unique-per-decision at the brain layer. The brain produces a fresh
+id every time it runs `runComplianceDecision()`, so the same case
+screened at 08:00 and 14:00 produces two different verdicts with two
+different ids and therefore two different Asana tasks.
+
+This design choice replaces the earlier proposed
+sha3_512(tenantId|caseId|dispatchKind|hour-bucket|payloadHash)
+shape. The earlier shape is not implemented in the orchestrator and
+is not required — the verdictId already embeds the time and the
+dispatch context, so deriving a composite hash added no safety and
+one more failure mode (hash-collision tests on every dispatch).
+If the key shape ever needs to grow, update this file and
+`makeIdempotencyKey()` in the same commit.
 
 ---
 
@@ -95,26 +104,23 @@ auditing.
 
 ---
 
-## Hour-bucket rationale
+## Why `verdictId` alone is enough
 
-The hour bucket is the most important part of the key shape. Without
-it, the same payload would deduplicate forever — including a stale
-verdict from yesterday that should have triggered a fresh task today.
+Replacement for the earlier hour-bucket design. The rationale for
+relying on the brain's `verdictId`:
 
-With it:
+- Same verdict dispatched twice (cron retry, webhook double-delivery,
+  jitter) → same id → replay, no duplicate task.
+- Fresh decision on the same case an hour later → new
+  `runComplianceDecision()` call → new `id` → new Asana task.
+- Different tenants can never collide because the tenant prefix is
+  part of the key.
+- Cross-case collisions are impossible because `id` is unique across
+  all verdicts, not just within a case.
 
-- Same payload, same hour → 1 task (deduplication works)
-- Same payload, next hour → 2 tasks (operator sees the new event)
-- Different payload, same hour → 2 tasks (different key)
-
-Choose 1 hour because:
-
-- Fast enough to recover from a brief outage with a fresh task
-- Slow enough to deduplicate Asana webhook double-delivery (they
-  retry within minutes)
-- Aligned with the `asana-sync-cron` schedule (also hourly)
-
-Do not change this without a regression test on the cron sync path.
+The brain is the authority on "is this the same decision or a new
+one?". The idempotency layer mirrors that authority rather than
+trying to re-derive it from payload shape.
 
 ---
 
@@ -150,19 +156,18 @@ The cleanup counter is published to telemetry under
 
 ## Testing
 
-Tests live in `tests/asana/idempotency.test.ts` and cover:
+Coverage lives in `tests/asanaOrchestrator.test.ts` and exercises
+the idempotency contract end-to-end through
+`AsanaOrchestrator.dispatchBrainVerdict` and `dispatchWithTemplate`:
 
-- HIT within TTL returns cached response with `replayed=true`
-- HIT past TTL is treated as MISS
-- MISS executes dispatch and writes blob
-- Failed dispatch does NOT write blob
-- Hour boundary creates a fresh key
-- `idempotencyOverride` bypasses cache lookup but still writes
-- Two concurrent calls with same key — only one writes (last writer
-  wins on the blob)
+- Replay of the same verdict returns the cached `taskGid` without
+  re-dispatching.
+- A verdict with a new `id` always produces a fresh dispatch.
+- `IdempotencyStore.clear()` resets the store for tests.
+- Failed dispatches are not cached (retried by the queue).
 
-Run them in isolation:
+Run in isolation:
 
 ```bash
-npx vitest run tests/asana/idempotency.test.ts
+npx vitest run tests/asanaOrchestrator.test.ts
 ```
