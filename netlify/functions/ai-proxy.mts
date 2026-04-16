@@ -60,6 +60,26 @@ const PROVIDERS: Record<string, ProviderConfig> = {
 const MAX_BODY_SIZE = 1024 * 1024; // 1 MB max request body
 
 /**
+ * Upstream request timeouts.
+ *
+ * Non-streaming calls are capped at 60s — if an AI provider hasn't
+ * produced the full response by then, the caller has almost certainly
+ * already given up.
+ *
+ * Streaming calls get a much longer ceiling (5 minutes) because the
+ * signal is attached to the entire `fetch()` — including the time the
+ * body is actively streaming chunks to the client. A short timeout
+ * here aborts the upstream mid-flight and surfaces as
+ * "Stream idle timeout - partial response received" on the browser
+ * even though bytes are still flowing. The stream's real lifetime is
+ * bounded by (a) Anthropic's own stream cap, (b) the client
+ * disconnect signal (propagated below), and (c) Netlify's function
+ * wall-clock — all of which are the right stopping conditions.
+ */
+const NONSTREAM_UPSTREAM_TIMEOUT_MS = 60_000;
+const STREAM_UPSTREAM_TIMEOUT_MS = 300_000;
+
+/**
  * Allowlist of Anthropic beta features we forward from the caller into the
  * `anthropic-beta` header. Anything not in this list is silently dropped so
  * the proxy can't be tricked into enabling unintended betas.
@@ -186,12 +206,37 @@ export default async (req: Request, context: Context) => {
       }
     }
 
-    const upstreamRes = await fetch(targetUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(60_000), // 60s timeout for AI requests
-    });
+    // Upstream abort controller. We combine two termination signals:
+    //   1. A wall-clock timeout (longer for streams — see constants above).
+    //   2. The incoming client disconnect signal, so if the browser
+    //      hangs up we stop paying for upstream tokens we'll never
+    //      deliver.
+    // Both use the same AbortController; whichever fires first wins.
+    const upstreamAbort = new AbortController();
+    const timeoutMs = stream ? STREAM_UPSTREAM_TIMEOUT_MS : NONSTREAM_UPSTREAM_TIMEOUT_MS;
+    const upstreamTimeout = setTimeout(() => {
+      upstreamAbort.abort(new DOMException('Upstream timeout', 'TimeoutError'));
+    }, timeoutMs);
+    const clientSignal = (req as unknown as { signal?: AbortSignal }).signal;
+    const onClientAbort = () => upstreamAbort.abort(new DOMException('Client disconnected', 'AbortError'));
+    if (clientSignal) {
+      if (clientSignal.aborted) onClientAbort();
+      else clientSignal.addEventListener('abort', onClientAbort, { once: true });
+    }
+
+    let upstreamRes: Response;
+    try {
+      upstreamRes = await fetch(targetUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: upstreamAbort.signal,
+      });
+    } catch (e) {
+      clearTimeout(upstreamTimeout);
+      if (clientSignal) clientSignal.removeEventListener('abort', onClientAbort);
+      throw e;
+    }
 
     // Never reflect the upstream Content-Type verbatim — the proxy
     // accepts only JSON payloads and SSE streams. Force a known value
@@ -200,6 +245,13 @@ export default async (req: Request, context: Context) => {
     const isSse = upstreamCT.startsWith('text/event-stream');
 
     if (stream && upstreamRes.body) {
+      // Headers received — we no longer need the short-circuit timer.
+      // The stream's lifetime is bounded by Anthropic's own cap, the
+      // client disconnect listener above, and Netlify's wall-clock.
+      clearTimeout(upstreamTimeout);
+      // Note: we intentionally leave `onClientAbort` wired up until
+      // the Response stream is consumed — it still needs to forward
+      // a browser hang-up to the upstream fetch.
       return new Response(upstreamRes.body, {
         status: upstreamRes.status,
         headers: {
@@ -209,6 +261,10 @@ export default async (req: Request, context: Context) => {
         },
       });
     }
+
+    // Non-streaming path: response is buffered below, timer can fire.
+    clearTimeout(upstreamTimeout);
+    if (clientSignal) clientSignal.removeEventListener('abort', onClientAbort);
 
     const responseBody = await upstreamRes.text();
     return new Response(responseBody, {
