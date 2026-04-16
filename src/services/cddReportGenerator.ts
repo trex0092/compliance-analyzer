@@ -58,9 +58,7 @@ import {
  */
 export type CddTier = 'SDD' | 'CDD' | 'EDD';
 
-export function tierForRiskRating(
-  rating: CustomerProfile['riskRating']
-): CddTier {
+export function tierForRiskRating(rating: CustomerProfile['riskRating']): CddTier {
   if (rating === 'high') return 'EDD';
   if (rating === 'medium') return 'CDD';
   return 'SDD';
@@ -169,9 +167,7 @@ const FILING_TYPES: ReadonlyArray<FilingRecord['filingType']> = [
   'EOCN_FREEZE',
 ];
 
-function deadlineForFilingType(
-  type: FilingRecord['filingType']
-): number | null {
+function deadlineForFilingType(type: FilingRecord['filingType']): number | null {
   switch (type) {
     case 'STR':
     case 'SAR':
@@ -188,11 +184,8 @@ function deadlineForFilingType(
   }
 }
 
-export function buildWeeklyCddReport(
-  input: WeeklyCddReportInput
-): WeeklyCddReport {
-  const { now, customers, reviewSchedules, approvals, filings, screeningRuns } =
-    input;
+export function buildWeeklyCddReport(input: WeeklyCddReportInput): WeeklyCddReport {
+  const { now, customers, reviewSchedules, approvals, filings, screeningRuns } = input;
   const windowFromIso = new Date(now.getTime() - SEVEN_DAYS_MS).toISOString();
   const windowToIso = now.toISOString();
 
@@ -236,10 +229,7 @@ export function buildWeeklyCddReport(
     if (!APPROVALS_RELEVANT_FOR.includes(a.requiredFor)) continue;
     const requestedAtMs = Date.parse(a.requestedAt);
     const ageInDays = Number.isFinite(requestedAtMs)
-      ? Math.max(
-          0,
-          Math.floor((now.getTime() - requestedAtMs) / 86_400_000)
-        )
+      ? Math.max(0, Math.floor((now.getTime() - requestedAtMs) / 86_400_000))
       : 0;
     pendingApprovals.push({
       approvalId: a.id,
@@ -286,12 +276,7 @@ export function buildWeeklyCddReport(
     // filing as overdue. Submitted / acknowledged filings are trusted.
     const deadline = deadlineForFilingType(f.filingType);
     let breached = f.status === 'overdue' || !f.deadlineMet;
-    if (
-      !breached &&
-      f.status === 'pending' &&
-      deadline !== null &&
-      Number.isFinite(filingMs)
-    ) {
+    if (!breached && f.status === 'pending' && deadline !== null && Number.isFinite(filingMs)) {
       const check = checkDeadline(new Date(filingMs), deadline, now);
       breached = check.breached;
     }
@@ -327,9 +312,7 @@ export function buildWeeklyCddReport(
       analyst: r.analyst,
     });
   }
-  sanctionsResolvedThisWeek.sort((a, b) =>
-    b.executedAt.localeCompare(a.executedAt)
-  );
+  sanctionsResolvedThisWeek.sort((a, b) => b.executedAt.localeCompare(a.executedAt));
 
   return {
     generatedAtIso: windowToIso,
@@ -388,15 +371,9 @@ export function renderWeeklyCddReportMarkdown(report: WeeklyCddReport): string {
   lines.push('');
   lines.push('| Tier | Count | Review cadence |');
   lines.push('| --- | ---: | --- |');
-  lines.push(
-    `| SDD | ${report.tierRollup.sdd} | every ${CDD_REVIEW_LOW_RISK_MONTHS} months |`
-  );
-  lines.push(
-    `| CDD | ${report.tierRollup.cdd} | every ${CDD_REVIEW_MEDIUM_RISK_MONTHS} months |`
-  );
-  lines.push(
-    `| EDD | ${report.tierRollup.edd} | every ${CDD_REVIEW_HIGH_RISK_MONTHS} months |`
-  );
+  lines.push(`| SDD | ${report.tierRollup.sdd} | every ${CDD_REVIEW_LOW_RISK_MONTHS} months |`);
+  lines.push(`| CDD | ${report.tierRollup.cdd} | every ${CDD_REVIEW_MEDIUM_RISK_MONTHS} months |`);
+  lines.push(`| EDD | ${report.tierRollup.edd} | every ${CDD_REVIEW_HIGH_RISK_MONTHS} months |`);
   lines.push(`| **Total** | **${report.tierRollup.total}** | |`);
   lines.push('');
 
@@ -417,16 +394,12 @@ export function renderWeeklyCddReportMarkdown(report: WeeklyCddReport): string {
   lines.push('');
 
   // 3) Pending approvals.
-  lines.push(
-    '## 3. Pending Senior Management approvals (FDL Art.14, Cabinet Res 134/2025 Art.14)'
-  );
+  lines.push('## 3. Pending Senior Management approvals (FDL Art.14, Cabinet Res 134/2025 Art.14)');
   lines.push('');
   if (report.pendingApprovals.length === 0) {
     lines.push('No pending PEP / EDD / high-risk onboarding approvals.');
   } else {
-    lines.push(
-      '| Case | Required for | Urgency | Requested by | Age (days) |'
-    );
+    lines.push('| Case | Required for | Urgency | Requested by | Age (days) |');
     lines.push('| --- | --- | --- | --- | ---: |');
     for (const a of report.pendingApprovals) {
       lines.push(
@@ -470,9 +443,7 @@ export function renderWeeklyCddReportMarkdown(report: WeeklyCddReport): string {
   if (report.filingSnapshot.overdue.length === 0) {
     lines.push('No overdue filings detected.');
   } else {
-    lines.push(
-      '| Type | Reference | Event date | Business days elapsed | Deadline |'
-    );
+    lines.push('| Type | Reference | Event date | Business days elapsed | Deadline |');
     lines.push('| --- | --- | --- | ---: | ---: |');
     for (const f of report.filingSnapshot.overdue) {
       lines.push(

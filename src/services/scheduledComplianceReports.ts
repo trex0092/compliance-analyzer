@@ -74,8 +74,7 @@ export const SCHEDULED_REPORTS: readonly ScheduledReportDefinition[] = [
     cadence: 'weekly',
     purpose:
       'Monday tier rollup (SDD/CDD/EDD), overdue reviews, pending Senior Management approvals, filing snapshot, and sanctions resolutions for the MLRO',
-    citation:
-      'FDL No.10/2025 Art.12-14, Art.14, Art.26-27; Cabinet Res 134/2025 Art.7-14, Art.19',
+    citation: 'FDL No.10/2025 Art.12-14, Art.14, Art.26-27; Cabinet Res 134/2025 Art.7-14, Art.19',
     outputs: ['markdown', 'json'],
     dispatchTo: 'mlro',
   },

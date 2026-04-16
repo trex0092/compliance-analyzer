@@ -27,10 +27,7 @@ import {
 const NOW = new Date('2026-04-13T05:00:00.000Z'); // Mon 09:00 Dubai
 const DAY_MS = 86_400_000;
 
-function customer(
-  id: string,
-  rating: CustomerProfile['riskRating']
-): CustomerProfile {
+function customer(id: string, rating: CustomerProfile['riskRating']): CustomerProfile {
   return {
     id,
     legalName: `Co ${id}`,
@@ -57,9 +54,7 @@ function schedule(
     riskRating: rating,
     reviewType: 'cdd-refresh',
     frequencyMonths: rating === 'high' ? 3 : rating === 'medium' ? 6 : 12,
-    lastReviewDate: new Date(
-      NOW.getTime() - 200 * DAY_MS
-    ).toISOString(),
+    lastReviewDate: new Date(NOW.getTime() - 200 * DAY_MS).toISOString(),
     nextReviewDate,
     status: 'scheduled',
   };
@@ -105,11 +100,7 @@ describe('buildWeeklyCddReport — overdue reviews', () => {
 
     const report = buildWeeklyCddReport({
       now: NOW,
-      customers: [
-        customer('late', 'high'),
-        customer('soon', 'medium'),
-        customer('clear', 'low'),
-      ],
+      customers: [customer('late', 'high'), customer('soon', 'medium'), customer('clear', 'low')],
       reviewSchedules: [
         schedule('soon', dueSoonIso, 'medium'),
         schedule('late', overdueIso, 'high'),
@@ -183,10 +174,7 @@ describe('buildWeeklyCddReport — pending approvals', () => {
     });
 
     // str-approval filtered; approved filtered. Oldest-first ordering.
-    expect(report.pendingApprovals.map((p) => p.caseId)).toEqual([
-      'case-edd',
-      'case-pep',
-    ]);
+    expect(report.pendingApprovals.map((p) => p.caseId)).toEqual(['case-edd', 'case-pep']);
     expect(report.pendingApprovals[0].ageInDays).toBe(12);
   });
 });
@@ -246,9 +234,7 @@ describe('buildWeeklyCddReport — filing snapshot', () => {
     expect(report.filingSnapshot.countsByType.SAR).toBe(0);
 
     // Only filings within 7 days appear in filedThisWeek.
-    expect(report.filingSnapshot.filedThisWeek.map((f) => f.referenceNumber)).toEqual([
-      'STR-001',
-    ]);
+    expect(report.filingSnapshot.filedThisWeek.map((f) => f.referenceNumber)).toEqual(['STR-001']);
 
     // CNMR breach + DPMSR explicit overdue.
     const overdueRefs = report.filingSnapshot.overdue.map((o) => o.referenceNumber);
@@ -305,9 +291,7 @@ describe('buildWeeklyCddReport — sanctions resolutions', () => {
       screeningRuns: runs,
     });
 
-    expect(report.sanctionsResolvedThisWeek.map((r) => r.runId)).toEqual([
-      'run-1',
-    ]);
+    expect(report.sanctionsResolvedThisWeek.map((r) => r.runId)).toEqual(['run-1']);
   });
 });
 
