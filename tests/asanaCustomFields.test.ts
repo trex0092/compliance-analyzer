@@ -3,8 +3,9 @@
  * mapping layer. These tests set env vars inline so they never touch
  * the real Asana API or a live workspace.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
+  _resetWarnedKeysForTest,
   buildComplianceCustomFields,
   deadlineTypeFromCaseType,
 } from '@/services/asanaCustomFields';
@@ -180,5 +181,54 @@ describe('deadlineTypeFromCaseType', () => {
   });
   it('returns undefined for unknown types', () => {
     expect(deadlineTypeFromCaseType('unknown case')).toBeUndefined();
+  });
+});
+
+describe('buildComplianceCustomFields — missing-env observability', () => {
+  beforeEach(() => {
+    _resetWarnedKeysForTest();
+  });
+
+  it('warns once per missing key across multiple calls', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // No env vars set — every call triggers a skip.
+    buildComplianceCustomFields({ caseId: 'C1' });
+    buildComplianceCustomFields({ caseId: 'C2' });
+    buildComplianceCustomFields({ caseId: 'C3' });
+    const calls = spy.mock.calls.filter((args) =>
+      String(args[0]).includes('ASANA_CF_CASE_ID_GID')
+    );
+    expect(calls.length).toBe(1);
+    spy.mockRestore();
+  });
+
+  it('warns separately for field gid and option gid', () => {
+    process.env.ASANA_CF_VERDICT_GID = 'field-verdict';
+    // ASANA_CF_VERDICT_FLAG intentionally not set.
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    buildComplianceCustomFields({ verdict: 'flag' });
+    const calls = spy.mock.calls
+      .map((args) => String(args[0]))
+      .filter((m) => m.includes('ASANA_CF_VERDICT_FLAG'));
+    expect(calls.length).toBe(1);
+    spy.mockRestore();
+  });
+
+  it('does not warn when the field is fully configured', () => {
+    process.env.ASANA_CF_CASE_ID_GID = 'field-case';
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    buildComplianceCustomFields({ caseId: 'C1' });
+    const calls = spy.mock.calls.filter((args) =>
+      String(args[0]).includes('ASANA_CF_CASE_ID_GID')
+    );
+    expect(calls.length).toBe(0);
+    spy.mockRestore();
+  });
+
+  it('does not warn when the input does not request a field', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    buildComplianceCustomFields({});
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

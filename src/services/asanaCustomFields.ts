@@ -102,6 +102,41 @@ function env(key: string): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
+// Observability — "silent degradation" but not silent ops.
+//
+// The builder intentionally returns an empty record when a field GID is
+// missing (see the file header for the design rationale). The cost of
+// that contract is that an operator cannot see from the Asana task alone
+// whether reporting was skipped for a field. We keep the degradation
+// but emit a warn-once log per missing key so the gap is observable in
+// the Netlify function log stream. The set is process-local; it resets
+// on cold start, which is the right behaviour — a fresh deploy should
+// re-emit warnings so a missing env var after a deploy is visible.
+// ---------------------------------------------------------------------------
+
+const warnedKeys: Set<string> = new Set();
+
+function warnMissing(key: string, context: string): void {
+  if (warnedKeys.has(key)) return;
+  warnedKeys.add(key);
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[asanaCustomFields] Skipping ${context}: env ${key} is not set. ` +
+      `Task will be created without this field. Run POST /api/asana/migrate-schema?apply=1 ` +
+      `to provision the workspace schema, then configure the returned GIDs as env vars.`
+  );
+}
+
+/**
+ * Reset the warn-once state. Exported for tests only; production code
+ * should never call this. Prefixed with an underscore to discourage
+ * accidental use.
+ */
+export function _resetWarnedKeysForTest(): void {
+  warnedKeys.clear();
+}
+
+// ---------------------------------------------------------------------------
 // Builder
 // ---------------------------------------------------------------------------
 
@@ -119,18 +154,26 @@ export function buildComplianceCustomFields(
   // Risk level (enum)
   if (input.riskLevel) {
     const fieldGid = env('ASANA_CF_RISK_LEVEL_GID');
-    const optionGid = env(`ASANA_CF_RISK_LEVEL_${input.riskLevel.toUpperCase()}`);
+    const optionKey = `ASANA_CF_RISK_LEVEL_${input.riskLevel.toUpperCase()}`;
+    const optionGid = env(optionKey);
     if (fieldGid && optionGid) {
       out[fieldGid] = optionGid;
+    } else {
+      if (!fieldGid) warnMissing('ASANA_CF_RISK_LEVEL_GID', 'risk_level field');
+      if (fieldGid && !optionGid) warnMissing(optionKey, `risk_level option ${input.riskLevel}`);
     }
   }
 
   // Verdict (enum)
   if (input.verdict) {
     const fieldGid = env('ASANA_CF_VERDICT_GID');
-    const optionGid = env(`ASANA_CF_VERDICT_${input.verdict.toUpperCase()}`);
+    const optionKey = `ASANA_CF_VERDICT_${input.verdict.toUpperCase()}`;
+    const optionGid = env(optionKey);
     if (fieldGid && optionGid) {
       out[fieldGid] = optionGid;
+    } else {
+      if (!fieldGid) warnMissing('ASANA_CF_VERDICT_GID', 'verdict field');
+      if (fieldGid && !optionGid) warnMissing(optionKey, `verdict option ${input.verdict}`);
     }
   }
 
@@ -139,15 +182,22 @@ export function buildComplianceCustomFields(
     const fieldGid = env('ASANA_CF_CASE_ID_GID');
     if (fieldGid) {
       out[fieldGid] = input.caseId;
+    } else {
+      warnMissing('ASANA_CF_CASE_ID_GID', 'case_id field');
     }
   }
 
   // Deadline type (enum)
   if (input.deadlineType) {
     const fieldGid = env('ASANA_CF_DEADLINE_TYPE_GID');
-    const optionGid = env(`ASANA_CF_DEADLINE_TYPE_${input.deadlineType}`);
+    const optionKey = `ASANA_CF_DEADLINE_TYPE_${input.deadlineType}`;
+    const optionGid = env(optionKey);
     if (fieldGid && optionGid) {
       out[fieldGid] = optionGid;
+    } else {
+      if (!fieldGid) warnMissing('ASANA_CF_DEADLINE_TYPE_GID', 'deadline_type field');
+      if (fieldGid && !optionGid)
+        warnMissing(optionKey, `deadline_type option ${input.deadlineType}`);
     }
   }
 
@@ -156,6 +206,8 @@ export function buildComplianceCustomFields(
     const fieldGid = env('ASANA_CF_DAYS_REMAINING_GID');
     if (fieldGid) {
       out[fieldGid] = input.daysRemaining;
+    } else {
+      warnMissing('ASANA_CF_DAYS_REMAINING_GID', 'days_remaining field');
     }
   }
 
@@ -164,6 +216,8 @@ export function buildComplianceCustomFields(
     const fieldGid = env('ASANA_CF_CONFIDENCE_GID');
     if (fieldGid) {
       out[fieldGid] = Math.round(input.confidence * 100);
+    } else {
+      warnMissing('ASANA_CF_CONFIDENCE_GID', 'confidence field');
     }
   }
 
@@ -172,6 +226,8 @@ export function buildComplianceCustomFields(
     const fieldGid = env('ASANA_CF_REGULATION_GID');
     if (fieldGid) {
       out[fieldGid] = input.regulationCitation;
+    } else {
+      warnMissing('ASANA_CF_REGULATION_GID', 'regulation field');
     }
   }
 
