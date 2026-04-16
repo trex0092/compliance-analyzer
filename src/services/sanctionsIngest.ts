@@ -295,6 +295,298 @@ function tagContent(xml: string, tag: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// OFAC Consolidated parser (cons_prim.csv — same format as SDN)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse OFAC Consolidated CSV. Same column layout as the SDN list
+ * (cons_prim.csv mirrors sdn.csv columns), but tagged as OFAC_CONS.
+ */
+export function parseOfacConsCsv(csv: string): NormalisedSanction[] {
+  const out: NormalisedSanction[] = [];
+  const lines = csv.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  for (const line of lines) {
+    const fields = parseOfacCsvLine(line);
+    if (fields.length < 12) continue;
+    const [ent_num, name, sdn_type, program, , , , , , , , remarks] = fields;
+    if (!ent_num || !name) continue;
+
+    const typeLower = (sdn_type ?? '').toLowerCase();
+    let type: NormalisedSanction['type'] = 'unknown';
+    if (typeLower.includes('individual')) type = 'individual';
+    else if (typeLower.includes('entity')) type = 'entity';
+    else if (typeLower.includes('vessel')) type = 'vessel';
+    else if (typeLower.includes('aircraft')) type = 'aircraft';
+
+    out.push(
+      withHash({
+        source: 'OFAC_CONS',
+        sourceId: ent_num.trim(),
+        primaryName: name.replace(/^"|"$/g, '').trim(),
+        aliases: [],
+        type,
+        programmes: (program ?? '')
+          .split(';')
+          .map((p) => p.trim())
+          .filter((p) => p && p !== '-0-'),
+        remarks: remarks && remarks !== '-0-' ? remarks.trim() : undefined,
+      })
+    );
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// UK OFSI ConList.csv parser
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse UK OFSI Consolidated List CSV (2022 format).
+ *
+ * Columns (header row present):
+ *   Group ID, Group Type, Regime, Listed On, Last Updated, Group Status,
+ *   Name 1, Name 2, Name 3, Name 4, Name 5, Name 6,
+ *   Title, Name Type, DOB, Town of Birth, Country of Birth,
+ *   Nationality, Passport Details, National Identification Details,
+ *   Position, Address 1-6, Post/Zip Code, Country, Other Information,
+ *   Entity Type, Subsidiary of, ...
+ *
+ * We use: Group ID (sourceId), Name 1-6 (primaryName), Name Type
+ * (AKA for aliases), Group Type (individual/entity), Regime
+ * (programme), DOB, Nationality, Other Information (remarks).
+ */
+export function parseUkOfsiCsv(csv: string): NormalisedSanction[] {
+  const lines = csv.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 2) return []; // header + at least one data row
+
+  // Parse header to find column indices.
+  const headerFields = parseOfacCsvLine(lines[0]!);
+  const col = (name: string) => {
+    const idx = headerFields.findIndex((h) => h.trim().toLowerCase() === name.toLowerCase());
+    return idx;
+  };
+  const iGroupId = col('Group ID');
+  const iGroupType = col('Group Type');
+  const iRegime = col('Regime');
+  const iName1 = col('Name 1');
+  const iName2 = col('Name 2');
+  const iName3 = col('Name 3');
+  const iName4 = col('Name 4');
+  const iName5 = col('Name 5');
+  const iName6 = col('Name 6');
+  const iNameType = col('Name Type');
+  const iDob = col('DOB');
+  const iNationality = col('Nationality');
+  const iOtherInfo = col('Other Information');
+  if (iGroupId < 0 || iName1 < 0) return []; // unrecognised format
+
+  // Group rows by Group ID — multiple rows per entity (one per alias).
+  const groups = new Map<
+    string,
+    {
+      primaryName: string;
+      aliases: string[];
+      type: NormalisedSanction['type'];
+      programmes: string[];
+      dob?: string;
+      nationality?: string;
+      remarks?: string;
+    }
+  >();
+
+  for (let i = 1; i < lines.length; i++) {
+    const fields = parseOfacCsvLine(lines[i]!);
+    const groupId = fields[iGroupId]?.trim();
+    if (!groupId) continue;
+
+    const nameparts = [
+      fields[iName1],
+      fields[iName2],
+      fields[iName3],
+      fields[iName4],
+      fields[iName5],
+      fields[iName6],
+    ]
+      .map((n) => (n ?? '').trim())
+      .filter(Boolean);
+    const fullName = nameparts.join(' ');
+    if (!fullName) continue;
+
+    const nameType = (fields[iNameType] ?? '').trim().toLowerCase();
+    const groupType = (fields[iGroupType] ?? '').trim().toLowerCase();
+    const regime = (fields[iRegime] ?? '').trim();
+    const dob = fields[iDob] !== undefined ? fields[iDob].trim() : undefined;
+    const nat = fields[iNationality] !== undefined ? fields[iNationality].trim() : undefined;
+    const other = fields[iOtherInfo] !== undefined ? fields[iOtherInfo].trim() : undefined;
+
+    let type: NormalisedSanction['type'] = 'unknown';
+    if (groupType.includes('individual')) type = 'individual';
+    else if (
+      groupType.includes('entity') ||
+      groupType.includes('ship') ||
+      groupType.includes('organisation')
+    )
+      type = 'entity';
+
+    const existing = groups.get(groupId);
+    if (!existing) {
+      groups.set(groupId, {
+        primaryName: fullName,
+        aliases: [],
+        type,
+        programmes: regime ? [regime] : [],
+        dob: dob || undefined,
+        nationality: nat || undefined,
+        remarks: other || undefined,
+      });
+    } else {
+      // Additional row for same group — treat as alias unless it's the primary name type.
+      if (nameType === 'aka' || nameType === 'alias' || nameType === 'formerly known as') {
+        existing.aliases.push(fullName);
+      } else if (nameType === 'primary name' && !existing.primaryName) {
+        existing.primaryName = fullName;
+      } else if (fullName !== existing.primaryName) {
+        existing.aliases.push(fullName);
+      }
+      if (regime && !existing.programmes.includes(regime)) {
+        existing.programmes.push(regime);
+      }
+    }
+  }
+
+  const out: NormalisedSanction[] = [];
+  for (const [groupId, entry] of groups) {
+    out.push(
+      withHash({
+        source: 'UK_OFSI',
+        sourceId: groupId,
+        primaryName: entry.primaryName,
+        aliases: entry.aliases,
+        type: entry.type,
+        dateOfBirth: entry.dob,
+        nationality: entry.nationality,
+        programmes: entry.programmes,
+        remarks: entry.remarks,
+      })
+    );
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// EU Consolidated Sanctions XML parser
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse EU sanctions XML (Full Sanctions List v1.1).
+ *
+ * Structure:
+ *   <export>
+ *     <sanctionEntity logicalId="12345" ...>
+ *       <nameAlias wholeName="PERSON NAME" ... />
+ *       <nameAlias wholeName="ALIAS NAME" nameAliasId="..." />
+ *       <identification ... />
+ *       <regulation regulationType="..." programme="..." />
+ *       <remark>Free text</remark>
+ *       <birthdate ...>
+ *         <dateOfBirth>1970-01-01</dateOfBirth>
+ *       </birthdate>
+ *       <citizenship countryIso2Code="XX" />
+ *       ...
+ *     </sanctionEntity>
+ *   </export>
+ */
+export function parseEuSanctionsXml(xml: string): NormalisedSanction[] {
+  const out: NormalisedSanction[] = [];
+
+  const entityRe = /<sanctionEntity\s([^>]*)>([\s\S]*?)<\/sanctionEntity>/g;
+  let em: RegExpExecArray | null;
+  while ((em = entityRe.exec(xml)) !== null) {
+    const attrs = em[1];
+    const body = em[2];
+
+    const logicalId = attrValue(attrs, 'logicalId') ?? '';
+    if (!logicalId) continue;
+
+    // Determine type from designationDetails or subjectType attribute.
+    const subjectType = (attrValue(attrs, 'subjectType') ?? '').toLowerCase();
+    let type: NormalisedSanction['type'] = 'unknown';
+    if (subjectType.includes('person') || subjectType.includes('individual')) type = 'individual';
+    else if (
+      subjectType.includes('enterprise') ||
+      subjectType.includes('entity') ||
+      subjectType.includes('organisation')
+    )
+      type = 'entity';
+
+    // Extract names (nameAlias elements with wholeName attribute).
+    const names: string[] = [];
+    const nameRe = /<nameAlias\s([^>]*)\/?>/g;
+    let nm: RegExpExecArray | null;
+    while ((nm = nameRe.exec(body)) !== null) {
+      const wholeName = attrValue(nm[1], 'wholeName');
+      if (wholeName) names.push(wholeName.trim());
+    }
+    if (names.length === 0) continue;
+
+    const primaryName = names[0]!;
+    const aliases = names.slice(1);
+
+    // Extract programmes from regulation elements.
+    const programmes: string[] = [];
+    const regRe = /<regulation\s([^>]*)\/?>/g;
+    let rm: RegExpExecArray | null;
+    while ((rm = regRe.exec(body)) !== null) {
+      const prog = attrValue(rm[1], 'programme') ?? attrValue(rm[1], 'regulationType') ?? '';
+      if (prog && !programmes.includes(prog)) programmes.push(prog.trim());
+    }
+
+    // Date of birth — may be nested: <birthdate><dateOfBirth>...</dateOfBirth></birthdate>
+    // or direct: <dateOfBirth>...</dateOfBirth>.
+    const dob =
+      tagContent(body, 'dateOfBirth') ??
+      (() => {
+        const bdMatch = /<birthdate[^>]*>([\s\S]*?)<\/birthdate>/.exec(body);
+        return bdMatch ? tagContent(bdMatch[1], 'dateOfBirth') : undefined;
+      })();
+
+    // Nationality / citizenship.
+    const citizenRe = /<citizenship\s([^>]*)\/?>/;
+    const cm = citizenRe.exec(body);
+    const nationality = cm ? (attrValue(cm[1], 'countryIso2Code') ?? undefined) : undefined;
+
+    // Remarks.
+    const remarks = tagContent(body, 'remark') ?? undefined;
+
+    out.push(
+      withHash({
+        source: 'EU',
+        sourceId: logicalId,
+        primaryName,
+        aliases,
+        type,
+        dateOfBirth: dob?.trim(),
+        nationality: nationality?.trim(),
+        programmes,
+        remarks: remarks?.trim(),
+      })
+    );
+  }
+
+  return out;
+}
+
+/**
+ * Extract an XML attribute value from an attributes string.
+ * e.g. attrValue('logicalId="123" name="foo"', 'logicalId') => '123'
+ */
+function attrValue(attrs: string, name: string): string | null {
+  const re = new RegExp(`${name}\\s*=\\s*"([^"]*)"`, 'i');
+  const m = re.exec(attrs);
+  return m ? m[1] : null;
+}
+
+// ---------------------------------------------------------------------------
 // Delta engine
 // ---------------------------------------------------------------------------
 

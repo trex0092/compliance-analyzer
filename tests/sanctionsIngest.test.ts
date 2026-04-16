@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseOfacSdnCsv,
+  parseOfacConsCsv,
   parseUnConsolidatedXml,
+  parseEuSanctionsXml,
+  parseUkOfsiCsv,
   computeDelta,
   screenCustomer,
   screenDeltaAgainstPortfolio,
@@ -162,6 +165,197 @@ describe('parseUnConsolidatedXml', () => {
   it('extracts aliases', () => {
     const bl = parsed.find((p) => p.primaryName.includes('Osama'));
     expect(bl?.aliases).toContain('Usama bin Ladin');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OFAC Consolidated parser
+// ---------------------------------------------------------------------------
+
+const OFAC_CONS_FIXTURE = `"10001","EVIL SHIPPING CO","entity","IRAN","-0-","-0-","Cargo","-0-","-0-","-0-","-0-","Front for IRGC"
+"10002","SMITH, John","individual","SDGT; IRAN","-0-","-0-","-0-","-0-","-0-","-0-","-0-","-0-"`;
+
+describe('parseOfacConsCsv', () => {
+  const parsed = parseOfacConsCsv(OFAC_CONS_FIXTURE);
+
+  it('parses both fixture rows', () => {
+    expect(parsed).toHaveLength(2);
+  });
+
+  it('sets source to OFAC_CONS', () => {
+    for (const s of parsed) expect(s.source).toBe('OFAC_CONS');
+  });
+
+  it('extracts entity number as sourceId', () => {
+    expect(parsed[0]!.sourceId).toBe('10001');
+  });
+
+  it('classifies entity and individual correctly', () => {
+    expect(parsed[0]!.type).toBe('entity');
+    expect(parsed[1]!.type).toBe('individual');
+  });
+
+  it('splits semicolon-separated programmes', () => {
+    expect(parsed[1]!.programmes).toContain('SDGT');
+    expect(parsed[1]!.programmes).toContain('IRAN');
+  });
+
+  it('strips -0- sentinels from remarks', () => {
+    expect(parsed[0]!.remarks).toBe('Front for IRGC');
+    expect(parsed[1]!.remarks).toBeUndefined();
+  });
+
+  it('every record has a hash', () => {
+    for (const s of parsed) expect(s.hash).toMatch(/^[a-f0-9]{64}$/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// UK OFSI ConList.csv parser
+// ---------------------------------------------------------------------------
+
+const UK_OFSI_FIXTURE = `Group ID,Group Type,Regime,Listed On,Last Updated,Group Status,Name 1,Name 2,Name 3,Name 4,Name 5,Name 6,Title,Name Type,DOB,Town of Birth,Country of Birth,Nationality,Passport Details,National Identification Details,Position,Address 1,Address 2,Address 3,Address 4,Address 5,Address 6,Post/Zip Code,Country,Other Information,Entity Type,Subsidiary of
+12345,Individual,The Russia (Sanctions) (EU Exit) Regulations 2019,01/01/2022,15/03/2023,Current,IVANOV,Ivan,Petrovich,,,,Mr,Primary Name,1975-06-15,Moscow,Russia,RU,,,,Moscow,,,,,,,Russia,Oligarch linked to regime,,
+12345,Individual,The Russia (Sanctions) (EU Exit) Regulations 2019,01/01/2022,15/03/2023,Current,IVAN,P,,,,,Mr,AKA,,,,,,,,,,,,,,,,,,
+67890,Entity,The ISIL (Da'esh) and Al-Qaida (Asset-Freezing) Regulations 2011,01/07/2020,01/07/2020,Current,BAD CORP LTD,,,,,,,Primary Name,,,,,,,,London,,,,,,UK,Terror finance front,,`;
+
+describe('parseUkOfsiCsv', () => {
+  const parsed = parseUkOfsiCsv(UK_OFSI_FIXTURE);
+
+  it('groups rows by Group ID', () => {
+    expect(parsed).toHaveLength(2);
+  });
+
+  it('sets source to UK_OFSI', () => {
+    for (const s of parsed) expect(s.source).toBe('UK_OFSI');
+  });
+
+  it('extracts Group ID as sourceId', () => {
+    expect(parsed.find((s) => s.sourceId === '12345')).toBeDefined();
+    expect(parsed.find((s) => s.sourceId === '67890')).toBeDefined();
+  });
+
+  it('builds primary name from Name 1-6 columns', () => {
+    const ind = parsed.find((s) => s.sourceId === '12345');
+    expect(ind!.primaryName).toBe('IVANOV Ivan Petrovich');
+  });
+
+  it('classifies individual and entity correctly', () => {
+    const ind = parsed.find((s) => s.sourceId === '12345');
+    const ent = parsed.find((s) => s.sourceId === '67890');
+    expect(ind!.type).toBe('individual');
+    expect(ent!.type).toBe('entity');
+  });
+
+  it('collects AKA rows as aliases', () => {
+    const ind = parsed.find((s) => s.sourceId === '12345');
+    expect(ind!.aliases).toContain('IVAN P');
+  });
+
+  it('extracts regime as programme', () => {
+    const ent = parsed.find((s) => s.sourceId === '67890');
+    expect(ent!.programmes).toContain(
+      "The ISIL (Da'esh) and Al-Qaida (Asset-Freezing) Regulations 2011"
+    );
+  });
+
+  it('extracts nationality', () => {
+    const ind = parsed.find((s) => s.sourceId === '12345');
+    expect(ind!.nationality).toBe('RU');
+  });
+
+  it('extracts other information as remarks', () => {
+    const ind = parsed.find((s) => s.sourceId === '12345');
+    expect(ind!.remarks).toBe('Oligarch linked to regime');
+  });
+
+  it('returns empty for header-only input', () => {
+    expect(parseUkOfsiCsv('Group ID,Name 1\n')).toHaveLength(0);
+  });
+
+  it('every record has a hash', () => {
+    for (const s of parsed) expect(s.hash).toMatch(/^[a-f0-9]{64}$/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EU Consolidated Sanctions XML parser
+// ---------------------------------------------------------------------------
+
+const EU_XML_FIXTURE = `<?xml version="1.0"?>
+<export>
+  <sanctionEntity logicalId="EU-1001" subjectType="person">
+    <nameAlias wholeName="Mahmoud AHMADINEJAD" />
+    <nameAlias wholeName="Mahmood Ahmadi-Nezhad" />
+    <regulation programme="IRAN" regulationType="Council Regulation" />
+    <birthdate><dateOfBirth>1956-10-28</dateOfBirth></birthdate>
+    <citizenship countryIso2Code="IR" />
+    <remark>Former president of Iran</remark>
+  </sanctionEntity>
+  <sanctionEntity logicalId="EU-2002" subjectType="enterprise">
+    <nameAlias wholeName="BANK MELLI IRAN" />
+    <nameAlias wholeName="BMI" />
+    <regulation programme="IRAN" />
+    <regulation programme="WMD" />
+    <remark>State-owned bank</remark>
+  </sanctionEntity>
+</export>`;
+
+describe('parseEuSanctionsXml', () => {
+  const parsed = parseEuSanctionsXml(EU_XML_FIXTURE);
+
+  it('parses both fixture entities', () => {
+    expect(parsed).toHaveLength(2);
+  });
+
+  it('sets source to EU', () => {
+    for (const s of parsed) expect(s.source).toBe('EU');
+  });
+
+  it('extracts logicalId as sourceId', () => {
+    expect(parsed[0]!.sourceId).toBe('EU-1001');
+    expect(parsed[1]!.sourceId).toBe('EU-2002');
+  });
+
+  it('uses first nameAlias as primaryName', () => {
+    expect(parsed[0]!.primaryName).toBe('Mahmoud AHMADINEJAD');
+  });
+
+  it('collects additional nameAlias entries as aliases', () => {
+    expect(parsed[0]!.aliases).toContain('Mahmood Ahmadi-Nezhad');
+    expect(parsed[1]!.aliases).toContain('BMI');
+  });
+
+  it('classifies person and enterprise correctly', () => {
+    expect(parsed[0]!.type).toBe('individual');
+    expect(parsed[1]!.type).toBe('entity');
+  });
+
+  it('extracts programmes from regulation elements', () => {
+    expect(parsed[0]!.programmes).toContain('IRAN');
+    expect(parsed[1]!.programmes).toContain('IRAN');
+    expect(parsed[1]!.programmes).toContain('WMD');
+  });
+
+  it('extracts date of birth', () => {
+    expect(parsed[0]!.dateOfBirth).toBe('1956-10-28');
+  });
+
+  it('extracts nationality from citizenship', () => {
+    expect(parsed[0]!.nationality).toBe('IR');
+  });
+
+  it('extracts remarks', () => {
+    expect(parsed[0]!.remarks).toBe('Former president of Iran');
+    expect(parsed[1]!.remarks).toBe('State-owned bank');
+  });
+
+  it('returns empty for malformed XML', () => {
+    expect(parseEuSanctionsXml('<not-valid></not-valid>')).toHaveLength(0);
+  });
+
+  it('every record has a hash', () => {
+    for (const s of parsed) expect(s.hash).toMatch(/^[a-f0-9]{64}$/);
   });
 });
 

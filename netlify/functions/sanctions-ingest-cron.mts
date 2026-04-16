@@ -30,7 +30,10 @@ import type { Config } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import {
   parseOfacSdnCsv,
+  parseOfacConsCsv,
   parseUnConsolidatedXml,
+  parseEuSanctionsXml,
+  parseUkOfsiCsv,
   computeDelta,
   SANCTIONS_SOURCES,
   type SanctionsSource,
@@ -61,30 +64,30 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<string>
 }
 
 /**
- * Parse a source payload into normalised records. We only support the
- * two parsers that are already implemented in sanctionsIngest.ts — the
- * remaining sources are stubbed to return empty arrays, with a TODO.
- * The audit log marks them clearly so the MLRO can see coverage gaps.
+ * Parse a source payload into normalised records. Five of six sources
+ * have real parsers (OFAC SDN, OFAC Consolidated, UN, EU, UK OFSI).
+ * UAE EOCN is manual-upload only — no stable public URL exists.
  */
 function parseSource(source: SanctionsSource, body: string): NormalisedSanction[] {
   switch (source) {
     case 'OFAC_SDN':
       return parseOfacSdnCsv(body);
+    case 'OFAC_CONS':
+      return parseOfacConsCsv(body);
     case 'UN':
       return parseUnConsolidatedXml(body);
-    case 'OFAC_CONS':
     case 'EU':
+      return parseEuSanctionsXml(body);
     case 'UK_OFSI':
+      return parseUkOfsiCsv(body);
     case 'UAE_EOCN':
-      // Parsers pending. Ingest still records a fetch attempt in the
-      // audit so the MLRO can see the source is being polled.
+      // EOCN distributes via PDF/XML circulars — no stable URL.
+      // Must be loaded via the manual upload endpoint.
       return [];
   }
 }
 
-async function loadPreviousSnapshot(
-  source: SanctionsSource
-): Promise<NormalisedSanction[]> {
+async function loadPreviousSnapshot(source: SanctionsSource): Promise<NormalisedSanction[]> {
   try {
     const store = getStore(SNAPSHOT_STORE);
     const list = await store.list({ prefix: `${source}/` });
@@ -93,9 +96,7 @@ async function loadPreviousSnapshot(
     // key (which starts with yyyy-mm-dd) to find the newest snapshot.
     const sorted = [...list.blobs].sort((a, b) => (a.key < b.key ? 1 : -1));
     const latest = sorted[0];
-    const data = (await store.get(latest.key, { type: 'json' })) as
-      | NormalisedSanction[]
-      | null;
+    const data = (await store.get(latest.key, { type: 'json' })) as NormalisedSanction[] | null;
     return data ?? [];
   } catch (err) {
     console.warn('[sanctions-ingest] failed to load previous snapshot', err);
