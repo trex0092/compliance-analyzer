@@ -74,6 +74,25 @@ type ProbeEntry = { status: ProbeStatus; lastCheckedAt?: string; note?: string }
 // briefing does not flag them as a daily regulatory failure.
 const MANUAL_ONLY_SOURCES = new Set<'UAE' | 'EOCN'>(['UAE', 'EOCN']);
 
+/**
+ * Map the six REQUIRED_SOURCES onto the ingest cron's key prefixes.
+ * OFAC covers both SDN and Consolidated feeds; UAE and EOCN both read
+ * from the single `UAE_EOCN` manual-upload slot. Keeping this in sync
+ * with sanctions-watch-cron.mts is required — the two crons must
+ * agree on what "OK" means per source.
+ */
+const INGEST_KEY_PREFIXES: Record<
+  'UN' | 'OFAC' | 'EU' | 'UK' | 'UAE' | 'EOCN',
+  ReadonlyArray<string>
+> = {
+  UN: ['UN/'],
+  OFAC: ['OFAC_SDN/', 'OFAC_CONS/'],
+  EU: ['EU/'],
+  UK: ['UK_OFSI/'],
+  UAE: ['UAE_EOCN/'],
+  EOCN: ['UAE_EOCN/'],
+};
+
 async function probeCoverage(
   now: Date
 ): Promise<Record<'UN' | 'OFAC' | 'EU' | 'UK' | 'UAE' | 'EOCN', ProbeEntry>> {
@@ -84,18 +103,20 @@ async function probeCoverage(
   for (const source of sources) {
     const manualOnly = MANUAL_ONLY_SOURCES.has(source as 'UAE' | 'EOCN');
     try {
-      const listing = await store.list({ prefix: `${source}/` });
-      const blobs = (listing.blobs ?? [])
-        .slice()
-        .sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0));
-      const latest = blobs[0];
-      if (!latest) {
+      let latestKey: string | undefined;
+      for (const prefix of INGEST_KEY_PREFIXES[source]) {
+        const listing = await store.list({ prefix });
+        for (const blob of listing.blobs ?? []) {
+          if (!latestKey || blob.key > latestKey) latestKey = blob.key;
+        }
+      }
+      if (!latestKey) {
         out[source] = manualOnly
           ? { status: 'manual-pending', note: 'awaiting manual upload' }
           : { status: 'missing', note: 'no snapshot in store' };
         continue;
       }
-      const dateSegment = latest.key.split('/')[1] ?? '';
+      const dateSegment = latestKey.split('/')[1] ?? '';
       const dateMs = Date.parse(dateSegment);
       if (!Number.isFinite(dateMs)) {
         out[source] = { status: 'stale', note: 'key format unrecognised' };
