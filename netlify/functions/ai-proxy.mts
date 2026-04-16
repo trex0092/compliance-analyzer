@@ -80,6 +80,30 @@ const NONSTREAM_UPSTREAM_TIMEOUT_MS = 60_000;
 const STREAM_UPSTREAM_TIMEOUT_MS = 300_000;
 
 /**
+ * SSE keep-alive cadence for streamed upstream responses.
+ *
+ * Anthropic's streaming API can sit silent for tens of seconds during
+ * extended thinking, tool-use planning, or between content blocks. That
+ * silence is real — bytes are not flowing — and any intermediate proxy
+ * (Netlify Edge, a CDN, corporate TLS terminator, the browser) that
+ * enforces an idle read timeout will close the socket. The browser
+ * then surfaces the truncated body as:
+ *     "Stream idle timeout - partial response received"
+ * even though the upstream never actually failed.
+ *
+ * Fix: wrap the upstream body in a ReadableStream that watches the
+ * inter-chunk gap and emits a `: keepalive\n\n` SSE comment whenever
+ * the gap exceeds this threshold. Comments are ignored by EventSource
+ * and by the Anthropic SDK's SSE parser, but they are real TCP bytes
+ * so every intermediary resets its idle counter.
+ *
+ * Why 10s? Most CDN idle timers are 30-60s; picking 10s gives us
+ * three keepalives before the strictest layer fires. Smaller cadence
+ * adds a few hundred bytes per minute — negligible.
+ */
+const STREAM_KEEPALIVE_MS = 10_000;
+
+/**
  * Allowlist of Anthropic beta features we forward from the caller into the
  * `anthropic-beta` header. Anything not in this list is silently dropped so
  * the proxy can't be tricked into enabling unintended betas.
@@ -252,12 +276,103 @@ export default async (req: Request, context: Context) => {
       // Note: we intentionally leave `onClientAbort` wired up until
       // the Response stream is consumed — it still needs to forward
       // a browser hang-up to the upstream fetch.
-      return new Response(upstreamRes.body, {
+
+      // Forward the upstream body through a pass-through stream that
+      // injects SSE keepalive comments during idle gaps. Without this
+      // the client sees "Stream idle timeout - partial response
+      // received" whenever Anthropic pauses mid-stream (tool planning,
+      // extended thinking, between content blocks). The constant
+      // STREAM_KEEPALIVE_MS has the full rationale.
+      const upstreamBody = upstreamRes.body;
+      const encoder = new TextEncoder();
+      const keepaliveBytes = encoder.encode(': keepalive\n\n');
+
+      const passthrough = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const reader = upstreamBody.getReader();
+          let lastByteAt = Date.now();
+          let closed = false;
+
+          const safeEnqueue = (chunk: Uint8Array) => {
+            if (closed) return;
+            try {
+              controller.enqueue(chunk);
+            } catch {
+              closed = true;
+            }
+          };
+
+          const keepaliveTimer = setInterval(() => {
+            if (closed) return;
+            if (Date.now() - lastByteAt >= STREAM_KEEPALIVE_MS) {
+              safeEnqueue(keepaliveBytes);
+              lastByteAt = Date.now();
+            }
+          }, STREAM_KEEPALIVE_MS);
+
+          const finish = () => {
+            if (closed) return;
+            closed = true;
+            clearInterval(keepaliveTimer);
+            if (clientSignal) clientSignal.removeEventListener('abort', onClientAbort);
+            try {
+              controller.close();
+            } catch {
+              /* already closed */
+            }
+          };
+
+          // Pump upstream → controller in the background. We deliberately
+          // do not await this inside start() — start() must return
+          // promptly so the Response headers flush to the client and
+          // open the TCP write window that keepalives rely on.
+          (async () => {
+            try {
+              while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                lastByteAt = Date.now();
+                safeEnqueue(value);
+              }
+            } catch (err) {
+              // Surface the upstream error as a terminal SSE event so
+              // the client gets a diagnosable message instead of a
+              // silent truncation.
+              const message = err instanceof Error ? err.message : String(err);
+              safeEnqueue(
+                encoder.encode(`event: error\ndata: ${JSON.stringify({ message })}\n\n`)
+              );
+            } finally {
+              finish();
+            }
+          })();
+        },
+        cancel(reason) {
+          // Client hung up on us (e.g. browser closed the tab). Propagate
+          // the cancellation upstream so we stop paying for tokens the
+          // browser will never render.
+          try {
+            upstreamAbort.abort(
+              reason instanceof Error
+                ? reason
+                : new DOMException('Downstream cancelled', 'AbortError')
+            );
+          } catch {
+            /* already aborted */
+          }
+        },
+      });
+
+      return new Response(passthrough, {
         status: upstreamRes.status,
         headers: {
           'Content-Type': isSse ? 'text/event-stream' : 'application/json',
           'Cache-Control': 'no-cache',
           'X-Content-Type-Options': 'nosniff',
+          // Disable proxy buffering (Nginx, Netlify Edge, some CDNs).
+          // Without this, intermediaries can hold our SSE frames in a
+          // buffer and defeat the keepalives above.
+          'X-Accel-Buffering': 'no',
         },
       });
     }

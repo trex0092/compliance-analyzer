@@ -62,7 +62,19 @@ export interface AnthropicAdvisorOptions {
   executor?: string;
   /** Advisor model. Default: claude-opus-4-6. */
   advisor?: string;
-  /** Request timeout ms. Default: 15000. */
+  /**
+   * Request timeout ms. Default: 60000.
+   *
+   * Why 60s and not the old 15s: Opus advisor calls under load
+   * regularly run 20-40s end-to-end. A 15s AbortController fires
+   * mid-stream, which the browser surfaces as
+   * "Stream idle timeout - partial response received" — even though
+   * the upstream is still working fine. 60s is short enough to fail
+   * fast on a dead proxy, long enough to wait out a normal Opus call.
+   * Callers that need a tighter bound (e.g. synchronous UI paths)
+   * can still pass a smaller timeoutMs; the fallback to the
+   * deterministic advisor is what keeps the decision path unblocked.
+   */
   timeoutMs?: number;
   /** HAWKEYE bearer token for the proxy. Default: from window or env. */
   bearerToken?: string;
@@ -177,7 +189,7 @@ export function createAnthropicAdvisor(opts: AnthropicAdvisorOptions = {}): Advi
   const proxyUrl = opts.proxyUrl ?? '/api/ai-proxy';
   const executor = opts.executor ?? EXECUTOR_SONNET;
   const advisor = opts.advisor ?? ADVISOR_OPUS;
-  const timeoutMs = opts.timeoutMs ?? 15_000;
+  const timeoutMs = opts.timeoutMs ?? 60_000;
   const warnOnFallback = opts.warnOnFallback ?? true;
   const fetchImpl =
     opts.fetchImpl ??
