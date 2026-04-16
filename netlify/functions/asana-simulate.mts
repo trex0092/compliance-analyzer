@@ -44,9 +44,23 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const auth = authenticate(req);
   if (!auth.ok) return auth.response ?? Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // Small-body endpoint — simulate only accepts { count?, seed? }.
+  // Cap the body at 4 KB to match the input shape.
+  const SIMULATE_MAX_BODY_BYTES = 4 * 1024;
+  const contentLengthHeader = req.headers.get('content-length');
+  if (contentLengthHeader) {
+    const declared = Number(contentLengthHeader);
+    if (Number.isFinite(declared) && declared > SIMULATE_MAX_BODY_BYTES) {
+      return Response.json({ error: 'Body exceeds 4 KB cap for this endpoint.' }, { status: 413 });
+    }
+  }
+
   let body: { count?: number; seed?: number } = {};
   try {
     const raw = await req.text();
+    if (raw.length > SIMULATE_MAX_BODY_BYTES) {
+      return Response.json({ error: 'Body exceeds 4 KB cap for this endpoint.' }, { status: 413 });
+    }
     if (raw.length > 0) body = JSON.parse(raw) as typeof body;
   } catch {
     return Response.json({ error: 'Invalid JSON body.' }, { status: 400 });

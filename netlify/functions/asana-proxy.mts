@@ -99,9 +99,19 @@ export default async (req: Request, context: Context): Promise<Response> => {
     );
   }
 
+  // Preflight body-size check — refuse before buffering if
+  // Content-Length already exceeds the cap. Mirrors the pattern in
+  // asana-webhook.mts and asana-dispatch.mts.
+  const contentLengthHeader = req.headers.get('content-length');
+  if (contentLengthHeader) {
+    const declared = Number(contentLengthHeader);
+    if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+      return Response.json({ error: 'Body exceeds 256 KB cap.' }, { status: 413 });
+    }
+  }
   const raw = await req.text();
   if (raw.length > MAX_BODY_BYTES) {
-    return badRequest('Body exceeds 256 KB cap.');
+    return Response.json({ error: 'Body exceeds 256 KB cap.' }, { status: 413 });
   }
   let parsed: { method?: string; path?: string; body?: unknown };
   try {
