@@ -475,8 +475,14 @@ export function renderMorningBriefingMarkdown(report: MorningBriefingReport): st
   lines.push('| Source | Status | Last ingest |');
   lines.push('| --- | --- | --- |');
   for (const c of report.listCoverage) {
+    const label =
+      c.status === 'ok'
+        ? 'OK'
+        : c.status === 'manual-pending'
+          ? 'MANUAL-PENDING'
+          : c.status.toUpperCase();
     lines.push(
-      `| ${c.source} | ${c.status === 'ok' ? 'OK' : c.status.toUpperCase()} | ${c.lastCheckedAt ? formatDateDDMMYYYY(c.lastCheckedAt) : '—'} |`
+      `| ${c.source} | ${label} | ${c.lastCheckedAt ? formatDateDDMMYYYY(c.lastCheckedAt) : '—'} |`
     );
   }
   lines.push('');

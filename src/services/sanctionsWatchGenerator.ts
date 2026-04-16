@@ -48,7 +48,28 @@ import { CNMR_FILING_DEADLINE_BUSINESS_DAYS } from '../domain/constants';
 export const REQUIRED_SOURCES = ['UN', 'OFAC', 'EU', 'UK', 'UAE', 'EOCN'] as const;
 export type RequiredSource = (typeof REQUIRED_SOURCES)[number];
 
-export type ListHealthStatus = 'ok' | 'stale' | 'missing';
+/**
+ * Coverage status for a sanctions source.
+ *
+ * - `ok`             — ingest successful within the past 24h
+ * - `stale`          — last ingest is older than 24h (needs investigation)
+ * - `missing`        — no snapshot in the store at all (ingest broken)
+ * - `manual-pending` — source has no stable URL and requires a manual
+ *                      upload (UAE EOCN). Not a regulatory failure on
+ *                      its own; the MLRO is expected to upload on a
+ *                      policy cadence, and the daily briefing must
+ *                      not trip the off-track banner for these until
+ *                      the policy grace window elapses.
+ */
+export type ListHealthStatus = 'ok' | 'stale' | 'missing' | 'manual-pending';
+
+/**
+ * Sources that only exist as manual uploads (no public stable URL).
+ * Rather than flagging them as `missing` every run, the coverage probe
+ * marks them `manual-pending` so the briefing does not emit a daily
+ * false-alarm for a known design constraint.
+ */
+export const MANUAL_ONLY_SOURCES: ReadonlyArray<RequiredSource> = ['UAE', 'EOCN'];
 
 export interface ListCoverageEntry {
   source: RequiredSource;
@@ -208,16 +229,27 @@ export function buildSanctionsWatchReport(input: SanctionsWatchInput): Sanctions
   const windowToIso = now.toISOString();
 
   // 1) List coverage — verify all six required sources are present.
+  // Sources with no stable URL (UAE, EOCN) default to `manual-pending`
+  // instead of `missing`, so they do not trip the off-track banner
+  // on every run. If the probe explicitly reported a status that is
+  // not `manual-pending`, that wins — `missing` or `stale` on a
+  // manual-only source remains a signal worth flagging.
   const coverage: ListCoverageEntry[] = REQUIRED_SOURCES.map((source) => {
     const entry = listCoverage[source];
+    const isManualOnly = MANUAL_ONLY_SOURCES.includes(source);
+    const fallbackStatus: ListHealthStatus = isManualOnly ? 'manual-pending' : 'missing';
     return {
       source,
-      status: entry?.status ?? 'missing',
+      status: entry?.status ?? fallbackStatus,
       lastCheckedAt: entry?.lastCheckedAt,
       note: entry?.note,
     };
   });
-  const missingSources = coverage.filter((c) => c.status !== 'ok').map((c) => c.source);
+  // `manual-pending` does NOT count as missing coverage — it's a
+  // documented design constraint, not an ingest failure.
+  const missingSources = coverage
+    .filter((c) => c.status !== 'ok' && c.status !== 'manual-pending')
+    .map((c) => c.source);
   const anyListMissing = missingSources.length > 0;
 
   // 2) Hit bucketing by confidence band. Sort each bucket by score desc.
@@ -316,15 +348,19 @@ export function buildSanctionsWatchReport(input: SanctionsWatchInput): Sanctions
 
 // ─── Markdown renderer ─────────────────────────────────────────────────────
 
+function formatCoverageStatus(status: ListHealthStatus): string {
+  if (status === 'ok') return 'OK';
+  if (status === 'manual-pending') return 'MANUAL-PENDING';
+  return status.toUpperCase();
+}
+
 function renderCoverageTable(entries: ReadonlyArray<ListCoverageEntry>): string[] {
   const out: string[] = [];
   out.push('| Source | Status | Last ingest | Note |');
   out.push('| --- | --- | --- | --- |');
   for (const e of entries) {
     const stamp = e.lastCheckedAt ? formatDateDDMMYYYY(e.lastCheckedAt) : '—';
-    out.push(
-      `| ${e.source} | ${e.status === 'ok' ? 'OK' : e.status.toUpperCase()} | ${stamp} | ${e.note ?? ''} |`
-    );
+    out.push(`| ${e.source} | ${formatCoverageStatus(e.status)} | ${stamp} | ${e.note ?? ''} |`);
   }
   return out;
 }

@@ -67,22 +67,22 @@ async function writeAudit(payload: Record<string, unknown>): Promise<void> {
   }
 }
 
+type ProbeStatus = 'ok' | 'stale' | 'missing' | 'manual-pending';
+type ProbeEntry = { status: ProbeStatus; lastCheckedAt?: string; note?: string };
+
+// Sources without a stable URL default to `manual-pending` so the
+// briefing does not flag them as a daily regulatory failure.
+const MANUAL_ONLY_SOURCES = new Set<'UAE' | 'EOCN'>(['UAE', 'EOCN']);
+
 async function probeCoverage(
   now: Date
-): Promise<
-  Record<
-    'UN' | 'OFAC' | 'EU' | 'UK' | 'UAE' | 'EOCN',
-    { status: 'ok' | 'stale' | 'missing'; lastCheckedAt?: string; note?: string }
-  >
-> {
+): Promise<Record<'UN' | 'OFAC' | 'EU' | 'UK' | 'UAE' | 'EOCN', ProbeEntry>> {
   const sources = ['UN', 'OFAC', 'EU', 'UK', 'UAE', 'EOCN'] as const;
   const store = getStore(SNAPSHOT_STORE);
   const cutoffMs = now.getTime() - 24 * 60 * 60 * 1000;
-  const out: Record<
-    string,
-    { status: 'ok' | 'stale' | 'missing'; lastCheckedAt?: string; note?: string }
-  > = {};
+  const out: Record<string, ProbeEntry> = {};
   for (const source of sources) {
+    const manualOnly = MANUAL_ONLY_SOURCES.has(source as 'UAE' | 'EOCN');
     try {
       const listing = await store.list({ prefix: `${source}/` });
       const blobs = (listing.blobs ?? [])
@@ -90,7 +90,9 @@ async function probeCoverage(
         .sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0));
       const latest = blobs[0];
       if (!latest) {
-        out[source] = { status: 'missing', note: 'no snapshot in store' };
+        out[source] = manualOnly
+          ? { status: 'manual-pending', note: 'awaiting manual upload' }
+          : { status: 'missing', note: 'no snapshot in store' };
         continue;
       }
       const dateSegment = latest.key.split('/')[1] ?? '';
@@ -104,16 +106,11 @@ async function probeCoverage(
         lastCheckedAt: new Date(dateMs).toISOString(),
       };
     } catch (err) {
-      out[source] = {
-        status: 'missing',
-        note: err instanceof Error ? err.message : String(err),
-      };
+      const note = err instanceof Error ? err.message : String(err);
+      out[source] = manualOnly ? { status: 'manual-pending', note } : { status: 'missing', note };
     }
   }
-  return out as Record<
-    'UN' | 'OFAC' | 'EU' | 'UK' | 'UAE' | 'EOCN',
-    { status: 'ok' | 'stale' | 'missing'; lastCheckedAt?: string; note?: string }
-  >;
+  return out as Record<'UN' | 'OFAC' | 'EU' | 'UK' | 'UAE' | 'EOCN', ProbeEntry>;
 }
 
 async function probeCronHealth(now: Date): Promise<
