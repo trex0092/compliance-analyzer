@@ -33,6 +33,7 @@ import {
   type Transaction,
 } from '../domain/transaction';
 import { runRuleEngine, type RuleEngineOptions } from './txMonitoringRuleEngine';
+import { runStatisticalLayer, type StatisticalLayerOptions } from './txStatisticalLayer';
 import { runTypologyMatcher, type TypologyOptions } from './txTypologyMatcher';
 
 // ---------------------------------------------------------------------------
@@ -72,6 +73,7 @@ function formatDdMmYyyy(d: Date): string {
 export interface TmBrainOptions {
   readonly ruleEngine?: RuleEngineOptions;
   readonly typology?: TypologyOptions;
+  readonly statistical?: StatisticalLayerOptions;
   /**
    * The "as of" date for STR deadline computation. Tests inject a
    * fixed date. Defaults to `new Date()`.
@@ -105,13 +107,16 @@ export function runTmBrain(
 
   const ruleFindings = runRuleEngine(transactions, options.ruleEngine);
   const typologyFindings = runTypologyMatcher(transactions, options.typology);
+  const statisticalFindings = runStatisticalLayer(transactions, options.statistical);
 
-  // Dedupe by finding.id — if both the rule engine and the typology
-  // matcher produce a finding with the same id (same customer, same
-  // kind, same tx cluster), keep the first one.
+  // Dedupe by finding.id — if multiple layers produce a finding with
+  // the same id (same customer, same kind, same tx cluster), keep
+  // the first one. Order: rules → typology → statistical, so hard
+  // threshold hits take precedence over statistical flags for the
+  // same transactions.
   const seen = new Set<string>();
   const allFindings: TmFinding[] = [];
-  for (const f of [...ruleFindings, ...typologyFindings]) {
+  for (const f of [...ruleFindings, ...typologyFindings, ...statisticalFindings]) {
     if (seen.has(f.id)) continue;
     seen.add(f.id);
     allFindings.push(f);
