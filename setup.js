@@ -365,7 +365,7 @@
     var dispatch = byId('input-tm-dispatch').checked;
     setStatus('tm-scan-status', 'pending', 'Scanning…');
     var token = state.brainToken;
-    fetch(apiBase() + '/api/tm-scan', {
+    fetch(apiBase() + '/.netlify/functions/tm-scan-cron', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ dispatch: dispatch }),
