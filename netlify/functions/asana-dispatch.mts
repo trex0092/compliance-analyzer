@@ -51,8 +51,7 @@ function coerceEvent(raw: unknown): OrchestrationEvent | { error: string } {
   if (typeof r.tenantId !== 'string' || r.tenantId.length === 0)
     return { error: 'tenantId is required.' };
   if (typeof r.occurredAtIso !== 'string') return { error: 'occurredAtIso is required.' };
-  if (typeof r.refId !== 'string' || r.refId.length === 0)
-    return { error: 'refId is required.' };
+  if (typeof r.refId !== 'string' || r.refId.length === 0) return { error: 'refId is required.' };
   // Block raw Emirates IDs from the dispatch surface.
   if (/\b784-\d{4}-\d{7}-\d\b/.test(JSON.stringify(raw))) {
     return { error: 'Raw Emirates ID detected — pseudonymize before dispatching.' };
@@ -95,8 +94,33 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const auth = authenticate(req);
   if (!auth.ok) return auth.response ?? Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // Preflight body-size check. If Content-Length already exceeds the
+  // cap, refuse before buffering — a multi-megabyte payload would
+  // otherwise force the runtime to allocate the full buffer before
+  // we learn it was over limit.
+  const contentLengthHeader = req.headers.get('content-length');
+  if (contentLengthHeader) {
+    const declared = Number(contentLengthHeader);
+    if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+      await writeAudit({
+        event: 'asana_dispatch_body_too_large',
+        ip: context.ip,
+        declaredBytes: declared,
+        cap: MAX_BODY_BYTES,
+      });
+      return Response.json({ error: 'Body exceeds 512 KB cap.' }, { status: 413 });
+    }
+  }
   const raw = await req.text();
-  if (raw.length > MAX_BODY_BYTES) return badRequest('Body exceeds 512 KB cap.');
+  if (raw.length > MAX_BODY_BYTES) {
+    await writeAudit({
+      event: 'asana_dispatch_body_too_large_post_read',
+      ip: context.ip,
+      actualBytes: raw.length,
+      cap: MAX_BODY_BYTES,
+    });
+    return Response.json({ error: 'Body exceeds 512 KB cap.' }, { status: 413 });
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
