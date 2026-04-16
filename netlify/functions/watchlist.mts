@@ -106,11 +106,19 @@ async function saveToStore(data: SerialisedWatchlist): Promise<void> {
 // ---------------------------------------------------------------------------
 
 type PostAction =
-  | { action: 'add'; id: string; subjectName: string; riskTier?: RiskTier; metadata?: Record<string, string | number | boolean> }
+  | {
+      action: 'add';
+      id: string;
+      subjectName: string;
+      riskTier?: RiskTier;
+      metadata?: Record<string, string | number | boolean>;
+    }
   | { action: 'remove'; id: string }
   | { action: 'replace'; watchlist: SerialisedWatchlist };
 
-function validatePostBody(input: unknown): { ok: true; body: PostAction } | { ok: false; error: string } {
+function validatePostBody(
+  input: unknown
+): { ok: true; body: PostAction } | { ok: false; error: string } {
   if (!input || typeof input !== 'object') {
     return { ok: false, error: 'body must be a JSON object' };
   }
@@ -133,7 +141,10 @@ function validatePostBody(input: unknown): { ok: true; body: PostAction } | { ok
     if (raw.riskTier !== undefined && !['high', 'medium', 'low'].includes(raw.riskTier as string)) {
       return { ok: false, error: 'add: riskTier must be "high" | "medium" | "low"' };
     }
-    if (raw.metadata !== undefined && (typeof raw.metadata !== 'object' || raw.metadata === null || Array.isArray(raw.metadata))) {
+    if (
+      raw.metadata !== undefined &&
+      (typeof raw.metadata !== 'object' || raw.metadata === null || Array.isArray(raw.metadata))
+    ) {
       return { ok: false, error: 'add: metadata must be an object' };
     }
     return {
@@ -219,6 +230,15 @@ export default async (req: Request, context: Context): Promise<Response> => {
 
   // ─── POST /api/watchlist ───────────────────────────────────────────────
   if (req.method === 'POST') {
+    // Preflight Content-Length — refuse before buffering if already
+    // declared too large.
+    const contentLengthHeader = req.headers.get('content-length');
+    if (contentLengthHeader) {
+      const declared = Number(contentLengthHeader);
+      if (Number.isFinite(declared) && declared > MAX_BODY_SIZE) {
+        return jsonResponse({ ok: false, error: 'request body too large' }, { status: 413 });
+      }
+    }
     // Parse body with size cap
     let parsed: unknown;
     try {
@@ -307,10 +327,7 @@ export type ApplyActionResult =
   | { ok: true; status: number; updated: SerialisedWatchlist; response: unknown }
   | { ok: false; status: number; error: string };
 
-export function applyAction(
-  current: SerialisedWatchlist,
-  action: PostAction
-): ApplyActionResult {
+export function applyAction(current: SerialisedWatchlist, action: PostAction): ApplyActionResult {
   const wl = deserialiseWatchlist(current);
 
   if (action.action === 'add') {
