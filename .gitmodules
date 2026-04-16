@@ -157,3 +157,6 @@
 [submodule "vendor/pgmpy"]
 	path = vendor/pgmpy
 	url = https://github.com/pgmpy/pgmpy.git
+[submodule "vendor/claude-code-spec-workflow"]
+	path = vendor/claude-code-spec-workflow
+	url = https://github.com/Pimzino/claude-code-spec-workflow.git
