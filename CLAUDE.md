@@ -233,6 +233,7 @@ This is the single source of truth. When a regulation changes:
 | `/multi-agent-screen` | Parallel multi-agent sanctions screening | High-volume screening, full-list coverage across all sanctions lists |
 | `/agent-orchestrate` | Multi-agent compliance workflow orchestrator | Complex CDD/EDD/STR workflows using PEER pattern |
 | `/agent-review` | Multi-agent compliance code review | PR review with parallel specialist agents (regulatory, security, audit, architecture) |
+| `/regulatory-spec` | Spec-first chain (Regulation → Spec → Code → Test → Evidence) | New regulation/circular requiring a structural feature, not just a constant bump (use `/regulatory-update` for value changes) |
 | AI Governance agent | EU AI Act + NIST AI RMF + ISO/IEC 42001 + UAE AI audit | Self-audit of the analyzer itself or customer AI audits. Invoke via `ComplianceHarness.runAiGovernanceAudit({ mode: 'self' \| 'customer', ... })` or directly via `runAiGovernanceAgent()` — src/agents/definitions/ai-governance-agent.ts |
 
 ## Integrated Agent Frameworks
@@ -280,6 +281,7 @@ The following multi-agent frameworks are vendored for reference and integration 
 | pgmpy | `vendor/pgmpy` | Python library for Probabilistic Graphical Models — Bayesian networks, Markov networks, dynamic Bayesian networks, causal inference (do-calculus), structure learning, parameter estimation (MLE + Bayesian). Production quality, actively maintained, AGENTS.md-aware. | **In-scope reference.** Direct production fit for risk scoring: model `P(STR_triggered \| cash_intensive, high_risk_jurisdiction, PEP, shell_company_indicator, adverse_media_hit)` as a Bayesian network instead of the current linear likelihood × impact × multipliers formula. Gives calibrated probabilities, explains which factor dominated a score, supports counterfactual reasoning ("would this still flag if the PEP evidence were removed?"), and produces the kind of reasoning chain MoE and MLROs actually want. Output feeds the `explainableScoring` subsystem already called from `weaponizedBrain`. |
 | reasoning-from-scratch | `vendor/reasoning-from-scratch` | Sebastian Raschka's 8-chapter build-it-yourself guide to reasoning LLMs (ch01-ch08). Companion code to his reasoning-models material. Educational, not a runtime library. | **Educational reference.** Use when onboarding new engineers to how reasoning models actually work under the hood, or when debugging why a reasoning trace went off the rails. Not to be imported into production. Safe to read in targeted sessions — each chapter is a self-contained notebook, so a single `offset`+`limit` read is cheap. |
 | awesome-kg-reasoning | `vendor/awesome-kg-reasoning` | Curated awesome-list of Knowledge Graph Reasoning papers, datasets, and code (LIANGKE23). README + logo only — no executable content. | **Reading list, off-scope for normal work.** Use when scoping a new KG-reasoning feature (e.g. multi-hop UBO chains, entity-linking across STR corpora) and you need to survey the literature before committing to an approach. Otherwise do not open — it is a context budget sink per §7 and adds nothing to an active session. Pairs with `graphrag` (canonical impl) for "survey first, then prototype". |
+| claude-code-spec-workflow | `vendor/claude-code-spec-workflow` | Pimzino's spec-driven development workflow for Claude Code: phased Requirements → Design → Tasks → Implementation pipeline plus a parallel bug-fix flow, with auto-generated per-task slash commands and a structured `.claude/{commands,steering,specs,bugs}` layout. TypeScript + Tauri. MIT. | **In-scope reference.** Direct source for the new `/regulatory-spec` skill (`skills/regulatory-spec/SKILL.md`) which adapts the four-phase pipeline into the five-phase **Regulation → Spec → Code → Test → Evidence** chain that MoE/LBMA auditors expect. The phase-gating model maps cleanly onto our existing four-eyes / MLRO approval gates and complements `/regulatory-update` (constant bumps) without overlap. **Do NOT** copy its `.claude/settings.json` hooks if they bypass pre-commit checks — CLAUDE.md §9 forbids `--no-verify`. Read README + `src/templates/` only; skip the Tauri shell and the React UI tour. |
 
 ## Token-Efficient Output Rules
 
@@ -492,7 +494,8 @@ skill's workflow by hand — invoke the skill.
 | "sanctions hit" / "asset freeze"                  | `/incident` → `/goaml`             |
 | "quarterly / annual MoE report"                   | `/kpi-report`                      |
 | "can we ship?" / pre-deploy                       | `/deploy-check`                    |
-| "new law" / "new circular"                        | `/regulatory-update`               |
+| "new law" / "new circular" (constant bump only)   | `/regulatory-update`               |
+| "new regulation needs a new feature/workflow"     | `/regulatory-spec`                 |
 | "MoE inspection coming"                           | `/moe-readiness` → `/audit-pack`   |
 | "prove filing X was on time"                      | `/filing-compliance`               |
 | "entity Y history / timeline"                     | `/timeline`                        |
