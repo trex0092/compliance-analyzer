@@ -35,10 +35,13 @@ real human's queue with the right SLA and the right four-eyes gate.
    `src/services/asana/orchestrator.ts`. No file outside this
    directory may call `asanaQueue.ts` directly.
 
-2. **Idempotency first.** Every orchestrator call computes a
-   sha3_512 idempotency key from `tenantId | caseId | verdict |
-   timestampHour | dispatchKind`. Replays within 30 days return the
-   cached response without writing to Asana.
+2. **Idempotency first.** Every orchestrator call computes a key
+   of the form `${tenantId}:${verdictId}`. The brain's `verdictId`
+   is unique per decision, so same-decision retries dedupe while a
+   fresh decision produces a fresh key. Replays within 30 days
+   return the cached response without writing to Asana. Source of
+   truth: `makeIdempotencyKey()` in `src/services/asana/orchestrator.ts`;
+   full rules in `IDEMPOTENCY.md`.
 
 3. **Retry queue last.** The queue wraps every Asana API call with
    exponential backoff (2s → 4s → 8s → 16s, max 4 retries). Anything
