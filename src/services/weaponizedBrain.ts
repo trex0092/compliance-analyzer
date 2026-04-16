@@ -2931,7 +2931,11 @@ export async function runWeaponizedBrain(
   // ---------------------------------------------------------------------------
 
   // #104 Cross-jurisdiction conflict detector.
-  if (req.proposedAction && req.applicableJurisdictions && req.applicableJurisdictions.length >= 2) {
+  if (
+    req.proposedAction &&
+    req.applicableJurisdictions &&
+    req.applicableJurisdictions.length >= 2
+  ) {
     const conflictsResult = runSafely('crossJurisdictionConflicts', () =>
       detectCrossJurisdictionConflicts({
         action: req.proposedAction!,
