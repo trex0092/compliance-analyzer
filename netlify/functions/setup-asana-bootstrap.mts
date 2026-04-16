@@ -283,15 +283,6 @@ export default async (req: Request, context: Context): Promise<Response> => {
 
   const accessToken = process.env.ASANA_ACCESS_TOKEN;
   const workspaceGid = process.env.ASANA_WORKSPACE_GID;
-  // The receiver function lives at /api/asana/webhook (see
-  // netlify/functions/asana-webhook.mts) and expects ?workspaceGid=<gid>
-  // as a query param so it can look up the right webhook secret per
-  // workspace. The previous /api/asana-webhook URL was a 404 →
-  // Asana's handshake POST got 404 → registration failed.
-  const origin = (process.env.HAWKEYE_ALLOWED_ORIGIN ?? '').replace(/\/+$/, '');
-  const webhookTarget = workspaceGid
-    ? `${origin}/api/asana/webhook?workspaceGid=${encodeURIComponent(workspaceGid)}`
-    : `${origin}/api/asana/webhook`;
 
   if (!accessToken || accessToken.length < 16) {
     return jsonResponse(
@@ -305,6 +296,53 @@ export default async (req: Request, context: Context): Promise<Response> => {
       { status: 503 }
     );
   }
+
+  // The receiver function lives at /api/asana/webhook (see
+  // netlify/functions/asana-webhook.mts) and expects ?workspaceGid=<gid>
+  // as a query param so it can look up the right webhook secret per
+  // workspace. The previous /api/asana-webhook URL was a 404 →
+  // Asana's handshake POST got 404 → registration failed.
+  //
+  // Asana requires an absolute https:// URL for the webhook target.
+  // If HAWKEYE_ALLOWED_ORIGIN is missing or relative, the request will
+  // 404 on Asana's side with an opaque error. Fail fast here so the
+  // operator sees a clear diagnostic instead of a mysterious Asana
+  // rejection during tenant bootstrap.
+  const rawOrigin = (process.env.HAWKEYE_ALLOWED_ORIGIN ?? '').trim();
+  if (!rawOrigin) {
+    return jsonResponse(
+      {
+        error: 'HAWKEYE_ALLOWED_ORIGIN env var missing',
+        hint:
+          'Asana webhook targets must be absolute https:// URLs. Set HAWKEYE_ALLOWED_ORIGIN to the public origin of this deployment (e.g. https://hawkeye-sterling-v2.netlify.app) before running tenant bootstrap.',
+      },
+      { status: 503 }
+    );
+  }
+  let originUrl: URL;
+  try {
+    originUrl = new URL(rawOrigin);
+  } catch {
+    return jsonResponse(
+      {
+        error: 'HAWKEYE_ALLOWED_ORIGIN is not a valid URL',
+        value: rawOrigin,
+      },
+      { status: 503 }
+    );
+  }
+  if (originUrl.protocol !== 'https:') {
+    return jsonResponse(
+      {
+        error: 'HAWKEYE_ALLOWED_ORIGIN must use https scheme',
+        value: rawOrigin,
+        hint: 'Asana webhook handshakes require TLS. Non-https origins are rejected.',
+      },
+      { status: 503 }
+    );
+  }
+  const origin = rawOrigin.replace(/\/+$/, '');
+  const webhookTarget = `${origin}/api/asana/webhook?workspaceGid=${encodeURIComponent(workspaceGid)}`;
 
   // Build the plan (pure).
   const plan = tenantProvisioningPlan(v.req.tenantId, {
