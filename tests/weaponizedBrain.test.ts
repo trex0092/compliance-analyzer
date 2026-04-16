@@ -525,3 +525,162 @@ describe('weaponizedBrain — advisor escalation', () => {
     expect(received[0].reason).toContain('verdict=freeze');
   });
 });
+
+// ---------------------------------------------------------------------------
+// #98 Deep research engine integration
+// ---------------------------------------------------------------------------
+
+describe('weaponizedBrain — #98 deep research engine', () => {
+  it('subsystem is a no-op when req.deepResearch is omitted', async () => {
+    const r = await runWeaponizedBrain({ mega: cleanMegaRequest() });
+    expect(r.extensions.deepResearch).toBeUndefined();
+  });
+
+  it('runs the engine via injected deps and surfaces the result', async () => {
+    const r = await runWeaponizedBrain({
+      mega: cleanMegaRequest('E1', 'Acme Trading LLC'),
+      deepResearch: {
+        question: 'Any adverse media on this entity?',
+        entity: { displayName: 'Acme Trading LLC', jurisdiction: 'AE' },
+        purpose: 'adverse_media',
+        deps: {
+          search: async () => [],
+          extract: async () => null,
+          reason: async () => ({
+            newClaims: [],
+            nextQueries: [],
+            done: true,
+            rationale: 'nothing found',
+          }),
+        },
+      },
+    });
+    expect(r.extensions.deepResearch).toBeDefined();
+    expect(r.extensions.deepResearch?.verdictHint).toBe('no_signal');
+    expect(r.extensions.deepResearch?.terminationReason).toBe('no_signal');
+    // No clamp on a clean result
+    expect(r.clampReasons.some((c) => c.includes('deep research'))).toBe(false);
+  });
+
+  it('critical corroborated signal escalates a clean verdict', async () => {
+    const r = await runWeaponizedBrain({
+      mega: cleanMegaRequest('E2', 'Dirty Trading LLC'),
+      deepResearch: {
+        question: 'sanctions exposure',
+        entity: { displayName: 'Dirty Trading LLC', jurisdiction: 'AE' },
+        purpose: 'edd_counterparty',
+        deps: {
+          search: async () => [],
+          extract: async () => null,
+          reason: async () => ({
+            newClaims: [
+              {
+                text: 'OFAC SDN designation December 2025',
+                sources: ['https://treasury.gov/sdn/x', 'https://reuters.com/y'],
+                severity: 'critical',
+              },
+            ],
+            nextQueries: [],
+            done: true,
+            rationale: 'corroborated SDN hit',
+          }),
+        },
+      },
+    });
+    expect(r.extensions.deepResearch?.verdictHint).toBe('critical');
+    expect(['escalate', 'freeze']).toContain(r.finalVerdict);
+    expect(
+      r.clampReasons.some(
+        (c) => c.includes('deep research') && c.includes('corroborated critical')
+      )
+    ).toBe(true);
+  });
+
+  it('single-source critical claim does NOT trigger the clamp (corroboration floor)', async () => {
+    const r = await runWeaponizedBrain({
+      mega: cleanMegaRequest('E3', 'Borderline LLC'),
+      deepResearch: {
+        question: 'sanctions exposure',
+        entity: { displayName: 'Borderline LLC', jurisdiction: 'AE' },
+        purpose: 'edd_counterparty',
+        deps: {
+          search: async () => [],
+          extract: async () => null,
+          reason: async () => ({
+            newClaims: [
+              {
+                text: 'Allegation in a single blog post',
+                sources: ['https://blog.example/x'],
+                severity: 'critical',
+              },
+            ],
+            nextQueries: [],
+            done: true,
+            rationale: 'thin evidence',
+          }),
+        },
+      },
+    });
+    // Engine reports material_signal, NOT critical, because corroboration
+    // floor (>=2 distinct hostnames) wasn't met.
+    expect(r.extensions.deepResearch?.verdictHint).toBe('material_signal');
+    // Critical clamp must not have fired.
+    expect(
+      r.clampReasons.some(
+        (c) => c.includes('deep research') && c.includes('corroborated critical')
+      )
+    ).toBe(false);
+  });
+
+  it('engine failure escalates to manual review (FDL Art.24)', async () => {
+    const r = await runWeaponizedBrain({
+      mega: cleanMegaRequest('E4', 'Crash Corp'),
+      deepResearch: {
+        question: 'sanctions',
+        entity: { displayName: 'Crash Corp' },
+        purpose: 'general_compliance',
+        deps: {
+          search: async () => {
+            throw new Error('search backend offline');
+          },
+          extract: async () => null,
+          reason: async () => ({
+            newClaims: [],
+            nextQueries: [],
+            done: true,
+            rationale: '',
+          }),
+        },
+      },
+    });
+    expect(r.subsystemFailures).toContain('deepResearchEngine');
+    expect(
+      r.clampReasons.some(
+        (c) => c.includes('deepResearchEngine failed') && c.includes('FDL Art.24')
+      )
+    ).toBe(true);
+    expect(r.requiresHumanReview).toBe(true);
+  });
+
+  it('audit narrative includes the deep research line when present', async () => {
+    const r = await runWeaponizedBrain({
+      mega: cleanMegaRequest('E5'),
+      deepResearch: {
+        question: 'check',
+        entity: { displayName: 'X' },
+        purpose: 'general_compliance',
+        deps: {
+          search: async () => [],
+          extract: async () => null,
+          reason: async () => ({
+            newClaims: [],
+            nextQueries: [],
+            done: true,
+            rationale: '',
+          }),
+        },
+      },
+    });
+    expect(r.auditNarrative).toMatch(/Deep research \(#98\)/);
+  });
+});

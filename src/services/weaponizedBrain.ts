@@ -152,6 +152,13 @@ import {
   type CorrelationReport,
 } from './crossCustomerCorrelator';
 import { reviewExtensions, type TeacherExtensionReport } from './teacherExtensionReviewer';
+import {
+  runDeepResearch,
+  type DeepResearchDeps,
+  type DeepResearchResult,
+  type EntityContext,
+  type ResearchPurpose,
+} from './deepResearchEngine';
 
 // --- Phase 3 imports (#31-#40) ---
 import { analyseBenford, type BenfordReport } from './benfordAnalyzer';
@@ -1017,6 +1024,29 @@ export interface WeaponizedBrainRequest {
    */
   inductionSamples?: readonly LabeledSample[];
   inductionConfig?: InductionConfig;
+
+  /**
+   * #98 Deep research request. When present, the brain runs the iterative
+   * deepResearchEngine using the injected backends. Caller owns the
+   * search/extract/reason functions — this keeps the brain browser-safe and
+   * lets tests stub external I/O. Returns nothing if `deps` is omitted.
+   *
+   * Regulatory basis:
+   *   - FDL No.10/2025 Art.19  (risk-based internal review)
+   *   - FDL No.10/2025 Art.24  (audit trail of every external call)
+   *   - FDL No.10/2025 Art.29  (no tipping off — PII redactor in the engine)
+   *   - Cabinet Res 134/2025 Art.14 (PEP / EDD enhanced research)
+   *   - FATF Rec 10            (ongoing monitoring; adverse media input)
+   */
+  deepResearch?: {
+    question: string;
+    entity: EntityContext;
+    purpose: ResearchPurpose;
+    deps: DeepResearchDeps;
+    maxIterations?: number;
+    maxQueriesPerIteration?: number;
+    deadlineMs?: number;
+  };
 }
 
 export interface WeaponizedExtensions {
@@ -1212,6 +1242,15 @@ export interface WeaponizedExtensions {
   euAiActReadiness?: ReadinessScaffoldResult;
   /** #97 Rule induction — human-readable decision rules extracted from session data. */
   inducedRules?: LearnedRule[];
+
+  /**
+   * #98 Deep research engine — iterative search/reason/cite loop.
+   * Adverse media, EDD on opaque counterparties, STR narrative drafting.
+   * Adapts vendor/node-DeepResearch into a browser-safe, dep-injected engine.
+   * Regulatory basis: FDL Art.19 (risk-based review), Art.24 (audit trail),
+   * Art.29 (no tipping off — engine redacts PII before external queries).
+   */
+  deepResearch?: DeepResearchResult;
 }
 
 export interface WeaponizedBrainResponse {
@@ -2788,6 +2827,32 @@ export async function runWeaponizedBrain(
     if (rulesResult) extensions.inducedRules = rulesResult;
   }
 
+  // #98 Deep research engine — iterative search/reason/cite loop.
+  // Async because the engine awaits injected search/extract/reason backends.
+  // Failures escalate to manual review per FDL Art.24 — never silently swallowed.
+  if (req.deepResearch) {
+    const dr = req.deepResearch;
+    try {
+      extensions.deepResearch = await runDeepResearch(
+        {
+          question: dr.question,
+          entity: dr.entity,
+          purpose: dr.purpose,
+          maxIterations: dr.maxIterations,
+          maxQueriesPerIteration: dr.maxQueriesPerIteration,
+          deadlineMs: dr.deadlineMs,
+        },
+        dr.deps
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      subsystemFailures.push('deepResearchEngine');
+      clampReasons.push(
+        `CLAMP: subsystem deepResearchEngine failed (${message}) — manual review required (FDL Art.24)`
+      );
+    }
+  }
+
   // #88 Quantum-resistant seal — always runs last (seals everything above)
   {
     const sealRecords: QuantumSealRecord[] = [
@@ -2803,6 +2868,22 @@ export async function runWeaponizedBrain(
   // ---------------------------------------------------------------------------
   // Phase 4-10 safety clamps — monotone escalation only.
   // ---------------------------------------------------------------------------
+
+  // #98 Deep research critical signal → escalate. Critical verdictHint
+  // requires >=2 distinct hostnames corroborating a critical-severity claim
+  // (corroboration floor in deepResearchEngine), so this clamp only fires
+  // on real corroborated adverse signal — no single-source false positives.
+  // FATF Rec 10 + Cabinet Res 134/2025 Art.14 (EDD on adverse media).
+  if (extensions.deepResearch?.verdictHint === 'critical') {
+    finalVerdict = escalateTo(finalVerdict, 'escalate');
+    const claimCount = extensions.deepResearch.claims.filter(
+      (c) => c.severity === 'critical' && c.distinctHostnames >= 2
+    ).length;
+    clampReasons.push(
+      `CLAMP: deep research surfaced ${claimCount} corroborated critical claim(s) — ` +
+        `escalate (FATF Rec 10 + Cabinet Res 134/2025 Art.14 + FDL Art.19)`
+    );
+  }
 
   // #41 ESG critical risk → escalate (LBMA RGG v9 §6 / ISSB S1 materiality).
   if (extensions.esgScore?.riskLevel === 'critical') {
@@ -3949,6 +4030,15 @@ function buildAuditNarrative(
   if (extensions.inducedRules && extensions.inducedRules.length > 0) {
     lines.push(
       `  - Rule induction (#97): ${extensions.inducedRules.length} human-readable rule(s) extracted`
+    );
+  }
+  if (extensions.deepResearch) {
+    const dr = extensions.deepResearch;
+    lines.push(
+      `  - Deep research (#98): ${dr.claims.length} claim(s), verdictHint=${dr.verdictHint}, ` +
+        `confidence=${dr.confidence}, queries=${dr.queriesUsed.length}` +
+        (dr.piiRedactionApplied ? ', PII-redacted' : '') +
+        (dr.truncated ? ` (truncated: ${dr.terminationReason})` : '')
     );
   }
 
