@@ -211,21 +211,37 @@ describe('benfordLawChecker', () => {
     expect(r.status).toBe('insufficient_data');
   });
 
+  // Deterministic PRNG (mulberry32) so the chi-squared check below is stable
+  // across runs. Math.random() with N=300 occasionally crosses the suspicious
+  // threshold by chance and produces flaky CI failures.
+  const seededRandom = (seed: number): (() => number) => {
+    let s = seed >>> 0;
+    return () => {
+      s = (s + 0x6d2b79f5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+
   it('natural Benford distribution passes the check', () => {
-    // Generate values that follow Benford (1^x, base 10)
+    const rng = seededRandom(0xbe2f0d);
+    // Generate values that follow Benford (10^x, base 10)
     const amounts: number[] = [];
     for (let i = 0; i < 300; i++) {
-      amounts.push(Math.pow(10, Math.random() * 5));
+      amounts.push(Math.pow(10, rng() * 5));
     }
     const r = checkBenfordLaw(amounts);
     expect(r.status).toBe('ok');
   });
 
   it('uniform distribution is flagged as suspicious', () => {
+    const rng = seededRandom(0x517a1f);
     const amounts: number[] = [];
     for (let i = 0; i < 300; i++) {
       // Uniform distribution of amounts 100-999 → first digit uniform → not Benford
-      amounts.push(100 + Math.floor(Math.random() * 900));
+      amounts.push(100 + Math.floor(rng() * 900));
     }
     const r = checkBenfordLaw(amounts);
     expect(r.status).toBe('suspicious');
