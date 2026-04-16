@@ -250,7 +250,10 @@ function distinctHostnames(sources: readonly string[]): number {
   return new Set(sources.map(hostnameOf)).size;
 }
 
-function confidenceFor(distinctHosts: number, severity: ResearchClaim['severity']): ResearchConfidence {
+function confidenceFor(
+  distinctHosts: number,
+  severity: ResearchClaim['severity']
+): ResearchConfidence {
   if (severity === 'critical' && distinctHosts >= 2) return 'high';
   if (distinctHosts >= 3) return 'high';
   if (distinctHosts >= 2) return 'medium';
@@ -274,9 +277,7 @@ function aggregateConfidence(claims: readonly ResearchClaim[]): ResearchConfiden
   if (claims.length === 0) return 'low';
   // Lowest confidence among the strongest claims = honest reporting.
   const ranking: Record<ResearchConfidence, number> = { low: 0, medium: 1, high: 2 };
-  const strongest = [...claims].sort(
-    (a, b) => (ranking[b.confidence] - ranking[a.confidence])
-  );
+  const strongest = [...claims].sort((a, b) => ranking[b.confidence] - ranking[a.confidence]);
   // Take the top 3 and report the WEAKEST among them
   const topK = strongest.slice(0, Math.min(3, strongest.length));
   return topK.reduce<ResearchConfidence>(
