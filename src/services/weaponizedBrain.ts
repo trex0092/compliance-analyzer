@@ -459,6 +459,24 @@ import {
   type DatedSignal,
 } from './weaponizedPhase13';
 
+// --- Phase 14 imports (#104-#109) — intelligence & awareness ---
+import {
+  detectCrossJurisdictionConflicts,
+  runPeerGroupDeviation,
+  runRegulatoryCalendar,
+  scoreInterSubsystemAgreement,
+  runCounterfactualCompletion,
+  type CrossJurisdictionConflictReport,
+  type PeerDeviationReport,
+  type PeerGroupDistribution,
+  type RegulatoryCalendarReport,
+  type RegulatoryDeadline,
+  type AgreementScore,
+  type CounterfactualCompletionReport,
+  type JurisdictionCode,
+  type ProposedAction,
+} from './weaponizedPhase14';
+
 // ---------------------------------------------------------------------------
 // Verdict ordering — verdicts can only escalate under new clamps.
 // ---------------------------------------------------------------------------
@@ -1098,6 +1116,42 @@ export interface WeaponizedBrainRequest {
    * `new Date()` when omitted. Exposed for deterministic tests.
    */
   freshnessAsOf?: Date;
+
+  // --- Phase 14 inputs (#104-#109) — intelligence & awareness, all optional ---
+
+  /**
+   * #104 Applicable jurisdictions for the proposed action. When both
+   * `action` and `jurisdictions` are provided, the brain checks for known
+   * conflicts of obligation across jurisdictions.
+   * Regulatory basis: FDL Art.20-21, OFAC secondary, EU GDPR, EU Blocking Reg.
+   */
+  proposedAction?: ProposedAction;
+  applicableJurisdictions?: readonly JurisdictionCode[];
+
+  /**
+   * #105 Peer-group distribution for verdict-deviation analysis. When
+   * omitted, the peer-deviation subsystem skips.
+   * Regulatory basis: Cabinet Res 134/2025 Art.19.
+   */
+  peerGroupDistribution?: PeerGroupDistribution;
+
+  /**
+   * #106 Upcoming regulatory deadlines (STR/CTR/CNMR/EOCN freeze/CDD
+   * review/UBO reverify). The brain classifies urgency but does NOT
+   * clamp the verdict in v1. Reports only.
+   * Regulatory basis: FDL Art.26-27, Cabinet Res 74/2020, Cabinet Res 134/2025 Art.7.
+   */
+  regulatoryDeadlines?: readonly RegulatoryDeadline[];
+
+  /** #106 Optional clock override for deterministic tests. */
+  calendarAsOf?: Date;
+
+  /**
+   * #109 Evidence types already known to be present for this entity.
+   * Used by the counterfactual-completion engine to subtract from the
+   * gap checklist. When omitted, all evidence classes are assumed absent.
+   */
+  knownEvidenceTypes?: readonly string[];
 }
 
 export interface WeaponizedExtensions {
@@ -1319,6 +1373,23 @@ export interface WeaponizedExtensions {
 
   /** #103 Evidence freshness decay — age-weighted confidence adjustment. */
   evidenceFreshness?: EvidenceFreshnessReport;
+
+  // --- Phase 14 subsystems (#104-#109) — intelligence & awareness ---
+
+  /** #104 Cross-jurisdiction conflicts of obligation. Report-only in v1. */
+  crossJurisdictionConflicts?: CrossJurisdictionConflictReport;
+
+  /** #105 Peer-group deviation — verdict distribution vs peer z-score. */
+  peerDeviation?: PeerDeviationReport;
+
+  /** #106 Regulatory calendar — deadline urgency classification. */
+  regulatoryCalendar?: RegulatoryCalendarReport;
+
+  /** #107 Inter-subsystem agreement — fraction of signals concurring with final. */
+  agreementScore?: AgreementScore;
+
+  /** #109 Counterfactual completion — evidence gaps that could escalate the verdict. */
+  counterfactualCompletion?: CounterfactualCompletionReport;
 }
 
 export interface WeaponizedBrainResponse {
@@ -2921,7 +2992,6 @@ export async function runWeaponizedBrain(
     }
   }
 
-  // ---------------------------------------------------------------------------
   // Phase 13 — Reasoning & Analysis subsystems (#99-#103).
   // All five are READ-ONLY: they observe the collected signals / clamps /
   // verdict but never modify finalVerdict. Any failure logs to
@@ -2988,6 +3058,68 @@ export async function runWeaponizedBrain(
       })
     );
     if (freshnessResult) extensions.evidenceFreshness = freshnessResult;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 14 — Intelligence & Awareness subsystems (#104-#109).
+  // All five are READ-ONLY in v1 — they observe but never clamp
+  // finalVerdict. Any failure logs to subsystemFailures (FDL Art.24).
+  // ---------------------------------------------------------------------------
+
+  // #104 Cross-jurisdiction conflict detector.
+  if (
+    req.proposedAction &&
+    req.applicableJurisdictions &&
+    req.applicableJurisdictions.length >= 2
+  ) {
+    const conflictsResult = runSafely('crossJurisdictionConflicts', () =>
+      detectCrossJurisdictionConflicts({
+        action: req.proposedAction!,
+        jurisdictions: req.applicableJurisdictions!,
+      })
+    );
+    if (conflictsResult) extensions.crossJurisdictionConflicts = conflictsResult;
+  }
+
+  // #105 Peer-group deviation detector.
+  if (req.peerGroupDistribution) {
+    const deviationResult = runSafely('peerGroupDeviation', () =>
+      runPeerGroupDeviation({
+        currentVerdict: finalVerdict,
+        peer: req.peerGroupDistribution!,
+      })
+    );
+    if (deviationResult) extensions.peerDeviation = deviationResult;
+  }
+
+  // #106 Regulatory calendar — urgency classification (report-only).
+  if (req.regulatoryDeadlines && req.regulatoryDeadlines.length > 0) {
+    const calendarResult = runSafely('regulatoryCalendar', () =>
+      runRegulatoryCalendar({
+        deadlines: req.regulatoryDeadlines!,
+        asOf: req.calendarAsOf,
+      })
+    );
+    if (calendarResult) extensions.regulatoryCalendar = calendarResult;
+  }
+
+  // #107 Inter-subsystem agreement scorer — always runs over collected signals.
+  {
+    const agreementResult = runSafely('interSubsystemAgreement', () =>
+      scoreInterSubsystemAgreement({ finalVerdict, signals })
+    );
+    if (agreementResult) extensions.agreementScore = agreementResult;
+  }
+
+  // #109 Counterfactual completion — always runs (browser-safe, no external I/O).
+  {
+    const completionResult = runSafely('counterfactualCompletion', () =>
+      runCounterfactualCompletion({
+        currentVerdict: finalVerdict,
+        knownEvidenceTypes: req.knownEvidenceTypes ?? [],
+      })
+    );
+    if (completionResult) extensions.counterfactualCompletion = completionResult;
   }
 
   // #88 Quantum-resistant seal — always runs last (seals everything above)
