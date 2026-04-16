@@ -102,13 +102,22 @@ export default async (): Promise<Response> => {
           row.totalRuns += 1;
           if (r.ok) {
             row.successRuns += 1;
-            row.lastSuccessIso = at;
-            if (typeof r.fetched === 'number') row.lastFetchedCount = r.fetched;
+            // Only overwrite "last success" data when this entry is
+            // newer than what we've seen — Netlify blob list order is
+            // not chronological, so without this guard we'd report
+            // whatever audit entry happened to be iterated last
+            // (often a stale pre-fix run that returned `fetched: 0`).
+            if (!row.lastSuccessIso || (at && at > row.lastSuccessIso)) {
+              row.lastSuccessIso = at;
+              if (typeof r.fetched === 'number') row.lastFetchedCount = r.fetched;
+            }
           } else {
             row.failedRuns += 1;
             if (r.error) {
-              row.lastError = r.error;
-              row.lastErrorAtIso = at;
+              if (!row.lastErrorAtIso || (at && at > row.lastErrorAtIso)) {
+                row.lastError = r.error;
+                row.lastErrorAtIso = at;
+              }
             }
           }
         }
