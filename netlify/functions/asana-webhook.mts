@@ -110,13 +110,39 @@ export default async (req: Request, context: Context): Promise<Response> => {
   }
 
   // Phase 2: signed payload. Look up the stored secret and verify.
+  //
+  // Defence in depth: refuse the request before buffering the body
+  // when Content-Length already exceeds the cap. Asana always sets
+  // Content-Length on webhook deliveries. A caller that omits the
+  // header is falling through to the post-read check as before.
+  const contentLengthHeader = req.headers.get('content-length');
+  if (contentLengthHeader) {
+    const declared = Number(contentLengthHeader);
+    if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+      await writeAudit({
+        event: 'asana_webhook_body_too_large',
+        workspaceGid,
+        ip: context.ip,
+        declaredBytes: declared,
+        cap: MAX_BODY_BYTES,
+      });
+      return Response.json({ error: 'Body exceeds 256 KB cap.' }, { status: 413 });
+    }
+  }
   const raw = await req.text();
   if (raw.length > MAX_BODY_BYTES) {
-    return Response.json({ error: 'Body exceeds 256 KB cap.' }, { status: 400 });
+    await writeAudit({
+      event: 'asana_webhook_body_too_large_post_read',
+      workspaceGid,
+      ip: context.ip,
+      actualBytes: raw.length,
+      cap: MAX_BODY_BYTES,
+    });
+    return Response.json({ error: 'Body exceeds 256 KB cap.' }, { status: 413 });
   }
-  const stored = (await secretStore.get(`secret:${workspaceGid}.json`, { type: 'json' })) as
-    | { secret?: string }
-    | null;
+  const stored = (await secretStore.get(`secret:${workspaceGid}.json`, { type: 'json' })) as {
+    secret?: string;
+  } | null;
   if (!stored?.secret) {
     await writeAudit({
       event: 'asana_webhook_unregistered',
@@ -174,9 +200,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
     const routerModule = await import('../../src/services/asanaWebhookRouter');
     const skillModule = await import('../../src/services/asanaCommentSkillRouter');
     const routed = routerModule.routeAsanaWebhookEvents({
-      events: events as Parameters<typeof routerModule.routeAsanaWebhookEvents>[0] extends
-        | { events?: infer E }
-        | null
+      events: events as Parameters<typeof routerModule.routeAsanaWebhookEvents>[0] extends {
+        events?: infer E;
+      } | null
         ? E
         : never,
     });
