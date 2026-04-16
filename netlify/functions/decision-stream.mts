@@ -92,9 +92,18 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const auth = authenticate(req);
   if (!auth.ok) return auth.response ?? Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // Preflight Content-Length — refuse before buffering if already
+  // declared too large.
+  const contentLengthHeader = req.headers.get('content-length');
+  if (contentLengthHeader) {
+    const declared = Number(contentLengthHeader);
+    if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+      return Response.json({ error: 'Body exceeds 512 KB limit.' }, { status: 413 });
+    }
+  }
   const raw = await req.text();
   if (raw.length > MAX_BODY_BYTES) {
-    return Response.json({ error: 'Body exceeds 512 KB limit.' }, { status: 400 });
+    return Response.json({ error: 'Body exceeds 512 KB limit.' }, { status: 413 });
   }
 
   let parsed: unknown;
