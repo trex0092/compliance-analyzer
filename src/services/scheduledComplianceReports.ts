@@ -60,6 +60,17 @@ export const SCHEDULED_REPORTS: readonly ScheduledReportDefinition[] = [
     dispatchTo: 'compliance_project',
   },
   {
+    id: 'daily_sanctions_watch',
+    name: 'Sanctions Watch Daily Report',
+    cadence: 'daily',
+    purpose:
+      'Daily 09:00 Dubai MLRO snapshot: six-list coverage check, hits by confidence band, active freeze countdowns (EOCN 24h + CNMR 5BD), and false positives resolved in the past 24 hours',
+    citation:
+      'FDL No.10/2025 Art.20-22, Art.24, Art.29, Art.35; Cabinet Res 74/2020 Art.4-7; FATF Rec 6, Rec 20; MoE Circular 08/AML/2021',
+    outputs: ['markdown', 'json'],
+    dispatchTo: 'mlro',
+  },
+  {
     id: 'weekly_sla_rollup',
     name: 'Weekly SLA rollup',
     cadence: 'weekly',
