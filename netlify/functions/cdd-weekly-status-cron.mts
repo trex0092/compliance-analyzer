@@ -61,12 +61,9 @@ export default async (): Promise<Response> => {
   // Dynamic imports keep cold-start small and avoid pulling React
   // into the function bundle.
   const { COMPANY_REGISTRY } = await import('../../src/domain/customers');
-  const { createReviewSchedule } = await import(
-    '../../src/domain/periodicReview'
-  );
-  const { buildWeeklyCddReport, renderWeeklyCddReportMarkdown } = await import(
-    '../../src/services/cddReportGenerator'
-  );
+  const { createReviewSchedule } = await import('../../src/domain/periodicReview');
+  const { buildWeeklyCddReport, renderWeeklyCddReportMarkdown } =
+    await import('../../src/services/cddReportGenerator');
 
   try {
     const customers = COMPANY_REGISTRY.map((c) => ({
@@ -76,13 +73,7 @@ export default async (): Promise<Response> => {
     }));
 
     const reviewSchedules = customers.map((c) =>
-      createReviewSchedule(
-        c.id,
-        c.legalName,
-        c.riskRating,
-        'cdd-refresh',
-        c.lastCDDReviewDate
-      )
+      createReviewSchedule(c.id, c.legalName, c.riskRating, 'cdd-refresh', c.lastCDDReviewDate)
     );
 
     const report = buildWeeklyCddReport({
