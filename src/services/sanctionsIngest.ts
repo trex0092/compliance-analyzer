@@ -308,20 +308,7 @@ export function parseOfacConsCsv(csv: string): NormalisedSanction[] {
   for (const line of lines) {
     const fields = parseOfacCsvLine(line);
     if (fields.length < 12) continue;
-    const [
-      ent_num,
-      name,
-      sdn_type,
-      program,
-      ,
-      ,
-      ,
-      ,
-      ,
-      ,
-      ,
-      remarks,
-    ] = fields;
+    const [ent_num, name, sdn_type, program, , , , , , , , remarks] = fields;
     if (!ent_num || !name) continue;
 
     const typeLower = (sdn_type ?? '').toLowerCase();
@@ -375,9 +362,7 @@ export function parseUkOfsiCsv(csv: string): NormalisedSanction[] {
   // Parse header to find column indices.
   const headerFields = parseOfacCsvLine(lines[0]!);
   const col = (name: string) => {
-    const idx = headerFields.findIndex(
-      (h) => h.trim().toLowerCase() === name.toLowerCase()
-    );
+    const idx = headerFields.findIndex((h) => h.trim().toLowerCase() === name.toLowerCase());
     return idx;
   };
   const iGroupId = col('Group ID');
@@ -398,7 +383,15 @@ export function parseUkOfsiCsv(csv: string): NormalisedSanction[] {
   // Group rows by Group ID — multiple rows per entity (one per alias).
   const groups = new Map<
     string,
-    { primaryName: string; aliases: string[]; type: NormalisedSanction['type']; programmes: string[]; dob?: string; nationality?: string; remarks?: string }
+    {
+      primaryName: string;
+      aliases: string[];
+      type: NormalisedSanction['type'];
+      programmes: string[];
+      dob?: string;
+      nationality?: string;
+      remarks?: string;
+    }
   >();
 
   for (let i = 1; i < lines.length; i++) {
@@ -428,7 +421,11 @@ export function parseUkOfsiCsv(csv: string): NormalisedSanction[] {
 
     let type: NormalisedSanction['type'] = 'unknown';
     if (groupType.includes('individual')) type = 'individual';
-    else if (groupType.includes('entity') || groupType.includes('ship') || groupType.includes('organisation'))
+    else if (
+      groupType.includes('entity') ||
+      groupType.includes('ship') ||
+      groupType.includes('organisation')
+    )
       type = 'entity';
 
     const existing = groups.get(groupId);
@@ -514,8 +511,7 @@ export function parseEuSanctionsXml(xml: string): NormalisedSanction[] {
     // Determine type from designationDetails or subjectType attribute.
     const subjectType = (attrValue(attrs, 'subjectType') ?? '').toLowerCase();
     let type: NormalisedSanction['type'] = 'unknown';
-    if (subjectType.includes('person') || subjectType.includes('individual'))
-      type = 'individual';
+    if (subjectType.includes('person') || subjectType.includes('individual')) type = 'individual';
     else if (
       subjectType.includes('enterprise') ||
       subjectType.includes('entity') ||
@@ -541,8 +537,7 @@ export function parseEuSanctionsXml(xml: string): NormalisedSanction[] {
     const regRe = /<regulation\s([^>]*)\/?>/g;
     let rm: RegExpExecArray | null;
     while ((rm = regRe.exec(body)) !== null) {
-      const prog =
-        attrValue(rm[1], 'programme') ?? attrValue(rm[1], 'regulationType') ?? '';
+      const prog = attrValue(rm[1], 'programme') ?? attrValue(rm[1], 'regulationType') ?? '';
       if (prog && !programmes.includes(prog)) programmes.push(prog.trim());
     }
 
@@ -558,7 +553,7 @@ export function parseEuSanctionsXml(xml: string): NormalisedSanction[] {
     // Nationality / citizenship.
     const citizenRe = /<citizenship\s([^>]*)\/?>/;
     const cm = citizenRe.exec(body);
-    const nationality = cm ? attrValue(cm[1], 'countryIso2Code') ?? undefined : undefined;
+    const nationality = cm ? (attrValue(cm[1], 'countryIso2Code') ?? undefined) : undefined;
 
     // Remarks.
     const remarks = tagContent(body, 'remark') ?? undefined;

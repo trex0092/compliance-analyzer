@@ -87,9 +87,7 @@ function parseSource(source: SanctionsSource, body: string): NormalisedSanction[
   }
 }
 
-async function loadPreviousSnapshot(
-  source: SanctionsSource
-): Promise<NormalisedSanction[]> {
+async function loadPreviousSnapshot(source: SanctionsSource): Promise<NormalisedSanction[]> {
   try {
     const store = getStore(SNAPSHOT_STORE);
     const list = await store.list({ prefix: `${source}/` });
@@ -98,9 +96,7 @@ async function loadPreviousSnapshot(
     // key (which starts with yyyy-mm-dd) to find the newest snapshot.
     const sorted = [...list.blobs].sort((a, b) => (a.key < b.key ? 1 : -1));
     const latest = sorted[0];
-    const data = (await store.get(latest.key, { type: 'json' })) as
-      | NormalisedSanction[]
-      | null;
+    const data = (await store.get(latest.key, { type: 'json' })) as NormalisedSanction[] | null;
     return data ?? [];
   } catch (err) {
     console.warn('[sanctions-ingest] failed to load previous snapshot', err);
