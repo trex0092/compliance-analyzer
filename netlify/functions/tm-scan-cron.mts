@@ -392,10 +392,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/tm-scan',
-  method: ['POST', 'OPTIONS'],
   // Daily at 06:00 UTC (10:00 Dubai). Runs after expiry-scan (05:00)
   // so both reports are ready by mid-morning.
+  // Manual trigger: POST /.netlify/functions/tm-scan-cron
   schedule: '0 6 * * *',
 };
 

@@ -342,11 +342,10 @@ export default async (req: Request, context: Context): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/expiry-scan',
-  method: ['POST', 'OPTIONS'],
   // Daily at 05:00 UTC (09:00 Dubai). Netlify scheduled functions
   // invoke the handler with an empty POST body which the handler
   // treats as a default dry-run scan.
+  // Manual trigger: POST /.netlify/functions/expiry-scan-cron
   schedule: '0 5 * * *',
 };
 
