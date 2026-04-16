@@ -160,3 +160,18 @@
 [submodule "vendor/claude-code-spec-workflow"]
 	path = vendor/claude-code-spec-workflow
 	url = https://github.com/Pimzino/claude-code-spec-workflow.git
+[submodule "vendor/HRM"]
+	path = vendor/HRM
+	url = https://github.com/sapientinc/HRM.git
+[submodule "vendor/MiniCPM"]
+	path = vendor/MiniCPM
+	url = https://github.com/OpenBMB/MiniCPM.git
+[submodule "vendor/KAG"]
+	path = vendor/KAG
+	url = https://github.com/OpenSPG/KAG.git
+[submodule "vendor/Awesome-LLM-Strawberry"]
+	path = vendor/Awesome-LLM-Strawberry
+	url = https://github.com/hijkzzz/Awesome-LLM-Strawberry.git
+[submodule "vendor/node-DeepResearch"]
+	path = vendor/node-DeepResearch
+	url = https://github.com/jina-ai/node-DeepResearch.git
