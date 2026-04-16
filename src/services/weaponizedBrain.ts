@@ -443,6 +443,22 @@ import {
   type GenerateConfig as SyntheticGenerateConfig,
 } from './syntheticEvasionGenerator';
 
+// --- Phase 13 imports (#99-#103) — read-only reasoning & analysis ---
+import {
+  runFactorAblation,
+  checkCitationIntegrity,
+  buildReasoningDag,
+  runBenignNarrativeProbe,
+  runEvidenceFreshness,
+  type FactorAblationReport,
+  type CitationIntegrityReport,
+  type ReasoningDagReport,
+  type BenignNarrativeResult,
+  type BenignNarrativeGenerator,
+  type EvidenceFreshnessReport,
+  type DatedSignal,
+} from './weaponizedPhase13';
+
 // --- Phase 14 imports (#104-#109) — intelligence & awareness ---
 import {
   detectCrossJurisdictionConflicts,
@@ -1066,6 +1082,41 @@ export interface WeaponizedBrainRequest {
     deadlineMs?: number;
   };
 
+  // --- Phase 13 inputs (#99-#103) — reasoning & analysis, all optional ---
+
+  /**
+   * #102 Benign-narrative generator. When supplied, the brain generates
+   * a counter-hypothesis ("most innocent interpretation") alongside the
+   * adversarial verdict. Browser-safe: the caller owns the LLM/heuristic
+   * backend so this module stays network-free.
+   * Regulatory basis: EU AI Act Art.15 (bias/fairness), FATF Rec 10.
+   */
+  benignNarrativeGenerator?: BenignNarrativeGenerator;
+
+  /**
+   * #102 Short entity summary passed to the benign-narrative generator.
+   * Used only when `benignNarrativeGenerator` is present.
+   */
+  entitySummaryForBenignProbe?: string;
+
+  /**
+   * #103 Dated subsystem signals for the freshness decay calculator. When
+   * omitted, the decay subsystem skips (v1 does not derive dates from the
+   * other subsystems automatically).
+   * Regulatory basis: FATF Rec 10 (ongoing monitoring recency),
+   * Cabinet Res 134/2025 Art.7 (CDD recency).
+   */
+  datedSignalsForFreshness?: readonly DatedSignal[];
+
+  /** #103 Optional half-life override for the exponential decay, in days. */
+  freshnessHalfLifeDays?: number;
+
+  /**
+   * #103 Optional reference time for the freshness calculation. Defaults to
+   * `new Date()` when omitted. Exposed for deterministic tests.
+   */
+  freshnessAsOf?: Date;
+
   // --- Phase 14 inputs (#104-#109) — intelligence & awareness, all optional ---
 
   /**
@@ -1305,6 +1356,23 @@ export interface WeaponizedExtensions {
    * Art.29 (no tipping off — engine redacts PII before external queries).
    */
   deepResearch?: DeepResearchResult;
+
+  // --- Phase 13 subsystems (#99-#103) — reasoning & analysis ---
+
+  /** #99 Factor ablation — necessity test per signal. Read-only; never clamps. */
+  factorAblation?: FactorAblationReport;
+
+  /** #100 Citation integrity — verifies every clamp cites a regulation. */
+  citationIntegrity?: CitationIntegrityReport;
+
+  /** #101 Reasoning-chain DAG — provenance of signals → clamps → verdict. */
+  reasoningDag?: ReasoningDagReport;
+
+  /** #102 Benign-narrative probe — counter-hypothesis for MLRO review. */
+  benignNarrative?: BenignNarrativeResult;
+
+  /** #103 Evidence freshness decay — age-weighted confidence adjustment. */
+  evidenceFreshness?: EvidenceFreshnessReport;
 
   // --- Phase 14 subsystems (#104-#109) — intelligence & awareness ---
 
@@ -2922,6 +2990,74 @@ export async function runWeaponizedBrain(
         `CLAMP: subsystem deepResearchEngine failed (${message}) — manual review required (FDL Art.24)`
       );
     }
+  }
+
+  // Phase 13 — Reasoning & Analysis subsystems (#99-#103).
+  // All five are READ-ONLY: they observe the collected signals / clamps /
+  // verdict but never modify finalVerdict. Any failure logs to
+  // subsystemFailures (FDL Art.24) and continues — Phase 13 is diagnostic,
+  // so a failure must not lose the rest of the decision record.
+  // ---------------------------------------------------------------------------
+
+  // #99 Factor ablation — necessity test per input signal.
+  {
+    const ablationResult = runSafely('factorAblation', () =>
+      runFactorAblation({
+        baselineVerdict: finalVerdict,
+        signals,
+      })
+    );
+    if (ablationResult) extensions.factorAblation = ablationResult;
+  }
+
+  // #100 Citation integrity — enforce CLAUDE.md §8 on the collected clamps.
+  {
+    const integrityResult = runSafely('citationIntegrity', () =>
+      checkCitationIntegrity({ clampReasons })
+    );
+    if (integrityResult) extensions.citationIntegrity = integrityResult;
+  }
+
+  // #101 Reasoning-chain DAG — provenance for MLRO review + xyflow UI.
+  {
+    const dagResult = runSafely('reasoningDag', () =>
+      buildReasoningDag({
+        signals,
+        clampReasons,
+        megaVerdict: mega.verdict,
+        finalVerdict,
+      })
+    );
+    if (dagResult) extensions.reasoningDag = dagResult;
+  }
+
+  // #102 Benign-narrative probe — runs only when a generator is injected.
+  if (req.benignNarrativeGenerator) {
+    try {
+      extensions.benignNarrative = await runBenignNarrativeProbe({
+        entitySummary: req.entitySummaryForBenignProbe ?? mega.entityId,
+        signals,
+        generator: req.benignNarrativeGenerator,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      subsystemFailures.push('benignNarrativeProbe');
+      clampReasons.push(
+        `CLAMP: subsystem benignNarrativeProbe failed (${message}) — manual review required (FDL Art.24)`
+      );
+    }
+  }
+
+  // #103 Evidence freshness decay — runs only when dated signals are provided.
+  if (req.datedSignalsForFreshness && req.datedSignalsForFreshness.length > 0) {
+    const freshnessResult = runSafely('evidenceFreshness', () =>
+      runEvidenceFreshness({
+        signals: req.datedSignalsForFreshness!,
+        asOf: req.freshnessAsOf,
+        halfLifeDays: req.freshnessHalfLifeDays,
+      })
+    );
+    if (freshnessResult) extensions.evidenceFreshness = freshnessResult;
   }
 
   // ---------------------------------------------------------------------------
