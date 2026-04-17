@@ -6271,9 +6271,14 @@ function exportLocalShipmentsCSV() {
 // TRACKING — global AWB shipment tracking.
 //
 // Each record holds:
-//   id (uuid), awb, departure, arrival, acquired (yyyy-mm-dd), lastUpdated
-//   (iso), status (in-transit/arrived/delayed/delivered), carrier, weight,
+//   id (uuid), awb, departure, arrival, carrier, eta (yyyy-mm-dd),
+//   status (in-transit/arrived/delayed/delivered), lastUpdated (iso),
 //   asanaGid (optional — set after successful Asana sync).
+//
+// Status is stored as entered by the operator, but renderTracking()
+// overlays "arrived (auto)" when eta is in the past and status is
+// still "in-transit". The stored record is never auto-mutated so the
+// audit trail stays intact (FDL No.10/2025 Art.24).
 //
 // Persistence: localStorage under TRACKING_STORAGE. On every add/edit/delete
 // the record is mirrored to Asana as a task in the per-tenant "Shipments"
@@ -6295,12 +6300,19 @@ function renderTracking() {
     el.innerHTML = '<p style="font-size:13px;color:var(--muted)">No shipments tracked yet. Fill the form above and click "Add shipment".</p>';
     return;
   }
+  const todayIso = new Date().toISOString().slice(0, 10);
   const rows = list.map(s => {
-    // Status is the primary "where is the shipment" signal.
-    // Colours: in-transit = amber, delayed = red, arrived/delivered = green.
-    const statusColor = s.status === 'delivered' ? 'var(--green)' :
-                        s.status === 'arrived' ? 'var(--green)' :
-                        s.status === 'delayed' ? 'var(--red)' :
+    // Effective status overlays the stored value at display time: a
+    // shipment whose ETA is in the past but still marked "in-transit"
+    // is shown as "arrived (auto)" so the MLRO sees stale records that
+    // never got a manual status update. The stored record is NOT
+    // mutated — preserving the audit trail (FDL No.10/2025 Art.24).
+    const etaPassed = !!(s.eta && s.eta < todayIso);
+    const autoArrived = s.status === 'in-transit' && etaPassed;
+    const effectiveStatus = autoArrived ? 'arrived (auto)' : (s.status || '—');
+    // Colours: in-transit = amber, delayed = red, arrived/delivered/auto = green.
+    const statusColor = (effectiveStatus === 'delivered' || effectiveStatus === 'arrived' || autoArrived) ? 'var(--green)' :
+                        effectiveStatus === 'delayed' ? 'var(--red)' :
                         'var(--amber)';
     const updated = s.lastUpdated ? new Date(s.lastUpdated).toLocaleString() : '—';
 
@@ -6313,7 +6325,8 @@ function renderTracking() {
       <td>${escHtml(s.departure || '—')}</td>
       <td>${escHtml(s.arrival || '—')}</td>
       <td>${escHtml(s.carrier || '—')}</td>
-      <td style="font-weight:700;color:${statusColor}">${escHtml(s.status || '—')}</td>
+      <td style="font-size:11px">${escHtml(s.eta || '—')}</td>
+      <td style="font-weight:700;color:${statusColor}">${escHtml(effectiveStatus)}</td>
       <td style="font-size:11px;color:var(--muted)">${escHtml(updated)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm" style="padding:2px 8px;font-size:10px" data-action="editTrackingRecord" data-arg="${s.id}">Edit</button>
@@ -6332,6 +6345,7 @@ function renderTracking() {
           <th>Departure</th>
           <th>Arrival</th>
           <th>Carrier</th>
+          <th>ETA</th>
           <th>Status</th>
           <th>Last updated</th>
           <th>Actions</th>
@@ -6348,12 +6362,13 @@ function readTrackingForm() {
     departure: (document.getElementById('trackingDeparture')?.value || '').trim(),
     arrival: (document.getElementById('trackingArrival')?.value || '').trim(),
     carrier: (document.getElementById('trackingCarrier')?.value || '').trim(),
+    eta: (document.getElementById('trackingEta')?.value || '').trim(),
     status: (document.getElementById('trackingStatus')?.value || 'in-transit').trim(),
   };
 }
 
 function clearTrackingForm() {
-  ['trackingAwb','trackingDeparture','trackingArrival','trackingCarrier'].forEach(id => {
+  ['trackingAwb','trackingDeparture','trackingArrival','trackingCarrier','trackingEta'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const st = document.getElementById('trackingStatus'); if (st) st.value = 'in-transit';
@@ -6412,6 +6427,7 @@ function editTrackingRecord(id) {
   const map = {
     trackingAwb: s.awb, trackingDeparture: s.departure, trackingArrival: s.arrival,
     trackingCarrier: s.carrier,
+    trackingEta: s.eta || '',
     trackingStatus: s.status || 'in-transit',
   };
   Object.entries(map).forEach(([k,v]) => { const el=document.getElementById(k); if(el) el.value = v || ''; });
@@ -6539,17 +6555,18 @@ async function syncTrackingRecord(id) {
   try {
     const sectionGid = await _findOrCreateTenantSection(projectGid, tenantLabel);
     const taskName = '[' + tenantLabel + '] AWB ' + (rec.awb || '—') + ' · ' + (rec.departure || '?') + ' → ' + (rec.arrival || '?');
-    // Acquired date, ETA, and weight fields were removed from the
-    // Tracking form; the Asana task now carries only the five
-    // tracked fields. Status is the single source of truth for
-    // "where is the shipment" (in-transit / arrived / delayed /
-    // delivered). No due_at is set because no ETA is collected.
+    // ETA is rendered into the Asana task's due_at so reviewers see
+    // overdue shipments in the Asana UI without leaving the project.
+    // The stored status is left untouched on auto-arrived records so
+    // the audit trail stays intact (FDL No.10/2025 Art.24).
+    const dueAt = rec.eta ? (rec.eta + 'T23:59:00.000Z') : null;
     const notesLines = [
       'Tenant: ' + tenantLabel,
       'AWB: ' + (rec.awb || '—'),
       'Departure country: ' + (rec.departure || '—'),
       'Arrival country: ' + (rec.arrival || '—'),
       'Carrier: ' + (rec.carrier || '—'),
+      'ETA: ' + (rec.eta || '—'),
       'Status: ' + (rec.status || '—'),
       'Last updated: ' + (rec.lastUpdated || '—'),
       '',
@@ -6561,6 +6578,7 @@ async function syncTrackingRecord(id) {
       projects: [projectGid],
       memberships: [{ project: projectGid, section: sectionGid }],
     };
+    if (dueAt) taskData.due_at = dueAt;
     const body = { data: taskData };
     if (rec.asanaGid) {
       // Update existing task instead of creating a duplicate.
