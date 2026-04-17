@@ -243,6 +243,13 @@ interface RecordDecisionResult {
   cooldownPendingUntilIso?: string;
   /** True when the record changed and should be persisted. */
   shouldPersist: boolean;
+  /**
+   * Set when the record was meant to be persisted but every CAS
+   * attempt lost to a concurrent writer. The HTTP layer surfaces
+   * this as 503 so the client knows their vote did not land and
+   * must be retried — never as a silent success.
+   */
+  casExhausted?: boolean;
 }
 
 interface ApplyDecisionOptions {
@@ -346,25 +353,108 @@ async function recordDecision(
   nowMs: number = Date.now(),
 ): Promise<RecordDecisionResult> {
   const approvalStore = getStore(APPROVAL_STORE);
-  const existing = (await approvalStore.get(eventId, { type: "json" })) as ApprovalEntry | null;
-  const rec: ApprovalEntry = existing ?? {
-    eventId,
-    approvals: [],
-    rejections: [],
-    status: "pending",
-  };
-
-  const result = applyDecisionToRecord(rec, actor, verdict, note, {
+  const options: ApplyDecisionOptions = {
     soloMode: isSoloMlroModeEnabled(),
     soloCooldownHours: getSoloMlroCooldownHours(),
     nowMs,
-  });
+  };
 
-  if (result.shouldPersist) {
-    await approvalStore.setJSON(eventId, result.rec);
+  // Read-modify-write is done inside a CAS retry loop. Without this,
+  // two concurrent votes on the same eventId both read the same
+  // {approvals: []} snapshot, each compute their own new record, and
+  // the second `setJSON` silently overwrites the first — one of the
+  // votes (approval OR rejection) is lost. That is a four-eyes
+  // integrity bug: an approver's "approve" can be erased by a racing
+  // "reject", or vice versa. CAS via onlyIfMatch forces the second
+  // writer to re-read the fresh record and re-apply their vote on
+  // top of it, so both votes land.
+  //
+  // Cap at MAX_CAS_ATTEMPTS so a pathological contender cannot spin
+  // forever; after that we fail closed with a 500 in the caller.
+  const MAX_CAS_ATTEMPTS = 5;
+  let lastResult: RecordDecisionResult | null = null;
+
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
+    // Prefer getWithMetadata so we get an etag for the conditional
+    // write. If the SDK surface doesn't expose it (older Netlify
+    // Blobs versions), fall back to a plain get and a non-conditional
+    // setJSON — which is the previous behaviour, so we never regress.
+    let existing: ApprovalEntry | null = null;
+    let etag: string | null = null;
+    try {
+      // Widen: SDK signature varies across versions.
+      const withMeta: any =
+        typeof (approvalStore as any).getWithMetadata === 'function'
+          ? await (approvalStore as any).getWithMetadata(eventId, { type: 'json' })
+          : null;
+      if (withMeta) {
+        existing = (withMeta.data ?? null) as ApprovalEntry | null;
+        etag = (withMeta.etag ?? null) as string | null;
+      } else {
+        existing = (await approvalStore.get(eventId, {
+          type: 'json',
+        })) as ApprovalEntry | null;
+      }
+    } catch {
+      existing = (await approvalStore.get(eventId, {
+        type: 'json',
+      })) as ApprovalEntry | null;
+    }
+
+    // Deep-clone so applyDecisionToRecord's in-place mutation never
+    // leaks into the next CAS retry's starting state.
+    const startingRec: ApprovalEntry =
+      existing !== null
+        ? (JSON.parse(JSON.stringify(existing)) as ApprovalEntry)
+        : { eventId, approvals: [], rejections: [], status: 'pending' };
+
+    const result = applyDecisionToRecord(startingRec, actor, verdict, note, options);
+    lastResult = result;
+
+    if (!result.shouldPersist) {
+      // No-op vote (idempotent, terminal record, solo-cooldown reject,
+      // or other non-persisting branch). Return the fresh record
+      // without racing a write.
+      return result;
+    }
+
+    // Attempt a conditional write. If it lands, we're done. On a
+    // conflict (another writer got there first) we loop and re-read.
+    try {
+      const writeOpts: any = etag
+        ? { onlyIfMatch: etag }
+        : { onlyIfNew: true };
+      const writeResult: any =
+        typeof (approvalStore as any).setJSON === 'function'
+          ? await (approvalStore as any).setJSON(eventId, result.rec, writeOpts)
+          : undefined;
+
+      const landed =
+        writeResult == null
+          ? true // legacy SDK that returned void on success
+          : typeof writeResult === 'object' && 'modified' in writeResult
+            ? writeResult.modified === true
+            : writeResult !== false;
+      if (landed) return result;
+      // else: conflict, retry
+    } catch (err) {
+      // Unknown SDK variant or transport failure. Fall back to a
+      // plain setJSON once to preserve the pre-existing behaviour
+      // (best-effort persistence rather than silently dropping the
+      // vote on CAS-unsupported stores).
+      console.warn(
+        `[approvals] CAS write failed, falling back to plain setJSON: ${(err as Error).message}`,
+      );
+      await approvalStore.setJSON(eventId, result.rec);
+      return result;
+    }
   }
 
-  return result;
+  // All CAS attempts lost the race. Surface `casExhausted: true` so
+  // the HTTP layer returns 503 and the client retries, rather than
+  // pretending the vote landed.
+  if (lastResult) return { ...lastResult, shouldPersist: false, casExhausted: true };
+  throw new Error('approvals CAS exhausted without computing a decision');
 }
 
 // ---------------------------------------------------------------------------
@@ -437,7 +527,29 @@ export default async (req: Request, context: Context) => {
         isApprove ? "approve" : "reject",
         note,
       );
-      const { rec, cooldownPendingUntilIso } = result;
+      const { rec, cooldownPendingUntilIso, casExhausted } = result;
+
+      // CAS exhausted — a concurrent writer won every retry. Surface
+      // 503 so the client retries; never pretend the vote landed.
+      // This is the defence against the four-eyes read-modify-write
+      // race: under high contention we refuse the request rather
+      // than silently drop the caller's vote.
+      if (casExhausted) {
+        console.warn(
+          `[approvals] CAS exhausted eventId=${eventId} actor=${auth.username} verdict=${
+            isApprove ? "approve" : "reject"
+          }`,
+        );
+        return jsonResponse(
+          {
+            ok: false,
+            error: "approval_write_contention",
+            message:
+              "Another approver wrote concurrently; your vote was not recorded. Please retry.",
+          },
+          { status: 503, headers: { "Retry-After": "1" } },
+        );
+      }
 
       // Solo-MLRO cooldown rejection — surface the wait time so the
       // MLRO knows when to come back. HTTP 409 (Conflict) is the
