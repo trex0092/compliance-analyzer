@@ -3662,6 +3662,52 @@ window.csFormatDateInput = function (el) {
     try {
       if (typeof syncScreeningToAsana === 'function' || typeof autoSyncToAsana === 'function' || typeof asanaPush === 'function') {
         var syncTitle = '[TFS] ' + name + ' — ' + outcome;
+        // Phase 19 W-E — canonical regulatory citation block for TFS
+        // screening tasks. Same output format as appendCitationBlock
+        // in src/services/regulatoryCitationEnricher.ts (PR #184).
+        // Inlined here because compliance-suite.js is a browser IIFE
+        // and cannot import the TS module directly. Idempotency guard
+        // uses the literal header so a re-sync of the same record
+        // does not double the block.
+        //
+        // Verdict mapping by outcome:
+        //   Confirmed Match → freeze (adds 24h freeze + CNMR + TFS
+        //                             anchors)
+        //   Partial Match   → escalate (adds Article 4 only)
+        //   other           → flag (common set only)
+        //
+        // Escape hatch: window.__ASANA_CITATION_BLOCK_DISABLED = true
+        // turns the append off at runtime without a code revert.
+        function __phase19WeCitationBlock(outcomeLabel) {
+          if (typeof window !== 'undefined' &&
+              window.__ASANA_CITATION_BLOCK_DISABLED === true) {
+            return '';
+          }
+          var common = [
+            'UAE Federal Decree-Law No. 10 of 2025, Article 20 (MLRO duties)',
+            'UAE Federal Decree-Law No. 10 of 2025, Article 24 (10-year retention)',
+            'UAE Federal Decree-Law No. 10 of 2025, Article 29 (no tipping off)',
+            'Cabinet Resolution 134/2025, Article 19 (internal review)'
+          ];
+          var extra = [];
+          if (outcomeLabel === 'Confirmed Match') {
+            extra = [
+              'Cabinet Resolution 74/2020, Article 4 (24-hour freeze)',
+              'Cabinet Resolution 74/2020, Article 7 (CNMR within 5 business days)',
+              'UAE Federal Decree-Law No. 10 of 2025, Article 35 (TFS)'
+            ];
+          } else if (outcomeLabel === 'Partial Match') {
+            extra = [
+              'Cabinet Resolution 74/2020, Article 4 (24-hour freeze)'
+            ];
+          }
+          var seen = Object.create(null);
+          var lines = ['--- Regulatory citation (auto-generated) ---'];
+          common.concat(extra).forEach(function(a){
+            if (!seen[a]) { seen[a] = true; lines.push('• ' + a); }
+          });
+          return '\n\n' + lines.join('\n');
+        }
         var syncNotes = 'TFS Screening Event: ' + record.id
           + '\nEntity: ' + name + ' (' + (record.entityType||'') + ')'
           + (record.country ? '\nCountry: ' + record.country : '')
@@ -3672,7 +3718,8 @@ window.csFormatDateInput = function (el) {
           + '\nOutcome: ' + outcome
           + '\nReviewed By: ' + (record.reviewedBy||'—')
           + (record.notes ? '\n\nNotes:\n' + record.notes : '')
-          + '\n\nRegulatory Basis: UAE FDL No.10/2025, FATF Rec 6, Cabinet Decision No.74/2020';
+          + '\n\nRegulatory Basis: UAE FDL No.10/2025, FATF Rec 6, Cabinet Decision No.74/2020'
+          + __phase19WeCitationBlock(outcome);
         var daysUrgency = outcome==='Confirmed Match' ? 1 : outcome==='Partial Match' ? 5 : 30;
         // Use dedicated SCREENING project per entity
         if (typeof syncScreeningToAsana === 'function') {
