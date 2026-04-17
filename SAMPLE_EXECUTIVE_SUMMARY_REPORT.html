@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Executive Summary Report - May 1, 2026</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; background: white; }
+    
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #003366 0%, #004d99 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+      border-bottom: 4px solid #ffa500;
+      position: relative;
+    }
+    .header h1 { font-size: 32px; margin-bottom: 10px; font-weight: 600; }
+    .header p { font-size: 14px; opacity: 0.9; }
+    .confidential { 
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #dc3545;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      padding: 30px;
+      background: #f9f9f9;
+    }
+    .metric-card {
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      border-left: 5px solid #003366;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: transform 0.2s;
+    }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; font-weight: 600; }
+    .metric-value { font-size: 36px; font-weight: 700; color: #003366; }
+    .metric-unit { font-size: 13px; color: #999; margin-top: 8px; }
+    .metric-trend { font-size: 12px; color: #4caf50; font-weight: 600; margin-top: 5px; }
+    
+    /* Executive Summary Section */
+    .executive-summary {
+      padding: 30px;
+      background: white;
+      border-top: 1px solid #eee;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #003366;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #ffa500;
+    }
+    .summary-text {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #555;
+      margin-bottom: 15px;
+    }
+    
+    /* Risk Matrix */
+    .risk-matrix {
+      padding: 30px;
+      background: white;
+      border-top: 1px solid #eee;
+    }
+    .risk-items {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .risk-item {
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .risk-critical { background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%); border-left: 5px solid #dc3545; }
+    .risk-high { background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left: 5px solid #ffc107; }
+    .risk-medium { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-left: 5px solid #2196f3; }
+    .risk-low { background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-left: 5px solid #4caf50; }
+    .risk-count { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .risk-label { font-size: 12px; color: #333; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .risk-percentage { font-size: 11px; color: #666; margin-top: 5px; }
+    
+    /* Key Insights */
+    .key-insights {
+      padding: 30px;
+      background: white;
+      border-top: 1px solid #eee;
+    }
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .insight-card {
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      border-left: 4px solid #003366;
+    }
+    .insight-title { font-weight: 600; color: #003366; margin-bottom: 10px; font-size: 14px; }
+    .insight-text { font-size: 13px; color: #666; line-height: 1.6; }
+    
+    /* Recommendations */
+    .recommendations {
+      padding: 30px;
+      background: white;
+      border-top: 1px solid #eee;
+    }
+    .recommendation-item {
+      padding: 18px;
+      margin-bottom: 12px;
+      border-left: 4px solid #003366;
+      background: #f9f9f9;
+      border-radius: 4px;
+    }
+    .rec-priority { 
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+    .rec-critical { background: #dc3545; color: white; }
+    .rec-high { background: #ffc107; color: #333; }
+    .rec-medium { background: #2196f3; color: white; }
+    .rec-action { font-size: 14px; margin-bottom: 8px; font-weight: 500; color: #333; }
+    .rec-owner { font-size: 12px; color: #666; }
+    
+    /* Compliance Status */
+    .compliance-status {
+      padding: 30px;
+      background: white;
+      border-top: 1px solid #eee;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .status-item {
+      padding: 20px;
+      border-radius: 8px;
+      background: #f9f9f9;
+      text-align: center;
+      border-top: 3px solid #4caf50;
+    }
+    .status-name { font-weight: 600; margin-bottom: 12px; font-size: 13px; }
+    .status-badge { 
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 3px;
+      background: #4caf50;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .status-detail { font-size: 11px; color: #666; margin-top: 10px; }
+    
+    /* Footer */
+    .footer {
+      padding: 25px 30px;
+      background: #f9f9f9;
+      border-top: 1px solid #eee;
+      font-size: 11px;
+      color: #666;
+      text-align: center;
+    }
+    .footer p { margin: 5px 0; }
+    .footer-divider { margin: 10px 0; border-top: 1px solid #ddd; }
+    
+    /* Print Styles */
+    @media print {
+      body { background: white; }
+      .container { box-shadow: none; }
+      .metric-card { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="confidential">CONFIDENTIAL</div>
+      <h1>Executive Summary Report</h1>
+      <p>Compliance Status & Strategic Insights</p>
+      <p style="margin-top: 10px; font-size: 13px;">Report Date: May 1, 2026 | Organization: Global Finance Corporation</p>
+    </div>
+    
+    <!-- Key Metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Compliance Rate</div>
+        <div class="metric-value">92.5%</div>
+        <div class="metric-trend">↑ +5.3% from last month</div>
+        <div class="metric-unit">Target: 95%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Health Score</div>
+        <div class="metric-value">87</div>
+        <div class="metric-trend">↑ +4 from last month</div>
+        <div class="metric-unit">Scale: 0-100</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Risk Score</div>
+        <div class="metric-value">8.2%</div>
+        <div class="metric-trend">↓ -2.8% from last month</div>
+        <div class="metric-unit">Target: < 5%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Velocity</div>
+        <div class="metric-value">18</div>
+        <div class="metric-trend">↑ +4 tasks/week</div>
+        <div class="metric-unit">Tasks completed/week</div>
+      </div>
+    </div>
+    
+    <!-- Executive Summary -->
+    <div class="executive-summary">
+      <h2 class="section-title">Executive Summary</h2>
+      <div class="summary-text">
+        <strong>Overall Status: GOOD</strong> - The organization maintains strong compliance posture with a 92.5% compliance rate, representing a 5.3% improvement from the previous month. The health score of 87/100 indicates robust operational controls and effective risk management. Current risk exposure is manageable at 8.2%, though continued focus is needed to achieve the 5% target.
+      </div>
+      <div class="summary-text">
+        <strong>Key Achievements:</strong> Successfully completed 18 compliance tasks this week, representing a 28% increase in velocity. Financial reconciliation processes are now 100% compliant. Data protection controls have been enhanced with new privacy audit procedures. Regulatory compliance across all jurisdictions remains at 99%+.
+      </div>
+      <div class="summary-text">
+        <strong>Areas of Focus:</strong> Three critical tasks require immediate attention: Monthly Bank Reconciliation (8 days overdue), Tax Review (5 days overdue), and Vendor Reconciliation (3 days overdue). These represent the primary risk drivers and should be prioritized for completion within 48 hours.
+      </div>
+    </div>
+    
+    <!-- Risk Matrix -->
+    <div class="risk-matrix">
+      <h2 class="section-title">Risk Matrix Analysis</h2>
+      <div class="risk-items">
+        <div class="risk-item risk-critical">
+          <div class="risk-count">1</div>
+          <div class="risk-label">CRITICAL</div>
+          <div class="risk-percentage">1.0% of tasks</div>
+        </div>
+        <div class="risk-item risk-high">
+          <div class="risk-count">3</div>
+          <div class="risk-label">HIGH</div>
+          <div class="risk-percentage">3.0% of tasks</div>
+        </div>
+        <div class="risk-item risk-medium">
+          <div class="risk-count">7</div>
+          <div class="risk-label">MEDIUM</div>
+          <div class="risk-percentage">7.0% of tasks</div>
+        </div>
+        <div class="risk-item risk-low">
+          <div class="risk-count">89</div>
+          <div class="risk-label">LOW</div>
+          <div class="risk-percentage">89.0% of tasks</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Key Insights -->
+    <div class="key-insights">
+      <h2 class="section-title">Key Insights</h2>
+      <div class="insights-grid">
+        <div class="insight-card">
+          <div class="insight-title">📊 Performance Trend</div>
+          <div class="insight-text">Compliance metrics show consistent improvement over the past 3 months. The 5.3% monthly increase suggests effective remediation efforts and improved team accountability.</div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-title">⚠️ Risk Concentration</div>
+          <div class="insight-text">89% of tasks are low-risk, indicating good baseline compliance. However, 11% of tasks (11 total) require management attention and represent 92% of compliance risk exposure.</div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-title">🚀 Velocity Acceleration</div>
+          <div class="insight-text">Task completion velocity increased 28% week-over-week, driven by improved processes and team efficiency. Maintaining this momentum will help achieve the 95% compliance target by Q2.</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Recommendations -->
+    <div class="recommendations">
+      <h2 class="section-title">Strategic Recommendations</h2>
+      
+      <div class="recommendation-item">
+        <div class="rec-priority rec-critical">CRITICAL</div>
+        <div class="rec-action">🔴 Immediately escalate Monthly Bank Reconciliation task to Finance Manager</div>
+        <div class="rec-owner">Owner: Compliance Manager | Due: Today | Impact: High</div>
+      </div>
+      
+      <div class="recommendation-item">
+        <div class="rec-priority rec-high">HIGH</div>
+        <div class="rec-action">🟠 Complete Tax Review and Vendor Reconciliation within 24 hours</div>
+        <div class="rec-owner">Owner: Tax Officer & Accounting Manager | Due: May 2, 2026 | Impact: High</div>
+      </div>
+      
+      <div class="recommendation-item">
+        <div class="rec-priority rec-high">HIGH</div>
+        <div class="rec-action">🟠 Conduct follow-up audit on recent compliance violations</div>
+        <div class="rec-owner">Owner: Internal Audit Team | Due: May 5, 2026 | Impact: Medium</div>
+      </div>
+      
+      <div class="recommendation-item">
+        <div class="rec-priority rec-medium">MEDIUM</div>
+        <div class="rec-action">🟡 Implement automated alerts for tasks approaching due dates</div>
+        <div class="rec-owner">Owner: Compliance Technology Team | Due: May 10, 2026 | Impact: Medium</div>
+      </div>
+      
+      <div class="recommendation-item">
+        <div class="rec-priority rec-medium">MEDIUM</div>
+        <div class="rec-action">🟡 Schedule quarterly compliance training for all team members</div>
+        <div class="rec-owner">Owner: HR & Compliance | Due: May 15, 2026 | Impact: Low</div>
+      </div>
+    </div>
+    
+    <!-- Compliance Status -->
+    <div class="compliance-status">
+      <h2 class="section-title">Regulatory Compliance Status</h2>
+      <div class="status-grid">
+        <div class="status-item">
+          <div class="status-name">SOX</div>
+          <div class="status-badge">COMPLIANT</div>
+          <div class="status-detail">Last Review: April 28, 2026</div>
+          <div class="status-detail">Violations: 0</div>
+        </div>
+        <div class="status-item">
+          <div class="status-name">GDPR</div>
+          <div class="status-badge">COMPLIANT</div>
+          <div class="status-detail">Last Review: April 25, 2026</div>
+          <div class="status-detail">Violations: 0</div>
+        </div>
+        <div class="status-item">
+          <div class="status-name">HIPAA</div>
+          <div class="status-badge">COMPLIANT</div>
+          <div class="status-detail">Last Review: April 20, 2026</div>
+          <div class="status-detail">Violations: 0</div>
+        </div>
+        <div class="status-item">
+          <div class="status-name">CCPA</div>
+          <div class="status-badge">COMPLIANT</div>
+          <div class="status-detail">Last Review: April 22, 2026</div>
+          <div class="status-detail">Violations: 0</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+      <p><strong>Report ID:</strong> ESR-2026-05-01-A7F3C2</p>
+      <p><strong>Generated:</strong> May 1, 2026 at 8:00 AM UTC</p>
+      <div class="footer-divider"></div>
+      <p>This report contains confidential and proprietary information intended for authorized recipients only.</p>
+      <p>© 2026 ASANA Brain Compliance Platform | All Rights Reserved</p>
+    </div>
+  </div>
+</body>
+</html>
