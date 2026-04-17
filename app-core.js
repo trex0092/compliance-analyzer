@@ -6295,12 +6295,48 @@ function renderTracking() {
     el.innerHTML = '<p style="font-size:13px;color:var(--muted)">No shipments tracked yet. Fill the form above and click "Add shipment".</p>';
     return;
   }
+  const now = Date.now();
   const rows = list.map(s => {
     const statusColor = s.status === 'delivered' ? 'var(--green)' :
                         s.status === 'arrived' ? 'var(--green)' :
                         s.status === 'delayed' ? 'var(--red)' :
                         'var(--amber)';
     const updated = s.lastUpdated ? new Date(s.lastUpdated).toLocaleString() : '—';
+
+    // ETA display + countdown. Input comes from <input type="datetime-local">
+    // so it is local wall-clock; Date() parses it as local too.
+    let etaCell = '<span style="color:var(--muted)">—</span>';
+    if (s.eta) {
+      const etaDate = new Date(s.eta);
+      if (!Number.isNaN(etaDate.getTime())) {
+        const delta = etaDate.getTime() - now;
+        const absMs = Math.abs(delta);
+        const days = Math.floor(absMs / 86400000);
+        const hours = Math.floor((absMs % 86400000) / 3600000);
+        const mins = Math.floor((absMs % 3600000) / 60000);
+        const parts = [];
+        if (days) parts.push(days + 'd');
+        if (hours) parts.push(hours + 'h');
+        if (!days) parts.push(mins + 'm');
+        const rel = parts.join(' ');
+        let tag;
+        const terminal = s.status === 'arrived' || s.status === 'delivered';
+        if (terminal) {
+          tag = `<span style="font-size:10px;color:var(--green)">✓ completed</span>`;
+        } else if (delta < 0) {
+          tag = `<span style="font-size:10px;color:var(--red)">overdue by ${rel}</span>`;
+        } else if (delta < 24 * 3600000) {
+          tag = `<span style="font-size:10px;color:var(--amber)">arriving in ${rel}</span>`;
+        } else {
+          tag = `<span style="font-size:10px;color:var(--muted)">in ${rel}</span>`;
+        }
+        etaCell = `
+          <div>${escHtml(etaDate.toLocaleString())}</div>
+          <div>${tag}</div>
+        `;
+      }
+    }
+
     const asanaTag = s.asanaGid
       ? '<span style="font-size:10px;color:var(--green)">✓ Asana synced</span>'
       : '<span style="font-size:10px;color:var(--muted)">not synced</span>';
@@ -6309,6 +6345,7 @@ function renderTracking() {
       <td>${escHtml(s.departure || '—')}</td>
       <td>${escHtml(s.arrival || '—')}</td>
       <td>${escHtml(s.acquired || '—')}</td>
+      <td>${etaCell}</td>
       <td style="font-size:11px;color:var(--muted)">${escHtml(updated)}</td>
       <td style="font-weight:700;color:${statusColor}">${escHtml(s.status || '—')}</td>
       <td>${escHtml(s.carrier || '—')}</td>
@@ -6329,6 +6366,7 @@ function renderTracking() {
           <th>Departure</th>
           <th>Arrival</th>
           <th>Acquired</th>
+          <th>ETA (expected arrival)</th>
           <th>Last updated</th>
           <th>Status</th>
           <th>Carrier</th>
@@ -6347,6 +6385,7 @@ function readTrackingForm() {
     departure: (document.getElementById('trackingDeparture')?.value || '').trim(),
     arrival: (document.getElementById('trackingArrival')?.value || '').trim(),
     acquired: (document.getElementById('trackingAcquired')?.value || '').trim(),
+    eta: (document.getElementById('trackingEta')?.value || '').trim(),
     carrier: (document.getElementById('trackingCarrier')?.value || '').trim(),
     weight: (() => {
       const raw = (document.getElementById('trackingWeight')?.value || '').trim();
@@ -6359,7 +6398,7 @@ function readTrackingForm() {
 }
 
 function clearTrackingForm() {
-  ['trackingAwb','trackingDeparture','trackingArrival','trackingAcquired','trackingCarrier','trackingWeight'].forEach(id => {
+  ['trackingAwb','trackingDeparture','trackingArrival','trackingAcquired','trackingEta','trackingCarrier','trackingWeight'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const st = document.getElementById('trackingStatus'); if (st) st.value = 'in-transit';
@@ -6405,7 +6444,8 @@ function editTrackingRecord(id) {
   editingTrackingId = id;
   const map = {
     trackingAwb: s.awb, trackingDeparture: s.departure, trackingArrival: s.arrival,
-    trackingAcquired: s.acquired, trackingCarrier: s.carrier,
+    trackingAcquired: s.acquired, trackingEta: s.eta || '',
+    trackingCarrier: s.carrier,
     trackingWeight: s.weight == null ? '' : String(s.weight),
     trackingStatus: s.status || 'in-transit',
   };
@@ -6474,11 +6514,23 @@ async function syncTrackingRecord(id) {
   try {
     const sectionGid = await _findOrCreateShipmentsSection(projectGid);
     const taskName = 'AWB ' + (rec.awb || '—') + ' · ' + (rec.departure || '?') + ' → ' + (rec.arrival || '?');
+    // ETA pretty-print: store as the user typed it (local datetime),
+    // echo back to Asana in ISO + local so both MLRO and auditor see
+    // the same moment.
+    const etaDisplay = rec.eta
+      ? (() => {
+          const d = new Date(rec.eta);
+          return Number.isNaN(d.getTime())
+            ? rec.eta
+            : d.toLocaleString() + ' (' + d.toISOString() + ')';
+        })()
+      : '—';
     const notesLines = [
       'AWB: ' + (rec.awb || '—'),
       'Departure country: ' + (rec.departure || '—'),
       'Arrival country: ' + (rec.arrival || '—'),
       'Acquired date: ' + (rec.acquired || '—'),
+      'Expected arrival (ETA): ' + etaDisplay,
       'Status: ' + (rec.status || '—'),
       'Carrier: ' + (rec.carrier || '—'),
       'Weight (kg): ' + (rec.weight == null ? '—' : String(rec.weight)),
@@ -6486,18 +6538,29 @@ async function syncTrackingRecord(id) {
       '',
       'Source: Hawkeye Sterling Tracking tab. Auto-synced.',
     ];
-    const body = {
-      data: {
-        name: taskName,
-        notes: notesLines.join('\n'),
-        projects: [projectGid],
-        memberships: [{ project: projectGid, section: sectionGid }],
-      },
+    // Asana due_at wants ISO 8601 UTC. If the MLRO entered an ETA,
+    // normalise it; otherwise omit so Asana does not set a due date.
+    const dueAt = rec.eta
+      ? (() => {
+          const d = new Date(rec.eta);
+          return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+        })()
+      : undefined;
+    const taskData = {
+      name: taskName,
+      notes: notesLines.join('\n'),
+      projects: [projectGid],
+      memberships: [{ project: projectGid, section: sectionGid }],
     };
+    if (dueAt) taskData.due_at = dueAt;
+    const body = { data: taskData };
     if (rec.asanaGid) {
       // Update existing task instead of creating a duplicate.
+      const updatePayload = { name: taskName, notes: notesLines.join('\n') };
+      if (dueAt) updatePayload.due_at = dueAt;
+      else updatePayload.due_at = null; // clear previous ETA if removed
       await _asanaProxy('PUT', '/tasks/' + encodeURIComponent(rec.asanaGid), {
-        data: { name: taskName, notes: notesLines.join('\n') },
+        data: updatePayload,
       });
       toast('Asana task updated', 'success');
     } else {
