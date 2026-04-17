@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compliance Status Report - ASANA Brain</title>
+    <style>
+        /* ========================================
+           PROFESSIONAL ENTERPRISE REPORT STYLING
+           ======================================== */
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Roboto, sans-serif;
+            color: #2C3E50;
+            background: #FFFFFF;
+            line-height: 1.6;
+            font-size: 12px;
+        }
+
+        /* Page Setup for Print */
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            .page-break {
+                page-break-after: always;
+                margin-bottom: 0;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+
+        /* ========================================
+           HEADER & BRANDING
+           ======================================== */
+
+        .report-header {
+            background: linear-gradient(135deg, #003366 0%, #004D99 100%);
+            color: white;
+            padding: 40px 30px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 51, 102, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .report-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 200px;
+            height: 200px;
+            background: rgba(212, 175, 55, 0.1);
+            border-radius: 50%;
+            transform: translate(50%, -50%);
+        }
+
+        .report-header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .confidential-badge {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #D4AF37;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 2px solid #D4AF37;
+            padding: 6px 12px;
+            border-radius: 3px;
+        }
+
+        .report-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        .report-header .subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            opacity: 0.95;
+            margin-bottom: 20px;
+        }
+
+        .report-meta {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .report-meta-item strong {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        /* ========================================
+           SECTION HEADERS
+           ======================================== */
+
+        .section-header {
+            font-size: 24px;
+            font-weight: 700;
+            color: #003366;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #D4AF37;
+            position: relative;
+        }
+
+        .section-header::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            height: 3px;
+            background: #D4AF37;
+        }
+
+        .subsection-header {
+            font-size: 16px;
+            font-weight: 600;
+            color: #003366;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            border-left: 4px solid #D4AF37;
+        }
+
+        /* ========================================
+           METRIC CARDS & GRIDS
+           ======================================== */
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #ECF0F1 0%, #F8F9FA 100%);
+            padding: 24px;
+            border-radius: 6px;
+            border-left: 4px solid #003366;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 51, 102, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .metric-card.critical {
+            border-left-color: #DC3545;
+        }
+
+        .metric-card.high {
+            border-left-color: #FFC107;
+        }
+
+        .metric-card.medium {
+            border-left-color: #17A2B8;
+        }
+
+        .metric-card.low {
+            border-left-color: #28A745;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #003366;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #7F8C8D;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-change {
+            font-size: 10px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 51, 102, 0.1);
+        }
+
+        .metric-change.positive {
+            color: #28A745;
+        }
+
+        .metric-change.negative {
+            color: #DC3545;
+        }
+
+        /* ========================================
+           TABLES
+           ======================================== */
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #ECF0F1 0%, #F8F9FA 100%);
+        }
+
+        th {
+            padding: 14px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: #003366;
+            border-bottom: 2px solid #D4AF37;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 14px;
+            font-size: 11px;
+            color: #2C3E50;
+            border-bottom: 1px solid #ECF0F1;
+        }
+
+        tbody tr {
+            transition: background-color 0.2s ease;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #F8F9FA;
+        }
+
+        tbody tr:hover {
+            background: #EFF3F7;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* ========================================
+           STATUS BADGES
+           ======================================== */
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .badge-excellent {
+            background: #28A745;
+            color: white;
+        }
+
+        .badge-good {
+            background: #17A2B8;
+            color: white;
+        }
+
+        .badge-fair {
+            background: #FFC107;
+            color: #2C3E50;
+        }
+
+        .badge-poor {
+            background: #FD7E14;
+            color: white;
+        }
+
+        .badge-critical {
+            background: #DC3545;
+            color: white;
+        }
+
+        /* ========================================
+           RISK MATRIX
+           ======================================== */
+
+        .risk-matrix {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .risk-item {
+            padding: 16px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .risk-item.critical {
+            background: #FEF5F5;
+            border-left: 4px solid #DC3545;
+        }
+
+        .risk-item.high {
+            background: #FFFBF0;
+            border-left: 4px solid #FFC107;
+        }
+
+        .risk-item.medium {
+            background: #F0F8FA;
+            border-left: 4px solid #17A2B8;
+        }
+
+        .risk-item.low {
+            background: #F0F7F0;
+            border-left: 4px solid #28A745;
+        }
+
+        .risk-count {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .risk-critical .risk-count {
+            color: #DC3545;
+        }
+
+        .risk-high .risk-count {
+            color: #FFC107;
+        }
+
+        .risk-medium .risk-count {
+            color: #17A2B8;
+        }
+
+        .risk-low .risk-count {
+            color: #28A745;
+        }
+
+        .risk-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .risk-percentage {
+            font-size: 10px;
+            margin-top: 6px;
+            opacity: 0.8;
+        }
+
+        /* ========================================
+           RECOMMENDATION CARDS
+           ======================================== */
+
+        .recommendation {
+            background: white;
+            border-left: 4px solid #003366;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .recommendation.critical {
+            border-left-color: #DC3545;
+            background: #FEF5F5;
+        }
+
+        .recommendation.high {
+            border-left-color: #FFC107;
+            background: #FFFBF0;
+        }
+
+        .recommendation.medium {
+            border-left-color: #17A2B8;
+            background: #F0F8FA;
+        }
+
+        .recommendation-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .recommendation-priority {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 12px;
+        }
+
+        .recommendation-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #003366;
+        }
+
+        .recommendation-body {
+            font-size: 11px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            color: #2C3E50;
+        }
+
+        .recommendation-action {
+            font-size: 10px;
+            font-weight: 600;
+            color: #003366;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 51, 102, 0.1);
+        }
+
+        .recommendation-action strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* ========================================
+           CHARTS & VISUALIZATIONS
+           ======================================== */
+
+        .chart-container {
+            margin-bottom: 24px;
+            padding: 20px;
+            background: #F8F9FA;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .chart-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #003366;
+            margin-bottom: 16px;
+        }
+
+        .chart-placeholder {
+            background: white;
+            padding: 40px;
+            border-radius: 4px;
+            border: 1px solid #ECF0F1;
+            color: #7F8C8D;
+            font-size: 12px;
+        }
+
+        /* ========================================
+           FOOTER
+           ======================================== */
+
+        .report-footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ECF0F1;
+        }
+
+        .confidential-notice {
+            background: #ECF0F1;
+            padding: 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 10px;
+            line-height: 1.6;
+            color: #2C3E50;
+        }
+
+        .footer-metadata {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            font-size: 10px;
+            color: #7F8C8D;
+            margin-bottom: 20px;
+        }
+
+        .footer-metadata strong {
+            display: block;
+            color: #2C3E50;
+            margin-bottom: 4px;
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 1px solid #ECF0F1;
+            font-size: 10px;
+            color: #7F8C8D;
+        }
+
+        .page-number {
+            text-align: center;
+        }
+
+        .company-logo {
+            text-align: right;
+            font-weight: 700;
+            color: #003366;
+        }
+
+        /* ========================================
+           PAGE BREAKS
+           ======================================== */
+
+        .page-break {
+            page-break-after: always;
+            margin-bottom: 40px;
+        }
+
+        /* ========================================
+           RESPONSIVE DESIGN
+           ======================================== */
+
+        @media (max-width: 1024px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .risk-matrix {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .report-meta {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .risk-matrix {
+                grid-template-columns: 1fr;
+            }
+
+            .report-header {
+                padding: 24px 16px;
+            }
+
+            .confidential-badge {
+                position: static;
+                margin-bottom: 16px;
+            }
+
+            table {
+                font-size: 10px;
+            }
+
+            th, td {
+                padding: 8px 10px;
+            }
+        }
+
+        /* ========================================
+           PRINT OPTIMIZATION
+           ======================================== */
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                background: white;
+                color: black;
+            }
+
+            a {
+                color: black;
+                text-decoration: none;
+            }
+
+            .report-header {
+                box-shadow: none;
+                border: 1px solid #D4AF37;
+            }
+
+            .metric-card {
+                box-shadow: none;
+                border: 1px solid #ECF0F1;
+            }
+
+            table {
+                box-shadow: none;
+                border: 1px solid #ECF0F1;
+            }
+
+            .recommendation {
+                box-shadow: none;
+                border: 1px solid #ECF0F1;
+            }
+
+            .page-break {
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ========================================
+         PAGE 1: COVER PAGE
+         ======================================== -->
+    <div class="page-break">
+        <div class="report-header">
+            <div class="confidential-badge">CONFIDENTIAL</div>
+            <div class="report-header-content">
+                <h1>COMPLIANCE STATUS REPORT</h1>
+                <div class="subtitle">ASANA Brain Compliance Intelligence</div>
+                <div class="report-meta">
+                    <div>
+                        <strong>Project</strong>
+                        [PROJECT_NAME]
+                    </div>
+                    <div>
+                        <strong>Report Date</strong>
+                        [REPORT_DATE]
+                    </div>
+                    <div>
+                        <strong>Organization</strong>
+                        [ORGANIZATION_NAME]
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 60px; text-align: center; color: #7F8C8D;">
+            <p style="margin-bottom: 40px; font-size: 14px;">
+                Comprehensive Compliance Analysis & Risk Assessment
+            </p>
+            <p style="margin-bottom: 80px;">
+                Prepared for: <strong>[RECIPIENT_NAME]</strong><br>
+                Generated: <strong>[TIMESTAMP]</strong>
+            </p>
+            <div style="margin-top: 100px; padding-top: 40px; border-top: 2px solid #ECF0F1;">
+                <div style="font-size: 16px; font-weight: 700; color: #003366;">ASANA BRAIN</div>
+                <div style="font-size: 12px; margin-top: 8px;">Enterprise Compliance Intelligence Platform</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         PAGE 2: EXECUTIVE SUMMARY
+         ======================================== -->
+    <div class="page-break">
+        <h2 class="section-header">Executive Summary</h2>
+
+        <p style="margin-bottom: 20px; font-size: 12px; line-height: 1.6; color: #2C3E50;">
+            This report provides a comprehensive analysis of compliance status, risk assessment, and actionable recommendations for [PROJECT_NAME]. The analysis is based on real-time data from all compliance tasks and regulatory frameworks.
+        </p>
+
+        <div style="margin-bottom: 24px;">
+            <strong style="font-size: 13px; color: #003366;">Overall Status:</strong>
+            <span class="badge badge-good" style="margin-left: 12px;">GOOD</span>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value">[COMPLIANCE_RATE]%</div>
+                <div class="metric-label">Compliance Rate</div>
+                <div class="metric-change positive">↑ +3.2%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">[HEALTH_SCORE]</div>
+                <div class="metric-label">Health Score</div>
+                <div class="metric-change positive">↑ +2.1</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">[RISK_SCORE]%</div>
+                <div class="metric-label">Risk Score</div>
+                <div class="metric-change positive">↓ -1.5%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">[VELOCITY]</div>
+                <div class="metric-label">Velocity (tasks/week)</div>
+                <div class="metric-change positive">↑ +2</div>
+            </div>
+        </div>
+
+        <h3 class="subsection-header">Key Highlights</h3>
+        <ul style="margin-left: 20px; font-size: 12px; line-height: 1.8; color: #2C3E50;">
+            <li>[COMPLETED_TASKS] of [TOTAL_TASKS] tasks completed ([COMPLETION_RATE]%)</li>
+            <li>[CRITICAL_COUNT] critical tasks requiring immediate attention</li>
+            <li>Compliance rate improved [IMPROVEMENT]% week-over-week</li>
+            <li>30-day forecast: [FORECAST]% compliance rate</li>
+            <li>No regulatory violations detected</li>
+        </ul>
+    </div>
+
+    <!-- ========================================
+         PAGE 3: RISK MATRIX
+         ======================================== -->
+    <div class="page-break">
+        <h2 class="section-header">Risk Matrix Analysis</h2>
+
+        <div class="risk-matrix">
+            <div class="risk-item critical">
+                <div class="risk-count">[CRITICAL_COUNT]</div>
+                <div class="risk-label">Critical</div>
+                <div class="risk-percentage">(30+ days overdue)</div>
+                <div class="risk-percentage">[CRITICAL_PERCENT]%</div>
+            </div>
+            <div class="risk-item high">
+                <div class="risk-count">[HIGH_COUNT]</div>
+                <div class="risk-label">High</div>
+                <div class="risk-percentage">(14-29 days overdue)</div>
+                <div class="risk-percentage">[HIGH_PERCENT]%</div>
+            </div>
+            <div class="risk-item medium">
+                <div class="risk-count">[MEDIUM_COUNT]</div>
+                <div class="risk-label">Medium</div>
+                <div class="risk-percentage">(7-13 days overdue)</div>
+                <div class="risk-percentage">[MEDIUM_PERCENT]%</div>
+            </div>
+            <div class="risk-item low">
+                <div class="risk-count">[LOW_COUNT]</div>
+                <div class="risk-label">Low</div>
+                <div class="risk-percentage">(0-6 days overdue)</div>
+                <div class="risk-percentage">[LOW_PERCENT]%</div>
+            </div>
+        </div>
+
+        <h3 class="subsection-header">Critical Tasks (30+ Days Overdue)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Task Name</th>
+                    <th>Days Overdue</th>
+                    <th>Owner</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>[TASK_1_NAME]</td>
+                    <td>[TASK_1_DAYS]</td>
+                    <td>[TASK_1_OWNER]</td>
+                    <td><span class="badge badge-critical">Critical</span></td>
+                </tr>
+                <tr>
+                    <td>[TASK_2_NAME]</td>
+                    <td>[TASK_2_DAYS]</td>
+                    <td>[TASK_2_OWNER]</td>
+                    <td><span class="badge badge-critical">Critical</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ========================================
+         PAGE 4: RECOMMENDATIONS
+         ======================================== -->
+    <div class="page-break">
+        <h2 class="section-header">Recommendations & Action Items</h2>
+
+        <div class="recommendation critical">
+            <div class="recommendation-header">
+                <span class="badge badge-critical">Critical</span>
+                <span class="recommendation-title">Critical Tasks</span>
+            </div>
+            <div class="recommendation-body">
+                [CRITICAL_COUNT] tasks are 30+ days overdue. Immediate action required.
+            </div>
+            <div class="recommendation-action">
+                <strong>ACTION:</strong> Escalate to C-suite and implement crisis management<br>
+                <strong>OWNER:</strong> CRO<br>
+                <strong>DUE:</strong> Today
+            </div>
+        </div>
+
+        <div class="recommendation high">
+            <div class="recommendation-header">
+                <span class="badge" style="background: #FFC107; color: #2C3E50;">High</span>
+                <span class="recommendation-title">Risk Management</span>
+            </div>
+            <div class="recommendation-body">
+                Risk score is [RISK_SCORE]%. Escalate high-risk tasks to management.
+            </div>
+            <div class="recommendation-action">
+                <strong>ACTION:</strong> Implement risk mitigation plan for high-risk tasks<br>
+                <strong>OWNER:</strong> Compliance Manager<br>
+                <strong>DUE:</strong> This Week
+            </div>
+        </div>
+
+        <div class="recommendation medium">
+            <div class="recommendation-header">
+                <span class="badge" style="background: #17A2B8; color: white;">Medium</span>
+                <span class="recommendation-title">Compliance Rate</span>
+            </div>
+            <div class="recommendation-body">
+                Compliance rate is [COMPLIANCE_RATE]%. Continue current efforts to maintain improvement.
+            </div>
+            <div class="recommendation-action">
+                <strong>ACTION:</strong> Monitor compliance progress and maintain momentum<br>
+                <strong>OWNER:</strong> Compliance Team<br>
+                <strong>DUE:</strong> Ongoing
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         PAGE 5: AUDIT TRAIL
+         ======================================== -->
+    <div class="page-break">
+        <h2 class="section-header">Audit Trail</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date / Time</th>
+                    <th>Actioned By</th>
+                    <th>Action</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>[DATE_1] [TIME_1]</td>
+                    <td>[USER_1]</td>
+                    <td>Report Generated</td>
+                    <td>Automated daily report</td>
+                </tr>
+                <tr>
+                    <td>[DATE_2] [TIME_2]</td>
+                    <td>[USER_2]</td>
+                    <td>Metrics Updated</td>
+                    <td>Real-time sync</td>
+                </tr>
+                <tr>
+                    <td>[DATE_3] [TIME_3]</td>
+                    <td>[USER_3]</td>
+                    <td>Escalation Triggered</td>
+                    <td>Critical threshold reached</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="margin-top: 20px; font-size: 10px; color: #7F8C8D;">
+            All timestamps in UTC and may be in variance with the locale time shown on the application.
+        </p>
+    </div>
+
+    <!-- ========================================
+         PAGE 6: FOOTER & LEGAL
+         ======================================== -->
+    <div class="report-footer">
+        <div class="confidential-notice">
+            <strong>CONFIDENTIAL NOTICE</strong><br><br>
+            The contents of this record are private and confidential and should not be disclosed to third parties unless (i) the terms of your agreement with ASANA Brain allow you to do so; (ii) the record subject requests any data you may hold on them; or (iii) you are under some other legal obligation to do so. You must comply with all applicable data privacy rights of individuals and must notify us if any links to the sources are broken. If this record contains negative allegations, it should be assumed that such allegations are deemed by the subject. You should not draw any negative inferences about individuals or entities merely because they are identified in the database.
+        </div>
+
+        <div class="footer-metadata">
+            <div>
+                <strong>Report Name</strong>
+                [PROJECT_NAME]
+            </div>
+            <div>
+                <strong>Date Printed</strong>
+                [PRINT_DATE]
+            </div>
+            <div>
+                <strong>Generated By</strong>
+                ASANA Brain System
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <div class="page-number">
+                Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+            </div>
+            <div class="company-logo">
+                ASANA BRAIN<br>
+                <span style="font-size: 9px; font-weight: 400;">Compliance Intelligence</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Styles -->
+    <script>
+        // Auto-number pages on print
+        window.addEventListener('beforeprint', function() {
+            document.querySelectorAll('.pageNumber').forEach((el, i) => {
+                el.textContent = i + 1;
+            });
+            document.querySelectorAll('.totalPages').forEach(el => {
+                el.textContent = document.querySelectorAll('.page-break').length;
+            });
+        });
+    </script>
+</body>
+</html>
