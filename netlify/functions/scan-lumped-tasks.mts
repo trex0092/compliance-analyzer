@@ -22,6 +22,7 @@
  * Security:
  *   POST + OPTIONS
  *   Bearer HAWKEYE_BRAIN_TOKEN required
+ *   X-MFA-Code TOTP (SETUP_MFA_TOTP_SECRET) required
  *   Rate limited 5 / 15 min
  *
  * Regulatory basis:
@@ -38,6 +39,7 @@
 import type { Config, Context } from '@netlify/functions';
 import { checkRateLimit } from './middleware/rate-limit.mts';
 import { authenticate } from './middleware/auth.mts';
+import { requireMfa } from './middleware/mfa.mts';
 import {
   scanForLumpedTasks,
   type ExistingTask,
@@ -49,7 +51,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin':
     process.env.HAWKEYE_ALLOWED_ORIGIN ?? 'https://hawkeye-sterling-v2.netlify.app',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-MFA-Code',
   'Access-Control-Max-Age': '600',
   Vary: 'Origin',
 } as const;
@@ -149,6 +151,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
 
   const auth = authenticate(req);
   if (!auth.ok) return auth.response!;
+
+  const mfa = await requireMfa(req);
+  if (!mfa.ok) return mfa.response!;
 
   let body: unknown;
   try {
