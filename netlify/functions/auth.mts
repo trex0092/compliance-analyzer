@@ -286,9 +286,62 @@ async function getLockout(username: string): Promise<LockoutRecord | null> {
   }
 }
 
+// Get the lockout record along with its etag for CAS. Falls back
+// to a plain get if the SDK doesn't expose getWithMetadata.
+async function getLockoutWithMetadata(
+  username: string,
+): Promise<{ record: LockoutRecord | null; etag: string | null }> {
+  const store = getStore(LOCKOUT_STORE);
+  try {
+    const withMeta: unknown =
+      typeof (store as unknown as { getWithMetadata?: unknown }).getWithMetadata === 'function'
+        ? await (store as unknown as {
+            getWithMetadata: (key: string, opts: unknown) => Promise<{ data: unknown; etag?: string }>;
+          }).getWithMetadata(`lockout:${username}`, { type: 'json' })
+        : null;
+    if (withMeta && typeof withMeta === 'object' && 'data' in (withMeta as Record<string, unknown>)) {
+      const tuple = withMeta as { data: LockoutRecord | null; etag?: string };
+      return { record: tuple.data ?? null, etag: tuple.etag ?? null };
+    }
+  } catch {
+    /* fall through */
+  }
+  return { record: await getLockout(username), etag: null };
+}
+
 async function setLockout(username: string, record: LockoutRecord): Promise<void> {
   const store = getStore(LOCKOUT_STORE);
   await store.setJSON(`lockout:${username}`, record);
+}
+
+// Conditional write: returns true only if the CAS precondition held
+// and the write actually modified the blob. On `onlyIfMatch` the
+// precondition is "etag matches"; on `onlyIfNew` it is "record does
+// not yet exist". Accepts the three Netlify Blobs SDK return shapes
+// (modern `{ modified: boolean }`, legacy void, or `false`).
+async function setLockoutCas(
+  username: string,
+  record: LockoutRecord,
+  etag: string | null,
+): Promise<boolean> {
+  const store = getStore(LOCKOUT_STORE);
+  const opts = etag ? { onlyIfMatch: etag } : { onlyIfNew: true };
+  try {
+    const res: unknown = await (store as unknown as {
+      setJSON: (key: string, value: unknown, opts?: unknown) => Promise<unknown>;
+    }).setJSON(`lockout:${username}`, record, opts);
+    if (res == null) return true; // legacy SDK: void = success
+    if (typeof res === 'object' && 'modified' in (res as Record<string, unknown>)) {
+      return (res as { modified: boolean }).modified === true;
+    }
+    return res !== false;
+  } catch {
+    // CAS unsupported on this runtime — fall back to unconditional
+    // write. This preserves pre-existing behaviour (best-effort
+    // counter) and is only reached on older Netlify Blobs SDKs.
+    await setLockout(username, record);
+    return true;
+  }
 }
 
 async function clearLockout(username: string): Promise<void> {
@@ -425,14 +478,59 @@ async function handleLogin(body: Record<string, unknown>, clientIp: string): Pro
 }
 
 async function recordFailedAttempt(username: string, ip: string): Promise<void> {
-  const lockout = (await getLockout(username)) || { count: 0 };
-  lockout.count++;
-  if (lockout.count >= MAX_FAILED_ATTEMPTS) {
-    lockout.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
-    await auditLog({ event: 'account_locked', username, ip, attempts: lockout.count });
+  // CAS retry loop. Without this, two concurrent failed logins from
+  // a credential-stuffing attacker both read `count: 0`, both write
+  // `count: 1`, and the MAX_FAILED_ATTEMPTS=5 threshold becomes
+  // effectively 5 * concurrency before the lockout fires — which
+  // is exactly the threshold a brute-force attacker is trying to
+  // defeat. With onlyIfMatch we re-read the fresh count on
+  // conflict and increment on top, so N concurrent failures
+  // produce exactly N increments.
+  const MAX_CAS_ATTEMPTS = 6;
+  let recorded: LockoutRecord | null = null;
+  let newlyLocked = false;
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
+    const { record: existing, etag } = await getLockoutWithMetadata(username);
+    const lockout: LockoutRecord = existing
+      ? { ...existing }
+      : { count: 0 };
+    const wasLocked = typeof lockout.lockedUntil === 'number' && lockout.lockedUntil > Date.now();
+    lockout.count++;
+    if (lockout.count >= MAX_FAILED_ATTEMPTS && !wasLocked) {
+      lockout.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+    }
+    const ok = await setLockoutCas(username, lockout, etag);
+    if (ok) {
+      recorded = lockout;
+      // Emit the `account_locked` event only on the exact
+      // transition from unlocked → locked so the audit chain has a
+      // single boundary entry per lockout window, even under
+      // concurrent failed-login bursts.
+      newlyLocked = !wasLocked && !!lockout.lockedUntil && lockout.count >= MAX_FAILED_ATTEMPTS;
+      break;
+    }
+    // else: another concurrent failed-login incremented the count
+    // first. Retry with the fresh snapshot.
   }
-  await setLockout(username, lockout);
-  await auditLog({ event: 'login_failed', username, ip, attempts: lockout.count });
+
+  if (!recorded) {
+    // All CAS attempts lost. Fall back to an unconditional write
+    // so the counter is at least best-effort recorded; this matches
+    // the pre-fix behaviour and never leaves the attacker in a state
+    // where nothing was persisted.
+    const fallback = (await getLockout(username)) || { count: 0 };
+    fallback.count++;
+    if (fallback.count >= MAX_FAILED_ATTEMPTS) {
+      fallback.lockedUntil = fallback.lockedUntil ?? (Date.now() + LOCKOUT_DURATION_MS);
+    }
+    await setLockout(username, fallback);
+    recorded = fallback;
+  }
+
+  if (newlyLocked) {
+    await auditLog({ event: 'account_locked', username, ip, attempts: recorded.count });
+  }
+  await auditLog({ event: 'login_failed', username, ip, attempts: recorded.count });
 }
 
 async function handleRegister(body: Record<string, unknown>, clientIp: string): Promise<Response> {
@@ -691,4 +789,11 @@ export default async (req: Request, context: Context) => {
 export const config: Config = {
   path: '/api/auth/*',
   method: ['POST', 'OPTIONS'],
+};
+
+// Exports for unit tests only. Never referenced by the production
+// request path.
+export const __test__ = {
+  recordFailedAttempt,
+  getLockout,
 };
