@@ -137,6 +137,29 @@
     state.siteUrl = byId('input-site-url').value.trim().replace(/\/+$/, '');
   }
 
+  // MFA (TOTP) headers for every /api/setup/* fetch. The code is
+  // in-memory only — we never persist it, because TOTP codes rotate
+  // every 30 seconds and stale codes are rejected by the server.
+  // Read fresh on each call so the operator can paste a new code
+  // between button clicks without reloading the page.
+  function mfaHeaders() {
+    var el = byId('input-mfa-code');
+    var raw = el ? el.value : '';
+    var code = (raw || '').replace(/\s+/g, '').trim();
+    if (!/^\d{6}$/.test(code)) return {};
+    return { 'X-MFA-Code': code };
+  }
+
+  function authHeaders(token) {
+    var h = {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    };
+    var mfa = mfaHeaders();
+    if (mfa['X-MFA-Code']) h['X-MFA-Code'] = mfa['X-MFA-Code'];
+    return h;
+  }
+
   // Always return an absolute URL we can safely concatenate '/api/...' to.
   // Prefer an explicit Site URL from Step 4 if the user typed a valid
   // https://... origin. Otherwise fall back to window.location.origin so
@@ -259,7 +282,7 @@
     var token = state.brainToken;
     fetch(apiBase() + '/api/setup/cohort-upload', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      headers: authHeaders(token),
       body: JSON.stringify({ tenantId: tenantId, csv: csv }),
     }).then(function (r) {
       return r.json().then(function (body) { return { status: r.status, body: body }; });
@@ -289,7 +312,7 @@
     var token = state.brainToken;
     fetch(apiBase() + '/api/setup/scan-lumped-tasks', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      headers: authHeaders(token),
       body: JSON.stringify({ projectGid: projectGid }),
     }).then(function (r) {
       return r.json().then(function (body) { return { status: r.status, body: body }; });
@@ -315,7 +338,7 @@
     var token = state.brainToken;
     fetch(apiBase() + '/api/setup/asana-bootstrap', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      headers: authHeaders(token),
       body: JSON.stringify({ tenantId: tenantId }),
     }).then(function (r) {
       return r.json().then(function (body) { return { status: r.status, body: body }; });
@@ -336,7 +359,7 @@
     var token = state.brainToken;
     fetch(apiBase() + '/api/setup/asana-bootstrap-all', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      headers: authHeaders(token),
       body: JSON.stringify({}),
     }).then(function (r) {
       return r.json().then(function (body) { return { status: r.status, body: body }; });
@@ -368,7 +391,7 @@
     var token = state.brainToken;
     fetch(apiBase() + '/api/setup/kyc-cdd-tracker-sections', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      headers: authHeaders(token),
       body: JSON.stringify({ projectGid: projectGid }),
     }).then(function (r) {
       return r.json().then(function (body) { return { status: r.status, body: body }; });
