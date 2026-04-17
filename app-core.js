@@ -6295,47 +6295,14 @@ function renderTracking() {
     el.innerHTML = '<p style="font-size:13px;color:var(--muted)">No shipments tracked yet. Fill the form above and click "Add shipment".</p>';
     return;
   }
-  const now = Date.now();
   const rows = list.map(s => {
+    // Status is the primary "where is the shipment" signal.
+    // Colours: in-transit = amber, delayed = red, arrived/delivered = green.
     const statusColor = s.status === 'delivered' ? 'var(--green)' :
                         s.status === 'arrived' ? 'var(--green)' :
                         s.status === 'delayed' ? 'var(--red)' :
                         'var(--amber)';
     const updated = s.lastUpdated ? new Date(s.lastUpdated).toLocaleString() : '—';
-
-    // ETA display + countdown. Input comes from <input type="datetime-local">
-    // so it is local wall-clock; Date() parses it as local too.
-    let etaCell = '<span style="color:var(--muted)">—</span>';
-    if (s.eta) {
-      const etaDate = new Date(s.eta);
-      if (!Number.isNaN(etaDate.getTime())) {
-        const delta = etaDate.getTime() - now;
-        const absMs = Math.abs(delta);
-        const days = Math.floor(absMs / 86400000);
-        const hours = Math.floor((absMs % 86400000) / 3600000);
-        const mins = Math.floor((absMs % 3600000) / 60000);
-        const parts = [];
-        if (days) parts.push(days + 'd');
-        if (hours) parts.push(hours + 'h');
-        if (!days) parts.push(mins + 'm');
-        const rel = parts.join(' ');
-        let tag;
-        const terminal = s.status === 'arrived' || s.status === 'delivered';
-        if (terminal) {
-          tag = `<span style="font-size:10px;color:var(--green)">✓ completed</span>`;
-        } else if (delta < 0) {
-          tag = `<span style="font-size:10px;color:var(--red)">overdue by ${rel}</span>`;
-        } else if (delta < 24 * 3600000) {
-          tag = `<span style="font-size:10px;color:var(--amber)">arriving in ${rel}</span>`;
-        } else {
-          tag = `<span style="font-size:10px;color:var(--muted)">in ${rel}</span>`;
-        }
-        etaCell = `
-          <div>${escHtml(etaDate.toLocaleString())}</div>
-          <div>${tag}</div>
-        `;
-      }
-    }
 
     const asanaTag = s.asanaGid
       ? '<span style="font-size:10px;color:var(--green)">✓ Asana synced</span>'
@@ -6345,12 +6312,9 @@ function renderTracking() {
       <td style="font-family:monospace">${escHtml(s.awb || '—')}</td>
       <td>${escHtml(s.departure || '—')}</td>
       <td>${escHtml(s.arrival || '—')}</td>
-      <td>${escHtml(s.acquired || '—')}</td>
-      <td>${etaCell}</td>
-      <td style="font-size:11px;color:var(--muted)">${escHtml(updated)}</td>
-      <td style="font-weight:700;color:${statusColor}">${escHtml(s.status || '—')}</td>
       <td>${escHtml(s.carrier || '—')}</td>
-      <td>${escHtml(String(s.weight ?? '—'))}</td>
+      <td style="font-weight:700;color:${statusColor}">${escHtml(s.status || '—')}</td>
+      <td style="font-size:11px;color:var(--muted)">${escHtml(updated)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm" style="padding:2px 8px;font-size:10px" data-action="editTrackingRecord" data-arg="${s.id}">Edit</button>
         <button class="btn btn-sm" style="padding:2px 8px;font-size:10px" data-action="syncTrackingRecord" data-arg="${s.id}">↗ Asana</button>
@@ -6367,12 +6331,9 @@ function renderTracking() {
           <th>AWB</th>
           <th>Departure</th>
           <th>Arrival</th>
-          <th>Acquired</th>
-          <th>ETA (expected arrival)</th>
-          <th>Last updated</th>
-          <th>Status</th>
           <th>Carrier</th>
-          <th>Weight (kg)</th>
+          <th>Status</th>
+          <th>Last updated</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -6386,21 +6347,13 @@ function readTrackingForm() {
     awb: (document.getElementById('trackingAwb')?.value || '').trim(),
     departure: (document.getElementById('trackingDeparture')?.value || '').trim(),
     arrival: (document.getElementById('trackingArrival')?.value || '').trim(),
-    acquired: (document.getElementById('trackingAcquired')?.value || '').trim(),
-    eta: (document.getElementById('trackingEta')?.value || '').trim(),
     carrier: (document.getElementById('trackingCarrier')?.value || '').trim(),
-    weight: (() => {
-      const raw = (document.getElementById('trackingWeight')?.value || '').trim();
-      if (!raw) return null;
-      const n = Number(raw);
-      return Number.isFinite(n) ? n : null;
-    })(),
     status: (document.getElementById('trackingStatus')?.value || 'in-transit').trim(),
   };
 }
 
 function clearTrackingForm() {
-  ['trackingAwb','trackingDeparture','trackingArrival','trackingAcquired','trackingEta','trackingCarrier','trackingWeight'].forEach(id => {
+  ['trackingAwb','trackingDeparture','trackingArrival','trackingCarrier'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const st = document.getElementById('trackingStatus'); if (st) st.value = 'in-transit';
@@ -6408,8 +6361,8 @@ function clearTrackingForm() {
 
 function addTrackingRecord() {
   const form = readTrackingForm();
-  if (!form.awb || !form.departure || !form.arrival || !form.acquired) {
-    toast('AWB, departure, arrival, and acquired date are required', 'error');
+  if (!form.awb || !form.departure || !form.arrival) {
+    toast('AWB, departure, and arrival country are required', 'error');
     return;
   }
   const list = safeLocalParse(TRACKING_STORAGE, []);
@@ -6458,9 +6411,7 @@ function editTrackingRecord(id) {
   editingTrackingId = id;
   const map = {
     trackingAwb: s.awb, trackingDeparture: s.departure, trackingArrival: s.arrival,
-    trackingAcquired: s.acquired, trackingEta: s.eta || '',
     trackingCarrier: s.carrier,
-    trackingWeight: s.weight == null ? '' : String(s.weight),
     trackingStatus: s.status || 'in-transit',
   };
   Object.entries(map).forEach(([k,v]) => { const el=document.getElementById(k); if(el) el.value = v || ''; });
@@ -6588,46 +6539,28 @@ async function syncTrackingRecord(id) {
   try {
     const sectionGid = await _findOrCreateTenantSection(projectGid, tenantLabel);
     const taskName = '[' + tenantLabel + '] AWB ' + (rec.awb || '—') + ' · ' + (rec.departure || '?') + ' → ' + (rec.arrival || '?');
-    // ETA pretty-print: store as the user typed it (local datetime),
-    // echo back to Asana in ISO + local so both MLRO and auditor see
-    // the same moment.
-    const etaDisplay = rec.eta
-      ? (() => {
-          const d = new Date(rec.eta);
-          return Number.isNaN(d.getTime())
-            ? rec.eta
-            : d.toLocaleString() + ' (' + d.toISOString() + ')';
-        })()
-      : '—';
+    // Acquired date, ETA, and weight fields were removed from the
+    // Tracking form; the Asana task now carries only the five
+    // tracked fields. Status is the single source of truth for
+    // "where is the shipment" (in-transit / arrived / delayed /
+    // delivered). No due_at is set because no ETA is collected.
     const notesLines = [
       'Tenant: ' + tenantLabel,
       'AWB: ' + (rec.awb || '—'),
       'Departure country: ' + (rec.departure || '—'),
       'Arrival country: ' + (rec.arrival || '—'),
-      'Acquired date: ' + (rec.acquired || '—'),
-      'Expected arrival (ETA): ' + etaDisplay,
-      'Status: ' + (rec.status || '—'),
       'Carrier: ' + (rec.carrier || '—'),
-      'Weight (kg): ' + (rec.weight == null ? '—' : String(rec.weight)),
+      'Status: ' + (rec.status || '—'),
       'Last updated: ' + (rec.lastUpdated || '—'),
       '',
       'Source: Hawkeye Sterling Tracking tab → Shared global Shipments project. Auto-synced.',
     ];
-    // Asana due_at wants ISO 8601 UTC. If the MLRO entered an ETA,
-    // normalise it; otherwise omit so Asana does not set a due date.
-    const dueAt = rec.eta
-      ? (() => {
-          const d = new Date(rec.eta);
-          return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
-        })()
-      : undefined;
     const taskData = {
       name: taskName,
       notes: notesLines.join('\n'),
       projects: [projectGid],
       memberships: [{ project: projectGid, section: sectionGid }],
     };
-    if (dueAt) taskData.due_at = dueAt;
     const body = { data: taskData };
     if (rec.asanaGid) {
       // Update existing task instead of creating a duplicate.
