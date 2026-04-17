@@ -324,6 +324,13 @@
       <div class="row" style="margin-top:6px">
         <button class="copy-btn" id="btn-copy-mfa-otpauth">Copy otpauth URL</button>
       </div>
+      <label style="margin-top:12px">QR code — scan with Google Authenticator / 1Password / Authy / Bitwarden</label>
+      <div id="mfa-seed-qr" style="background:#fff; padding:12px; display:inline-block; border-radius:6px; margin-top:6px; max-width:100%"></div>
+      <p class="muted" style="font-size:0.85em; margin-top:6px">
+        Open your authenticator app → tap "+" → "Scan QR code" → point the
+        camera at the square above. The secret, algorithm, digits, and
+        period are all encoded — no manual entry needed.
+      </p>
     </div>
   </div>
 
@@ -446,6 +453,7 @@ cust-2,Bob Smith,tenant-a,Robert Smith,1985-04-15,GB,2026-04-10T00:00:00Z</pre>
   </div>
 </main>
 
+<script src="setup-qrcode.js"></script>
 <script src="setup.js"></script>
 </body>
 </html>
