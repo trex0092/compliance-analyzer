@@ -329,6 +329,29 @@
     });
   });
 
+  // --- Step 8b: bootstrap ALL 6 canonical tenants ---
+  byId('btn-bootstrap-all').addEventListener('click', function () {
+    readInputs();
+    setStatus('bootstrap-all-status', 'pending', 'Provisioning all 6 tenants…');
+    var token = state.brainToken;
+    fetch(apiBase() + '/api/setup/asana-bootstrap-all', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }).then(function (r) {
+      return r.json().then(function (body) { return { status: r.status, body: body }; });
+    }).then(function (res) {
+      var ok = res.status < 400 && res.body && res.body.ok !== false;
+      var partial = res.status === 207;
+      var label = ok ? 'All 6 ready' : (partial ? 'Partial — see output' : 'Failed');
+      setStatus('bootstrap-all-status', ok ? 'ok' : 'err', label);
+      writeOutput('bootstrap-all-output', JSON.stringify(res.body, null, 2));
+    }).catch(function (err) {
+      setStatus('bootstrap-all-status', 'err', 'Network error');
+      writeOutput('bootstrap-all-output', String(err));
+    });
+  });
+
   // --- Step 9: provision KYC/CDD Tracker sections ---
   byId('btn-kyc-cdd-sections').addEventListener('click', function () {
     readInputs();
