@@ -32,6 +32,7 @@ import { getStore } from '@netlify/blobs';
 
 const JOBS_STORE = 'asana-skill-jobs';
 const AUDIT_STORE = 'asana-skill-audit';
+const SANCTIONS_SNAPSHOT_STORE = 'sanctions-snapshots';
 const ASANA_API_BASE = 'https://app.asana.com/api/1.0';
 
 // Poison-pill defence: after this many failed attempts, the job is
@@ -39,6 +40,36 @@ const ASANA_API_BASE = 'https://app.asana.com/api/1.0';
 // Five gives a ~5-minute window of natural retries for transient
 // Asana outages before we declare the job permanently poisoned.
 const MAX_ATTEMPTS = 5;
+
+// Sources the `sanctions-ingest-cron` persists snapshots for. Mirrors
+// the `SanctionsSource` type in src/services/sanctionsIngest.ts —
+// duplicated here to keep this handler a zero-import unit testable
+// surface.
+const SANCTIONS_SOURCES = [
+  'OFAC_SDN',
+  'OFAC_CONS',
+  'UN',
+  'EU',
+  'UK_OFSI',
+  'UAE_EOCN',
+] as const;
+
+// Cap total matches returned to the MLRO. The Asana stories API
+// rejects bodies > ~65 KB; a few dozen names with aliases is well
+// within that, while 1 000 matches could blow the limit. The MLRO
+// can always narrow the query if the cap is hit.
+const SCREEN_MAX_TOTAL_MATCHES = 25;
+const SCREEN_MAX_PER_SOURCE = 8;
+
+interface NormalisedSanction {
+  source: string;
+  sourceId: string;
+  primaryName: string;
+  aliases: string[];
+  type: string;
+  programmes?: string[];
+  nationality?: string;
+}
 
 interface SkillJob {
   jobId: string;
@@ -65,6 +96,224 @@ async function writeAudit(payload: Record<string, unknown>): Promise<void> {
   } catch {
     /* audit store failures are non-fatal */
   }
+}
+
+// ---------------------------------------------------------------------------
+// Real skill execution
+// ---------------------------------------------------------------------------
+//
+// Rounds 5-10 left this handler posting a canned acknowledgement for
+// every slash command. This round wires real execution for the
+// highest-leverage skill — `/screen` — by reading the persisted
+// sanctions snapshots the `sanctions-ingest-cron` writes into the
+// `sanctions-snapshots` blob store. Other skills still fall back to
+// `buildStubExecution` until they are plumbed individually (follow-on
+// PRs, tracked in the evaluation doc).
+
+function normaliseQueryToken(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFKD')
+    // Strip combining marks (diaeresis, cedilla, tilde, etc.) so
+    // `Björk` collapses to `bjork` in the same token. Done BEFORE
+    // the punctuation sweep so the mark doesn't become a space and
+    // split the token.
+    .replace(/\p{M}+/gu, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function sanctionMatchesQuery(
+  entry: NormalisedSanction,
+  queryLower: string,
+): boolean {
+  if (!queryLower) return false;
+  const candidates: string[] = [entry.primaryName, ...(entry.aliases ?? [])];
+  for (const raw of candidates) {
+    if (!raw) continue;
+    const normalised = normaliseQueryToken(raw);
+    if (!normalised) continue;
+    if (normalised.includes(queryLower)) return true;
+  }
+  return false;
+}
+
+async function loadLatestSnapshot(
+  source: string,
+): Promise<NormalisedSanction[]> {
+  try {
+    const store = getStore(SANCTIONS_SNAPSHOT_STORE);
+    const list = await store.list({ prefix: `${source}/` });
+    if (!list.blobs || list.blobs.length === 0) return [];
+    // Blob list order is not guaranteed lexicographic; sort by key
+    // (prefixed with YYYY-MM-DD) and take the newest.
+    const sorted = [...list.blobs].sort((a, b) => (a.key < b.key ? 1 : -1));
+    const latest = sorted[0];
+    const data = (await store.get(latest.key, { type: 'json' })) as
+      | NormalisedSanction[]
+      | null;
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+interface SkillExecutionResult {
+  reply: string;
+  citation: string;
+  /** True when this handler produced the reply itself (vs falling
+   *  back to the stub). Surfaces in the audit row for observability. */
+  real: boolean;
+  /** Non-fatal diagnostic messages surfaced alongside the audit
+   *  row but NEVER in the Asana reply (so we do not leak internal
+   *  state to the MLRO comment). */
+  diagnostics?: string[];
+}
+
+async function executeScreenSkill(
+  rawQuery: string,
+): Promise<SkillExecutionResult> {
+  const citation = 'FDL No.10/2025 Art.35; Cabinet Res 74/2020 Art.4-7';
+  const diagnostics: string[] = [];
+
+  const queryLower = normaliseQueryToken(rawQuery);
+  if (!queryLower || queryLower.length < 2) {
+    return {
+      reply:
+        'Skill `/screen` rejected: query must be at least 2 non-punctuation characters.\n\n' +
+        'FDL Art.29 — do not share this reply with the subject.',
+      citation,
+      real: true,
+    };
+  }
+
+  // Load every source snapshot in parallel so the whole command
+  // completes within the Netlify 10 s default budget even when all
+  // six lists are cached cold.
+  const loadResults = await Promise.all(
+    SANCTIONS_SOURCES.map(async (source) => {
+      const snapshot = await loadLatestSnapshot(source);
+      return { source, snapshot };
+    }),
+  );
+
+  let totalEntriesChecked = 0;
+  let totalMatches = 0;
+  const perSource: Array<{
+    source: string;
+    total: number;
+    matches: NormalisedSanction[];
+  }> = [];
+
+  for (const { source, snapshot } of loadResults) {
+    totalEntriesChecked += snapshot.length;
+    if (snapshot.length === 0) {
+      diagnostics.push(`no snapshot for ${source}`);
+      perSource.push({ source, total: 0, matches: [] });
+      continue;
+    }
+    const matches: NormalisedSanction[] = [];
+    for (const entry of snapshot) {
+      if (sanctionMatchesQuery(entry, queryLower)) {
+        matches.push(entry);
+        if (matches.length >= SCREEN_MAX_PER_SOURCE) break;
+      }
+    }
+    totalMatches += matches.length;
+    perSource.push({ source, total: matches.length, matches });
+  }
+
+  const lines: string[] = [
+    `Skill \`/screen\` — sanctions screening`,
+    '',
+    `Query: \`${rawQuery}\``,
+    `Lists checked: ${SANCTIONS_SOURCES.join(', ')}`,
+    `Entries scanned: ${totalEntriesChecked.toLocaleString('en-US')}`,
+    `Matches found: ${totalMatches}${totalMatches >= SCREEN_MAX_TOTAL_MATCHES ? ' (capped)' : ''}`,
+    '',
+  ];
+
+  if (totalMatches === 0) {
+    lines.push('No matches across any list.');
+    lines.push('');
+    lines.push(
+      '**Important:** a zero-match result is NOT a clearance. Re-run' +
+        ' with alias variants (name order, transliteration, legal-form' +
+        ' suffixes stripped) before you rely on this.',
+    );
+  } else {
+    let surfaced = 0;
+    for (const { source, total, matches } of perSource) {
+      if (matches.length === 0) continue;
+      lines.push(`**${source}** — ${total} match${total === 1 ? '' : 'es'}`);
+      for (const m of matches) {
+        if (surfaced >= SCREEN_MAX_TOTAL_MATCHES) {
+          lines.push(`… plus further matches (output capped at ${SCREEN_MAX_TOTAL_MATCHES})`);
+          break;
+        }
+        surfaced++;
+        const programmes = (m.programmes ?? []).slice(0, 3).join(', ');
+        const aliasSummary =
+          m.aliases && m.aliases.length > 0
+            ? ` — aka ${m.aliases.slice(0, 2).join(' / ')}${m.aliases.length > 2 ? ' …' : ''}`
+            : '';
+        const programmeSuffix = programmes ? ` [${programmes}]` : '';
+        lines.push(
+          `  • ${m.primaryName}${aliasSummary}${programmeSuffix}  (id: ${m.sourceId})`,
+        );
+      }
+      lines.push('');
+      if (surfaced >= SCREEN_MAX_TOTAL_MATCHES) break;
+    }
+    lines.push(
+      '**Next step:** if any of these are plausibly the subject,' +
+        ' open an incident via `/incident <case-id> sanctions-match`' +
+        ' and raise the four-eyes queue.',
+    );
+  }
+
+  lines.push('');
+  lines.push(
+    `Regulatory basis: ${citation}`,
+  );
+  lines.push('FDL Art.29 — no tipping off. Do not share this comment with the subject.');
+
+  return {
+    reply: lines.join('\n'),
+    citation,
+    real: true,
+    diagnostics: diagnostics.length > 0 ? diagnostics : undefined,
+  };
+}
+
+async function executeSkillInvocation(
+  routerModule: {
+    buildStubExecution: (invocation: {
+      skill: { name: string; category: string; description: string; citation: string };
+      args: string[];
+      rawComment: string;
+    }) => { reply: string; citation: string };
+  },
+  invocation: {
+    skill: { name: string; category: string; description: string; citation: string };
+    args: string[];
+    rawComment: string;
+  },
+): Promise<SkillExecutionResult> {
+  const name = invocation.skill.name;
+  if (name === 'screen' && invocation.args.length > 0) {
+    // Concatenate args so `/screen Acme Trading LLC` is one query.
+    // Trim trailing punctuation so the MLRO can copy-paste from
+    // emails without losing precision.
+    const query = invocation.args.join(' ').replace(/[.,;:!?]+$/g, '').trim();
+    return executeScreenSkill(query);
+  }
+  // Any other skill — fall back to the stub. Each "real" executor is
+  // added incrementally; the stub's reply body is stable so partial
+  // rollout is safe for the MLRO.
+  const stub = routerModule.buildStubExecution(invocation);
+  return { reply: stub.reply, citation: stub.citation, real: false };
 }
 
 interface AsanaGetResult<T> {
@@ -292,7 +541,22 @@ export default async (): Promise<Response> => {
       // slot instead of retried forever, which previously pegged
       // the shared Asana rate limit on any poison-pill job.
       if (routed.invocation && job.parentTaskGid) {
-        const execResult = routerModule.buildStubExecution(routed.invocation);
+        const execResult = await executeSkillInvocation(
+          routerModule,
+          routed.invocation,
+        );
+        if (execResult.diagnostics && execResult.diagnostics.length > 0) {
+          // Diagnostics never leave the audit trail — we deliberately
+          // do NOT include them in the Asana reply so operators do not
+          // see the internal state of the snapshot store.
+          await writeAudit({
+            event: 'skill_exec_diagnostics',
+            jobId: job.jobId,
+            skill: routed.invocation.skill.name,
+            real: execResult.real,
+            diagnostics: execResult.diagnostics,
+          });
+        }
         const postRes = await asanaPost(
           `/tasks/${encodeURIComponent(job.parentTaskGid)}/stories`,
           token,
@@ -352,4 +616,13 @@ export default async (): Promise<Response> => {
 
 export const config: Config = {
   schedule: '* * * * *',
+};
+
+// Exports for unit tests only. Production callers use the default
+// cron handler above.
+export const __test__ = {
+  executeScreenSkill,
+  executeSkillInvocation,
+  sanctionMatchesQuery,
+  normaliseQueryToken,
 };
