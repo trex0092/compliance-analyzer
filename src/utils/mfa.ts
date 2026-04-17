@@ -97,7 +97,7 @@ async function hmacSha1(keyBytes: Uint8Array, messageBytes: Uint8Array): Promise
     keyBytes as BufferSource,
     { name: 'HMAC', hash: 'SHA-1' },
     false,
-    ['sign'],
+    ['sign']
   );
   const sig = await crypto.subtle.sign('HMAC', cryptoKey, messageBytes as BufferSource);
   return new Uint8Array(sig);
@@ -142,7 +142,7 @@ function constantTimeEqual(a: string, b: string): boolean {
 export async function computeTotp(
   secretBase32: string,
   nowSeconds: number,
-  opts: { period?: number; digits?: number } = {},
+  opts: { period?: number; digits?: number } = {}
 ): Promise<string | null> {
   const period = opts.period ?? DEFAULT_PERIOD_SECONDS;
   const digits = opts.digits ?? DEFAULT_DIGITS;
@@ -164,7 +164,7 @@ export async function computeTotp(
 export async function verifyTotp(
   code: string,
   secretBase32: string,
-  opts: VerifyTotpOptions = {},
+  opts: VerifyTotpOptions = {}
 ): Promise<boolean> {
   const period = opts.period ?? DEFAULT_PERIOD_SECONDS;
   const digits = opts.digits ?? DEFAULT_DIGITS;
