@@ -13,6 +13,29 @@
 const EventEmitter = require('events');
 const crypto = require('crypto');
 
+// Escape any operator-controlled string before interpolating it into
+// the generated HTML so an Asana task name, team member name or a
+// recommendation action cannot break out of the template.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Coerce a value that might be a Date, ISO string, number or null
+// into a YYYY-MM-DD display string. Returns '' on invalid input so
+// the whole report render does not blow up on one bad field.
+function toIsoDay(value) {
+  if (value === null || value === undefined) return '';
+  const d = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(d.getTime())) return '';
+  return d.toISOString().split('T')[0];
+}
+
 class WeeklyRiskAnalysisScheduler extends EventEmitter {
   constructor(config) {
     super();
@@ -79,27 +102,30 @@ class WeeklyRiskAnalysisScheduler extends EventEmitter {
     const span = this.tracer.startSpan('start_weekly_scheduler');
     try {
       this.logger.info('Starting weekly scheduler...');
-      
-      // Calculate next Monday 8:00 AM UTC
-      const now = new Date();
-      const nextMonday = this.getNextMonday(now);
-      const scheduledTime = new Date(nextMonday);
-      scheduledTime.setUTCHours(8, 0, 0, 0);
-      
-      const timeUntilExecution = scheduledTime.getTime() - now.getTime();
-      
-      this.logger.info(`⏰ Next weekly execution: ${scheduledTime.toISOString()}`);
-      
-      // Set initial timeout
-      this.schedulerTimeout = setTimeout(() => {
-        this.executeWeeklyReports();
-        
-        // Then set recurring interval (7 days)
-        this.schedulerInterval = setInterval(() => {
-          this.executeWeeklyReports();
-        }, 7 * 24 * 60 * 60 * 1000);
-      }, timeUntilExecution);
-      
+
+      // Each run recomputes "next Monday 08:00 UTC" so there is no
+      // drift across DST transitions, and the async work is wrapped
+      // through .catch/.finally so a failing run cannot leak an
+      // unhandled promise rejection or stop the schedule.
+      const scheduleNext = () => {
+        const now = new Date();
+        const next = this.getNextMondayAt8Utc(now);
+        const delay = next.getTime() - now.getTime();
+        this.logger.info(`⏰ Next weekly execution: ${next.toISOString()}`);
+        this.schedulerTimeout = setTimeout(() => {
+          Promise.resolve()
+            .then(() => this.executeWeeklyReports())
+            .catch((err) => {
+              this.logger.error('Unhandled error in scheduled weekly reports', err);
+            })
+            .finally(() => {
+              if (this.isRunning) scheduleNext();
+            });
+        }, delay);
+      };
+
+      scheduleNext();
+
       this.logger.info('✅ Weekly scheduler started');
       span.finish();
     } catch (error) {
@@ -110,13 +136,48 @@ class WeeklyRiskAnalysisScheduler extends EventEmitter {
   }
 
   /**
-   * Get next Monday date
+   * Compute the next Monday 08:00 UTC strictly AFTER `from`.
+   *
+   * The previous `getNextMonday` returned today when called on a
+   * Monday, which on a Monday past 08:00 UTC produced a negative
+   * delay and fired the report immediately instead of in a week.
+   * This version also does all arithmetic in UTC so it does not
+   * drift when the host server's local timezone changes.
+   */
+  getNextMondayAt8Utc(from) {
+    const now = from instanceof Date ? from : new Date(from);
+    // Start at today 08:00 UTC.
+    const candidate = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      8, 0, 0, 0,
+    ));
+    // Monday is day 1 in both local and UTC. If today is not Monday,
+    // advance to the next Monday.
+    const dow = candidate.getUTCDay();
+    if (dow !== 1) {
+      const daysUntilMonday = (1 - dow + 7) % 7 || 7;
+      candidate.setUTCDate(candidate.getUTCDate() + daysUntilMonday);
+    }
+    // If we landed on "today 08:00 UTC" but that moment has already
+    // passed, jump to next Monday (7 days ahead).
+    if (candidate.getTime() <= now.getTime()) {
+      candidate.setUTCDate(candidate.getUTCDate() + 7);
+    }
+    return candidate;
+  }
+
+  /**
+   * Back-compat alias. Calendar-only (no time), so callers that
+   * relied on the date semantics of the old helper still work. Prefer
+   * `getNextMondayAt8Utc` for anything new.
    */
   getNextMonday(date) {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-    return new Date(d.setDate(diff));
+    const next = this.getNextMondayAt8Utc(date);
+    // Strip the time portion so the return shape matches the old
+    // semantics (a Date at midnight local).
+    return new Date(next.getUTCFullYear(), next.getUTCMonth(), next.getUTCDate());
   }
 
   /**
@@ -447,37 +508,37 @@ class WeeklyRiskAnalysisScheduler extends EventEmitter {
     <div class="header">
       <div class="confidential">CONFIDENTIAL</div>
       <h1>Weekly Risk Analysis Report</h1>
-      <p>Week ${weeklyData.week} | ${weeklyData.startDate} to ${weeklyData.endDate}</p>
+      <p>Week ${escapeHtml(weeklyData.week)} | ${escapeHtml(weeklyData.startDate)} to ${escapeHtml(weeklyData.endDate)}</p>
     </div>
-    
+
     <div class="section">
       <h2 class="section-title">Weekly Trends</h2>
       <div class="trends-grid">
         <div class="trend-item">
           <div class="trend-label">Compliance Rate Trend</div>
-          <div class="trend-value" style="color: #4caf50;">${trends.complianceRateTrend}</div>
+          <div class="trend-value" style="color: #4caf50;">${escapeHtml(trends.complianceRateTrend)}</div>
         </div>
         <div class="trend-item">
           <div class="trend-label">Health Score Trend</div>
-          <div class="trend-value" style="color: #4caf50;">↑ ${trends.healthScoreTrend}</div>
+          <div class="trend-value" style="color: #4caf50;">↑ ${escapeHtml(trends.healthScoreTrend)}</div>
         </div>
         <div class="trend-item">
           <div class="trend-label">Risk Score Trend</div>
-          <div class="trend-value" style="color: #4caf50;">${trends.riskScoreTrend}</div>
+          <div class="trend-value" style="color: #4caf50;">${escapeHtml(trends.riskScoreTrend)}</div>
         </div>
       </div>
     </div>
-    
+
     <div class="section">
       <h2 class="section-title">Weekly Performance</h2>
       <div>
-        <p><strong>Tasks Completed:</strong> ${weeklyData.tasksCompleted}</p>
-        <p><strong>Tasks Created:</strong> ${weeklyData.tasksCreated}</p>
-        <p><strong>Tasks Overdue:</strong> ${weeklyData.tasksOverdue}</p>
-        <p><strong>Average Completion Time:</strong> ${weeklyData.averageCompletionTime} days</p>
+        <p><strong>Tasks Completed:</strong> ${escapeHtml(weeklyData.tasksCompleted)}</p>
+        <p><strong>Tasks Created:</strong> ${escapeHtml(weeklyData.tasksCreated)}</p>
+        <p><strong>Tasks Overdue:</strong> ${escapeHtml(weeklyData.tasksOverdue)}</p>
+        <p><strong>Average Completion Time:</strong> ${escapeHtml(weeklyData.averageCompletionTime)} days</p>
       </div>
     </div>
-    
+
     <div class="section">
       <h2 class="section-title">Team Performance</h2>
       <table class="team-table">
@@ -487,33 +548,39 @@ class WeeklyRiskAnalysisScheduler extends EventEmitter {
           <th>Completion Rate</th>
           <th>Avg Time</th>
         </tr>
-        ${teamAnalysis.map(member => `
+        ${(teamAnalysis || []).map(member => `
           <tr>
-            <td>${member.name}</td>
-            <td>${member.tasksCompleted}</td>
-            <td>${member.completionRate}%</td>
-            <td>${member.avgTime} days</td>
+            <td>${escapeHtml(member.name)}</td>
+            <td>${escapeHtml(member.tasksCompleted)}</td>
+            <td>${escapeHtml(member.completionRate)}%</td>
+            <td>${escapeHtml(member.avgTime)} days</td>
           </tr>
         `).join('')}
       </table>
     </div>
-    
+
     <div class="section">
       <h2 class="section-title">Recommendations</h2>
-      ${recommendations.map(rec => `
+      ${(recommendations || []).map(rec => {
+        // Pick a background colour from a closed allowlist so a
+        // caller-supplied priority cannot be interpolated directly
+        // into the inline `background:` style.
+        const bg = rec.priority === 'HIGH' ? '#ffc107' : '#2196f3';
+        return `
         <div style="padding: 15px; margin-bottom: 10px; background: #f9f9f9; border-left: 4px solid #003366;">
-          <div style="display: inline-block; padding: 4px 10px; background: #${rec.priority === 'HIGH' ? 'ffc107' : '2196f3'}; color: #333; border-radius: 3px; font-size: 11px; font-weight: bold; margin-bottom: 8px;">
-            ${rec.priority}
+          <div style="display: inline-block; padding: 4px 10px; background: ${bg}; color: #333; border-radius: 3px; font-size: 11px; font-weight: bold; margin-bottom: 8px;">
+            ${escapeHtml(rec.priority)}
           </div>
-          <div style="font-size: 14px; margin-bottom: 5px;">${rec.action}</div>
-          <div style="font-size: 12px; color: #666;">Owner: ${rec.owner} | Due: ${rec.dueDate.toISOString().split('T')[0]}</div>
+          <div style="font-size: 14px; margin-bottom: 5px;">${escapeHtml(rec.action)}</div>
+          <div style="font-size: 12px; color: #666;">Owner: ${escapeHtml(rec.owner)} | Due: ${escapeHtml(toIsoDay(rec.dueDate))}</div>
         </div>
-      `).join('')}
+      `;
+      }).join('')}
     </div>
-    
+
     <div class="footer">
-      <p>Report ID: ${reportId}</p>
-      <p>Generated: ${new Date().toISOString()}</p>
+      <p>Report ID: ${escapeHtml(reportId)}</p>
+      <p>Generated: ${escapeHtml(new Date().toISOString())}</p>
       <p>© 2026 ASANA Brain Compliance Platform</p>
     </div>
   </div>
