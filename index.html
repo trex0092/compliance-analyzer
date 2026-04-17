@@ -3084,6 +3084,7 @@
             🔍 Analyze
           </div>
           <div class="tab" data-action="switchTab" data-arg="shipments">🚚 IAR Shipments</div>
+          <div class="tab" data-action="switchTab" data-arg="tracking">✈️ Tracking</div>
           <div class="tab" data-action="switchTab" data-arg="localshipments">
             📦 Local Shipments
           </div>
@@ -4046,6 +4047,65 @@ Examples:
               </p>
             </div>
           </div>
+        </div>
+
+        <!-- TRACKING TAB — global AWB shipment tracking.
+             Each record is persisted to localStorage AND mirrored to
+             Asana as a task in the per-tenant "Shipments" section
+             (auto-created on first sync). Regulatory basis:
+             FDL No.10/2025 Art.24 (10-year record retention),
+             LBMA RGG v9 (chain of custody for gold shipments). -->
+        <div id="tab-tracking" class="tab-content">
+          <div class="section-title">✈️ Global Shipment Tracking</div>
+          <div class="muted" style="margin-bottom:10px">
+            Track AWB shipments from origin to destination. Records
+            are stored locally and mirrored to the active tenant's
+            Asana project under a "Shipments" section (auto-created
+            on first sync).
+          </div>
+
+          <div class="form-grid" style="margin-bottom:14px">
+            <div>
+              <label>AWB number</label>
+              <input type="text" id="trackingAwb" placeholder="176-12345678">
+            </div>
+            <div>
+              <label>Departure country</label>
+              <input type="text" id="trackingDeparture" placeholder="AE">
+            </div>
+            <div>
+              <label>Arrival country</label>
+              <input type="text" id="trackingArrival" placeholder="CH">
+            </div>
+            <div>
+              <label>Acquired date</label>
+              <input type="date" id="trackingAcquired">
+            </div>
+            <div>
+              <label>Carrier</label>
+              <input type="text" id="trackingCarrier" placeholder="Emirates SkyCargo">
+            </div>
+            <div>
+              <label>Weight (kg)</label>
+              <input type="number" id="trackingWeight" min="0" step="0.01" placeholder="125.50">
+            </div>
+            <div>
+              <label>Status</label>
+              <select id="trackingStatus">
+                <option value="in-transit">in-transit</option>
+                <option value="arrived">arrived</option>
+                <option value="delayed">delayed</option>
+                <option value="delivered">delivered</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row" style="margin-bottom:14px; gap:8px">
+            <button class="primary" data-action="addTrackingRecord">➕ Add shipment</button>
+            <button data-action="cancelEditTracking" id="btnCancelEditTracking" style="display:none">Cancel edit</button>
+          </div>
+
+          <div id="tracking-list"></div>
         </div>
 
         <!-- LOCAL SHIPMENTS TAB -->
