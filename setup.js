@@ -226,6 +226,59 @@
     if (el) el.addEventListener('input', saveState);
   });
 
+  // --- Generate MFA seed (one-time) ---
+  // Uses crypto.getRandomValues so the seed never leaves the
+  // browser. 20 bytes (160 bits) is the RFC 6238 reference length
+  // for HMAC-SHA1. The seed is shown once; not persisted.
+  var BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+  function base32Encode(bytes) {
+    var bits = 0, value = 0, out = '';
+    for (var i = 0; i < bytes.length; i++) {
+      value = (value << 8) | bytes[i];
+      bits += 8;
+      while (bits >= 5) {
+        bits -= 5;
+        out += BASE32_ALPHABET.charAt((value >> bits) & 0x1f);
+      }
+    }
+    if (bits > 0) out += BASE32_ALPHABET.charAt((value << (5 - bits)) & 0x1f);
+    return out;
+  }
+
+  byId('btn-generate-mfa-seed').addEventListener('click', function () {
+    try {
+      var bytes = new Uint8Array(20);
+      window.crypto.getRandomValues(bytes);
+      var seed = base32Encode(bytes);
+      var label = encodeURIComponent('Hawkeye Sterling:MLRO');
+      var issuer = encodeURIComponent('Hawkeye Sterling');
+      var otpauth = 'otpauth://totp/' + label +
+        '?secret=' + seed +
+        '&issuer=' + issuer +
+        '&algorithm=SHA1&digits=6&period=30';
+      byId('mfa-seed-output').value = seed;
+      byId('mfa-seed-otpauth').value = otpauth;
+      byId('mfa-seed-block').style.display = 'block';
+      setStatus('mfa-seed-status', 'ok', 'Generated — copy to Netlify + authenticator NOW');
+    } catch (err) {
+      setStatus('mfa-seed-status', 'err', 'crypto.getRandomValues unavailable');
+    }
+  });
+
+  function wireMfaCopy(buttonId, inputId, defaultLabel) {
+    byId(buttonId).addEventListener('click', function () {
+      var val = byId(inputId).value;
+      if (!val) return;
+      navigator.clipboard.writeText(val).then(function () {
+        byId(buttonId).textContent = 'Copied!';
+        setTimeout(function () { byId(buttonId).textContent = defaultLabel; }, 2000);
+      });
+    });
+  }
+  wireMfaCopy('btn-copy-mfa-seed', 'mfa-seed-output', 'Copy seed');
+  wireMfaCopy('btn-copy-mfa-otpauth', 'mfa-seed-otpauth', 'Copy otpauth URL');
+
   // --- Step 5: copy env block ---
   byId('btn-copy-env').addEventListener('click', function () {
     var text = byId('env-output').textContent;
