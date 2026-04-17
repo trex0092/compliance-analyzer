@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compliance Status Report - Data Protection Audit</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Roboto, sans-serif;
+            color: #2C3E50;
+            background: #FFFFFF;
+            line-height: 1.6;
+            font-size: 12px;
+        }
+
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            .page-break {
+                page-break-after: always;
+            }
+        }
+
+        .report-header {
+            background: linear-gradient(135deg, #003366 0%, #004D99 100%);
+            color: white;
+            padding: 40px 30px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 51, 102, 0.15);
+            position: relative;
+        }
+
+        .confidential-badge {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #D4AF37;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 2px solid #D4AF37;
+            padding: 6px 12px;
+            border-radius: 3px;
+        }
+
+        .report-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .report-header .subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            opacity: 0.95;
+            margin-bottom: 20px;
+        }
+
+        .report-meta {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .report-meta-item strong {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .section-header {
+            font-size: 24px;
+            font-weight: 700;
+            color: #003366;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #D4AF37;
+        }
+
+        .subsection-header {
+            font-size: 16px;
+            font-weight: 600;
+            color: #003366;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            border-left: 4px solid #D4AF37;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #ECF0F1 0%, #F8F9FA 100%);
+            padding: 24px;
+            border-radius: 6px;
+            border-left: 4px solid #003366;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #003366;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #7F8C8D;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-change {
+            font-size: 10px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 51, 102, 0.1);
+        }
+
+        .metric-change.positive {
+            color: #28A745;
+        }
+
+        .metric-change.negative {
+            color: #DC3545;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #ECF0F1 0%, #F8F9FA 100%);
+        }
+
+        th {
+            padding: 14px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: #003366;
+            border-bottom: 2px solid #D4AF37;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 14px;
+            font-size: 11px;
+            color: #2C3E50;
+            border-bottom: 1px solid #ECF0F1;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #F8F9FA;
+        }
+
+        tbody tr:hover {
+            background: #EFF3F7;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-critical {
+            background: #DC3545;
+            color: white;
+        }
+
+        .badge-high {
+            background: #FFC107;
+            color: #2C3E50;
+        }
+
+        .badge-good {
+            background: #28A745;
+            color: white;
+        }
+
+        .recommendation {
+            background: white;
+            border-left: 4px solid #003366;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .recommendation.high {
+            border-left-color: #FFC107;
+            background: #FFFBF0;
+        }
+
+        .recommendation-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .recommendation-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #003366;
+            margin-left: 12px;
+        }
+
+        .recommendation-body {
+            font-size: 11px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            color: #2C3E50;
+        }
+
+        .recommendation-action {
+            font-size: 10px;
+            font-weight: 600;
+            color: #003366;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 51, 102, 0.1);
+        }
+
+        .recommendation-action strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .page-break {
+            page-break-after: always;
+            margin-bottom: 40px;
+        }
+
+        .report-footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ECF0F1;
+        }
+
+        .confidential-notice {
+            background: #ECF0F1;
+            padding: 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 10px;
+            line-height: 1.6;
+            color: #2C3E50;
+        }
+
+        .footer-metadata {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            font-size: 10px;
+            color: #7F8C8D;
+            margin-bottom: 20px;
+        }
+
+        .footer-metadata strong {
+            display: block;
+            color: #2C3E50;
+            margin-bottom: 4px;
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 1px solid #ECF0F1;
+            font-size: 10px;
+            color: #7F8C8D;
+        }
+
+        .company-logo {
+            text-align: right;
+            font-weight: 700;
+            color: #003366;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #FFC107;
+            color: #2C3E50;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-left: 12px;
+        }
+
+        ul {
+            margin-left: 20px;
+            font-size: 12px;
+            line-height: 1.8;
+            color: #2C3E50;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <!-- PAGE 1: COVER PAGE -->
+    <div class="page-break">
+        <div class="report-header">
+            <div class="confidential-badge">CONFIDENTIAL</div>
+            <div>
+                <h1>COMPLIANCE STATUS REPORT</h1>
+                <div class="subtitle">Data Protection & Privacy Audit</div>
+                <div class="report-meta">
+                    <div>
+                        <strong>Project</strong>
+                        Data Protection Compliance 2026
+                    </div>
+                    <div>
+                        <strong>Report Date</strong>
+                        May 1, 2026
+                    </div>
+                    <div>
+                        <strong>Organization</strong>
+                        TechCorp International
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 60px; text-align: center; color: #7F8C8D;">
+            <p style="margin-bottom: 40px; font-size: 14px;">
+                Comprehensive Data Protection & Privacy Compliance Analysis
+            </p>
+            <p style="margin-bottom: 80px;">
+                Prepared for: <strong>Chief Privacy Officer</strong><br>
+                Generated: <strong>May 1, 2026 at 8:00 AM UTC</strong>
+            </p>
+            <div style="margin-top: 100px; padding-top: 40px; border-top: 2px solid #ECF0F1;">
+                <div style="font-size: 16px; font-weight: 700; color: #003366;">ASANA BRAIN</div>
+                <div style="font-size: 12px; margin-top: 8px;">Enterprise Compliance Intelligence Platform</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 2: EXECUTIVE SUMMARY -->
+    <div class="page-break">
+        <h2 class="section-header">Executive Summary</h2>
+
+        <p style="margin-bottom: 20px;">
+            This report provides a comprehensive analysis of data protection and privacy compliance status. Overall compliance is at 84% with several high-priority items requiring attention to meet GDPR and CCPA requirements.
+        </p>
+
+        <div style="margin-bottom: 24px;">
+            <strong style="font-size: 13px; color: #003366;">Overall Status:</strong>
+            <span class="status-badge">AT RISK</span>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value">84%</div>
+                <div class="metric-label">Compliance Rate</div>
+                <div class="metric-change negative">↓ -2.1%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">76</div>
+                <div class="metric-label">Health Score</div>
+                <div class="metric-change negative">↓ -4.2</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">12.5%</div>
+                <div class="metric-label">Risk Score</div>
+                <div class="metric-change negative">↑ +3.2%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">11</div>
+                <div class="metric-label">Velocity (tasks/week)</div>
+                <div class="metric-change negative">↓ -2</div>
+            </div>
+        </div>
+
+        <h3 class="subsection-header">Key Highlights</h3>
+        <ul>
+            <li>84 of 100 data protection tasks completed on schedule</li>
+            <li>3 high-priority tasks overdue requiring immediate escalation</li>
+            <li>Privacy impact assessments pending for 2 new systems</li>
+            <li>Data subject request processing time: 18 days (target: 14 days)</li>
+            <li>No data breaches reported in current period</li>
+            <li>GDPR compliance status: 88% (improving)</li>
+            <li>CCPA compliance status: 79% (needs improvement)</li>
+        </ul>
+    </div>
+
+    <!-- PAGE 3: RISK MATRIX -->
+    <div class="page-break">
+        <h2 class="section-header">Risk Matrix Analysis</h2>
+
+        <p style="margin-bottom: 20px;">
+            The risk matrix below categorizes all data protection tasks by severity level. Several high-priority items require management attention.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+            <div style="padding: 16px; border-radius: 6px; background: #FEF5F5; border-left: 4px solid #DC3545; text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: #DC3545; margin-bottom: 8px;">0</div>
+                <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Critical</div>
+                <div style="font-size: 10px; margin-top: 6px; opacity: 0.8;">(30+ days overdue)</div>
+            </div>
+            <div style="padding: 16px; border-radius: 6px; background: #FFFBF0; border-left: 4px solid #FFC107; text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: #FFC107; margin-bottom: 8px;">3</div>
+                <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">High</div>
+                <div style="font-size: 10px; margin-top: 6px; opacity: 0.8;">(14-29 days overdue)</div>
+            </div>
+            <div style="padding: 16px; border-radius: 6px; background: #F0F8FA; border-left: 4px solid #17A2B8; text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: #17A2B8; margin-bottom: 8px;">8</div>
+                <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Medium</div>
+                <div style="font-size: 10px; margin-top: 6px; opacity: 0.8;">(7-13 days overdue)</div>
+            </div>
+            <div style="padding: 16px; border-radius: 6px; background: #F0F7F0; border-left: 4px solid #28A745; text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: #28A745; margin-bottom: 8px;">89</div>
+                <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Low</div>
+                <div style="font-size: 10px; margin-top: 6px; opacity: 0.8;">(0-6 days overdue)</div>
+            </div>
+        </div>
+
+        <h3 class="subsection-header">High-Risk Tasks (14-29 Days Overdue)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Task Name</th>
+                    <th>Days Overdue</th>
+                    <th>Owner</th>
+                    <th>Category</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Privacy Impact Assessment - New CRM System</td>
+                    <td>16</td>
+                    <td>Amanda Foster</td>
+                    <td>Data Protection</td>
+                </tr>
+                <tr>
+                    <td>Data Retention Policy Update - CCPA</td>
+                    <td>22</td>
+                    <td>Marcus Johnson</td>
+                    <td>Privacy Policy</td>
+                </tr>
+                <tr>
+                    <td>Vendor Data Processing Agreements Review</td>
+                    <td>19</td>
+                    <td>Elena Rodriguez</td>
+                    <td>Third-Party Risk</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PAGE 4: RECOMMENDATIONS -->
+    <div class="page-break">
+        <h2 class="section-header">Recommendations & Action Items</h2>
+
+        <div class="recommendation high">
+            <div class="recommendation-header">
+                <span class="badge badge-high">HIGH</span>
+                <span class="recommendation-title">Privacy Impact Assessment - New CRM System</span>
+            </div>
+            <div class="recommendation-body">
+                Privacy impact assessment for the new CRM system is 16 days overdue. This assessment is required before system deployment to ensure GDPR compliance and identify privacy risks.
+            </div>
+            <div class="recommendation-action">
+                <strong>ACTION:</strong> Complete privacy impact assessment and document findings<br>
+                <strong>OWNER:</strong> Amanda Foster (Privacy Officer)<br>
+                <strong>DUE:</strong> May 3, 2026<br>
+                <strong>ESCALATION:</strong> CPO notification required
+            </div>
+        </div>
+
+        <div class="recommendation high">
+            <div class="recommendation-header">
+                <span class="badge badge-high">HIGH</span>
+                <span class="recommendation-title">Data Retention Policy Update - CCPA</span>
+            </div>
+            <div class="recommendation-body">
+                Data retention policy update for CCPA compliance is 22 days overdue. This update is essential for meeting California privacy requirements and managing data lifecycle.
+            </div>
+            <div class="recommendation-action">
+                <strong>ACTION:</strong> Update data retention policy and communicate to all departments<br>
+                <strong>OWNER:</strong> Marcus Johnson (Privacy Manager)<br>
+                <strong>DUE:</strong> May 2, 2026<br>
+                <strong>ESCALATION:</strong> Legal review required
+            </div>
+        </div>
+
+        <div class="recommendation high">
+            <div class="recommendation-header">
+                <span class="badge badge-high">HIGH</span>
+                <span class="recommendation-title">Vendor Data Processing Agreements Review</span>
+            </div>
+            <div class="recommendation-body">
+                Review of vendor data processing agreements is 19 days overdue. This review ensures all third-party vendors comply with GDPR and data protection requirements.
+            </div>
+            <div class="recommendation-action">
+                <strong>ACTION:</strong> Review and update all vendor data processing agreements<br>
+                <strong>OWNER:</strong> Elena Rodriguez (Vendor Manager)<br>
+                <strong>DUE:</strong> May 5, 2026<br>
+                <strong>ESCALATION:</strong> Procurement coordination
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 5: REGULATORY STATUS -->
+    <div class="page-break">
+        <h2 class="section-header">Regulatory Compliance Status</h2>
+
+        <h3 class="subsection-header">GDPR Compliance (EU Data Protection)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Requirement</th>
+                    <th>Status</th>
+                    <th>Evidence</th>
+                    <th>Last Reviewed</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Data Subject Rights</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>Procedures documented</td>
+                    <td>April 25, 2026</td>
+                </tr>
+                <tr>
+                    <td>Privacy by Design</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>PIA process established</td>
+                    <td>April 22, 2026</td>
+                </tr>
+                <tr>
+                    <td>Data Processing Agreements</td>
+                    <td><span class="badge badge-high">Non-Compliant</span></td>
+                    <td>Pending vendor review</td>
+                    <td>April 10, 2026</td>
+                </tr>
+                <tr>
+                    <td>Breach Notification</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>Procedures in place</td>
+                    <td>April 28, 2026</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="subsection-header">CCPA Compliance (California Privacy)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Requirement</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Consumer Rights Implementation</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>Rights portal deployed</td>
+                </tr>
+                <tr>
+                    <td>Data Retention Policy</td>
+                    <td><span class="badge badge-high">Non-Compliant</span></td>
+                    <td>Policy update pending</td>
+                </tr>
+                <tr>
+                    <td>Opt-Out Mechanisms</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>Implemented across channels</td>
+                </tr>
+                <tr>
+                    <td>Vendor Contracts</td>
+                    <td><span class="badge badge-high">Non-Compliant</span></td>
+                    <td>Requires review</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PAGE 6: FOOTER & LEGAL -->
+    <div class="report-footer">
+        <div class="confidential-notice">
+            <strong>CONFIDENTIAL NOTICE</strong><br><br>
+            The contents of this record are private and confidential and should not be disclosed to third parties unless (i) the terms of your agreement with ASANA Brain allow you to do so; (ii) the record subject requests any data you may hold on them; or (iii) you are under some other legal obligation to do so. You must comply with all applicable data privacy rights of individuals.
+        </div>
+
+        <div class="footer-metadata">
+            <div>
+                <strong>Report Name</strong>
+                Data Protection Compliance 2026
+            </div>
+            <div>
+                <strong>Date Printed</strong>
+                May 1, 2026
+            </div>
+            <div>
+                <strong>Generated By</strong>
+                ASANA Brain System
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <div class="page-number">
+                Page 6 of 6
+            </div>
+            <div class="company-logo">
+                ASANA BRAIN<br>
+                <span style="font-size: 9px; font-weight: 400;">Compliance Intelligence</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

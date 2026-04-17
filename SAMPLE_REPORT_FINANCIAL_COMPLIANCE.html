@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compliance Status Report - Financial Reconciliation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Roboto, sans-serif;
+            color: #2C3E50;
+            background: #FFFFFF;
+            line-height: 1.6;
+            font-size: 12px;
+        }
+
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            .page-break {
+                page-break-after: always;
+            }
+        }
+
+        .report-header {
+            background: linear-gradient(135deg, #003366 0%, #004D99 100%);
+            color: white;
+            padding: 40px 30px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 51, 102, 0.15);
+            position: relative;
+        }
+
+        .confidential-badge {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #D4AF37;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 2px solid #D4AF37;
+            padding: 6px 12px;
+            border-radius: 3px;
+        }
+
+        .report-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .report-header .subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            opacity: 0.95;
+            margin-bottom: 20px;
+        }
+
+        .report-meta {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .report-meta-item strong {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .section-header {
+            font-size: 24px;
+            font-weight: 700;
+            color: #003366;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #D4AF37;
+        }
+
+        .subsection-header {
+            font-size: 16px;
+            font-weight: 600;
+            color: #003366;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            border-left: 4px solid #D4AF37;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #ECF0F1 0%, #F8F9FA 100%);
+            padding: 24px;
+            border-radius: 6px;
+            border-left: 4px solid #003366;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #003366;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #7F8C8D;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-change {
+            font-size: 10px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 51, 102, 0.1);
+        }
+
+        .metric-change.positive {
+            color: #28A745;
+        }
+
+        .metric-change.negative {
+            color: #DC3545;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #ECF0F1 0%, #F8F9FA 100%);
+        }
+
+        th {
+            padding: 14px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: #003366;
+            border-bottom: 2px solid #D4AF37;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 14px;
+            font-size: 11px;
+            color: #2C3E50;
+            border-bottom: 1px solid #ECF0F1;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #F8F9FA;
+        }
+
+        tbody tr:hover {
+            background: #EFF3F7;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-critical {
+            background: #DC3545;
+            color: white;
+        }
+
+        .badge-high {
+            background: #FFC107;
+            color: #2C3E50;
+        }
+
+        .badge-good {
+            background: #28A745;
+            color: white;
+        }
+
+        .risk-matrix {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .risk-item {
+            padding: 16px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .risk-item.critical {
+            background: #FEF5F5;
+            border-left: 4px solid #DC3545;
+        }
+
+        .risk-item.high {
+            background: #FFFBF0;
+            border-left: 4px solid #FFC107;
+        }
+
+        .risk-item.medium {
+            background: #F0F8FA;
+            border-left: 4px solid #17A2B8;
+        }
+
+        .risk-item.low {
+            background: #F0F7F0;
+            border-left: 4px solid #28A745;
+        }
+
+        .risk-count {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .risk-critical .risk-count {
+            color: #DC3545;
+        }
+
+        .risk-high .risk-count {
+            color: #FFC107;
+        }
+
+        .risk-medium .risk-count {
+            color: #17A2B8;
+        }
+
+        .risk-low .risk-count {
+            color: #28A745;
+        }
+
+        .risk-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .recommendation {
+            background: white;
+            border-left: 4px solid #003366;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .recommendation.critical {
+            border-left-color: #DC3545;
+            background: #FEF5F5;
+        }
+
+        .recommendation.high {
+            border-left-color: #FFC107;
+            background: #FFFBF0;
+        }
+
+        .recommendation-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .recommendation-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #003366;
+            margin-left: 12px;
+        }
+
+        .recommendation-body {
+            font-size: 11px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            color: #2C3E50;
+        }
+
+        .recommendation-action {
+            font-size: 10px;
+            font-weight: 600;
+            color: #003366;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 51, 102, 0.1);
+        }
+
+        .recommendation-action strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .page-break {
+            page-break-after: always;
+            margin-bottom: 40px;
+        }
+
+        .report-footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ECF0F1;
+        }
+
+        .confidential-notice {
+            background: #ECF0F1;
+            padding: 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 10px;
+            line-height: 1.6;
+            color: #2C3E50;
+        }
+
+        .footer-metadata {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            font-size: 10px;
+            color: #7F8C8D;
+            margin-bottom: 20px;
+        }
+
+        .footer-metadata strong {
+            display: block;
+            color: #2C3E50;
+            margin-bottom: 4px;
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 1px solid #ECF0F1;
+            font-size: 10px;
+            color: #7F8C8D;
+        }
+
+        .company-logo {
+            text-align: right;
+            font-weight: 700;
+            color: #003366;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #28A745;
+            color: white;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-left: 12px;
+        }
+
+        ul {
+            margin-left: 20px;
+            font-size: 12px;
+            line-height: 1.8;
+            color: #2C3E50;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <!-- PAGE 1: COVER PAGE -->
+    <div class="page-break">
+        <div class="report-header">
+            <div class="confidential-badge">CONFIDENTIAL</div>
+            <div>
+                <h1>COMPLIANCE STATUS REPORT</h1>
+                <div class="subtitle">Monthly Financial Reconciliation Review</div>
+                <div class="report-meta">
+                    <div>
+                        <strong>Project</strong>
+                        Financial Compliance 2026
+                    </div>
+                    <div>
+                        <strong>Report Date</strong>
+                        May 1, 2026
+                    </div>
+                    <div>
+                        <strong>Organization</strong>
+                        Global Finance Corp
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 60px; text-align: center; color: #7F8C8D;">
+            <p style="margin-bottom: 40px; font-size: 14px;">
+                Comprehensive Financial Compliance Analysis & Risk Assessment
+            </p>
+            <p style="margin-bottom: 80px;">
+                Prepared for: <strong>Chief Financial Officer</strong><br>
+                Generated: <strong>May 1, 2026 at 8:00 AM UTC</strong>
+            </p>
+            <div style="margin-top: 100px; padding-top: 40px; border-top: 2px solid #ECF0F1;">
+                <div style="font-size: 16px; font-weight: 700; color: #003366;">ASANA BRAIN</div>
+                <div style="font-size: 12px; margin-top: 8px;">Enterprise Compliance Intelligence Platform</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 2: EXECUTIVE SUMMARY -->
+    <div class="page-break">
+        <h2 class="section-header">Executive Summary</h2>
+
+        <p style="margin-bottom: 20px;">
+            This report provides a comprehensive analysis of financial compliance status for the monthly reconciliation cycle. All critical financial controls are functioning as designed with 89% of reconciliation tasks completed on schedule.
+        </p>
+
+        <div style="margin-bottom: 24px;">
+            <strong style="font-size: 13px; color: #003366;">Overall Status:</strong>
+            <span class="status-badge">GOOD</span>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value">89%</div>
+                <div class="metric-label">Compliance Rate</div>
+                <div class="metric-change positive">↑ +4.2%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">82</div>
+                <div class="metric-label">Health Score</div>
+                <div class="metric-change positive">↑ +3.1</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">8.3%</div>
+                <div class="metric-label">Risk Score</div>
+                <div class="metric-change positive">↓ -2.1%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">14</div>
+                <div class="metric-label">Velocity (tasks/week)</div>
+                <div class="metric-change positive">↑ +3</div>
+            </div>
+        </div>
+
+        <h3 class="subsection-header">Key Highlights</h3>
+        <ul>
+            <li>89 of 100 financial reconciliation tasks completed on schedule</li>
+            <li>1 critical task (Monthly Bank Reconciliation) requires immediate attention - 8 days overdue</li>
+            <li>Compliance rate improved 4.2% week-over-week from previous month</li>
+            <li>30-day forecast: 92% compliance rate expected</li>
+            <li>No material financial control violations detected</li>
+            <li>All quarterly audit preparation tasks on track</li>
+        </ul>
+
+        <h3 class="subsection-header">Key Metrics Explained</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Current Value</th>
+                    <th>Target</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Compliance Rate</td>
+                    <td>89%</td>
+                    <td>90%</td>
+                    <td><span class="badge badge-high">At Risk</span></td>
+                </tr>
+                <tr>
+                    <td>Financial Control Effectiveness</td>
+                    <td>94%</td>
+                    <td>95%</td>
+                    <td><span class="badge badge-good">On Track</span></td>
+                </tr>
+                <tr>
+                    <td>Reconciliation Accuracy</td>
+                    <td>99.8%</td>
+                    <td>99.5%</td>
+                    <td><span class="badge badge-good">Exceeding</span></td>
+                </tr>
+                <tr>
+                    <td>Audit Readiness</td>
+                    <td>87%</td>
+                    <td>90%</td>
+                    <td><span class="badge badge-high">At Risk</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PAGE 3: RISK MATRIX -->
+    <div class="page-break">
+        <h2 class="section-header">Risk Matrix Analysis</h2>
+
+        <p style="margin-bottom: 20px;">
+            The risk matrix below categorizes all financial compliance tasks by severity level based on overdue status and regulatory importance. Immediate action is required for critical tasks.
+        </p>
+
+        <div class="risk-matrix">
+            <div class="risk-item critical">
+                <div class="risk-count">1</div>
+                <div class="risk-label">Critical</div>
+                <div style="font-size: 10px; margin-top: 6px; opacity: 0.8;">(30+ days overdue)</div>
+                <div style="font-size: 10px; margin-top: 4px; opacity: 0.8;">1.0%</div>
+            </div>
+            <div class="risk-item high">
+                <div class="risk-count">3</div>
+                <div class="risk-label">High</div>
+                <div style="font-size: 10px; margin-top: 6px; opacity: 0.8;">(14-29 days overdue)</div>
+                <div style="font-size: 10px; margin-top: 4px; opacity: 0.8;">3.0%</div>
+            </div>
+            <div class="risk-item medium">
+                <div class="risk-count">7</div>
+                <div class="risk-label">Medium</div>
+                <div style="font-size: 10px; margin-top: 6px; opacity: 0.8;">(7-13 days overdue)</div>
+                <div style="font-size: 10px; margin-top: 4px; opacity: 0.8;">7.0%</div>
+            </div>
+            <div class="risk-item low">
+                <div class="risk-count">89</div>
+                <div class="risk-label">Low</div>
+                <div style="font-size: 10px; margin-top: 6px; opacity: 0.8;">(0-6 days overdue)</div>
+                <div style="font-size: 10px; margin-top: 4px; opacity: 0.8;">89.0%</div>
+            </div>
+        </div>
+
+        <h3 class="subsection-header">Critical Tasks (30+ Days Overdue)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Task Name</th>
+                    <th>Days Overdue</th>
+                    <th>Owner</th>
+                    <th>Category</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Monthly Bank Reconciliation - April 2026</td>
+                    <td>8</td>
+                    <td>Jennifer Martinez</td>
+                    <td>Financial Reconciliation</td>
+                    <td><span class="badge badge-critical">CRITICAL</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="subsection-header">High-Risk Tasks (14-29 Days Overdue)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Task Name</th>
+                    <th>Days Overdue</th>
+                    <th>Owner</th>
+                    <th>Category</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Quarterly Tax Compliance Review</td>
+                    <td>18</td>
+                    <td>Robert Chen</td>
+                    <td>Tax Compliance</td>
+                </tr>
+                <tr>
+                    <td>Vendor Invoice Reconciliation - Q1</td>
+                    <td>22</td>
+                    <td>Sarah Johnson</td>
+                    <td>Accounts Payable</td>
+                </tr>
+                <tr>
+                    <td>Internal Audit Findings Follow-up</td>
+                    <td>15</td>
+                    <td>Michael Thompson</td>
+                    <td>Audit Compliance</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PAGE 4: RECOMMENDATIONS -->
+    <div class="page-break">
+        <h2 class="section-header">Recommendations & Action Items</h2>
+
+        <div class="recommendation critical">
+            <div class="recommendation-header">
+                <span class="badge badge-critical">CRITICAL</span>
+                <span class="recommendation-title">Monthly Bank Reconciliation Overdue</span>
+            </div>
+            <div class="recommendation-body">
+                The April 2026 monthly bank reconciliation is 8 days overdue. This is a critical financial control that must be completed immediately to ensure accurate financial reporting and regulatory compliance.
+            </div>
+            <div class="recommendation-action">
+                <strong>ACTION:</strong> Complete monthly bank reconciliation and resolve all outstanding items<br>
+                <strong>OWNER:</strong> Jennifer Martinez (Accounting Manager)<br>
+                <strong>DUE:</strong> Today (May 1, 2026)<br>
+                <strong>ESCALATION:</strong> CFO notification required
+            </div>
+        </div>
+
+        <div class="recommendation high">
+            <div class="recommendation-header">
+                <span class="badge badge-high">HIGH</span>
+                <span class="recommendation-title">Quarterly Tax Compliance Review</span>
+            </div>
+            <div class="recommendation-body">
+                The Q1 2026 tax compliance review is 18 days overdue. This review is essential for ensuring timely tax filing and identifying any compliance issues before the filing deadline.
+            </div>
+            <div class="recommendation-action">
+                <strong>ACTION:</strong> Complete Q1 tax compliance review and document findings<br>
+                <strong>OWNER:</strong> Robert Chen (Tax Manager)<br>
+                <strong>DUE:</strong> May 3, 2026<br>
+                <strong>ESCALATION:</strong> Management review required
+            </div>
+        </div>
+
+        <div class="recommendation high">
+            <div class="recommendation-header">
+                <span class="badge badge-high">HIGH</span>
+                <span class="recommendation-title">Vendor Invoice Reconciliation</span>
+            </div>
+            <div class="recommendation-body">
+                Q1 vendor invoice reconciliation is 22 days overdue. This task ensures accuracy of accounts payable records and identifies any discrepancies with vendor statements.
+            </div>
+            <div class="recommendation-action">
+                <strong>ACTION:</strong> Complete Q1 vendor reconciliation and resolve outstanding items<br>
+                <strong>OWNER:</strong> Sarah Johnson (AP Specialist)<br>
+                <strong>DUE:</strong> May 5, 2026<br>
+                <strong>ESCALATION:</strong> Accounts Payable Manager notification
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 5: TEAM PERFORMANCE -->
+    <div class="page-break">
+        <h2 class="section-header">Team Performance Analysis</h2>
+
+        <h3 class="subsection-header">Individual Compliance Metrics</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Team Member</th>
+                    <th>Tasks Assigned</th>
+                    <th>Completed</th>
+                    <th>Completion Rate</th>
+                    <th>Overdue</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Jennifer Martinez</td>
+                    <td>12</td>
+                    <td>11</td>
+                    <td>91.7%</td>
+                    <td>1</td>
+                </tr>
+                <tr>
+                    <td>Robert Chen</td>
+                    <td>8</td>
+                    <td>7</td>
+                    <td>87.5%</td>
+                    <td>1</td>
+                </tr>
+                <tr>
+                    <td>Sarah Johnson</td>
+                    <td>15</td>
+                    <td>13</td>
+                    <td>86.7%</td>
+                    <td>2</td>
+                </tr>
+                <tr>
+                    <td>Michael Thompson</td>
+                    <td>10</td>
+                    <td>9</td>
+                    <td>90.0%</td>
+                    <td>1</td>
+                </tr>
+                <tr>
+                    <td>Patricia Lee</td>
+                    <td>18</td>
+                    <td>18</td>
+                    <td>100.0%</td>
+                    <td>0</td>
+                </tr>
+                <tr>
+                    <td>David Kumar</td>
+                    <td>14</td>
+                    <td>13</td>
+                    <td>92.9%</td>
+                    <td>1</td>
+                </tr>
+                <tr>
+                    <td>Lisa Anderson</td>
+                    <td>13</td>
+                    <td>12</td>
+                    <td>92.3%</td>
+                    <td>1</td>
+                </tr>
+                <tr>
+                    <td>James Wilson</td>
+                    <td>10</td>
+                    <td>6</td>
+                    <td>60.0%</td>
+                    <td>4</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="subsection-header">Performance Insights</h3>
+        <ul>
+            <li><strong>Top Performer:</strong> Patricia Lee - 100% completion rate (18/18 tasks completed)</li>
+            <li><strong>Average Completion Rate:</strong> 87.6% across the team</li>
+            <li><strong>Needs Support:</strong> James Wilson - 60% completion rate (6/10 tasks completed, 4 overdue)</li>
+            <li><strong>Team Velocity:</strong> 14 tasks completed per week (on track)</li>
+            <li><strong>Recommendation:</strong> Provide additional support to James Wilson and redistribute workload if necessary</li>
+        </ul>
+    </div>
+
+    <!-- PAGE 6: REGULATORY STATUS -->
+    <div class="page-break">
+        <h2 class="section-header">Regulatory Compliance Status</h2>
+
+        <h3 class="subsection-header">SOX Compliance (Sarbanes-Oxley)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Control</th>
+                    <th>Status</th>
+                    <th>Last Tested</th>
+                    <th>Next Review</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Financial Close Process</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>April 28, 2026</td>
+                    <td>May 28, 2026</td>
+                </tr>
+                <tr>
+                    <td>Bank Reconciliation</td>
+                    <td><span class="badge badge-high">Non-Compliant</span></td>
+                    <td>April 20, 2026</td>
+                    <td>May 1, 2026</td>
+                </tr>
+                <tr>
+                    <td>Journal Entry Approval</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>April 25, 2026</td>
+                    <td>May 25, 2026</td>
+                </tr>
+                <tr>
+                    <td>Segregation of Duties</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>April 22, 2026</td>
+                    <td>May 22, 2026</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="subsection-header">GDPR Compliance (Data Protection)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Requirement</th>
+                    <th>Status</th>
+                    <th>Evidence</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Data Subject Rights Handling</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>Documented procedures in place</td>
+                </tr>
+                <tr>
+                    <td>Data Retention Policy</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>Policy updated April 2026</td>
+                </tr>
+                <tr>
+                    <td>Privacy Impact Assessments</td>
+                    <td><span class="badge badge-good">Compliant</span></td>
+                    <td>Completed for all systems</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="subsection-header">HIPAA Compliance (Healthcare)</h3>
+        <p style="color: #7F8C8D; font-size: 11px;">
+            Not applicable to this organization. Financial services company with no healthcare operations.
+        </p>
+    </div>
+
+    <!-- PAGE 7: AUDIT TRAIL -->
+    <div class="page-break">
+        <h2 class="section-header">Audit Trail & Change Log</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date / Time (UTC)</th>
+                    <th>Actioned By</th>
+                    <th>Action</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>May 1, 2026 08:00</td>
+                    <td>System (Automated)</td>
+                    <td>Report Generated</td>
+                    <td>Daily compliance report generated</td>
+                </tr>
+                <tr>
+                    <td>May 1, 2026 07:45</td>
+                    <td>System (Automated)</td>
+                    <td>Critical Alert</td>
+                    <td>Bank reconciliation marked critical (8 days overdue)</td>
+                </tr>
+                <tr>
+                    <td>May 1, 2026 07:30</td>
+                    <td>System (Automated)</td>
+                    <td>Metrics Updated</td>
+                    <td>Real-time compliance metrics recalculated</td>
+                </tr>
+                <tr>
+                    <td>April 30, 2026 16:00</td>
+                    <td>Jennifer Martinez</td>
+                    <td>Task Updated</td>
+                    <td>Bank reconciliation status changed to In Progress</td>
+                </tr>
+                <tr>
+                    <td>April 28, 2026 14:30</td>
+                    <td>Robert Chen</td>
+                    <td>Task Completed</td>
+                    <td>Q1 tax compliance review marked complete</td>
+                </tr>
+                <tr>
+                    <td>April 25, 2026 09:15</td>
+                    <td>Sarah Johnson</td>
+                    <td>Task Assigned</td>
+                    <td>Vendor reconciliation reassigned to Sarah Johnson</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="margin-top: 20px; font-size: 10px; color: #7F8C8D;">
+            All timestamps in UTC and may be in variance with the locale time shown on the application. This audit trail provides complete traceability of all compliance activities and changes.
+        </p>
+    </div>
+
+    <!-- PAGE 8: FOOTER & LEGAL -->
+    <div class="report-footer">
+        <div class="confidential-notice">
+            <strong>CONFIDENTIAL NOTICE</strong><br><br>
+            The contents of this record are private and confidential and should not be disclosed to third parties unless (i) the terms of your agreement with ASANA Brain allow you to do so; (ii) the record subject requests any data you may hold on them; or (iii) you are under some other legal obligation to do so. You must comply with all applicable data privacy rights of individuals and must notify us if any links to the sources are broken. If this record contains negative allegations, it should be assumed that such allegations are deemed by the subject. You should not draw any negative inferences about individuals or entities merely because they are identified in the database.
+        </div>
+
+        <div class="footer-metadata">
+            <div>
+                <strong>Report Name</strong>
+                Financial Compliance 2026
+            </div>
+            <div>
+                <strong>Date Printed</strong>
+                May 1, 2026
+            </div>
+            <div>
+                <strong>Generated By</strong>
+                ASANA Brain System
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <strong>Prepared For:</strong> Chief Financial Officer<br>
+            <strong>Organization:</strong> Global Finance Corp<br>
+            <strong>Report Period:</strong> April 1 - May 1, 2026
+        </div>
+
+        <div class="footer-bottom">
+            <div class="page-number">
+                Page 8 of 8
+            </div>
+            <div class="company-logo">
+                ASANA BRAIN<br>
+                <span style="font-size: 9px; font-weight: 400;">Compliance Intelligence</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
