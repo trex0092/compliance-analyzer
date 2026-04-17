@@ -192,3 +192,52 @@ describe('asana-comment-skill-handler — happy path still deletes the job', () 
     expect(jobs.data.has('pending/ok.json')).toBe(false);
   });
 });
+
+describe('asana-comment-skill-handler — transient GET failure preserves the job', () => {
+  it('retries (not drops) when the story GET returns 500', async () => {
+    enqueuePendingJob('get-500');
+    // First call: GET story → 500. No POST queued because we never
+    // reach it.
+    fetchQueue.push({ status: 500, body: 'asana is down' });
+
+    const res = await runHandler();
+    const body = (await res.json()) as Record<string, number>;
+
+    expect(body.drained).toBe(0);
+    expect(body.errors).toBe(1);
+    expect(body.retried).toBe(1);
+    const jobs = getFakeStore('asana-skill-jobs');
+    // Job must still be in pending/, not silently deleted.
+    expect(jobs.data.has('pending/get-500.json')).toBe(true);
+    const kept = jobs.data.get('pending/get-500.json') as { attempts?: number; lastErrorMessage?: string };
+    expect(kept.attempts).toBe(1);
+    expect(kept.lastErrorMessage).toContain('500');
+  });
+
+  it('retries on 429 (rate limit) as well', async () => {
+    enqueuePendingJob('get-429');
+    fetchQueue.push({ status: 429, body: 'slow down' });
+
+    await runHandler();
+
+    const jobs = getFakeStore('asana-skill-jobs');
+    expect(jobs.data.has('pending/get-429.json')).toBe(true);
+    expect(jobs.data.has('dead-letter/get-429.json')).toBe(false);
+  });
+
+  it('drops the job on 404 (story genuinely gone)', async () => {
+    enqueuePendingJob('get-404');
+    fetchQueue.push({ status: 404, body: { errors: [{ message: 'not found' }] } });
+
+    const res = await runHandler();
+    const body = (await res.json()) as Record<string, number>;
+
+    expect(body.drained).toBe(1);
+    expect(body.errors).toBe(0);
+    expect(body.retried).toBe(0);
+    const jobs = getFakeStore('asana-skill-jobs');
+    // 404 = permanent deletion, not retry.
+    expect(jobs.data.has('pending/get-404.json')).toBe(false);
+    expect(jobs.data.has('dead-letter/get-404.json')).toBe(false);
+  });
+});
