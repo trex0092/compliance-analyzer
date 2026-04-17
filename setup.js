@@ -260,6 +260,22 @@
       byId('mfa-seed-output').value = seed;
       byId('mfa-seed-otpauth').value = otpauth;
       byId('mfa-seed-block').style.display = 'block';
+      // Render QR code via vendored qrcode-generator library
+      // (MIT, Kazuhiko Arase). EC level Q = 25% recovery, type 0 =
+      // auto-size. Cell size 4px, margin 4 modules — comfortable
+      // scan distance for a phone camera.
+      try {
+        if (typeof qrcode === 'function') {
+          var qr = qrcode(0, 'Q');
+          qr.addData(otpauth);
+          qr.make();
+          byId('mfa-seed-qr').innerHTML = qr.createSvgTag(4, 4);
+        } else {
+          byId('mfa-seed-qr').textContent = '(QR library failed to load — use the otpauth URL or paste the seed manually into your authenticator)';
+        }
+      } catch (qrErr) {
+        byId('mfa-seed-qr').textContent = '(QR render failed: ' + qrErr.message + ')';
+      }
       setStatus('mfa-seed-status', 'ok', 'Generated — copy to Netlify + authenticator NOW');
     } catch (err) {
       setStatus('mfa-seed-status', 'err', 'crypto.getRandomValues unavailable');
