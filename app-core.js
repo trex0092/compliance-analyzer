@@ -346,6 +346,7 @@ function getAsanaComplianceProject() {
 const ASANA_WORKSPACE = '1213645083721316';
 const KEYS_STORAGE = 'fgl_keys';
 const SHIPMENTS_STORAGE = 'fgl_shipments';
+const TRACKING_STORAGE = 'fgl_tracking';
 const ALERTS_STORAGE = 'fgl_alerts';
 const EMAIL_TEST_STATUS_STORAGE = 'fgl_email_test_status';
 const COMPLIANCE_OPS_STORAGE = 'fgl_compliance_ops';
@@ -1095,6 +1096,7 @@ function switchTab(name) {
   if (name==='raci') { renderRACIMatrix(); loadRACIHistory(); }
   if (name==='employees') renderEmployeeDirectory();
   if (name==='localshipments') renderLocalShipments();
+  if (name==='tracking') renderTracking();
   if (name==='settings') { if (typeof renderUserManagement === 'function') renderUserManagement(); applyRoleRestrictions(); if (typeof loadComplianceConfigUI === 'function') loadComplianceConfigUI(); if (typeof checkStorageQuota === 'function') checkStorageQuota(); if (typeof initCloudSyncUI === 'function') initCloudSyncUI(); }
   if (name==='uploads') loadUploadedFiles();
   if (name==='incidents') { if (typeof updateIncidentMetrics === 'function') updateIncidentMetrics(); }
@@ -6263,6 +6265,254 @@ function exportLocalShipmentsCSV() {
   const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Local_Shipments_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
   toast('CSV exported','success');
+}
+
+// ---------------------------------------------------------------------------
+// TRACKING — global AWB shipment tracking.
+//
+// Each record holds:
+//   id (uuid), awb, departure, arrival, acquired (yyyy-mm-dd), lastUpdated
+//   (iso), status (in-transit/arrived/delayed/delivered), carrier, weight,
+//   asanaGid (optional — set after successful Asana sync).
+//
+// Persistence: localStorage under TRACKING_STORAGE. On every add/edit/delete
+// the record is mirrored to Asana as a task in the per-tenant "Shipments"
+// section of the current tenant's workflow project. The section is
+// auto-created on first sync if it does not exist, so no re-bootstrap is
+// required on already-provisioned tenants.
+//
+// Regulatory basis: FDL No.10/2025 Art.24 (10-year retention), LBMA RGG v9
+// (chain of custody for gold shipments).
+// ---------------------------------------------------------------------------
+
+let editingTrackingId = null;
+
+function renderTracking() {
+  const list = safeLocalParse(TRACKING_STORAGE, []);
+  const el = document.getElementById('tracking-list');
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--muted)">No shipments tracked yet. Fill the form above and click "Add shipment".</p>';
+    return;
+  }
+  const rows = list.map(s => {
+    const statusColor = s.status === 'delivered' ? 'var(--green)' :
+                        s.status === 'arrived' ? 'var(--green)' :
+                        s.status === 'delayed' ? 'var(--red)' :
+                        'var(--amber)';
+    const updated = s.lastUpdated ? new Date(s.lastUpdated).toLocaleString() : '—';
+    const asanaTag = s.asanaGid
+      ? '<span style="font-size:10px;color:var(--green)">✓ Asana synced</span>'
+      : '<span style="font-size:10px;color:var(--muted)">not synced</span>';
+    return `<tr>
+      <td style="font-family:monospace">${escHtml(s.awb || '—')}</td>
+      <td>${escHtml(s.departure || '—')}</td>
+      <td>${escHtml(s.arrival || '—')}</td>
+      <td>${escHtml(s.acquired || '—')}</td>
+      <td style="font-size:11px;color:var(--muted)">${escHtml(updated)}</td>
+      <td style="font-weight:700;color:${statusColor}">${escHtml(s.status || '—')}</td>
+      <td>${escHtml(s.carrier || '—')}</td>
+      <td>${escHtml(String(s.weight ?? '—'))}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" style="padding:2px 8px;font-size:10px" data-action="editTrackingRecord" data-arg="${s.id}">Edit</button>
+        <button class="btn btn-sm" style="padding:2px 8px;font-size:10px" data-action="syncTrackingRecord" data-arg="${s.id}">↗ Asana</button>
+        <button class="btn btn-sm btn-red" style="padding:2px 8px;font-size:10px" data-action="deleteTrackingRecord" data-arg="${s.id}">Delete</button>
+        <div style="margin-top:4px">${asanaTag}</div>
+      </td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `
+    <table class="asana-table" style="width:100%; font-size:12px">
+      <thead>
+        <tr>
+          <th>AWB</th>
+          <th>Departure</th>
+          <th>Arrival</th>
+          <th>Acquired</th>
+          <th>Last updated</th>
+          <th>Status</th>
+          <th>Carrier</th>
+          <th>Weight (kg)</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function readTrackingForm() {
+  return {
+    awb: (document.getElementById('trackingAwb')?.value || '').trim(),
+    departure: (document.getElementById('trackingDeparture')?.value || '').trim(),
+    arrival: (document.getElementById('trackingArrival')?.value || '').trim(),
+    acquired: (document.getElementById('trackingAcquired')?.value || '').trim(),
+    carrier: (document.getElementById('trackingCarrier')?.value || '').trim(),
+    weight: (() => {
+      const raw = (document.getElementById('trackingWeight')?.value || '').trim();
+      if (!raw) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : null;
+    })(),
+    status: (document.getElementById('trackingStatus')?.value || 'in-transit').trim(),
+  };
+}
+
+function clearTrackingForm() {
+  ['trackingAwb','trackingDeparture','trackingArrival','trackingAcquired','trackingCarrier','trackingWeight'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const st = document.getElementById('trackingStatus'); if (st) st.value = 'in-transit';
+}
+
+function addTrackingRecord() {
+  const form = readTrackingForm();
+  if (!form.awb || !form.departure || !form.arrival || !form.acquired) {
+    toast('AWB, departure, arrival, and acquired date are required', 'error');
+    return;
+  }
+  const list = safeLocalParse(TRACKING_STORAGE, []);
+  const nowIso = new Date().toISOString();
+  if (editingTrackingId) {
+    const idx = list.findIndex(x => x.id === editingTrackingId);
+    if (idx === -1) { editingTrackingId = null; return; }
+    list[idx] = { ...list[idx], ...form, lastUpdated: nowIso };
+    safeLocalSave(TRACKING_STORAGE, list);
+    editingTrackingId = null;
+    const btn = document.querySelector('[data-action="addTrackingRecord"]');
+    if (btn) btn.textContent = '➕ Add shipment';
+    const cancel = document.getElementById('btnCancelEditTracking');
+    if (cancel) cancel.style.display = 'none';
+    clearTrackingForm();
+    renderTracking();
+    toast('Shipment updated', 'success');
+    syncTrackingRecord(list[idx].id);
+    return;
+  }
+  const rec = { id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), ...form, lastUpdated: nowIso, asanaGid: null };
+  list.push(rec);
+  safeLocalSave(TRACKING_STORAGE, list);
+  clearTrackingForm();
+  renderTracking();
+  toast('Shipment added', 'success');
+  syncTrackingRecord(rec.id);
+}
+
+function editTrackingRecord(id) {
+  const list = safeLocalParse(TRACKING_STORAGE, []);
+  const s = list.find(x => x.id === id);
+  if (!s) return;
+  editingTrackingId = id;
+  const map = {
+    trackingAwb: s.awb, trackingDeparture: s.departure, trackingArrival: s.arrival,
+    trackingAcquired: s.acquired, trackingCarrier: s.carrier,
+    trackingWeight: s.weight == null ? '' : String(s.weight),
+    trackingStatus: s.status || 'in-transit',
+  };
+  Object.entries(map).forEach(([k,v]) => { const el=document.getElementById(k); if(el) el.value = v || ''; });
+  const btn = document.querySelector('[data-action="addTrackingRecord"]');
+  if (btn) btn.textContent = '💾 Update shipment';
+  const cancel = document.getElementById('btnCancelEditTracking');
+  if (cancel) cancel.style.display = '';
+}
+
+function cancelEditTracking() {
+  editingTrackingId = null;
+  clearTrackingForm();
+  const btn = document.querySelector('[data-action="addTrackingRecord"]');
+  if (btn) btn.textContent = '➕ Add shipment';
+  const cancel = document.getElementById('btnCancelEditTracking');
+  if (cancel) cancel.style.display = 'none';
+}
+
+function deleteTrackingRecord(id) {
+  if (!confirm('Delete this tracked shipment? The linked Asana task is NOT deleted — close it manually in Asana if required.')) return;
+  let list = safeLocalParse(TRACKING_STORAGE, []);
+  list = list.filter(x => x.id !== id);
+  safeLocalSave(TRACKING_STORAGE, list);
+  renderTracking();
+  toast('Shipment removed', 'success');
+}
+
+// Asana sync — POST /api/asana/proxy is the browser-safe wrapper.
+// The asana-proxy endpoint keeps the Asana token server-side and
+// allowlists the paths we call: GET /projects/{gid}/sections,
+// POST /projects/{gid}/sections, POST /tasks.
+async function _asanaProxy(method, path, body) {
+  const token = localStorage.getItem('auth.token') || window.HAWKEYE_BRAIN_TOKEN || '';
+  const res = await fetch('/api/asana/proxy', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ method: method, path: path, body: body || undefined }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const reason = data && data.error ? data.error : ('HTTP ' + res.status);
+    throw new Error(reason);
+  }
+  return data;
+}
+
+async function _findOrCreateShipmentsSection(projectGid) {
+  // List sections, look for one named "Shipments" (case-insensitive),
+  // create it if missing. Returns the section GID.
+  const listRes = await _asanaProxy('GET', '/projects/' + encodeURIComponent(projectGid) + '/sections');
+  const existing = (listRes && listRes.data || []).find(s => (s.name || '').trim().toLowerCase() === 'shipments');
+  if (existing && existing.gid) return existing.gid;
+  const created = await _asanaProxy('POST', '/projects/' + encodeURIComponent(projectGid) + '/sections', { data: { name: 'Shipments' } });
+  if (!created || !created.data || !created.data.gid) throw new Error('Section create returned no GID');
+  return created.data.gid;
+}
+
+async function syncTrackingRecord(id) {
+  const list = safeLocalParse(TRACKING_STORAGE, []);
+  const rec = list.find(x => x.id === id);
+  if (!rec) return;
+  let projectGid;
+  try { projectGid = getAsanaProject(); } catch (_) { projectGid = null; }
+  if (!projectGid) { toast('No Asana project configured for the active tenant', 'error'); return; }
+  try {
+    const sectionGid = await _findOrCreateShipmentsSection(projectGid);
+    const taskName = 'AWB ' + (rec.awb || '—') + ' · ' + (rec.departure || '?') + ' → ' + (rec.arrival || '?');
+    const notesLines = [
+      'AWB: ' + (rec.awb || '—'),
+      'Departure country: ' + (rec.departure || '—'),
+      'Arrival country: ' + (rec.arrival || '—'),
+      'Acquired date: ' + (rec.acquired || '—'),
+      'Status: ' + (rec.status || '—'),
+      'Carrier: ' + (rec.carrier || '—'),
+      'Weight (kg): ' + (rec.weight == null ? '—' : String(rec.weight)),
+      'Last updated: ' + (rec.lastUpdated || '—'),
+      '',
+      'Source: Hawkeye Sterling Tracking tab. Auto-synced.',
+    ];
+    const body = {
+      data: {
+        name: taskName,
+        notes: notesLines.join('\n'),
+        projects: [projectGid],
+        memberships: [{ project: projectGid, section: sectionGid }],
+      },
+    };
+    if (rec.asanaGid) {
+      // Update existing task instead of creating a duplicate.
+      await _asanaProxy('PUT', '/tasks/' + encodeURIComponent(rec.asanaGid), {
+        data: { name: taskName, notes: notesLines.join('\n') },
+      });
+      toast('Asana task updated', 'success');
+    } else {
+      const created = await _asanaProxy('POST', '/tasks', body);
+      const gid = created && created.data && created.data.gid;
+      if (gid) {
+        rec.asanaGid = gid;
+        safeLocalSave(TRACKING_STORAGE, list);
+      }
+      toast('Asana task created in Shipments section', 'success');
+    }
+    renderTracking();
+  } catch (err) {
+    toast('Asana sync failed: ' + (err && err.message ? err.message : 'unknown'), 'error');
+  }
 }
 
 function exportLocalShipmentsDOCX() {
