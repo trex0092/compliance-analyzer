@@ -300,6 +300,11 @@ class AsanaBrainMasterSystem extends EventEmitter {
   performHealthCheck() {
     const span = this.tracer.startSpan('health_check');
     try {
+      // `startTime` is null until initialize() completes. Guard so a
+      // health check that fires between constructor and the end of
+      // initialize() (or after shutdown clears it) does not crash
+      // the whole monitor loop.
+      const uptime = this.startTime ? Date.now() - this.startTime.getTime() : 0;
       const health = {
         status: 'healthy',
         timestamp: new Date(),
@@ -308,7 +313,7 @@ class AsanaBrainMasterSystem extends EventEmitter {
           features: this.features.size,
           weaponization: this.weaponization.size,
         },
-        uptime: Date.now() - this.startTime.getTime(),
+        uptime,
       };
       
       this.metrics.gauge('system.health', health.status === 'healthy' ? 1 : 0);
@@ -352,7 +357,7 @@ class AsanaBrainMasterSystem extends EventEmitter {
   reportMetrics() {
     const span = this.tracer.startSpan('report_metrics');
     try {
-      const uptime = Date.now() - this.startTime.getTime();
+      const uptime = this.startTime ? Date.now() - this.startTime.getTime() : 0;
       const uptimeHours = (uptime / (1000 * 60 * 60)).toFixed(2);
       
       this.logger.info(`System uptime: ${uptimeHours} hours`);
@@ -378,7 +383,7 @@ class AsanaBrainMasterSystem extends EventEmitter {
     try {
       const status = {
         status: this.isRunning ? 'running' : 'stopped',
-        uptime: Date.now() - this.startTime.getTime(),
+        uptime: this.startTime ? Date.now() - this.startTime.getTime() : 0,
         startTime: this.startTime,
         services: {
           total: this.services.size,
