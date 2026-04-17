@@ -69,19 +69,20 @@ once frozen under this SOP.
 ## 4. Mandatory list coverage
 
 Every screening run MUST evaluate the subject against ALL of the
-following lists. A run that skips any list is invalid and MUST be
-re-executed.
+mandatory sanctions sources. A run that skips any source is invalid
+and MUST be re-executed.
 
-| # | List | Source | Refresh cadence |
-|---|---|---|---|
-| 1 | UN Security Council Consolidated List | `https://scsanctions.un.org/` | Daily, plus on-publication |
-| 2 | OFAC SDN List | U.S. Treasury | Daily, plus on-publication |
-| 3 | EU Consolidated Financial Sanctions List | EU Council | Daily |
-| 4 | UK Consolidated Sanctions List | HM Treasury / OFSI | Daily |
-| 5 | UAE Local Terrorist List | UAE Cabinet | On-publication |
-| 6 | EOCN (Executive Office of the Committee for Goods & Materials Subjected to Import & Export Control) | UAE Cabinet / EOCN | On-publication |
+| # | Source | Ingest key | Publisher | Refresh cadence |
+|---|---|---|---|---|
+| 1 | UN Security Council Consolidated List | `UN` | UN Security Council | Daily, plus on-publication |
+| 2 | OFAC Specially Designated Nationals (SDN) | `OFAC_SDN` | U.S. Treasury | Daily, plus on-publication |
+| 3 | OFAC Consolidated Sanctions | `OFAC_CONS` | U.S. Treasury | Daily, plus on-publication |
+| 4 | EU Consolidated Financial Sanctions List | `EU` | EU Council | Daily |
+| 5 | UK OFSI Consolidated Sanctions List | `UK_OFSI` | HM Treasury / OFSI | Daily |
+| 6 | UAE Local Terrorist List plus EOCN circulars (Executive Office of the Committee for Goods & Materials Subjected to Import & Export Control) | `UAE_EOCN` | UAE Cabinet / EOCN | On-publication |
 
-The `src/services/sanctionsIngest.ts` service maintains these feeds.
+The `src/services/sanctionsIngest.ts` service maintains these
+feeds under the ingest keys shown above.
 If the ingest job reports a failed list pull, no new screening run
 may complete with a "clean" verdict until the feed is restored and
 re-ingested. The run is held in `pending-feed` state and the MLRO
@@ -188,8 +189,9 @@ Records kept:
 Storage locations:
 
 - Live working copy: `docs/compliance/screening-logs-<month>/<tenant>.md`.
-- Immutable archive: the blob-backed audit trail written by
-  `src/services/auditTrail.ts` (verified by the zk-proof audit seal).
+- Immutable archive: the tamper-proof hash-chain audit trail
+  written by `src/utils/auditChain.ts` (each event hashes the
+  previous; verified by the zk-proof audit seal).
 
 ## 10. Evidence artefacts produced per run
 
