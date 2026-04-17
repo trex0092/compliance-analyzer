@@ -30,7 +30,8 @@ export type TemplateId =
   | 'red_team_miss'
   | 'policy_update'
   | 'weekly_digest'
-  | 'breakglass';
+  | 'breakglass'
+  | 'cdd_2026';
 
 export interface TaskTemplateNode {
   /** Stable identifier within the template, used to express dependencies. */
@@ -522,6 +523,124 @@ const BREAKGLASS: TaskTemplate = {
   ],
 };
 
+const CDD_2026: TaskTemplate = {
+  id: 'cdd_2026',
+  projectName: 'CDD 2026 — Customer & Counterparty Due Diligence',
+  description:
+    'Eight-section CDD / Counterparty Due Diligence record for 2026. Mirrors the MoE + EOCN + LBMA expected file layout: customer information, six-list sanctions screening, seven-category adverse media, shareholder / UBO identifications, six-factor PF assessment (Cabinet Res 156/2025), risk-based scoring, CO + MD sign-off, and version control with 10-year retention.',
+  sections: [
+    'Section 1 — Customer Information',
+    'Section 2 — Sanctions Screening',
+    'Section 3 — Adverse Media Screening',
+    'Section 4 — Identifications',
+    'Section 5 — Proliferation Financing Assessment',
+    'Section 6 — Risk-Based Assessment (RBA)',
+    'Section 7 — Sign-off & Authorization',
+    'Section 8 — Review & Version Control',
+  ],
+  nodes: [
+    {
+      id: 'customer_information',
+      name: 'Section 1 — Capture customer information',
+      notes:
+        'Record Company Name, Country of Registration, Date of Registration, Commercial Register, License Expiry, GoAML Registration Status, FATF Grey List Status, CAHRA status, and PEP status. Flag any expiring license within 30 days in red.',
+      dueInHours: 24,
+      assigneeRole: 'analyst',
+      dependsOn: [],
+      severity: 'medium',
+      regulatory: 'Cabinet Res 134/2025 Art.7-10; MoE Circular 08/AML/2021',
+    },
+    {
+      id: 'sanctions_screening',
+      name: 'Section 2 — Six-list sanctions screening',
+      notes:
+        'Screen entity + every shareholder / UBO / authorized signatory against ALL six lists: UAE Local Terrorist List (EOCN), UN Consolidated (UNSC), OFAC SDN, UK OFSI, EU Consolidated, INTERPOL Red Notices. Record Result + Date + Remarks for every list. Never skip a list.',
+      dueInHours: 48,
+      assigneeRole: 'mlro',
+      dependsOn: ['customer_information'],
+      severity: 'high',
+      regulatory: 'FDL No.10/2025 Art.35; Cabinet Res 74/2020 Art.4-7',
+    },
+    {
+      id: 'adverse_media_screening',
+      name: 'Section 3 — Seven-category adverse media screening',
+      notes:
+        'Run adverse media across seven categories: Criminal / Fraud Allegations; Money Laundering; Terrorist Financing or Proliferation Financing Links; Regulatory Actions, Fines, or Investigations; Negative Reputation or Commercial Disputes; Political Controversy or PEP Connections; Human Rights, Environmental, or Ethical Violations. Cite source + date for every finding.',
+      dueInHours: 48,
+      assigneeRole: 'mlro',
+      dependsOn: ['customer_information'],
+      severity: 'high',
+      regulatory: 'Cabinet Res 134/2025 Art.14; FATF Rec 22/23',
+    },
+    {
+      id: 'identifications',
+      name: 'Section 4 — Shareholder / UBO identifications',
+      notes:
+        'For every shareholder / UBO with ≥25% beneficial ownership capture: Designation, Name, Shares %, Individual/Corporate, Nationality, Passport Number + Expiry, Gender, Date of Birth, Emirates ID + Expiry, Proof of Address, PEP Status. Flag missing Proof of Address as Pending — must clear before sign-off.',
+      dueInHours: 72,
+      assigneeRole: 'analyst',
+      dependsOn: ['customer_information'],
+      severity: 'high',
+      regulatory: 'Cabinet Decision 109/2023; Cabinet Res 134/2025 Art.7-10',
+    },
+    {
+      id: 'pf_assessment',
+      name: 'Section 5 — Proliferation Financing (PF) assessment',
+      notes:
+        'Score the six PF risk factors per Cabinet Res 156/2025: (1) DPMS Sector Inherent PF Exposure (NRA 2024), (2) Jurisdictional Exposure — Counterparty or Transaction Origin, (3) Dual-Use Goods or Materials, (4) UN PF Sanctions List Match (UNSCR 1718/2231/1540), (5) Unusual Trade Patterns or Transaction Volumes, (6) Links to Proliferation Networks or Controlled Technology. Conclude with an Overall PF Risk rating + reasoning.',
+      dueInHours: 96,
+      assigneeRole: 'mlro',
+      dependsOn: ['sanctions_screening', 'adverse_media_screening'],
+      severity: 'high',
+      regulatory: 'Cabinet Res 156/2025; UNSCR 1718 / 2231 / 1540',
+    },
+    {
+      id: 'rba_scoring',
+      name: 'Section 6 — Risk-Based Assessment (RBA) + CDD level',
+      notes:
+        'Compute the Overall Risk Classification (Low / Medium / High) using likelihood × impact with jurisdiction, PEP, cash, DPMS, and PF multipliers. Assign CDD level: Low → SDD (12-month review), Medium → CDD (6-month review), High → EDD (3-month review + Senior Management approval). Record Business Relationship Decision and whether Trigger Events require immediate review.',
+      dueInHours: 96,
+      assigneeRole: 'mlro',
+      dependsOn: ['identifications', 'pf_assessment'],
+      severity: 'high',
+      regulatory: 'Cabinet Res 134/2025 Art.5, Art.14',
+    },
+    {
+      id: 'co_prepare_signoff',
+      name: 'Section 7a — Compliance Officer prepares sign-off',
+      notes:
+        'Compliance Officer assembles the full CDD file, confirms every section is complete (no Pending fields), and signs as Preparer. Sign-off must carry CO name + title + date in dd/mm/yyyy format.',
+      dueInHours: 120,
+      assigneeRole: 'co',
+      dependsOn: ['rba_scoring'],
+      severity: 'critical',
+      regulatory: 'FDL No.10/2025 Art.20-21',
+    },
+    {
+      id: 'md_approve_signoff',
+      name: 'Section 7b — Managing Director approves (four-eyes)',
+      notes:
+        'Independent Managing Director review + approval. Must NOT be the same user as the Compliance Officer preparer. Required before the customer relationship can be activated or continued.',
+      dueInHours: 144,
+      assigneeRole: 'senior_mlro',
+      dependsOn: ['co_prepare_signoff'],
+      severity: 'critical',
+      regulatory: 'FDL No.10/2025 Art.20-21; Cabinet Res 134/2025 Art.19',
+    },
+    {
+      id: 'version_control',
+      name: 'Section 8 — Record version + schedule next review',
+      notes:
+        'Append a new row to the Review & Version Control log: Version number, Date, Reviewed / Updated By, Review Type (Initial / Periodic / Trigger), and Summary of Changes or Key Findings. Attach the 10-year retention notice. Schedule the next review date per the assigned CDD level.',
+      dueInHours: 168,
+      assigneeRole: 'records_officer',
+      dependsOn: ['md_approve_signoff'],
+      severity: 'medium',
+      regulatory: 'FDL No.10/2025 Art.24',
+    },
+  ],
+};
+
 const TEMPLATES: Record<TemplateId, TaskTemplate> = {
   str_filing: STR_FILING,
   sanctions_freeze: SANCTIONS_FREEZE,
@@ -534,6 +653,7 @@ const TEMPLATES: Record<TemplateId, TaskTemplate> = {
   policy_update: POLICY_UPDATE,
   weekly_digest: WEEKLY_DIGEST,
   breakglass: BREAKGLASS,
+  cdd_2026: CDD_2026,
 };
 
 // ---------------------------------------------------------------------------
