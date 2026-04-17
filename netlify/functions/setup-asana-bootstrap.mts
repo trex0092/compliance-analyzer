@@ -69,10 +69,7 @@ function makeAsanaDispatcher(accessToken: string): AsanaProvisionDispatcher {
     Accept: 'application/json',
   };
 
-  async function asanaRequest<T>(
-    path: string,
-    init: RequestInit = {}
-  ): Promise<T> {
+  async function asanaRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
     const res = await fetch(ASANA_BASE + path, {
       ...init,
       headers: { ...headers, ...(init.headers ?? {}) },
@@ -80,7 +77,9 @@ function makeAsanaDispatcher(accessToken: string): AsanaProvisionDispatcher {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      throw new Error(`Asana ${init.method ?? 'GET'} ${path} → ${res.status}: ${text.slice(0, 200)}`);
+      throw new Error(
+        `Asana ${init.method ?? 'GET'} ${path} → ${res.status}: ${text.slice(0, 200)}`
+      );
     }
     const json = (await res.json()) as { data: T };
     return json.data;
@@ -168,12 +167,12 @@ function makeAsanaDispatcher(accessToken: string): AsanaProvisionDispatcher {
 
     async ensureWebhook({ projectGid, target }) {
       // Check for existing webhook pointing at the target.
-      const existing = await asanaRequest<Array<{ gid: string; resource: { gid: string }; target: string }>>(
+      const existing = await asanaRequest<
+        Array<{ gid: string; resource: { gid: string }; target: string }>
+      >(
         `/webhooks?workspace=${encodeURIComponent(process.env.ASANA_WORKSPACE_GID ?? '')}&opt_fields=target,resource`
       ).catch(() => [] as Array<{ gid: string; resource: { gid: string }; target: string }>);
-      const match = existing.find(
-        (w) => w.resource.gid === projectGid && w.target === target
-      );
+      const match = existing.find((w) => w.resource.gid === projectGid && w.target === target);
       if (match) return { webhookGid: match.gid, created: false };
 
       const created = await asanaRequest<{ gid: string }>('/webhooks', {
@@ -237,14 +236,19 @@ interface BootstrapRequest {
   tenantId: string;
 }
 
-function validate(raw: unknown): { ok: true; req: BootstrapRequest } | { ok: false; error: string } {
+function validate(
+  raw: unknown
+): { ok: true; req: BootstrapRequest } | { ok: false; error: string } {
   if (!raw || typeof raw !== 'object') return { ok: false, error: 'body must be an object' };
   const r = raw as Record<string, unknown>;
   if (typeof r.tenantId !== 'string' || r.tenantId.length === 0 || r.tenantId.length > 64) {
     return { ok: false, error: 'tenantId must be 1..64 chars' };
   }
   if (!/^[a-z0-9-]+$/.test(r.tenantId)) {
-    return { ok: false, error: 'tenantId must contain only lowercase letters, digits, and hyphens' };
+    return {
+      ok: false,
+      error: 'tenantId must contain only lowercase letters, digits, and hyphens',
+    };
   }
   return { ok: true, req: { tenantId: r.tenantId } };
 }
@@ -291,10 +295,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
     );
   }
   if (!workspaceGid || workspaceGid.length === 0) {
-    return jsonResponse(
-      { error: 'ASANA_WORKSPACE_GID env var missing' },
-      { status: 503 }
-    );
+    return jsonResponse({ error: 'ASANA_WORKSPACE_GID env var missing' }, { status: 503 });
   }
 
   // The receiver function lives at /api/asana/webhook (see
@@ -313,8 +314,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
     return jsonResponse(
       {
         error: 'HAWKEYE_ALLOWED_ORIGIN env var missing',
-        hint:
-          'Asana webhook targets must be absolute https:// URLs. Set HAWKEYE_ALLOWED_ORIGIN to the public origin of this deployment (e.g. https://hawkeye-sterling-v2.netlify.app) before running tenant bootstrap.',
+        hint: 'Asana webhook targets must be absolute https:// URLs. Set HAWKEYE_ALLOWED_ORIGIN to the public origin of this deployment (e.g. https://hawkeye-sterling-v2.netlify.app) before running tenant bootstrap.',
       },
       { status: 503 }
     );
@@ -356,6 +356,41 @@ export default async (req: Request, context: Context): Promise<Response> => {
     const dispatcher = makeAsanaDispatcher(accessToken);
     result = await provisionTenant(plan, dispatcher);
   } catch (err) {
+    // Phase 19 W-D — record the state on thrown failure so a
+    // subsequent /api/asana/bootstrap-plan call can see the
+    // tenant is not yet provisioned and the first real step is
+    // failed. Non-fatal if the blob write itself throws.
+    try {
+      const stateDisabled = (() => {
+        const raw = process.env.ASANA_WD_STATE_RECORDING_DISABLED;
+        if (!raw) return false;
+        const s = String(raw).trim().toLowerCase();
+        return s === '1' || s === 'true' || s === 'yes';
+      })();
+      if (!stateDisabled) {
+        const stateStore = getStore('asana-tenant-bootstrap-state');
+        const nowMs = Date.now();
+        await stateStore.setJSON(`tenant:${v.req.tenantId}.json`, {
+          tenantId: v.req.tenantId,
+          startedAtMs: nowMs,
+          steps: {
+            validate_inputs: {
+              name: 'validate_inputs',
+              state: 'done',
+              updatedAtMs: nowMs,
+            },
+            create_project_compliance: {
+              name: 'create_project_compliance',
+              state: 'failed',
+              updatedAtMs: nowMs,
+              error: err instanceof Error ? err.message : String(err),
+            },
+          },
+        });
+      }
+    } catch {
+      // non-fatal
+    }
     return jsonResponse(
       {
         error: 'asana_bootstrap_failed',
@@ -368,20 +403,92 @@ export default async (req: Request, context: Context): Promise<Response> => {
   // Audit log.
   try {
     const audit = getStore('setup-audit');
-    await audit.setJSON(
-      `asana-bootstrap/${v.req.tenantId}/${Date.now()}.json`,
-      {
-        tsIso: new Date().toISOString(),
-        userId: auth.userId,
-        tenantId: v.req.tenantId,
-        projectGid: result.projectGid,
-        webhookGid: result.webhookGid,
-        ok: result.ok,
-        stepCount: result.steps.length,
-      }
-    );
+    await audit.setJSON(`asana-bootstrap/${v.req.tenantId}/${Date.now()}.json`, {
+      tsIso: new Date().toISOString(),
+      userId: auth.userId,
+      tenantId: v.req.tenantId,
+      projectGid: result.projectGid,
+      webhookGid: result.webhookGid,
+      ok: result.ok,
+      stepCount: result.steps.length,
+    });
   } catch {
     // non-fatal
+  }
+
+  // Phase 19 W-D — record the resumable-plan state so
+  // /api/asana/bootstrap-plan (PR #198) and any future MLRO
+  // dashboard can see where bootstrap landed for this tenant. On
+  // success we mark every canonical step done. On failure we mark
+  // validate_inputs done (we got past validation to reach here)
+  // and flag create_project_compliance as the failure point with
+  // the dispatcher error string. This is conservative — the real
+  // failing step may be further along — but it guarantees the
+  // state machine reports the tenant as non-complete so a re-run
+  // is never mistaken for an already-provisioned tenant.
+  //
+  // Escape hatch: ASANA_WD_STATE_RECORDING_DISABLED=1 skips the
+  // state write. Default ENABLED.
+  try {
+    const stateDisabled = (() => {
+      const raw = process.env.ASANA_WD_STATE_RECORDING_DISABLED;
+      if (!raw) return false;
+      const s = String(raw).trim().toLowerCase();
+      return s === '1' || s === 'true' || s === 'yes';
+    })();
+    if (!stateDisabled) {
+      const stateStore = getStore('asana-tenant-bootstrap-state');
+      const nowMs = Date.now();
+      const steps: Record<
+        string,
+        {
+          name: string;
+          state: 'done' | 'failed';
+          updatedAtMs: number;
+          output?: Record<string, unknown>;
+          error?: string;
+        }
+      > = {};
+      const CANON = [
+        'validate_inputs',
+        'create_project_compliance',
+        'create_project_workflow',
+        'create_sections',
+        'provision_custom_fields',
+        'emit_custom_field_env_vars',
+        'register_webhook',
+        'seed_idempotency_namespace',
+        'write_registry_row',
+      ] as const;
+      if (result.ok) {
+        for (const step of CANON) {
+          steps[step] = {
+            name: step,
+            state: 'done',
+            updatedAtMs: nowMs,
+          };
+        }
+      } else {
+        steps['validate_inputs'] = {
+          name: 'validate_inputs',
+          state: 'done',
+          updatedAtMs: nowMs,
+        };
+        steps['create_project_compliance'] = {
+          name: 'create_project_compliance',
+          state: 'failed',
+          updatedAtMs: nowMs,
+          error: 'provisionTenant reported ok=false. See summary for dispatcher detail.',
+        };
+      }
+      await stateStore.setJSON(`tenant:${v.req.tenantId}.json`, {
+        tenantId: v.req.tenantId,
+        startedAtMs: nowMs,
+        steps,
+      });
+    }
+  } catch {
+    // non-fatal — bootstrap response is not gated on state recording
   }
 
   return jsonResponse(
