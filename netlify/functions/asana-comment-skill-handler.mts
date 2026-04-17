@@ -67,16 +67,42 @@ async function writeAudit(payload: Record<string, unknown>): Promise<void> {
   }
 }
 
-async function asanaGet<T>(path: string, token: string): Promise<T | undefined> {
+interface AsanaGetResult<T> {
+  ok: boolean;
+  status: number;
+  data?: T;
+  errorSnippet?: string;
+  // `notFound` is true on 404. The drain loop treats that as "the
+  // story genuinely no longer exists" (MLRO deleted the comment,
+  // the task was removed, etc.) and drops the job. Any other !ok
+  // status (429/5xx/auth glitch) must NOT drop the job — the
+  // previous implementation returned plain `undefined` on every
+  // non-2xx, which made transient outages look identical to
+  // permanent deletion and silently lost MLRO commands.
+  notFound?: boolean;
+}
+
+async function asanaGet<T>(path: string, token: string): Promise<AsanaGetResult<T>> {
   const res = await fetch(`${ASANA_API_BASE}${path}`, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
     },
   });
-  if (!res.ok) return undefined;
+  if (!res.ok) {
+    let snippet: string | undefined;
+    try {
+      snippet = (await res.text()).slice(0, 240);
+    } catch { /* best-effort */ }
+    return {
+      ok: false,
+      status: res.status,
+      notFound: res.status === 404,
+      errorSnippet: snippet,
+    };
+  }
   const json = (await res.json()) as { data?: T };
-  return json.data;
+  return { ok: true, status: res.status, data: json.data };
 }
 
 interface AsanaPostResult<T> {
@@ -187,11 +213,35 @@ export default async (): Promise<Response> => {
   for (const { key, job } of jobs) {
     try {
       // Fetch the story body from Asana.
-      const story = await asanaGet<{ text?: string; created_by?: { name?: string } }>(
+      const storyRes = await asanaGet<{ text?: string; created_by?: { name?: string } }>(
         `/stories/${encodeURIComponent(job.storyGid!)}?opt_fields=text,created_by.name,resource_subtype`,
         token
       );
+      if (!storyRes.ok) {
+        if (storyRes.notFound) {
+          // 404 = story genuinely gone (comment deleted, task
+          // removed). Safe to drop the job permanently.
+          await jobsStore.delete(key);
+          drained++;
+          continue;
+        }
+        // Any other non-2xx (429, 5xx, auth glitch) is transient —
+        // bump attempts and retry on the next tick so a bad minute
+        // at Asana does not silently lose MLRO commands.
+        const outcome = await requeueOrDeadLetter(
+          jobsStore, key, job,
+          `story GET failed: ${storyRes.status} ${storyRes.errorSnippet ?? ''}`,
+        );
+        if (outcome === 'dead_lettered') deadLettered++;
+        else retried++;
+        errors++;
+        continue;
+      }
+      const story = storyRes.data;
       if (!story?.text) {
+        // Story exists but has no text (rare Asana shape — e.g. a
+        // system-generated story with `html_text` only). Nothing to
+        // route; drop the job.
         await jobsStore.delete(key);
         drained++;
         continue;
