@@ -13,6 +13,29 @@
 const EventEmitter = require('events');
 const crypto = require('crypto');
 
+// Escape any operator-controlled string before it lands in the
+// generated HTML. Without this, config.organization, recommendation
+// text, team member names and regulatory framework names can all
+// break the DOM or carry markup into the emailed report body.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Convert a value that might be a Date, ISO string, number or null
+// into a YYYY-MM-DD display string without throwing on bad input.
+function toIsoDay(value) {
+  if (value === null || value === undefined) return '';
+  const d = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(d.getTime())) return '';
+  return d.toISOString().split('T')[0];
+}
+
 class ComplianceDashboardReportEngine extends EventEmitter {
   constructor(config) {
     super();
@@ -185,31 +208,39 @@ class ComplianceDashboardReportEngine extends EventEmitter {
     const span = this.tracer.startSpan('start_scheduler');
     try {
       this.logger.info('Starting daily scheduler...');
-      
-      // Schedule daily execution at 8:00 AM UTC
-      const now = new Date();
-      const scheduledTime = new Date();
-      scheduledTime.setUTCHours(8, 0, 0, 0);
-      
-      // If it's already past 8:00 AM, schedule for tomorrow
-      if (now > scheduledTime) {
-        scheduledTime.setDate(scheduledTime.getDate() + 1);
-      }
-      
-      const timeUntilExecution = scheduledTime.getTime() - now.getTime();
-      
-      this.logger.info(`⏰ Next execution: ${scheduledTime.toISOString()}`);
-      
-      // Set initial timeout
-      this.schedulerTimeout = setTimeout(() => {
-        this.executeDailyReports();
-        
-        // Then set recurring interval (24 hours)
-        this.schedulerInterval = setInterval(() => {
-          this.executeDailyReports();
-        }, 24 * 60 * 60 * 1000);
-      }, timeUntilExecution);
-      
+
+      // Each run recomputes "next 08:00 UTC" so there is no drift
+      // across DST transitions. The async executeDailyReports
+      // rejection is caught locally instead of leaking as an
+      // unhandled promise rejection, and the next run is scheduled
+      // even after a failed run.
+      const scheduleNext = () => {
+        const now = new Date();
+        const next = new Date(Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+          8, 0, 0, 0,
+        ));
+        if (next.getTime() <= now.getTime()) {
+          next.setUTCDate(next.getUTCDate() + 1);
+        }
+        const delay = next.getTime() - now.getTime();
+        this.logger.info(`⏰ Next execution: ${next.toISOString()}`);
+        this.schedulerTimeout = setTimeout(() => {
+          Promise.resolve()
+            .then(() => this.executeDailyReports())
+            .catch((err) => {
+              this.logger.error('Unhandled error in scheduled daily reports', err);
+            })
+            .finally(() => {
+              if (this.isRunning) scheduleNext();
+            });
+        }, delay);
+      };
+
+      scheduleNext();
+
       this.logger.info('✅ Daily scheduler started');
       span.finish();
     } catch (error) {
@@ -483,14 +514,24 @@ class ComplianceDashboardReportEngine extends EventEmitter {
   async generateHTMLReport(reportId, data) {
     try {
       const { projectId, config, metrics, riskMatrix, recommendations, teamPerformance, regulatoryStatus } = data;
-      
+
+      // Every operator- or tenant-controlled value is escaped before
+      // interpolation. Numeric metrics are also routed through the
+      // same helper — it safely passes numbers straight through
+      // while shielding against a caller that replaces the mock
+      // `fetchComplianceMetrics` with real data containing unicode
+      // or HTML-sensitive characters.
+      const orgName = escapeHtml(config && config.organization || 'Global Finance Corp');
+      const reportDay = escapeHtml(toIsoDay(new Date()));
+      const safeReportId = escapeHtml(reportId);
+
       const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daily Compliance Report - ${new Date().toISOString().split('T')[0]}</title>
+  <title>Daily Compliance Report - ${reportDay}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -673,69 +714,75 @@ class ComplianceDashboardReportEngine extends EventEmitter {
     <div class="header">
       <div class="confidential">CONFIDENTIAL</div>
       <h1>Daily Compliance Report</h1>
-      <p>Report Date: ${new Date().toISOString().split('T')[0]}</p>
-      <p>Organization: ${config.organization || 'Global Finance Corp'}</p>
+      <p>Report Date: ${reportDay}</p>
+      <p>Organization: ${orgName}</p>
     </div>
-    
+
     <!-- Metrics -->
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="metric-label">Compliance Rate</div>
-        <div class="metric-value">${metrics.complianceRate}%</div>
+        <div class="metric-value">${escapeHtml(metrics.complianceRate)}%</div>
         <div class="metric-unit">↑ +4.2%</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Health Score</div>
-        <div class="metric-value">${metrics.healthScore}</div>
+        <div class="metric-value">${escapeHtml(metrics.healthScore)}</div>
         <div class="metric-unit">↑ +3.1</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Risk Score</div>
-        <div class="metric-value">${metrics.riskScore}%</div>
+        <div class="metric-value">${escapeHtml(metrics.riskScore)}%</div>
         <div class="metric-unit">↓ -2.1%</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Velocity</div>
-        <div class="metric-value">${metrics.velocity}</div>
+        <div class="metric-value">${escapeHtml(metrics.velocity)}</div>
         <div class="metric-unit">tasks/week</div>
       </div>
     </div>
-    
+
     <!-- Risk Matrix -->
     <div class="risk-matrix">
       <h2>Risk Matrix Analysis</h2>
       <div class="risk-items">
         <div class="risk-item risk-critical">
-          <div class="risk-count">${riskMatrix.critical.count}</div>
-          <div class="risk-label">CRITICAL (${riskMatrix.critical.percentage}%)</div>
+          <div class="risk-count">${escapeHtml(riskMatrix.critical.count)}</div>
+          <div class="risk-label">CRITICAL (${escapeHtml(riskMatrix.critical.percentage)}%)</div>
         </div>
         <div class="risk-item risk-high">
-          <div class="risk-count">${riskMatrix.high.count}</div>
-          <div class="risk-label">HIGH (${riskMatrix.high.percentage}%)</div>
+          <div class="risk-count">${escapeHtml(riskMatrix.high.count)}</div>
+          <div class="risk-label">HIGH (${escapeHtml(riskMatrix.high.percentage)}%)</div>
         </div>
         <div class="risk-item risk-medium">
-          <div class="risk-count">${riskMatrix.medium.count}</div>
-          <div class="risk-label">MEDIUM (${riskMatrix.medium.percentage}%)</div>
+          <div class="risk-count">${escapeHtml(riskMatrix.medium.count)}</div>
+          <div class="risk-label">MEDIUM (${escapeHtml(riskMatrix.medium.percentage)}%)</div>
         </div>
         <div class="risk-item risk-low">
-          <div class="risk-count">${riskMatrix.low.count}</div>
-          <div class="risk-label">LOW (${riskMatrix.low.percentage}%)</div>
+          <div class="risk-count">${escapeHtml(riskMatrix.low.count)}</div>
+          <div class="risk-label">LOW (${escapeHtml(riskMatrix.low.percentage)}%)</div>
         </div>
       </div>
     </div>
-    
+
     <!-- Recommendations -->
     <div class="recommendations">
       <h2>Recommendations</h2>
-      ${recommendations.map(rec => `
+      ${(recommendations || []).map(rec => {
+        // Constrain the priority-derived CSS class to a-z only so a
+        // caller-supplied priority cannot break out of the class
+        // attribute.
+        const priorityClass = String(rec.priority || '').toLowerCase().replace(/[^a-z]/g, '');
+        return `
         <div class="recommendation-item">
-          <div class="rec-priority rec-${rec.priority.toLowerCase()}">${rec.priority}</div>
-          <div class="rec-action">${rec.action}</div>
-          <div class="rec-owner">Owner: ${rec.owner} | Due: ${rec.dueDate.toISOString().split('T')[0]}</div>
+          <div class="rec-priority rec-${priorityClass}">${escapeHtml(rec.priority)}</div>
+          <div class="rec-action">${escapeHtml(rec.action)}</div>
+          <div class="rec-owner">Owner: ${escapeHtml(rec.owner)} | Due: ${escapeHtml(toIsoDay(rec.dueDate))}</div>
         </div>
-      `).join('')}
+      `;
+      }).join('')}
     </div>
-    
+
     <!-- Team Performance -->
     <div class="team-performance">
       <h2>Team Performance</h2>
@@ -745,40 +792,53 @@ class ComplianceDashboardReportEngine extends EventEmitter {
           <th>Completion Rate</th>
           <th>Tasks Completed</th>
         </tr>
-        ${teamPerformance.map(member => `
+        ${(teamPerformance || []).map(member => {
+          // Clamp completionRate into [0,100] and to a number for the
+          // inline `width:` style — otherwise a caller supplying
+          // "100%;background:red" would land verbatim in the style
+          // attribute.
+          const rawRate = Number(member.completionRate);
+          const safeRate = Number.isFinite(rawRate)
+            ? Math.max(0, Math.min(100, rawRate))
+            : 0;
+          return `
           <tr>
-            <td>${member.name}</td>
+            <td>${escapeHtml(member.name)}</td>
             <td>
               <div class="progress-bar">
-                <div class="progress-fill" style="width: ${member.completionRate}%">${member.completionRate}%</div>
+                <div class="progress-fill" style="width: ${safeRate}%">${escapeHtml(member.completionRate)}%</div>
               </div>
             </td>
-            <td>${member.tasksCompleted}</td>
+            <td>${escapeHtml(member.tasksCompleted)}</td>
           </tr>
-        `).join('')}
+        `;
+        }).join('')}
       </table>
     </div>
-    
+
     <!-- Regulatory Status -->
     <div class="regulatory-status">
       <h2>Regulatory Compliance Status</h2>
       <div class="status-grid">
-        ${Object.entries(regulatoryStatus).map(([framework, status]) => `
-          <div class="status-item status-${status.status.toLowerCase()}">
-            <div class="status-name">${framework.toUpperCase()}</div>
-            <div class="status-badge">${status.status}</div>
+        ${Object.entries(regulatoryStatus || {}).map(([framework, status]) => {
+          const statusClass = String(status && status.status || '').toLowerCase().replace(/[^a-z-]/g, '');
+          return `
+          <div class="status-item status-${statusClass}">
+            <div class="status-name">${escapeHtml(String(framework).toUpperCase())}</div>
+            <div class="status-badge">${escapeHtml(status && status.status)}</div>
             <div style="font-size: 11px; margin-top: 10px; color: #666;">
-              Violations: ${status.violations}
+              Violations: ${escapeHtml(status && status.violations)}
             </div>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     </div>
-    
+
     <!-- Footer -->
     <div class="footer">
-      <p>Report ID: ${reportId}</p>
-      <p>Generated: ${new Date().toISOString()}</p>
+      <p>Report ID: ${safeReportId}</p>
+      <p>Generated: ${escapeHtml(new Date().toISOString())}</p>
       <p>CONFIDENTIAL - For authorized recipients only</p>
       <p>© 2026 ASANA Brain Compliance Platform</p>
     </div>
