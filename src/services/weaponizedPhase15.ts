@@ -225,10 +225,7 @@ export const DEFAULT_REGULATORY_PRIORITIES: ReadonlyArray<RegulatoryPriority> = 
   { name: 'reflectionCritic', priority: 1.1, citation: 'Cabinet Res 134/2025 Art.19' },
 ];
 
-function priorityOf(
-  name: string,
-  priorities: ReadonlyArray<RegulatoryPriority>
-): number {
+function priorityOf(name: string, priorities: ReadonlyArray<RegulatoryPriority>): number {
   for (const p of priorities) if (p.name === name) return p.priority;
   return 1.0;
 }
@@ -435,19 +432,14 @@ export function recordMlroOutcome(
   outcome: MlroOutcome
 ): LearningRecord {
   const decidedAt =
-    outcome.decidedAt instanceof Date
-      ? outcome.decidedAt.toISOString()
-      : outcome.decidedAt;
+    outcome.decidedAt instanceof Date ? outcome.decidedAt.toISOString() : outcome.decidedAt;
   const updates: ReliabilityUpdate[] = [];
   for (const s of outcome.signals) {
     if (s.confidence < LEARNING_CONFIDENCE_FLOOR) continue;
-    const concurring =
-      VERDICT_RANK[s.impliedVerdict] === VERDICT_RANK[outcome.finalVerdict];
+    const concurring = VERDICT_RANK[s.impliedVerdict] === VERDICT_RANK[outcome.finalVerdict];
     const target = concurring ? 1 : 0;
     const current = registry.get(s.name);
-    const next = clamp01(
-      (1 - EWMA_ALPHA) * current.reliability + EWMA_ALPHA * target
-    );
+    const next = clamp01((1 - EWMA_ALPHA) * current.reliability + EWMA_ALPHA * target);
     registry.upsert({
       name: s.name,
       reliability: Math.round(next * 10000) / 10000,
@@ -465,8 +457,7 @@ export function recordMlroOutcome(
     caseId: outcome.caseId,
     decidedAt,
     updates,
-    citation:
-      'FDL No.10/2025 Art.24 (audit trail) + Cabinet Res 134/2025 Art.19 (internal review)',
+    citation: 'FDL No.10/2025 Art.24 (audit trail) + Cabinet Res 134/2025 Art.19 (internal review)',
   };
 }
 
@@ -505,9 +496,7 @@ export function composeReasoningChain(input: {
   readonly maxSteps?: number;
 }): ReasoningChainReport {
   const maxSteps = input.maxSteps ?? 7;
-  const ordered = [...input.focus]
-    .sort((a, b) => b.attention - a.attention)
-    .slice(0, maxSteps);
+  const ordered = [...input.focus].sort((a, b) => b.attention - a.attention).slice(0, maxSteps);
 
   const steps: ReasoningStep[] = ordered.map((f, i) => ({
     index: i + 1,
@@ -530,17 +519,12 @@ export function composeReasoningChain(input: {
   const chainConfidence =
     steps.length === 0
       ? 0
-      : Math.round(
-          steps.reduce((acc, s) => acc * s.stepConfidence, 1) * 10000
-        ) / 10000;
+      : Math.round(steps.reduce((acc, s) => acc * s.stepConfidence, 1) * 10000) / 10000;
   const coherent =
-    steps.length > 0 &&
-    steps.every((s) => s.impliedVerdict === steps[0]?.impliedVerdict);
+    steps.length > 0 && steps.every((s) => s.impliedVerdict === steps[0]?.impliedVerdict);
 
   const lines = steps.map(
-    (s) =>
-      `  Step ${s.index}. ${s.premise}` +
-      (s.citation ? ` [${s.citation}]` : '')
+    (s) => `  Step ${s.index}. ${s.premise}` + (s.citation ? ` [${s.citation}]` : '')
   );
 
   const narrative =
@@ -948,23 +932,19 @@ export function generateHypotheses(input: {
       id: s.h.id,
       label: s.h.label,
       prior: s.h.prior,
-      posterior:
-        total === 0
-          ? s.h.prior
-          : Math.round((s.weight / total) * 10000) / 10000,
+      posterior: total === 0 ? s.h.prior : Math.round((s.weight / total) * 10000) / 10000,
       supportingEvidence: s.supporting,
       citation: s.h.citation,
     }))
     .sort((a, b) => b.posterior - a.posterior);
 
   const mostLikely = ranked[0] ?? null;
-  const narrative =
-    !mostLikely
-      ? 'Hypothesis generator: no hypotheses available.'
-      : `Hypothesis generator: most likely = "${mostLikely.label}" ` +
-        `(P=${(mostLikely.posterior * 100).toFixed(0)}%, prior=${(mostLikely.prior * 100).toFixed(0)}%). ` +
-        `Supporting evidence: ${mostLikely.supportingEvidence.length === 0 ? 'none (prior-driven)' : mostLikely.supportingEvidence.join(', ')}. ` +
-        `Citation: ${mostLikely.citation}.`;
+  const narrative = !mostLikely
+    ? 'Hypothesis generator: no hypotheses available.'
+    : `Hypothesis generator: most likely = "${mostLikely.label}" ` +
+      `(P=${(mostLikely.posterior * 100).toFixed(0)}%, prior=${(mostLikely.prior * 100).toFixed(0)}%). ` +
+      `Supporting evidence: ${mostLikely.supportingEvidence.length === 0 ? 'none (prior-driven)' : mostLikely.supportingEvidence.join(', ')}. ` +
+      `Citation: ${mostLikely.citation}.`;
 
   return { ranked, mostLikely, narrative };
 }

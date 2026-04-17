@@ -3215,8 +3215,7 @@ export async function runWeaponizedBrain(
   }));
 
   // #110 Adaptive meta-planner — attention / focus brief.
-  const reliabilityRegistry =
-    req.reliabilityRegistry ?? createInMemoryReliabilityRegistry();
+  const reliabilityRegistry = req.reliabilityRegistry ?? createInMemoryReliabilityRegistry();
   const adaptiveMetaResult = runSafely('adaptiveMeta', () =>
     runAdaptiveMeta({
       signals: agedSignals,
@@ -4489,9 +4488,7 @@ function buildAuditNarrative(
     const h = extensions.hypotheses;
     lines.push(
       `  - Hypotheses (#114): mostLikely=${h.mostLikely?.id ?? 'none'}` +
-        (h.mostLikely
-          ? ` (P=${(h.mostLikely.posterior * 100).toFixed(0)}%)`
-          : '')
+        (h.mostLikely ? ` (P=${(h.mostLikely.posterior * 100).toFixed(0)}%)` : '')
     );
   }
 
