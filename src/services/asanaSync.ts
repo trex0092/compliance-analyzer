@@ -23,6 +23,7 @@ import { addTaskLink } from './asanaTaskLinks';
 import { buildComplianceCustomFields, deadlineTypeFromCaseType } from './asanaCustomFields';
 import type { DeadlineType, Verdict } from './asanaCustomFields';
 import { appendCitationBlock } from './regulatoryCitationEnricher';
+import { resolveTenantProject } from './asanaTenantProjectResolver';
 
 const DEFAULT_PROJECT = '1213759768596515';
 
@@ -75,12 +76,63 @@ function findCustomerByCase(
   return COMPANY_REGISTRY.find((c) => c.legalName.toLowerCase() === caseObj.entityId.toLowerCase());
 }
 
+// ─── Phase 19 W-B wiring — server-side tenant project resolver ──────────────
+//
+// getComplianceProject / getWorkflowProject previously routed through the
+// COMPANY_REGISTRY directly, falling back to DEFAULT_PROJECT when the
+// customer was absent. The migration threads the lookup through
+// resolveTenantProject so the three-tier chain (future registry blob →
+// legacy compiled map → env default) applies to every dispatch.
+//
+// Behavioural preservation: when the resolver cannot produce a GID the
+// code continues to return DEFAULT_PROJECT exactly as before. No call
+// that used to succeed now fails.
+//
+// Escape hatch: ASANA_WB_RESOLVER_DISABLED=1 reverts to the pre-W-B
+// direct lookup. Default is ENABLED.
+
+function wbResolverDisabled(): boolean {
+  const raw = typeof process !== 'undefined' ? process.env?.ASANA_WB_RESOLVER_DISABLED : undefined;
+  if (!raw) return false;
+  const v = String(raw).trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
+/**
+ * Convert a COMPANY_REGISTRY entry to the TenantProjectEntry shape the
+ * resolver expects. Missing GIDs are left blank so the resolver's
+ * registry_entry_missing_kind path fires and the caller falls back to
+ * DEFAULT_PROJECT — matching the pre-W-B contract.
+ */
+function toTenantEntry(customer: (typeof COMPANY_REGISTRY)[number]) {
+  return {
+    tenantId: customer.id,
+    name: customer.legalName,
+    compliance: customer.asanaComplianceProjectGid ?? '',
+    workflow: customer.asanaWorkflowProjectGid ?? '',
+  };
+}
+
 function getComplianceProject(customer?: (typeof COMPANY_REGISTRY)[number]): string {
-  return customer?.asanaComplianceProjectGid || DEFAULT_PROJECT;
+  if (!customer || wbResolverDisabled()) {
+    return customer?.asanaComplianceProjectGid || DEFAULT_PROJECT;
+  }
+  const result = resolveTenantProject(customer.id, 'compliance', {
+    registryEntry: toTenantEntry(customer),
+  });
+  if (result.ok) return result.projectGid;
+  return customer.asanaComplianceProjectGid || DEFAULT_PROJECT;
 }
 
 function getWorkflowProject(customer?: (typeof COMPANY_REGISTRY)[number]): string {
-  return customer?.asanaWorkflowProjectGid || DEFAULT_PROJECT;
+  if (!customer || wbResolverDisabled()) {
+    return customer?.asanaWorkflowProjectGid || DEFAULT_PROJECT;
+  }
+  const result = resolveTenantProject(customer.id, 'workflow', {
+    registryEntry: toTenantEntry(customer),
+  });
+  if (result.ok) return result.projectGid;
+  return customer.asanaWorkflowProjectGid || DEFAULT_PROJECT;
 }
 
 export function resolveProjectForCustomer(
