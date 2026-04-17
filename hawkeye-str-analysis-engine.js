@@ -4,7 +4,8 @@
  * Auto-creates Asana tasks for findings
  */
 
-const axios = require('axios');
+// `axios` was imported here but never used; removed so requiring
+// this module does not fail when axios is absent.
 
 class STRAnalysisEngine {
   constructor(asanaClient, llmClient, config = {}) {

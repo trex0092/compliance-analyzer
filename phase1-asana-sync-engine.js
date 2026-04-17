@@ -5,10 +5,33 @@
  * TARGET: < 1 second latency for all sync operations
  */
 
-const logger = require('./logger-service');
-const tracer = require('./tracer-service');
-const metrics = require('./metrics-service');
-const axios = require('axios');
+// Four external deps previously loaded eagerly: three local
+// (`./logger-service`, `./tracer-service`, `./metrics-service`) that
+// do not exist in this repo, and `axios` which is not declared in
+// package.json. Each one is attempted once; if the module is absent
+// we substitute a stub whose every property getter throws with a
+// clear install hint. This keeps `require()` of the module safe
+// (e.g. for inventory and health checks) while still failing loudly
+// the moment any caller actually tries to use the sync engine.
+function _unavailable(name, hint) {
+  return new Proxy(function stubFn() {
+    throw new Error(`'${name}' is not available. ${hint}`);
+  }, {
+    get() {
+      throw new Error(`'${name}' is not available. ${hint}`);
+    },
+    apply() {
+      throw new Error(`'${name}' is not available. ${hint}`);
+    },
+  });
+}
+function _tryRequire(name, hint) {
+  try { return require(name); } catch (err) { return _unavailable(name, hint); }
+}
+const logger = _tryRequire('./logger-service', 'Provide a logger-service.js shim.');
+const tracer = _tryRequire('./tracer-service', 'Provide a tracer-service.js shim.');
+const metrics = _tryRequire('./metrics-service', 'Provide a metrics-service.js shim.');
+const axios = _tryRequire('axios', 'Install with `npm install axios`.');
 
 class AsanaSyncEngine {
   constructor(config = {}) {
