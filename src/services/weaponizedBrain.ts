@@ -477,6 +477,28 @@ import {
   type ProposedAction,
 } from './weaponizedPhase14';
 
+// --- Phase 15 imports (#110-#114) — adaptive meta-planning, self-learning,
+//     reasoning chain, threshold calibration, pattern mining, hypothesis
+//     generation. All diagnostic — none mutate the final verdict.
+import {
+  runAdaptiveMeta,
+  composeReasoningChain,
+  calibrateThresholds,
+  minePatternClusters,
+  generateHypotheses,
+  createInMemoryReliabilityRegistry,
+  type ReliabilityRegistry,
+  type AdaptiveMetaReport,
+  type ReasoningChainReport,
+  type ThresholdCalibrationReport,
+  type LabeledOutcomeSample,
+  type PatternMiningReport,
+  type PastCaseSignature,
+  type HypothesisReport,
+  type Hypothesis as AdaptiveHypothesis,
+  type AgedSignal,
+} from './weaponizedPhase15';
+
 // ---------------------------------------------------------------------------
 // Verdict ordering — verdicts can only escalate under new clamps.
 // ---------------------------------------------------------------------------
@@ -1152,6 +1174,48 @@ export interface WeaponizedBrainRequest {
    * gap checklist. When omitted, all evidence classes are assumed absent.
    */
   knownEvidenceTypes?: readonly string[];
+
+  // --- Phase 15 options (#110-#114) — all optional, all diagnostic ---
+
+  /**
+   * #110 Reliability registry for adaptive meta-planner self-learning.
+   * When omitted, a transient in-memory registry is used and learning
+   * state does not persist across calls. Production callers should
+   * inject a registry backed by the brainMemoryBlobStore pattern so
+   * reliability scores survive process restarts (FDL No.10/2025 Art.24).
+   */
+  reliabilityRegistry?: ReliabilityRegistry;
+
+  /**
+   * #110 Optional age hints (in days) per subsystem signal, for freshness
+   * decay. Missing entries are treated as fresh (age 0).
+   */
+  signalAgeDaysBySubsystem?: Readonly<Record<string, number>>;
+
+  /**
+   * #112 Historical labeled outcomes for threshold self-calibration. The
+   * calibrator requires >=20 samples per subsystem before it produces a
+   * recommendation; below that it returns an empty report. Recommendations
+   * are diagnostic only — they do NOT mutate clamp thresholds.
+   */
+  calibrationOutcomes?: readonly LabeledOutcomeSample[];
+
+  /**
+   * #113 Historical case signatures for signal-pattern mining. Supplied by
+   * the caller (typically from brainMemoryStore). Each entry is the set of
+   * subsystems that fired for a past case plus the MLRO's final verdict.
+   */
+  pastCaseSignatures?: readonly PastCaseSignature[];
+
+  /** #113 Jaccard merge threshold override (default 0.7). */
+  patternMiningMergeThreshold?: number;
+
+  /**
+   * #114 Override the default hypothesis catalog. Extending the catalog
+   * must preserve CLAUDE.md §8 citation discipline — every hypothesis
+   * carries a regulatory citation field.
+   */
+  hypothesesOverride?: readonly AdaptiveHypothesis[];
 }
 
 export interface WeaponizedExtensions {
@@ -1390,6 +1454,19 @@ export interface WeaponizedExtensions {
 
   /** #109 Counterfactual completion — evidence gaps that could escalate the verdict. */
   counterfactualCompletion?: CounterfactualCompletionReport;
+
+  // --- Phase 15 subsystems (#110-#114) — adaptive meta + self-learning ---
+
+  /** #110 Adaptive meta-planner — attention-ranked focus brief over all signals. */
+  adaptiveMeta?: AdaptiveMetaReport;
+  /** #111 Reasoning chain — explicit multi-step inference trace (deep thinking). */
+  reasoningChainComposed?: ReasoningChainReport;
+  /** #112 Threshold self-calibrator — per-subsystem cutoff recommendations (Youden's J). */
+  thresholdCalibration?: ThresholdCalibrationReport;
+  /** #113 Signal pattern miner — recurring signal signatures across past cases. */
+  patternMining?: PatternMiningReport;
+  /** #114 Hypothesis generator — competing compliance explanations (Bayesian). */
+  hypotheses?: HypothesisReport;
 }
 
 export interface WeaponizedBrainResponse {
@@ -3122,6 +3199,73 @@ export async function runWeaponizedBrain(
     if (completionResult) extensions.counterfactualCompletion = completionResult;
   }
 
+  // ---------------------------------------------------------------------------
+  // Phase 15 — adaptive meta-planner, reasoning chain, threshold calibration,
+  // pattern mining, hypothesis generator. All diagnostic; verdict unchanged.
+  // Runs after the verdict stabilises so the reports reflect the final state.
+  // ---------------------------------------------------------------------------
+
+  // Build aged signals from the existing `signals` list, decorated with any
+  // age hints the caller provided.
+  const agedSignals: AgedSignal[] = signals.map((s) => ({
+    name: s.name,
+    impliedVerdict: s.impliedVerdict,
+    confidence: s.confidence,
+    ageDays: req.signalAgeDaysBySubsystem?.[s.name],
+  }));
+
+  // #110 Adaptive meta-planner — attention / focus brief.
+  const reliabilityRegistry =
+    req.reliabilityRegistry ?? createInMemoryReliabilityRegistry();
+  const adaptiveMetaResult = runSafely('adaptiveMeta', () =>
+    runAdaptiveMeta({
+      signals: agedSignals,
+      registry: reliabilityRegistry,
+    })
+  );
+  if (adaptiveMetaResult) extensions.adaptiveMeta = adaptiveMetaResult;
+
+  // #111 Reasoning chain — deep thinking over the top-K focused signals.
+  if (extensions.adaptiveMeta) {
+    const chainResult = runSafely('reasoningChainComposed', () =>
+      composeReasoningChain({
+        focus: extensions.adaptiveMeta!.topFocus,
+        finalVerdict,
+      })
+    );
+    if (chainResult) extensions.reasoningChainComposed = chainResult;
+  }
+
+  // #112 Threshold self-calibrator — only when sufficient labeled history.
+  if (req.calibrationOutcomes && req.calibrationOutcomes.length > 0) {
+    const calibrationResult = runSafely('thresholdCalibration', () =>
+      calibrateThresholds(req.calibrationOutcomes!)
+    );
+    if (calibrationResult) extensions.thresholdCalibration = calibrationResult;
+  }
+
+  // #113 Signal pattern miner — only when past-case signatures supplied.
+  if (req.pastCaseSignatures && req.pastCaseSignatures.length > 0) {
+    const patternResult = runSafely('patternMining', () =>
+      minePatternClusters({
+        cases: req.pastCaseSignatures!,
+        mergeThreshold: req.patternMiningMergeThreshold,
+      })
+    );
+    if (patternResult) extensions.patternMining = patternResult;
+  }
+
+  // #114 Hypothesis generator — always runs when we have a focus brief.
+  if (extensions.adaptiveMeta) {
+    const hypothesesResult = runSafely('hypotheses', () =>
+      generateHypotheses({
+        focus: extensions.adaptiveMeta!.topFocus,
+        hypotheses: req.hypothesesOverride,
+      })
+    );
+    if (hypothesesResult) extensions.hypotheses = hypothesesResult;
+  }
+
   // #88 Quantum-resistant seal — always runs last (seals everything above)
   {
     const sealRecords: QuantumSealRecord[] = [
@@ -4308,6 +4452,46 @@ function buildAuditNarrative(
         `confidence=${dr.confidence}, queries=${dr.queriesUsed.length}` +
         (dr.piiRedactionApplied ? ', PII-redacted' : '') +
         (dr.truncated ? ` (truncated: ${dr.terminationReason})` : '')
+    );
+  }
+
+  // Phase 15 narrative entries (#110-#114) — adaptive meta & self-learning.
+  if (extensions.adaptiveMeta) {
+    const am = extensions.adaptiveMeta;
+    lines.push(
+      `  - Adaptive meta (#110): dominant=${am.dominantSignal?.name ?? 'none'}, ` +
+        `topK=${am.topFocus.length}, deprioritised=${am.deprioritised.length}, ` +
+        `entropy=${am.attentionEntropyBits.toFixed(2)} bits`
+    );
+  }
+  if (extensions.reasoningChainComposed) {
+    const rc = extensions.reasoningChainComposed;
+    lines.push(
+      `  - Reasoning chain (#111): ${rc.steps.length} step(s), converges=${rc.convergedVerdict}, ` +
+        `coherent=${rc.coherent}, chainConfidence=${rc.chainConfidence.toFixed(3)}`
+    );
+  }
+  if (extensions.thresholdCalibration) {
+    const tc = extensions.thresholdCalibration;
+    lines.push(
+      `  - Threshold calibration (#112): ${tc.recommendations.length} recommendation(s) ` +
+        `(diagnostic only — requires MLRO sign-off)`
+    );
+  }
+  if (extensions.patternMining) {
+    const pm = extensions.patternMining;
+    lines.push(
+      `  - Pattern mining (#113): ${pm.clusters.length} cluster(s), ` +
+        `${pm.unclustered.length} unclustered case(s)`
+    );
+  }
+  if (extensions.hypotheses) {
+    const h = extensions.hypotheses;
+    lines.push(
+      `  - Hypotheses (#114): mostLikely=${h.mostLikely?.id ?? 'none'}` +
+        (h.mostLikely
+          ? ` (P=${(h.mostLikely.posterior * 100).toFixed(0)}%)`
+          : '')
     );
   }
 
