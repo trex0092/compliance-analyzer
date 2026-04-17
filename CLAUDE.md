@@ -43,13 +43,67 @@ Setup instructions live in `docs/graphify-obsidian-setup.md`.
 
 ## Project Structure
 
-- **Root `.js` files**: Core backend modules (compliance-suite, database, workflow-engine, auth, etc.)
-- **`src/`**: React frontend (TSX components organized by domain, risk, services, ui, utils)
-- **`vendor/`**: Integrated agent frameworks and reference implementations (14 submodules)
-- **`skills/`**: 17 compliance-specific skills (including 3 new multi-agent skills)
-- **`.agents/skills/`**: External generic skills (SEO, UI/UX, browser, etc.)
-- **`docs/research/`**: Framework research and analysis documents
-- **Stack**: JavaScript/TypeScript, React
+The deployed product is a **dual-stack** app. Both stacks ship out
+of the same repo but serve different runtimes; knowing which stack a
+file belongs to is the single most common source of confusion when
+onboarding.
+
+- **Browser SPA** — served by Netlify from the repo root. `index.html`
+  loads ~30 root-level `.js` files via `<script src="file.js?v=...">`
+  tags plus four CDN libraries (chart.js, jspdf, jszip, emailjs).
+  `netlify.toml` uses `command = "echo ..."` and `publish = "."`, so
+  there is NO bundler step — every root `.js` file is shipped to the
+  browser unmodified. This is the stack the user sees at
+  `hawkeye-sterling-v2.netlify.app`.
+- **Netlify serverless backend** — `netlify/functions/*.mts` (~69
+  endpoints + crons). These `.mts` files are compiled by Netlify's
+  automatic esbuild at deploy time, and they freely import from
+  `src/services/*.ts`. That is the ONLY path by which `src/` ends
+  up in a running artifact today.
+
+With that in mind:
+
+- **Root `.js` files**: Browser SPA modules. `compliance-suite.js`,
+  `app-core.js`, `app-boot.js`, `workflow-engine.js`,
+  `metals-trading.js`, `tfs-refresh.js`, `brain-boot.js`, and the
+  `*-client.js` dashboards are all live and `<script>`-loaded.
+  Plenty of OTHER root-level `.js` files (the `asana-brain-*`,
+  `daily-*`, `weekly-*`, `phase*`, `hawkeye-*` families, etc.) are
+  scaffolding: not referenced from `index.html`, not imported by any
+  Netlify function, still shipped to the CDN by `publish = "."` but
+  unreachable via the site. Treat them as reference material — do
+  NOT assume they are live.
+- **`src/` TypeScript**: Netlify-function-side code. 371 files in
+  `src/services/` alone (`asanaClient`, `advisorStrategy`,
+  `sanctionsIngest`, `goamlValidator`, `asanaCommentSkillRouter`,
+  etc.) plus domain types, agents, orchestration, and utils.
+  **NOT shipped to the browser** — the Netlify build does not run a
+  TypeScript bundler, so anything in `src/` that is not imported by
+  a `.mts` function never executes at runtime. If you need to reach
+  the browser, add code to a root `.js` file (or inline-script in
+  `index.html`); if you need to reach the server, add code to
+  `netlify/functions/*.mts` and import any TypeScript helpers from
+  `src/services/`.
+- **`netlify/functions/*.mts`**: The serverless backend. Every
+  authenticated endpoint uses `middleware/auth.mts` and
+  `middleware/rate-limit.mts`. Every durable store uses Netlify
+  Blobs (`@netlify/blobs`). Any endpoint that does a read-modify-
+  write on a blob must use the CAS envelope decoder pattern
+  (getWithMetadata → setJSON onlyIfMatch → retry), which is the
+  fix repeatedly applied in the round 5-10 + round 12 PRs.
+- **`vendor/`**: Integrated agent frameworks and reference
+  implementations (49k+ files across ~40 submodules). Read
+  selectively; most of this tree is for architectural reference
+  only.
+- **`skills/`**: Compliance-specific skills that the MLRO can
+  invoke (including `/regulatory-spec`, `/multi-agent-screen`,
+  `/agent-orchestrate`, `/agent-review`). See the skill dispatch
+  table in the "Claude Code Harness Patterns" section.
+- **`.agents/skills/`**: External generic skills (SEO, UI/UX,
+  browser, etc.).
+- **`docs/research/`**: Framework research and analysis documents.
+- **Stack**: JavaScript (browser SPA root) + TypeScript (Netlify
+  backend + `src/`). No React build step. No Webpack/Vite/etc.
 
 ---
 
