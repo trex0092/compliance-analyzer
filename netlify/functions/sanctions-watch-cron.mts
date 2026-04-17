@@ -28,6 +28,22 @@
 import type { Config } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 
+/** Walk every page of a blob-store listing — the SDK paginates by default. */
+async function listAllBlobs(
+  store: ReturnType<typeof getStore>,
+  prefix: string
+): Promise<Array<{ key: string }>> {
+  const all: Array<{ key: string }> = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const iter = (store as any).list({ prefix, paginate: true }) as AsyncIterable<{
+    blobs?: Array<{ key: string }>;
+  }>;
+  for await (const page of iter) {
+    if (page.blobs) for (const b of page.blobs) all.push(b);
+  }
+  return all;
+}
+
 const REPORT_STORE = 'sanctions-watch-reports';
 const AUDIT_STORE = 'sanctions-watch-audit';
 const SNAPSHOT_STORE = 'sanctions-snapshots';
@@ -114,8 +130,8 @@ async function probeCoverage(
       // snapshot across them (OFAC has two underlying feeds).
       let latestKey: string | undefined;
       for (const prefix of INGEST_KEY_PREFIXES[source]) {
-        const listing = await store.list({ prefix });
-        for (const blob of listing.blobs ?? []) {
+        const blobs = await listAllBlobs(store, prefix);
+        for (const blob of blobs) {
           if (!latestKey || blob.key > latestKey) latestKey = blob.key;
         }
       }
@@ -167,8 +183,8 @@ async function loadLiveHits(): Promise<
     if (!delta) return [];
 
     const cohortStore = getStore(COHORT_STORE);
-    const cohortListing = await cohortStore.list({ prefix: '' });
-    const tenantCohortKeys = (cohortListing.blobs ?? [])
+    const cohortBlobs = await listAllBlobs(cohortStore, '');
+    const tenantCohortKeys = cohortBlobs
       .map((b) => b.key)
       .filter((k) => k.endsWith('/cohort.json'));
 
@@ -209,10 +225,13 @@ export default async (): Promise<Response> => {
       portfolioSize: COMPANY_REGISTRY.length,
       listCoverage: coverage,
       hits,
-      // Frozen-subject and false-positive persistence does not yet exist.
-      // See PR description for the tracked follow-up.
+      // Frozen-subject and false-positive persistence does not yet
+      // exist. Declare them as unwired so the generator emits a loud
+      // "INCOMPLETE BRIEFING" banner instead of silently rendering
+      // empty sections that look like "all clear".
       frozenSubjects: [],
       recentFalsePositives: [],
+      unwiredDataSources: ['frozenSubjects', 'recentFalsePositives'],
     });
 
     const markdown = renderSanctionsWatchMarkdown(report);

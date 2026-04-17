@@ -25,20 +25,52 @@ export function addYears(dateIso: string, years: number): string {
 }
 
 /**
- * Format a date string as dd/mm/yyyy — the mandatory format for UAE
- * compliance documents (FDL, goAML filings, MoE reports).
- * Do NOT use toLocaleDateString() which varies by browser locale.
+ * Format a date string as dd/mm/yyyy in the UAE / Asia/Dubai timezone
+ * (UTC+4, no DST). This is the mandatory format for UAE compliance
+ * documents (FDL, goAML filings, MoE reports). Do NOT rely on the
+ * runtime's local timezone — Netlify functions execute in UTC, so
+ * `d.getDate()` would return the UTC day-of-month, which can be off
+ * by one near midnight Dubai. Use Intl.DateTimeFormat with an
+ * explicit `timeZone` for correctness.
  */
-/** Short format for UI display: dd/mm/yyyy */
+/** Short format for UI display: dd/mm/yyyy (Dubai-local). */
 export function formatDate(dateStr: string): string {
   return formatDateDDMMYYYY(dateStr);
 }
 
+const DUBAI_DDMMYYYY = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Dubai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const DUBAI_YYYYMMDD = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Dubai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
 export function formatDateDDMMYYYY(dateStr: string): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return '';
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
+  return DUBAI_DDMMYYYY.format(d);
+}
+
+/**
+ * Return the calendar date the given instant falls on in the UAE /
+ * Asia/Dubai timezone, formatted as `YYYY-MM-DD`. Use this to compare
+ * "is this Dubai-today?" instead of `getDate()` on a UTC-runtime
+ * Date object.
+ */
+export function dubaiDateYmd(input: Date | string): string {
+  const d = typeof input === 'string' ? new Date(input) : input;
+  if (isNaN(d.getTime())) return '';
+  return DUBAI_YYYYMMDD.format(d);
+}
+
+/** True when the two instants fall on the same Dubai-local calendar date. */
+export function isSameDubaiDate(a: Date, b: Date): boolean {
+  return dubaiDateYmd(a) === dubaiDateYmd(b);
 }

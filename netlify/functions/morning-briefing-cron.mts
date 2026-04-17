@@ -30,6 +30,28 @@
 import type { Config } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 
+/**
+ * Walk every page of a blob-store listing. The Netlify SDK only
+ * returns a single page per `list({ prefix })` call — for stores
+ * with more than ~1000 entries under a prefix we'd silently skip
+ * older blobs. Iterating with `paginate: true` returns all blobs
+ * across all pages.
+ */
+async function listAllBlobs(
+  store: ReturnType<typeof getStore>,
+  prefix: string
+): Promise<Array<{ key: string }>> {
+  const all: Array<{ key: string }> = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const iter = (store as any).list({ prefix, paginate: true }) as AsyncIterable<{
+    blobs?: Array<{ key: string }>;
+  }>;
+  for await (const page of iter) {
+    if (page.blobs) for (const b of page.blobs) all.push(b);
+  }
+  return all;
+}
+
 const REPORT_STORE = 'morning-briefing-reports';
 const AUDIT_STORE = 'morning-briefing-audit';
 const SNAPSHOT_STORE = 'sanctions-snapshots';
@@ -105,8 +127,8 @@ async function probeCoverage(
     try {
       let latestKey: string | undefined;
       for (const prefix of INGEST_KEY_PREFIXES[source]) {
-        const listing = await store.list({ prefix });
-        for (const blob of listing.blobs ?? []) {
+        const blobs = await listAllBlobs(store, prefix);
+        for (const blob of blobs) {
           if (!latestKey || blob.key > latestKey) latestKey = blob.key;
         }
       }
@@ -160,8 +182,8 @@ async function probeCronHealth(now: Date): Promise<
       let okCount = 0;
       let lastKey: string | undefined;
       for (const prefix of prefixes) {
-        const listing = await store.list({ prefix: `${prefix}/` });
-        for (const blob of listing.blobs ?? []) {
+        const blobs = await listAllBlobs(store, `${prefix}/`);
+        for (const blob of blobs) {
           runCount += 1;
           // For a best-effort health check we only inspect the key; loading
           // every blob body is too expensive for a cold start.
@@ -216,8 +238,8 @@ async function probeOvernightActivity(now: Date): Promise<{
     const today = now.toISOString().slice(0, 10);
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     for (const prefix of [today, yesterday]) {
-      const listing = await store.list({ prefix: `${prefix}/` });
-      for (const blob of listing.blobs ?? []) {
+      const blobs = await listAllBlobs(store, `${prefix}/`);
+      for (const blob of blobs) {
         const body = (await store.get(blob.key, { type: 'json' })) as {
           finishedAtIso?: string;
           totalConfirmed?: number;
@@ -245,8 +267,8 @@ async function probeOvernightActivity(now: Date): Promise<{
     const today = now.toISOString().slice(0, 10);
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     for (const prefix of [today, yesterday]) {
-      const listing = await store.list({ prefix: `${prefix}/` });
-      sanctionsIngestRuns += (listing.blobs ?? []).length;
+      const blobs = await listAllBlobs(store, `${prefix}/`);
+      sanctionsIngestRuns += blobs.length;
     }
   } catch {
     /* best-effort */
@@ -308,12 +330,14 @@ export default async (): Promise<Response> => {
       cronHealth,
       reviewsDueToday,
       overnightActivity,
-      // Persistence for these three does not yet exist. Leaving empty
-      // here is safe — the generator surfaces "no items" rather than
-      // pretending we checked them. See PR description for follow-up.
+      // Persistence for these three does not yet exist. Pass empty
+      // arrays AND declare them as unwired so the generator surfaces
+      // a loud "INCOMPLETE BRIEFING" banner — better than silently
+      // showing "no items" when the data was never loaded.
       frozenSubjects: [],
       pendingApprovals: [],
       filings: [],
+      unwiredDataSources: ['frozenSubjects', 'pendingApprovals', 'filings'],
     });
 
     const markdown = renderMorningBriefingMarkdown(report);

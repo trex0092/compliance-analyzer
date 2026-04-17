@@ -131,6 +131,13 @@ export interface SanctionsWatchInput {
   frozenSubjects: ReadonlyArray<FrozenSubjectInput>;
   /** False positives resolved in the past 24h. */
   recentFalsePositives: ReadonlyArray<ResolvedFalsePositiveInput>;
+  /**
+   * Names of data sources NOT yet wired into a persistence layer (so
+   * the corresponding input arrays will be empty regardless of real
+   * activity). Surfaced as a loud "INCOMPLETE BRIEFING" banner so the
+   * MLRO does not infer "all clear" from a wiring gap.
+   */
+  unwiredDataSources?: ReadonlyArray<string>;
 }
 
 export interface BandCounts {
@@ -188,6 +195,7 @@ export interface SanctionsWatchReport {
   lowHits: ReadonlyArray<HitView>;
   freezeCountdowns: ReadonlyArray<FreezeCountdownView>;
   recentFalsePositives: ReadonlyArray<FalsePositiveView>;
+  unwiredDataSources: ReadonlyArray<string>;
   citations: ReadonlyArray<string>;
 }
 
@@ -333,6 +341,7 @@ export function buildSanctionsWatchReport(input: SanctionsWatchInput): Sanctions
     lowHits,
     freezeCountdowns,
     recentFalsePositives: falsePositives,
+    unwiredDataSources: input.unwiredDataSources ?? [],
     citations: [
       'FDL No.10/2025 Art.20-22 (CO duty of care, reasoned decision)',
       'FDL No.10/2025 Art.24 (record retention, audit trail)',
@@ -393,6 +402,16 @@ export function renderSanctionsWatchMarkdown(report: SanctionsWatchReport): stri
   lines.push(`Generated: ${formatDateDDMMYYYY(report.generatedAtIso)}`);
   lines.push(`Portfolio size: ${report.portfolioSize}`);
   lines.push('');
+
+  if (report.unwiredDataSources.length > 0) {
+    lines.push(
+      `**⚠ INCOMPLETE BRIEFING — ${report.unwiredDataSources.length} data source(s) not yet wired: ${report.unwiredDataSources.join(', ')}.**`
+    );
+    lines.push(
+      'Empty sections below for these sources do NOT mean "all clear" — verify manually until the persistence layer ships (FDL Art.20-22).'
+    );
+    lines.push('');
+  }
 
   // 1) List coverage. Loud alert if any required list is missing.
   lines.push('## 1. List coverage (FDL Art.35, Cabinet Res 74/2020 Art.4)');

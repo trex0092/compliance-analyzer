@@ -359,8 +359,23 @@ export function parseUkOfsiCsv(csv: string): NormalisedSanction[] {
   const lines = csv.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return []; // header + at least one data row
 
+  // OFSI prepends an optional metadata line to the CSV:
+  //   Last Updated,27/01/2026
+  //   Name 6,Name 1,Name 2,...
+  // Find the real header by looking for the first line that contains
+  // the "Group ID" marker. This is robust against the preamble being
+  // added/removed or additional metadata rows landing in future.
+  let headerIndex = 0;
+  for (let i = 0; i < Math.min(lines.length, 5); i++) {
+    if (lines[i]!.includes('Group ID') && lines[i]!.includes('Name 1')) {
+      headerIndex = i;
+      break;
+    }
+  }
+  if (lines.length - headerIndex < 2) return []; // header + 1 row minimum
+
   // Parse header to find column indices.
-  const headerFields = parseOfacCsvLine(lines[0]!);
+  const headerFields = parseOfacCsvLine(lines[headerIndex]!);
   const col = (name: string) => {
     const idx = headerFields.findIndex((h) => h.trim().toLowerCase() === name.toLowerCase());
     return idx;
@@ -394,7 +409,7 @@ export function parseUkOfsiCsv(csv: string): NormalisedSanction[] {
     }
   >();
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = headerIndex + 1; i < lines.length; i++) {
     const fields = parseOfacCsvLine(lines[i]!);
     const groupId = fields[iGroupId]?.trim();
     if (!groupId) continue;

@@ -210,6 +210,21 @@ describe('buildMorningBriefingReport — pending approvals', () => {
   });
 });
 
+describe('buildMorningBriefingReport — unwired data sources', () => {
+  it('passes through unwiredDataSources verbatim', () => {
+    const report = buildMorningBriefingReport({
+      ...baseInput(),
+      unwiredDataSources: ['frozenSubjects', 'pendingApprovals', 'filings'],
+    });
+    expect(report.unwiredDataSources).toEqual(['frozenSubjects', 'pendingApprovals', 'filings']);
+  });
+
+  it('defaults unwiredDataSources to empty array when not provided', () => {
+    const report = buildMorningBriefingReport(baseInput());
+    expect(report.unwiredDataSources).toEqual([]);
+  });
+});
+
 describe('renderMorningBriefingMarkdown', () => {
   it('renders all sections and includes regulatory + no-tipping-off text', () => {
     const report = buildMorningBriefingReport(baseInput());
@@ -225,5 +240,17 @@ describe('renderMorningBriefingMarkdown', () => {
     expect(md).toContain('FDL No.10/2025 Art.29');
     expect(md).toContain('must not be shared with any subject');
     expect(md).toContain('No critical items for today.');
+  });
+
+  it('renders the INCOMPLETE BRIEFING banner when sources are unwired', () => {
+    const report = buildMorningBriefingReport({
+      ...baseInput(),
+      unwiredDataSources: ['frozenSubjects', 'pendingApprovals', 'filings'],
+    });
+    const md = renderMorningBriefingMarkdown(report);
+    expect(md).toContain('⚠ INCOMPLETE BRIEFING');
+    expect(md).toContain('frozenSubjects');
+    expect(md).toContain('pendingApprovals');
+    expect(md).toContain('filings');
   });
 });

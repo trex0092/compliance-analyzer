@@ -32,6 +32,22 @@
 
 import { getStore } from '@netlify/blobs';
 
+/** Walk every page of a blob-store listing — the SDK paginates by default. */
+async function listAllBlobs(
+  store: ReturnType<typeof getStore>,
+  prefix: string
+): Promise<Array<{ key: string }>> {
+  const all: Array<{ key: string }> = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const iter = (store as any).list({ prefix, paginate: true }) as AsyncIterable<{
+    blobs?: Array<{ key: string }>;
+  }>;
+  for await (const page of iter) {
+    if (page.blobs) for (const b of page.blobs) all.push(b);
+  }
+  return all;
+}
+
 const INGEST_AUDIT_STORE = 'sanctions-ingest-audit';
 
 type SanctionsSource = 'OFAC_SDN' | 'OFAC_CONS' | 'UN' | 'EU' | 'UK_OFSI' | 'UAE_EOCN';
@@ -74,8 +90,8 @@ export default async (): Promise<Response> => {
   try {
     const store = getStore(INGEST_AUDIT_STORE);
     for (const prefix of [today, yesterday]) {
-      const listing = await store.list({ prefix: `${prefix}/` });
-      for (const blob of listing.blobs ?? []) {
+      const blobs = await listAllBlobs(store, `${prefix}/`);
+      for (const blob of blobs) {
         const body = (await store.get(blob.key, { type: 'json' })) as AuditEntry | null;
         if (!body || !Array.isArray(body.results)) continue;
         totalAuditEntries += 1;
@@ -86,13 +102,22 @@ export default async (): Promise<Response> => {
           row.totalRuns += 1;
           if (r.ok) {
             row.successRuns += 1;
-            row.lastSuccessIso = at;
-            if (typeof r.fetched === 'number') row.lastFetchedCount = r.fetched;
+            // Only overwrite "last success" data when this entry is
+            // newer than what we've seen — Netlify blob list order is
+            // not chronological, so without this guard we'd report
+            // whatever audit entry happened to be iterated last
+            // (often a stale pre-fix run that returned `fetched: 0`).
+            if (!row.lastSuccessIso || (at && at > row.lastSuccessIso)) {
+              row.lastSuccessIso = at;
+              if (typeof r.fetched === 'number') row.lastFetchedCount = r.fetched;
+            }
           } else {
             row.failedRuns += 1;
             if (r.error) {
-              row.lastError = r.error;
-              row.lastErrorAtIso = at;
+              if (!row.lastErrorAtIso || (at && at > row.lastErrorAtIso)) {
+                row.lastError = r.error;
+                row.lastErrorAtIso = at;
+              }
             }
           }
         }

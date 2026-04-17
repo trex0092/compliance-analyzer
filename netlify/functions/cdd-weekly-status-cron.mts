@@ -93,9 +93,13 @@ export default async (): Promise<Response> => {
       now: new Date(),
       customers,
       reviewSchedules,
+      // Persistence for these three does not yet exist. Declare them
+      // as unwired so the generator emits a loud "INCOMPLETE BRIEFING"
+      // banner — silent empty sections would be a regulatory hazard.
       approvals: [],
       filings: [],
       screeningRuns: [],
+      unwiredDataSources: ['approvals', 'filings', 'screeningRuns'],
     });
 
     const markdown = renderWeeklyCddReportMarkdown(report);

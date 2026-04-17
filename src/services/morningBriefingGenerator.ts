@@ -45,7 +45,7 @@ import { REQUIRED_SOURCES } from './sanctionsWatchGenerator';
 import type { ApprovalRequest } from '../domain/approvals';
 import type { FilingRecord } from './screeningComplianceReport';
 import { checkEOCNDeadline, checkDeadline } from '../utils/businessDays';
-import { formatDateDDMMYYYY } from '../utils/dates';
+import { formatDateDDMMYYYY, isSameDubaiDate } from '../utils/dates';
 import { CNMR_FILING_DEADLINE_BUSINESS_DAYS } from '../domain/constants';
 
 // ─── Input types ────────────────────────────────────────────────────────────
@@ -104,6 +104,15 @@ export interface MorningBriefingInput {
   pendingApprovals: ReadonlyArray<ApprovalRequest>;
   /** Filings in the system — used to pick out filings due today. */
   filings: ReadonlyArray<FilingRecord>;
+  /**
+   * Names of data sources that are NOT yet wired into a persistence
+   * layer (so the corresponding input arrays will be empty regardless
+   * of real-world activity). When non-empty, the briefing renders a
+   * loud "INCOMPLETE BRIEFING" banner so the MLRO knows the absence
+   * of items in those sections is a wiring gap, not a clean state.
+   * The cron is responsible for declaring this honestly.
+   */
+  unwiredDataSources?: ReadonlyArray<string>;
 }
 
 // ─── Output types ───────────────────────────────────────────────────────────
@@ -169,6 +178,8 @@ export interface MorningBriefingReport {
     pendingApprovalsOver48h: ReadonlyArray<PendingApprovalOver48h>;
     overdueFilings: ReadonlyArray<OverdueFilingItem>;
   };
+  /** Pass-through: data sources the cron declared as not yet wired. */
+  unwiredDataSources: ReadonlyArray<string>;
   citations: ReadonlyArray<string>;
 }
 
@@ -193,13 +204,12 @@ function deadlineForFilingType(type: FilingRecord['filingType']): number | null 
   }
 }
 
-function isSameDate(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
+// Dubai-local same-day comparison. The cron runs in UTC; using
+// `getDate()` directly returns the UTC day-of-month, which is off by
+// one for any instant between 20:00 UTC and 24:00 UTC (= 00:00 to
+// 04:00 Dubai). For a "is the deadline today in Dubai?" check we
+// must compare Dubai-local calendar dates explicitly.
+const isSameDate = isSameDubaiDate;
 
 // ─── Builder ────────────────────────────────────────────────────────────────
 
@@ -310,6 +320,7 @@ export function buildMorningBriefingReport(input: MorningBriefingInput): Morning
     generatedAtIso: windowToIso,
     windowFromIso,
     windowToIso,
+    unwiredDataSources: input.unwiredDataSources ?? [],
     listCoverage: coverage,
     anyListMissing: missingSources.length > 0,
     missingSources,
@@ -350,6 +361,20 @@ export function renderMorningBriefingMarkdown(report: MorningBriefingReport): st
     `Window: ${formatDateDDMMYYYY(report.windowFromIso)} to ${formatDateDDMMYYYY(report.windowToIso)}`
   );
   lines.push('');
+
+  // Honesty banner: if any data source is not yet wired into a
+  // persistence layer, the corresponding sections will be empty no
+  // matter what is happening operationally. The MLRO must verify
+  // those sections manually until the persistence layer ships.
+  if (report.unwiredDataSources.length > 0) {
+    lines.push(
+      `**⚠ INCOMPLETE BRIEFING — ${report.unwiredDataSources.length} data source(s) not yet wired: ${report.unwiredDataSources.join(', ')}.**`
+    );
+    lines.push(
+      'Empty sections below for these sources do NOT mean "all clear" — they mean the persistence layer is not yet feeding the briefing. Verify manually before relying on this report (FDL No.10/2025 Art.20-22 — CO duty of care).'
+    );
+    lines.push('');
+  }
 
   // 1) Critical today.
   lines.push('## 1. Critical today');
