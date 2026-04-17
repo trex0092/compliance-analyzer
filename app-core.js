@@ -6341,6 +6341,7 @@ function renderTracking() {
       ? '<span style="font-size:10px;color:var(--green)">✓ Asana synced</span>'
       : '<span style="font-size:10px;color:var(--muted)">not synced</span>';
     return `<tr>
+      <td style="font-size:11px;color:var(--muted)">${escHtml(s.tenantLabel || '—')}</td>
       <td style="font-family:monospace">${escHtml(s.awb || '—')}</td>
       <td>${escHtml(s.departure || '—')}</td>
       <td>${escHtml(s.arrival || '—')}</td>
@@ -6362,6 +6363,7 @@ function renderTracking() {
     <table class="asana-table" style="width:100%; font-size:12px">
       <thead>
         <tr>
+          <th>Tenant</th>
           <th>AWB</th>
           <th>Departure</th>
           <th>Arrival</th>
@@ -6412,6 +6414,11 @@ function addTrackingRecord() {
   }
   const list = safeLocalParse(TRACKING_STORAGE, []);
   const nowIso = new Date().toISOString();
+  // Capture which tenant the record belongs to so the Asana section
+  // stays stable even if the operator switches tenants later.
+  const activeCompany = getActiveCompany ? getActiveCompany() : null;
+  const tenantId = activeCompany ? activeCompany.id : 'unknown';
+  const tenantLabel = activeCompany ? activeCompany.name : 'Unknown tenant';
   if (editingTrackingId) {
     const idx = list.findIndex(x => x.id === editingTrackingId);
     if (idx === -1) { editingTrackingId = null; return; }
@@ -6428,7 +6435,14 @@ function addTrackingRecord() {
     syncTrackingRecord(list[idx].id);
     return;
   }
-  const rec = { id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), ...form, lastUpdated: nowIso, asanaGid: null };
+  const rec = {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    ...form,
+    tenantId: tenantId,
+    tenantLabel: tenantLabel,
+    lastUpdated: nowIso,
+    asanaGid: null,
+  };
   list.push(rec);
   safeLocalSave(TRACKING_STORAGE, list);
   clearTrackingForm();
@@ -6493,27 +6507,87 @@ async function _asanaProxy(method, path, body) {
   return data;
 }
 
-async function _findOrCreateShipmentsSection(projectGid) {
-  // List sections, look for one named "Shipments" (case-insensitive),
-  // create it if missing. Returns the section GID.
+// Shared global Shipments project — one project for ALL tenants, one
+// section per tenant inside it. Results are cached in localStorage so
+// the lookup happens once per browser session rather than on every
+// sync.
+const SHIPMENTS_PROJECT_NAME = 'HAWKEYE — Global Shipments';
+const SHIPMENTS_PROJECT_CACHE = 'fgl_shipments_project_gid';
+const SHIPMENTS_SECTIONS_CACHE = 'fgl_shipments_section_gids';
+
+async function _findOrCreateSharedShipmentsProject() {
+  // Fast path: cached GID
+  const cached = (typeof localStorage !== 'undefined')
+    ? localStorage.getItem(SHIPMENTS_PROJECT_CACHE)
+    : null;
+  if (cached) return cached;
+  // List workspace projects, look for our shared one by exact name.
+  const res = await _asanaProxy('GET', '/workspaces/' + encodeURIComponent(ASANA_WORKSPACE) + '/projects?opt_fields=name,archived&limit=100');
+  const hit = (res && res.data || []).find(p =>
+    !p.archived && (p.name || '').trim() === SHIPMENTS_PROJECT_NAME,
+  );
+  if (hit && hit.gid) {
+    try { localStorage.setItem(SHIPMENTS_PROJECT_CACHE, hit.gid); } catch (_) { /* ignore */ }
+    return hit.gid;
+  }
+  // Not found — create it at the workspace level. No team required for
+  // organisations on the legacy workspace; Asana creates it as a
+  // workspace-level project.
+  const created = await _asanaProxy('POST', '/projects', {
+    data: {
+      name: SHIPMENTS_PROJECT_NAME,
+      workspace: ASANA_WORKSPACE,
+      notes: 'Shared global shipment tracker. All tenants. Auto-created by Hawkeye Sterling Tracking tab. One section per tenant below.',
+    },
+  });
+  const gid = created && created.data && created.data.gid;
+  if (!gid) throw new Error('Shared Shipments project create returned no GID');
+  try { localStorage.setItem(SHIPMENTS_PROJECT_CACHE, gid); } catch (_) { /* ignore */ }
+  return gid;
+}
+
+async function _findOrCreateTenantSection(projectGid, tenantLabel) {
+  // Cache by tenantLabel (which is stable per tenant) so the lookup is
+  // O(1) after first call.
+  let cache = {};
+  try { cache = JSON.parse(localStorage.getItem(SHIPMENTS_SECTIONS_CACHE) || '{}') || {}; } catch (_) { cache = {}; }
+  const cached = cache[tenantLabel];
+  if (cached) return cached;
   const listRes = await _asanaProxy('GET', '/projects/' + encodeURIComponent(projectGid) + '/sections');
-  const existing = (listRes && listRes.data || []).find(s => (s.name || '').trim().toLowerCase() === 'shipments');
-  if (existing && existing.gid) return existing.gid;
-  const created = await _asanaProxy('POST', '/projects/' + encodeURIComponent(projectGid) + '/sections', { data: { name: 'Shipments' } });
-  if (!created || !created.data || !created.data.gid) throw new Error('Section create returned no GID');
-  return created.data.gid;
+  const hit = (listRes && listRes.data || []).find(s => (s.name || '').trim() === tenantLabel);
+  if (hit && hit.gid) {
+    cache[tenantLabel] = hit.gid;
+    try { localStorage.setItem(SHIPMENTS_SECTIONS_CACHE, JSON.stringify(cache)); } catch (_) { /* ignore */ }
+    return hit.gid;
+  }
+  const created = await _asanaProxy('POST', '/projects/' + encodeURIComponent(projectGid) + '/sections', { data: { name: tenantLabel } });
+  const gid = created && created.data && created.data.gid;
+  if (!gid) throw new Error('Tenant section create returned no GID');
+  cache[tenantLabel] = gid;
+  try { localStorage.setItem(SHIPMENTS_SECTIONS_CACHE, JSON.stringify(cache)); } catch (_) { /* ignore */ }
+  return gid;
 }
 
 async function syncTrackingRecord(id) {
   const list = safeLocalParse(TRACKING_STORAGE, []);
   const rec = list.find(x => x.id === id);
   if (!rec) return;
+  // Fallback: for records created before tenantLabel was captured,
+  // derive it now from the current active company.
+  const tenantLabel = rec.tenantLabel
+    || (getActiveCompany ? (getActiveCompany() || {}).name : null)
+    || 'Unknown tenant';
   let projectGid;
-  try { projectGid = getAsanaProject(); } catch (_) { projectGid = null; }
-  if (!projectGid) { toast('No Asana project configured for the active tenant', 'error'); return; }
   try {
-    const sectionGid = await _findOrCreateShipmentsSection(projectGid);
-    const taskName = 'AWB ' + (rec.awb || '—') + ' · ' + (rec.departure || '?') + ' → ' + (rec.arrival || '?');
+    projectGid = await _findOrCreateSharedShipmentsProject();
+  } catch (err) {
+    toast('Shared Shipments project lookup failed: ' + (err && err.message ? err.message : 'unknown'), 'error');
+    return;
+  }
+  if (!projectGid) { toast('Could not resolve the shared Shipments project', 'error'); return; }
+  try {
+    const sectionGid = await _findOrCreateTenantSection(projectGid, tenantLabel);
+    const taskName = '[' + tenantLabel + '] AWB ' + (rec.awb || '—') + ' · ' + (rec.departure || '?') + ' → ' + (rec.arrival || '?');
     // ETA pretty-print: store as the user typed it (local datetime),
     // echo back to Asana in ISO + local so both MLRO and auditor see
     // the same moment.
@@ -6526,6 +6600,7 @@ async function syncTrackingRecord(id) {
         })()
       : '—';
     const notesLines = [
+      'Tenant: ' + tenantLabel,
       'AWB: ' + (rec.awb || '—'),
       'Departure country: ' + (rec.departure || '—'),
       'Arrival country: ' + (rec.arrival || '—'),
@@ -6536,7 +6611,7 @@ async function syncTrackingRecord(id) {
       'Weight (kg): ' + (rec.weight == null ? '—' : String(rec.weight)),
       'Last updated: ' + (rec.lastUpdated || '—'),
       '',
-      'Source: Hawkeye Sterling Tracking tab. Auto-synced.',
+      'Source: Hawkeye Sterling Tracking tab → Shared global Shipments project. Auto-synced.',
     ];
     // Asana due_at wants ISO 8601 UTC. If the MLRO entered an ETA,
     // normalise it; otherwise omit so Asana does not set a due date.
