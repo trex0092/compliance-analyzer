@@ -25,6 +25,34 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
+// HTML escape for any value interpolated into a report template.
+// Raw concatenation into `generateHTMLReport` would otherwise allow
+// an Asana project name or task title to break the DOM or inject
+// script-carrying markup into the emailed HTML body.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Safe percentage helper to avoid NaN when the denominator is 0.
+function pct(numerator, denominator, digits = 1) {
+  if (!denominator || denominator <= 0) return (0).toFixed(digits);
+  return ((numerator / denominator) * 100).toFixed(digits);
+}
+
+// Constrain a path segment so an external projectId cannot traverse
+// out of the reports directory.
+function safePathSegment(value, fallback = 'unknown') {
+  const raw = String(value == null ? '' : value);
+  const cleaned = raw.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 128);
+  return cleaned || fallback;
+}
+
 class AsanaBrainDailyReportExecutor {
   constructor(config) {
     this.config = config;
@@ -110,13 +138,21 @@ class AsanaBrainDailyReportExecutor {
    */
   loadExecutionHistory() {
     const historyFile = path.join(process.cwd(), 'reports', 'execution-history.json');
-    if (fs.existsSync(historyFile)) {
-      try {
-        this.executionHistory = JSON.parse(fs.readFileSync(historyFile, 'utf-8'));
-      } catch (error) {
-        this.logger.warn('Failed to load execution history', { error: error.message });
-        this.executionHistory = [];
+    if (!fs.existsSync(historyFile)) return;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(historyFile, 'utf-8'));
+      // A corrupted or hand-edited history file can easily contain a
+      // non-array shape; guarding here avoids later .push / .filter
+      // crashes that would otherwise take down the whole executor.
+      this.executionHistory = Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) {
+        this.logger.warn('Execution history file was not an array, resetting', {
+          historyFile,
+        });
       }
+    } catch (error) {
+      this.logger.warn('Failed to load execution history', { error: error.message });
+      this.executionHistory = [];
     }
   }
 
@@ -277,16 +313,34 @@ class AsanaBrainDailyReportExecutor {
     const reportDate = new Date();
     const reportId = `compliance-report-${project.id}-${reportDate.toISOString().split('T')[0]}`;
 
-    // Calculate risk matrix
-    const criticalTasks = tasks.filter(t => this.calculateDaysOverdue(t) > 30);
-    const highRiskTasks = tasks.filter(t => this.calculateDaysOverdue(t) > 14 && this.calculateDaysOverdue(t) <= 30);
-    const mediumRiskTasks = tasks.filter(t => this.calculateDaysOverdue(t) > 7 && this.calculateDaysOverdue(t) <= 14);
+    // Precompute daysOverdue once per task; the old code called
+    // calculateDaysOverdue multiple times per task across the filter,
+    // sort and percentage passes, which is O(N) per call and does
+    // not scale past a few thousand tasks.
+    const tasksWithDaysOverdue = tasks.map(t => ({
+      task: t,
+      daysOverdue: this.calculateDaysOverdue(t),
+    }));
+
+    const criticalTasks = tasksWithDaysOverdue.filter(x => x.daysOverdue > 30).map(x => x.task);
+    const highRiskTasks = tasksWithDaysOverdue.filter(x => x.daysOverdue > 14 && x.daysOverdue <= 30).map(x => x.task);
+    const mediumRiskTasks = tasksWithDaysOverdue.filter(x => x.daysOverdue > 7 && x.daysOverdue <= 14).map(x => x.task);
+
+    // "Low" means "overdue by 1-7 days", not "every remaining task".
+    // The old computation (tasks.length - critical - high - medium)
+    // silently lumped completed and not-yet-due tasks into the low
+    // bucket, which both over-counted low risk and stopped the four
+    // buckets from matching the overdue total shown elsewhere in the
+    // report.
+    const lowRiskTasks = tasksWithDaysOverdue
+      .filter(x => x.daysOverdue > 0 && x.daysOverdue <= 7)
+      .map(x => x.task);
 
     const riskMatrix = {
       critical: criticalTasks.length,
       high: highRiskTasks.length,
       medium: mediumRiskTasks.length,
-      low: tasks.length - criticalTasks.length - highRiskTasks.length - mediumRiskTasks.length,
+      low: lowRiskTasks.length,
     };
 
     // Generate recommendations
@@ -328,10 +382,10 @@ class AsanaBrainDailyReportExecutor {
       },
 
       riskMatrix: {
-        critical: { count: riskMatrix.critical, percentage: ((riskMatrix.critical / tasks.length) * 100).toFixed(1) },
-        high: { count: riskMatrix.high, percentage: ((riskMatrix.high / tasks.length) * 100).toFixed(1) },
-        medium: { count: riskMatrix.medium, percentage: ((riskMatrix.medium / tasks.length) * 100).toFixed(1) },
-        low: { count: riskMatrix.low, percentage: ((riskMatrix.low / tasks.length) * 100).toFixed(1) },
+        critical: { count: riskMatrix.critical, percentage: pct(riskMatrix.critical, tasks.length) },
+        high: { count: riskMatrix.high, percentage: pct(riskMatrix.high, tasks.length) },
+        medium: { count: riskMatrix.medium, percentage: pct(riskMatrix.medium, tasks.length) },
+        low: { count: riskMatrix.low, percentage: pct(riskMatrix.low, tasks.length) },
       },
 
       recommendations: recommendations,
@@ -411,23 +465,21 @@ class AsanaBrainDailyReportExecutor {
   /**
    * Identify top issues
    */
-  identifyTopIssues(tasks, metrics) {
-    const issues = [];
-
-    const mostOverdue = tasks
+  identifyTopIssues(tasks, _metrics) {
+    // Compute daysOverdue once per task, not per filter/sort comparator
+    // call — the previous implementation re-parsed due_date O(N log N)
+    // times just for the sort, on top of the filter and loop calls.
+    const annotated = tasks
       .filter(t => t.status !== 'completed')
-      .sort((a, b) => this.calculateDaysOverdue(b) - this.calculateDaysOverdue(a))
+      .map(t => ({ task: t, daysOverdue: this.calculateDaysOverdue(t) }))
+      .sort((a, b) => b.daysOverdue - a.daysOverdue)
       .slice(0, 5);
 
-    for (const task of mostOverdue) {
-      issues.push({
-        issue: `Task overdue: ${task.title}`,
-        daysOverdue: this.calculateDaysOverdue(task),
-        priority: this.calculateDaysOverdue(task) > 30 ? 'CRITICAL' : 'HIGH',
-      });
-    }
-
-    return issues;
+    return annotated.map(({ task, daysOverdue }) => ({
+      issue: `Task overdue: ${task.title}`,
+      daysOverdue,
+      priority: daysOverdue > 30 ? 'CRITICAL' : 'HIGH',
+    }));
   }
 
   /**
@@ -480,15 +532,22 @@ class AsanaBrainDailyReportExecutor {
     const performance = [];
     for (const member in teamMembers) {
       const tm = teamMembers[member];
+      // `rateNum` is kept as a number for a correct sort; `completionRate`
+      // stays as the formatted string used by the report renderer so
+      // the downstream template output is unchanged.
+      const rateNum = tm.total > 0 ? (tm.completed / tm.total) * 100 : 0;
       performance.push({
         member,
         total: tm.total,
         completed: tm.completed,
-        completionRate: ((tm.completed / tm.total) * 100).toFixed(1),
+        completionRate: rateNum.toFixed(1),
+        _rate: rateNum,
       });
     }
 
-    return performance.sort((a, b) => b.completionRate - a.completionRate);
+    return performance
+      .sort((a, b) => b._rate - a._rate)
+      .map(({ _rate, ...row }) => row);
   }
 
   /**
@@ -517,11 +576,15 @@ class AsanaBrainDailyReportExecutor {
    * Save report to file
    */
   async saveReport(report, projectId) {
-    const reportsDir = path.join(process.cwd(), 'reports', projectId);
-
-    if (!fs.existsSync(reportsDir)) {
-      fs.mkdirSync(reportsDir, { recursive: true });
+    // Sanitize the projectId so a malformed/malicious ID cannot
+    // escape the reports root via "../" segments.
+    const safeProjectId = safePathSegment(projectId);
+    const reportsRoot = path.resolve(process.cwd(), 'reports');
+    const reportsDir = path.resolve(reportsRoot, safeProjectId);
+    if (!reportsDir.startsWith(reportsRoot + path.sep) && reportsDir !== reportsRoot) {
+      throw new Error(`Refusing to write report outside reports directory: ${reportsDir}`);
     }
+    fs.mkdirSync(reportsDir, { recursive: true });
 
     const fileName = `compliance-report-${report.reportDate.toISOString().split('T')[0]}.json`;
     const filePath = path.join(reportsDir, fileName);
@@ -645,10 +708,24 @@ class AsanaBrainDailyReportExecutor {
    */
   async sendAsanaReport(report) {
     try {
+      // Asana's createTask accepts `notes` (plain text) or `html_notes`
+      // (bounded HTML) — `description` is silently dropped by the API,
+      // which is why the report body was never landing on the task.
+      // Keep the body short: full JSON can exceed Asana's notes limit
+      // and the file is already attached/saved elsewhere.
+      const notes = [
+        `Daily Compliance Report for ${report.projectName}`,
+        `Generated: ${report.generatedAt && report.generatedAt.toISOString ? report.generatedAt.toISOString() : ''}`,
+        `Overall status: ${report.executiveSummary && report.executiveSummary.overallStatus}`,
+        `Compliance rate: ${report.metrics && report.metrics.complianceRate}%`,
+        `Health score: ${report.metrics && report.metrics.healthScore}`,
+        `Risk score: ${report.metrics && report.metrics.riskScore}%`,
+      ].join('\n');
+
       const task = await this.asanaClient.createTask({
         projects: [report.projectId],
         name: `Daily Compliance Report - ${report.reportDate.toLocaleDateString()}`,
-        description: JSON.stringify(report, null, 2),
+        notes,
       });
 
       this.logger.info('Asana report task created', { taskId: task.id });
@@ -663,12 +740,25 @@ class AsanaBrainDailyReportExecutor {
    * Generate HTML report
    */
   generateHTMLReport(report) {
+    // Escape every externally-sourced value before interpolating it
+    // into the HTML email body. Asana project and task names are
+    // operator-controlled, so without escaping they could inject
+    // arbitrary markup (or script, if rendered by a lax email client)
+    // into the report.
+    const summary = report.executiveSummary || {};
+    const metrics = report.metrics || {};
+    const risk = report.riskMatrix || {
+      critical: { count: 0, percentage: '0.0' },
+      high: { count: 0, percentage: '0.0' },
+      medium: { count: 0, percentage: '0.0' },
+      low: { count: 0, percentage: '0.0' },
+    };
     return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>${report.executiveSummary.title}</title>
+  <title>${escapeHtml(summary.title)}</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
     .header { background-color: #1a1a1a; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
@@ -683,25 +773,25 @@ class AsanaBrainDailyReportExecutor {
 </head>
 <body>
   <div class="header">
-    <h1>${report.executiveSummary.title}</h1>
-    <p>Generated: ${report.executiveSummary.date}</p>
+    <h1>${escapeHtml(summary.title)}</h1>
+    <p>Generated: ${escapeHtml(summary.date)}</p>
   </div>
   <div class="section">
     <h2>Executive Summary</h2>
     <div class="metric">
-      <div class="metric-value">${report.metrics.complianceRate}%</div>
+      <div class="metric-value">${escapeHtml(metrics.complianceRate)}%</div>
       <div class="metric-label">Compliance Rate</div>
     </div>
     <div class="metric">
-      <div class="metric-value">${report.metrics.healthScore}</div>
+      <div class="metric-value">${escapeHtml(metrics.healthScore)}</div>
       <div class="metric-label">Health Score</div>
     </div>
     <div class="metric">
-      <div class="metric-value">${report.metrics.riskScore}%</div>
+      <div class="metric-value">${escapeHtml(metrics.riskScore)}%</div>
       <div class="metric-label">Risk Score</div>
     </div>
     <div class="metric">
-      <div class="metric-value">${report.metrics.completedTasks}/${report.metrics.totalTasks}</div>
+      <div class="metric-value">${escapeHtml(metrics.completedTasks)}/${escapeHtml(metrics.totalTasks)}</div>
       <div class="metric-label">Tasks Completed</div>
     </div>
   </div>
@@ -709,15 +799,15 @@ class AsanaBrainDailyReportExecutor {
     <h2>Risk Matrix</h2>
     <table>
       <tr><th>Risk Level</th><th>Count</th><th>Percentage</th></tr>
-      <tr><td>Critical</td><td>${report.riskMatrix.critical.count}</td><td>${report.riskMatrix.critical.percentage}%</td></tr>
-      <tr><td>High</td><td>${report.riskMatrix.high.count}</td><td>${report.riskMatrix.high.percentage}%</td></tr>
-      <tr><td>Medium</td><td>${report.riskMatrix.medium.count}</td><td>${report.riskMatrix.medium.percentage}%</td></tr>
-      <tr><td>Low</td><td>${report.riskMatrix.low.count}</td><td>${report.riskMatrix.low.percentage}%</td></tr>
+      <tr><td>Critical</td><td>${escapeHtml(risk.critical.count)}</td><td>${escapeHtml(risk.critical.percentage)}%</td></tr>
+      <tr><td>High</td><td>${escapeHtml(risk.high.count)}</td><td>${escapeHtml(risk.high.percentage)}%</td></tr>
+      <tr><td>Medium</td><td>${escapeHtml(risk.medium.count)}</td><td>${escapeHtml(risk.medium.percentage)}%</td></tr>
+      <tr><td>Low</td><td>${escapeHtml(risk.low.count)}</td><td>${escapeHtml(risk.low.percentage)}%</td></tr>
     </table>
   </div>
   <div class="section" style="text-align: center; color: #666; font-size: 12px;">
     <p>This report was automatically generated by ASANA Brain Compliance Intelligence System</p>
-    <p>Generated: ${new Date().toISOString()}</p>
+    <p>Generated: ${escapeHtml(new Date().toISOString())}</p>
   </div>
 </body>
 </html>

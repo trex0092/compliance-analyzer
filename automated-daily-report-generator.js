@@ -18,6 +18,36 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+// HTML entities that must be escaped in any text value that is
+// interpolated into a generated HTML report. Unlike React, raw string
+// concatenation into templates does not escape anything, so Asana
+// task names or assignee labels containing "<", ">", "&", quotes or
+// the unicode line separators would break the DOM or enable stored
+// HTML injection in emailed reports.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Safe percentage helper that avoids NaN when the denominator is 0.
+function pct(numerator, denominator, digits = 1) {
+  if (!denominator || denominator <= 0) return (0).toFixed(digits);
+  return ((numerator / denominator) * 100).toFixed(digits);
+}
+
+// Restrict a filesystem segment to a single, safe directory name so a
+// caller-supplied projectId cannot traverse out of the reports dir.
+function safePathSegment(value, fallback = 'unknown') {
+  const raw = String(value == null ? '' : value);
+  const cleaned = raw.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 128);
+  return cleaned || fallback;
+}
+
 class AutomatedDailyReportGenerator {
   constructor(config) {
     this.config = config;
@@ -131,36 +161,47 @@ class AutomatedDailyReportGenerator {
   }
 
   /**
-   * Start the daily scheduler
+   * Start the daily scheduler. Fires at 08:00 UTC every day; schedules
+   * each subsequent run from a freshly computed 08:00 UTC so there is
+   * no drift across DST transitions or leap seconds. Rejections from
+   * the async executor are captured locally instead of leaking into
+   * the global unhandled-rejection handler.
    */
   startScheduler() {
     const span = this.tracer.startSpan('start_scheduler');
     try {
       this.logger.info('Starting daily report scheduler...');
-      
-      // Calculate time until 8:00 AM
-      const now = new Date();
-      const scheduledTime = new Date();
-      scheduledTime.setHours(8, 0, 0, 0);
-      
-      // If it's already past 8:00 AM, schedule for tomorrow
-      if (now > scheduledTime) {
-        scheduledTime.setDate(scheduledTime.getDate() + 1);
-      }
-      
-      const timeUntilExecution = scheduledTime - now;
-      
-      this.logger.info(`Next report generation scheduled for: ${scheduledTime.toISOString()}`);
-      
-      // Set up daily execution
-      this.dailyTimer = setTimeout(() => {
-        this.executeDailyReports();
-        // Set up recurring daily execution
-        this.dailyInterval = setInterval(() => {
-          this.executeDailyReports();
-        }, 24 * 60 * 60 * 1000); // 24 hours
-      }, timeUntilExecution);
-      
+
+      const scheduleNext = () => {
+        const now = new Date();
+        const next = new Date(Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+          8, 0, 0, 0,
+        ));
+        if (next.getTime() <= now.getTime()) {
+          next.setUTCDate(next.getUTCDate() + 1);
+        }
+        const delay = next.getTime() - now.getTime();
+        this.logger.info(`Next report generation scheduled for: ${next.toISOString()}`);
+        this.dailyTimer = setTimeout(() => {
+          Promise.resolve()
+            .then(() => this.executeDailyReports())
+            .catch((err) => {
+              this.logger.error('Unhandled error in scheduled report execution', err);
+              this.metrics.increment('report_generation.execution_error', 1);
+            })
+            .finally(() => {
+              // Always schedule the next day, even on failure, so one
+              // bad run does not permanently stop the scheduler.
+              if (this.isRunning) scheduleNext();
+            });
+        }, delay);
+      };
+
+      scheduleNext();
+
       this.logger.info('✅ Scheduler started');
       span.finish();
     } catch (error) {
@@ -315,25 +356,28 @@ class AutomatedDailyReportGenerator {
         // Count completed tasks
         if (task.completed) {
           completed++;
+          continue;
         }
-        
-        // Calculate overdue status
-        if (task.due_on && new Date(task.due_on) < now && !task.completed) {
-          overdue++;
-          const daysOverdue = Math.floor((now - new Date(task.due_on)) / (1000 * 60 * 60 * 24));
-          totalDaysOverdue += daysOverdue;
-          
-          // Categorize by risk level
-          if (daysOverdue >= 30) {
-            critical++;
-          } else if (daysOverdue >= 14) {
-            high++;
-          } else if (daysOverdue >= 7) {
-            medium++;
-          } else {
-            low++;
-          }
-        } else if (!task.completed) {
+
+        // Only open tasks with a past due date count towards the risk
+        // tiers — open-but-not-yet-due tasks should not silently land
+        // in "low risk" or the bucket totals stop matching the
+        // overdue count reported above them.
+        if (!task.due_on) continue;
+        const due = new Date(task.due_on);
+        if (!Number.isFinite(due.getTime()) || due >= now) continue;
+
+        overdue++;
+        const daysOverdue = Math.floor((now - due) / (1000 * 60 * 60 * 24));
+        totalDaysOverdue += daysOverdue;
+
+        if (daysOverdue >= 30) {
+          critical++;
+        } else if (daysOverdue >= 14) {
+          high++;
+        } else if (daysOverdue >= 7) {
+          medium++;
+        } else {
           low++;
         }
       }
@@ -384,53 +428,63 @@ class AutomatedDailyReportGenerator {
         template = this.templates.dataProtection;
       }
       
-      // Replace placeholders with actual data
+      // Percentages are of the total task count when that is > 0, or
+      // 0 otherwise — never NaN. Text values are HTML-escaped before
+      // interpolation to prevent template injection from Asana names.
+      const total = metrics.totalTasks || 0;
+      const projectName = escapeHtml(projectData && projectData.name || 'Compliance Project');
+      const organization = escapeHtml(config && config.organization || 'Organization');
+      const weeklyVelocity = Math.round(total / 4); // Weekly velocity
+
       let html = template
-        .replace(/\[PROJECT_NAME\]/g, projectData.name || 'Compliance Project')
-        .replace(/\[REPORT_DATE\]/g, reportDate)
-        .replace(/\[ORGANIZATION_NAME\]/g, config.organization || 'Organization')
-        .replace(/\[COMPLIANCE_RATE\]/g, metrics.complianceRate)
-        .replace(/\[HEALTH_SCORE\]/g, metrics.healthScore)
-        .replace(/\[RISK_SCORE\]/g, metrics.riskScore)
-        .replace(/\[VELOCITY\]/g, Math.round(metrics.totalTasks / 4)) // Weekly velocity
-        .replace(/\[COMPLETED_TASKS\]/g, metrics.completedTasks)
-        .replace(/\[TOTAL_TASKS\]/g, metrics.totalTasks)
-        .replace(/\[COMPLETION_RATE\]/g, metrics.complianceRate)
-        .replace(/\[CRITICAL_COUNT\]/g, metrics.criticalTasks)
-        .replace(/\[HIGH_COUNT\]/g, metrics.highTasks)
-        .replace(/\[MEDIUM_COUNT\]/g, metrics.mediumTasks)
-        .replace(/\[LOW_COUNT\]/g, metrics.lowTasks)
-        .replace(/\[CRITICAL_PERCENT\]/g, ((metrics.criticalTasks / metrics.totalTasks) * 100).toFixed(1))
-        .replace(/\[HIGH_PERCENT\]/g, ((metrics.highTasks / metrics.totalTasks) * 100).toFixed(1))
-        .replace(/\[MEDIUM_PERCENT\]/g, ((metrics.mediumTasks / metrics.totalTasks) * 100).toFixed(1))
-        .replace(/\[LOW_PERCENT\]/g, ((metrics.lowTasks / metrics.totalTasks) * 100).toFixed(1))
-        .replace(/\[PRINT_DATE\]/g, now.toLocaleString());
-      
+        .replace(/\[PROJECT_NAME\]/g, projectName)
+        .replace(/\[REPORT_DATE\]/g, escapeHtml(reportDate))
+        .replace(/\[ORGANIZATION_NAME\]/g, organization)
+        .replace(/\[COMPLIANCE_RATE\]/g, String(metrics.complianceRate))
+        .replace(/\[HEALTH_SCORE\]/g, String(metrics.healthScore))
+        .replace(/\[RISK_SCORE\]/g, String(metrics.riskScore))
+        .replace(/\[VELOCITY\]/g, String(weeklyVelocity))
+        .replace(/\[COMPLETED_TASKS\]/g, String(metrics.completedTasks))
+        .replace(/\[TOTAL_TASKS\]/g, String(total))
+        .replace(/\[COMPLETION_RATE\]/g, String(metrics.complianceRate))
+        .replace(/\[CRITICAL_COUNT\]/g, String(metrics.criticalTasks))
+        .replace(/\[HIGH_COUNT\]/g, String(metrics.highTasks))
+        .replace(/\[MEDIUM_COUNT\]/g, String(metrics.mediumTasks))
+        .replace(/\[LOW_COUNT\]/g, String(metrics.lowTasks))
+        .replace(/\[CRITICAL_PERCENT\]/g, pct(metrics.criticalTasks, total))
+        .replace(/\[HIGH_PERCENT\]/g, pct(metrics.highTasks, total))
+        .replace(/\[MEDIUM_PERCENT\]/g, pct(metrics.mediumTasks, total))
+        .replace(/\[LOW_PERCENT\]/g, pct(metrics.lowTasks, total))
+        .replace(/\[PRINT_DATE\]/g, escapeHtml(now.toLocaleString()));
+
       // Add critical tasks to report
       const criticalTasks = tasks
         .filter(t => {
           if (t.completed) return false;
           if (!t.due_on) return false;
-          const daysOverdue = Math.floor((now - new Date(t.due_on)) / (1000 * 60 * 60 * 24));
+          const due = new Date(t.due_on);
+          if (!Number.isFinite(due.getTime())) return false;
+          const daysOverdue = Math.floor((now - due) / (1000 * 60 * 60 * 24));
           return daysOverdue >= 30;
         })
         .slice(0, 5);
-      
+
       if (criticalTasks.length > 0) {
         const criticalTasksHtml = criticalTasks
           .map(t => {
             const daysOverdue = Math.floor((now - new Date(t.due_on)) / (1000 * 60 * 60 * 24));
+            const assigneeName = t.assignee && t.assignee.name ? t.assignee.name : 'Unassigned';
             return `
               <tr>
-                <td>${t.name}</td>
+                <td>${escapeHtml(t.name)}</td>
                 <td>${daysOverdue}</td>
-                <td>${t.assignee?.name || 'Unassigned'}</td>
+                <td>${escapeHtml(assigneeName)}</td>
                 <td><span class="badge badge-critical">CRITICAL</span></td>
               </tr>
             `;
           })
           .join('');
-        
+
         html = html.replace(
           /<tr>\s*<td>\[TASK_1_NAME\]<\/td>/,
           criticalTasksHtml
@@ -455,12 +509,17 @@ class AutomatedDailyReportGenerator {
     try {
       this.logger.info(`[${executionId}] Converting HTML to PDF...`);
       
-      // For now, save as HTML (PDF conversion would require puppeteer/wkhtmltopdf)
-      const reportDir = path.join(__dirname, 'reports', projectId);
-      if (!fs.existsSync(reportDir)) {
-        fs.mkdirSync(reportDir, { recursive: true });
+      // For now, save as HTML (PDF conversion would require puppeteer/wkhtmltopdf).
+      // Sanitize the projectId so a caller cannot traverse out of the
+      // reports directory via "../" segments.
+      const safeProjectId = safePathSegment(projectId);
+      const reportsRoot = path.resolve(__dirname, 'reports');
+      const reportDir = path.resolve(reportsRoot, safeProjectId);
+      if (!reportDir.startsWith(reportsRoot + path.sep) && reportDir !== reportsRoot) {
+        throw new Error(`Refusing to write report outside reports directory: ${reportDir}`);
       }
-      
+      fs.mkdirSync(reportDir, { recursive: true });
+
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const reportPath = path.join(reportDir, `compliance-report-${timestamp}.html`);
       

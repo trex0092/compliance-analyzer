@@ -23,6 +23,35 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
+// HTML-escape every operator-controlled value before it hits the
+// report template. Without this, a task title or project name
+// containing HTML would corrupt the generated report and enable
+// injection into the emailed body.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Safe percentage helper to avoid NaN when the denominator is zero
+// (which happens for empty projects).
+function pct(numerator, denominator, digits = 1) {
+  if (!denominator || denominator <= 0) return (0).toFixed(digits);
+  return ((numerator / denominator) * 100).toFixed(digits);
+}
+
+// Clamp a filesystem path segment so a caller-supplied projectId
+// cannot traverse out of the reports directory.
+function safePathSegment(value, fallback = 'unknown') {
+  const raw = String(value == null ? '' : value);
+  const cleaned = raw.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 128);
+  return cleaned || fallback;
+}
+
 class DailyComplianceReportSystem {
   constructor(config) {
     this.config = config;
@@ -145,17 +174,30 @@ class DailyComplianceReportSystem {
     const reportDate = new Date();
     const reportId = `compliance-report-${project.id}-${reportDate.toISOString().split('T')[0]}`;
 
-    // Calculate additional metrics
-    const criticalTasks = tasks.filter(t => this.calculateDaysOverdue(t) > 30);
-    const highRiskTasks = tasks.filter(t => this.calculateDaysOverdue(t) > 14 && this.calculateDaysOverdue(t) <= 30);
-    const mediumRiskTasks = tasks.filter(t => this.calculateDaysOverdue(t) > 7 && this.calculateDaysOverdue(t) <= 14);
+    // Precompute daysOverdue once per task to avoid re-parsing the
+    // due date in every filter, sort and percentage call.
+    const annotatedTasks = tasks.map(t => ({
+      task: t,
+      daysOverdue: this.calculateDaysOverdue(t),
+    }));
 
-    // Generate risk matrix
+    const criticalTasks = annotatedTasks.filter(x => x.daysOverdue > 30).map(x => x.task);
+    const highRiskTasks = annotatedTasks.filter(x => x.daysOverdue > 14 && x.daysOverdue <= 30).map(x => x.task);
+    const mediumRiskTasks = annotatedTasks.filter(x => x.daysOverdue > 7 && x.daysOverdue <= 14).map(x => x.task);
+    // "Low" means "overdue 1-7 days", not "every remaining task".
+    // The old `tasks.length - critical - high - medium` formula
+    // silently included completed and not-yet-due tasks, so the four
+    // buckets did not add up to the overdue total elsewhere in the
+    // report.
+    const lowRiskTasks = annotatedTasks
+      .filter(x => x.daysOverdue > 0 && x.daysOverdue <= 7)
+      .map(x => x.task);
+
     const riskMatrix = {
       critical: criticalTasks.length,
       high: highRiskTasks.length,
       medium: mediumRiskTasks.length,
-      low: tasks.length - criticalTasks.length - highRiskTasks.length - mediumRiskTasks.length,
+      low: lowRiskTasks.length,
     };
 
     // Get historical data for trend analysis
@@ -206,7 +248,7 @@ class DailyComplianceReportSystem {
       riskMatrix: {
         critical: {
           count: riskMatrix.critical,
-          percentage: ((riskMatrix.critical / tasks.length) * 100).toFixed(1),
+          percentage: pct(riskMatrix.critical, tasks.length),
           tasks: criticalTasks.slice(0, 5).map(t => ({
             id: t.id,
             title: t.title,
@@ -216,7 +258,7 @@ class DailyComplianceReportSystem {
         },
         high: {
           count: riskMatrix.high,
-          percentage: ((riskMatrix.high / tasks.length) * 100).toFixed(1),
+          percentage: pct(riskMatrix.high, tasks.length),
           tasks: highRiskTasks.slice(0, 5).map(t => ({
             id: t.id,
             title: t.title,
@@ -226,7 +268,7 @@ class DailyComplianceReportSystem {
         },
         medium: {
           count: riskMatrix.medium,
-          percentage: ((riskMatrix.medium / tasks.length) * 100).toFixed(1),
+          percentage: pct(riskMatrix.medium, tasks.length),
           tasks: mediumRiskTasks.slice(0, 3).map(t => ({
             id: t.id,
             title: t.title,
@@ -236,7 +278,7 @@ class DailyComplianceReportSystem {
         },
         low: {
           count: riskMatrix.low,
-          percentage: ((riskMatrix.low / tasks.length) * 100).toFixed(1),
+          percentage: pct(riskMatrix.low, tasks.length),
         },
       },
 
@@ -408,17 +450,19 @@ class DailyComplianceReportSystem {
   identifyTopIssues(tasks, metrics) {
     const issues = [];
 
-    // Identify most overdue tasks
+    // Precompute daysOverdue so the sort comparator and loop below
+    // don't each re-parse the due date per task.
     const mostOverdue = tasks
       .filter(t => t.status !== 'completed')
-      .sort((a, b) => this.calculateDaysOverdue(b) - this.calculateDaysOverdue(a))
+      .map(t => ({ task: t, daysOverdue: this.calculateDaysOverdue(t) }))
+      .sort((a, b) => b.daysOverdue - a.daysOverdue)
       .slice(0, 5);
 
-    for (const task of mostOverdue) {
+    for (const { task, daysOverdue } of mostOverdue) {
       issues.push({
         issue: `Task overdue: ${task.title}`,
-        daysOverdue: this.calculateDaysOverdue(task),
-        priority: this.calculateDaysOverdue(task) > 30 ? 'CRITICAL' : 'HIGH',
+        daysOverdue,
+        priority: daysOverdue > 30 ? 'CRITICAL' : 'HIGH',
         assignee: task.assignee_id,
       });
     }
@@ -557,22 +601,28 @@ class DailyComplianceReportSystem {
       }
     }
 
-    // Calculate percentages and sort by performance
+    // Calculate percentages and sort by performance. Keep a numeric
+    // copy of the rate for the sort so two members with e.g. 9.9%
+    // vs 10.1% don't get compared lexicographically via their
+    // toFixed-derived strings.
     const performance = [];
     for (const member in teamMembers) {
       const tm = teamMembers[member];
-      const completionRate = ((tm.completed / tm.total) * 100).toFixed(1);
+      const rateNum = tm.total > 0 ? (tm.completed / tm.total) * 100 : 0;
       performance.push({
         member,
         total: tm.total,
         completed: tm.completed,
         inProgress: tm.inProgress,
         overdue: tm.overdue,
-        completionRate,
+        completionRate: rateNum.toFixed(1),
+        _rate: rateNum,
       });
     }
 
-    return performance.sort((a, b) => b.completionRate - a.completionRate);
+    return performance
+      .sort((a, b) => b._rate - a._rate)
+      .map(({ _rate, ...row }) => row);
   }
 
   /**
@@ -688,12 +738,15 @@ class DailyComplianceReportSystem {
     const span = this.tracer.startSpan('save_report');
 
     try {
-      const reportsDir = path.join(process.cwd(), 'reports', projectId);
-      
-      // Create directory if it doesn't exist
-      if (!fs.existsSync(reportsDir)) {
-        fs.mkdirSync(reportsDir, { recursive: true });
+      // Sanitize projectId so an external caller cannot escape the
+      // reports root via "../" segments.
+      const safeProjectId = safePathSegment(projectId);
+      const reportsRoot = path.resolve(process.cwd(), 'reports');
+      const reportsDir = path.resolve(reportsRoot, safeProjectId);
+      if (!reportsDir.startsWith(reportsRoot + path.sep) && reportsDir !== reportsRoot) {
+        throw new Error(`Refusing to write report outside reports directory: ${reportsDir}`);
       }
+      fs.mkdirSync(reportsDir, { recursive: true });
 
       const fileName = `compliance-report-${report.reportDate.toISOString().split('T')[0]}.json`;
       const filePath = path.join(reportsDir, fileName);
@@ -722,12 +775,28 @@ class DailyComplianceReportSystem {
    * Generate HTML report
    */
   generateHTMLReport(report) {
+    // Every operator-controlled string is escaped before it lands in
+    // the template. Asana project names, task titles, recommendation
+    // text and next-step actions are all externally editable, so any
+    // one of them could inject markup or a <script> that survives
+    // the email client if left raw.
+    const summary = report.executiveSummary || {};
+    const metrics = report.metrics || {};
+    const risk = report.riskMatrix || {
+      critical: { count: 0, percentage: '0.0' },
+      high: { count: 0, percentage: '0.0' },
+      medium: { count: 0, percentage: '0.0' },
+      low: { count: 0, percentage: '0.0' },
+    };
+    const trend = report.trend || {};
+    const status = String(summary.overallStatus || 'UNKNOWN').toLowerCase();
+    const safeStatusClass = status.replace(/[^a-z-]/g, '');
     return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>${report.executiveSummary.title}</title>
+  <title>${escapeHtml(summary.title)}</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -803,29 +872,29 @@ class DailyComplianceReportSystem {
 </head>
 <body>
   <div class="header">
-    <h1>${report.executiveSummary.title}</h1>
-    <p>Generated: ${report.executiveSummary.date}</p>
-    <p>Project: ${report.projectName}</p>
+    <h1>${escapeHtml(summary.title)}</h1>
+    <p>Generated: ${escapeHtml(summary.date)}</p>
+    <p>Project: ${escapeHtml(report.projectName)}</p>
   </div>
 
   <div class="section">
     <h2>Executive Summary</h2>
-    <p>Overall Status: <strong class="status-${report.executiveSummary.overallStatus.toLowerCase()}">${report.executiveSummary.overallStatus}</strong></p>
-    
+    <p>Overall Status: <strong class="status-${safeStatusClass}">${escapeHtml(summary.overallStatus)}</strong></p>
+
     <div class="metric">
-      <div class="metric-value">${report.metrics.complianceRate}%</div>
+      <div class="metric-value">${escapeHtml(metrics.complianceRate)}%</div>
       <div class="metric-label">Compliance Rate</div>
     </div>
     <div class="metric">
-      <div class="metric-value">${report.metrics.healthScore}</div>
+      <div class="metric-value">${escapeHtml(metrics.healthScore)}</div>
       <div class="metric-label">Health Score</div>
     </div>
     <div class="metric">
-      <div class="metric-value">${report.metrics.riskScore}%</div>
+      <div class="metric-value">${escapeHtml(metrics.riskScore)}%</div>
       <div class="metric-label">Risk Score</div>
     </div>
     <div class="metric">
-      <div class="metric-value">${report.metrics.completedTasks}/${report.metrics.totalTasks}</div>
+      <div class="metric-value">${escapeHtml(metrics.completedTasks)}/${escapeHtml(metrics.totalTasks)}</div>
       <div class="metric-label">Tasks Completed</div>
     </div>
   </div>
@@ -840,44 +909,47 @@ class DailyComplianceReportSystem {
       </tr>
       <tr class="risk-critical">
         <td>Critical (30+ days)</td>
-        <td>${report.riskMatrix.critical.count}</td>
-        <td>${report.riskMatrix.critical.percentage}%</td>
+        <td>${escapeHtml(risk.critical.count)}</td>
+        <td>${escapeHtml(risk.critical.percentage)}%</td>
       </tr>
       <tr class="risk-high">
         <td>High (14-29 days)</td>
-        <td>${report.riskMatrix.high.count}</td>
-        <td>${report.riskMatrix.high.percentage}%</td>
+        <td>${escapeHtml(risk.high.count)}</td>
+        <td>${escapeHtml(risk.high.percentage)}%</td>
       </tr>
       <tr class="risk-medium">
         <td>Medium (7-13 days)</td>
-        <td>${report.riskMatrix.medium.count}</td>
-        <td>${report.riskMatrix.medium.percentage}%</td>
+        <td>${escapeHtml(risk.medium.count)}</td>
+        <td>${escapeHtml(risk.medium.percentage)}%</td>
       </tr>
       <tr class="risk-low">
         <td>Low (0-6 days)</td>
-        <td>${report.riskMatrix.low.count}</td>
-        <td>${report.riskMatrix.low.percentage}%</td>
+        <td>${escapeHtml(risk.low.count)}</td>
+        <td>${escapeHtml(risk.low.percentage)}%</td>
       </tr>
     </table>
   </div>
 
   <div class="section">
     <h2>Trend Analysis</h2>
-    <p>Direction: <strong>${report.trend.direction}</strong></p>
-    <p>Change: ${report.trend.changePercentage}% (Previous: ${report.trend.previousRate}%, Current: ${report.trend.currentRate}%)</p>
-    <p>30-Day Forecast: ${report.trend.forecast30Days}%</p>
-    <p>Analysis: ${report.trend.analysis}</p>
+    <p>Direction: <strong>${escapeHtml(trend.direction)}</strong></p>
+    <p>Change: ${escapeHtml(trend.changePercentage)}% (Previous: ${escapeHtml(trend.previousRate)}%, Current: ${escapeHtml(trend.currentRate)}%)</p>
+    <p>30-Day Forecast: ${escapeHtml(trend.forecast30Days)}%</p>
+    <p>Analysis: ${escapeHtml(trend.analysis)}</p>
   </div>
 
   <div class="section">
     <h2>Recommendations</h2>
-    ${report.recommendations.map(rec => `
-      <div class="recommendation ${rec.priority.toLowerCase()}">
-        <strong>[${rec.priority}] ${rec.category}</strong><br>
-        ${rec.recommendation}<br>
-        <em>Action: ${rec.action}</em>
+    ${(report.recommendations || []).map(rec => {
+      const priority = String(rec.priority || '').toLowerCase().replace(/[^a-z]/g, '');
+      return `
+      <div class="recommendation ${priority}">
+        <strong>[${escapeHtml(rec.priority)}] ${escapeHtml(rec.category)}</strong><br>
+        ${escapeHtml(rec.recommendation)}<br>
+        <em>Action: ${escapeHtml(rec.action)}</em>
       </div>
-    `).join('')}
+    `;
+    }).join('')}
   </div>
 
   <div class="section">
@@ -888,11 +960,11 @@ class DailyComplianceReportSystem {
         <th>Priority</th>
         <th>Details</th>
       </tr>
-      ${report.topIssues.map(issue => `
+      ${(report.topIssues || []).map(issue => `
         <tr>
-          <td>${issue.issue}</td>
-          <td>${issue.priority}</td>
-          <td>${issue.daysOverdue ? issue.daysOverdue + ' days overdue' : issue.count ? issue.count + ' items' : ''}</td>
+          <td>${escapeHtml(issue.issue)}</td>
+          <td>${escapeHtml(issue.priority)}</td>
+          <td>${escapeHtml(issue.daysOverdue ? issue.daysOverdue + ' days overdue' : issue.count ? issue.count + ' items' : '')}</td>
         </tr>
       `).join('')}
     </table>
@@ -900,17 +972,17 @@ class DailyComplianceReportSystem {
 
   <div class="section">
     <h2>Next Steps</h2>
-    ${report.nextSteps.map(step => `
-      <h3>${step.timeframe}</h3>
+    ${(report.nextSteps || []).map(step => `
+      <h3>${escapeHtml(step.timeframe)}</h3>
       <ul>
-        ${step.actions.map(action => `<li>${action}</li>`).join('')}
+        ${(step.actions || []).map(action => `<li>${escapeHtml(action)}</li>`).join('')}
       </ul>
     `).join('')}
   </div>
 
   <div class="section" style="text-align: center; color: #666; font-size: 12px;">
     <p>This report was automatically generated by ASANA Brain Compliance Intelligence System</p>
-    <p>Generated: ${new Date().toISOString()}</p>
+    <p>Generated: ${escapeHtml(new Date().toISOString())}</p>
   </div>
 </body>
 </html>
@@ -1068,11 +1140,26 @@ class DailyComplianceReportSystem {
    */
   async sendAsanaReport(report) {
     try {
-      // Create a task in Asana with the report
+      // Asana's createTask accepts `notes` / `html_notes`, not
+      // `description` — passing `description` silently drops the
+      // body. Keep the notes compact so the payload always fits
+      // inside Asana's field limit; the full JSON is attached
+      // separately via email.
+      const summary = report.executiveSummary || {};
+      const metrics = report.metrics || {};
+      const notes = [
+        `Daily Compliance Report — ${report.projectName}`,
+        `Generated: ${report.generatedAt && report.generatedAt.toISOString ? report.generatedAt.toISOString() : ''}`,
+        `Overall status: ${summary.overallStatus}`,
+        `Compliance rate: ${metrics.complianceRate}%`,
+        `Health score: ${metrics.healthScore}`,
+        `Risk score: ${metrics.riskScore}%`,
+      ].join('\n');
+
       const task = await this.asanaClient.createTask({
         projects: [report.projectId],
         name: `Daily Compliance Report - ${report.reportDate.toLocaleDateString()}`,
-        description: JSON.stringify(report, null, 2),
+        notes,
         custom_fields: {
           'Report Type': 'Daily Compliance',
           'Compliance Rate': report.metrics.complianceRate,
