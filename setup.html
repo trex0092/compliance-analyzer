@@ -291,6 +291,42 @@
     <div class="output" id="verify-output">(click verify to check)</div>
   </div>
 
+  <!-- Generate MFA seed (one-time, replaces terminal openssl step) -->
+  <div class="step">
+    <h2>Generate MFA seed (one-time)</h2>
+    <p class="muted">
+      Click below to generate a new 20-byte TOTP seed in your browser
+      using <code>crypto.getRandomValues</code>. The seed is shown
+      ONCE — copy it to:
+    </p>
+    <ol class="muted" style="margin-left:1.2em">
+      <li>Netlify env var <code>SETUP_MFA_TOTP_SECRET</code> (all scopes) and redeploy.</li>
+      <li>Your authenticator app (1Password, Authy, Google Authenticator, Bitwarden) — manual entry, SHA1, 6 digits, 30 s.</li>
+      <li>A password-manager secure note as an offline backup.</li>
+    </ol>
+    <p class="muted">
+      <strong>Do not screenshot this page.</strong> Do not paste the
+      seed into email, Slack, or any log. The seed is not persisted;
+      refresh or navigate away and it is gone.
+    </p>
+    <div class="row">
+      <button class="primary" id="btn-generate-mfa-seed">🔐 Generate MFA seed</button>
+      <span id="mfa-seed-status"></span>
+    </div>
+    <div id="mfa-seed-block" style="display:none; margin-top:12px">
+      <label>Base32 seed (paste into Netlify env + authenticator app)</label>
+      <input type="text" id="mfa-seed-output" readonly style="font-family:monospace">
+      <div class="row" style="margin-top:6px">
+        <button class="copy-btn" id="btn-copy-mfa-seed">Copy seed</button>
+      </div>
+      <label style="margin-top:12px">otpauth:// URL (tap on mobile to auto-enrol)</label>
+      <input type="text" id="mfa-seed-otpauth" readonly style="font-family:monospace">
+      <div class="row" style="margin-top:6px">
+        <button class="copy-btn" id="btn-copy-mfa-otpauth">Copy otpauth URL</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MFA (required for Steps 7, 8, 9) -->
   <div class="step">
     <h2>MFA — 6-digit code (required for Steps 7, 8, 9)</h2>
