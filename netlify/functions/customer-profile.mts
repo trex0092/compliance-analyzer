@@ -181,6 +181,31 @@ interface ProfileStore {
   get(id: string): Promise<CustomerProfileV2 | null>;
   set(id: string, profile: CustomerProfileV2): Promise<void>;
   tombstone(id: string, payload: { reason: string; tombstonedAt: string }): Promise<void>;
+  /**
+   * Atomic compare-and-swap update. Reads the current profile (or
+   * null if absent), hands it to `transform`, and writes the result
+   * back under a CAS precondition — retrying on conflict so two
+   * concurrent patches cannot silently overwrite each other's
+   * field changes. `transform` returning null aborts the update
+   * (for 404 on missing profile).
+   *
+   * Implementations that can't do real CAS (in-memory test stubs,
+   * older SDKs) may degrade to a plain get → transform → set; the
+   * production blob-backed impl uses Netlify Blobs
+   * `onlyIfMatch`.
+   *
+   * Returns:
+   *   { ok: true, profile } — update landed
+   *   { ok: false, notFound: true } — transform returned null
+   *   { ok: false, contention: true } — all CAS attempts lost
+   */
+  casUpdate?(
+    id: string,
+    transform: (existing: CustomerProfileV2 | null) => CustomerProfileV2 | null,
+  ): Promise<
+    | { ok: true; profile: CustomerProfileV2 }
+    | { ok: false; notFound?: boolean; contention?: boolean }
+  >;
 }
 
 function makeNetlifyBlobStore(): ProfileStore {
@@ -214,6 +239,57 @@ function makeNetlifyBlobStore(): ProfileStore {
         });
       }
       await store.delete(`profile/${id}.json`);
+    },
+    async casUpdate(id, transform) {
+      const MAX_ATTEMPTS = 5;
+      const key = `profile/${id}.json`;
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        // Read with etag. Fall back to a plain get if
+        // getWithMetadata is unavailable (older SDK).
+        let existing: CustomerProfileV2 | null = null;
+        let etag: string | null = null;
+        try {
+          const withMeta: unknown =
+            typeof (store as unknown as { getWithMetadata?: unknown }).getWithMetadata === 'function'
+              ? await (store as unknown as {
+                  getWithMetadata: (k: string, o: unknown) => Promise<{ data: unknown; etag?: string }>;
+                }).getWithMetadata(key, { type: 'json' })
+              : null;
+          if (withMeta && typeof withMeta === 'object' && 'data' in (withMeta as Record<string, unknown>)) {
+            const tuple = withMeta as { data: CustomerProfileV2 | null; etag?: string };
+            existing = tuple.data ?? null;
+            etag = tuple.etag ?? null;
+          } else {
+            existing = (await store.get(key, { type: 'json' })) as CustomerProfileV2 | null;
+          }
+        } catch {
+          existing = (await store.get(key, { type: 'json' })) as CustomerProfileV2 | null;
+        }
+
+        const next = transform(existing);
+        if (next === null) return { ok: false, notFound: true };
+
+        try {
+          const opts = etag ? { onlyIfMatch: etag } : { onlyIfNew: true };
+          const res: unknown = await (store as unknown as {
+            setJSON: (k: string, v: unknown, o?: unknown) => Promise<unknown>;
+          }).setJSON(key, next, opts);
+          const landed =
+            res == null
+              ? true
+              : typeof res === 'object' && 'modified' in (res as Record<string, unknown>)
+                ? (res as { modified: boolean }).modified === true
+                : res !== false;
+          if (landed) return { ok: true, profile: next };
+          // else CAS conflict — loop and re-read.
+        } catch {
+          // SDK without CAS support — fall back to plain write and
+          // treat as landed. Best-effort.
+          await store.setJSON(key, next);
+          return { ok: true, profile: next };
+        }
+      }
+      return { ok: false, contention: true };
     },
   };
 }
@@ -322,29 +398,89 @@ export async function handleUpdate(
   req: UpdateRequest,
   deps: HandlerDeps
 ): Promise<{ status: number; body: unknown }> {
-  const existing = await deps.store.get(req.id);
-  if (!existing) return { status: 404, body: { ok: false, error: 'not_found', id: req.id } };
+  // Build the merged profile inside the transform so it is
+  // recomputed on every CAS retry — picking up any fields another
+  // writer added since we first read the record. Two concurrent
+  // patches to the same customer no longer silently overwrite
+  // each other's field changes (FDL Art.24 audit-chain integrity).
+  let validationReport: ReturnType<typeof validateCustomerProfile> | null = null;
 
-  // Merge the patch, but ALWAYS preserve id + createdAt +
-  // schemaVersion (these are write-once).
-  const merged: CustomerProfileV2 = {
-    ...existing,
-    ...req.patch,
-    id: existing.id,
-    schemaVersion: 2,
-    createdAt: existing.createdAt,
-    lastReviewedAt: deps.nowIso,
-    lastReviewerUserId: deps.userId,
+  const transform = (
+    existing: CustomerProfileV2 | null,
+  ): CustomerProfileV2 | null => {
+    if (!existing) return null;
+    const merged: CustomerProfileV2 = {
+      ...existing,
+      ...req.patch,
+      id: existing.id,
+      schemaVersion: 2,
+      createdAt: existing.createdAt,
+      lastReviewedAt: deps.nowIso,
+      lastReviewerUserId: deps.userId,
+    };
+    // Validation uses the latest merged record — if the
+    // concurrent writer added a field that conflicts with our
+    // patch, the second-round validation will catch it instead
+    // of silently losing state.
+    validationReport = validateCustomerProfile(merged);
+    if (!validationReport.ok) {
+      // Abort the CAS loop by returning null — the handler below
+      // surfaces 422 with the failed report.
+      return null;
+    }
+    return merged;
   };
-  const report = validateCustomerProfile(merged);
-  if (!report.ok) {
+
+  if (typeof deps.store.casUpdate === 'function') {
+    const result = await deps.store.casUpdate(req.id, transform);
+    if (!result.ok) {
+      if (validationReport && !validationReport.ok) {
+        return {
+          status: 422,
+          body: { ok: false, error: 'validation_failed', report: validationReport },
+        };
+      }
+      if (result.contention) {
+        return {
+          status: 503,
+          body: {
+            ok: false,
+            error: 'profile_write_contention',
+            message: 'Another update landed concurrently; please retry.',
+          },
+        };
+      }
+      return { status: 404, body: { ok: false, error: 'not_found', id: req.id } };
+    }
     return {
-      status: 422,
-      body: { ok: false, error: 'validation_failed', report },
+      status: 200,
+      body: {
+        ok: true,
+        profile: result.profile,
+        warnings: validationReport?.warningCount ?? 0,
+      },
     };
   }
+
+  // Fallback for stores without CAS (test stubs). Same semantics
+  // as before — no concurrency protection, but unchanged behaviour.
+  const existing = await deps.store.get(req.id);
+  if (!existing) return { status: 404, body: { ok: false, error: 'not_found', id: req.id } };
+  const merged = transform(existing);
+  if (!merged) {
+    if (validationReport && !validationReport.ok) {
+      return {
+        status: 422,
+        body: { ok: false, error: 'validation_failed', report: validationReport },
+      };
+    }
+    return { status: 404, body: { ok: false, error: 'not_found', id: req.id } };
+  }
   await deps.store.set(merged.id, merged);
-  return { status: 200, body: { ok: true, profile: merged, warnings: report.warningCount } };
+  return {
+    status: 200,
+    body: { ok: true, profile: merged, warnings: validationReport?.warningCount ?? 0 },
+  };
 }
 
 export async function handleDelete(

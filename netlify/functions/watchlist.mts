@@ -91,6 +91,36 @@ async function loadFromStore(): Promise<SerialisedWatchlist> {
   return memoryStore ?? { version: 1, entries: [] };
 }
 
+// Read the watchlist along with its etag so the HTTP handler can do a
+// CAS write. Falls back to a plain load (no etag) when the SDK does
+// not expose getWithMetadata.
+async function loadFromStoreWithMetadata(): Promise<{
+  data: SerialisedWatchlist;
+  etag: string | null;
+}> {
+  try {
+    const store = getStore(BLOB_STORE_NAME);
+    const withMeta: unknown =
+      typeof (store as unknown as { getWithMetadata?: unknown }).getWithMetadata === 'function'
+        ? await (store as unknown as {
+            getWithMetadata: (key: string, opts: unknown) => Promise<{ data: unknown; etag?: string }>;
+          }).getWithMetadata(BLOB_KEY, { type: 'json' })
+        : null;
+    if (withMeta && typeof withMeta === 'object' && 'data' in (withMeta as Record<string, unknown>)) {
+      const tuple = withMeta as { data: SerialisedWatchlist | null; etag?: string };
+      const raw = tuple.data;
+      const etag = tuple.etag ?? null;
+      if (raw && typeof raw === 'object' && 'version' in raw && Array.isArray(raw.entries)) {
+        return { data: raw, etag };
+      }
+      return { data: { version: 1, entries: [] }, etag };
+    }
+  } catch {
+    /* fall through */
+  }
+  return { data: await loadFromStore(), etag: null };
+}
+
 async function saveToStore(data: SerialisedWatchlist): Promise<void> {
   try {
     const store = getStore(BLOB_STORE_NAME);
@@ -98,6 +128,32 @@ async function saveToStore(data: SerialisedWatchlist): Promise<void> {
   } catch {
     // Dev / local / Blobs unavailable — persist to process memory
     memoryStore = data;
+  }
+}
+
+// Conditional write. Returns true iff the CAS precondition held and
+// the blob was actually modified. Decodes all three Netlify Blobs
+// SDK return shapes (modern `{ modified: boolean }`, legacy void,
+// or `false`). On transport failure, falls back to the memory
+// store and returns true so local-dev callers never lose writes.
+async function saveToStoreCas(
+  data: SerialisedWatchlist,
+  etag: string | null,
+): Promise<boolean> {
+  try {
+    const store = getStore(BLOB_STORE_NAME);
+    const opts = etag ? { onlyIfMatch: etag } : { onlyIfNew: true };
+    const res: unknown = await (store as unknown as {
+      setJSON: (key: string, value: unknown, opts?: unknown) => Promise<unknown>;
+    }).setJSON(BLOB_KEY, data, opts);
+    if (res == null) return true;
+    if (typeof res === 'object' && 'modified' in (res as Record<string, unknown>)) {
+      return (res as { modified: boolean }).modified === true;
+    }
+    return res !== false;
+  } catch {
+    memoryStore = data;
+    return true;
   }
 }
 
@@ -257,40 +313,69 @@ export default async (req: Request, context: Context): Promise<Response> => {
     }
     const body = validation.body;
 
-    // Load current state
-    const current = await loadFromStore();
-    const wl = deserialiseWatchlist(current);
-
-    // Dispatch on action
+    // Dispatch on action. `add` and `remove` are read-modify-write
+    // on the same single-key blob, so they MUST use CAS — without
+    // it, two concurrent adds for different subjects both read the
+    // same snapshot and the second setJSON silently overwrites the
+    // first entry, silently dropping a watchlist subject (FDL
+    // Art.24 audit-chain gap). `replace` overwrites the whole blob
+    // unconditionally, which is the caller's intent, so no CAS.
+    const MAX_CAS_ATTEMPTS = 5;
     try {
-      if (body.action === 'add') {
-        // Reject duplicates with 409 Conflict
-        if (wl.entries.has(body.id)) {
-          return jsonResponse(
-            { ok: false, error: `subject "${body.id}" already exists in watchlist` },
-            { status: 409 }
-          );
-        }
-        const entry = addToWatchlist(wl, {
-          id: body.id,
-          subjectName: body.subjectName,
-          riskTier: body.riskTier,
-          metadata: body.metadata,
-        });
-        await saveToStore(serialiseWatchlist(wl));
-        return jsonResponse({ ok: true, action: 'add', entry, size: watchlistSize(wl) });
-      }
+      if (body.action === 'add' || body.action === 'remove') {
+        for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
+          const { data: current, etag } = await loadFromStoreWithMetadata();
+          const wl = deserialiseWatchlist(current);
 
-      if (body.action === 'remove') {
-        const removed = removeFromWatchlist(wl, body.id);
-        if (!removed) {
-          return jsonResponse(
-            { ok: false, error: `subject "${body.id}" not found in watchlist` },
-            { status: 404 }
-          );
+          if (body.action === 'add') {
+            if (wl.entries.has(body.id)) {
+              return jsonResponse(
+                { ok: false, error: `subject "${body.id}" already exists in watchlist` },
+                { status: 409 }
+              );
+            }
+            const entry = addToWatchlist(wl, {
+              id: body.id,
+              subjectName: body.subjectName,
+              riskTier: body.riskTier,
+              metadata: body.metadata,
+            });
+            const landed = await saveToStoreCas(serialiseWatchlist(wl), etag);
+            if (landed) {
+              return jsonResponse({
+                ok: true, action: 'add', entry, size: watchlistSize(wl),
+              });
+            }
+            // else: CAS conflict — loop and re-read.
+            continue;
+          }
+
+          // body.action === 'remove'
+          const removed = removeFromWatchlist(wl, body.id);
+          if (!removed) {
+            return jsonResponse(
+              { ok: false, error: `subject "${body.id}" not found in watchlist` },
+              { status: 404 }
+            );
+          }
+          const landed = await saveToStoreCas(serialiseWatchlist(wl), etag);
+          if (landed) {
+            return jsonResponse({
+              ok: true, action: 'remove', id: body.id, size: watchlistSize(wl),
+            });
+          }
+          continue;
         }
-        await saveToStore(serialiseWatchlist(wl));
-        return jsonResponse({ ok: true, action: 'remove', id: body.id, size: watchlistSize(wl) });
+        // All CAS attempts lost. Fail with 503 so the client
+        // retries; never silently drop the caller's mutation.
+        return jsonResponse(
+          {
+            ok: false,
+            error: 'watchlist_write_contention',
+            message: 'Another writer modified the watchlist concurrently; please retry.',
+          },
+          { status: 503, headers: { 'Retry-After': '1' } }
+        );
       }
 
       if (body.action === 'replace') {
