@@ -32,6 +32,10 @@ import { authenticate } from './middleware/auth.mts';
 import { checkRateLimit } from './middleware/rate-limit.mts';
 
 const ASANA_BASE_URL = 'https://app.asana.com/api/1.0';
+// Pathname of ASANA_BASE_URL, cached. Used by the normalisation-bypass
+// defence below to confirm that the URL parser did not collapse any
+// "../" segments after the allowlist check passed.
+const ASANA_BASE_PATH = new URL(ASANA_BASE_URL).pathname;
 const MAX_BODY_BYTES = 256 * 1024;
 const FETCH_TIMEOUT_MS = 30_000;
 
@@ -128,6 +132,25 @@ export default async (req: Request, context: Context): Promise<Response> => {
     return badRequest(`Path ${path} not in allowlist.`);
   }
 
+  // Defence in depth against path-normalisation bypass.
+  //
+  // The allowlist regexes use `[^/]+` segments, which happily match
+  // `..` or its URL-encoded form `%2e%2e`. The WHATWG URL parser
+  // collapses those segments when building the upstream URL, so e.g.
+  // `/tasks/..` slips past `/^\/tasks\/[^/]+$/` and then normalises
+  // to the API root `/api/1.0/` — an endpoint that was never
+  // allowlisted. Refuse any literal `..` sequence and any `%2e%2e`
+  // encoding before we hand the string to `new URL()`.
+  const lowered = path.toLowerCase();
+  if (
+    path.includes('..') ||
+    lowered.includes('%2e%2e') ||
+    lowered.includes('%2e.') ||
+    lowered.includes('.%2e')
+  ) {
+    return badRequest('Path must not contain parent-directory references.');
+  }
+
   // Build the upstream URL. We use new URL() so any caller-supplied
   // query smuggling via `path` is normalised.
   let target: URL;
@@ -138,6 +161,14 @@ export default async (req: Request, context: Context): Promise<Response> => {
   }
   if (target.origin !== new URL(ASANA_BASE_URL).origin) {
     return badRequest('Path must not change origin.');
+  }
+  // If the URL parser changed the pathname at all (e.g. resolved a
+  // normalisation we missed above, or collapsed consecutive slashes),
+  // refuse the request rather than forward to an endpoint the
+  // allowlist never vetted.
+  const expectedPath = ASANA_BASE_PATH + path.split('?')[0].split('#')[0];
+  if (target.pathname !== expectedPath) {
+    return badRequest('Path normalisation mismatch; refusing to forward.');
   }
 
   const upstreamHeaders: Record<string, string> = {
