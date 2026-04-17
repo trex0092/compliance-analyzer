@@ -834,6 +834,15 @@ function hydrateKeys() {
   // pick it up without a page reload.
   if (HAWKEYE_BRAIN_TOKEN_VALUE) {
     window.HAWKEYE_BRAIN_TOKEN = HAWKEYE_BRAIN_TOKEN_VALUE;
+    // Mirror to the 'auth.token' localStorage key that brain-boot.js,
+    // warroom-client.js and compliance-suite.js read via getToken().
+    // Without this mirror every /api/brain, /api/warroom/stream and
+    // /api/asana-toast call returns 401 "Invalid token" — the SPA
+    // stored the token under the legacy key but the callers read it
+    // from the canonical key.
+    try { localStorage.setItem('auth.token', HAWKEYE_BRAIN_TOKEN_VALUE); } catch (_) { /* storage may be disabled */ }
+  } else {
+    try { localStorage.removeItem('auth.token'); } catch (_) { /* ignore */ }
   }
   GDRIVE_CLIENT_ID = (saved.gdriveClientId || '').trim();
   GDRIVE_FOLDER_ID = (saved.gdriveFolderId || '').trim();
@@ -923,6 +932,12 @@ function updateKeys() {
     // Inject into window immediately so the toast stream poller +
     // Brain Console probe pick it up without a reload.
     window.HAWKEYE_BRAIN_TOKEN = HAWKEYE_BRAIN_TOKEN_VALUE;
+    // Also mirror to localStorage['auth.token'] — the canonical key
+    // that brain-boot.js, warroom-client.js and compliance-suite.js
+    // read via getToken(). Same reason as hydrateKeys(): without this
+    // line every /api/brain, /api/warroom/stream and /api/asana-toast
+    // call returns 401 "Invalid token".
+    try { localStorage.setItem('auth.token', HAWKEYE_BRAIN_TOKEN_VALUE); } catch (_) { /* storage may be disabled */ }
   }
   persistKeys();
 
