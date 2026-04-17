@@ -18,6 +18,7 @@ const ALL_IDS: TemplateId[] = [
   'policy_update',
   'weekly_digest',
   'breakglass',
+  'cdd_2026',
 ];
 
 describe('asanaTaskTemplateRegistry', () => {
@@ -30,8 +31,23 @@ describe('asanaTaskTemplateRegistry', () => {
     }
   });
 
-  it('listTemplates returns all 11 templates', () => {
+  it('listTemplates returns all 12 templates', () => {
     expect(listTemplates().length).toBe(ALL_IDS.length);
+  });
+
+  it('the cdd_2026 template has the 8 sections the MoE-style CDD form expects', () => {
+    const t = getTemplate('cdd_2026');
+    expect(t.sections.length).toBe(8);
+    expect(t.sections[0]).toMatch(/Customer Information/);
+    expect(t.sections[6]).toMatch(/Sign-off/);
+    expect(t.sections[7]).toMatch(/Version Control/);
+  });
+
+  it('the cdd_2026 template requires CO preparation before MD approval (four-eyes)', () => {
+    const t = getTemplate('cdd_2026');
+    const md = t.nodes.find((n) => n.id === 'md_approve_signoff')!;
+    expect(md.dependsOn).toContain('co_prepare_signoff');
+    expect(md.assigneeRole).not.toBe('co');
   });
 
   it('every template node references real template-internal ids in dependsOn', () => {
