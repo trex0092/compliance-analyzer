@@ -34,6 +34,12 @@ const JOBS_STORE = 'asana-skill-jobs';
 const AUDIT_STORE = 'asana-skill-audit';
 const ASANA_API_BASE = 'https://app.asana.com/api/1.0';
 
+// Poison-pill defence: after this many failed attempts, the job is
+// moved to a dead-letter slot and stops being retried every minute.
+// Five gives a ~5-minute window of natural retries for transient
+// Asana outages before we declare the job permanently poisoned.
+const MAX_ATTEMPTS = 5;
+
 interface SkillJob {
   jobId: string;
   storyGid?: string;
@@ -41,6 +47,11 @@ interface SkillJob {
   userGid?: string;
   userName?: string;
   enqueuedAtIso: string;
+  // attempts is undefined on freshly-enqueued jobs. The handler
+  // increments it every time a retryable error is recorded.
+  attempts?: number;
+  lastAttemptIso?: string;
+  lastErrorMessage?: string;
 }
 
 async function writeAudit(payload: Record<string, unknown>): Promise<void> {
@@ -68,11 +79,24 @@ async function asanaGet<T>(path: string, token: string): Promise<T | undefined> 
   return json.data;
 }
 
+interface AsanaPostResult<T> {
+  ok: boolean;
+  status: number;
+  data?: T;
+  errorSnippet?: string;
+}
+
+// Returns an ok/status envelope so callers can distinguish a real
+// transport/API failure (which should trigger a retry + audit entry)
+// from a successful post. The previous helper returned `undefined`
+// on any non-2xx, which the drain loop silently treated as success
+// and then deleted the job — losing the MLRO's reply on any 4xx/5xx
+// or network glitch.
 async function asanaPost<T>(
   path: string,
   token: string,
   body: unknown
-): Promise<T | undefined> {
+): Promise<AsanaPostResult<T>> {
   const res = await fetch(`${ASANA_API_BASE}${path}`, {
     method: 'POST',
     headers: {
@@ -82,9 +106,51 @@ async function asanaPost<T>(
     },
     body: JSON.stringify({ data: body }),
   });
-  if (!res.ok) return undefined;
+  if (!res.ok) {
+    let snippet: string | undefined;
+    try {
+      // Truncate to 240 chars so a chatty Asana error body cannot
+      // blow out the audit store.
+      snippet = (await res.text()).slice(0, 240);
+    } catch { /* snippet is best-effort */ }
+    return { ok: false, status: res.status, errorSnippet: snippet };
+  }
   const json = (await res.json()) as { data?: T };
-  return json.data;
+  return { ok: true, status: res.status, data: json.data };
+}
+
+async function requeueOrDeadLetter(
+  jobsStore: ReturnType<typeof getStore>,
+  key: string,
+  job: SkillJob,
+  errorMessage: string,
+): Promise<'retried' | 'dead_lettered'> {
+  const attempts = (job.attempts ?? 0) + 1;
+  const updated: SkillJob = {
+    ...job,
+    attempts,
+    lastAttemptIso: new Date().toISOString(),
+    lastErrorMessage: errorMessage.slice(0, 240),
+  };
+  if (attempts >= MAX_ATTEMPTS) {
+    // Move to dead-letter; the next cron tick will no longer see it
+    // under the `pending/` prefix that the drain loop lists.
+    const deadKey = `dead-letter/${job.jobId}.json`;
+    await jobsStore.setJSON(deadKey, updated);
+    await jobsStore.delete(key);
+    await writeAudit({
+      event: 'skill_job_dead_lettered',
+      jobId: job.jobId,
+      attempts,
+      lastError: updated.lastErrorMessage,
+      deadKey,
+    });
+    return 'dead_lettered';
+  }
+  // Re-save the job under its existing pending key so the attempts
+  // counter is preserved for the next tick.
+  await jobsStore.setJSON(key, updated);
+  return 'retried';
 }
 
 export default async (): Promise<Response> => {
@@ -112,6 +178,8 @@ export default async (): Promise<Response> => {
   let replied = 0;
   let unknown = 0;
   let errors = 0;
+  let retried = 0;
+  let deadLettered = 0;
 
   // Dynamic import so the cron cold-start stays cheap.
   const routerModule = await import('../../src/services/asanaCommentSkillRouter');
@@ -141,15 +209,26 @@ export default async (): Promise<Response> => {
       if (!routed.ok) {
         // Unknown skill or insufficient args — post a reply
         // explaining the error so the MLRO can fix their
-        // command.
+        // command. If the reply post fails, retry the whole
+        // job so the MLRO is not silently left without feedback.
         if (job.parentTaskGid) {
-          await asanaPost(
+          const postRes = await asanaPost(
             `/tasks/${encodeURIComponent(job.parentTaskGid)}/stories`,
             token,
             {
               text: `Skill error: ${routed.error}\n\nFDL Art.29 — do not share this reply with the subject.`,
             }
           );
+          if (!postRes.ok) {
+            const outcome = await requeueOrDeadLetter(
+              jobsStore, key, job,
+              `unknown-skill reply post failed: ${postRes.status} ${postRes.errorSnippet ?? ''}`,
+            );
+            if (outcome === 'dead_lettered') deadLettered++;
+            else retried++;
+            errors++;
+            continue;
+          }
           unknown++;
         }
         await jobsStore.delete(key);
@@ -157,29 +236,46 @@ export default async (): Promise<Response> => {
         continue;
       }
 
-      // Execute the stub and post the reply.
+      // Execute the stub and post the reply. If Asana rejects the
+      // post, the job is preserved with an incremented attempts
+      // counter — after MAX_ATTEMPTS it is moved to the dead-letter
+      // slot instead of retried forever, which previously pegged
+      // the shared Asana rate limit on any poison-pill job.
       if (routed.invocation && job.parentTaskGid) {
         const execResult = routerModule.buildStubExecution(routed.invocation);
-        await asanaPost(
+        const postRes = await asanaPost(
           `/tasks/${encodeURIComponent(job.parentTaskGid)}/stories`,
           token,
           { text: execResult.reply }
         );
+        if (!postRes.ok) {
+          const outcome = await requeueOrDeadLetter(
+            jobsStore, key, job,
+            `skill reply post failed: ${postRes.status} ${postRes.errorSnippet ?? ''}`,
+          );
+          if (outcome === 'dead_lettered') deadLettered++;
+          else retried++;
+          errors++;
+          continue;
+        }
         replied++;
       }
 
       await jobsStore.delete(key);
       drained++;
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const outcome = await requeueOrDeadLetter(jobsStore, key, job, message);
+      if (outcome === 'dead_lettered') deadLettered++;
+      else retried++;
       errors++;
       await writeAudit({
         event: 'skill_job_error',
         jobId: job.jobId,
-        error: err instanceof Error ? err.message : String(err),
+        error: message,
+        attempts: (job.attempts ?? 0) + 1,
+        outcome,
       });
-      // Leave the job in the queue for the next cron tick. If
-      // it fails ≥5 times we'd move it to a dead-letter store,
-      // but that's a future tightening.
     }
   }
 
@@ -189,6 +285,8 @@ export default async (): Promise<Response> => {
     replied,
     unknown,
     errors,
+    retried,
+    deadLettered,
   });
 
   return Response.json({
@@ -197,6 +295,8 @@ export default async (): Promise<Response> => {
     replied,
     unknown,
     errors,
+    retried,
+    deadLettered,
   });
 };
 
