@@ -78,7 +78,20 @@ async function setEntryCas(key: string, entry: RateLimitEntry, etag: string | nu
     // already wrote a newer value, the write fails and we retry.
     const opts: any = etag ? { onlyIfMatch: etag } : { onlyIfNew: true };
     const ok: any = await (store as any).setJSON(key, entry, opts);
-    // Older SDKs return void on success and throw on conflict.
+    // Modern @netlify/blobs returns `{ modified: boolean, etag?: string }`
+    // and signals a CAS conflict with `modified: false` rather than a
+    // thrown error. The previous `ok !== false` check treated that
+    // object as a successful write, silently defeating the CAS retry
+    // loop — under concurrency two lambdas reading the same etag both
+    // saw "wrote = true" and we persisted only one of their writes, so
+    // rate-limit counters under-counted and attackers could exceed
+    // the documented rate. Older SDKs returned plain `undefined` on
+    // success; we treat that as success for back-compat but require an
+    // explicit non-false `modified` for the modern shape.
+    if (ok == null) return true; // legacy SDK: no return value = success
+    if (typeof ok === 'object' && 'modified' in ok) {
+      return ok.modified === true;
+    }
     return ok !== false;
   } catch {
     memoryStore.set(key, entry);
