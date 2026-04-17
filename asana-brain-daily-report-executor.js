@@ -19,9 +19,34 @@
  * Date: May 1, 2026
  */
 
-const cron = require('node-cron');
-const nodemailer = require('nodemailer');
-const axios = require('axios');
+// Lazy loaders for optional runtime deps — see the twin comment in
+// daily-compliance-report-system.js for the rationale. These three
+// packages are not declared in package.json, so resolving them at
+// require-time crashes any consumer without them installed.
+let _cron;
+function getCron() {
+  if (_cron) return _cron;
+  try { _cron = require('node-cron'); } catch (err) {
+    throw new Error('node-cron is required for scheduleDaily(). Install with `npm install node-cron`.');
+  }
+  return _cron;
+}
+let _nodemailer;
+function getNodemailer() {
+  if (_nodemailer) return _nodemailer;
+  try { _nodemailer = require('nodemailer'); } catch (err) {
+    throw new Error('nodemailer is required for email distribution. Install with `npm install nodemailer`.');
+  }
+  return _nodemailer;
+}
+let _axios;
+function getAxios() {
+  if (_axios) return _axios;
+  try { _axios = require('axios'); } catch (err) {
+    throw new Error('axios is required for Slack webhook distribution. Install with `npm install axios`.');
+  }
+  return _axios;
+}
 const fs = require('fs');
 const path = require('path');
 
@@ -62,17 +87,20 @@ class AsanaBrainDailyReportExecutor {
     this.asanaClient = config.asanaClient;
     this.dashboardService = config.dashboardService;
     this.notificationService = config.notificationService;
-    this.emailTransporter = this.initializeEmailTransporter();
+    // Email transporter is created on first use so merely requiring
+    // this file never crashes when nodemailer is absent.
+    this.emailTransporter = null;
     this.reportSchedules = new Map();
     this.executionHistory = [];
     this.status = 'INITIALIZED';
   }
 
   /**
-   * Initialize email transporter
+   * Initialize email transporter. Retained for back-compat; prefer
+   * `getEmailTransporter()` which memoises.
    */
   initializeEmailTransporter() {
-    return nodemailer.createTransport({
+    return getNodemailer().createTransport({
       host: this.config.emailConfig?.host || 'smtp.gmail.com',
       port: this.config.emailConfig?.port || 587,
       secure: this.config.emailConfig?.secure || false,
@@ -81,6 +109,13 @@ class AsanaBrainDailyReportExecutor {
         pass: this.config.emailConfig?.password,
       },
     });
+  }
+
+  getEmailTransporter() {
+    if (!this.emailTransporter) {
+      this.emailTransporter = this.initializeEmailTransporter();
+    }
+    return this.emailTransporter;
   }
 
   /**
@@ -93,7 +128,7 @@ class AsanaBrainDailyReportExecutor {
       this.logger.info('Initializing ASANA Brain Daily Report Executor');
 
       // Verify email configuration
-      const emailValid = await this.emailTransporter.verify();
+      const emailValid = await this.getEmailTransporter().verify();
       if (!emailValid) {
         this.logger.warn('Email configuration may be invalid');
       }
@@ -180,7 +215,7 @@ class AsanaBrainDailyReportExecutor {
       }
 
       // Schedule at 8:00 AM daily
-      const schedule = cron.schedule('0 8 * * *', async () => {
+      const schedule = getCron().schedule('0 8 * * *', async () => {
         await this.executeReport(projectId, recipients);
       });
 
@@ -643,7 +678,7 @@ class AsanaBrainDailyReportExecutor {
         ],
       };
 
-      await this.emailTransporter.sendMail(mailOptions);
+      await this.getEmailTransporter().sendMail(mailOptions);
 
       this.logger.info('Email report sent', { recipients: recipients.length });
       return { success: true, recipients: recipients.length };
@@ -678,7 +713,7 @@ class AsanaBrainDailyReportExecutor {
       };
 
       for (const channel of slackChannels) {
-        await axios.post(channel, message);
+        await getAxios().post(channel, message);
       }
 
       this.logger.info('Slack report sent', { channels: slackChannels.length });

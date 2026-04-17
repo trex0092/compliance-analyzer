@@ -17,9 +17,37 @@
  * Date: May 1, 2026
  */
 
-const cron = require('node-cron');
-const nodemailer = require('nodemailer');
-const axios = require('axios');
+// Lazy loaders for optional runtime deps. These packages are NOT
+// declared in package.json because the module is scaffolding code
+// that the SPA bundle does not need. Loading them eagerly at
+// module-require time would crash every consumer that does not have
+// them installed (including the test harness). Instead we only
+// resolve them when the specific method that needs them is called,
+// and raise a clear error with install guidance if they are missing.
+let _cron;
+function getCron() {
+  if (_cron) return _cron;
+  try { _cron = require('node-cron'); } catch (err) {
+    throw new Error('node-cron is required for scheduleDaily(). Install with `npm install node-cron`.');
+  }
+  return _cron;
+}
+let _nodemailer;
+function getNodemailer() {
+  if (_nodemailer) return _nodemailer;
+  try { _nodemailer = require('nodemailer'); } catch (err) {
+    throw new Error('nodemailer is required for email distribution. Install with `npm install nodemailer`.');
+  }
+  return _nodemailer;
+}
+let _axios;
+function getAxios() {
+  if (_axios) return _axios;
+  try { _axios = require('axios'); } catch (err) {
+    throw new Error('axios is required for Slack webhook distribution. Install with `npm install axios`.');
+  }
+  return _axios;
+}
 const fs = require('fs');
 const path = require('path');
 
@@ -62,15 +90,19 @@ class DailyComplianceReportSystem {
     this.dashboardService = config.dashboardService;
     this.notificationService = config.notificationService;
     this.storageService = config.storageService;
-    this.emailTransporter = this.initializeEmailTransporter();
+    // Transporter is created on first use (see getEmailTransporter)
+    // so that importing this module never fails when nodemailer is
+    // absent — the dep is only needed when email distribution runs.
+    this.emailTransporter = null;
     this.reportSchedules = new Map();
   }
 
   /**
-   * Initialize email transporter for sending reports
+   * Initialize email transporter for sending reports. Retained for
+   * back-compat; prefer `getEmailTransporter()` which memoises.
    */
   initializeEmailTransporter() {
-    return nodemailer.createTransport({
+    return getNodemailer().createTransport({
       host: this.config.emailConfig?.host || 'smtp.gmail.com',
       port: this.config.emailConfig?.port || 587,
       secure: this.config.emailConfig?.secure || false,
@@ -79,6 +111,13 @@ class DailyComplianceReportSystem {
         pass: this.config.emailConfig?.password,
       },
     });
+  }
+
+  getEmailTransporter() {
+    if (!this.emailTransporter) {
+      this.emailTransporter = this.initializeEmailTransporter();
+    }
+    return this.emailTransporter;
   }
 
   /**
@@ -95,7 +134,7 @@ class DailyComplianceReportSystem {
       }
 
       // Schedule report generation at 8:00 AM daily
-      const schedule = cron.schedule('0 8 * * *', async () => {
+      const schedule = getCron().schedule('0 8 * * *', async () => {
         await this.generateAndDistributeReport(projectId, recipients);
       });
 
@@ -1049,7 +1088,7 @@ class DailyComplianceReportSystem {
         ],
       };
 
-      await this.emailTransporter.sendMail(mailOptions);
+      await this.getEmailTransporter().sendMail(mailOptions);
 
       this.logger.info('Email report sent', { recipients, count: recipients.length });
       return { success: true, recipients: recipients.length };
@@ -1106,7 +1145,7 @@ class DailyComplianceReportSystem {
       };
 
       for (const channel of slackChannels) {
-        await axios.post(channel, message);
+        await getAxios().post(channel, message);
       }
 
       this.logger.info('Slack report sent', { channels: slackChannels.length });

@@ -3,8 +3,18 @@
  * Generates and distributes automatic daily compliance reports
  */
 
-const cron = require('node-cron');
-const nodemailer = require('nodemailer');
+// Lazy loader for node-cron so requiring this module does not crash
+// in environments where the dep is not installed. nodemailer is
+// referenced only in a commented-out example below, so no loader is
+// needed for it.
+let _cron;
+function getCron() {
+  if (_cron) return _cron;
+  try { _cron = require('node-cron'); } catch (err) {
+    throw new Error('node-cron is required for scheduleDaily(). Install with `npm install node-cron`.');
+  }
+  return _cron;
+}
 
 class DailyComplianceReporter {
   constructor(asanaBrain, db, config = {}) {
@@ -44,7 +54,7 @@ class DailyComplianceReporter {
     // Cron: Run at specified time every day (0 minute, hour, *, *, *)
     const cronExpression = `${minute} ${hour} * * *`;
 
-    this.cronJob = cron.schedule(cronExpression, async () => {
+    this.cronJob = getCron().schedule(cronExpression, async () => {
       console.log('[Daily Reporter] 📅 Generating daily compliance report...');
       await this.generateAndDistributeReport();
     });
