@@ -187,9 +187,10 @@ class AsanaAPIClient {
 
       this.logger.debug('Making Asana API request', { endpoint, method: options.method });
 
-      // Simulate API call (in production, use fetch/axios)
+      // Simulate API call with proper response structure
+      const mockData = this.getMockData(endpoint);
       const response = {
-        data: this.getMockData(endpoint),
+        data: mockData.data || mockData,
         status: 200,
       };
 
@@ -249,11 +250,22 @@ class AsanaAPIClient {
 
   getMockData(endpoint) {
     // Mock data for testing
+    if (endpoint.includes('/tasks')) {
+      return {
+        data: [
+          { gid: '123456', name: 'Sample Task 1', status: 'open', risk_level: 'High' },
+          { gid: '123457', name: 'Sample Task 2', status: 'open', risk_level: 'Medium' },
+          { gid: '123458', name: 'Sample Task 3', status: 'completed', risk_level: 'Low' },
+        ]
+      };
+    }
     return {
-      gid: '123456',
-      name: 'Sample Task',
-      status: 'open',
-      risk_level: 'High',
+      data: {
+        gid: '123456',
+        name: 'Sample Task',
+        status: 'open',
+        risk_level: 'High',
+      }
     };
   }
 }
@@ -283,9 +295,26 @@ class DatabaseService {
     try {
       this.logger.debug('Executing query', { sql: sql.substring(0, 100) });
 
-      // Mock query execution
+      // Mock query execution with better data
+      let rows = [];
+      
+      if (sql.includes('SELECT')) {
+        if (sql.includes('COUNT(*)')) {
+          rows = [{ total: 10, count: 5, completed: 3, critical: 2 }];
+        } else if (sql.includes('compliance_tasks')) {
+          rows = [
+            { id: 1, title: 'Task 1', status: 'open', risk_level: 'High' },
+            { id: 2, title: 'Task 2', status: 'completed', risk_level: 'Low' },
+          ];
+        } else if (sql.includes('audit_trail')) {
+          rows = [{ id: 1, action: 'created', timestamp: new Date() }];
+        } else {
+          rows = [];
+        }
+      }
+
       const result = {
-        rows: [],
+        rows,
         insertId: Math.floor(Math.random() * 10000),
         affectedRows: 1,
       };
@@ -339,12 +368,21 @@ class AsanaTaskSyncEngine {
       this.logger.info('Starting full task sync', { projectId });
 
       const response = await this.asanaClient.getTasks(projectId);
-      const tasks = response.data || [];
+      let tasks = response.data || [];
+      
+      // Ensure tasks is always an array
+      if (!Array.isArray(tasks)) {
+        tasks = tasks.tasks || [];
+      }
 
       let synced = 0;
       for (const task of tasks) {
-        await this.syncTask(task);
-        synced++;
+        try {
+          await this.syncTask(task);
+          synced++;
+        } catch (error) {
+          this.logger.warn('Task sync failed', { taskId: task.gid || task.id, error: error.message });
+        }
       }
 
       this.lastSyncTime = new Date();
@@ -363,14 +401,26 @@ class AsanaTaskSyncEngine {
 
   async syncTask(taskData) {
     try {
+      // Handle both task objects and wrapped responses
+      const task = taskData.data || taskData;
+      const gid = task.gid || task.id || 'unknown';
+      const name = task.name || task.title || 'Untitled';
+      const description = task.description || '';
+      const status = task.status || 'open';
+
+      // Validate required fields
+      if (!gid || gid === 'unknown') {
+        throw new Error('Task must have gid or id');
+      }
+
       await this.db.query(
         'INSERT INTO compliance_tasks (asana_gid, title, description, status) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status)',
-        [taskData.gid, taskData.name, taskData.description, taskData.status]
+        [gid, name, description, status]
       );
 
       return { success: true };
     } catch (error) {
-      this.logger.warn('Task sync failed', { taskId: taskData.gid });
+      this.logger.warn('Task sync failed', { taskId: taskData?.gid || taskData?.id });
       throw error;
     }
   }
@@ -462,13 +512,18 @@ class RealTimeSyncScheduler {
         this.logger.error('Scheduled sync failed', { error: error.message });
       }
     }, this.interval);
+    
+    return this.timer;
   }
 
   stop() {
     if (this.timer) {
       clearInterval(this.timer);
+      this.timer = null;
       this.logger.info('Sync scheduler stopped');
+      return true;
     }
+    return false;
   }
 
   setInterval(milliseconds) {
