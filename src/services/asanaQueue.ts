@@ -4,10 +4,48 @@
  */
 
 import { createAsanaTask, isAsanaConfigured, type AsanaTaskPayload } from './asanaClient';
+import { tryAcquire, type TenantBucketState } from './asanaPerTenantRateLimit';
 
 const QUEUE_KEY = 'asana_retry_queue';
 const MAX_QUEUE_SIZE = 50;
 const MAX_RETRY_ATTEMPTS = 5;
+
+// ─── Phase 19 W-A wiring — per-tenant rate limit ────────────────────────────
+//
+// Before every createAsanaTask call, the retry queue checks a
+// tenant-keyed token bucket (see asanaPerTenantRateLimit.ts). If the
+// tenant has no tokens, the call is deferred to the next drain pass
+// and the rejection is logged for MLRO observability. This prevents
+// one tenant's burst from consuming the workspace-level rate budget
+// and 429-ing every other tenant.
+//
+// The bucket state is process-local (in-memory Map). Netlify functions
+// are short-lived, so bucket state effectively resets on cold start,
+// but the refill rate is continuous — a cold start with a new bucket
+// starts at full burst, which is correct behaviour for a first-hit
+// dispatch.
+//
+// Escape hatch: ASANA_RATE_LIMIT_DISABLED=1 disables the check. The
+// call proceeds without consulting the bucket. Default is ENABLED.
+//
+// tenantId resolution: QueueEntry carries an optional customerId
+// which maps to the tenant at the business layer. If neither is set
+// we fall back to 'default' so the bucket still applies (conservatively).
+
+const BUCKET_STATE: Map<string, TenantBucketState> = new Map();
+
+function rateLimitDisabled(): boolean {
+  const raw = typeof process !== 'undefined' ? process.env?.ASANA_RATE_LIMIT_DISABLED : undefined;
+  if (!raw) return false;
+  const v = String(raw).trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
+function tenantIdFor(entry: QueueEntry): string {
+  // Prefer customerId when present; otherwise use 'default' so one
+  // bucket applies to every un-tenanted dispatch.
+  return entry.customerId && entry.customerId.length > 0 ? entry.customerId : 'default';
+}
 
 export interface QueueEntry {
   id: string;
@@ -18,6 +56,12 @@ export interface QueueEntry {
   lastError: string;
   createdAt: string;
   lastAttemptAt?: string;
+  /**
+   * Optional tenant / customer identifier. When present it is used as
+   * the rate-limit bucket key so one tenant's burst cannot starve
+   * other tenants. When absent the bucket keyed on 'default' is used.
+   */
+  customerId?: string;
 }
 
 function readQueue(): QueueEntry[] {
@@ -94,6 +138,27 @@ export async function processRetryQueue(): Promise<{
   const remaining: QueueEntry[] = [];
 
   for (const entry of retryable) {
+    // Per-tenant rate limit gate. When enabled (default), a bucket
+    // rejection defers the entry to the next drain pass — the entry
+    // is NOT marked as an attempt and NOT counted as failed, so the
+    // retry budget is preserved. A warning is logged once per
+    // rate-limited dispatch so the MLRO dashboard can surface
+    // throttling without inferring it from 429 noise.
+    if (!rateLimitDisabled()) {
+      const bucketResult = tryAcquire(tenantIdFor(entry), BUCKET_STATE, Date.now());
+      if (!bucketResult.ok) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[asanaQueue] rate-limited tenant=${bucketResult.tenantId} ` +
+            `retryAfterMs=${bucketResult.retryAfterMs} ` +
+            `tokensAvailable=${bucketResult.tokensAvailable.toFixed(2)} ` +
+            `entryId=${entry.id}`
+        );
+        remaining.push(entry);
+        continue;
+      }
+    }
+
     entry.attempts++;
     entry.lastAttemptAt = new Date().toISOString();
 
