@@ -384,6 +384,45 @@
         color: var(--muted);
         font-size: 11px;
       }
+      .token-hint code {
+        font-family: 'DM Mono', monospace;
+        font-size: 10.5px;
+        color: var(--accent);
+      }
+      .token-row {
+        display: flex;
+        gap: 6px;
+        align-items: stretch;
+      }
+      .token-row input {
+        flex: 1;
+        min-width: 0;
+      }
+      .token-gen-btn {
+        padding: 0 12px;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .token-gen-btn:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .token-msg {
+        margin-top: 6px;
+        font-size: 11px;
+        color: var(--accent);
+        min-height: 14px;
+      }
+      .token-msg.err {
+        color: #ff6b6b;
+      }
       .stat {
         display: flex;
         gap: 10px;
@@ -1259,17 +1298,46 @@
     <div class="card" style="margin-top: 14px">
       <h2>Authentication <span class="tag">Required</span></h2>
       <label for="token">Hawkeye brain token</label>
-      <input
-        type="password"
-        id="token"
-        placeholder="Paste your HAWKEYE_BRAIN_TOKEN"
-        autocomplete="off"
-        spellcheck="false"
-      />
+      <div class="token-row">
+        <input
+          type="password"
+          id="token"
+          placeholder="Paste your HAWKEYE_BRAIN_TOKEN"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button
+          type="button"
+          id="tokenGenBtn"
+          class="token-gen-btn"
+          title="Generate a fresh 32-byte CSPRNG token (local only)"
+        >
+          Generate
+        </button>
+        <button
+          type="button"
+          id="tokenRevealBtn"
+          class="token-gen-btn token-reveal-btn"
+          title="Show / hide the token"
+        >
+          Show
+        </button>
+        <button
+          type="button"
+          id="tokenCopyBtn"
+          class="token-gen-btn"
+          title="Copy token to clipboard"
+        >
+          Copy
+        </button>
+      </div>
       <span class="token-hint"
-        >Saved locally in this browser only. Never sent anywhere except to your own compliance
-        API.</span
+        >Saved locally in this browser only. Never sent anywhere except to your own compliance API.
+        <b>Generate</b> produces a 64-char hex token using <code>window.crypto</code> &mdash; paste
+        the same string into <code>HAWKEYE_BRAIN_TOKEN</code> on Netlify (Site settings &rarr;
+        Environment variables) and redeploy.</span
       >
+      <div id="tokenMsg" class="token-msg"></div>
     </div>
 
     <!-- Data coverage contract ────────────────────────────────────── -->

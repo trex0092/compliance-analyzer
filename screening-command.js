@@ -54,6 +54,87 @@
   tokenInput.addEventListener('input', saveToken);
   window.addEventListener('beforeunload', saveToken);
 
+  // ─── Token generator / reveal / copy ─────────────────────────────
+  //
+  // Generates a 32-byte CSPRNG value via window.crypto.getRandomValues
+  // and formats it as 64 lowercase hex chars — the exact format the
+  // server's auth middleware expects (TOKEN_MIN=32, ^[a-f0-9]+$).
+  // Never leaves the browser. The user must paste the same value into
+  // HAWKEYE_BRAIN_TOKEN on Netlify and redeploy.
+  const tokenGenBtn = $('tokenGenBtn');
+  const tokenRevealBtn = $('tokenRevealBtn');
+  const tokenCopyBtn = $('tokenCopyBtn');
+  const tokenMsg = $('tokenMsg');
+
+  function setTokenMsg(text, isError) {
+    if (!tokenMsg) return;
+    tokenMsg.textContent = text || '';
+    tokenMsg.classList.toggle('err', !!isError);
+  }
+
+  function generateToken() {
+    if (!window.crypto || !window.crypto.getRandomValues) {
+      setTokenMsg(
+        'window.crypto unavailable in this browser — cannot generate a secure token.',
+        true
+      );
+      return;
+    }
+    const bytes = new Uint8Array(32);
+    window.crypto.getRandomValues(bytes);
+    let hex = '';
+    for (let i = 0; i < bytes.length; i++) {
+      hex += bytes[i].toString(16).padStart(2, '0');
+    }
+    tokenInput.value = hex;
+    saveToken();
+    setTokenMsg(
+      'New 64-char hex token generated + saved in this browser. Paste the same value into HAWKEYE_BRAIN_TOKEN on Netlify and redeploy.',
+      false
+    );
+  }
+
+  async function copyToken() {
+    const value = tokenInput.value.trim();
+    if (!value) {
+      setTokenMsg('Nothing to copy — token field is empty.', true);
+      return;
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(value);
+        setTokenMsg('Token copied to clipboard.', false);
+      } else {
+        // Fallback for older / restricted browsers — select the input
+        const wasPassword = tokenInput.type === 'password';
+        if (wasPassword) tokenInput.type = 'text';
+        tokenInput.select();
+        const ok = document.execCommand && document.execCommand('copy');
+        if (wasPassword) tokenInput.type = 'password';
+        setTokenMsg(
+          ok ? 'Token copied to clipboard.' : 'Copy failed — select the field and copy manually.',
+          !ok
+        );
+      }
+    } catch (_err) {
+      setTokenMsg('Copy failed — select the field and copy manually.', true);
+    }
+  }
+
+  function toggleReveal() {
+    if (tokenInput.type === 'password') {
+      tokenInput.type = 'text';
+      if (tokenRevealBtn) tokenRevealBtn.textContent = 'Hide';
+    } else {
+      tokenInput.type = 'password';
+      if (tokenRevealBtn) tokenRevealBtn.textContent = 'Show';
+    }
+  }
+
+  if (tokenGenBtn) tokenGenBtn.addEventListener('click', generateToken);
+  if (tokenRevealBtn) tokenRevealBtn.addEventListener('click', toggleReveal);
+  if (tokenCopyBtn) tokenCopyBtn.addEventListener('click', copyToken);
+
   // ─── MLRO identity (main + deputy, persisted; screener = Main MLRO) ───
   const mlroMainNameInput = $('mlroMainName');
   const mlroDeputyNameInput = $('mlroDeputyName');
