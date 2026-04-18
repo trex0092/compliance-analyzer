@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { fetchWithTimeout, TimeoutError } from '../src/utils/fetchWithTimeout';
+import {
+  fetchWithTimeout,
+  TimeoutError,
+  MAX_TIMEOUT_MS,
+  redactUrlForLogging,
+} from '../src/utils/fetchWithTimeout';
 
 /**
  * Tests for the shared timeout wrapper.
@@ -177,5 +182,101 @@ describe('fetchWithTimeout', () => {
       expect(err).toBeInstanceOf(TimeoutError);
       expect((err as TimeoutError).url).toBe('https://example.test/url-object');
     }
+  });
+
+  it('rejects fast when timeoutMs exceeds the MAX_TIMEOUT_MS ceiling', async () => {
+    await expect(
+      fetchWithTimeout('https://example.test/too-long', {
+        timeoutMs: MAX_TIMEOUT_MS + 1,
+      })
+    ).rejects.toBeInstanceOf(TypeError);
+    await expect(
+      fetchWithTimeout('https://example.test/typo', {
+        // A realistic typo: someone meant 6_000 (6s) and wrote 6_000_000.
+        timeoutMs: 6_000_000,
+      })
+    ).rejects.toBeInstanceOf(TypeError);
+    // MAX_TIMEOUT_MS itself is allowed (inclusive upper bound).
+    const atLimit = fetchWithTimeout('https://example.test/at-limit', {
+      timeoutMs: MAX_TIMEOUT_MS,
+    });
+    stub.resolve(new Response(null, { status: 204 }));
+    await expect(atLimit).resolves.toMatchObject({ status: 204 });
+    // Only the at-limit call should have reached fetch; the two over-cap
+    // calls must short-circuit at the boundary before a socket is opened.
+    expect(stub.calls).toHaveLength(1);
+  });
+
+  it('redacts api_key / key / q query values in the TimeoutError URL (FDL Art.29)', async () => {
+    // A request that embeds the subject's name AND an API key. Both
+    // are exactly the shape used by adverseMediaSearch.ts + geminiComplianceAnalyzer.ts today.
+    const url =
+      'https://serpapi.com/search.json?engine=google&q=John%20Doe&api_key=sk-super-secret-abc123';
+    try {
+      await fetchWithTimeout(url, { timeoutMs: 20 });
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(TimeoutError);
+      const te = err as TimeoutError;
+      // Secret + subject name must not appear anywhere in the error.
+      expect(te.url).not.toContain('sk-super-secret-abc123');
+      expect(te.url).not.toContain('John');
+      expect(te.message).not.toContain('sk-super-secret-abc123');
+      expect(te.message).not.toContain('John');
+      // But the host + path + parameter names ARE preserved for debugging.
+      expect(te.url).toContain('serpapi.com');
+      expect(te.url).toContain('/search.json');
+      expect(te.url).toContain('api_key=***');
+      expect(te.url).toContain('q=***');
+    }
+  });
+
+  it('redacts userinfo (basic-auth) from the TimeoutError URL', async () => {
+    const url = 'https://alice:hunter2@internal.test/ping';
+    try {
+      await fetchWithTimeout(url, { timeoutMs: 20 });
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(TimeoutError);
+      const te = err as TimeoutError;
+      expect(te.url).not.toContain('hunter2');
+      expect(te.url).not.toContain('alice');
+      expect(te.url).toContain('***@internal.test');
+    }
+  });
+
+  it('classifies a timeout-then-caller-abort race as a timeout (winner recorded at fire time)', async () => {
+    // Regression guard: before this refactor we inspected the signals
+    // AFTER fetch rejected, so if the caller's signal also aborted
+    // during teardown we misclassified a real timeout as a caller abort.
+    const controller = new AbortController();
+    // Attach a catch handler immediately so the rejection is observed
+    // the moment it fires (otherwise vitest flags an unhandled promise
+    // rejection during the 50ms sleep window below).
+    const settled = fetchWithTimeout('https://example.test/race', {
+      timeoutMs: 30,
+      signal: controller.signal,
+    }).then(
+      () => ({ ok: true as const }),
+      (err) => ({ ok: false as const, err })
+    );
+    // Let the timeout fire first, then abort the caller signal during
+    // the fetch's teardown window. Both signals will end up aborted,
+    // but only `timeout` fired first.
+    await new Promise((r) => setTimeout(r, 50));
+    controller.abort(new Error('caller cancelled late'));
+    const outcome = await settled;
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.err).toBeInstanceOf(TimeoutError);
+  });
+
+  it('redactUrlForLogging is a pure helper and returns input unchanged when not parseable', () => {
+    expect(redactUrlForLogging('not-a-url')).toBe('not-a-url');
+    expect(redactUrlForLogging('')).toBe('');
+    expect(redactUrlForLogging('https://example.test/no-query')).toBe(
+      'https://example.test/no-query'
+    );
+    // Trailing slash is preserved as the URL parser emits it.
+    expect(redactUrlForLogging('https://example.test/')).toBe('https://example.test/');
   });
 });
