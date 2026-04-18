@@ -148,7 +148,7 @@
   }
 
   function escapeHTML(s) {
-    return String(s == null ? '' : s)
+    return String(s ?? '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -186,6 +186,10 @@
   const rationaleInput = $('rationale');
   const legalAckCheckbox = $('legalAck');
   const freezeNoticeEl = $('freezeNotice');
+  const fourEyesBlock = $('fourEyesBlock');
+  const secondApproverInput = $('secondApprover');
+  const secondApproverRoleInput = $('secondApproverRole');
+  const secondApproverAckCheckbox = $('secondApproverAck');
   const saveBtn = $('saveBtn');
   const rerunBtn = $('rerunBtn');
   const cancelBtn = $('cancelBtn');
@@ -220,11 +224,136 @@
   }
 
   function isAdverseMediaEnabled() {
+    // Legacy single-toggle path (kept for backward compat).
     const el = document.querySelector(
-      'input[data-tier="enhanced"][data-control="adverseMedia"]'
+      'input[data-tier="enhanced"][data-control="adverseMedia"], input[data-tier="enhanced"][data-category="adverseMedia"]'
     );
     return el ? !!el.checked : true;
   }
+
+  // -----------------------------------------------------------------
+  // Adverse Media predicate offences — FATF 40+9 + FDL No.10/2025
+  // Art.2 predicate list + MoE Circular 08/AML/2021 DPMS typologies.
+  // Every category is a boolean filter on the open-source negative-
+  // news search. Regulatory traceability: each key is cited in the
+  // /run request body and persisted with the screening event.
+  // -----------------------------------------------------------------
+  const ADVERSE_MEDIA_PREDICATES = [
+    { key: 'bribery_corruption',          label: 'Bribery and corruption',                         ref: 'FATF Rec 10/12; UNCAC' },
+    { key: 'hostage_taking',              label: 'Hostage taking',                                 ref: 'UNSCR 2178; FDL Art.2' },
+    { key: 'kidnapping',                  label: 'Kidnapping',                                     ref: 'FDL Art.2; Penal Code' },
+    { key: 'piracy_counterfeit_products', label: 'Piracy, counterfeiting & product piracy',        ref: 'FATF Rec 10; TRIPS' },
+    { key: 'human_trafficking',           label: 'Human trafficking & human rights abuses',        ref: 'FDL Art.2; Palermo Protocol' },
+    { key: 'organized_crime',             label: 'Organized crime',                                ref: 'UNTOC; FDL Art.2' },
+    { key: 'currency_counterfeiting',     label: 'Currency counterfeiting',                        ref: 'FDL Art.2; UAE Penal Code' },
+    { key: 'illicit_trafficking_goods',   label: 'Illicit trafficking in stolen / other goods',    ref: 'FATF Rec 10; FDL Art.2' },
+    { key: 'racketeering',                label: 'Racketeering',                                   ref: 'UNTOC Art.5' },
+    { key: 'cybercrime',                  label: 'Cybercrime',                                     ref: 'Budapest Convention' },
+    { key: 'hacking',                     label: 'Hacking',                                        ref: 'UAE FDL 34/2021' },
+    { key: 'phishing',                    label: 'Phishing',                                       ref: 'UAE FDL 34/2021' },
+    { key: 'insider_trading_market_manip',label: 'Insider trading & market manipulation',          ref: 'FDL Art.2; SCA' },
+    { key: 'robbery',                     label: 'Robbery',                                        ref: 'FDL Art.2; Penal Code' },
+    { key: 'environmental_crimes',        label: 'Environmental crimes',                           ref: 'FATF 2021 Env Crime Report' },
+    { key: 'migrant_smuggling',           label: 'Migrant smuggling',                              ref: 'UNTOC Smuggling Protocol' },
+    { key: 'slave_labor',                 label: 'Slave labour / forced labour',                   ref: 'ILO C029; FDL Art.2' },
+    { key: 'securities_fraud',            label: 'Securities fraud',                               ref: 'SCA Board Res 37/R.M.' },
+    { key: 'extortion',                   label: 'Extortion',                                      ref: 'FDL Art.2' },
+    { key: 'child_sexual_exploitation',   label: 'Sexual exploitation of children',                ref: 'OPSC; FDL Art.2' },
+    { key: 'money_laundering',            label: 'Money laundering',                               ref: 'FDL No.10/2025 Art.2' },
+    { key: 'falsifying_official_docs',    label: 'Falsifying information on official documents',   ref: 'FDL Art.2; Penal Code' },
+    { key: 'narcotics_arms_trafficking',  label: 'Narcotics & arms trafficking',                   ref: 'UN 1988 Conv; ATT' },
+    { key: 'smuggling',                   label: 'Smuggling',                                      ref: 'FDL Art.2; Customs Law' },
+    { key: 'forgery',                     label: 'Forgery',                                        ref: 'FDL Art.2' },
+    { key: 'price_fixing',                label: 'Price fixing',                                   ref: 'UAE Competition Law 4/2012' },
+    { key: 'illegal_cartel_formation',    label: 'Illegal cartel formation',                       ref: 'UAE Competition Law 4/2012' },
+    { key: 'antitrust_violations',        label: 'Antitrust violations',                           ref: 'UAE Competition Law 4/2012' },
+    { key: 'terrorism',                   label: 'Terrorism',                                      ref: 'FDL No.7/2014; UNSCR 1373' },
+    { key: 'terror_financing',            label: 'Terror financing',                               ref: 'FDL No.10/2025 Art.2; UNSCR 1267' },
+    { key: 'fraud',                       label: 'Fraud',                                          ref: 'FDL Art.2; Penal Code' },
+    { key: 'embezzlement',                label: 'Embezzlement',                                   ref: 'FDL Art.2; UNCAC Art.17' },
+    { key: 'theft',                       label: 'Theft',                                          ref: 'FDL Art.2; Penal Code' },
+    { key: 'cheating',                    label: 'Cheating',                                       ref: 'FDL Art.2; Penal Code' },
+    { key: 'pharma_trafficking',          label: 'Pharmaceutical product trafficking',             ref: 'MEDICRIME Conv; FATF' },
+    { key: 'illegal_distribution',        label: 'Illegal distribution',                           ref: 'FDL Art.2' },
+    { key: 'illegal_production',          label: 'Illegal production',                             ref: 'FDL Art.2' },
+    { key: 'banned_fake_medicines',       label: 'Banned / fake medicines',                        ref: 'MEDICRIME Conv' },
+    { key: 'war_crimes',                  label: 'War crimes',                                     ref: 'Rome Statute; Geneva Conv' },
+    { key: 'tax_evasion',                 label: 'Tax evasion',                                    ref: 'FDL No.10/2025 Art.2' },
+    { key: 'tax_fraud',                   label: 'Tax fraud',                                      ref: 'FDL No.10/2025 Art.2; FTA Law' },
+  ];
+
+  // Default scope for every Adverse Media sweep — not a UI toggle, just
+  // the server-facing contract. POSTed to /api/screening/run when the
+  // Adverse Media category is ON so the audit record names exactly
+  // which predicate offences were searched.
+  function allPredicateKeys() {
+    return ADVERSE_MEDIA_PREDICATES.map((p) => p.key);
+  }
+
+  function collectSelectedCategories() {
+    const out = [];
+    document.querySelectorAll('input[data-category][data-tier="enhanced"]').forEach((el) => {
+      if (el.checked) out.push(el.getAttribute('data-category'));
+    });
+    return out;
+  }
+
+  // ----- Token budget (approx 4 chars = 1 token, English) -----
+  const TOKEN_SOFT_CAP = 6000; // warn at 75%
+  const TOKEN_HARD_CAP = 8000; // ~32KB body
+  const tbEl = $('tokenBudget');
+  const tbTotal = $('tbTotal');
+  const tbBarFill = $('tbBarFill');
+  const tbName = $('tbName');
+  const tbAliases = $('tbAliases');
+  const tbNotes = $('tbNotes');
+  const tbKey = $('tbKey');
+  const tbRationale = $('tbRationale');
+  const tbLists = $('tbLists');
+  const tbCategories = $('tbCategories');
+
+  function tokensFor(s) {
+    return Math.ceil((s || '').length / 4);
+  }
+
+  function updateTokenBudget() {
+    if (!tbEl) return;
+    const name = tokensFor(subjectNameInput ? subjectNameInput.value : '');
+    const aliases = tokensFor(aliasesInput ? aliasesInput.value : '');
+    const notes = tokensFor(notesInput ? notesInput.value : '');
+    const key = tokensFor(keyFindingsInput ? keyFindingsInput.value : '');
+    const rationale = tokensFor(rationaleInput ? rationaleInput.value : '');
+    const lists = collectSelectedLists().length * 2;
+    const categories = collectSelectedCategories().length * 3;
+    const total = name + aliases + notes + key + rationale + lists + categories;
+    if (tbName) tbName.textContent = String(name);
+    if (tbAliases) tbAliases.textContent = String(aliases);
+    if (tbNotes) tbNotes.textContent = String(notes);
+    if (tbKey) tbKey.textContent = String(key);
+    if (tbRationale) tbRationale.textContent = String(rationale);
+    if (tbLists) tbLists.textContent = String(lists);
+    if (tbCategories) tbCategories.textContent = String(categories);
+    if (tbTotal) tbTotal.textContent = String(total);
+    const pct = Math.min(100, Math.round((total / TOKEN_HARD_CAP) * 100));
+    if (tbBarFill) tbBarFill.style.width = pct + '%';
+    tbEl.classList.remove('warn', 'over');
+    if (total >= TOKEN_HARD_CAP) tbEl.classList.add('over');
+    else if (total >= TOKEN_SOFT_CAP) tbEl.classList.add('warn');
+  }
+
+  [
+    subjectNameInput,
+    aliasesInput,
+    notesInput,
+    keyFindingsInput,
+    rationaleInput,
+  ].forEach((el) => {
+    if (el) el.addEventListener('input', updateTokenBudget);
+  });
+  document
+    .querySelectorAll('input[data-tier="enhanced"]')
+    .forEach((el) => el.addEventListener('change', updateTokenBudget));
+  updateTokenBudget();
 
   function todayDdMmYyyy() {
     const d = new Date();
@@ -246,19 +375,125 @@
     if (keyFindingsInput) keyFindingsInput.value = '';
     if (legalAckCheckbox) legalAckCheckbox.checked = false;
     if (freezeNoticeEl) freezeNoticeEl.hidden = true;
+    outcomeBtns.forEach((b) => {
+      b.classList.remove('selected');
+      b.setAttribute('aria-checked', 'false');
+    });
+    currentOutcome = null;
+    setDisposition(null);
+    if (typeof updateRationaleCounter === 'function') updateRationaleCounter();
     showMessage(saveMsg, '', 'info');
+  }
+
+  const OUTCOME_META = {
+    negative_no_match: {
+      label: 'Negative — No match',
+      action:
+        'Proceed to standard CDD / SDD path for the subject. No further sanctions obligation.',
+      level: 'clear',
+    },
+    false_positive: {
+      label: 'False positive',
+      action:
+        'Record the differentiator (DoB / ID / jurisdiction / biometric) in the rationale. No freeze, no escalation.',
+      level: 'clear',
+    },
+    partial_match: {
+      label: 'Partial match — escalate',
+      action:
+        'Escalate to the Compliance Officer within 1 business day. Suspend onboarding / transaction pending adjudication (Cabinet Res 134/2025 Art.14).',
+      level: 'escalate',
+    },
+    confirmed_match: {
+      label: 'Confirmed match — FREEZE',
+      action:
+        'Execute asset freeze within 24 clock hours (Cabinet Res 74/2020 Art.4). File CNMR with EOCN in 5 business days (Art.5-7). DO NOT tip off the subject (FDL Art.29).',
+      level: 'freeze',
+    },
+  };
+  const dispositionPreview = document.getElementById('dispositionPreview');
+  const dpOutcome = document.getElementById('dpOutcome');
+  const dpAction = document.getElementById('dpAction');
+
+  function setDisposition(outcomeKey) {
+    if (!dispositionPreview || !dpOutcome || !dpAction) return;
+    dispositionPreview.classList.remove(
+      'level-clear',
+      'level-escalate',
+      'level-freeze'
+    );
+    if (!outcomeKey || !OUTCOME_META[outcomeKey]) {
+      dpOutcome.textContent = 'Select an outcome above.';
+      dpOutcome.classList.add('muted');
+      dpAction.textContent = '—';
+      dpAction.classList.add('muted');
+      return;
+    }
+    const meta = OUTCOME_META[outcomeKey];
+    dpOutcome.textContent = meta.label;
+    dpOutcome.classList.remove('muted');
+    dpAction.textContent = meta.action;
+    dpAction.classList.remove('muted');
+    dispositionPreview.classList.add('level-' + meta.level);
+  }
+
+  // Four-eyes gate: outcomes that move money or escalate to the CO
+  // must be co-signed by a second approver before the record can be
+  // saved (FDL Art.20-21; Cabinet Res 134/2025 Art.19).
+  function outcomeRequiresFourEyes(outcomeKey) {
+    return outcomeKey === 'partial_match' || outcomeKey === 'confirmed_match';
+  }
+
+  function setFourEyesVisibility(outcomeKey) {
+    if (!fourEyesBlock) return;
+    const required = outcomeRequiresFourEyes(outcomeKey);
+    fourEyesBlock.classList.toggle('required', required);
+    fourEyesBlock.setAttribute('aria-hidden', required ? 'false' : 'true');
+    if (!required) {
+      if (secondApproverInput) secondApproverInput.value = '';
+      if (secondApproverRoleInput) secondApproverRoleInput.value = '';
+      if (secondApproverAckCheckbox) secondApproverAckCheckbox.checked = false;
+    }
   }
 
   outcomeBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      outcomeBtns.forEach((b) => b.classList.remove('selected'));
+      outcomeBtns.forEach((b) => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-checked', 'false');
+      });
       btn.classList.add('selected');
+      btn.setAttribute('aria-checked', 'true');
       currentOutcome = btn.getAttribute('data-outcome');
       if (freezeNoticeEl) {
         freezeNoticeEl.hidden = currentOutcome !== 'confirmed_match';
       }
+      setDisposition(currentOutcome);
+      setFourEyesVisibility(currentOutcome);
     });
   });
+
+  // Rationale char counter — enforces the 20-char minimum visibly.
+  const rationaleCounter = document.createElement('div');
+  rationaleCounter.className = 'char-counter short';
+  rationaleCounter.innerHTML =
+    '<span>Minimum 20 characters for the audit record.</span><span class="count"><span id="rationaleCount">0</span> / 20+</span>';
+  if (rationaleInput && rationaleInput.parentNode) {
+    rationaleInput.insertAdjacentElement('afterend', rationaleCounter);
+  }
+  const rationaleCountEl = document.getElementById('rationaleCount');
+
+  function updateRationaleCounter() {
+    if (!rationaleInput || !rationaleCountEl) return;
+    const len = rationaleInput.value.trim().length;
+    rationaleCountEl.textContent = String(len);
+    rationaleCounter.classList.toggle('short', len < 20);
+    rationaleCounter.classList.toggle('ok', len >= 20);
+  }
+  if (rationaleInput) {
+    rationaleInput.addEventListener('input', updateRationaleCounter);
+    updateRationaleCounter();
+  }
 
   cancelBtn.addEventListener('click', hideDisposition);
   rerunBtn.addEventListener('click', () => {
@@ -302,6 +537,52 @@
       );
       return;
     }
+
+    // Four-eyes gate — partial/confirmed matches require an
+    // independent second approver (FDL Art.20-21; Cabinet Res
+    // 134/2025 Art.19). Enforced client-side AND must be mirrored
+    // server-side before the event is accepted.
+    let secondApprover = '';
+    let secondApproverRole = '';
+    if (outcomeRequiresFourEyes(currentOutcome)) {
+      secondApprover = secondApproverInput ? secondApproverInput.value.trim() : '';
+      secondApproverRole = secondApproverRoleInput
+        ? secondApproverRoleInput.value.trim()
+        : '';
+      if (!secondApprover) {
+        showMessage(
+          saveMsg,
+          'Second approver name is required for partial / confirmed matches.',
+          'error'
+        );
+        return;
+      }
+      if (!secondApproverRole) {
+        showMessage(
+          saveMsg,
+          'Second approver role / title is required for partial / confirmed matches.',
+          'error'
+        );
+        return;
+      }
+      if (secondApprover.toLowerCase() === reviewedBy.toLowerCase()) {
+        showMessage(
+          saveMsg,
+          'Second approver must be a different person from the first reviewer (four-eyes rule).',
+          'error'
+        );
+        return;
+      }
+      if (secondApproverAckCheckbox && !secondApproverAckCheckbox.checked) {
+        showMessage(
+          saveMsg,
+          'Second approver must acknowledge the independent-review attestation.',
+          'error'
+        );
+        return;
+      }
+    }
+
     const keyFindings = keyFindingsInput ? keyFindingsInput.value.trim() : '';
 
     saveBtn.disabled = true;
@@ -328,6 +609,8 @@
       runId: lastRun.ranAt,
       riskTier: lastRun.subject.riskTier,
       jurisdiction: lastRun.subject.jurisdiction || undefined,
+      secondApprover: secondApprover || undefined,
+      secondApproverRole: secondApproverRole || undefined,
     };
 
     const res = await apiPost(SAVE_ENDPOINT, body);
@@ -603,6 +886,7 @@
       selectedLists: selectedLists,
       enrollInWatchlist: enrollSelect.value === 'true',
       runAdverseMedia: isAdverseMediaEnabled(),
+      adverseMediaPredicates: isAdverseMediaEnabled() ? allPredicateKeys() : undefined,
       createAsanaTask: true,
     };
     const result = await apiPost(SCREENING_ENDPOINT, body);

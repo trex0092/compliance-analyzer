@@ -139,6 +139,8 @@ export interface ScreeningEvent {
   runId?: string;
   riskTier?: RiskTier;
   jurisdiction?: string;
+  secondApprover?: string;
+  secondApproverRole?: string;
   savedAt: string;
   asanaGid?: string;
 }
@@ -309,6 +311,51 @@ function validateInput(
     return { ok: false, error: 'jurisdiction must be a string up to 32 chars' };
   }
 
+  // Four-eyes gate — partial/confirmed matches require an independent
+  // second approver (FDL Art.20-21; Cabinet Res 134/2025 Art.19).
+  let secondApprover: string | undefined;
+  let secondApproverRole: string | undefined;
+  if (o.secondApprover !== undefined) {
+    if (typeof o.secondApprover !== 'string' || o.secondApprover.length > 128) {
+      return { ok: false, error: 'secondApprover must be a string up to 128 chars' };
+    }
+    const trimmed = o.secondApprover.trim();
+    if (trimmed.length > 0) secondApprover = trimmed;
+  }
+  if (o.secondApproverRole !== undefined) {
+    if (typeof o.secondApproverRole !== 'string' || o.secondApproverRole.length > 128) {
+      return { ok: false, error: 'secondApproverRole must be a string up to 128 chars' };
+    }
+    const trimmed = o.secondApproverRole.trim();
+    if (trimmed.length > 0) secondApproverRole = trimmed;
+  }
+  const outcome = o.outcome as Outcome;
+  const requiresFourEyes = outcome === 'partial_match' || outcome === 'confirmed_match';
+  if (requiresFourEyes) {
+    if (!secondApprover) {
+      return {
+        ok: false,
+        error:
+          'secondApprover is required for partial / confirmed matches (four-eyes rule; FDL Art.20-21, Cabinet Res 134/2025 Art.19)',
+      };
+    }
+    if (!secondApproverRole) {
+      return {
+        ok: false,
+        error:
+          'secondApproverRole is required for partial / confirmed matches (four-eyes rule)',
+      };
+    }
+    const reviewer = (o.reviewedBy as string).trim().toLowerCase();
+    if (secondApprover.toLowerCase() === reviewer) {
+      return {
+        ok: false,
+        error:
+          'secondApprover must be a different person from reviewedBy (four-eyes rule)',
+      };
+    }
+  }
+
   return {
     ok: true,
     input: {
@@ -331,6 +378,8 @@ function validateInput(
       runId: typeof o.runId === 'string' ? o.runId.trim() : undefined,
       riskTier: o.riskTier as RiskTier | undefined,
       jurisdiction: typeof o.jurisdiction === 'string' ? o.jurisdiction.trim() : undefined,
+      secondApprover,
+      secondApproverRole,
     },
   };
 }
@@ -361,7 +410,7 @@ async function saveEvent(
           }
         ).setJSON(event.eventId, event, { onlyIfNew: true });
         const landed =
-          res == null
+          res === null || res === undefined
             ? true
             : typeof res === 'object' && 'modified' in (res as Record<string, unknown>)
               ? (res as { modified: boolean }).modified === true
@@ -432,6 +481,12 @@ async function postDispositionAsana(
   lines.push('— MLRO Disposition (attestation) —');
   lines.push(`Screening date: ${event.screeningDate}`);
   lines.push(`Reviewed by: ${event.reviewedBy}`);
+  if (event.secondApprover) {
+    lines.push(
+      `Second approver (four-eyes): ${event.secondApprover}` +
+        (event.secondApproverRole ? ` — ${event.secondApproverRole}` : '')
+    );
+  }
   lines.push(`Outcome: ${event.outcome.toUpperCase()}`);
   lines.push('Rationale:');
   lines.push(event.rationale);

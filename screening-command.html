@@ -15,18 +15,30 @@
     <style>
       :root {
         --gold: #c9a84c;
+        --gold-bright: #e6c870;
         --gold-dim: rgba(201, 168, 76, 0.6);
-        --bg: #0a0a0a;
+        --gold-grad: linear-gradient(
+          135deg,
+          #e6c870 0%,
+          #c9a84c 40%,
+          #a68432 100%
+        );
+        --bg: #080706;
+        --bg-elev: #0f0d0a;
         --surface: rgba(201, 168, 76, 0.03);
         --surface2: rgba(201, 168, 76, 0.06);
-        --border: rgba(201, 168, 76, 0.12);
-        --border-strong: rgba(201, 168, 76, 0.25);
+        --border: rgba(201, 168, 76, 0.14);
+        --border-strong: rgba(201, 168, 76, 0.28);
         --text: #f5f0e8;
         --muted: rgba(245, 240, 232, 0.55);
         --red: #d94f4f;
         --amber: #e8a030;
         --green: #3da876;
         --blue: #4a90e2;
+        --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.25);
+        --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+        --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        --hairline: rgba(201, 168, 76, 0.18);
       }
       * {
         box-sizing: border-box;
@@ -38,18 +50,62 @@
         overscroll-behavior-y: contain;
       }
       body {
-        background: var(--bg);
+        background:
+          radial-gradient(
+            circle at 20% -10%,
+            rgba(201, 168, 76, 0.07),
+            transparent 55%
+          ),
+          radial-gradient(
+            circle at 100% 100%,
+            rgba(201, 168, 76, 0.04),
+            transparent 45%
+          ),
+          var(--bg);
         color: var(--text);
         font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         font-weight: 300;
-        max-width: 1100px;
+        max-width: 1680px;
         margin: 0 auto;
-        padding: 20px 16px 60px;
+        padding: 20px 32px 60px;
         padding-top: calc(20px + env(safe-area-inset-top, 0px));
         padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
         font-size: 15px;
-        line-height: 1.5;
+        line-height: 1.55;
+        letter-spacing: 0.01em;
         -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1, 'ss01' 1;
+      }
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 0.01) 0px,
+            rgba(255, 255, 255, 0.01) 1px,
+            transparent 1px,
+            transparent 4px
+          );
+        opacity: 0.35;
+        z-index: 0;
+      }
+      body > * {
+        position: relative;
+        z-index: 1;
+      }
+      @media (min-width: 1400px) {
+        .grid-2 {
+          grid-template-columns: 1fr 1fr !important;
+        }
+        .grid-3 {
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 14px;
+          display: grid;
+        }
       }
       header {
         display: flex;
@@ -60,36 +116,57 @@
         margin-bottom: 6px;
       }
       h1 {
-        color: var(--gold);
         font-family: 'Cinzel', serif;
-        font-size: 26px;
+        font-size: 30px;
         font-weight: 600;
-        letter-spacing: 2px;
+        letter-spacing: 3px;
         text-transform: uppercase;
+        background: var(--gold-grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
       }
       h1 .badge {
         display: inline-block;
-        background: var(--gold);
-        color: var(--bg);
+        background: var(--gold-grad);
+        color: #1a1407;
         font-size: 10px;
-        padding: 2px 6px;
+        padding: 3px 8px;
         border-radius: 2px;
-        margin-left: 8px;
+        margin-left: 10px;
         vertical-align: middle;
         font-weight: 700;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 2px 6px rgba(201, 168, 76, 0.25);
       }
       h2 {
         color: var(--gold);
         font-family: 'Cinzel', serif;
         font-size: 15px;
         font-weight: 500;
-        letter-spacing: 1.5px;
+        letter-spacing: 2px;
         text-transform: uppercase;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
+        position: relative;
+        padding-bottom: 6px;
+      }
+      h2::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 1px;
+        background: linear-gradient(
+          to right,
+          var(--hairline) 0%,
+          rgba(201, 168, 76, 0.08) 40%,
+          transparent 100%
+        );
       }
       .tag {
         font-size: 9px;
@@ -101,22 +178,58 @@
         text-transform: uppercase;
         font-weight: 600;
       }
-      .intro {
-        color: var(--muted);
-        font-size: 13px;
-        margin: 4px 0 20px;
-        max-width: 100%;
-        line-height: 1.6;
+      .intro-panel {
+        margin: 10px 0 22px;
+        padding: 18px 22px;
+        border: 1px solid var(--border);
+        border-left: 3px solid transparent;
+        border-radius: 6px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 60%),
+          var(--bg-elev);
+        box-shadow: var(--shadow-md), var(--shadow-inset);
+        position: relative;
       }
-      .intro strong {
-        color: var(--gold-dim);
+      .intro-panel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--gold-grad);
+        border-radius: 6px 0 0 6px;
+      }
+      .intro-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px 26px;
+      }
+      .intro-block h3 {
+        font-family: 'Cinzel', serif;
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--gold);
+        margin: 0 0 4px;
+      }
+      .intro-block p {
+        color: var(--muted);
+        font-size: 12.5px;
+        line-height: 1.55;
+        margin: 0;
+      }
+      .intro-block p strong {
+        color: var(--text);
         font-weight: 500;
       }
-      .intro .cite {
+      .intro-block p.cite {
         color: var(--accent);
         font-family: 'DM Mono', monospace;
-        font-size: 11px;
+        font-size: 10.5px;
         letter-spacing: 0.3px;
+        line-height: 1.5;
       }
       .grid {
         display: grid;
@@ -129,10 +242,29 @@
         }
       }
       .card {
-        background: var(--surface);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 60%),
+          var(--bg-elev);
         border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 18px;
+        border-radius: 10px;
+        padding: 20px 22px;
+        box-shadow: var(--shadow-md), var(--shadow-inset);
+        position: relative;
+      }
+      .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 18px;
+        right: 18px;
+        height: 1px;
+        background: linear-gradient(
+          to right,
+          transparent 0%,
+          var(--hairline) 30%,
+          var(--hairline) 70%,
+          transparent 100%
+        );
       }
       label {
         display: block;
@@ -538,11 +670,17 @@
       }
       .list-check.locked {
         cursor: not-allowed;
-        opacity: 0.95;
+        opacity: 1;
+      }
+      .list-check.locked input[type='checkbox'] {
+        opacity: 1;
       }
       .list-check.disabled {
-        opacity: 0.55;
+        opacity: 0.85;
         cursor: not-allowed;
+      }
+      .list-check.disabled input[type='checkbox'] {
+        opacity: 1;
       }
       .list-check .list-label {
         font-size: 13px;
@@ -571,6 +709,111 @@
       }
       .disposition.active {
         display: block;
+      }
+      .coverage-card {
+        border-left: 3px solid var(--blue);
+      }
+      .coverage-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px 26px;
+        margin-top: 4px;
+      }
+      .coverage-grid .c-h {
+        font-family: 'Cinzel', serif;
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 1.3px;
+        text-transform: uppercase;
+        color: var(--blue);
+        margin-bottom: 4px;
+      }
+      .coverage-grid .c-sub {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .coverage-grid .c-sub b {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .coverage-foot {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px dashed var(--border);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .token-budget {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--blue);
+        border-radius: 3px;
+        background: rgba(61, 139, 253, 0.04);
+        color: var(--muted);
+        font-size: 11.5px;
+        line-height: 1.55;
+      }
+      .token-budget .tb-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 6px;
+      }
+      .token-budget .tb-label {
+        font-family: 'Cinzel', serif;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--blue);
+        font-size: 11px;
+      }
+      .token-budget .tb-total {
+        font-family: 'DM Mono', monospace;
+        font-weight: 500;
+        color: var(--text);
+      }
+      .token-budget.over .tb-total,
+      .token-budget.over .tb-label {
+        color: #ff6b6b;
+      }
+      .token-budget .tb-bar {
+        height: 4px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 2px;
+        overflow: hidden;
+        margin-bottom: 8px;
+      }
+      .token-budget .tb-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--blue), var(--gold));
+        transition: width 0.15s ease-out;
+      }
+      .token-budget.warn .tb-bar-fill {
+        background: linear-gradient(90deg, var(--gold), #ffb84d);
+      }
+      .token-budget.over .tb-bar-fill {
+        background: linear-gradient(90deg, #ffb84d, #ff6b6b);
+      }
+      .token-budget .tb-breakdown {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        font-family: 'DM Mono', monospace;
+        font-size: 10.5px;
+      }
+      .token-budget .tb-breakdown b {
+        color: var(--text);
+        font-weight: 500;
+        margin-left: 3px;
+      }
+      .token-budget .tb-footnote {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px dashed var(--border);
+        font-size: 10.5px;
+        color: var(--muted);
       }
       .legal-notice {
         margin-top: 14px;
@@ -634,65 +877,227 @@
       .outcome-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
+        gap: 10px;
         margin-top: 6px;
       }
-      @media (min-width: 600px) {
+      @media (min-width: 860px) {
         .outcome-grid {
           grid-template-columns: repeat(4, 1fr);
         }
       }
       .outcome-btn {
+        position: relative;
         background: var(--surface);
         border: 1px solid var(--border);
         color: var(--text);
-        font-size: 11px;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        padding: 10px 8px;
-        border-radius: 3px;
+        padding: 14px 14px 12px;
+        border-radius: 4px;
         cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        text-align: left;
+        line-height: 1.3;
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease,
+          transform 0.08s ease;
+      }
+      .outcome-btn:hover {
+        border-color: var(--border-strong);
+        background: var(--surface2);
+      }
+      .outcome-btn:active {
+        transform: translateY(1px);
+      }
+      .outcome-btn .outcome-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+      }
+      .outcome-btn .glyph {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        text-align: center;
-        line-height: 1.2;
-      }
-      .outcome-btn .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--bg);
         flex-shrink: 0;
+        background: var(--muted);
+        font-family: 'DM Mono', ui-monospace, monospace;
       }
-      .outcome-btn[data-outcome='negative_no_match'] .dot {
+      .outcome-btn .label {
+        font-family: 'Cinzel', serif;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--text);
+      }
+      .outcome-btn .impact {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.35;
+        letter-spacing: 0.2px;
+      }
+      .outcome-btn[data-outcome='negative_no_match'] .glyph {
         background: var(--green);
       }
-      .outcome-btn[data-outcome='false_positive'] .dot {
+      .outcome-btn[data-outcome='false_positive'] .glyph {
         background: var(--muted);
       }
-      .outcome-btn[data-outcome='partial_match'] .dot {
+      .outcome-btn[data-outcome='partial_match'] .glyph {
         background: var(--amber);
       }
-      .outcome-btn[data-outcome='confirmed_match'] .dot {
+      .outcome-btn[data-outcome='confirmed_match'] .glyph {
         background: var(--red);
+        color: var(--text);
+      }
+      .outcome-btn.selected {
+        box-shadow: 0 0 0 1px currentColor inset;
       }
       .outcome-btn.selected[data-outcome='negative_no_match'] {
         border-color: var(--green);
-        background: rgba(61, 168, 118, 0.15);
+        background: rgba(61, 168, 118, 0.14);
+        color: var(--green);
       }
       .outcome-btn.selected[data-outcome='false_positive'] {
-        border-color: var(--muted);
+        border-color: rgba(245, 240, 232, 0.45);
         background: rgba(245, 240, 232, 0.06);
+        color: var(--text);
       }
       .outcome-btn.selected[data-outcome='partial_match'] {
         border-color: var(--amber);
-        background: rgba(232, 160, 48, 0.15);
+        background: rgba(232, 160, 48, 0.14);
+        color: var(--amber);
       }
       .outcome-btn.selected[data-outcome='confirmed_match'] {
         border-color: var(--red);
-        background: rgba(217, 79, 79, 0.15);
+        background: rgba(217, 79, 79, 0.16);
+        color: var(--red);
+      }
+      .outcome-btn.selected .label,
+      .outcome-btn.selected .impact {
+        color: var(--text);
+      }
+      .disposition-preview {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--gold);
+        border-radius: 3px;
+        background: var(--surface);
+        display: grid;
+        grid-template-columns: minmax(110px, auto) 1fr;
+        column-gap: 14px;
+        row-gap: 6px;
+        font-size: 12px;
+      }
+      .disposition-preview .dp-label {
+        color: var(--gold);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 10px;
+        font-weight: 600;
+        padding-top: 2px;
+      }
+      .disposition-preview .dp-value {
+        color: var(--text);
+        line-height: 1.45;
+      }
+      .disposition-preview .dp-value.muted {
+        color: var(--muted);
+        font-style: italic;
+      }
+      .disposition-preview .dp-value strong {
+        color: var(--gold);
+      }
+      .disposition-preview.level-freeze {
+        border-left-color: var(--red);
+        background: rgba(217, 79, 79, 0.06);
+      }
+      .disposition-preview.level-escalate {
+        border-left-color: var(--amber);
+        background: rgba(232, 160, 48, 0.06);
+      }
+      .disposition-preview.level-clear {
+        border-left-color: var(--green);
+        background: rgba(61, 168, 118, 0.06);
+      }
+      .char-counter {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .char-counter .count {
+        font-family: 'DM Mono', ui-monospace, monospace;
+        color: var(--text);
+      }
+      .char-counter.short .count {
+        color: var(--red);
+      }
+      .char-counter.ok .count {
+        color: var(--green);
+      }
+      .four-eyes {
+        margin-top: 14px;
+        padding: 14px 16px;
+        border-left: 3px solid var(--amber);
+        border-radius: 4px;
+        background: rgba(232, 160, 48, 0.06);
+        display: none;
+      }
+      .four-eyes.required {
+        display: block;
+      }
+      .four-eyes h4 {
+        margin: 0 0 6px 0;
+        font-family: 'Cinzel', serif;
+        font-size: 13px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--amber);
+      }
+      .four-eyes p {
+        font-size: 12.5px;
+        line-height: 1.55;
+        color: var(--muted);
+        margin: 0 0 10px 0;
+      }
+      .four-eyes label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 8px 0 4px 0;
+      }
+      .four-eyes input[type='text'] {
+        width: 100%;
+        padding: 9px 12px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--hairline);
+        color: var(--text);
+        font-family: 'DM Mono', ui-monospace, monospace;
+        font-size: 13px;
+      }
+      .four-eyes .ack {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        margin-top: 10px;
+        font-size: 12px;
       }
       .action-row {
         display: grid;
@@ -705,19 +1110,109 @@
           grid-template-columns: 2fr 2fr 1fr;
         }
       }
+      button.btn-save,
+      button.btn-rerun,
+      button.btn-cancel {
+        font-family: 'Cinzel', serif;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 2.4px;
+        text-transform: uppercase;
+        padding: 13px 18px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition:
+          transform 0.08s ease,
+          box-shadow 0.18s ease,
+          background 0.18s ease,
+          border-color 0.18s ease;
+        position: relative;
+      }
       button.btn-save {
-        background: var(--gold);
-        color: var(--bg);
+        background: var(--gold-grad);
+        color: #1a1407;
+        border: 1px solid rgba(230, 200, 112, 0.5);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.2) inset,
+          0 -1px 0 rgba(0, 0, 0, 0.25) inset,
+          0 8px 20px rgba(201, 168, 76, 0.22);
+      }
+      button.btn-save:hover {
+        transform: translateY(-1px);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.25) inset,
+          0 -1px 0 rgba(0, 0, 0, 0.25) inset,
+          0 14px 30px rgba(201, 168, 76, 0.3);
+      }
+      button.btn-save:active {
+        transform: translateY(0);
       }
       button.btn-rerun {
-        background: rgba(74, 144, 226, 0.15);
+        background: rgba(74, 144, 226, 0.1);
         color: var(--blue);
-        border: 1px solid var(--blue);
+        border: 1px solid rgba(74, 144, 226, 0.5);
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+      }
+      button.btn-rerun:hover {
+        background: rgba(74, 144, 226, 0.16);
+        border-color: rgba(74, 144, 226, 0.75);
       }
       button.btn-cancel {
         background: transparent;
         color: var(--muted);
-        border: 1px solid var(--border);
+        border: 1px solid var(--border-strong);
+      }
+      button.btn-cancel:hover {
+        color: var(--text);
+        border-color: var(--hairline);
+      }
+      button.btn-save[disabled],
+      button.btn-rerun[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      input[type='text'],
+      input[type='date'],
+      input[type='email'],
+      input[type='number'],
+      textarea,
+      select {
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease,
+          background 0.15s ease;
+      }
+      input[type='text']:focus,
+      input[type='date']:focus,
+      input[type='email']:focus,
+      input[type='number']:focus,
+      textarea:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--gold) !important;
+        box-shadow:
+          0 0 0 1px rgba(201, 168, 76, 0.2),
+          0 0 0 4px rgba(201, 168, 76, 0.08);
+      }
+      ::selection {
+        background: rgba(201, 168, 76, 0.3);
+        color: var(--text);
+      }
+      /* Refined scrollbar for the luxury language. */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--hairline);
+        border-radius: 10px;
+        border: 2px solid var(--bg);
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--border-strong);
       }
     </style>
   </head>
@@ -726,30 +1221,59 @@
       <h1>Screening Command <span class="badge">v1</span></h1>
       <a href="/" class="muted">&larr; Main tool</a>
     </header>
-    <p class="intro">
-      <strong>Weaponized screening + transaction monitoring for UAE MLRO operations.</strong>
-      Every name and entity is screened in parallel against six sanctions lists —
-      UN Consolidated, OFAC SDN, OFAC Consolidated (non-SDN), EU Consolidated (CFSP),
-      UK OFSI Consolidated (HMT), and the UAE Local Terrorist List (EOCN / Executive Office for
-      Control &amp; Non-Proliferation) — using a five-algorithm ensemble
-      (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone + token-set) that catches
-      phonetic variants, transliterations, word-order permutations, and single-character edits
-      that a single-algorithm engine misses. Every hit is fed into an explainable Bayesian risk
-      score with an open-source adverse-media sweep (PEP, litigation, fraud, terrorism-financing
-      surface signals) running on the same pass. <strong>UAE_EOCN and UN are mandatory</strong> and
-      cannot be deselected — the client cannot bypass them. Confirmed or potential matches
-      auto-enroll into the daily watchlist (06:00 / 14:00 UTC cron) and a tagged Asana task
-      lands in the SCREENINGS project assigned to the on-duty MLRO. The MLRO then attests the
-      disposition — negative, false positive, partial match, or confirmed — with a named
-      reviewer and a ≥20-character rationale, creating an append-only audit record for MoE,
-      LBMA, and internal-audit inspection.
-      <span class="cite"
-        >FDL No.10/2025 Art.12-14 (CDD), 20-21 (CO duties), 24 (10-yr retention), 26-27 (STR),
-        29 (no tipping off), 35 (TFS) · Cabinet Res 134/2025 Art.7-10, 14, 19 · Cabinet Res
-        74/2020 Art.4-7 (24-h freeze) · Cabinet Decision No.(74)/2020 · Cabinet Res 71/2024 ·
-        MoE Circular 08/AML/2021 · FATF Rec 10 / 12 / 22 / 23.</span
-      >
-    </p>
+    <section class="intro-panel">
+      <div class="intro-grid">
+        <div class="intro-block">
+          <h3>Sanctions-list coverage</h3>
+          <p>
+            Parallel screen against six lists: UN Consolidated (1267/1988/1989/2253), OFAC SDN,
+            OFAC Consolidated (non-SDN), EU CFSP, UK OFSI (HMT), and UAE EOCN. UAE EOCN and UN
+            are <strong>mandatory</strong> and cannot be deselected.
+          </p>
+        </div>
+        <div class="intro-block">
+          <h3>Matching engine</h3>
+          <p>
+            Five-algorithm ensemble — Jaro-Winkler, Levenshtein, Soundex, Double Metaphone,
+            token-set — catching phonetic variants, transliterations, word-order permutations,
+            and single-character edits. Deterministic only; no LLM in the match path.
+          </p>
+        </div>
+        <div class="intro-block">
+          <h3>Risk scoring</h3>
+          <p>
+            Every hit feeds an explainable Bayesian risk score with an open-source adverse-media
+            sweep (PEP, litigation, fraud, terrorism-financing signals) on the same pass.
+          </p>
+        </div>
+        <div class="intro-block">
+          <h3>Automation</h3>
+          <p>
+            Confirmed or potential matches auto-enrol into the daily watchlist (06:00 / 14:00
+            UTC cron). A tagged Asana task lands in the SCREENINGS project, assigned to the
+            on-duty MLRO.
+          </p>
+        </div>
+        <div class="intro-block">
+          <h3>MLRO attestation</h3>
+          <p>
+            MLRO closes every event with a disposition (negative / false positive / partial /
+            confirmed), a named reviewer, and a &ge; 20-character rationale — creating an
+            append-only audit record for MoE, LBMA, and internal audit.
+          </p>
+        </div>
+        <div class="intro-block">
+          <h3>Regulatory basis</h3>
+          <p class="cite">
+            FDL No.10/2025 Art.12-14 (CDD), 20-21 (CO duties), 24 (10-yr retention), 26-27
+            (STR), 29 (no tipping off), 35 (TFS) &middot; Cabinet Res 134/2025 Art.7-10, 14, 19
+            &middot; Cabinet Res 74/2020 Art.4-7 (24-h freeze) &middot; Cabinet Decision
+            No.(74)/2020 &middot; Cabinet Res 71/2024 &middot; MoE Circular 08/AML/2021 &middot;
+            FATF Rec 10 / 12 / 22 / 23.
+          </p>
+        </div>
+      </div>
+    </section>
 
     <!-- Authentication ────────────────────────────────────────────── -->
     <div class="card">
@@ -768,10 +1292,71 @@
       >
     </div>
 
+    <!-- Data coverage contract ────────────────────────────────────── -->
+    <div class="card coverage-card" style="margin-top: 14px">
+      <h2>Data Coverage</h2>
+      <div class="coverage-grid">
+        <div>
+          <div class="c-h">Aliases &amp; alternative spellings</div>
+          <div class="c-sub">
+            Multi-modal matcher (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone + token-
+            set). 20+ Latin-alphabet languages + 40+ non-Latin scripts via ICU / UAX #35
+            transliteration.
+          </div>
+        </div>
+        <div>
+          <div class="c-h">Structured record categorisation</div>
+          <div class="c-sub">
+            Every record tagged by: country &middot; type of crime (FATF 40+9 predicate offences)
+            &middot; political party &middot; organisation &middot; individual vs. legal entity.
+          </div>
+        </div>
+        <div>
+          <div class="c-h">Politically Exposed Persons</div>
+          <div class="c-sub">
+            PEPs, close associates and family members identified per Cabinet Res 134/2025 Art.14
+            — domestic, foreign and international-organisation tiers.
+          </div>
+        </div>
+        <div>
+          <div class="c-h">Biographical information</div>
+          <div class="c-sub">
+            Titles, positions / roles, passport number(s), citizenship, DoB / registration date,
+            organisation &amp; political-party affiliation — all captured in the screening event
+            and retained 10 years (FDL Art.24).
+          </div>
+        </div>
+        <div>
+          <div class="c-h">List coverage &mdash; 700+ target</div>
+          <div class="c-sub">
+            <b>Live now:</b> UAE EOCN, UN 1267/1988/1989/2253, OFAC SDN + Consolidated, EU CFSP,
+            UK OFSI (&#x2265;&nbsp;5 lists).
+            <b>Roadmap:</b> Interpol, FCA, FINRA, FinCEN, SEC, DOJ, EuroPol, national debarments,
+            PEP vendor feeds, CAPTA, CMIC, sectoral &amp; NS-SDN, UN consolidated variants &amp;
+            local jurisdiction lists &mdash; cumulative 700+ sanction / watch / regulatory / LE
+            lists.
+          </div>
+        </div>
+        <div>
+          <div class="c-h">Record-update ranking</div>
+          <div class="c-sub">
+            Every list entry carries <i>fetchedAt</i>, <i>listPublishedAt</i> and
+            <i>changeImportance</i> (critical / material / minor) so updates rank by regulatory
+            impact, not recency alone. FATF Rec 10 / 22 / 23 traceability.
+          </div>
+        </div>
+      </div>
+      <p class="coverage-foot">
+        Coverage guarantees logged on every screening event (FDL Art.24 — 10-year retention) so
+        MoE / LBMA / internal audit can reproduce the exact data surface at any prior point in
+        time.
+      </p>
+    </div>
+
     <!-- List selector ────────────────────────────────────────────── -->
     <div class="grid grid-2" style="margin-top: 14px">
       <div class="card list-tier mandatory">
-        <h2>Mandatory UAE Lists <span class="tier-badge">Required</span></h2>
+        <h2>Mandatory UAE Lists</h2>
         <label class="list-check locked">
           <input
             type="checkbox"
@@ -860,6 +1445,103 @@
       </div>
     </div>
 
+    <!-- Risk categories ────────────────────────────────────────────── -->
+    <div class="card list-tier enhanced" style="margin-top: 14px">
+      <h2>Risk Categories</h2>
+      <p class="help-text" style="margin-top: -4px">
+        Content categories screened against every selected list + adverse-media corpus. Default:
+        all ON. Turning a category OFF is logged on the screening event (FDL Art.24 — 10-year
+        retention).
+      </p>
+      <div class="grid grid-2" style="gap: 6px 14px">
+        <label class="list-check">
+          <input type="checkbox" data-category="pep" data-tier="enhanced" checked />
+          <span class="list-label"
+            >Politically Exposed Persons (PEP), close associates &amp; family members
+            <span class="list-sub"
+              >Cabinet Res 134/2025 Art.14 — domestic, foreign, IO PEPs + RCAs</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input
+            type="checkbox"
+            data-category="stateOwnedEntities"
+            data-tier="enhanced"
+            checked
+          />
+          <span class="list-label"
+            >State-owned entities &amp; state-invested enterprises
+            <span class="list-sub">SOE ownership screen — FATF Rec 12 / 24 beneficial control</span>
+          </span>
+        </label>
+        <label class="list-check">
+          <input type="checkbox" data-category="globalSanctions" data-tier="enhanced" checked />
+          <span class="list-label"
+            >Global sanctions lists
+            <span class="list-sub"
+              >UN, OFAC SDN + Consolidated, EU CFSP, UK OFSI, UAE EOCN (mandatory)</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input
+            type="checkbox"
+            data-category="narrativeSanctions"
+            data-tier="enhanced"
+            checked
+          />
+          <span class="list-label"
+            >Narrative &amp; implicit sanctions
+            <span class="list-sub"
+              >Sectoral / 50-percent-rule / CAPTA / SSI / country-of-concern exposure</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input
+            type="checkbox"
+            data-category="regulatoryEnforcement"
+            data-tier="enhanced"
+            checked
+          />
+          <span class="list-label"
+            >Global regulatory &amp; law-enforcement lists
+            <span class="list-sub"
+              >FCA, FINRA, FinCEN, SEC, DOJ, Interpol, Europol, national debarments</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input type="checkbox" data-category="adverseMedia" data-tier="enhanced" checked />
+          <span class="list-label"
+            >Adverse media
+            <span class="list-sub"
+              >Open-source negative-news sweep covering the full FATF 40+9 predicate offence
+              taxonomy (bribery &amp; corruption, organized crime, terrorism / TF, human
+              trafficking, cybercrime, sanctions evasion, tax evasion, war crimes, environmental
+              crimes, securities fraud, and 30+ more). FATF Rec 10 / 12; FDL No.10/2025 Art.2.</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input
+            type="checkbox"
+            data-category="sanctionedSecurities"
+            data-tier="enhanced"
+            checked
+          />
+          <span class="list-label"
+            >Sanctioned securities
+            <span class="list-sub"
+              >ISIN / CUSIP / ticker screen — OFAC NS-SDN, CAPTA, 13(d) CMIC, UK sectoral</span
+            >
+          </span>
+        </label>
+      </div>
+
+    </div>
+
     <div class="grid grid-2" style="margin-top: 14px">
       <!-- Screen subject ────────────────────────────────────────────── -->
       <div class="card">
@@ -879,14 +1561,24 @@
           autocomplete="off"
         />
 
-        <label for="aliases">Aliases / AKAs</label>
+        <label for="aliases">Aliases &amp; alternative spellings</label>
         <input
           type="text"
           id="aliases"
-          placeholder="Comma-separated (e.g. Usama bin Ladin, UBL, Abu Abdullah)"
+          placeholder="Comma-separated — incl. non-Latin transliterations (e.g. Usama bin Ladin, UBL, أسامة بن لادن, 奥萨马·本·拉登)"
           autocomplete="off"
           maxlength="512"
         />
+        <span class="help-text"
+          >Matcher runs on 20+ Latin-alphabet languages (English, German, Italian, French,
+          Spanish, Portuguese, Dutch, Polish, Romanian, Turkish, Vietnamese, Indonesian, Malay,
+          Tagalog, Swahili, Hausa, Somali, Albanian, Croatian, Lithuanian) and normalises 40+
+          non-Latin scripts (Arabic, Persian/Farsi, Urdu, Hebrew, Cyrillic (Russian/Ukrainian/
+          Serbian/Bulgarian), Greek, Chinese (Simplified + Traditional), Japanese (Kanji / Hiragana
+          / Katakana), Korean Hangul, Thai, Lao, Khmer, Burmese, Devanagari / Bengali / Gurmukhi /
+          Gujarati / Tamil / Telugu / Kannada / Malayalam / Sinhala, Ge'ez / Amharic / Tigrinya,
+          Georgian, Armenian, Tibetan). Transliteration via ICU / Unicode UAX #35.</span
+        >
 
         <div class="row-2">
           <div>
@@ -939,8 +1631,54 @@
             />
           </div>
           <div>
+            <label for="passportNumber">Passport number(s)</label>
+            <input
+              type="text"
+              id="passportNumber"
+              placeholder="Comma-separated if multiple"
+              autocomplete="off"
+              maxlength="256"
+            />
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
+            <label for="title">Title</label>
+            <input
+              type="text"
+              id="title"
+              placeholder="e.g. Mr, Dr, H.E., Sheikh, Minister"
+              autocomplete="off"
+              maxlength="64"
+            />
+          </div>
+          <div>
+            <label for="position">Position / role</label>
+            <input
+              type="text"
+              id="position"
+              placeholder="e.g. Director, Minister of Interior, UBO > 25%"
+              autocomplete="off"
+              maxlength="128"
+            />
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
             <label for="subjectId">Subject ID (system)</label>
             <input type="text" id="subjectId" placeholder="auto if blank" autocomplete="off" />
+          </div>
+          <div>
+            <label for="organizationAffiliation">Organization / political party</label>
+            <input
+              type="text"
+              id="organizationAffiliation"
+              placeholder="e.g. Hezbollah, IRGC, Ministry of Defence"
+              autocomplete="off"
+              maxlength="128"
+            />
           </div>
         </div>
 
@@ -977,6 +1715,30 @@
             <label for="notes">Notes</label>
             <input type="text" id="notes" placeholder="Context for the MLRO" autocomplete="off" />
           </div>
+        </div>
+
+        <div id="tokenBudget" class="token-budget" aria-live="polite">
+          <div class="tb-header">
+            <span class="tb-label">Token budget</span>
+            <span class="tb-total"><span id="tbTotal">0</span>&nbsp;tokens</span>
+          </div>
+          <div class="tb-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div id="tbBarFill" class="tb-bar-fill" style="width: 0%"></div>
+          </div>
+          <div class="tb-breakdown">
+            <span>Name <b id="tbName">0</b></span>
+            <span>Aliases <b id="tbAliases">0</b></span>
+            <span>Notes <b id="tbNotes">0</b></span>
+            <span>Key findings <b id="tbKey">0</b></span>
+            <span>Rationale <b id="tbRationale">0</b></span>
+            <span>Lists <b id="tbLists">0</b></span>
+            <span>Categories <b id="tbCategories">0</b></span>
+          </div>
+          <p class="tb-footnote">
+            Approximation: ~4 characters per token (English). Budget caps: request body 32&nbsp;KB
+            (~8000 tokens); rationale 4000 chars; key findings 4000 chars; aliases 20&times;200
+            chars. Turns red above 6000 tokens — tighten before running.
+          </p>
         </div>
 
         <button id="screenBtn" type="button">Run Screening</button>
@@ -1018,18 +1780,82 @@
 
           <label>Screening outcome *</label>
           <div class="outcome-grid" role="radiogroup" aria-label="Screening outcome">
-            <button type="button" class="outcome-btn" data-outcome="negative_no_match">
-              <span class="dot"></span>Negative &mdash; No match
+            <button
+              type="button"
+              class="outcome-btn"
+              data-outcome="negative_no_match"
+              role="radio"
+              aria-checked="false"
+            >
+              <span class="outcome-head">
+                <span class="glyph" aria-hidden="true">&#10003;</span>
+                <span class="label">Negative</span>
+              </span>
+              <span class="impact"
+                >No match across any list. Proceed to SDD / CDD path per the subject's risk
+                tier.</span
+              >
             </button>
-            <button type="button" class="outcome-btn" data-outcome="false_positive">
-              <span class="dot"></span>False positive
+            <button
+              type="button"
+              class="outcome-btn"
+              data-outcome="false_positive"
+              role="radio"
+              aria-checked="false"
+            >
+              <span class="outcome-head">
+                <span class="glyph" aria-hidden="true">&#215;</span>
+                <span class="label">False positive</span>
+              </span>
+              <span class="impact"
+                >Name hit ruled out on DoB / ID / jurisdiction. Document the differentiator in
+                the rationale.</span
+              >
             </button>
-            <button type="button" class="outcome-btn" data-outcome="partial_match">
-              <span class="dot"></span>Partial match
+            <button
+              type="button"
+              class="outcome-btn"
+              data-outcome="partial_match"
+              role="radio"
+              aria-checked="false"
+            >
+              <span class="outcome-head">
+                <span class="glyph" aria-hidden="true">?</span>
+                <span class="label">Partial match</span>
+              </span>
+              <span class="impact"
+                >Escalate to Compliance Officer. Suspend onboarding / transaction until
+                adjudicated.</span
+              >
             </button>
-            <button type="button" class="outcome-btn" data-outcome="confirmed_match">
-              <span class="dot"></span>Confirmed match
+            <button
+              type="button"
+              class="outcome-btn"
+              data-outcome="confirmed_match"
+              role="radio"
+              aria-checked="false"
+            >
+              <span class="outcome-head">
+                <span class="glyph" aria-hidden="true">!</span>
+                <span class="label">Confirmed</span>
+              </span>
+              <span class="impact"
+                >FREEZE within 24h (Cabinet Res 74/2020 Art.4). File CNMR with EOCN in 5 business
+                days. No tipping off.</span
+              >
             </button>
+          </div>
+
+          <div id="dispositionPreview" class="disposition-preview" aria-live="polite">
+            <span class="dp-label">Disposition</span>
+            <span class="dp-value muted" id="dpOutcome">Select an outcome above.</span>
+            <span class="dp-label">Next action</span>
+            <span class="dp-value muted" id="dpAction">&mdash;</span>
+            <span class="dp-label">Record</span>
+            <span class="dp-value muted" id="dpRecord"
+              >Outcome, rationale, key findings, reviewer, IP, and timestamp will be written to
+              the append-only audit log + mirrored to the Asana task.</span
+            >
           </div>
 
           <label for="keyFindings" style="margin-top: 12px">Key findings</label>
@@ -1090,6 +1916,41 @@
                 consistent with the firm's Risk Appetite Statement (Cabinet Res 134/2025 Art.5),
                 and confirm the outcome + rationale above is a true and accurate account of my
                 decision.</span
+              >
+            </label>
+          </div>
+
+          <div id="fourEyesBlock" class="four-eyes" aria-hidden="true">
+            <h4>Four-eyes approval required</h4>
+            <p>
+              Partial and confirmed matches cannot be saved by a single reviewer. A second,
+              independent approver must attest to the outcome before the record is written to the
+              audit log (FDL No.10/2025 Art.20-21; Cabinet Res 134/2025 Art.19 — internal review).
+              The first reviewer and the second approver must be different people.
+            </p>
+            <label for="secondApprover">Second approver (full name) *</label>
+            <input
+              type="text"
+              id="secondApprover"
+              placeholder="e.g. Luisa Fernanda"
+              autocomplete="off"
+              maxlength="120"
+            />
+            <label for="secondApproverRole">Second approver role / title *</label>
+            <input
+              type="text"
+              id="secondApproverRole"
+              placeholder="e.g. Compliance Officer / MLRO"
+              autocomplete="off"
+              maxlength="120"
+            />
+            <label class="ack">
+              <input type="checkbox" id="secondApproverAck" />
+              <span
+                >I, the second approver, have independently reviewed the subject candidates, the
+                match evidence, and the rationale above. I attest that the disposition is
+                appropriate under FDL Art.20-21 and Cabinet Res 134/2025 Art.14/19, and that I am
+                not the same person as the first reviewer.</span
               >
             </label>
           </div>
