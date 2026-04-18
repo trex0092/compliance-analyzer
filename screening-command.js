@@ -239,47 +239,95 @@
   // /run request body and persisted with the screening event.
   // -----------------------------------------------------------------
   const ADVERSE_MEDIA_PREDICATES = [
-    { key: 'bribery_corruption',          label: 'Bribery and corruption',                         ref: 'FATF Rec 10/12; UNCAC' },
-    { key: 'hostage_taking',              label: 'Hostage taking',                                 ref: 'UNSCR 2178; FDL Art.2' },
-    { key: 'kidnapping',                  label: 'Kidnapping',                                     ref: 'FDL Art.2; Penal Code' },
-    { key: 'piracy_counterfeit_products', label: 'Piracy, counterfeiting & product piracy',        ref: 'FATF Rec 10; TRIPS' },
-    { key: 'human_trafficking',           label: 'Human trafficking & human rights abuses',        ref: 'FDL Art.2; Palermo Protocol' },
-    { key: 'organized_crime',             label: 'Organized crime',                                ref: 'UNTOC; FDL Art.2' },
-    { key: 'currency_counterfeiting',     label: 'Currency counterfeiting',                        ref: 'FDL Art.2; UAE Penal Code' },
-    { key: 'illicit_trafficking_goods',   label: 'Illicit trafficking in stolen / other goods',    ref: 'FATF Rec 10; FDL Art.2' },
-    { key: 'racketeering',                label: 'Racketeering',                                   ref: 'UNTOC Art.5' },
-    { key: 'cybercrime',                  label: 'Cybercrime',                                     ref: 'Budapest Convention' },
-    { key: 'hacking',                     label: 'Hacking',                                        ref: 'UAE FDL 34/2021' },
-    { key: 'phishing',                    label: 'Phishing',                                       ref: 'UAE FDL 34/2021' },
-    { key: 'insider_trading_market_manip',label: 'Insider trading & market manipulation',          ref: 'FDL Art.2; SCA' },
-    { key: 'robbery',                     label: 'Robbery',                                        ref: 'FDL Art.2; Penal Code' },
-    { key: 'environmental_crimes',        label: 'Environmental crimes',                           ref: 'FATF 2021 Env Crime Report' },
-    { key: 'migrant_smuggling',           label: 'Migrant smuggling',                              ref: 'UNTOC Smuggling Protocol' },
-    { key: 'slave_labor',                 label: 'Slave labour / forced labour',                   ref: 'ILO C029; FDL Art.2' },
-    { key: 'securities_fraud',            label: 'Securities fraud',                               ref: 'SCA Board Res 37/R.M.' },
-    { key: 'extortion',                   label: 'Extortion',                                      ref: 'FDL Art.2' },
-    { key: 'child_sexual_exploitation',   label: 'Sexual exploitation of children',                ref: 'OPSC; FDL Art.2' },
-    { key: 'money_laundering',            label: 'Money laundering',                               ref: 'FDL No.10/2025 Art.2' },
-    { key: 'falsifying_official_docs',    label: 'Falsifying information on official documents',   ref: 'FDL Art.2; Penal Code' },
-    { key: 'narcotics_arms_trafficking',  label: 'Narcotics & arms trafficking',                   ref: 'UN 1988 Conv; ATT' },
-    { key: 'smuggling',                   label: 'Smuggling',                                      ref: 'FDL Art.2; Customs Law' },
-    { key: 'forgery',                     label: 'Forgery',                                        ref: 'FDL Art.2' },
-    { key: 'price_fixing',                label: 'Price fixing',                                   ref: 'UAE Competition Law 4/2012' },
-    { key: 'illegal_cartel_formation',    label: 'Illegal cartel formation',                       ref: 'UAE Competition Law 4/2012' },
-    { key: 'antitrust_violations',        label: 'Antitrust violations',                           ref: 'UAE Competition Law 4/2012' },
-    { key: 'terrorism',                   label: 'Terrorism',                                      ref: 'FDL No.7/2014; UNSCR 1373' },
-    { key: 'terror_financing',            label: 'Terror financing',                               ref: 'FDL No.10/2025 Art.2; UNSCR 1267' },
-    { key: 'fraud',                       label: 'Fraud',                                          ref: 'FDL Art.2; Penal Code' },
-    { key: 'embezzlement',                label: 'Embezzlement',                                   ref: 'FDL Art.2; UNCAC Art.17' },
-    { key: 'theft',                       label: 'Theft',                                          ref: 'FDL Art.2; Penal Code' },
-    { key: 'cheating',                    label: 'Cheating',                                       ref: 'FDL Art.2; Penal Code' },
-    { key: 'pharma_trafficking',          label: 'Pharmaceutical product trafficking',             ref: 'MEDICRIME Conv; FATF' },
-    { key: 'illegal_distribution',        label: 'Illegal distribution',                           ref: 'FDL Art.2' },
-    { key: 'illegal_production',          label: 'Illegal production',                             ref: 'FDL Art.2' },
-    { key: 'banned_fake_medicines',       label: 'Banned / fake medicines',                        ref: 'MEDICRIME Conv' },
-    { key: 'war_crimes',                  label: 'War crimes',                                     ref: 'Rome Statute; Geneva Conv' },
-    { key: 'tax_evasion',                 label: 'Tax evasion',                                    ref: 'FDL No.10/2025 Art.2' },
-    { key: 'tax_fraud',                   label: 'Tax fraud',                                      ref: 'FDL No.10/2025 Art.2; FTA Law' },
+    { key: 'bribery_corruption', label: 'Bribery and corruption', ref: 'FATF Rec 10/12; UNCAC' },
+    { key: 'hostage_taking', label: 'Hostage taking', ref: 'UNSCR 2178; FDL Art.2' },
+    { key: 'kidnapping', label: 'Kidnapping', ref: 'FDL Art.2; Penal Code' },
+    {
+      key: 'piracy_counterfeit_products',
+      label: 'Piracy, counterfeiting & product piracy',
+      ref: 'FATF Rec 10; TRIPS',
+    },
+    {
+      key: 'human_trafficking',
+      label: 'Human trafficking & human rights abuses',
+      ref: 'FDL Art.2; Palermo Protocol',
+    },
+    { key: 'organized_crime', label: 'Organized crime', ref: 'UNTOC; FDL Art.2' },
+    {
+      key: 'currency_counterfeiting',
+      label: 'Currency counterfeiting',
+      ref: 'FDL Art.2; UAE Penal Code',
+    },
+    {
+      key: 'illicit_trafficking_goods',
+      label: 'Illicit trafficking in stolen / other goods',
+      ref: 'FATF Rec 10; FDL Art.2',
+    },
+    { key: 'racketeering', label: 'Racketeering', ref: 'UNTOC Art.5' },
+    { key: 'cybercrime', label: 'Cybercrime', ref: 'Budapest Convention' },
+    { key: 'hacking', label: 'Hacking', ref: 'UAE FDL 34/2021' },
+    { key: 'phishing', label: 'Phishing', ref: 'UAE FDL 34/2021' },
+    {
+      key: 'insider_trading_market_manip',
+      label: 'Insider trading & market manipulation',
+      ref: 'FDL Art.2; SCA',
+    },
+    { key: 'robbery', label: 'Robbery', ref: 'FDL Art.2; Penal Code' },
+    {
+      key: 'environmental_crimes',
+      label: 'Environmental crimes',
+      ref: 'FATF 2021 Env Crime Report',
+    },
+    { key: 'migrant_smuggling', label: 'Migrant smuggling', ref: 'UNTOC Smuggling Protocol' },
+    { key: 'slave_labor', label: 'Slave labour / forced labour', ref: 'ILO C029; FDL Art.2' },
+    { key: 'securities_fraud', label: 'Securities fraud', ref: 'SCA Board Res 37/R.M.' },
+    { key: 'extortion', label: 'Extortion', ref: 'FDL Art.2' },
+    {
+      key: 'child_sexual_exploitation',
+      label: 'Sexual exploitation of children',
+      ref: 'OPSC; FDL Art.2',
+    },
+    { key: 'money_laundering', label: 'Money laundering', ref: 'FDL No.10/2025 Art.2' },
+    {
+      key: 'falsifying_official_docs',
+      label: 'Falsifying information on official documents',
+      ref: 'FDL Art.2; Penal Code',
+    },
+    {
+      key: 'narcotics_arms_trafficking',
+      label: 'Narcotics & arms trafficking',
+      ref: 'UN 1988 Conv; ATT',
+    },
+    { key: 'smuggling', label: 'Smuggling', ref: 'FDL Art.2; Customs Law' },
+    { key: 'forgery', label: 'Forgery', ref: 'FDL Art.2' },
+    { key: 'price_fixing', label: 'Price fixing', ref: 'UAE Competition Law 4/2012' },
+    {
+      key: 'illegal_cartel_formation',
+      label: 'Illegal cartel formation',
+      ref: 'UAE Competition Law 4/2012',
+    },
+    {
+      key: 'antitrust_violations',
+      label: 'Antitrust violations',
+      ref: 'UAE Competition Law 4/2012',
+    },
+    { key: 'terrorism', label: 'Terrorism', ref: 'FDL No.7/2014; UNSCR 1373' },
+    { key: 'terror_financing', label: 'Terror financing', ref: 'FDL No.10/2025 Art.2; UNSCR 1267' },
+    { key: 'fraud', label: 'Fraud', ref: 'FDL Art.2; Penal Code' },
+    { key: 'embezzlement', label: 'Embezzlement', ref: 'FDL Art.2; UNCAC Art.17' },
+    { key: 'theft', label: 'Theft', ref: 'FDL Art.2; Penal Code' },
+    { key: 'cheating', label: 'Cheating', ref: 'FDL Art.2; Penal Code' },
+    {
+      key: 'pharma_trafficking',
+      label: 'Pharmaceutical product trafficking',
+      ref: 'MEDICRIME Conv; FATF',
+    },
+    { key: 'illegal_distribution', label: 'Illegal distribution', ref: 'FDL Art.2' },
+    { key: 'illegal_production', label: 'Illegal production', ref: 'FDL Art.2' },
+    { key: 'banned_fake_medicines', label: 'Banned / fake medicines', ref: 'MEDICRIME Conv' },
+    { key: 'war_crimes', label: 'War crimes', ref: 'Rome Statute; Geneva Conv' },
+    { key: 'tax_evasion', label: 'Tax evasion', ref: 'FDL No.10/2025 Art.2' },
+    { key: 'tax_fraud', label: 'Tax fraud', ref: 'FDL No.10/2025 Art.2; FTA Law' },
   ];
 
   // Default scope for every Adverse Media sweep — not a UI toggle, just
@@ -297,63 +345,6 @@
     });
     return out;
   }
-
-  // ----- Token budget (approx 4 chars = 1 token, English) -----
-  const TOKEN_SOFT_CAP = 6000; // warn at 75%
-  const TOKEN_HARD_CAP = 8000; // ~32KB body
-  const tbEl = $('tokenBudget');
-  const tbTotal = $('tbTotal');
-  const tbBarFill = $('tbBarFill');
-  const tbName = $('tbName');
-  const tbAliases = $('tbAliases');
-  const tbNotes = $('tbNotes');
-  const tbKey = $('tbKey');
-  const tbRationale = $('tbRationale');
-  const tbLists = $('tbLists');
-  const tbCategories = $('tbCategories');
-
-  function tokensFor(s) {
-    return Math.ceil((s || '').length / 4);
-  }
-
-  function updateTokenBudget() {
-    if (!tbEl) return;
-    const name = tokensFor(subjectNameInput ? subjectNameInput.value : '');
-    const aliases = tokensFor(aliasesInput ? aliasesInput.value : '');
-    const notes = tokensFor(notesInput ? notesInput.value : '');
-    const key = tokensFor(keyFindingsInput ? keyFindingsInput.value : '');
-    const rationale = tokensFor(rationaleInput ? rationaleInput.value : '');
-    const lists = collectSelectedLists().length * 2;
-    const categories = collectSelectedCategories().length * 3;
-    const total = name + aliases + notes + key + rationale + lists + categories;
-    if (tbName) tbName.textContent = String(name);
-    if (tbAliases) tbAliases.textContent = String(aliases);
-    if (tbNotes) tbNotes.textContent = String(notes);
-    if (tbKey) tbKey.textContent = String(key);
-    if (tbRationale) tbRationale.textContent = String(rationale);
-    if (tbLists) tbLists.textContent = String(lists);
-    if (tbCategories) tbCategories.textContent = String(categories);
-    if (tbTotal) tbTotal.textContent = String(total);
-    const pct = Math.min(100, Math.round((total / TOKEN_HARD_CAP) * 100));
-    if (tbBarFill) tbBarFill.style.width = pct + '%';
-    tbEl.classList.remove('warn', 'over');
-    if (total >= TOKEN_HARD_CAP) tbEl.classList.add('over');
-    else if (total >= TOKEN_SOFT_CAP) tbEl.classList.add('warn');
-  }
-
-  [
-    subjectNameInput,
-    aliasesInput,
-    notesInput,
-    keyFindingsInput,
-    rationaleInput,
-  ].forEach((el) => {
-    if (el) el.addEventListener('input', updateTokenBudget);
-  });
-  document
-    .querySelectorAll('input[data-tier="enhanced"]')
-    .forEach((el) => el.addEventListener('change', updateTokenBudget));
-  updateTokenBudget();
 
   function todayDdMmYyyy() {
     const d = new Date();
@@ -417,11 +408,7 @@
 
   function setDisposition(outcomeKey) {
     if (!dispositionPreview || !dpOutcome || !dpAction) return;
-    dispositionPreview.classList.remove(
-      'level-clear',
-      'level-escalate',
-      'level-freeze'
-    );
+    dispositionPreview.classList.remove('level-clear', 'level-escalate', 'level-freeze');
     if (!outcomeKey || !OUTCOME_META[outcomeKey]) {
       dpOutcome.textContent = 'Select an outcome above.';
       dpOutcome.classList.add('muted');
@@ -546,9 +533,7 @@
     let secondApproverRole = '';
     if (outcomeRequiresFourEyes(currentOutcome)) {
       secondApprover = secondApproverInput ? secondApproverInput.value.trim() : '';
-      secondApproverRole = secondApproverRoleInput
-        ? secondApproverRoleInput.value.trim()
-        : '';
+      secondApproverRole = secondApproverRoleInput ? secondApproverRoleInput.value.trim() : '';
       if (!secondApprover) {
         showMessage(
           saveMsg,
@@ -907,9 +892,7 @@
               ? 'Weak match — documented and dismissed if false positive'
               : 'No sanctions match';
       const anomSuffix =
-        anomalies.length > 0
-          ? ' · ' + anomalies.length + ' anomaly(ies) routed to Asana'
-          : '';
+        anomalies.length > 0 ? ' · ' + anomalies.length + ' anomaly(ies) routed to Asana' : '';
       showMessage(
         screenMsg,
         verb + anomSuffix + '. Complete the disposition below to close the event.',
