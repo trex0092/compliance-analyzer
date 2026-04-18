@@ -925,6 +925,8 @@
         width: 14px;
         height: 14px;
         display: block;
+        /* The SVG is decorative — bubble clicks to the <button>. */
+        pointer-events: none;
       }
       .list-refresh:hover {
         background: rgba(74, 144, 226, 0.12);
@@ -950,7 +952,7 @@
         display: block;
       }
       .coverage-card {
-        border-left: 3px solid var(--blue);
+        border-left: 3px solid #a855f7;
       }
       .coverage-grid {
         display: grid;
@@ -964,7 +966,7 @@
         font-weight: 600;
         letter-spacing: 1.3px;
         text-transform: uppercase;
-        color: var(--blue);
+        color: #a855f7;
         margin-bottom: 4px;
       }
       .coverage-grid .c-sub {
@@ -1555,8 +1557,8 @@
     </details>
 
     <!-- Data coverage contract ────────────────────────────────────── -->
-    <div class="card coverage-card" style="margin-top: 14px">
-      <h2>Data Coverage</h2>
+    <div class="card coverage-card" style="margin-top: 14px; border-color: #a855f7">
+      <h2 style="color: #a855f7">Data Coverage</h2>
       <div class="coverage-grid">
         <div>
           <div class="c-h">Aliases &amp; alternative spellings</div>
