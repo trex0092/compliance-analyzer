@@ -158,6 +158,7 @@ const SELECTABLE_LISTS: readonly SelectableList[] = [
 
 export interface ScreeningRunInput {
   subjectName: string;
+  aliases?: string[];
   subjectId?: string;
   entityType: EntityType;
   dob?: string;
@@ -266,10 +267,39 @@ function validateInput(
     }
     selectedLists = Array.from(new Set(o.selectedLists as SelectableList[]));
   }
+
+  let aliases: string[] | undefined;
+  if (o.aliases !== undefined) {
+    if (!Array.isArray(o.aliases)) {
+      return { ok: false, error: 'aliases must be an array of strings' };
+    }
+    if ((o.aliases as unknown[]).length > 20) {
+      return { ok: false, error: 'aliases cannot exceed 20 entries' };
+    }
+    const cleaned: string[] = [];
+    const seen = new Set<string>();
+    for (const a of o.aliases as unknown[]) {
+      if (typeof a !== 'string') {
+        return { ok: false, error: 'aliases entries must be strings' };
+      }
+      const t = a.trim();
+      if (t.length === 0) continue;
+      if (t.length > 200) {
+        return { ok: false, error: 'alias too long (max 200 chars per entry)' };
+      }
+      const key = t.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      cleaned.push(t);
+    }
+    if (cleaned.length > 0) aliases = cleaned;
+  }
+
   return {
     ok: true,
     input: {
       subjectName: o.subjectName.trim(),
+      aliases,
       subjectId: typeof o.subjectId === 'string' ? o.subjectId.trim() : undefined,
       entityType: o.entityType as EntityType,
       dob,
@@ -362,7 +392,8 @@ const MANDATORY_LISTS: ReadonlySet<string> = new Set(['UAE_EOCN', 'UN']);
 function screenAgainstAllLists(
   subjectName: string,
   snapshot: ListSnapshot,
-  selectedLists?: SelectableList[]
+  selectedLists?: SelectableList[],
+  aliases?: string[]
 ): {
   perList: PerListResult[];
   overallTopScore: number;
@@ -398,19 +429,29 @@ function screenAgainstAllLists(
       candidates.push(e.name);
       if (Array.isArray(e.aliases)) for (const a of e.aliases) if (a) candidates.push(a);
     }
-    const resp = runMultiModalNameMatcher({
-      query: subjectName,
+    const queries = [subjectName, ...(aliases || [])];
+    let best = runMultiModalNameMatcher({
+      query: queries[0],
       candidates,
       threshold: 0.7,
       maxHits: 10,
     });
+    for (let i = 1; i < queries.length; i++) {
+      const r = runMultiModalNameMatcher({
+        query: queries[i],
+        candidates,
+        threshold: 0.7,
+        maxHits: 10,
+      });
+      if (r.topScore > best.topScore) best = r;
+    }
     perList.push({
       list: listSnap.name,
       candidatesChecked: candidates.length,
-      hitCount: resp.hitCount,
-      topScore: resp.topScore,
-      topClassification: resp.topClassification,
-      hits: [...resp.hits],
+      hitCount: best.hitCount,
+      topScore: best.topScore,
+      topClassification: best.topClassification,
+      hits: [...best.hits],
       error: listSnap.error,
     });
   }
@@ -662,7 +703,8 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const { perList, overallTopScore, overallTopClassification } = screenAgainstAllLists(
     input.subjectName,
     snapshot,
-    input.selectedLists
+    input.selectedLists,
+    input.aliases
   );
   const totalCandidates = perList.reduce((acc, l) => acc + l.candidatesChecked, 0);
   const listErrors = perList.filter((l) => l.error).map((l) => ({ list: l.list, error: l.error }));

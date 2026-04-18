@@ -314,6 +314,33 @@ describe('screening-save — validateInput', () => {
     expect(r.ok).toBe(false);
   });
 
+  // ---- Key findings (optional, max 4000) ----
+
+  it('accepts optional keyFindings', () => {
+    const r = validateInput({
+      ...baseInput(),
+      keyFindings: 'Top hit on UN 1267/1989 list (0.92). DOB matches.',
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.input.keyFindings).toContain('UN 1267');
+  });
+
+  it('rejects non-string keyFindings', () => {
+    const r = validateInput({ ...baseInput(), keyFindings: 123 });
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects oversized keyFindings', () => {
+    const r = validateInput({ ...baseInput(), keyFindings: 'x'.repeat(5000) });
+    expect(r.ok).toBe(false);
+  });
+
+  it('omits keyFindings when empty-trimmed', () => {
+    const r = validateInput({ ...baseInput(), keyFindings: '   ' });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.input.keyFindings).toBeUndefined();
+  });
+
   // ---- Trimming ----
 
   it('trims string fields', () => {
