@@ -13,7 +13,12 @@
  *   - vendor/open-multi-agent (DAG task decomposition)
  */
 
-import { runInvestigation, type InvestigationTranscript, type SearchFn, type SubjectProfile } from './investigator';
+import {
+  runInvestigation,
+  type InvestigationTranscript,
+  type SearchFn,
+  type SubjectProfile,
+} from './investigator';
 import { runReasoning, type ReasoningResult, type Hypothesis } from './reasoner';
 
 export type TaskKind = 'investigate' | 'reason' | 'evaluate' | 'reflect';
@@ -261,17 +266,16 @@ function buildFailureResult(
   return {
     plan,
     results,
-    investigation:
-      investigation ?? {
-        subject,
-        questions: [],
-        atoms: [],
-        iterations: 0,
-        costSpent: 0,
-        budgetExhausted: false,
-        coverage: 0,
-        summary: `Investigation not completed: ${reason}`,
-      },
+    investigation: investigation ?? {
+      subject,
+      questions: [],
+      atoms: [],
+      iterations: 0,
+      costSpent: 0,
+      budgetExhausted: false,
+      coverage: 0,
+      summary: `Investigation not completed: ${reason}`,
+    },
     reasoning: {
       hypotheses: [],
       branches: [],

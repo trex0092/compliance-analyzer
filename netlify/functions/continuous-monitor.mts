@@ -468,7 +468,14 @@ export default async (req: Request, context: Context): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/continuous-monitor',
+  // Scheduled functions must not declare a `path` — Netlify rejects
+  // the config at build time (see https://ntl.fyi/custom-path-scheduled-functions).
+  // The on-demand POST flow still reaches this function at its
+  // default address `/.netlify/functions/continuous-monitor`, and a
+  // `/api/continuous-monitor` → default redirect is wired in
+  // netlify.toml so existing MLRO-war-room and CI smoke-test callers
+  // keep their stable URL.
+  //
   // Twice per day at 06:00 and 14:00 UTC, matching the existing
   // scheduled-screening GitHub Action so MLRO gets one consolidated
   // morning + afternoon briefing.

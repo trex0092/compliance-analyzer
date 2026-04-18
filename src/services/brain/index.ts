@@ -12,11 +12,7 @@
  * caller's responsibility under FDL Art.29.
  */
 
-export {
-  buildDefaultQuestions,
-  nullSearchFn,
-  runInvestigation,
-} from './investigator';
+export { buildDefaultQuestions, nullSearchFn, runInvestigation } from './investigator';
 export type {
   InvestigationConfig,
   InvestigationTranscript,

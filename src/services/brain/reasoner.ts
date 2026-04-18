@@ -115,10 +115,7 @@ const DEFAULT_HYPOTHESES: Hypothesis[] = [
  * Run the tree-of-thoughts reasoning over a set of atoms. Returns the
  * ranked hypotheses and the top pick with a plain-English rationale.
  */
-export function runReasoning(
-  atoms: ResearchAtom[],
-  config: ReasoningConfig = {}
-): ReasoningResult {
+export function runReasoning(atoms: ResearchAtom[], config: ReasoningConfig = {}): ReasoningResult {
   const hypotheses = config.defaultHypotheses ?? DEFAULT_HYPOTHESES;
   const atomWeight = config.atomWeight ?? 1.8;
   const beamWidth = config.beamWidth ?? 8;
@@ -215,10 +212,7 @@ function buildRationale(h: Hypothesis, branch: ReasoningBranch): string {
   return parts.join(' ');
 }
 
-function buildAuditChain(
-  hypotheses: Hypothesis[],
-  branches: ReasoningBranch[]
-): string {
+function buildAuditChain(hypotheses: Hypothesis[], branches: ReasoningBranch[]): string {
   const lines: string[] = [];
   lines.push('=== Reasoning audit chain ===');
   for (const h of hypotheses) {

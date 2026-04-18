@@ -70,8 +70,7 @@ const CITATIONS: Record<MatchKind, RegulatoryCitation> = {
   pep_family: {
     instrument: 'FATF Rec 12',
     article: 'Cabinet Res 134/2025 Art.14',
-    summary:
-      'EDD required for family member of a PEP (spouse, parent, child, sibling).',
+    summary: 'EDD required for family member of a PEP (spouse, parent, child, sibling).',
     retentionYears: 10,
   },
   pep_kca: {
@@ -84,8 +83,7 @@ const CITATIONS: Record<MatchKind, RegulatoryCitation> = {
   soe_50pct: {
     instrument: 'OFAC 50% Rule; UK OFSI 50% Rule',
     article: 'Cabinet Res 156/2025',
-    summary:
-      'Entity is 50%+ owned by a state/ sanctioned party — treat as if directly listed.',
+    summary: 'Entity is 50%+ owned by a state/ sanctioned party — treat as if directly listed.',
     retentionYears: 10,
   },
   ubo_25pct: {
@@ -111,8 +109,7 @@ const CITATIONS: Record<MatchKind, RegulatoryCitation> = {
   crypto_sanctioned_address: {
     instrument: 'OFAC SDN crypto list; VARA Rulebook',
     article: 'Cabinet Res 74/2020 Art.4; UAE FDL 4/2002 as amended',
-    summary:
-      'Blocked address — reject the transaction, freeze any related assets, file CNMR.',
+    summary: 'Blocked address — reject the transaction, freeze any related assets, file CNMR.',
     retentionYears: 10,
   },
 };
@@ -130,10 +127,7 @@ export function citationForUnknown(): RegulatoryCitation {
   };
 }
 
-export function traceabilityBlock(
-  kind: MatchKind,
-  matchDetail: string
-): string {
+export function traceabilityBlock(kind: MatchKind, matchDetail: string): string {
   const c = citationFor(kind);
   return [
     `${c.instrument} — ${c.article}`,

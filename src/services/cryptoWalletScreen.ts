@@ -132,9 +132,7 @@ export function screenWalletHeuristic(
     });
   }
 
-  const riskScore = onList
-    ? 1
-    : Math.min(1, signals.reduce((s, r) => s + r.weight, 0) / 2);
+  const riskScore = onList ? 1 : Math.min(1, signals.reduce((s, r) => s + r.weight, 0) / 2);
 
   return {
     address: input.address,

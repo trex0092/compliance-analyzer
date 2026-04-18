@@ -73,9 +73,7 @@ export interface Article {
   language?: string;
 }
 
-export type MediaFetcher = (
-  query: string
-) => Promise<Article[]> | Article[];
+export type MediaFetcher = (query: string) => Promise<Article[]> | Article[];
 
 export interface MediaHit {
   articleUrl: string;
@@ -101,26 +99,74 @@ export interface AdverseMediaResult {
 }
 
 export const PREDICATE_SIGNALS: PredicateSignal[] = [
-  { key: 'bribery_corruption', keywords: ['bribe', 'kickback', 'corrupt'], ref: 'FATF Rec 23; UAE FDL 31/2021 Art.23' },
-  { key: 'money_laundering', keywords: ['money laundering', 'launder'], ref: 'FDL No.10/2025 Art.2' },
-  { key: 'terror_financing', keywords: ['terrorist financing', 'funded terror'], ref: 'FDL No.10/2025 Art.2; Cabinet Res 74/2020' },
-  { key: 'terrorism', keywords: ['terrorist attack', 'terrorism charge'], ref: 'UN Res 1373 (2001)' },
+  {
+    key: 'bribery_corruption',
+    keywords: ['bribe', 'kickback', 'corrupt'],
+    ref: 'FATF Rec 23; UAE FDL 31/2021 Art.23',
+  },
+  {
+    key: 'money_laundering',
+    keywords: ['money laundering', 'launder'],
+    ref: 'FDL No.10/2025 Art.2',
+  },
+  {
+    key: 'terror_financing',
+    keywords: ['terrorist financing', 'funded terror'],
+    ref: 'FDL No.10/2025 Art.2; Cabinet Res 74/2020',
+  },
+  {
+    key: 'terrorism',
+    keywords: ['terrorist attack', 'terrorism charge'],
+    ref: 'UN Res 1373 (2001)',
+  },
   { key: 'fraud', keywords: ['defraud', 'ponzi', 'pyramid scheme'], ref: 'UAE Penal Code Art.399' },
-  { key: 'tax_evasion', keywords: ['tax evasion', 'undeclared income'], ref: 'UAE Tax Procedures Law 7/2017' },
+  {
+    key: 'tax_evasion',
+    keywords: ['tax evasion', 'undeclared income'],
+    ref: 'UAE Tax Procedures Law 7/2017',
+  },
   { key: 'embezzlement', keywords: ['embezzle', 'misappropriat'], ref: 'UAE Penal Code Art.398' },
-  { key: 'human_trafficking', keywords: ['human trafficking', 'trafficked person'], ref: 'UAE FDL 51/2006' },
-  { key: 'narcotics_arms_trafficking', keywords: ['drug trafficking', 'arms trafficking', 'weapons smuggling'], ref: 'UAE FDL 14/1995' },
+  {
+    key: 'human_trafficking',
+    keywords: ['human trafficking', 'trafficked person'],
+    ref: 'UAE FDL 51/2006',
+  },
+  {
+    key: 'narcotics_arms_trafficking',
+    keywords: ['drug trafficking', 'arms trafficking', 'weapons smuggling'],
+    ref: 'UAE FDL 14/1995',
+  },
   { key: 'cybercrime', keywords: ['hacked', 'data breach', 'ransomware'], ref: 'UAE FDL 34/2021' },
-  { key: 'securities_fraud', keywords: ['securities fraud', 'insider trading'], ref: 'UAE Securities & Commodities Authority Reg' },
-  { key: 'organized_crime', keywords: ['organized crime', 'criminal enterprise'], ref: 'UNTOC (Palermo)' },
+  {
+    key: 'securities_fraud',
+    keywords: ['securities fraud', 'insider trading'],
+    ref: 'UAE Securities & Commodities Authority Reg',
+  },
+  {
+    key: 'organized_crime',
+    keywords: ['organized crime', 'criminal enterprise'],
+    ref: 'UNTOC (Palermo)',
+  },
   { key: 'war_crimes', keywords: ['war crime', 'crimes against humanity'], ref: 'Rome Statute' },
-  { key: 'environmental_crimes', keywords: ['environmental crime', 'illegal dumping'], ref: 'UAE FDL 24/1999' },
-  { key: 'piracy_counterfeit_products', keywords: ['counterfeit goods', 'piracy'], ref: 'UAE FDL 17/2002' },
+  {
+    key: 'environmental_crimes',
+    keywords: ['environmental crime', 'illegal dumping'],
+    ref: 'UAE FDL 24/1999',
+  },
+  {
+    key: 'piracy_counterfeit_products',
+    keywords: ['counterfeit goods', 'piracy'],
+    ref: 'UAE FDL 17/2002',
+  },
   { key: 'kidnapping', keywords: ['kidnap', 'abduct'], ref: 'UAE Penal Code Art.344' },
   { key: 'smuggling', keywords: ['smuggling', 'smuggled'], ref: 'UAE Customs Law' },
   { key: 'forgery', keywords: ['forgery', 'forged document'], ref: 'UAE Penal Code Art.251' },
   { key: 'extortion', keywords: ['extortion', 'blackmail'], ref: 'UAE Penal Code Art.399' },
-  { key: 'pharma_trafficking', keywords: ['counterfeit medicine', 'fake drug'], ref: 'MEDICRIME Convention' },
+  {
+    key: 'pharma_trafficking',
+    keywords: ['counterfeit medicine', 'fake drug'],
+    ref: 'MEDICRIME Convention',
+  },
 ];
 
 export async function runAdverseMediaIngest(

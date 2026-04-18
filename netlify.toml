@@ -1,29 +1,22 @@
 [build]
   publish = "."
   command = "echo deploy-v3.0-enhancements"
-  # Deploy-preview deduplication (belt-and-braces safety net).
+  # Full decommission of both legacy Netlify sites.
   #
   # Canonical site: "hawkeye-sterling-v2" (hawkeye-sterling-v2.netlify.app).
-  # All code, workflows, docs, and env var defaults have been migrated to
-  # this site. The legacy "compliance-analyzer" and "hawkeye-sterling"
-  # Netlify sites are expected to be blocked ("Stop builds") in the
-  # Netlify dashboard after merge.
+  # The legacy "compliance-analyzer" and "hawkeye-sterling" sites are no
+  # longer in use (both already "Auto Publishing Locked" in the Netlify
+  # dashboard) — every context (deploy-preview, production, branch-
+  # deploy) is cancelled here so an accidental dashboard re-enable
+  # cannot publish stale code.
   #
-  # This ignore rule is a second line of defense: if someone ever
-  # re-enables builds on the legacy "compliance-analyzer" site in the
-  # dashboard by mistake, it will still skip deploy-preview builds so
-  # PRs only post one preview comment. Production (CONTEXT=production)
-  # and branch deploys (CONTEXT=branch-deploy) are unaffected — they
-  # pass through and build normally, which is what you want while the
-  # legacy site is being decommissioned.
-  #
-  # Once the legacy site is fully deleted in the Netlify dashboard,
+  # Once both legacy sites are fully deleted in the Netlify dashboard,
   # this rule becomes a no-op and can be removed in a follow-up.
   #
   # Netlify ignore command: exit 0 = cancel the build, exit 1 = proceed.
-  # Both SITE_NAME and CONTEXT are read-only env vars injected by
-  # Netlify (see https://docs.netlify.com/configure-builds/environment-variables/).
-  ignore = "if [ \"$CONTEXT\" = \"deploy-preview\" ] && [ \"$SITE_NAME\" = \"compliance-analyzer\" ]; then echo 'skipping duplicate deploy-preview on legacy compliance-analyzer site'; exit 0; else exit 1; fi"
+  # SITE_NAME is a read-only env var injected by Netlify (see
+  # https://docs.netlify.com/configure-builds/environment-variables/).
+  ignore = "case \"$SITE_NAME\" in compliance-analyzer|hawkeye-sterling) echo \"$SITE_NAME is decommissioned; canonical site is hawkeye-sterling-v2\"; exit 0 ;; *) exit 1 ;; esac"
 
 [build.environment]
   # Exclude vendored third-party reference code from secrets scanning.
@@ -34,6 +27,17 @@
 
 [functions]
   directory = "netlify/functions"
+
+# Preserve the stable `/api/continuous-monitor` URL now that the
+# scheduled function can no longer declare a custom `path` (Netlify
+# forbids combining `path:` + `schedule:` — see
+# https://ntl.fyi/custom-path-scheduled-functions). Existing MLRO
+# war-room callers and CI smoke tests keep working via this redirect.
+[[redirects]]
+  from = "/api/continuous-monitor"
+  to = "/.netlify/functions/continuous-monitor"
+  status = 200
+  force = true
 
 [[headers]]
   for = "/*"
