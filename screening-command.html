@@ -782,7 +782,7 @@
       }
       /* List selector panels (mandatory vs enhanced) */
       .list-tier {
-        border-left: 3px solid var(--gold);
+        border-left: 3px solid var(--blue);
       }
       .list-tier.enhanced {
         border-left-color: var(--blue);
@@ -792,8 +792,8 @@
         padding: 2px 5px;
         border-radius: 2px;
         letter-spacing: 1px;
-        background: rgba(201, 168, 76, 0.2);
-        color: var(--gold);
+        background: rgba(74, 144, 226, 0.2);
+        color: var(--blue);
       }
       .list-tier.enhanced h2 .tier-badge {
         background: rgba(74, 144, 226, 0.2);
@@ -808,7 +808,7 @@
         border-top: 1px solid var(--border);
         cursor: pointer;
         border-radius: 4px;
-        transition: background-color 0.12s ease;
+        transition: background-color 0.18s ease;
       }
       .list-check:first-of-type {
         border-top: none;
@@ -826,16 +826,22 @@
         width: 20px;
         height: 20px;
         flex-shrink: 0;
-        border: 2px solid var(--gold);
-        border-radius: 3px;
+        border: 1.5px solid var(--blue);
+        border-radius: 5px;
         background: transparent;
         cursor: pointer;
         position: relative;
-        transition: background-color 0.12s ease, border-color 0.12s ease;
+        transition: background-color 0.18s ease, border-color 0.18s ease,
+          box-shadow 0.18s ease, transform 0.12s ease;
+      }
+      .list-check:hover input[type='checkbox']:not(:disabled) {
+        transform: scale(1.04);
       }
       .list-check input[type='checkbox']:checked {
-        background-color: var(--gold);
-        border-color: var(--gold);
+        background: linear-gradient(135deg, #5aa0ea 0%, var(--blue) 100%);
+        border-color: var(--blue);
+        box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15),
+          0 2px 6px rgba(74, 144, 226, 0.35);
       }
       .list-check input[type='checkbox']:checked::after {
         content: '';
@@ -844,26 +850,13 @@
         top: 1px;
         width: 6px;
         height: 11px;
-        border: solid #111;
+        border: solid #fff;
         border-width: 0 2.5px 2.5px 0;
         transform: rotate(45deg);
       }
       .list-check input[type='checkbox']:focus-visible {
-        outline: 2px solid var(--gold);
+        outline: 2px solid var(--blue);
         outline-offset: 2px;
-      }
-      .list-tier.enhanced .list-check input[type='checkbox'] {
-        border-color: var(--blue);
-      }
-      .list-tier.enhanced .list-check input[type='checkbox']:checked {
-        background-color: var(--blue);
-        border-color: var(--blue);
-      }
-      .list-tier.enhanced .list-check input[type='checkbox']:checked::after {
-        border-color: #fff;
-      }
-      .list-tier.enhanced .list-check input[type='checkbox']:focus-visible {
-        outline-color: var(--blue);
       }
       .list-check.locked {
         cursor: not-allowed;
@@ -947,54 +940,6 @@
         padding-top: 0;
         font-size: 11px;
         color: var(--muted);
-      }
-      .routing-table-wrap {
-        margin-top: 10px;
-        overflow-x: auto;
-      }
-      .routing-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-      }
-      .routing-table th,
-      .routing-table td {
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--border);
-        vertical-align: top;
-        text-align: left;
-      }
-      .routing-table th {
-        font-family: 'DM Mono', monospace;
-        font-size: 10px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--muted);
-        font-weight: 600;
-        border-bottom: 1px solid var(--border-strong);
-      }
-      .routing-table tr:last-child td {
-        border-bottom: none;
-      }
-      .routing-table code {
-        font-family: 'DM Mono', monospace;
-        font-size: 11px;
-        color: var(--accent);
-        background: var(--surface2);
-        padding: 1px 6px;
-        border-radius: 3px;
-      }
-      .routing-yes {
-        color: #22c55e;
-        font-weight: 600;
-      }
-      .routing-partial {
-        color: #f59e0b;
-        font-weight: 600;
-      }
-      .routing-no {
-        color: #ef4444;
-        font-weight: 600;
       }
       .legal-notice {
         margin-top: 14px;
@@ -1675,75 +1620,6 @@
       </p>
     </div>
 
-    <!-- Asana routing ──────────────────────────────────────────────── -->
-    <div class="card" style="margin-top: 14px">
-      <h2>
-        Asana Routing
-        <span class="tag">Project GID 1214117786912339</span>
-      </h2>
-      <p class="help-text">
-        What lands in Asana vs. what stays in Netlify Blobs or is filed externally. Asana is the
-        action queue for things the MLRO needs to act on; routine records stay in the audit store.
-      </p>
-      <div class="routing-table-wrap">
-        <table class="routing-table">
-          <thead>
-            <tr>
-              <th>What</th>
-              <th>Goes to Asana?</th>
-              <th>Endpoint / skill</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><b>Critical TM alerts</b> (Run Transaction Monitor &rarr; alert fires)</td>
-              <td><span class="routing-yes">&#10003; Auto-creates task</span></td>
-              <td><code>netlify/functions/transaction-monitor.mts</code></td>
-            </tr>
-            <tr>
-              <td><b>Sanctions hit</b> (confirmed match)</td>
-              <td>
-                <span class="routing-yes">&#10003; High-priority task + 24h / 5-day countdowns</span>
-              </td>
-              <td><code>/incident</code> skill</td>
-            </tr>
-            <tr>
-              <td><b>STR / SAR filing</b></td>
-              <td><span class="routing-yes">&#10003; Task + attachment</span></td>
-              <td><code>netlify/functions/str-filing*.mts</code></td>
-            </tr>
-            <tr>
-              <td><b>UBO re-verification</b> (15-day trigger)</td>
-              <td><span class="routing-yes">&#10003; Task</span></td>
-              <td>cron-scheduled</td>
-            </tr>
-            <tr>
-              <td><b>Daily / bi-daily watchlist screen</b></td>
-              <td>
-                <span class="routing-partial">&#9888; Only if a NEW hit appears vs last run (delta)</span>
-              </td>
-              <td><code>netlify/functions/watchlist-*.mts</code></td>
-            </tr>
-            <tr>
-              <td><b>Routine screening events</b> (a clean "Run Screening")</td>
-              <td><span class="routing-no">&#10007; Logged to Netlify Blobs, not Asana</span></td>
-              <td>&mdash;</td>
-            </tr>
-            <tr>
-              <td><b>KPI / MoE / LBMA reports</b></td>
-              <td><span class="routing-no">&#10007; Generated as XLSX / PDF, not Asana tasks</span></td>
-              <td><code>/kpi-report</code>, <code>/audit-pack</code> skills</td>
-            </tr>
-            <tr>
-              <td><b>goAML XML filings</b></td>
-              <td><span class="routing-no">&#10007; Submitted to UAE FIU, not Asana</span></td>
-              <td><code>/goaml</code> skill</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
     <!-- List selector ────────────────────────────────────────────── -->
     <div class="grid grid-2" style="margin-top: 14px">
       <div class="card list-tier mandatory">
@@ -1941,7 +1817,7 @@
 
     <div class="grid grid-2" style="margin-top: 14px">
       <!-- Screen subject ────────────────────────────────────────────── -->
-      <div class="card">
+      <div class="card" style="border-color: #ec4899">
         <h2>Screen a Subject</h2>
         <p class="help-text">
           Runs multi-modal fuzzy matching (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone +
