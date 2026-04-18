@@ -476,6 +476,21 @@
       .auth-body {
         margin-top: 14px;
       }
+      .token-fallback {
+        border-top: 1px dashed var(--border);
+        padding-top: 10px;
+      }
+      .token-fallback-summary {
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        user-select: none;
+      }
+      .token-fallback-summary::-webkit-details-marker {
+        display: none;
+      }
       .stat {
         display: flex;
         gap: 10px;
@@ -1512,47 +1527,83 @@
         <span class="auth-summary-hint">click to manage token</span>
       </summary>
       <div class="auth-body">
-        <label for="token">Hawkeye brain token</label>
+        <label for="loginPassword">Sign in with password</label>
         <div class="token-row">
           <input
             type="password"
-            id="token"
-            placeholder="Paste your HAWKEYE_BRAIN_TOKEN"
-            autocomplete="off"
+            id="loginPassword"
+            placeholder="Enter your MLRO password"
+            autocomplete="current-password"
             spellcheck="false"
           />
           <button
             type="button"
-            id="tokenGenBtn"
+            id="loginBtn"
             class="token-gen-btn"
-            title="Generate a fresh 32-byte CSPRNG token (local only)"
+            title="Exchange password for a signed 1-year session token"
           >
-            Generate
+            Sign in
           </button>
           <button
             type="button"
-            id="tokenRevealBtn"
-            class="token-gen-btn token-reveal-btn"
-            title="Show / hide the token"
-          >
-            Show
-          </button>
-          <button
-            type="button"
-            id="tokenCopyBtn"
+            id="logoutBtn"
             class="token-gen-btn"
-            title="Copy token to clipboard"
+            title="Forget the saved session token and require a new sign-in"
           >
-            Copy
+            Sign out
           </button>
         </div>
-        <span class="token-hint"
-          >Saved locally in this browser only. Never sent anywhere except to your own compliance
-          API. <b>Generate</b> produces a 64-char hex token using <code>window.crypto</code> &mdash;
-          paste the same string into <code>HAWKEYE_BRAIN_TOKEN</code> on Netlify (Site settings
-          &rarr; Environment variables) and redeploy.</span
-        >
-        <div id="tokenMsg" class="token-msg"></div>
+        <span class="token-hint">
+          Exchanges the password (checked against <code>HAWKEYE_BRAIN_PASSWORD_HASH</code> on
+          Netlify) for a signed 1-year JWT stored only in this browser. Rotate at any time by
+          updating <code>HAWKEYE_BRAIN_PASSWORD_HASH</code>; shorten the session via
+          <code>HAWKEYE_JWT_TTL_SEC</code>.
+        </span>
+        <div id="loginMsg" class="token-msg"></div>
+
+        <details class="token-fallback" style="margin-top: 14px">
+          <summary class="token-fallback-summary">Manual token (backend-to-backend)</summary>
+          <label for="token" style="margin-top: 10px">Hawkeye brain token</label>
+          <div class="token-row">
+            <input
+              type="password"
+              id="token"
+              placeholder="Paste your HAWKEYE_BRAIN_TOKEN"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button
+              type="button"
+              id="tokenGenBtn"
+              class="token-gen-btn"
+              title="Generate a fresh 32-byte CSPRNG token (local only)"
+            >
+              Generate
+            </button>
+            <button
+              type="button"
+              id="tokenRevealBtn"
+              class="token-gen-btn token-reveal-btn"
+              title="Show / hide the token"
+            >
+              Show
+            </button>
+            <button
+              type="button"
+              id="tokenCopyBtn"
+              class="token-gen-btn"
+              title="Copy token to clipboard"
+            >
+              Copy
+            </button>
+          </div>
+          <span class="token-hint"
+            >For crons / orchestrator only. Paste a 64-char hex value matching
+            <code>HAWKEYE_BRAIN_TOKEN</code> on Netlify. The interactive MLRO path above is
+            preferred.</span
+          >
+          <div id="tokenMsg" class="token-msg"></div>
+        </details>
       </div>
     </details>
 
