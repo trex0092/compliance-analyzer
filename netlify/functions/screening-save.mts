@@ -46,8 +46,10 @@
  *      no-match events also create a task so MoE audit can confirm the
  *      reviewer actually looked.
  *   4. If outcome === "confirmed_match", the task is prefixed
- *      [FREEZE-24H] and explicitly cites Cabinet Res 74/2020 Art.4-7
- *      (24-hour freeze deadline).
+ *      [CONFIRMED MATCH — FREEZE IMMEDIATELY + FILE STR] and cites
+ *      FDL No.10/2025 Art.12 / Art.26-27 / Art.35 + Cabinet Res
+ *      74/2020 Art.4 (immediate freeze, not a 24h window — EOCN
+ *      July 2025 TFS Guidance tightened to 1-2 hours maximum).
  *   5. Returns { ok: true, eventId, asanaGid }.
  *
  * Regulatory basis:
@@ -149,8 +151,7 @@ export interface ScreeningEvent {
 // Validation
 // ---------------------------------------------------------------------------
 
-interface ValidatedInput
-  extends Omit<ScreeningEvent, 'eventId' | 'savedAt' | 'asanaGid'> {}
+interface ValidatedInput extends Omit<ScreeningEvent, 'eventId' | 'savedAt' | 'asanaGid'> {}
 
 function validateDdMmYyyy(raw: string): string | null {
   const trimmed = raw.trim();
@@ -177,10 +178,7 @@ function validateInput(
   }
   if (o.subjectName.length > 200) return { ok: false, error: 'subjectName too long (max 200)' };
 
-  if (
-    o.subjectId !== undefined &&
-    (typeof o.subjectId !== 'string' || o.subjectId.length > 128)
-  ) {
+  if (o.subjectId !== undefined && (typeof o.subjectId !== 'string' || o.subjectId.length > 128)) {
     return { ok: false, error: 'subjectId must be a string up to 128 chars' };
   }
 
@@ -215,9 +213,7 @@ function validateInput(
     return { ok: false, error: 'listsScreened must be a non-empty array' };
   }
   if (
-    (o.listsScreened as unknown[]).some(
-      (x) => typeof x !== 'string' || (x as string).length > 32
-    )
+    (o.listsScreened as unknown[]).some((x) => typeof x !== 'string' || (x as string).length > 32)
   ) {
     return { ok: false, error: 'listsScreened entries must be short strings' };
   }
@@ -244,7 +240,8 @@ function validateInput(
     const raw = o.anomalies as unknown[];
     const parsed: Array<{ list: string; error: string }> = [];
     for (const a of raw) {
-      if (!a || typeof a !== 'object') return { ok: false, error: 'anomaly entries must be objects' };
+      if (!a || typeof a !== 'object')
+        return { ok: false, error: 'anomaly entries must be objects' };
       const entry = a as Record<string, unknown>;
       if (typeof entry.list !== 'string' || typeof entry.error !== 'string') {
         return { ok: false, error: 'anomaly entries must have string list + error' };
@@ -272,9 +269,7 @@ function validateInput(
     return {
       ok: false,
       error:
-        'outcome must be one of: ' +
-        OUTCOMES.join(', ') +
-        ' — MLRO must attest (FDL Art.20-21)',
+        'outcome must be one of: ' + OUTCOMES.join(', ') + ' — MLRO must attest (FDL Art.20-21)',
     };
   }
 
@@ -342,16 +337,14 @@ function validateInput(
     if (!secondApproverRole) {
       return {
         ok: false,
-        error:
-          'secondApproverRole is required for partial / confirmed matches (four-eyes rule)',
+        error: 'secondApproverRole is required for partial / confirmed matches (four-eyes rule)',
       };
     }
     const reviewer = (o.reviewedBy as string).trim().toLowerCase();
     if (secondApprover.toLowerCase() === reviewer) {
       return {
         ok: false,
-        error:
-          'secondApprover must be a different person from reviewedBy (four-eyes rule)',
+        error: 'secondApprover must be a different person from reviewedBy (four-eyes rule)',
       };
     }
   }
@@ -397,9 +390,7 @@ function newEventId(): string {
   );
 }
 
-async function saveEvent(
-  event: ScreeningEvent
-): Promise<{ ok: boolean; error?: string }> {
+async function saveEvent(event: ScreeningEvent): Promise<{ ok: boolean; error?: string }> {
   try {
     const store = getStore(EVENTS_STORE);
     for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
@@ -435,7 +426,7 @@ async function saveEvent(
 function outcomeTag(outcome: Outcome): string {
   switch (outcome) {
     case 'confirmed_match':
-      return '[CONFIRMED MATCH — FREEZE-24H]';
+      return '[CONFIRMED MATCH — FREEZE IMMEDIATELY + FILE STR]';
     case 'partial_match':
       return '[PARTIAL MATCH — ESCALATED]';
     case 'false_positive':
@@ -513,7 +504,7 @@ async function postDispositionAsana(
   if (event.outcome === 'confirmed_match') {
     lines.push('');
     lines.push(
-      'ASSET FREEZE REQUIRED WITHIN 24 HOURS — Cabinet Res 74/2020 Art.4-7. Report to EOCN without delay; file CNMR within 5 business days.'
+      'FREEZE FUNDS IMMEDIATELY and FILE STR WITHOUT DELAY — FDL No.10/2025 Art.12, Art.26-27, Art.35; Cabinet Res 74/2020 Art.4 + EOCN TFS Guidance July 2025 (freeze within 1-2 hours of confirmation). Notify EOCN without delay; file CNMR within 5 business days (Cabinet Res 74/2020 Art.6). Applies equally where the subject is convicted of — or reasonably suspected of — money laundering, terrorism financing, or proliferation financing (FDL Art.35; Cabinet Res 156/2025).'
     );
   }
   lines.push('');
