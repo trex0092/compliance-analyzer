@@ -205,8 +205,7 @@
       // Clear plaintext from the password field so nothing lingers in
       // the DOM / autofill surface longer than needed.
       loginPasswordInput.value = '';
-      const expiresAtSec =
-        json && typeof json.expiresAt === 'number' ? json.expiresAt : null;
+      const expiresAtSec = json && typeof json.expiresAt === 'number' ? json.expiresAt : null;
       let hint = 'Signed in. Session saved in this browser.';
       if (expiresAtSec) {
         const d = new Date(expiresAtSec * 1000);
@@ -214,10 +213,7 @@
       }
       setLoginMsg(hint, false);
     } catch (err) {
-      setLoginMsg(
-        'Network error: ' + ((err && err.message) || 'unknown'),
-        true
-      );
+      setLoginMsg('Network error: ' + ((err && err.message) || 'unknown'), true);
     } finally {
       if (loginBtn) loginBtn.disabled = false;
     }
@@ -263,10 +259,7 @@
         setLoginMsg('Session expired — sign in again.', true);
       } else if (payload.exp - nowSec < 7 * 24 * 3600) {
         const days = Math.max(1, Math.floor((payload.exp - nowSec) / 86400));
-        setLoginMsg(
-          'Session expires in ' + days + ' day' + (days === 1 ? '' : 's') + '.',
-          false
-        );
+        setLoginMsg('Session expires in ' + days + ' day' + (days === 1 ? '' : 's') + '.', false);
       }
     } catch (_e) {
       /* best effort — never block the page on a parse failure */
@@ -1525,7 +1518,7 @@
           escapeHTML(e.id) +
           '" data-delete-name="' +
           escapeHTML(e.subjectName) +
-          '" title="Delete this watchlist entry (correct a mistaken enrolment)">Delete</button>'
+          '" title="Delete this watchlist entry (correct a mistaken enrolment)" aria-label="Delete watchlist entry">\u00d7</button>'
       );
       html.push('</div>');
     }
@@ -1594,11 +1587,11 @@
     );
     if (!confirmed) return;
     btn.setAttribute('disabled', 'disabled');
-    btn.textContent = 'Deleting…';
+    btn.style.opacity = '0.4';
     const result = await apiDeleteWatchlistEntry(id);
     if (!result.ok) {
       btn.removeAttribute('disabled');
-      btn.textContent = 'Delete';
+      btn.style.opacity = '';
       window.alert('Delete failed: ' + result.error);
       return;
     }
