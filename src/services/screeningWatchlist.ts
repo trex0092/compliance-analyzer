@@ -33,6 +33,48 @@ import type { AdverseMediaHit } from './adverseMediaSearch';
 
 export type RiskTier = 'high' | 'medium' | 'low';
 
+/**
+ * Resolved identity tuple captured when the MLRO confirms "this specific
+ * person is the subject" during initial screening. Without this, daily
+ * monitoring falls back to name-only matching and returns every person
+ * on earth who shares the subject's name (the "all the Mohameds"
+ * problem). With it, daily hits can be scored against the pinned
+ * profile and name-only noise suppressed.
+ *
+ * Required by FATF Rec 10 + Cabinet Res 134/2025 Art.7-10 (CDD must
+ * positively identify the customer via a unique identifier). Drives
+ * FDL No.10/2025 Art.12 + Art.35 (freezes apply to THE subject, not
+ * anyone sharing their name).
+ */
+export interface ResolvedIdentity {
+  /** Date of birth in dd/mm/yyyy. */
+  dob?: string;
+  /** ISO 3166-1 alpha-2 country code — nationality. */
+  nationality?: string;
+  /** passport / emirates_id / national_id / other. */
+  idType?: 'passport' | 'emirates_id' | 'national_id' | 'other';
+  /** Document number as shown on the ID. */
+  idNumber?: string;
+  /** Issuing country for the ID document (ISO 3166-1 alpha-2). */
+  idIssuingCountry?: string;
+  /** Gender — optional disambiguator. */
+  gender?: 'M' | 'F' | 'X';
+  /** Known name variants / maiden names / script transliterations. */
+  aliases?: string[];
+  /**
+   * If the resolution matched a specific list entry (e.g. a UN SDN
+   * designation), record the source + reference so downstream freeze
+   * logic can cite the specific designation.
+   */
+  listEntryRef?: { list: string; reference: string };
+  /** Free-form MLRO note accompanying the resolution decision. */
+  resolutionNote?: string;
+  /** When the identity was resolved (ISO). */
+  resolvedAtIso?: string;
+  /** Who resolved it (reviewer id / name). */
+  resolvedBy?: string;
+}
+
 export interface WatchlistEntry {
   /** Stable, caller-chosen id (usually customerId from the onboarding system). */
   id: string;
@@ -57,6 +99,13 @@ export interface WatchlistEntry {
   alertCount: number;
   /** Free-form metadata (customer id, jurisdiction, onboarding note, etc). */
   metadata?: Record<string, string | number | boolean>;
+  /**
+   * Resolved identity captured after the MLRO disambiguates the initial
+   * screening candidates. Optional — legacy entries without a resolved
+   * identity keep working but daily monitoring treats every name-only
+   * hit as a possible match rather than an alert.
+   */
+  resolvedIdentity?: ResolvedIdentity;
 }
 
 export interface Watchlist {
@@ -76,6 +125,7 @@ export interface AddToWatchlistInput {
   subjectName: string;
   riskTier?: RiskTier;
   metadata?: Record<string, string | number | boolean>;
+  resolvedIdentity?: ResolvedIdentity;
 }
 
 export function addToWatchlist(wl: Watchlist, input: AddToWatchlistInput): WatchlistEntry {
@@ -97,8 +147,29 @@ export function addToWatchlist(wl: Watchlist, input: AddToWatchlistInput): Watch
     seenHitFingerprints: [],
     alertCount: 0,
     metadata: input.metadata,
+    resolvedIdentity: input.resolvedIdentity,
   };
   wl.entries.set(input.id, entry);
+  return entry;
+}
+
+/**
+ * Record (or overwrite) the resolved identity for an existing entry.
+ * Used by the screening-save endpoint when the MLRO clicks
+ * "This is the subject" on a candidate during initial screening. If
+ * the entry is unknown, returns undefined (caller should 404).
+ */
+export function setResolvedIdentity(
+  wl: Watchlist,
+  id: string,
+  identity: ResolvedIdentity
+): WatchlistEntry | undefined {
+  const entry = wl.entries.get(id);
+  if (!entry) return undefined;
+  entry.resolvedIdentity = {
+    ...identity,
+    resolvedAtIso: identity.resolvedAtIso ?? new Date().toISOString(),
+  };
   return entry;
 }
 
@@ -270,6 +341,43 @@ export function serialiseWatchlist(wl: Watchlist): SerialisedWatchlist {
  * mismatches return an empty watchlist (forcing the caller to rebuild
  * from onboarding).
  */
+/**
+ * Defensive parse of a possibly-malformed resolvedIdentity blob from
+ * persisted state. Unknown fields are dropped; invalid enum values
+ * fall through to undefined so the entry stays valid.
+ */
+function sanitiseResolvedIdentity(raw: unknown): ResolvedIdentity | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as Record<string, unknown>;
+  const out: ResolvedIdentity = {};
+  if (typeof r.dob === 'string') out.dob = r.dob;
+  if (typeof r.nationality === 'string') out.nationality = r.nationality;
+  if (
+    r.idType === 'passport' ||
+    r.idType === 'emirates_id' ||
+    r.idType === 'national_id' ||
+    r.idType === 'other'
+  ) {
+    out.idType = r.idType;
+  }
+  if (typeof r.idNumber === 'string') out.idNumber = r.idNumber;
+  if (typeof r.idIssuingCountry === 'string') out.idIssuingCountry = r.idIssuingCountry;
+  if (r.gender === 'M' || r.gender === 'F' || r.gender === 'X') out.gender = r.gender;
+  if (Array.isArray(r.aliases)) {
+    out.aliases = r.aliases.filter((a): a is string => typeof a === 'string');
+  }
+  if (r.listEntryRef && typeof r.listEntryRef === 'object') {
+    const ref = r.listEntryRef as Record<string, unknown>;
+    if (typeof ref.list === 'string' && typeof ref.reference === 'string') {
+      out.listEntryRef = { list: ref.list, reference: ref.reference };
+    }
+  }
+  if (typeof r.resolutionNote === 'string') out.resolutionNote = r.resolutionNote;
+  if (typeof r.resolvedAtIso === 'string') out.resolvedAtIso = r.resolvedAtIso;
+  if (typeof r.resolvedBy === 'string') out.resolvedBy = r.resolvedBy;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 export function deserialiseWatchlist(raw: unknown): Watchlist {
   const wl = createWatchlist();
   if (!raw || typeof raw !== 'object') return wl;
@@ -289,6 +397,7 @@ export function deserialiseWatchlist(raw: unknown): Watchlist {
       seenHitFingerprints: Array.isArray(e.seenHitFingerprints) ? e.seenHitFingerprints : [],
       alertCount: typeof e.alertCount === 'number' ? e.alertCount : 0,
       metadata: e.metadata,
+      resolvedIdentity: sanitiseResolvedIdentity(e.resolvedIdentity),
     });
   }
   return wl;

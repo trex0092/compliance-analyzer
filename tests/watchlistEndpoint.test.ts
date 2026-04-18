@@ -11,9 +11,7 @@ import { __test__ } from '../netlify/functions/watchlist.mts';
 import type { SerialisedWatchlist } from '@/services/screeningWatchlist';
 
 const { validatePostBody, applyAction } = __test__ as {
-  validatePostBody: (input: unknown) =>
-    | { ok: true; body: unknown }
-    | { ok: false; error: string };
+  validatePostBody: (input: unknown) => { ok: true; body: unknown } | { ok: false; error: string };
   applyAction: (
     current: SerialisedWatchlist,
     action: unknown
@@ -384,6 +382,99 @@ describe('watchlist endpoint — applyAction / replace', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.updated.entries).toHaveLength(0);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// validatePostBody + applyAction — resolve action
+// ---------------------------------------------------------------------------
+
+describe('watchlist endpoint — resolve action', () => {
+  const resolved = {
+    dob: '12/03/1982',
+    nationality: 'ae', // lower-case — validator should uppercase
+    idType: 'emirates_id',
+    idNumber: '784-1982-1234567-8',
+    aliases: ['Mohamed A.', '  محمد أحمد  '],
+    resolvedBy: 'Luisa Fernanda',
+    listEntryRef: { list: 'UN SDN', reference: 'SDGT-12345' },
+  };
+
+  it('rejects resolve without id', () => {
+    const r = validatePostBody({ action: 'resolve', identity: resolved });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('id must be a non-empty string');
+  });
+
+  it('rejects resolve without identity', () => {
+    const r = validatePostBody({ action: 'resolve', id: 'c1' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('identity is required');
+  });
+
+  it('rejects resolve with invalid idType enum', () => {
+    const r = validatePostBody({
+      action: 'resolve',
+      id: 'c1',
+      identity: { ...resolved, idType: 'handwritten_note' },
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('idType');
+  });
+
+  it('accepts resolve and normalises nationality to upper-case', () => {
+    const r = validatePostBody({ action: 'resolve', id: 'c1', identity: resolved });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const body = r.body as { action: 'resolve'; identity: { nationality?: string } };
+      expect(body.identity.nationality).toBe('AE');
+    }
+  });
+
+  it('applyAction resolve returns 404 for unknown id', () => {
+    const result = applyAction(empty(), { action: 'resolve', id: 'missing', identity: resolved });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
+      expect(result.error).toContain('not found');
+    }
+  });
+
+  it('applyAction resolve persists identity on matching entry', () => {
+    const state: SerialisedWatchlist = {
+      version: 1,
+      entries: [
+        {
+          id: 'c1',
+          subjectName: 'Mohamed Ahmed',
+          riskTier: 'medium',
+          addedAtIso: '2026-04-18T00:00:00Z',
+          seenHitFingerprints: [],
+          alertCount: 0,
+        },
+      ],
+    };
+    const result = applyAction(state, { action: 'resolve', id: 'c1', identity: resolved });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const entry = result.updated.entries.find((e) => e.id === 'c1');
+      expect(entry?.resolvedIdentity?.idNumber).toBe('784-1982-1234567-8');
+      expect(entry?.resolvedIdentity?.listEntryRef?.list).toBe('UN SDN');
+    }
+  });
+
+  it('add action persists an initial resolvedIdentity', () => {
+    const result = applyAction(empty(), {
+      action: 'add',
+      id: 'c1',
+      subjectName: 'Mohamed Ahmed',
+      resolvedIdentity: resolved,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const entry = result.updated.entries.find((e) => e.id === 'c1');
+      expect(entry?.resolvedIdentity?.dob).toBe('12/03/1982');
     }
   });
 });

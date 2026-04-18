@@ -82,6 +82,7 @@ import {
   buildScreeningReport,
   type ScreeningReportInput,
 } from '../src/services/complianceReportBuilder';
+import { scoreHitAgainstProfile } from '../src/services/identityMatchScore';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -316,6 +317,87 @@ function buildAlertTaskName(entry: WatchlistEntry, newHitCount: number): string 
   return `[${severity}] Adverse media — ${entry.subjectName} — ${newHitCount} new hit${newHitCount === 1 ? '' : 's'}`;
 }
 
+/**
+ * Format the subject's resolved identity for the alert-task notes.
+ *
+ * Two paths:
+ *   - Resolved (identity pinned by the MLRO): show a one-line summary
+ *     of the pinned identity so the reviewer knows exactly which
+ *     person the daily monitoring is scoped to. This is the "I found
+ *     Mohamed" state — future name coincidences will be suppressed.
+ *   - Unresolved (legacy entry or never resolved): emit a prominent
+ *     warning. Name-only matching produces noise and cannot satisfy
+ *     FATF Rec 10 positive-identification. Ask the MLRO to pin the
+ *     subject via the screening UI.
+ */
+function buildIdentityContext(entry: WatchlistEntry): string[] {
+  const lines: string[] = [];
+  const identity = entry.resolvedIdentity;
+  if (!identity) {
+    lines.push('SUBJECT IDENTITY:');
+    lines.push('  ⚠ UNRESOLVED — this subject has not been pinned to a specific identity.');
+    lines.push('  Daily monitoring matches on NAME only. Pin the identity via the screening');
+    lines.push('  UI (Matched candidates → "Pin as subject") to disambiguate FATF Rec 10');
+    lines.push('  positive identification and reduce name-coincidence false positives.');
+    return lines;
+  }
+  lines.push('SUBJECT IDENTITY (pinned):');
+  const facets: string[] = [];
+  if (identity.dob) facets.push(`DoB ${identity.dob}`);
+  if (identity.nationality) facets.push(`Nationality ${identity.nationality}`);
+  if (identity.idType && identity.idNumber) {
+    facets.push(`${identity.idType} ${identity.idNumber}`);
+  } else if (identity.idNumber) {
+    facets.push(`ID ${identity.idNumber}`);
+  }
+  if (identity.gender) facets.push(`Gender ${identity.gender}`);
+  lines.push(`  ${facets.length > 0 ? facets.join(' · ') : '(minimal profile)'}`);
+  if (identity.aliases && identity.aliases.length > 0) {
+    lines.push(`  Aliases: ${identity.aliases.join(', ')}`);
+  }
+  if (identity.listEntryRef) {
+    lines.push(
+      `  Pinned designation: ${identity.listEntryRef.list} / ${identity.listEntryRef.reference}`
+    );
+  }
+  if (identity.resolvedBy || identity.resolvedAtIso) {
+    const who = identity.resolvedBy ?? 'MLRO';
+    const when = identity.resolvedAtIso ?? 'unknown time';
+    lines.push(`  Resolved by ${who} at ${when}`);
+  }
+  if (identity.resolutionNote) {
+    lines.push(`  Note: ${identity.resolutionNote}`);
+  }
+  return lines;
+}
+
+/**
+ * Classify an adverse-media hit against the pinned identity (if any).
+ * Adverse-media hits lack structured DoB / ID fields, so the score is
+ * effectively name-only — but that still picks up the alias bonus for
+ * resolved subjects and returns `hasResolvedIdentity: false` for the
+ * unresolved case so the reviewer can see the gap.
+ */
+function classifyHit(
+  entry: WatchlistEntry,
+  hit: AdverseMediaHit
+): {
+  classification: 'alert' | 'possible' | 'suppress';
+  composite: number;
+  hasResolvedIdentity: boolean;
+} {
+  const result = scoreHitAgainstProfile(
+    { listEntryName: hit.title ?? entry.subjectName },
+    entry.subjectName,
+    entry.resolvedIdentity
+  );
+  return {
+    classification: result.classification,
+    composite: result.composite,
+    hasResolvedIdentity: result.hasResolvedIdentity,
+  };
+}
+
 function buildAlertTaskNotes(
   entry: WatchlistEntry,
   newHits: readonly AdverseMediaHit[],
@@ -333,11 +415,18 @@ function buildAlertTaskNotes(
   lines.push(`This run: ${runAt}`);
   lines.push(`Total alerts for this subject: ${entry.alertCount}`);
   lines.push('');
+  for (const idLine of buildIdentityContext(entry)) lines.push(idLine);
+  lines.push('');
   lines.push(`NEW HITS (${newHits.length}):`);
   lines.push('─'.repeat(60));
 
   newHits.forEach((hit, i) => {
+    const scored = classifyHit(entry, hit);
+    const tag = scored.hasResolvedIdentity
+      ? `relevance ${scored.classification} (${(scored.composite * 100).toFixed(0)}%)`
+      : 'relevance name-only (unresolved subject)';
     lines.push(`${i + 1}. ${hit.title}`);
+    lines.push(`   ${tag}`);
     lines.push(`   Source: ${hit.source}`);
     if (hit.publishedAt) lines.push(`   Published: ${hit.publishedAt}`);
     lines.push(`   URL: ${hit.url}`);
@@ -345,21 +434,49 @@ function buildAlertTaskNotes(
     lines.push('');
   });
 
-  lines.push('Recommended action:');
+  lines.push('ACTIONS REQUIRED TODAY:');
   if (newHits.length >= 3) {
-    lines.push('  - EDD + four-eyes review (Cabinet Res 134/2025 Art.14)');
-    lines.push('  - Consider STR filing (FDL Art.26-27)');
+    lines.push(
+      '  1. MLRO disposition within 24 hours; EDD upgrade + four-eyes approval required (Cabinet Res 134/2025 Art.14).'
+    );
+    lines.push(
+      '  2. If suspicion confirmed, FREEZE funds IMMEDIATELY (FDL No.10/2025 Art.12, Art.35; Cabinet Res 74/2020 Art.4; EOCN TFS Guidance July 2025: 1-2 hours maximum).'
+    );
+    lines.push(
+      '  3. If suspicion confirmed, FILE STR via goAML WITHOUT DELAY (FDL Art.26-27). Use /goaml to generate the XML.'
+    );
+    lines.push(
+      '  4. Notify EOCN without delay; file CNMR within 5 business days of any freeze (Cabinet Res 74/2020 Art.6).'
+    );
+    lines.push('  5. Pull 90-day transaction history for pattern analysis.');
+    lines.push('  6. DO NOT NOTIFY THE SUBJECT (FDL Art.29 — no tipping off).');
   } else if (newHits.length >= 2) {
-    lines.push('  - Enhanced review by MLRO');
-    lines.push('  - Escalate to Compliance Officer');
+    lines.push(
+      '  1. Enhanced review by MLRO within 24 hours; second approver required (four-eyes).'
+    );
+    lines.push(
+      '  2. Document dismissal rationale OR escalate to the FREEZE + STR path (FDL Art.12, Art.26-27).'
+    );
+    lines.push('  3. Refresh CDD evidence; consider source-of-funds review.');
+    lines.push(
+      '  4. Escalate to Compliance Officer for internal review (Cabinet Res 134/2025 Art.19).'
+    );
+    lines.push('  5. DO NOT tip off the subject while under review (FDL Art.29).');
   } else {
-    lines.push('  - Review and document in compliance log');
+    lines.push('  1. Review and document the hit in the compliance log (FDL Art.24).');
+    lines.push('  2. Attach the article(s) to the customer file.');
+    lines.push(
+      '  3. Consider bringing forward the upcoming periodic review (Cabinet Res 134/2025 Art.19).'
+    );
+    lines.push('  4. DO NOT tip off the subject (FDL Art.29).');
   }
   lines.push('');
   lines.push(`Metadata: ${JSON.stringify(entry.metadata ?? {})}`);
   lines.push('');
   lines.push('— Auto-generated by scheduled-screening.ts');
-  lines.push(`  Regulatory basis: FATF Rec 10; Cabinet Res 134/2025 Art.14; FDL Art.26-27`);
+  lines.push(
+    `  Regulatory basis: FATF Rec 10 (CDD), Rec 20 (STR), Rec 6 (TFS); FDL No.10/2025 Art.12, Art.24, Art.26-27, Art.29, Art.35; Cabinet Res 134/2025 Art.14 + Art.19; Cabinet Res 74/2020 Art.4 (immediate freeze per EOCN TFS Guidance July 2025) + Art.6 (CNMR 5 business days); Cabinet Res 156/2025 (PF / dual-use).`
+  );
 
   return lines.join('\n');
 }
@@ -740,5 +857,7 @@ export const __test__ = {
   buildAlertTaskNotes,
   buildHeartbeatTaskName,
   buildHeartbeatTaskNotes,
+  buildIdentityContext,
+  classifyHit,
   loadConfig,
 };

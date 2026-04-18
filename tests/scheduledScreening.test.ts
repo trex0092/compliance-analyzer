@@ -16,24 +16,44 @@ import { __test__, screenOneSubject } from '../scripts/scheduled-screening.ts';
 import type { WatchlistEntry } from '@/services/screeningWatchlist';
 import type { AdverseMediaHit } from '@/services/adverseMediaSearch';
 
-const { buildAlertTaskName, buildAlertTaskNotes, buildHeartbeatTaskName, buildHeartbeatTaskNotes } =
-  __test__ as {
-    buildAlertTaskName: (entry: WatchlistEntry, n: number) => string;
-    buildAlertTaskNotes: (
-      entry: WatchlistEntry,
-      hits: readonly AdverseMediaHit[],
-      runAt: string
-    ) => string;
-    buildHeartbeatTaskName: (runAtIso: string, total: number, alerts: number) => string;
-    buildHeartbeatTaskNotes: (summary: {
-      runAtIso: string;
-      totalChecked: number;
-      totalNewHits: number;
-      subjectsWithAlerts: Array<{ id: string; subjectName: string; newHitCount: number; asanaGid?: string }>;
-      subjectsWithErrors: Array<{ id: string; subjectName: string; error: string }>;
-      subjectsClean: Array<{ id: string; subjectName: string }>;
-    }) => string;
+const {
+  buildAlertTaskName,
+  buildAlertTaskNotes,
+  buildHeartbeatTaskName,
+  buildHeartbeatTaskNotes,
+  buildIdentityContext,
+  classifyHit,
+} = __test__ as {
+  buildAlertTaskName: (entry: WatchlistEntry, n: number) => string;
+  buildAlertTaskNotes: (
+    entry: WatchlistEntry,
+    hits: readonly AdverseMediaHit[],
+    runAt: string
+  ) => string;
+  buildHeartbeatTaskName: (runAtIso: string, total: number, alerts: number) => string;
+  buildHeartbeatTaskNotes: (summary: {
+    runAtIso: string;
+    totalChecked: number;
+    totalNewHits: number;
+    subjectsWithAlerts: Array<{
+      id: string;
+      subjectName: string;
+      newHitCount: number;
+      asanaGid?: string;
+    }>;
+    subjectsWithErrors: Array<{ id: string; subjectName: string; error: string }>;
+    subjectsClean: Array<{ id: string; subjectName: string }>;
+  }) => string;
+  buildIdentityContext: (entry: WatchlistEntry) => string[];
+  classifyHit: (
+    entry: WatchlistEntry,
+    hit: AdverseMediaHit
+  ) => {
+    classification: 'alert' | 'possible' | 'suppress';
+    composite: number;
+    hasResolvedIdentity: boolean;
   };
+};
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -156,11 +176,7 @@ describe('scheduled-screening — buildAlertTaskNotes', () => {
   });
 
   it('recommends enhanced MLRO review for 2 hits', () => {
-    const notes = buildAlertTaskNotes(
-      entry(),
-      [hit('a'), hit('b')],
-      '2026-04-13T06:00:00Z'
-    );
+    const notes = buildAlertTaskNotes(entry(), [hit('a'), hit('b')], '2026-04-13T06:00:00Z');
     expect(notes).toContain('Enhanced review by MLRO');
   });
 
@@ -297,6 +313,90 @@ describe('scheduled-screening — buildHeartbeatTaskNotes', () => {
     const notes = buildHeartbeatTaskNotes(summaryBase);
     expect(notes).toContain('FATF Rec 10');
     expect(notes).toContain('Cabinet Res 134/2025 Art.19');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildIdentityContext — pinned vs unresolved
+// ---------------------------------------------------------------------------
+
+describe('scheduled-screening — buildIdentityContext', () => {
+  it('warns when the entry has no resolvedIdentity', () => {
+    const block = buildIdentityContext(entry()).join('\n');
+    expect(block).toContain('UNRESOLVED');
+    expect(block).toContain('NAME only');
+    expect(block).toContain('Pin the identity');
+  });
+
+  it('summarises pinned identity facets when resolved', () => {
+    const block = buildIdentityContext(
+      entry({
+        subjectName: 'Mohamed Ahmed',
+        resolvedIdentity: {
+          dob: '12/03/1982',
+          nationality: 'AE',
+          idType: 'emirates_id',
+          idNumber: '784-1982-1234567-1',
+          aliases: ['Mohammed A. Al-Marri'],
+          listEntryRef: { list: 'UN-1267', reference: 'QDi.123' },
+          resolvedAtIso: '2026-04-10T08:00:00Z',
+          resolvedBy: 'MLRO',
+        },
+      })
+    ).join('\n');
+    expect(block).toContain('pinned');
+    expect(block).toContain('DoB 12/03/1982');
+    expect(block).toContain('Nationality AE');
+    expect(block).toContain('784-1982-1234567-1');
+    expect(block).toContain('Aliases: Mohammed A. Al-Marri');
+    expect(block).toContain('UN-1267');
+    expect(block).toContain('QDi.123');
+    expect(block).toContain('Resolved by MLRO');
+  });
+});
+
+describe('scheduled-screening — classifyHit', () => {
+  it('flags unresolved subjects so the MLRO knows to pin', () => {
+    const result = classifyHit(entry(), hit('a'));
+    expect(result.hasResolvedIdentity).toBe(false);
+  });
+
+  it('uses the pinned identity when available', () => {
+    const result = classifyHit(
+      entry({
+        subjectName: 'Mohamed Ahmed',
+        resolvedIdentity: { dob: '12/03/1982', nationality: 'AE' },
+      }),
+      hit('a', { title: 'Mohamed Ahmed arrested in Dubai' })
+    );
+    expect(result.hasResolvedIdentity).toBe(true);
+    // Adverse-media hits have no DoB / nationality metadata, so the
+    // composite is name-only and stays below the alert band.
+    expect(result.classification).not.toBe('alert');
+  });
+});
+
+describe('scheduled-screening — buildAlertTaskNotes identity integration', () => {
+  it('emits the UNRESOLVED warning in the task body when identity is absent', () => {
+    const notes = buildAlertTaskNotes(entry(), [hit('a')], '2026-04-13T06:00:00Z');
+    expect(notes).toContain('SUBJECT IDENTITY');
+    expect(notes).toContain('UNRESOLVED');
+    expect(notes).toContain('relevance name-only');
+  });
+
+  it('emits a pinned identity summary when the subject is resolved', () => {
+    const notes = buildAlertTaskNotes(
+      entry({
+        subjectName: 'Mohamed Ahmed',
+        resolvedIdentity: { dob: '12/03/1982', nationality: 'AE' },
+      }),
+      [hit('a', { title: 'Mohamed Ahmed charged' })],
+      '2026-04-13T06:00:00Z'
+    );
+    expect(notes).toContain('SUBJECT IDENTITY (pinned)');
+    expect(notes).toContain('DoB 12/03/1982');
+    expect(notes).toContain('Nationality AE');
+    expect(notes).toMatch(/relevance (alert|possible|suppress)/);
   });
 });
 

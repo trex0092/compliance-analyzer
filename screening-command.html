@@ -329,8 +329,11 @@
         min-height: 48px;
         touch-action: manipulation;
         font-family: inherit;
-        transition: background-color 0.18s ease, border-color 0.18s ease,
-          box-shadow 0.18s ease, transform 0.12s ease;
+        transition:
+          background-color 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease,
+          transform 0.12s ease;
       }
       button:hover:not(:disabled) {
         background: rgba(201, 168, 76, 0.08);
@@ -562,22 +565,17 @@
       }
       .btn-delete-subject {
         background: transparent;
-        border: 1px solid rgba(217, 79, 79, 0.4);
+        border: none;
         color: var(--red);
-        font-size: 11px;
-        padding: 4px 10px;
-        border-radius: 3px;
+        font-size: 18px;
+        line-height: 1;
+        padding: 0 4px;
         cursor: pointer;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        font-weight: 600;
-        transition:
-          background-color 0.12s ease,
-          border-color 0.12s ease;
+        font-weight: 700;
+        transition: opacity 0.12s ease;
       }
       .btn-delete-subject:hover {
-        background: rgba(217, 79, 79, 0.12);
-        border-color: var(--red);
+        opacity: 0.7;
       }
       .btn-delete-subject:disabled {
         opacity: 0.4;
@@ -631,6 +629,82 @@
       .hit-row .hit-score {
         font-family: 'DM Mono', 'Courier New', monospace;
         color: var(--gold);
+      }
+      .btn-resolve-subject,
+      .btn-resolve-dismiss,
+      .btn-resolve-save,
+      .btn-resolve-cancel {
+        background: transparent;
+        color: var(--gold);
+        border: 1px solid var(--gold);
+        border-radius: 4px;
+        padding: 4px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        width: auto;
+        min-height: 0;
+        margin: 0 0 0 6px;
+      }
+      .btn-resolve-subject:hover,
+      .btn-resolve-save:hover {
+        background: rgba(212, 175, 55, 0.15);
+      }
+      .btn-resolve-dismiss,
+      .btn-resolve-cancel {
+        color: var(--muted);
+        border-color: var(--border);
+      }
+      .btn-resolve-dismiss:hover,
+      .btn-resolve-cancel:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .resolve-form {
+        flex-basis: 100%;
+        margin-top: 8px;
+        padding: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+      }
+      .resolve-form[hidden] {
+        display: none;
+      }
+      .resolve-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .resolve-form-grid label {
+        display: flex;
+        flex-direction: column;
+        font-size: 11px;
+        color: var(--muted);
+        gap: 3px;
+      }
+      .resolve-form-grid label.span2 {
+        grid-column: span 2;
+      }
+      .resolve-form-grid input,
+      .resolve-form-grid select,
+      .resolve-form-grid textarea {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 6px 8px;
+        border-radius: 3px;
+        font-size: 12px;
+        font-family: inherit;
+      }
+      .resolve-form-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .resolve-status {
+        font-size: 11px;
+        margin-left: 8px;
       }
       .factor-row {
         padding: 6px 0;
@@ -799,8 +873,11 @@
         background: transparent;
         cursor: pointer;
         position: relative;
-        transition: background-color 0.18s ease, border-color 0.18s ease,
-          box-shadow 0.18s ease, transform 0.12s ease;
+        transition:
+          background-color 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease,
+          transform 0.12s ease;
       }
       .list-check:hover input[type='checkbox']:not(:disabled) {
         transform: scale(1.04);
@@ -808,7 +885,8 @@
       .list-check input[type='checkbox']:checked {
         background: linear-gradient(135deg, #5aa0ea 0%, var(--blue) 100%);
         border-color: var(--blue);
-        box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15),
+        box-shadow:
+          0 0 0 2px rgba(74, 144, 226, 0.15),
           0 2px 6px rgba(74, 144, 226, 0.35);
       }
       .list-check input[type='checkbox']:checked::after {
@@ -878,8 +956,11 @@
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        transition: background-color 0.18s ease, border-color 0.18s ease,
-          box-shadow 0.18s ease, transform 0.3s ease;
+        transition:
+          background-color 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease,
+          transform 0.3s ease;
       }
       .list-refresh svg {
         width: 14px;
@@ -1119,6 +1200,137 @@
       .outcome-btn.selected .label,
       .outcome-btn.selected .impact {
         color: var(--text);
+      }
+      /* Post-save compliance-disposition report. Adapts border colour
+         to outcome severity so the MLRO sees the level at a glance. */
+      .compliance-report {
+        margin-top: 16px;
+        padding: 18px 20px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .compliance-report.level-clear {
+        border-color: var(--green);
+      }
+      .compliance-report.level-false {
+        border-color: rgba(245, 240, 232, 0.45);
+      }
+      .compliance-report.level-escalate {
+        border-color: var(--amber);
+      }
+      .compliance-report.level-freeze {
+        border-color: var(--red);
+      }
+      .compliance-report h3 {
+        margin: 0 0 4px 0;
+        font-family: 'Cinzel', serif;
+        font-size: 14px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--gold);
+      }
+      .compliance-report h4 {
+        margin: 14px 0 4px 0;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .compliance-report .cr-banner {
+        margin: 10px 0;
+        padding: 10px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+      }
+      .compliance-report .cr-banner.freeze {
+        background: rgba(217, 79, 79, 0.14);
+        color: var(--red);
+        border: 1px solid var(--red);
+      }
+      .compliance-report .cr-banner.escalate {
+        background: rgba(232, 160, 48, 0.14);
+        color: var(--amber);
+        border: 1px solid var(--amber);
+      }
+      .compliance-report .cr-banner.clear {
+        background: rgba(61, 168, 118, 0.12);
+        color: var(--green);
+        border: 1px solid var(--green);
+      }
+      .compliance-report dl {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 4px 14px;
+        margin: 6px 0 0 0;
+      }
+      .compliance-report dt {
+        color: var(--muted);
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+      .compliance-report dd {
+        margin: 0;
+        color: var(--text);
+        word-break: break-word;
+      }
+      .compliance-report .cr-rationale,
+      .compliance-report .cr-findings {
+        margin: 6px 0 0 0;
+        padding: 10px 12px;
+        background: var(--bg-elev);
+        border-left: 3px solid var(--border);
+        white-space: pre-wrap;
+        font-family: 'DM Mono', monospace;
+        font-size: 12px;
+      }
+      .compliance-report .cr-footer {
+        margin-top: 14px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .compliance-report .cr-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .compliance-report .cr-actions button,
+      .compliance-report .cr-actions a {
+        flex: 1;
+        min-width: 160px;
+        padding: 10px 14px;
+        border-radius: 4px;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        text-align: center;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .compliance-report .cr-pdf-btn {
+        background: transparent;
+        border: 1px solid var(--gold);
+        color: var(--gold);
+      }
+      .compliance-report .cr-pdf-btn:hover {
+        background: rgba(201, 168, 76, 0.08);
+      }
+      .compliance-report .cr-asana-link {
+        background: transparent;
+        border: 1px solid #273a58;
+        color: #4a90e2;
+      }
+      .compliance-report .cr-asana-link:hover {
+        background: rgba(74, 144, 226, 0.08);
       }
       .disposition-preview {
         margin-top: 12px;
@@ -1466,7 +1678,19 @@
 
     <!-- Authentication ────────────────────────────────────────────── -->
     <div class="card auth-card" style="margin-top: 14px">
-      <h2 style="font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin: 0 0 14px; display: flex; align-items: center; gap: 10px">
+      <h2
+        style="
+          font-family: 'DM Mono', monospace;
+          font-size: 13px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: var(--gold);
+          margin: 0 0 14px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        "
+      >
         Authentication <span class="tag">Required</span>
       </h2>
       <div class="auth-body">
@@ -1477,6 +1701,7 @@
           placeholder="Enter your MLRO password"
           autocomplete="current-password"
           spellcheck="false"
+          aria-label="MLRO password"
           style="width: 100%; margin-bottom: 8px"
         />
         <div class="token-row">
@@ -1484,7 +1709,7 @@
             type="button"
             id="loginBtn"
             class="token-gen-btn"
-            style="flex: 1"
+            style="flex: 1; color: #22c55e; border-color: #22c55e"
             title="Exchange password for a signed 1-year session token"
           >
             Sign in
@@ -1493,18 +1718,12 @@
             type="button"
             id="logoutBtn"
             class="token-gen-btn"
-            style="flex: 1"
+            style="flex: 1; color: #ef4444; border-color: #ef4444"
             title="Forget the saved session token and require a new sign-in"
           >
             Sign out
           </button>
         </div>
-        <span class="token-hint">
-          Exchanges the password (checked against <code>HAWKEYE_BRAIN_PASSWORD_HASH</code> on
-          Netlify) for a signed 1-year JWT stored only in this browser. Rotate at any time by
-          updating <code>HAWKEYE_BRAIN_PASSWORD_HASH</code>; shorten the session via
-          <code>HAWKEYE_JWT_TTL_SEC</code>.
-        </span>
         <div id="loginMsg" class="token-msg"></div>
 
         <!-- Hidden token store. The screening-command.js auth helpers
@@ -1638,11 +1857,19 @@
           title="Reset to default selection"
           aria-label="Reset Mandatory UAE Lists to default selection"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/>
-            <path d="M21 3v5h-5"/>
-            <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/>
-            <path d="M3 21v-5h5"/>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8" />
+            <path d="M21 3v5h-5" />
+            <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16" />
+            <path d="M3 21v-5h5" />
           </svg>
         </button>
         <h2 style="color: var(--blue)">Mandatory UAE Lists</h2>
@@ -1691,11 +1918,19 @@
           title="Reset to default selection"
           aria-label="Reset Enhanced Controls to default selection"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/>
-            <path d="M21 3v5h-5"/>
-            <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/>
-            <path d="M3 21v-5h5"/>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8" />
+            <path d="M21 3v5h-5" />
+            <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16" />
+            <path d="M3 21v-5h5" />
           </svg>
         </button>
         <h2 style="color: var(--blue)">Enhanced Controls</h2>
@@ -1748,11 +1983,19 @@
         title="Reset to default selection"
         aria-label="Reset Risk Categories to default selection"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/>
-          <path d="M21 3v5h-5"/>
-          <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/>
-          <path d="M3 21v-5h5"/>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8" />
+          <path d="M21 3v5h-5" />
+          <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16" />
+          <path d="M3 21v-5h5" />
         </svg>
       </button>
       <h2 style="color: var(--blue)">Risk Categories</h2>
@@ -2249,12 +2492,21 @@
             <button id="cancelBtn" class="btn-cancel" type="button">Cancel</button>
           </div>
           <div id="saveMsg" style="margin-top: 8px"></div>
+
+          <!-- Compliance-disposition report. Populated after a successful
+               save. Every section adapts to the selected outcome; the
+               "next actions" block switches between clearance / dismissal
+               / escalation / freeze-24h per Cabinet Res 74/2020 Art.4-7
+               and FDL No.10/2025 Art.26-27. -->
+          <div id="complianceReport" class="compliance-report" aria-live="polite" hidden></div>
         </div>
       </div>
 
       <!-- Transaction monitor ────────────────────────────────────────────── -->
       <div class="card" style="border-color: #22c55e">
-        <h2 style="color: #22c55e">Transaction Monitor <span class="tag">Structuring + Velocity + Cross-Border</span></h2>
+        <h2 style="color: #22c55e">
+          Transaction Monitor <span class="tag">Structuring + Velocity + Cross-Border</span>
+        </h2>
         <p class="help-text">
           Runs the weaponized TM engine on a batch of transactions: rule-based (structuring,
           profile-mismatch, third-party, offshore routing, AED 55K DPMS CTR, round-number,
@@ -2279,8 +2531,22 @@
         </div>
         <div class="row-2">
           <div>
-            <label for="tmAmount">Amount (AED) *</label>
-            <input type="number" id="tmAmount" min="0" step="0.01" placeholder="54999" />
+            <label for="tmAmount">Amount (AED/USD/EUR) *</label>
+            <div style="display: flex; gap: 6px">
+              <input
+                type="number"
+                id="tmAmount"
+                min="0"
+                step="0.01"
+                placeholder="54999"
+                style="flex: 1"
+              />
+              <select id="tmCurrency" style="width: 90px">
+                <option value="AED" selected>AED</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
           </div>
           <div>
             <label for="tmRiskRating">Customer risk</label>
@@ -2341,6 +2607,32 @@
             </select>
           </div>
         </div>
+        <div class="row-2">
+          <div>
+            <label for="tmCommodity">Commodity Type</label>
+            <input
+              type="text"
+              id="tmCommodity"
+              placeholder="e.g. Gold bars, used vehicles, diamonds"
+              autocomplete="off"
+            />
+          </div>
+          <div>
+            <label for="tmEnrollMonitoring">Enroll in daily monitoring</label>
+            <select id="tmEnrollMonitoring">
+              <option value="true" selected>Yes (06:00 / 14:00 UTC)</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label for="tmNotes">Notes</label>
+          <textarea
+            id="tmNotes"
+            rows="2"
+            placeholder="Free-text context for the MLRO (purpose of transaction, source of funds, anything unusual)"
+          ></textarea>
+        </div>
         <button id="tmBtn" type="button">Run Transaction Monitor</button>
         <div id="tmMsg"></div>
         <div id="tmResult" style="margin-top: 14px"></div>
@@ -2377,9 +2669,19 @@
       Hawkeye Sterling V2 &middot; Screening Command<br />
       FDL No.10/2025 Art.12-14, 20-21, 24, 26-27, 29 &middot; Cabinet Res 134/2025 Art.7-10, 14, 19
       &middot; Cabinet Res 74/2020 Art.4-7 &middot; FATF Rec 10 / 22 / 23 &middot; MoE Circular
-      08/AML/2021
+      08/AML/2021<br />
+      &copy; 2026 Hawkeye Sterling. All rights reserved.
     </p>
 
-    <script src="screening-command.js?v=2"></script>
+    <!-- jsPDF for client-side PDF export of the compliance-disposition
+         report. CDN is whitelisted in netlify.toml CSP (cdnjs.cloudflare.com).
+         Same pinned version as index.html. -->
+    <script
+      defer
+      crossorigin="anonymous"
+      src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+      onerror="console.warn('jsPDF CDN failed — PDF export unavailable')"
+    ></script>
+    <script src="screening-command.js?v=3"></script>
   </body>
 </html>

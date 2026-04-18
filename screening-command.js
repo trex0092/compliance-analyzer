@@ -205,8 +205,7 @@
       // Clear plaintext from the password field so nothing lingers in
       // the DOM / autofill surface longer than needed.
       loginPasswordInput.value = '';
-      const expiresAtSec =
-        json && typeof json.expiresAt === 'number' ? json.expiresAt : null;
+      const expiresAtSec = json && typeof json.expiresAt === 'number' ? json.expiresAt : null;
       let hint = 'Signed in. Session saved in this browser.';
       if (expiresAtSec) {
         const d = new Date(expiresAtSec * 1000);
@@ -214,10 +213,7 @@
       }
       setLoginMsg(hint, false);
     } catch (err) {
-      setLoginMsg(
-        'Network error: ' + ((err && err.message) || 'unknown'),
-        true
-      );
+      setLoginMsg('Network error: ' + ((err && err.message) || 'unknown'), true);
     } finally {
       if (loginBtn) loginBtn.disabled = false;
     }
@@ -263,10 +259,7 @@
         setLoginMsg('Session expired — sign in again.', true);
       } else if (payload.exp - nowSec < 7 * 24 * 3600) {
         const days = Math.max(1, Math.floor((payload.exp - nowSec) / 86400));
-        setLoginMsg(
-          'Session expires in ' + days + ' day' + (days === 1 ? '' : 's') + '.',
-          false
-        );
+        setLoginMsg('Session expires in ' + days + ' day' + (days === 1 ? '' : 's') + '.', false);
       }
     } catch (_e) {
       /* best effort — never block the page on a parse failure */
@@ -448,6 +441,50 @@
         if (res.status === 401)
           return { ok: false, error: 'Session rejected (401). Sign in again.' };
         if (res.status === 404) return { ok: false, error: 'Entry not found (already removed?).' };
+        if (res.status === 429) return { ok: false, error: 'Rate limited.' };
+        if (res.status === 503)
+          return { ok: false, error: 'Write contention — please retry in a moment.' };
+        return { ok: false, error: (json && json.error) || 'HTTP ' + res.status };
+      }
+      return { ok: true, data: json };
+    } catch (err) {
+      return { ok: false, error: 'Network error: ' + ((err && err.message) || 'unknown') };
+    }
+  }
+
+  // Pin the MLRO's resolution decision onto a watchlist entry. The
+  // identity fields disambiguate "all the Mohameds" — every future
+  // daily hit is scored against this pinned profile via
+  // src/services/identityMatchScore.ts, not the bare name.
+  //
+  // FATF Rec 10 + Cabinet Res 134/2025 Art.7-10 require positive
+  // identification of the customer. FDL No.10/2025 Art.12 + Art.35
+  // make the pinned identity the target of any freeze order.
+  async function apiResolveWatchlistEntry(id, identity) {
+    saveToken();
+    const token = tokenInput.value.trim();
+    const fmtErr = tokenFormatError(token);
+    if (fmtErr) return { ok: false, error: fmtErr };
+
+    try {
+      const res = await fetch(WATCHLIST_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'resolve', id: id, identity: identity }),
+      });
+      let json = null;
+      try {
+        json = await res.json();
+      } catch (_e) {
+        /* not JSON */
+      }
+      if (!res.ok) {
+        if (res.status === 401)
+          return { ok: false, error: 'Session rejected (401). Sign in again.' };
+        if (res.status === 404) return { ok: false, error: 'Watchlist entry not found.' };
         if (res.status === 429) return { ok: false, error: 'Rate limited.' };
         if (res.status === 503)
           return { ok: false, error: 'Write contention — please retry in a moment.' };
@@ -941,9 +978,360 @@
       'Saved event ' + data.eventId + '. ' + asanaMsg + ' MoE audit record locked.',
       'success'
     );
+    renderComplianceReport(body, data, asana);
   }
 
   saveBtn.addEventListener('click', saveScreeningEvent);
+
+  // ─── Compliance-disposition report (post-save) ────────────────────
+  //
+  // Renders the full audit-grade disposition record on-page and offers
+  // a PDF export. Structure adapts per outcome (level-clear / level-
+  // false / level-escalate / level-freeze) and every branch carries
+  // the explicit regulatory citation the branch relies on:
+  //   - confirmed_match : Cabinet Res 74/2020 Art.4-7 (24h freeze),
+  //                       FDL Art.26-27 (STR), 5-day CNMR deadline
+  //   - partial_match   : FDL Art.20-21 + Cabinet Res 134/2025 Art.19
+  //                       (escalation to CO, four-eyes)
+  //   - false_positive  : FDL Art.24 (10yr retention of the dismissal)
+  //   - negative_no_match: FDL Art.24 (clearance record for MoE audit)
+  //
+  // The Asana task carrying the same content is created server-side by
+  // /api/screening/save; this panel is the on-page mirror + the PDF
+  // source (pure client-side jsPDF, no extra Netlify spend).
+  const complianceReport = document.getElementById('complianceReport');
+  let lastReportContext = null;
+
+  const OUTCOME_REPORT = {
+    negative_no_match: {
+      tag: 'NEGATIVE — NO MATCH',
+      level: 'clear',
+      bannerClass: 'clear',
+      bannerText:
+        'Cleared. No match above threshold against any screened list. Clearance record retained 10 years (FDL Art.24).',
+      nextActions: [
+        'File the clearance under the subject record (automatic — blob store "screening-events").',
+        'Next periodic review per risk tier (SDD 12 mo / CDD 6 mo / EDD 3 mo).',
+        'No further action required today.',
+      ],
+      citations: 'FDL No.10/2025 Art.20-21, Art.24. Cabinet Decision No.(74)/2020.',
+    },
+    false_positive: {
+      tag: 'FALSE POSITIVE — DISMISSED',
+      level: 'false',
+      bannerClass: 'clear',
+      bannerText:
+        'Dismissed as false positive. Dismissal rationale archived for audit (FDL Art.24).',
+      nextActions: [
+        'Retain the dismissal rationale on file 10 years (FDL Art.24).',
+        'Record in the screening-events blob store (append-only).',
+        'No escalation or filing. Subject is NOT notified (FDL Art.29 no tipping off).',
+      ],
+      citations:
+        'FDL No.10/2025 Art.20-21 (CO attestation), Art.24 (10yr retention), Art.29 (no tipping off).',
+    },
+    partial_match: {
+      tag: 'PARTIAL MATCH — ESCALATED',
+      level: 'escalate',
+      bannerClass: 'escalate',
+      bannerText:
+        'Escalated to Compliance Officer. Four-eyes review required before any freeze or filing decision.',
+      nextActions: [
+        'CO must review within 1 business day and decide: confirm → freeze path, or dismiss → document.',
+        'Collect additional evidence: full DoB, jurisdiction, UBO chain, transaction history.',
+        'Second approver already attested on this record. Do NOT notify the subject (FDL Art.29).',
+      ],
+      citations:
+        'FDL No.10/2025 Art.20-21 (CO attestation). Cabinet Res 134/2025 Art.14, Art.19 (EDD + internal review). FATF Rec 10.',
+    },
+    confirmed_match: {
+      tag: 'CONFIRMED MATCH — FREEZE IMMEDIATELY + FILE STR',
+      level: 'freeze',
+      bannerClass: 'freeze',
+      bannerText:
+        'FREEZE FUNDS IMMEDIATELY and FILE STR WITHOUT DELAY. No 24-hour window — FDL No.10/2025 Art.26 requires STR "without delay" once suspicion is confirmed, and Cabinet Res 74/2020 Art.4 (supplemented by EOCN TFS Guidance, July 2025) requires the freeze to be executed immediately (EOCN expectation: within 1-2 hours of confirmation). Applies equally where the subject is convicted of — or reasonably suspected of — money laundering, terrorism financing, or proliferation financing (FDL Art.35; Cabinet Res 156/2025). Subject MUST NOT be notified (FDL Art.29 no tipping off).',
+      nextActions: [
+        'FREEZE all funds and assets of the subject IMMEDIATELY (FDL No.10/2025 Art.12, Art.35; Cabinet Res 74/2020 Art.4). Freeze must survive any withdrawal / transfer / termination attempt.',
+        'FILE STR to the UAE FIU via goAML WITHOUT DELAY — no minimum monetary threshold once suspicion is confirmed (FDL Art.26-27). Use /goaml to generate the XML.',
+        'Notify EOCN of the freeze without delay and file the CNMR within 5 business days (Cabinet Res 74/2020 Art.6).',
+        'Maintain freeze until EOCN issues a written de-listing or unfreezing order. Do NOT release funds on any other instruction (Cabinet Res 74/2020 Art.7).',
+        'Four-eyes approval already captured. Do NOT tip off the subject, their agents, beneficiaries, or any third party (FDL Art.29 — administrative penalty up to AED 5M, Cabinet Res 71/2024).',
+      ],
+      citations:
+        'FDL No.10/2025 Art.12 (CDD failure → freeze), Art.26-27 (STR without delay), Art.29 (no tipping off), Art.35 (TFS), Art.24 (10yr retention). Cabinet Res 74/2020 Art.4 (immediate freeze) + EOCN TFS Guidance July 2025, Art.6 (CNMR 5 business days), Art.7 (no release without EOCN order). Cabinet Res 156/2025 (PF / dual-use). Cabinet Res 71/2024 (penalties up to AED 100M). FATF Rec 6 (targeted financial sanctions) + Rec 20 (STR).',
+    },
+  };
+
+  function escapeReportHTML(s) {
+    if (s === undefined || s === null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderComplianceReport(submittedBody, saveData, asana) {
+    if (!complianceReport) return;
+    const outcome = submittedBody.outcome;
+    const meta = OUTCOME_REPORT[outcome];
+    if (!meta) {
+      complianceReport.hidden = true;
+      return;
+    }
+
+    lastReportContext = { submittedBody, saveData, asana, meta };
+
+    const projectGid = (asana && asana.projectGid) || '1213759768596515';
+    const asanaHref =
+      asana && asana.ok && asana.gid
+        ? 'https://app.asana.com/0/' +
+          encodeURIComponent(projectGid) +
+          '/' +
+          encodeURIComponent(asana.gid)
+        : '';
+
+    const h = [];
+    h.push('<h3>' + escapeReportHTML(meta.tag) + '</h3>');
+    h.push(
+      '<div style="color: var(--muted); font-size: 12px; margin-bottom: 6px;">' +
+        'Event ' +
+        escapeReportHTML(saveData.eventId || '(pending)') +
+        ' · saved ' +
+        escapeReportHTML(saveData.savedAt || new Date().toISOString()) +
+        '</div>'
+    );
+    h.push(
+      '<div class="cr-banner ' +
+        meta.bannerClass +
+        '">' +
+        escapeReportHTML(meta.bannerText) +
+        '</div>'
+    );
+
+    h.push('<h4>Subject</h4>');
+    h.push('<dl>');
+    h.push('<dt>Name</dt><dd>' + escapeReportHTML(submittedBody.subjectName) + '</dd>');
+    h.push(
+      '<dt>Subject ID</dt><dd>' + escapeReportHTML(submittedBody.subjectId || '(auto)') + '</dd>'
+    );
+    h.push('<dt>Entity type</dt><dd>' + escapeReportHTML(submittedBody.entityType) + '</dd>');
+    if (submittedBody.dob)
+      h.push('<dt>DoB</dt><dd>' + escapeReportHTML(submittedBody.dob) + '</dd>');
+    if (submittedBody.country)
+      h.push('<dt>Country</dt><dd>' + escapeReportHTML(submittedBody.country) + '</dd>');
+    if (submittedBody.idNumber)
+      h.push('<dt>ID / Register no.</dt><dd>' + escapeReportHTML(submittedBody.idNumber) + '</dd>');
+    if (submittedBody.jurisdiction)
+      h.push('<dt>Jurisdiction</dt><dd>' + escapeReportHTML(submittedBody.jurisdiction) + '</dd>');
+    if (submittedBody.riskTier)
+      h.push('<dt>Risk tier</dt><dd>' + escapeReportHTML(submittedBody.riskTier) + '</dd>');
+    h.push('</dl>');
+
+    h.push('<h4>Screening</h4>');
+    h.push('<dl>');
+    h.push('<dt>Event type</dt><dd>' + escapeReportHTML(submittedBody.eventType) + '</dd>');
+    h.push(
+      '<dt>Lists screened</dt><dd>' +
+        escapeReportHTML((submittedBody.listsScreened || []).join(', ') || '—') +
+        '</dd>'
+    );
+    const scorePct = ((submittedBody.overallTopScore || 0) * 100).toFixed(1) + '%';
+    h.push(
+      '<dt>Top score</dt><dd>' +
+        scorePct +
+        ' (' +
+        escapeReportHTML(submittedBody.overallTopClassification || 'none') +
+        ')</dd>'
+    );
+    if (Array.isArray(submittedBody.anomalies) && submittedBody.anomalies.length > 0) {
+      h.push(
+        '<dt>Anomalies</dt><dd>' +
+          submittedBody.anomalies
+            .map((a) => escapeReportHTML(a.list) + ': ' + escapeReportHTML(a.error))
+            .join('<br/>') +
+          '</dd>'
+      );
+    }
+    h.push('</dl>');
+
+    h.push('<h4>MLRO disposition</h4>');
+    h.push('<dl>');
+    h.push('<dt>Screening date</dt><dd>' + escapeReportHTML(submittedBody.screeningDate) + '</dd>');
+    h.push('<dt>Reviewed by</dt><dd>' + escapeReportHTML(submittedBody.reviewedBy) + '</dd>');
+    if (submittedBody.secondApprover) {
+      h.push(
+        '<dt>Second approver</dt><dd>' +
+          escapeReportHTML(submittedBody.secondApprover) +
+          (submittedBody.secondApproverRole
+            ? ' — ' + escapeReportHTML(submittedBody.secondApproverRole)
+            : '') +
+          '</dd>'
+      );
+    }
+    h.push('<dt>Outcome</dt><dd>' + escapeReportHTML(outcome.toUpperCase()) + '</dd>');
+    h.push('</dl>');
+
+    h.push('<h4>Rationale</h4>');
+    h.push('<div class="cr-rationale">' + escapeReportHTML(submittedBody.rationale) + '</div>');
+
+    if (submittedBody.keyFindings) {
+      h.push('<h4>Key findings</h4>');
+      h.push('<div class="cr-findings">' + escapeReportHTML(submittedBody.keyFindings) + '</div>');
+    }
+
+    h.push('<h4>Next actions</h4>');
+    h.push('<ul>');
+    for (const step of meta.nextActions) h.push('<li>' + escapeReportHTML(step) + '</li>');
+    h.push('</ul>');
+
+    h.push('<div class="cr-footer">');
+    h.push('<strong>Regulatory basis:</strong> ' + escapeReportHTML(meta.citations) + '<br/>');
+    h.push(
+      'Confidential compliance record — do not disclose to the subject (FDL No.10/2025 Art.29 no tipping off).'
+    );
+    h.push('</div>');
+
+    h.push('<div class="cr-actions">');
+    h.push('<button type="button" class="cr-pdf-btn" id="crPdfBtn">Download PDF</button>');
+    if (asanaHref) {
+      h.push(
+        '<a class="cr-asana-link" href="' +
+          asanaHref +
+          '" target="_blank" rel="noopener noreferrer">Open Asana task ' +
+          escapeReportHTML(asana.gid) +
+          ' →</a>'
+      );
+    }
+    h.push('</div>');
+
+    complianceReport.className = 'compliance-report level-' + meta.level;
+    complianceReport.innerHTML = h.join('');
+    complianceReport.hidden = false;
+
+    const pdfBtn = document.getElementById('crPdfBtn');
+    if (pdfBtn) pdfBtn.addEventListener('click', downloadCompliancePdf);
+
+    complianceReport.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function downloadCompliancePdf() {
+    if (!lastReportContext) return;
+    const ctx = lastReportContext;
+    const jsPdfCtor = (window.jspdf && window.jspdf.jsPDF) || (window.jsPDF ? window.jsPDF : null);
+    if (!jsPdfCtor) {
+      window.alert(
+        'PDF library not loaded (CDN blocked?). The Asana task already holds the full record.'
+      );
+      return;
+    }
+    const b = ctx.submittedBody;
+    const d = ctx.saveData;
+    const m = ctx.meta;
+    const doc = new jsPdfCtor({ unit: 'pt', format: 'a4' });
+    const margin = 40;
+    const pageW = doc.internal.pageSize.getWidth();
+    const maxW = pageW - margin * 2;
+    let y = margin;
+
+    const line = (text, opts) => {
+      const fontSize = (opts && opts.size) || 10;
+      const bold = opts && opts.bold;
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      doc.setFontSize(fontSize);
+      const rows = doc.splitTextToSize(
+        String(text === null || text === undefined ? '' : text),
+        maxW
+      );
+      for (const row of rows) {
+        if (y > doc.internal.pageSize.getHeight() - margin) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.text(row, margin, y);
+        y += fontSize * 1.25;
+      }
+    };
+
+    line('Compliance Disposition Report', { size: 16, bold: true });
+    line(m.tag, { size: 12, bold: true });
+    line('Event ' + (d.eventId || '(pending)') + ' · saved ' + (d.savedAt || ''), { size: 9 });
+    y += 6;
+    line(m.bannerText, { size: 10, bold: true });
+    y += 6;
+
+    line('SUBJECT', { size: 10, bold: true });
+    line('Name: ' + b.subjectName);
+    line('Subject ID: ' + (b.subjectId || '(auto)'));
+    line('Entity type: ' + b.entityType);
+    if (b.dob) line('DoB: ' + b.dob);
+    if (b.country) line('Country: ' + b.country);
+    if (b.idNumber) line('ID / Register no.: ' + b.idNumber);
+    if (b.jurisdiction) line('Jurisdiction: ' + b.jurisdiction);
+    if (b.riskTier) line('Risk tier: ' + b.riskTier);
+    y += 4;
+
+    line('SCREENING', { size: 10, bold: true });
+    line('Event type: ' + b.eventType);
+    line('Lists screened: ' + ((b.listsScreened || []).join(', ') || '—'));
+    line(
+      'Top score: ' +
+        ((b.overallTopScore || 0) * 100).toFixed(1) +
+        '% (' +
+        (b.overallTopClassification || 'none') +
+        ')'
+    );
+    if (Array.isArray(b.anomalies) && b.anomalies.length) {
+      line('Anomalies:');
+      for (const a of b.anomalies) line('  - ' + a.list + ': ' + a.error);
+    }
+    y += 4;
+
+    line('MLRO DISPOSITION', { size: 10, bold: true });
+    line('Screening date: ' + b.screeningDate);
+    line('Reviewed by: ' + b.reviewedBy);
+    if (b.secondApprover) {
+      line(
+        'Second approver: ' +
+          b.secondApprover +
+          (b.secondApproverRole ? ' — ' + b.secondApproverRole : '')
+      );
+    }
+    line('Outcome: ' + String(b.outcome).toUpperCase());
+    y += 4;
+
+    line('RATIONALE', { size: 10, bold: true });
+    line(b.rationale);
+    y += 4;
+
+    if (b.keyFindings) {
+      line('KEY FINDINGS', { size: 10, bold: true });
+      line(b.keyFindings);
+      y += 4;
+    }
+
+    line('NEXT ACTIONS', { size: 10, bold: true });
+    for (const step of m.nextActions) line('• ' + step);
+    y += 4;
+
+    line('REGULATORY BASIS', { size: 10, bold: true });
+    line(m.citations);
+    y += 4;
+
+    line(
+      'Confidential compliance record — do not disclose to the subject (FDL No.10/2025 Art.29 no tipping off).',
+      { size: 8 }
+    );
+
+    const fname =
+      'compliance-report-' +
+      (d.eventId || 'event') +
+      '-' +
+      String(b.outcome).replace(/_/g, '-') +
+      '.pdf';
+    doc.save(fname);
+  }
 
   function renderScreeningResult(data) {
     if (!data || !data.ok) {
@@ -1058,13 +1446,27 @@
     const anyHits = hitLists.some((l) => Array.isArray(l.hits) && l.hits.length > 0);
     if (anyHits) {
       html.push('<details open><summary>Matched candidates</summary>');
+      // Subject resolution explainer — the MLRO must disambiguate
+      // "all the Mohameds" before daily monitoring can fire alerts.
+      // FATF Rec 10 requires positive identification; Cabinet Res
+      // 134/2025 Art.7-10 requires a unique identifier for CDD.
+      html.push(
+        '<div class="help-text" style="margin:6px 0 4px 0;">' +
+          'Resolution: if a candidate IS this subject, pin the identity so ' +
+          'future daily hits are scored against DoB, nationality, ID, and ' +
+          'aliases — not the bare name.' +
+          '</div>'
+      );
+      const subjId = (data.subject && data.subject.id) || '';
       for (const l of hitLists) {
         if (!Array.isArray(l.hits) || l.hits.length === 0) continue;
         html.push(
           '<div class="help-text" style="margin-top:8px;">' + escapeHTML(l.list) + ':</div>'
         );
-        for (const h of l.hits) {
+        for (let i = 0; i < l.hits.length; i++) {
+          const h = l.hits[i];
           const bd = h.breakdown || {};
+          const formId = 'resolve-form-' + escapeHTML(l.list).replace(/[^a-z0-9]/gi, '-') + '-' + i;
           html.push('<div class="hit-row">');
           html.push(
             '<div class="hit-name">' +
@@ -1080,6 +1482,66 @@
               '</span></div>'
           );
           html.push('<div class="hit-score">' + pct(bd.score) + '</div>');
+          if (subjId) {
+            html.push(
+              '<button type="button" class="btn-resolve-subject btn-small" ' +
+                'data-resolve-target="' +
+                escapeHTML(formId) +
+                '" data-subject-id="' +
+                escapeHTML(subjId) +
+                '" data-list="' +
+                escapeHTML(l.list) +
+                '" data-candidate="' +
+                escapeHTML(h.candidate) +
+                '" title="Pin this candidate as the actual subject">' +
+                'Pin as subject</button>'
+            );
+            html.push(
+              '<button type="button" class="btn-resolve-dismiss btn-small" ' +
+                'data-resolve-target="' +
+                escapeHTML(formId) +
+                '" title="Record that this is NOT the subject (name coincidence)">' +
+                'Not the subject</button>'
+            );
+            html.push(
+              '<div class="resolve-form" id="' +
+                escapeHTML(formId) +
+                '" hidden>' +
+                '<div class="resolve-form-grid">' +
+                '<label>DoB (dd/mm/yyyy)<input type="text" data-field="dob" placeholder="12/03/1982" maxlength="10"></label>' +
+                '<label>Nationality (ISO alpha-2)<input type="text" data-field="nationality" placeholder="AE" maxlength="2"></label>' +
+                '<label>ID type<select data-field="idType">' +
+                '<option value="">—</option>' +
+                '<option value="passport">Passport</option>' +
+                '<option value="emirates_id">Emirates ID</option>' +
+                '<option value="national_id">National ID</option>' +
+                '<option value="other">Other</option>' +
+                '</select></label>' +
+                '<label>ID number<input type="text" data-field="idNumber" maxlength="64"></label>' +
+                '<label>ID issuing country<input type="text" data-field="idIssuingCountry" placeholder="AE" maxlength="2"></label>' +
+                '<label>Gender<select data-field="gender">' +
+                '<option value="">—</option>' +
+                '<option value="M">M</option>' +
+                '<option value="F">F</option>' +
+                '<option value="X">X</option>' +
+                '</select></label>' +
+                '<label class="span2">Aliases (comma-separated)<input type="text" data-field="aliases"></label>' +
+                '<label class="span2">Resolution note<textarea data-field="resolutionNote" rows="2" maxlength="2000"></textarea></label>' +
+                '</div>' +
+                '<div class="resolve-form-actions">' +
+                '<button type="button" class="btn-resolve-save btn-small" data-subject-id="' +
+                escapeHTML(subjId) +
+                '" data-list="' +
+                escapeHTML(l.list) +
+                '" data-candidate="' +
+                escapeHTML(h.candidate) +
+                '">Save resolution</button>' +
+                '<button type="button" class="btn-resolve-cancel btn-small">Cancel</button>' +
+                '<span class="resolve-status muted"></span>' +
+                '</div>' +
+                '</div>'
+            );
+          }
           html.push('</div>');
         }
       }
@@ -1295,6 +1757,7 @@
   const tmCustomerIdInput = $('tmCustomerId');
   const tmCustomerNameInput = $('tmCustomerName');
   const tmAmountInput = $('tmAmount');
+  const tmCurrencySelect = $('tmCurrency');
   const tmRiskRatingSelect = $('tmRiskRating');
   const tmOriginCountryInput = $('tmOriginCountry');
   const tmDestCountryInput = $('tmDestCountry');
@@ -1302,6 +1765,9 @@
   const tmCumLast30Input = $('tmCumLast30');
   const tmPaymentMethodSelect = $('tmPaymentMethod');
   const tmPayerMatchesSelect = $('tmPayerMatches');
+  const tmCommodityInput = $('tmCommodity');
+  const tmEnrollMonitoringSelect = $('tmEnrollMonitoring');
+  const tmNotesInput = $('tmNotes');
   const tmBtn = $('tmBtn');
   const tmMsg = $('tmMsg');
   const tmResult = $('tmResult');
@@ -1405,7 +1871,7 @@
 
     const tx = {
       amount: amount,
-      currency: 'AED',
+      currency: tmCurrencySelect.value,
       customerName: customerName,
       customerRiskRating: tmRiskRatingSelect.value,
       payerMatchesCustomer: tmPayerMatchesSelect.value === 'true',
@@ -1414,6 +1880,8 @@
       transactionsLast30Days: Number(tmTxLast30Input.value) || 0,
       cumulativeAmountLast30Days: Number(tmCumLast30Input.value) || 0,
       paymentMethod: tmPaymentMethodSelect.value,
+      commodityType: tmCommodityInput.value.trim() || undefined,
+      notes: tmNotesInput.value.trim() || undefined,
     };
 
     const result = await apiPost(TM_ENDPOINT, {
@@ -1421,6 +1889,7 @@
       customerName: customerName,
       transactions: [tx],
       createAsanaOnCritical: true,
+      enrollInDailyMonitoring: tmEnrollMonitoringSelect.value === 'true',
     });
     if (!result.ok) {
       showMessage(tmMsg, result.error, 'error');
@@ -1525,7 +1994,7 @@
           escapeHTML(e.id) +
           '" data-delete-name="' +
           escapeHTML(e.subjectName) +
-          '" title="Delete this watchlist entry (correct a mistaken enrolment)">Delete</button>'
+          '" title="Delete this watchlist entry (correct a mistaken enrolment)" aria-label="Delete watchlist entry">\u00d7</button>'
       );
       html.push('</div>');
     }
@@ -1594,16 +2063,158 @@
     );
     if (!confirmed) return;
     btn.setAttribute('disabled', 'disabled');
-    btn.textContent = 'Deleting…';
+    btn.style.opacity = '0.4';
     const result = await apiDeleteWatchlistEntry(id);
     if (!result.ok) {
       btn.removeAttribute('disabled');
-      btn.textContent = 'Delete';
+      btn.style.opacity = '';
       window.alert('Delete failed: ' + result.error);
       return;
     }
     refreshWatchlist();
   });
+
+  // ─── Identity resolution delegation on the screening result ───────
+  // Per-hit "Pin as subject" / "Not the subject" / Save / Cancel
+  // buttons. The pinned identity is POSTed to /api/watchlist with
+  // action:"resolve" so daily monitoring (scripts/scheduled-screening.ts)
+  // can score every future hit against the resolved profile via
+  // src/services/identityMatchScore.ts. FATF Rec 10 + Cabinet Res
+  // 134/2025 Art.7-10 require positive CDD identification; without
+  // this pin, every "Mohamed Ahmed" hit stays at 'possible' and never
+  // fires an alert.
+  function readResolutionForm(form) {
+    const get = function (field) {
+      const el = form.querySelector('[data-field="' + field + '"]');
+      return el && typeof el.value === 'string' ? el.value.trim() : '';
+    };
+    const identity = {};
+    const dob = get('dob');
+    if (dob) identity.dob = dob;
+    const nat = get('nationality');
+    if (nat) identity.nationality = nat.toUpperCase();
+    const idType = get('idType');
+    if (idType) identity.idType = idType;
+    const idNumber = get('idNumber');
+    if (idNumber) identity.idNumber = idNumber;
+    const idIssuing = get('idIssuingCountry');
+    if (idIssuing) identity.idIssuingCountry = idIssuing.toUpperCase();
+    const gender = get('gender');
+    if (gender) identity.gender = gender;
+    const aliasesRaw = get('aliases');
+    if (aliasesRaw) {
+      identity.aliases = aliasesRaw
+        .split(',')
+        .map(function (a) {
+          return a.trim();
+        })
+        .filter(function (a) {
+          return a.length > 0;
+        });
+    }
+    const note = get('resolutionNote');
+    if (note) identity.resolutionNote = note;
+    return identity;
+  }
+
+  if (screenResult) {
+    screenResult.addEventListener('click', async function (evt) {
+      const target = evt.target;
+      if (!(target instanceof Element)) return;
+
+      // Open the resolution form for a hit row.
+      const pinBtn = target.closest('.btn-resolve-subject');
+      if (pinBtn) {
+        const formId = pinBtn.getAttribute('data-resolve-target');
+        if (!formId) return;
+        const form = document.getElementById(formId);
+        if (form) form.hidden = !form.hidden;
+        return;
+      }
+
+      // Record "not the subject" — name coincidence, no identity pinned.
+      // This is a UI affordance today (no endpoint change needed) — it
+      // collapses any open form for this row so the reviewer can move
+      // on without muddying the watchlist entry.
+      const dismissBtn = target.closest('.btn-resolve-dismiss');
+      if (dismissBtn) {
+        const formId = dismissBtn.getAttribute('data-resolve-target');
+        if (formId) {
+          const form = document.getElementById(formId);
+          if (form) form.hidden = true;
+        }
+        const parent = dismissBtn.closest('.hit-row');
+        if (parent) {
+          parent.style.opacity = '0.55';
+          const note = document.createElement('span');
+          note.className = 'muted';
+          note.style.fontSize = '11px';
+          note.textContent = ' · dismissed as name coincidence';
+          const scoreEl = parent.querySelector('.hit-score');
+          if (scoreEl && !parent.querySelector('.resolve-dismiss-note')) {
+            note.classList.add('resolve-dismiss-note');
+            scoreEl.appendChild(note);
+          }
+        }
+        return;
+      }
+
+      // Cancel the resolution form.
+      const cancelBtn = target.closest('.btn-resolve-cancel');
+      if (cancelBtn) {
+        const form = cancelBtn.closest('.resolve-form');
+        if (form) form.hidden = true;
+        return;
+      }
+
+      // Save the resolution — POST to /api/watchlist.
+      const saveBtn = target.closest('.btn-resolve-save');
+      if (saveBtn) {
+        const subjectId = saveBtn.getAttribute('data-subject-id');
+        if (!subjectId) return;
+        const form = saveBtn.closest('.resolve-form');
+        if (!form) return;
+        const statusEl = form.querySelector('.resolve-status');
+        const list = saveBtn.getAttribute('data-list') || '';
+        const candidate = saveBtn.getAttribute('data-candidate') || '';
+        const identity = readResolutionForm(form);
+        if (list && candidate) {
+          identity.listEntryRef = { list: list, reference: candidate };
+        }
+        identity.resolvedAtIso = new Date().toISOString();
+
+        saveBtn.setAttribute('disabled', 'disabled');
+        if (statusEl) statusEl.textContent = 'Saving…';
+        const result = await apiResolveWatchlistEntry(subjectId, identity);
+        saveBtn.removeAttribute('disabled');
+        if (!result.ok) {
+          if (statusEl) statusEl.textContent = 'Failed: ' + result.error;
+          return;
+        }
+        if (statusEl) statusEl.textContent = '✓ Pinned as subject';
+        const row = form.closest('.hit-row');
+        if (row) {
+          row.style.borderLeft = '3px solid var(--gold)';
+          const scoreEl = row.querySelector('.hit-score');
+          if (scoreEl && !row.querySelector('.resolve-pinned-note')) {
+            const note = document.createElement('span');
+            note.className = 'muted resolve-pinned-note';
+            note.style.fontSize = '11px';
+            note.textContent = ' · pinned';
+            scoreEl.appendChild(note);
+          }
+        }
+        // Refresh the watchlist panel so the resolved state is visible
+        // alongside other entries.
+        try {
+          refreshWatchlist();
+        } catch (_e) {
+          /* best-effort */
+        }
+        return;
+      }
+    });
+  }
 
   // ─── Auto-load watchlist on boot if a token is already saved ──────
   try {

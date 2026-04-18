@@ -263,12 +263,7 @@ describe('screening-save — validateInput', () => {
   });
 
   it('accepts all 4 outcomes', () => {
-    for (const o of [
-      'negative_no_match',
-      'false_positive',
-      'partial_match',
-      'confirmed_match',
-    ]) {
+    for (const o of ['negative_no_match', 'false_positive', 'partial_match', 'confirmed_match']) {
       // Four-eyes gate — partial/confirmed require an independent second
       // approver (FDL Art.20-21; Cabinet Res 134/2025 Art.19).
       const requiresFourEyes = o === 'partial_match' || o === 'confirmed_match';
@@ -421,8 +416,8 @@ describe('screening-save — validateInput', () => {
 // ---------------------------------------------------------------------------
 
 describe('screening-save — outcomeTag', () => {
-  it('prefixes confirmed_match with FREEZE-24H (Cabinet Res 74/2020 Art.4-7)', () => {
-    expect(outcomeTag('confirmed_match')).toBe('[CONFIRMED MATCH — FREEZE-24H]');
+  it('prefixes confirmed_match with FREEZE IMMEDIATELY + FILE STR (FDL Art.12/26-27/35; Cabinet Res 74/2020 Art.4 + EOCN TFS Guidance Jul 2025)', () => {
+    expect(outcomeTag('confirmed_match')).toBe('[CONFIRMED MATCH — FREEZE IMMEDIATELY + FILE STR]');
   });
 
   it('prefixes partial_match with ESCALATED', () => {
