@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <title>Screening Command — Hawkeye Sterling</title>
+    <link rel="icon" type="image/svg+xml" href="assets/logos/hawkeye-icon.svg" />
+    <style>
+      :root {
+        --gold: #c9a84c;
+        --gold-dim: rgba(201, 168, 76, 0.6);
+        --bg: #0a0a0a;
+        --surface: rgba(201, 168, 76, 0.03);
+        --surface2: rgba(201, 168, 76, 0.06);
+        --border: rgba(201, 168, 76, 0.12);
+        --border-strong: rgba(201, 168, 76, 0.25);
+        --text: #f5f0e8;
+        --muted: rgba(245, 240, 232, 0.55);
+        --red: #d94f4f;
+        --amber: #e8a030;
+        --green: #3da876;
+        --blue: #4a90e2;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        overscroll-behavior-y: contain;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 20px 16px 60px;
+        padding-top: calc(20px + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+        font-size: 15px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+      h1 {
+        color: var(--gold);
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+      }
+      h1 .badge {
+        display: inline-block;
+        background: var(--gold);
+        color: var(--bg);
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 2px;
+        margin-left: 8px;
+        vertical-align: middle;
+        font-weight: 700;
+        letter-spacing: 1px;
+      }
+      h2 {
+        color: var(--gold);
+        font-size: 16px;
+        font-weight: 500;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .tag {
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 2px;
+        border: 1px solid var(--border-strong);
+        color: var(--muted);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      .intro {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 4px 0 20px;
+        max-width: 780px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      @media (min-width: 860px) {
+        .grid-2 {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 18px;
+      }
+      label {
+        display: block;
+        margin-top: 14px;
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      label:first-of-type {
+        margin-top: 8px;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 12px;
+        background: #111;
+        border: 1px solid var(--border-strong);
+        color: var(--text);
+        border-radius: 4px;
+        font-size: 16px;
+        font-family: inherit;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--gold);
+      }
+      select {
+        background-image:
+          linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+          linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+        background-position:
+          calc(100% - 18px) 50%,
+          calc(100% - 12px) 50%;
+        background-size:
+          6px 6px,
+          6px 6px;
+        background-repeat: no-repeat;
+        padding-right: 38px;
+      }
+      button {
+        width: 100%;
+        padding: 14px;
+        background: var(--gold);
+        color: var(--bg);
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        cursor: pointer;
+        margin-top: 18px;
+        min-height: 48px;
+        touch-action: manipulation;
+        font-family: inherit;
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      button:disabled {
+        background: #555;
+        cursor: not-allowed;
+        color: var(--muted);
+      }
+      .btn-secondary {
+        background: transparent;
+        color: var(--gold);
+        border: 1px solid var(--gold);
+      }
+      .btn-small {
+        width: auto;
+        padding: 8px 12px;
+        margin: 0 0 0 8px;
+        font-size: 12px;
+        min-height: 32px;
+      }
+      .msg {
+        padding: 12px;
+        border-radius: 4px;
+        margin-top: 14px;
+        font-size: 13px;
+        line-height: 1.5;
+        word-break: break-word;
+      }
+      .msg-success {
+        background: rgba(61, 168, 118, 0.12);
+        border: 1px solid var(--green);
+        color: var(--green);
+      }
+      .msg-error {
+        background: rgba(217, 79, 79, 0.12);
+        border: 1px solid var(--red);
+        color: var(--red);
+      }
+      .msg-info {
+        background: rgba(74, 144, 226, 0.1);
+        border: 1px solid var(--blue);
+        color: var(--blue);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .token-hint {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .stat {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      .stat-item {
+        flex: 1;
+        min-width: 110px;
+        text-align: center;
+        padding: 12px 8px;
+        background: var(--surface2);
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
+      .stat-value {
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--gold);
+        line-height: 1;
+      }
+      .stat-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 6px;
+        letter-spacing: 1px;
+      }
+      .subject-row {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .subject-row:last-child {
+        border-bottom: none;
+      }
+      .subject-info {
+        flex: 1;
+        min-width: 150px;
+      }
+      .subject-name {
+        font-weight: 500;
+        font-size: 14px;
+        word-break: break-word;
+      }
+      .subject-id {
+        font-size: 10px;
+        color: var(--muted);
+        font-family: 'DM Mono', 'Courier New', monospace;
+        margin-top: 2px;
+      }
+      .classification {
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 3px;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+      }
+      .classification.confirmed {
+        background: rgba(217, 79, 79, 0.18);
+        color: var(--red);
+      }
+      .classification.potential {
+        background: rgba(232, 160, 48, 0.18);
+        color: var(--amber);
+      }
+      .classification.weak {
+        background: rgba(74, 144, 226, 0.15);
+        color: var(--blue);
+      }
+      .classification.none {
+        background: rgba(61, 168, 118, 0.12);
+        color: var(--green);
+      }
+      .list-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .list-item {
+        padding: 10px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .list-item .list-name {
+        font-weight: 600;
+        color: var(--gold);
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+      .list-item .list-score {
+        font-size: 16px;
+        font-weight: 600;
+        margin-top: 4px;
+      }
+      .list-item .list-count {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .hit-row {
+        padding: 8px 10px;
+        background: var(--surface2);
+        border-radius: 4px;
+        margin-top: 6px;
+        font-size: 12px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .hit-row .hit-name {
+        flex: 1;
+        min-width: 140px;
+        word-break: break-word;
+      }
+      .hit-row .hit-score {
+        font-family: 'DM Mono', 'Courier New', monospace;
+        color: var(--gold);
+      }
+      .factor-row {
+        padding: 6px 0;
+        border-bottom: 1px dashed var(--border);
+        font-size: 12px;
+      }
+      .factor-row:last-child {
+        border-bottom: none;
+      }
+      .factor-row .factor-name {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .factor-row .factor-reg {
+        color: var(--muted);
+        font-size: 10px;
+        display: block;
+        margin-top: 2px;
+      }
+      .factor-row .factor-contrib {
+        float: right;
+        color: var(--gold);
+        font-family: 'DM Mono', 'Courier New', monospace;
+      }
+      .alert-row {
+        padding: 10px;
+        background: var(--surface2);
+        border-left: 3px solid var(--amber);
+        margin-top: 8px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .alert-row.critical {
+        border-left-color: var(--red);
+      }
+      .alert-row.high {
+        border-left-color: var(--amber);
+      }
+      .alert-row.medium {
+        border-left-color: var(--blue);
+      }
+      .alert-row .alert-rule {
+        font-weight: 600;
+        color: var(--text);
+      }
+      .alert-row .alert-reg {
+        color: var(--muted);
+        font-size: 10px;
+        margin-top: 4px;
+      }
+      .alert-row .alert-message {
+        margin-top: 6px;
+        line-height: 1.5;
+      }
+      .tx-row {
+        padding: 10px;
+        background: var(--surface2);
+        border-radius: 4px;
+        margin-top: 8px;
+        font-size: 12px;
+        display: grid;
+        grid-template-columns: 1fr auto auto auto;
+        gap: 8px;
+        align-items: center;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.5px;
+      }
+      .footer a {
+        color: var(--gold);
+        text-decoration: none;
+      }
+      .row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 500px) {
+        .row-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+      .spinner {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--border-strong);
+        border-top-color: var(--gold);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+        margin-right: 6px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      details {
+        margin-top: 10px;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--gold);
+        font-size: 12px;
+        padding: 6px 0;
+      }
+      .help-text {
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 6px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Screening Command <span class="badge">v1</span></h1>
+      <a href="/" class="muted">&larr; Main tool</a>
+    </header>
+    <p class="intro">
+      Weaponized screening + transaction monitoring. Name and entity screening runs across six
+      sanctions lists in parallel (UN, OFAC SDN, OFAC Consolidated, EU, UK OFSI, UAE/EOCN) with
+      five-algorithm fuzzy matching, explainable Bayesian risk scoring, and adverse-media sweep.
+      Confirmed or potential matches auto-enroll into the same daily watchlist used by the 06:00 /
+      14:00 UTC cron and create an Asana task in the SCREENINGS project (assigned to Luisa
+      Fernanda).
+    </p>
+
+    <!-- Authentication ────────────────────────────────────────────── -->
+    <div class="card">
+      <h2>Authentication <span class="tag">Required</span></h2>
+      <label for="token">Hawkeye brain token</label>
+      <input
+        type="password"
+        id="token"
+        placeholder="Paste your HAWKEYE_BRAIN_TOKEN"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <span class="token-hint"
+        >Saved locally in this browser only. Never sent anywhere except to your own compliance
+        API.</span
+      >
+    </div>
+
+    <div class="grid grid-2" style="margin-top: 14px">
+      <!-- Screen subject ────────────────────────────────────────────── -->
+      <div class="card">
+        <h2>Screen a Subject <span class="tag">Sanctions + PEP + Adverse Media</span></h2>
+        <p class="help-text">
+          Runs multi-modal fuzzy matching (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone +
+          token-set) against every candidate across six lists, searches adverse media, and computes
+          an explainable risk score. Regulatory basis: FDL Art.12-14, 20-21, 26-27, 29; Cabinet Res
+          134/2025 Art.7-10, 14, 19; Cabinet Res 74/2020 Art.4-7.
+        </p>
+        <label for="subjectName">Full name or entity *</label>
+        <input
+          type="text"
+          id="subjectName"
+          placeholder="e.g. Mohammed Al Rashid"
+          autocomplete="off"
+        />
+
+        <div class="row-2">
+          <div>
+            <label for="subjectId">Subject ID (optional)</label>
+            <input type="text" id="subjectId" placeholder="auto if blank" autocomplete="off" />
+          </div>
+          <div>
+            <label for="riskTier">Risk tier</label>
+            <select id="riskTier">
+              <option value="high">High risk</option>
+              <option value="medium" selected>Medium risk</option>
+              <option value="low">Low risk</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
+            <label for="jurisdiction">Jurisdiction (ISO-2)</label>
+            <input
+              type="text"
+              id="jurisdiction"
+              placeholder="e.g. AE, UK, IR"
+              autocomplete="off"
+              maxlength="4"
+            />
+          </div>
+          <div>
+            <label for="enrollInWatchlist">Enroll in daily monitoring</label>
+            <select id="enrollInWatchlist">
+              <option value="true" selected>Yes (06:00 / 14:00 UTC)</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        </div>
+
+        <label for="notes">Notes (optional)</label>
+        <textarea id="notes" placeholder="Context for the MLRO"></textarea>
+
+        <button id="screenBtn" type="button">Run Screening</button>
+        <div id="screenMsg"></div>
+        <div id="screenResult" style="margin-top: 14px"></div>
+      </div>
+
+      <!-- Transaction monitor ────────────────────────────────────────────── -->
+      <div class="card">
+        <h2>Transaction Monitor <span class="tag">Structuring + Velocity + Cross-Border</span></h2>
+        <p class="help-text">
+          Runs the weaponized TM engine on a batch of transactions: rule-based (structuring,
+          profile-mismatch, third-party, offshore routing, AED 55K DPMS CTR, round-number,
+          price-gaming) plus velocity, behavioral deviation, cumulative exposure, and cross-border
+          thresholds. Critical alerts auto-create an Asana task. FDL Art.15-16, 26-27; Cabinet Res
+          134/2025 Art.16, 19.
+        </p>
+        <div class="row-2">
+          <div>
+            <label for="tmCustomerId">Customer ID *</label>
+            <input type="text" id="tmCustomerId" placeholder="CUS-12345" autocomplete="off" />
+          </div>
+          <div>
+            <label for="tmCustomerName">Customer name *</label>
+            <input
+              type="text"
+              id="tmCustomerName"
+              placeholder="e.g. Gold Trader LLC"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+        <div class="row-2">
+          <div>
+            <label for="tmAmount">Amount (AED) *</label>
+            <input type="number" id="tmAmount" min="0" step="0.01" placeholder="54999" />
+          </div>
+          <div>
+            <label for="tmRiskRating">Customer risk</label>
+            <select id="tmRiskRating">
+              <option value="high">High</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="row-2">
+          <div>
+            <label for="tmOriginCountry">Origin country</label>
+            <input
+              type="text"
+              id="tmOriginCountry"
+              placeholder="AE"
+              autocomplete="off"
+              maxlength="4"
+            />
+          </div>
+          <div>
+            <label for="tmDestCountry">Destination country</label>
+            <input
+              type="text"
+              id="tmDestCountry"
+              placeholder="IR"
+              autocomplete="off"
+              maxlength="4"
+            />
+          </div>
+        </div>
+        <div class="row-2">
+          <div>
+            <label for="tmTxLast30">Transactions (30d)</label>
+            <input type="number" id="tmTxLast30" min="0" step="1" placeholder="3" />
+          </div>
+          <div>
+            <label for="tmCumLast30">Cumulative AED (30d)</label>
+            <input type="number" id="tmCumLast30" min="0" step="0.01" placeholder="164000" />
+          </div>
+        </div>
+        <div class="row-2">
+          <div>
+            <label for="tmPaymentMethod">Payment method</label>
+            <select id="tmPaymentMethod">
+              <option value="cash">Cash</option>
+              <option value="wire" selected>Wire</option>
+              <option value="card">Card</option>
+              <option value="crypto">Crypto</option>
+            </select>
+          </div>
+          <div>
+            <label for="tmPayerMatches">Payer = customer?</label>
+            <select id="tmPayerMatches">
+              <option value="true" selected>Yes</option>
+              <option value="false">No (third-party)</option>
+            </select>
+          </div>
+        </div>
+        <button id="tmBtn" type="button">Run Transaction Monitor</button>
+        <div id="tmMsg"></div>
+        <div id="tmResult" style="margin-top: 14px"></div>
+      </div>
+    </div>
+
+    <!-- Watchlist snapshot ────────────────────────────────────────────── -->
+    <div class="card" style="margin-top: 14px">
+      <h2>Active Watchlist <span class="tag">Daily 06:00 / 14:00 UTC</span></h2>
+      <p class="help-text">
+        Subjects currently enrolled in ongoing monitoring. The scheduled cron screens every entry on
+        this list twice per day; NEW hits versus the last run are routed to Asana as delta alerts.
+        Subjects you screen above auto-enroll here (unless you opt out).
+      </p>
+      <div class="stat">
+        <div class="stat-item">
+          <div class="stat-value" id="wlCount">—</div>
+          <div class="stat-label">Subjects monitored</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="wlAlerts">—</div>
+          <div class="stat-label">Total alerts lifetime</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="wlLastRun">—</div>
+          <div class="stat-label">Last screened</div>
+        </div>
+      </div>
+      <button id="refreshBtn" class="btn-secondary" type="button">Refresh watchlist</button>
+      <div id="wlList" style="margin-top: 14px"></div>
+    </div>
+
+    <p class="footer">
+      Hawkeye Sterling V2 &middot; Screening Command<br />
+      FDL No.10/2025 Art.12-14, 20-21, 24, 26-27, 29 &middot; Cabinet Res 134/2025 Art.7-10, 14, 19
+      &middot; Cabinet Res 74/2020 Art.4-7 &middot; FATF Rec 10 / 22 / 23 &middot; MoE Circular
+      08/AML/2021
+    </p>
+
+    <script src="screening-command.js?v=1"></script>
+  </body>
+</html>
