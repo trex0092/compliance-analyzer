@@ -268,6 +268,41 @@
     }
   }
 
+  async function apiDeleteWatchlistEntry(id) {
+    saveToken();
+    const token = tokenInput.value.trim();
+    const fmtErr = tokenFormatError(token);
+    if (fmtErr) return { ok: false, error: fmtErr };
+
+    try {
+      const res = await fetch(WATCHLIST_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'remove', id: id }),
+      });
+      let json = null;
+      try {
+        json = await res.json();
+      } catch (_e) {
+        /* not JSON */
+      }
+      if (!res.ok) {
+        if (res.status === 401) return { ok: false, error: 'Server rejected token (401).' };
+        if (res.status === 404) return { ok: false, error: 'Entry not found (already removed?).' };
+        if (res.status === 429) return { ok: false, error: 'Rate limited.' };
+        if (res.status === 503)
+          return { ok: false, error: 'Write contention — please retry in a moment.' };
+        return { ok: false, error: (json && json.error) || 'HTTP ' + res.status };
+      }
+      return { ok: true, data: json };
+    } catch (err) {
+      return { ok: false, error: 'Network error: ' + ((err && err.message) || 'unknown') };
+    }
+  }
+
   // ─── UI helpers ──────────────────────────────────────────────────
   function showMessage(el, text, kind) {
     el.innerHTML = '';
@@ -732,8 +767,16 @@
 
     const data = res.data || {};
     const asana = data.asana || {};
+    const projectGid = asana.projectGid || '1213759768596515';
+    const projectName = asana.projectName || 'Hawkeye Screenings';
     const asanaMsg = asana.ok
-      ? 'Asana task created (gid ' + asana.gid + ').'
+      ? 'Asana task created (gid ' +
+        asana.gid +
+        ') in project ' +
+        projectName +
+        ' [' +
+        projectGid +
+        '].'
       : asana.error
         ? 'Asana notification failed: ' + asana.error
         : 'Asana notification skipped.';
@@ -759,14 +802,13 @@
     const wl = data.watchlist || {};
     const asana = data.asana || {};
 
+    const subj = data.subject || {};
     html.push('<div class="subject-row">');
     html.push('<div class="subject-info">');
-    html.push(
-      '<div class="subject-name">' + escapeHTML(data.subject && data.subject.name) + '</div>'
-    );
+    html.push('<div class="subject-name">' + escapeHTML(subj.name || '') + '</div>');
     html.push(
       '<div class="subject-id">' +
-        escapeHTML(data.subject && data.subject.id) +
+        escapeHTML(subj.id || '') +
         ' · ran ' +
         escapeHTML(data.ranAt) +
         '</div>'
@@ -782,6 +824,30 @@
         '</span>'
     );
     html.push('</div>');
+
+    // Full subject identity block — so the MLRO can confirm WHO was
+    // screened at a glance (FDL Art.24 — audit record must be complete).
+    const dFields = [
+      ['Entity type', subj.entityType],
+      ['Date of birth / registration', subj.dob],
+      ['Country', subj.country],
+      ['ID / register no.', subj.idNumber],
+      ['Jurisdiction', subj.jurisdiction],
+      ['Risk tier', subj.riskTier],
+      ['Event type', subj.eventType],
+    ].filter(function (pair) {
+      return pair[1] !== undefined && pair[1] !== null && String(pair[1]).trim() !== '';
+    });
+    if (dFields.length > 0) {
+      html.push('<div class="subject-details">');
+      for (const pair of dFields) {
+        html.push('<div class="subject-detail-item">');
+        html.push('<div class="subject-detail-label">' + escapeHTML(pair[0]) + '</div>');
+        html.push('<div class="subject-detail-value">' + escapeHTML(String(pair[1])) + '</div>');
+        html.push('</div>');
+      }
+      html.push('</div>');
+    }
 
     html.push('<div class="stat" style="margin-top:10px;">');
     html.push(
@@ -932,6 +998,32 @@
     else if (asana && asana.error) actionBits.push('⚠ Asana task failed: ' + asana.error);
 
     html.push(actionBits.map(escapeHTML).join(' · '));
+    html.push('</div>');
+
+    // Asana destination — always show where the MLRO can find the
+    // task (or will find it once disposition is saved) so there is no
+    // ambiguity about where the audit trail lives.
+    html.push('<div class="asana-destination">');
+    html.push('<strong>Destination:</strong> Asana project ');
+    html.push('<em>Hawkeye Screenings</em> (project GID ');
+    const projGid = (asana && asana.projectGid) || '1213759768596515';
+    html.push(escapeHTML(projGid));
+    html.push('). ');
+    if (asana && asana.ok && asana.gid) {
+      html.push(
+        '<a href="https://app.asana.com/0/' +
+          escapeHTML(projGid) +
+          '/' +
+          escapeHTML(asana.gid) +
+          '" target="_blank" rel="noopener noreferrer">Open task ' +
+          escapeHTML(asana.gid) +
+          ' →</a>'
+      );
+    } else {
+      html.push(
+        'The MLRO disposition (Save Screening Event below) creates the audit task in this project.'
+      );
+    }
     html.push('</div>');
 
     screenResult.innerHTML = html.join('');
@@ -1272,6 +1364,13 @@
           escapeHTML(e.riskTier || 'medium') +
           '</span>'
       );
+      html.push(
+        '<button type="button" class="btn-delete-subject" data-delete-id="' +
+          escapeHTML(e.id) +
+          '" data-delete-name="' +
+          escapeHTML(e.subjectName) +
+          '" title="Delete this watchlist entry (correct a mistaken enrolment)">Delete</button>'
+      );
       html.push('</div>');
     }
     if (sorted.length > 50) {
@@ -1285,6 +1384,42 @@
   }
 
   refreshBtn.addEventListener('click', refreshWatchlist);
+
+  // ─── Delete button delegation on the watchlist ─────────────────────
+  // A mistaken enrolment (wrong name, duplicate, test entry) needs to be
+  // removable. The watchlist API already exposes action:"remove" — we
+  // wire a single delegated click handler so every row's Delete button
+  // works without re-binding on each refreshWatchlist() call.
+  wlListEl.addEventListener('click', async function (evt) {
+    const target = evt.target;
+    if (!(target instanceof HTMLElement)) return;
+    const btn = target.closest('.btn-delete-subject');
+    if (!btn) return;
+    const id = btn.getAttribute('data-delete-id');
+    const name = btn.getAttribute('data-delete-name') || id;
+    if (!id) return;
+    const confirmed = window.confirm(
+      'Delete watchlist entry for "' +
+        name +
+        '" (id ' +
+        id +
+        ')?\n\n' +
+        'This removes the subject from ongoing monitoring. Use only to correct ' +
+        'a mistaken enrolment — screening results already saved to Asana are ' +
+        'retained separately (FDL Art.24, 10-year record retention).'
+    );
+    if (!confirmed) return;
+    btn.setAttribute('disabled', 'disabled');
+    btn.textContent = 'Deleting…';
+    const result = await apiDeleteWatchlistEntry(id);
+    if (!result.ok) {
+      btn.removeAttribute('disabled');
+      btn.textContent = 'Delete';
+      window.alert('Delete failed: ' + result.error);
+      return;
+    }
+    refreshWatchlist();
+  });
 
   // ─── Auto-load watchlist on boot if a token is already saved ──────
   try {

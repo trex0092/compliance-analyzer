@@ -594,8 +594,14 @@ export default async (req: Request, context: Context): Promise<Response> => {
     );
   }
 
-  const asana = await postDispositionAsana(event);
-  if (asana.ok && asana.gid) event.asanaGid = asana.gid;
+  const asanaProjectGid = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
+  const asanaRes = await postDispositionAsana(event);
+  if (asanaRes.ok && asanaRes.gid) event.asanaGid = asanaRes.gid;
+  const asana = {
+    ...asanaRes,
+    projectGid: asanaProjectGid,
+    projectName: 'Hawkeye Screenings',
+  };
 
   return jsonResponse({
     ok: true,
