@@ -447,12 +447,15 @@ export default async (req: Request, context: Context) => {
           // but it DOES guarantee that any intermediary that relies on
           // observing bytes (rather than on controller activity) gets
           // one within STREAM_STALE_BYTE_MS of the last flushed byte.
-          staleByteTimer = setInterval(() => {
-            if (closed) return;
-            if (Date.now() - lastEmitAt >= STREAM_STALE_BYTE_MS) {
-              trackingEnqueue(keepaliveBytes);
-            }
-          }, Math.max(1_000, Math.floor(STREAM_STALE_BYTE_MS / 3)));
+          staleByteTimer = setInterval(
+            () => {
+              if (closed) return;
+              if (Date.now() - lastEmitAt >= STREAM_STALE_BYTE_MS) {
+                trackingEnqueue(keepaliveBytes);
+              }
+            },
+            Math.max(1_000, Math.floor(STREAM_STALE_BYTE_MS / 3))
+          );
 
           // Graceful wall-clock close — see STREAM_WALL_CLOCK_MS. We
           // beat Netlify's hard kill so the client gets a terminal
