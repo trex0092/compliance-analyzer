@@ -1385,6 +1385,30 @@
 
   refreshBtn.addEventListener('click', refreshWatchlist);
 
+  // ─── List / Risk-category "Refresh" buttons ───────────────────────
+  // Each list card carries a small Refresh button that restores every
+  // non-locked checkbox in its scope back to the default "checked"
+  // state (default: all ON). Locked entries (mandatory EOCN + UN) are
+  // skipped — those are regulatory hard-wires per Cabinet Decision
+  // 74/2020 and must never be toggled by the UI. The control dispatches
+  // a `change` event so any listeners observing the live screening set
+  // (e.g. coverage-foot counters) recompute.
+  document.addEventListener('click', function (evt) {
+    const target = evt.target;
+    if (!(target instanceof HTMLElement)) return;
+    const btn = target.closest('.list-refresh');
+    if (!btn) return;
+    const card = btn.closest('.card.list-tier');
+    if (!card) return;
+    card.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+      if (cb.disabled) return;
+      if (!cb.checked) {
+        cb.checked = true;
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+  });
+
   // ─── Delete button delegation on the watchlist ─────────────────────
   // A mistaken enrolment (wrong name, duplicate, test entry) needs to be
   // removable. The watchlist API already exposes action:"remove" — we
