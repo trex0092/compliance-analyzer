@@ -18,11 +18,13 @@
   'use strict';
 
   const SCREENING_ENDPOINT = '/api/screening/run';
+  const SAVE_ENDPOINT = '/api/screening/save';
   const TM_ENDPOINT = '/api/transaction/monitor';
   const WATCHLIST_ENDPOINT = '/api/watchlist';
   const TOKEN_KEY = 'hawkeye.watchlist.adminToken';
   const TOKEN_MIN = 32;
   const TOKEN_HEX_RE = /^[a-f0-9]+$/i;
+  const RATIONALE_MIN = 20;
 
   const $ = (id) => document.getElementById(id);
 
@@ -162,6 +164,11 @@
   // ─── Screening flow ──────────────────────────────────────────────
   const subjectNameInput = $('subjectName');
   const subjectIdInput = $('subjectId');
+  const entityTypeSelect = $('entityType');
+  const dobInput = $('dob');
+  const countryInput = $('country');
+  const idNumberInput = $('idNumber');
+  const eventTypeSelect = $('eventType');
   const riskTierSelect = $('riskTier');
   const jurisdictionInput = $('jurisdiction');
   const enrollSelect = $('enrollInWatchlist');
@@ -169,6 +176,148 @@
   const screenBtn = $('screenBtn');
   const screenMsg = $('screenMsg');
   const screenResult = $('screenResult');
+
+  // Disposition fields
+  const dispositionBox = $('disposition');
+  const screeningDateInput = $('screeningDate');
+  const reviewedByInput = $('reviewedBy');
+  const rationaleInput = $('rationale');
+  const saveBtn = $('saveBtn');
+  const rerunBtn = $('rerunBtn');
+  const cancelBtn = $('cancelBtn');
+  const saveMsg = $('saveMsg');
+  const outcomeBtns = document.querySelectorAll('.outcome-btn');
+
+  // Last successful screening run — captured so we can attach the run
+  // provenance (lists screened, top score, anomalies) to the saved
+  // event. Cleared when the MLRO cancels or a new run starts.
+  let lastRun = null;
+  let currentOutcome = null;
+
+  // Collect enhanced-list opt-ins from the mandatory/enhanced selector.
+  // UAE_EOCN + UN are always screened server-side; we only POST the
+  // enhanced subset the MLRO has checked.
+  function collectSelectedLists() {
+    const out = [];
+    document.querySelectorAll('input[data-tier="enhanced"]').forEach((el) => {
+      if (el.disabled) return; // Interpol placeholder stays off until integrated
+      if (el.checked) out.push(el.getAttribute('data-list'));
+    });
+    return out;
+  }
+
+  function todayDdMmYyyy() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+
+  function showDisposition() {
+    dispositionBox.classList.add('active');
+    if (!screeningDateInput.value) screeningDateInput.value = todayDdMmYyyy();
+    showMessage(saveMsg, '', 'info');
+  }
+
+  function hideDisposition() {
+    dispositionBox.classList.remove('active');
+    currentOutcome = null;
+    outcomeBtns.forEach((b) => b.classList.remove('selected'));
+    rationaleInput.value = '';
+    showMessage(saveMsg, '', 'info');
+  }
+
+  outcomeBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      outcomeBtns.forEach((b) => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      currentOutcome = btn.getAttribute('data-outcome');
+    });
+  });
+
+  cancelBtn.addEventListener('click', hideDisposition);
+  rerunBtn.addEventListener('click', () => {
+    hideDisposition();
+    runScreening();
+  });
+
+  async function saveScreeningEvent() {
+    if (!lastRun) {
+      showMessage(saveMsg, 'No screening run to save. Press Run Screening first.', 'error');
+      return;
+    }
+    if (!currentOutcome) {
+      showMessage(saveMsg, 'Pick an outcome — MLRO attestation is mandatory.', 'error');
+      return;
+    }
+    const reviewedBy = reviewedByInput.value.trim();
+    if (!reviewedBy) {
+      showMessage(saveMsg, 'Reviewed-by name is required (FDL Art.20-21).', 'error');
+      return;
+    }
+    const screeningDate = screeningDateInput.value.trim();
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(screeningDate)) {
+      showMessage(saveMsg, 'Screening date must be dd/mm/yyyy.', 'error');
+      return;
+    }
+    const rationale = rationaleInput.value.trim();
+    if (rationale.length < RATIONALE_MIN) {
+      showMessage(
+        saveMsg,
+        'Rationale must be at least ' + RATIONALE_MIN + ' characters (auditor requirement).',
+        'error'
+      );
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner"></span>Saving…';
+
+    const body = {
+      subjectName: lastRun.subject.name,
+      subjectId: lastRun.subject.id,
+      entityType: lastRun.subject.entityType,
+      dob: lastRun.subject.dob || undefined,
+      country: lastRun.subject.country || undefined,
+      idNumber: lastRun.subject.idNumber || undefined,
+      eventType: lastRun.subject.eventType,
+      listsScreened: (lastRun.sanctions && lastRun.sanctions.listsChecked) || [],
+      overallTopScore: (lastRun.sanctions && lastRun.sanctions.topScore) || 0,
+      overallTopClassification:
+        (lastRun.sanctions && lastRun.sanctions.topClassification) || 'none',
+      anomalies: Array.isArray(lastRun.anomalies) ? lastRun.anomalies : [],
+      screeningDate: screeningDate,
+      reviewedBy: reviewedBy,
+      outcome: currentOutcome,
+      rationale: rationale,
+      runId: lastRun.ranAt,
+      riskTier: lastRun.subject.riskTier,
+      jurisdiction: lastRun.subject.jurisdiction || undefined,
+    };
+
+    const res = await apiPost(SAVE_ENDPOINT, body);
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Screening Event';
+
+    if (!res.ok) {
+      showMessage(saveMsg, res.error, 'error');
+      return;
+    }
+
+    const data = res.data || {};
+    const asana = data.asana || {};
+    const asanaMsg = asana.ok
+      ? 'Asana task created (gid ' + asana.gid + ').'
+      : asana.error
+        ? 'Asana notification failed: ' + asana.error
+        : 'Asana notification skipped.';
+    showMessage(
+      saveMsg,
+      'Saved event ' + data.eventId + '. ' + asanaMsg + ' MoE audit record locked.',
+      'success'
+    );
+  }
+
+  saveBtn.addEventListener('click', saveScreeningEvent);
 
   function renderScreeningResult(data) {
     if (!data || !data.ok) {
@@ -365,14 +514,39 @@
     saveToken();
     const name = subjectNameInput.value.trim();
     if (!name) {
-      showMessage(screenMsg, 'Subject name is required.', 'error');
+      showMessage(screenMsg, 'Name screened is required.', 'error');
       return;
     }
+    const entityType = entityTypeSelect.value;
+    if (entityType !== 'individual' && entityType !== 'legal_entity') {
+      showMessage(screenMsg, 'Entity type is required.', 'error');
+      return;
+    }
+    const eventType = eventTypeSelect.value;
+    if (!eventType) {
+      showMessage(screenMsg, 'Screening event type is required.', 'error');
+      return;
+    }
+    const dobRaw = dobInput.value.trim();
+    if (dobRaw && !/^\d{2}\/\d{2}\/\d{4}$/.test(dobRaw)) {
+      showMessage(screenMsg, 'DoB / registration must be dd/mm/yyyy.', 'error');
+      return;
+    }
+
+    // Hide any stale disposition while a fresh screen runs
+    hideDisposition();
+
     screenBtn.disabled = true;
     screenBtn.innerHTML = '<span class="spinner"></span>Screening…';
+
+    const selectedLists = collectSelectedLists();
+    const listBanner =
+      selectedLists.length > 0
+        ? 'UAE EOCN + UN (mandatory) + ' + selectedLists.join(', ')
+        : 'UAE EOCN + UN (mandatory) only';
     showMessage(
       screenMsg,
-      'Running multi-list screen (UN, OFAC SDN, OFAC Cons, EU, UK OFSI, UAE/EOCN) + adverse media…',
+      'Running multi-list screen: ' + listBanner + ' + adverse media…',
       'info'
     );
     screenResult.innerHTML = '';
@@ -380,9 +554,15 @@
     const body = {
       subjectName: name,
       subjectId: subjectIdInput.value.trim() || undefined,
+      entityType: entityType,
+      dob: dobRaw || undefined,
+      country: countryInput.value.trim() || undefined,
+      idNumber: idNumberInput.value.trim() || undefined,
+      eventType: eventType,
       riskTier: riskTierSelect.value,
       jurisdiction: jurisdictionInput.value.trim() || undefined,
       notes: notesInput.value.trim() || undefined,
+      selectedLists: selectedLists,
       enrollInWatchlist: enrollSelect.value === 'true',
       runAdverseMedia: true,
       createAsanaTask: true,
@@ -390,9 +570,12 @@
     const result = await apiPost(SCREENING_ENDPOINT, body);
     if (!result.ok) {
       showMessage(screenMsg, result.error, 'error');
+      lastRun = null;
     } else {
+      lastRun = result.data;
       const topClass =
         (result.data && result.data.sanctions && result.data.sanctions.topClassification) || 'none';
+      const anomalies = (result.data && result.data.anomalies) || [];
       const verb =
         topClass === 'confirmed'
           ? 'CONFIRMED sanctions match — freeze workflow triggered'
@@ -401,12 +584,17 @@
             : topClass === 'weak'
               ? 'Weak match — documented and dismissed if false positive'
               : 'No sanctions match';
+      const anomSuffix =
+        anomalies.length > 0
+          ? ' · ' + anomalies.length + ' anomaly(ies) routed to Asana'
+          : '';
       showMessage(
         screenMsg,
-        verb + '. See details below.',
-        topClass === 'none' ? 'success' : 'error'
+        verb + anomSuffix + '. Complete the disposition below to close the event.',
+        topClass === 'none' && anomalies.length === 0 ? 'success' : 'error'
       );
       renderScreeningResult(result.data);
+      showDisposition();
       refreshWatchlist();
     }
 

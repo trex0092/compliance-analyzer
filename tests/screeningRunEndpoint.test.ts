@@ -30,6 +30,12 @@ const { validateInput, screenAgainstAllLists } = __test__ as {
 // validateInput
 // ---------------------------------------------------------------------------
 
+const baseInput = () => ({
+  subjectName: 'John Doe',
+  entityType: 'individual' as const,
+  eventType: 'new_customer_onboarding' as const,
+});
+
 describe('screening-run — validateInput', () => {
   it('rejects non-object body', () => {
     expect(validateInput(null).ok).toBe(false);
@@ -38,42 +44,96 @@ describe('screening-run — validateInput', () => {
   });
 
   it('rejects missing subjectName', () => {
-    const r = validateInput({});
+    const { subjectName: _s, ...rest } = baseInput();
+    void _s;
+    const r = validateInput(rest);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain('subjectName');
   });
 
   it('rejects empty subjectName', () => {
-    const r = validateInput({ subjectName: '   ' });
+    const r = validateInput({ ...baseInput(), subjectName: '   ' });
     expect(r.ok).toBe(false);
   });
 
   it('rejects oversized subjectName', () => {
-    const r = validateInput({ subjectName: 'x'.repeat(250) });
+    const r = validateInput({ ...baseInput(), subjectName: 'x'.repeat(250) });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain('too long');
   });
 
   it('rejects invalid riskTier', () => {
-    const r = validateInput({ subjectName: 'John Doe', riskTier: 'legendary' });
+    const r = validateInput({ ...baseInput(), riskTier: 'legendary' });
     expect(r.ok).toBe(false);
   });
 
+  it('rejects missing entityType', () => {
+    const { entityType: _e, ...rest } = baseInput();
+    void _e;
+    const r = validateInput(rest);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('entityType');
+  });
+
+  it('rejects invalid entityType', () => {
+    const r = validateInput({ ...baseInput(), entityType: 'robot' });
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects missing eventType', () => {
+    const { eventType: _ev, ...rest } = baseInput();
+    void _ev;
+    const r = validateInput(rest);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('eventType');
+  });
+
+  it('rejects invalid eventType', () => {
+    const r = validateInput({ ...baseInput(), eventType: 'because-i-felt-like-it' });
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects bad dob format', () => {
+    const r = validateInput({ ...baseInput(), dob: '1990/13/45' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('dob');
+  });
+
+  it('accepts yyyy-mm-dd dob and converts to dd/mm/yyyy', () => {
+    const r = validateInput({ ...baseInput(), dob: '1990-05-12' });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.input.dob).toBe('12/05/1990');
+  });
+
+  it('rejects invalid selectedLists entry', () => {
+    const r = validateInput({ ...baseInput(), selectedLists: ['OFAC', 'NOT_A_LIST'] });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('selectedLists');
+  });
+
+  it('dedupes selectedLists', () => {
+    const r = validateInput({ ...baseInput(), selectedLists: ['OFAC', 'OFAC', 'EU'] });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.input.selectedLists).toEqual(['OFAC', 'EU']);
+  });
+
   it('rejects oversized subjectId', () => {
-    const r = validateInput({ subjectName: 'John', subjectId: 'x'.repeat(200) });
+    const r = validateInput({ ...baseInput(), subjectId: 'x'.repeat(200) });
     expect(r.ok).toBe(false);
   });
 
   it('rejects oversized notes', () => {
-    const r = validateInput({ subjectName: 'John', notes: 'x'.repeat(3000) });
+    const r = validateInput({ ...baseInput(), notes: 'x'.repeat(3000) });
     expect(r.ok).toBe(false);
   });
 
   it('accepts minimal valid input with defaults', () => {
-    const r = validateInput({ subjectName: 'John Doe' });
+    const r = validateInput(baseInput());
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.input.subjectName).toBe('John Doe');
+      expect(r.input.entityType).toBe('individual');
+      expect(r.input.eventType).toBe('new_customer_onboarding');
       expect(r.input.enrollInWatchlist).toBe(true);
       expect(r.input.runAdverseMedia).toBe(true);
       expect(r.input.createAsanaTask).toBe(true);
@@ -82,7 +142,7 @@ describe('screening-run — validateInput', () => {
 
   it('allows explicit opt-outs', () => {
     const r = validateInput({
-      subjectName: 'John Doe',
+      ...baseInput(),
       enrollInWatchlist: false,
       runAdverseMedia: false,
       createAsanaTask: false,
@@ -97,10 +157,12 @@ describe('screening-run — validateInput', () => {
 
   it('trims string fields', () => {
     const r = validateInput({
+      ...baseInput(),
       subjectName: '  John Doe  ',
       subjectId: '  CUS-1  ',
       jurisdiction: '  AE  ',
       notes: '  ctx  ',
+      country: '  UAE  ',
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
@@ -108,6 +170,7 @@ describe('screening-run — validateInput', () => {
       expect(r.input.subjectId).toBe('CUS-1');
       expect(r.input.jurisdiction).toBe('AE');
       expect(r.input.notes).toBe('ctx');
+      expect(r.input.country).toBe('UAE');
     }
   });
 });
@@ -134,7 +197,8 @@ describe('screening-run — screenAgainstAllLists', () => {
     });
     expect(r.overallTopScore).toBe(0);
     expect(r.overallTopClassification).toBe('none');
-    expect(r.perList).toHaveLength(5);
+    // 5 supplied + INTERPOL placeholder auto-appended (selectedLists undefined)
+    expect(r.perList).toHaveLength(6);
     for (const l of r.perList) expect(l.hitCount).toBe(0);
   });
 
