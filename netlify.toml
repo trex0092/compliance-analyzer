@@ -19,23 +19,25 @@
   ignore = "case \"$SITE_NAME\" in compliance-analyzer|hawkeye-sterling) echo \"$SITE_NAME is decommissioned; canonical site is hawkeye-sterling-v2\"; exit 0 ;; *) exit 1 ;; esac"
 
 [build.environment]
-  # Exclude from Netlify's secrets scanner any path that is NOT actually
-  # served at runtime. What IS served: root-level HTML/JS/CSS + the
-  # esbuild-bundled output of netlify/functions/*.mts. Everything else
-  # (tests, raw TS sources, vendored reference code, docs) is never
-  # executed by the browser or by a running function, so scanning it
-  # only produces false positives on test fixtures, placeholder tokens,
-  # and sample hashes.
-  #
-  # Since PR #253 the `src/services/**` and `tests/**` trees grew
-  # significantly (deep brain, goAML XML builder, 48+ new unit tests
-  # with fake hashes / crypto addresses), tipping the scanner over and
-  # causing hawkeye-sterling-v2 deploys to fail. Adding src/** + tests/**
-  # here restores parity with the "only-scan-what-is-served" intent.
-  SECRETS_SCAN_OMIT_PATHS = "vendor/**,docs/**,graphify-out/**,.agents/**,src/**,tests/**,**/*.md,**/*.rst,setup-qrcode.js"
+  # Exclude vendored third-party reference code from secrets scanning.
+  # The vendor/ tree contains read-only upstream projects (Airflow, etc.)
+  # whose test fixtures and docs include placeholder tokens like "xoxb-***"
+  # that trigger false positives. None of this code is served by the site.
+  SECRETS_SCAN_OMIT_PATHS = "vendor/**,docs/**,graphify-out/**,.agents/**,**/*.md,**/*.rst,setup-qrcode.js"
 
 [functions]
   directory = "netlify/functions"
+
+# Preserve the stable `/api/continuous-monitor` URL now that the
+# scheduled function can no longer declare a custom `path` (Netlify
+# forbids combining `path:` + `schedule:` — see
+# https://ntl.fyi/custom-path-scheduled-functions). Existing MLRO
+# war-room callers and CI smoke tests keep working via this redirect.
+[[redirects]]
+  from = "/api/continuous-monitor"
+  to = "/.netlify/functions/continuous-monitor"
+  status = 200
+  force = true
 
 [[headers]]
   for = "/*"
