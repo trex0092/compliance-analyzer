@@ -46,6 +46,14 @@ const MAX_BODY_BYTES = 512 * 1024;
 const HEARTBEAT_MS = 5_000;
 
 /**
+ * Stale-emit watchdog — forces an additional keepalive if we haven't
+ * pushed any byte in this window, which catches the case where the
+ * heartbeat timer is enqueuing bytes but they're stuck in the
+ * ReadableStream queue due to downstream backpressure.
+ */
+const STALE_EMIT_MS = 7_500;
+
+/**
  * Hard cap on total stream duration. Netlify standard functions abort
  * after ~26s wall time; we close cleanly at 24s so the client receives
  * a terminal `timeout` event rather than a truncated TCP stream.
@@ -122,13 +130,16 @@ export default async (req: Request, context: Context): Promise<Response> => {
     async start(controller) {
       const enc = new TextEncoder();
       let closed = false;
+      let lastEmitAt = Date.now();
       let heartbeat: ReturnType<typeof setInterval> | null = null;
+      let staleEmitTimer: ReturnType<typeof setInterval> | null = null;
       let deadline: ReturnType<typeof setTimeout> | null = null;
 
       const safeEnqueue = (chunk: Uint8Array) => {
         if (closed) return;
         try {
           controller.enqueue(chunk);
+          lastEmitAt = Date.now();
         } catch {
           // Controller already closed (client disconnect). Stop further writes.
           closed = true;
@@ -142,6 +153,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
         if (closed) return;
         closed = true;
         if (heartbeat) clearInterval(heartbeat);
+        if (staleEmitTimer) clearInterval(staleEmitTimer);
         if (deadline) clearTimeout(deadline);
         if (clientSignal) clientSignal.removeEventListener('abort', onAbort);
         try {
@@ -156,11 +168,36 @@ export default async (req: Request, context: Context): Promise<Response> => {
       }
       if (clientSignal) clientSignal.addEventListener('abort', onAbort);
 
+      // Flush response headers immediately with a zero-cost comment
+      // frame plus an advisory `stream:ready` event. Some intermediaries
+      // hold response headers until the first body byte arrives;
+      // runComplianceDecision can take 10-20s to reach its first emit,
+      // which is long enough for idle timers to trip. Pushing bytes
+      // before we await anything guarantees the 200 OK reaches the
+      // client synchronously.
+      safeEnqueue(enc.encode(`: keepalive ${Date.now()}\n\n`));
+      emit('stream:ready', {
+        maxStreamMs: MAX_STREAM_MS,
+        heartbeatMs: HEARTBEAT_MS,
+        serverTime: new Date().toISOString(),
+      });
+
       // Keep-alive heartbeat during the long-running runComplianceDecision
       // await. Prevents idle-timeout on any intermediate proxy.
       heartbeat = setInterval(() => {
         safeEnqueue(enc.encode(sseHeartbeat()));
       }, HEARTBEAT_MS);
+
+      // Stale-emit watchdog — catches the case where the heartbeat
+      // timer enqueued bytes but backpressure kept them in the queue.
+      // The check rate is a third of STALE_EMIT_MS so we detect a
+      // stall within one window rather than two.
+      staleEmitTimer = setInterval(() => {
+        if (closed) return;
+        if (Date.now() - lastEmitAt >= STALE_EMIT_MS) {
+          safeEnqueue(enc.encode(`: keepalive-stale ${Date.now()}\n\n`));
+        }
+      }, Math.max(1_000, Math.floor(STALE_EMIT_MS / 3)));
 
       // Hard deadline: close with a terminal `timeout` event before the
       // Netlify wall-clock kills the function. Client should retry.
@@ -168,6 +205,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
         emit('timeout', {
           reason: 'max-stream-duration',
           maxStreamMs: MAX_STREAM_MS,
+          retryable: true,
         });
         cleanup();
       }, MAX_STREAM_MS);

@@ -62,9 +62,13 @@ const MAX_BODY_SIZE = 1024 * 1024; // 1 MB max request body
 /**
  * Upstream request timeouts.
  *
- * Non-streaming calls are capped at 60s — if an AI provider hasn't
- * produced the full response by then, the caller has almost certainly
- * already given up.
+ * Non-streaming calls are capped at 22s — comfortably below Netlify's
+ * 26s synchronous function kill so we abort the upstream ourselves and
+ * return a diagnosable 504 instead of letting Netlify tear the socket.
+ * A torn socket is exactly the failure mode that surfaces as
+ * "Stream idle timeout - partial response received" on the browser.
+ * Callers that legitimately need >22s generations must use streaming,
+ * which has its own (much longer) ceiling and per-byte keepalives.
  *
  * Streaming calls get a much longer ceiling (5 minutes) because the
  * signal is attached to the entire `fetch()` — including the time the
@@ -73,10 +77,11 @@ const MAX_BODY_SIZE = 1024 * 1024; // 1 MB max request body
  * "Stream idle timeout - partial response received" on the browser
  * even though bytes are still flowing. The stream's real lifetime is
  * bounded by (a) Anthropic's own stream cap, (b) the client
- * disconnect signal (propagated below), and (c) Netlify's function
- * wall-clock — all of which are the right stopping conditions.
+ * disconnect signal (propagated below), (c) Netlify's function
+ * wall-clock (enforced explicitly via STREAM_WALL_CLOCK_MS below), and
+ * (d) the server-side stale-byte watchdog (STREAM_STALE_BYTE_MS).
  */
-const NONSTREAM_UPSTREAM_TIMEOUT_MS = 60_000;
+const NONSTREAM_UPSTREAM_TIMEOUT_MS = 22_000;
 const STREAM_UPSTREAM_TIMEOUT_MS = 300_000;
 
 /**
@@ -102,6 +107,21 @@ const STREAM_UPSTREAM_TIMEOUT_MS = 300_000;
  * adds a few hundred bytes per minute — negligible.
  */
 const STREAM_KEEPALIVE_MS = 10_000;
+
+/**
+ * Server-side stale-byte watchdog.
+ *
+ * The keepalive interval emits a frame every 10s *when the upstream is
+ * silent*. But controller.enqueue is fire-and-forget: the bytes land in
+ * the ReadableStream's internal queue, and the runtime drains them onto
+ * the TCP socket on its own schedule. If the runtime is backpressured
+ * (slow client, congested link, upstream flooding us) the keepalives
+ * pile up in the queue while real TCP idle continues. This watchdog
+ * detects "we haven't emitted anything in 15s" — twice the keepalive
+ * cadence — and forces an additional frame. Two missed cadence windows
+ * is the earliest point at which most CDN idle timers start triggering.
+ */
+const STREAM_STALE_BYTE_MS = 15_000;
 
 /**
  * Graceful wall-clock close for streaming responses.
@@ -139,6 +159,14 @@ const ALLOWED_ANTHROPIC_BETAS = new Set<string>(['advisor-tool-2026-03-01']);
 // ─── Handler ────────────────────────────────────────────────────────────────
 
 export default async (req: Request, context: Context) => {
+  // Capture function start-time so the stream wall-clock deadline is
+  // computed relative to when Netlify invoked us, not relative to when
+  // the ReadableStream's start() runs. Upstream fetches can take 1-5s
+  // to return headers; if the wall-clock timer only starts after the
+  // fetch resolves, we can overshoot Netlify's 26s hard kill and lose
+  // the chance to emit a clean terminal frame.
+  const functionStartedAt = Date.now();
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204 });
   }
@@ -322,9 +350,10 @@ export default async (req: Request, context: Context) => {
       const encoder = new TextEncoder();
       const keepaliveBytes = encoder.encode(': keepalive\n\n');
 
+      const reader = upstreamBody.getReader();
+
       const passthrough = new ReadableStream<Uint8Array>({
         start(controller) {
-          const reader = upstreamBody.getReader();
           let lastByteAt = Date.now();
           let closed = false;
 
@@ -346,18 +375,56 @@ export default async (req: Request, context: Context) => {
           // the same "Stream idle timeout - partial response
           // received" error as a mid-stream stall.
           safeEnqueue(keepaliveBytes);
+          // Follow the header flush with an advisory "ready" frame
+          // carrying the server wall-clock so the client can compute
+          // its own deadline and detect clock skew. Plain SSE comment
+          // frames don't reach EventSource handlers; this structured
+          // frame does, and a stricter intermediary that strips
+          // comment frames will still forward this one.
+          safeEnqueue(
+            encoder.encode(
+              `event: proxy_ready\ndata: ${JSON.stringify({
+                serverTime: new Date(functionStartedAt).toISOString(),
+                wallClockMs: STREAM_WALL_CLOCK_MS,
+                keepaliveMs: STREAM_KEEPALIVE_MS,
+              })}\n\n`
+            )
+          );
+
+          // Track the last byte we actually *emitted downstream* so
+          // the stale-byte watchdog can distinguish between upstream
+          // silence (keepalive handles it) and downstream backpressure
+          // (keepalive frames queued but not flushed).
+          let lastEmitAt = Date.now();
+          const trackingEnqueue = (chunk: Uint8Array) => {
+            safeEnqueue(chunk);
+            lastEmitAt = Date.now();
+          };
+          // Retroactively credit the initial header-flush keepalive.
+          lastEmitAt = Date.now();
 
           // Forward-declare timer handles so `finish()` can close them
           // cleanly regardless of which one fires first.
           let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+          let staleByteTimer: ReturnType<typeof setInterval> | null = null;
           let wallClockTimer: ReturnType<typeof setTimeout> | null = null;
 
           const finish = () => {
             if (closed) return;
             closed = true;
             if (keepaliveTimer !== null) clearInterval(keepaliveTimer);
+            if (staleByteTimer !== null) clearInterval(staleByteTimer);
             if (wallClockTimer !== null) clearTimeout(wallClockTimer);
             if (clientSignal) clientSignal.removeEventListener('abort', onClientAbort);
+            // Release the upstream reader so its socket is reclaimed
+            // promptly instead of drifting until GC. A leaked reader
+            // can hold the upstream TCP connection in CLOSE_WAIT and
+            // consume file descriptors on long-running deploys.
+            try {
+              reader.cancel(new DOMException('proxy stream finished', 'AbortError'));
+            } catch {
+              /* reader already detached */
+            }
             try {
               controller.close();
             } catch {
@@ -368,23 +435,45 @@ export default async (req: Request, context: Context) => {
           keepaliveTimer = setInterval(() => {
             if (closed) return;
             if (Date.now() - lastByteAt >= STREAM_KEEPALIVE_MS) {
-              safeEnqueue(keepaliveBytes);
+              trackingEnqueue(keepaliveBytes);
               lastByteAt = Date.now();
             }
           }, STREAM_KEEPALIVE_MS);
+
+          // Stale-byte watchdog — catches the case where the keepalive
+          // timer has emitted but the bytes are stuck in the
+          // ReadableStream queue due to downstream backpressure. Forcing
+          // an extra frame can't unblock a truly backpressured consumer,
+          // but it DOES guarantee that any intermediary that relies on
+          // observing bytes (rather than on controller activity) gets
+          // one within STREAM_STALE_BYTE_MS of the last flushed byte.
+          staleByteTimer = setInterval(() => {
+            if (closed) return;
+            if (Date.now() - lastEmitAt >= STREAM_STALE_BYTE_MS) {
+              trackingEnqueue(keepaliveBytes);
+            }
+          }, Math.max(1_000, Math.floor(STREAM_STALE_BYTE_MS / 3)));
 
           // Graceful wall-clock close — see STREAM_WALL_CLOCK_MS. We
           // beat Netlify's hard kill so the client gets a terminal
           // SSE event instead of a torn socket, which is exactly the
           // signal that surfaces as "Stream idle timeout - partial
-          // response received" on the browser.
+          // response received" on the browser. Deadline is computed
+          // from `functionStartedAt`, not from now, so upstream header
+          // latency doesn't push us past Netlify's 26s ceiling.
+          const wallClockRemaining = Math.max(
+            1_000,
+            STREAM_WALL_CLOCK_MS - (Date.now() - functionStartedAt)
+          );
           wallClockTimer = setTimeout(() => {
             if (closed) return;
-            safeEnqueue(
+            trackingEnqueue(
               encoder.encode(
                 `event: proxy_wall_clock\ndata: ${JSON.stringify({
                   message: 'proxy stream closed gracefully before function wall-clock',
                   wallClockMs: STREAM_WALL_CLOCK_MS,
+                  elapsedMs: Date.now() - functionStartedAt,
+                  retryable: true,
                 })}\n\n`
               )
             );
@@ -394,7 +483,7 @@ export default async (req: Request, context: Context) => {
               /* already aborted */
             }
             finish();
-          }, STREAM_WALL_CLOCK_MS);
+          }, wallClockRemaining);
 
           // Pump upstream → controller in the background. We deliberately
           // do not await this inside start() — start() must return
@@ -406,14 +495,25 @@ export default async (req: Request, context: Context) => {
                 const { value, done } = await reader.read();
                 if (done) break;
                 lastByteAt = Date.now();
-                safeEnqueue(value);
+                trackingEnqueue(value);
               }
             } catch (err) {
               // Surface the upstream error as a terminal SSE event so
               // the client gets a diagnosable message instead of a
-              // silent truncation.
+              // silent truncation. Distinct event name (upstream_error
+              // vs plain error) lets the client distinguish a proxy
+              // pump failure from an Anthropic stream-level error.
               const message = err instanceof Error ? err.message : String(err);
-              safeEnqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ message })}\n\n`));
+              const name = err instanceof Error ? err.name : 'Error';
+              trackingEnqueue(
+                encoder.encode(
+                  `event: upstream_error\ndata: ${JSON.stringify({
+                    message,
+                    name,
+                    retryable: name === 'TimeoutError' || name === 'AbortError',
+                  })}\n\n`
+                )
+              );
             } finally {
               finish();
             }
@@ -449,11 +549,37 @@ export default async (req: Request, context: Context) => {
       });
     }
 
-    // Non-streaming path: response is buffered below, timer can fire.
+    // Non-streaming path: the timeout must stay armed through the
+    // body read. fetch() resolves on response headers, but the body
+    // can dribble in for an arbitrarily long tail — and that tail
+    // runs inside the same 26s Netlify wall-clock. If we cleared the
+    // timeout here, a slow-bodied upstream would silently push us
+    // over the Netlify kill and produce the exact truncated socket
+    // we're defending against. We keep the AbortController alive
+    // until the whole body has been buffered, then clear.
+    let responseBody: string;
+    try {
+      responseBody = await upstreamRes.text();
+    } catch (err) {
+      clearTimeout(upstreamTimeout);
+      if (clientSignal) clientSignal.removeEventListener('abort', onClientAbort);
+      const name = err instanceof Error ? err.name : 'Error';
+      if (name === 'TimeoutError') {
+        return Response.json(
+          {
+            error: 'AI provider timed out while streaming response body.',
+            retryable: true,
+            reason: 'nonstream_body_timeout',
+            upstreamTimeoutMs: NONSTREAM_UPSTREAM_TIMEOUT_MS,
+          },
+          { status: 504 }
+        );
+      }
+      throw err;
+    }
     clearTimeout(upstreamTimeout);
     if (clientSignal) clientSignal.removeEventListener('abort', onClientAbort);
 
-    const responseBody = await upstreamRes.text();
     return new Response(responseBody, {
       status: upstreamRes.status,
       headers: {
@@ -464,7 +590,35 @@ export default async (req: Request, context: Context) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[ai-proxy] ${providerName} request failed:`, message);
+    const name = err instanceof Error ? err.name : 'Error';
+    console.error(`[ai-proxy] ${providerName} request failed:`, name, message);
+    // Translate AbortController-driven timeouts into a proper 504
+    // with a retryable flag so the browser/client falls back instead
+    // of guessing at a 502. This is the fingerprint the downstream
+    // SDK uses to surface a clean retry instead of the truncated
+    // socket that reads as "Stream idle timeout - partial response
+    // received".
+    if (name === 'TimeoutError') {
+      return Response.json(
+        {
+          error: `AI provider request timed out: ${message}`,
+          retryable: true,
+          reason: 'upstream_timeout',
+          upstreamTimeoutMs: stream ? STREAM_UPSTREAM_TIMEOUT_MS : NONSTREAM_UPSTREAM_TIMEOUT_MS,
+        },
+        { status: 504 }
+      );
+    }
+    if (name === 'AbortError') {
+      return Response.json(
+        {
+          error: `AI provider request aborted: ${message}`,
+          retryable: false,
+          reason: 'client_disconnected',
+        },
+        { status: 499 }
+      );
+    }
     return Response.json({ error: `AI provider request failed: ${message}` }, { status: 502 });
   }
 };

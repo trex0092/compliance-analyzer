@@ -390,15 +390,60 @@ export type FetchLike = (
  * Maximum time we'll wait between any two bytes on an advisor stream.
  *
  * The server-side proxy emits `: keepalive` SSE comment frames every 10s
- * (see ai-proxy.mts STREAM_KEEPALIVE_MS). If 60s pass without ANY byte
+ * (see ai-proxy.mts STREAM_KEEPALIVE_MS). If 30s pass without ANY byte
  * — not even a keepalive — the upstream is not merely thinking, it's
- * gone. Without this watchdog the `reader.read()` loop can hang
- * indefinitely if a middlebox silently half-closes the socket, which
- * is the same failure mode reported upstream in anthropics/claude-code
- * issue #25979. Fail fast and let the caller fall back to the
- * deterministic advisor (anthropicAdvisor.ts handles this).
+ * gone. 30s is three missed keepalive cadences, which is already
+ * beyond normal network jitter; anything longer is a silent half-close.
+ * Without this watchdog the `reader.read()` loop can hang indefinitely
+ * if a middlebox silently half-closes the socket, which is the same
+ * failure mode reported upstream in anthropics/claude-code issue #25979.
+ * Tightened from 60s → 30s so the client fails over to the deterministic
+ * advisor (anthropicAdvisor.ts handles this) roughly 2x faster.
  */
-const STREAM_IDLE_READ_TIMEOUT_MS = 60_000;
+const STREAM_IDLE_READ_TIMEOUT_MS = 30_000;
+
+/**
+ * Dedicated time-to-first-byte watchdog.
+ *
+ * TCP connection + TLS handshake + Netlify cold-start + upstream header
+ * latency can legitimately consume 5-15s before a single byte lands,
+ * even when the server is healthy. Separating TTFB from the inter-byte
+ * watchdog lets us (a) surface a distinct failure mode when the stream
+ * never starts at all vs. stalls mid-way, and (b) keep the inter-byte
+ * ceiling tight without flagging healthy cold starts as dead.
+ *
+ * The proxy emits its `: keepalive` + `event: proxy_ready` frames
+ * immediately after the upstream fetch resolves, so in practice the
+ * first byte lands within ~1s of fetch() returning. 45s is generous.
+ */
+const STREAM_FIRST_BYTE_TIMEOUT_MS = 45_000;
+
+/**
+ * Diagnostic shape of a stream failure. Thrown by
+ * `accumulateAdvisorStream`; the caller (`callAdvisorAssisted`) pipes
+ * this up through the advisor escalation and into brainBridge so the
+ * deterministic fallback path gets a usable reason code.
+ */
+export class AdvisorStreamError extends Error {
+  readonly kind:
+    | 'first_byte_timeout'
+    | 'idle_timeout'
+    | 'proxy_wall_clock'
+    | 'proxy_upstream_error'
+    | 'anthropic_error'
+    | 'malformed_frame';
+  readonly retryable: boolean;
+  constructor(
+    kind: AdvisorStreamError['kind'],
+    message: string,
+    options: { retryable?: boolean } = {}
+  ) {
+    super(message);
+    this.name = 'AdvisorStreamError';
+    this.kind = kind;
+    this.retryable = options.retryable ?? false;
+  }
+}
 
 async function accumulateAdvisorStream(
   stream: ReadableStream<Uint8Array>
@@ -406,29 +451,42 @@ async function accumulateAdvisorStream(
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  // Track whether we've received any byte yet. The first-byte
+  // watchdog uses the longer STREAM_FIRST_BYTE_TIMEOUT_MS budget;
+  // every subsequent read uses the shorter inter-byte budget.
+  let receivedAnyByte = false;
 
   const content: Array<{ type: string; text?: string; name?: string }> = [];
   const usage: RawAnthropicResponse['usage'] = { input_tokens: 0, output_tokens: 0 };
 
   /**
-   * Race each read against a timer. If no byte arrives within
-   * STREAM_IDLE_READ_TIMEOUT_MS, cancel the reader and throw a
-   * diagnosable error. Keepalive comment frames count as bytes, so
-   * this only fires on a truly silent connection.
+   * Race each read against a timer. If no byte arrives within the
+   * applicable budget (TTFB before the first byte, inter-byte after),
+   * cancel the reader and throw a diagnosable error. Keepalive
+   * comment frames count as bytes, so this only fires on a truly
+   * silent connection.
    */
   const readWithIdleTimeout = async (): Promise<ReadableStreamReadResult<Uint8Array>> => {
+    const budgetMs = receivedAnyByte ? STREAM_IDLE_READ_TIMEOUT_MS : STREAM_FIRST_BYTE_TIMEOUT_MS;
+    const kind = receivedAnyByte ? 'idle_timeout' : 'first_byte_timeout';
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
         reject(
-          new Error(
-            `advisor stream idle for >${STREAM_IDLE_READ_TIMEOUT_MS}ms — upstream stalled`
+          new AdvisorStreamError(
+            kind,
+            receivedAnyByte
+              ? `advisor stream idle for >${budgetMs}ms — upstream stalled`
+              : `advisor stream produced no bytes in ${budgetMs}ms — upstream never opened`,
+            { retryable: true }
           )
         );
-      }, STREAM_IDLE_READ_TIMEOUT_MS);
+      }, budgetMs);
     });
     try {
-      return await Promise.race([reader.read(), timeout]);
+      const result = await Promise.race([reader.read(), timeout]);
+      if (!result.done) receivedAnyByte = true;
+      return result;
     } finally {
       if (timer !== undefined) clearTimeout(timer);
     }
@@ -464,14 +522,75 @@ async function accumulateAdvisorStream(
 
         // Comment frames (":keepalive") are how the proxy prevents idle
         // timeouts — skip them before we try to parse as JSON.
+        // We also capture the `event:` field so we can distinguish
+        // proxy-level events (proxy_wall_clock, upstream_error,
+        // proxy_ready) from Anthropic stream events.
         const dataLines: string[] = [];
+        let sseEventName = '';
         for (const line of frame.split('\n')) {
           if (line.startsWith(':')) continue;
+          if (line.startsWith('event:')) {
+            sseEventName = line.slice(6).trim();
+            continue;
+          }
           if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
         }
         if (dataLines.length === 0) continue;
         const dataJson = dataLines.join('\n');
         if (!dataJson || dataJson === '[DONE]') continue;
+
+        // Proxy-level events never use Anthropic's event schema, so
+        // intercept them before JSON.parse and translate into a
+        // structured error the caller can react to. If we forwarded
+        // them as normal frames, the caller would silently receive a
+        // truncated transcript and never know why — which is exactly
+        // the "Stream idle timeout - partial response received" class
+        // of silent failure we are defending against.
+        if (sseEventName === 'proxy_wall_clock') {
+          try {
+            await reader.cancel(new Error('proxy_wall_clock'));
+          } catch {
+            /* ignored */
+          }
+          throw new AdvisorStreamError(
+            'proxy_wall_clock',
+            `advisor stream closed by proxy wall-clock: ${dataJson}`,
+            { retryable: true }
+          );
+        }
+        if (sseEventName === 'upstream_error') {
+          // Proxy-emitted error (ai-proxy.mts passthrough pump failed
+          // or was aborted). Distinct from Anthropic's own `event:
+          // error` stream frame, which we still let the Anthropic
+          // handler below process by its `event.type === 'error'`
+          // branch. Keeping the two sources separate is what lets the
+          // caller tell "our proxy broke" from "Anthropic returned an
+          // error mid-stream".
+          let retryable = true;
+          try {
+            const parsed = JSON.parse(dataJson) as { retryable?: boolean; message?: string };
+            if (typeof parsed.retryable === 'boolean') retryable = parsed.retryable;
+          } catch {
+            /* keep retryable default */
+          }
+          try {
+            await reader.cancel(new Error(sseEventName));
+          } catch {
+            /* ignored */
+          }
+          throw new AdvisorStreamError(
+            'proxy_upstream_error',
+            `advisor stream proxy error (${sseEventName}): ${dataJson}`,
+            { retryable }
+          );
+        }
+        if (sseEventName === 'proxy_ready') {
+          // Advisory frame only — acknowledges the proxy is live and
+          // announces its timing constants. Nothing for the accumulator
+          // to do with it; receivedAnyByte was already set above when
+          // the bytes landed.
+          continue;
+        }
 
         let event: {
           type?: string;
@@ -492,7 +611,14 @@ async function accumulateAdvisorStream(
 
         if (event.type === 'error') {
           const msg = event.error?.message ?? 'advisor stream error';
-          throw new Error(`advisor SSE error: ${msg}`);
+          try {
+            await reader.cancel(new Error(msg));
+          } catch {
+            /* ignored */
+          }
+          throw new AdvisorStreamError('anthropic_error', `advisor SSE error: ${msg}`, {
+            retryable: true,
+          });
         }
 
         if (event.type === 'message_start' && event.message?.usage) {
