@@ -186,6 +186,10 @@
   const rationaleInput = $('rationale');
   const legalAckCheckbox = $('legalAck');
   const freezeNoticeEl = $('freezeNotice');
+  const fourEyesBlock = $('fourEyesBlock');
+  const secondApproverInput = $('secondApprover');
+  const secondApproverRoleInput = $('secondApproverRole');
+  const secondApproverAckCheckbox = $('secondApproverAck');
   const saveBtn = $('saveBtn');
   const rerunBtn = $('rerunBtn');
   const cancelBtn = $('cancelBtn');
@@ -433,6 +437,25 @@
     dispositionPreview.classList.add('level-' + meta.level);
   }
 
+  // Four-eyes gate: outcomes that move money or escalate to the CO
+  // must be co-signed by a second approver before the record can be
+  // saved (FDL Art.20-21; Cabinet Res 134/2025 Art.19).
+  function outcomeRequiresFourEyes(outcomeKey) {
+    return outcomeKey === 'partial_match' || outcomeKey === 'confirmed_match';
+  }
+
+  function setFourEyesVisibility(outcomeKey) {
+    if (!fourEyesBlock) return;
+    const required = outcomeRequiresFourEyes(outcomeKey);
+    fourEyesBlock.classList.toggle('required', required);
+    fourEyesBlock.setAttribute('aria-hidden', required ? 'false' : 'true');
+    if (!required) {
+      if (secondApproverInput) secondApproverInput.value = '';
+      if (secondApproverRoleInput) secondApproverRoleInput.value = '';
+      if (secondApproverAckCheckbox) secondApproverAckCheckbox.checked = false;
+    }
+  }
+
   outcomeBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       outcomeBtns.forEach((b) => {
@@ -446,6 +469,7 @@
         freezeNoticeEl.hidden = currentOutcome !== 'confirmed_match';
       }
       setDisposition(currentOutcome);
+      setFourEyesVisibility(currentOutcome);
     });
   });
 
@@ -513,6 +537,52 @@
       );
       return;
     }
+
+    // Four-eyes gate — partial/confirmed matches require an
+    // independent second approver (FDL Art.20-21; Cabinet Res
+    // 134/2025 Art.19). Enforced client-side AND must be mirrored
+    // server-side before the event is accepted.
+    let secondApprover = '';
+    let secondApproverRole = '';
+    if (outcomeRequiresFourEyes(currentOutcome)) {
+      secondApprover = secondApproverInput ? secondApproverInput.value.trim() : '';
+      secondApproverRole = secondApproverRoleInput
+        ? secondApproverRoleInput.value.trim()
+        : '';
+      if (!secondApprover) {
+        showMessage(
+          saveMsg,
+          'Second approver name is required for partial / confirmed matches.',
+          'error'
+        );
+        return;
+      }
+      if (!secondApproverRole) {
+        showMessage(
+          saveMsg,
+          'Second approver role / title is required for partial / confirmed matches.',
+          'error'
+        );
+        return;
+      }
+      if (secondApprover.toLowerCase() === reviewedBy.toLowerCase()) {
+        showMessage(
+          saveMsg,
+          'Second approver must be a different person from the first reviewer (four-eyes rule).',
+          'error'
+        );
+        return;
+      }
+      if (secondApproverAckCheckbox && !secondApproverAckCheckbox.checked) {
+        showMessage(
+          saveMsg,
+          'Second approver must acknowledge the independent-review attestation.',
+          'error'
+        );
+        return;
+      }
+    }
+
     const keyFindings = keyFindingsInput ? keyFindingsInput.value.trim() : '';
 
     saveBtn.disabled = true;
@@ -539,6 +609,8 @@
       runId: lastRun.ranAt,
       riskTier: lastRun.subject.riskTier,
       jurisdiction: lastRun.subject.jurisdiction || undefined,
+      secondApprover: secondApprover || undefined,
+      secondApproverRole: secondApproverRole || undefined,
     };
 
     const res = await apiPost(SAVE_ENDPOINT, body);

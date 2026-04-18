@@ -269,9 +269,45 @@ describe('screening-save — validateInput', () => {
       'partial_match',
       'confirmed_match',
     ]) {
-      const r = validateInput({ ...baseInput(), outcome: o });
+      // Four-eyes gate — partial/confirmed require an independent second
+      // approver (FDL Art.20-21; Cabinet Res 134/2025 Art.19).
+      const requiresFourEyes = o === 'partial_match' || o === 'confirmed_match';
+      const extra = requiresFourEyes
+        ? { secondApprover: 'Amira Khalid', secondApproverRole: 'Deputy CO' }
+        : {};
+      const r = validateInput({ ...baseInput(), outcome: o, ...extra });
       expect(r.ok, `outcome ${o} should be accepted`).toBe(true);
     }
+  });
+
+  // ---- Four-eyes gate (FDL Art.20-21; Cabinet Res 134/2025 Art.19) ----
+
+  it('rejects partial_match without a second approver', () => {
+    const r = validateInput({ ...baseInput(), outcome: 'partial_match' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('secondApprover');
+  });
+
+  it('rejects confirmed_match without a second approver role', () => {
+    const r = validateInput({
+      ...baseInput(),
+      outcome: 'confirmed_match',
+      secondApprover: 'Amira Khalid',
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('secondApproverRole');
+  });
+
+  it('rejects a second approver who is the same person as reviewedBy', () => {
+    const base = baseInput();
+    const r = validateInput({
+      ...base,
+      outcome: 'partial_match',
+      secondApprover: base.reviewedBy.toUpperCase(),
+      secondApproverRole: 'Deputy CO',
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('different person');
   });
 
   it('rejects rationale shorter than 20 chars', () => {

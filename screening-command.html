@@ -1048,6 +1048,57 @@
       .char-counter.ok .count {
         color: var(--green);
       }
+      .four-eyes {
+        margin-top: 14px;
+        padding: 14px 16px;
+        border-left: 3px solid var(--amber);
+        border-radius: 4px;
+        background: rgba(232, 160, 48, 0.06);
+        display: none;
+      }
+      .four-eyes.required {
+        display: block;
+      }
+      .four-eyes h4 {
+        margin: 0 0 6px 0;
+        font-family: 'Cinzel', serif;
+        font-size: 13px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--amber);
+      }
+      .four-eyes p {
+        font-size: 12.5px;
+        line-height: 1.55;
+        color: var(--muted);
+        margin: 0 0 10px 0;
+      }
+      .four-eyes label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 8px 0 4px 0;
+      }
+      .four-eyes input[type='text'] {
+        width: 100%;
+        padding: 9px 12px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--hairline);
+        color: var(--text);
+        font-family: 'DM Mono', ui-monospace, monospace;
+        font-size: 13px;
+      }
+      .four-eyes .ack {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        margin-top: 10px;
+        font-size: 12px;
+      }
       .action-row {
         display: grid;
         grid-template-columns: 1fr;
@@ -1865,6 +1916,41 @@
                 consistent with the firm's Risk Appetite Statement (Cabinet Res 134/2025 Art.5),
                 and confirm the outcome + rationale above is a true and accurate account of my
                 decision.</span
+              >
+            </label>
+          </div>
+
+          <div id="fourEyesBlock" class="four-eyes" aria-hidden="true">
+            <h4>Four-eyes approval required</h4>
+            <p>
+              Partial and confirmed matches cannot be saved by a single reviewer. A second,
+              independent approver must attest to the outcome before the record is written to the
+              audit log (FDL No.10/2025 Art.20-21; Cabinet Res 134/2025 Art.19 — internal review).
+              The first reviewer and the second approver must be different people.
+            </p>
+            <label for="secondApprover">Second approver (full name) *</label>
+            <input
+              type="text"
+              id="secondApprover"
+              placeholder="e.g. Luisa Fernanda"
+              autocomplete="off"
+              maxlength="120"
+            />
+            <label for="secondApproverRole">Second approver role / title *</label>
+            <input
+              type="text"
+              id="secondApproverRole"
+              placeholder="e.g. Compliance Officer / MLRO"
+              autocomplete="off"
+              maxlength="120"
+            />
+            <label class="ack">
+              <input type="checkbox" id="secondApproverAck" />
+              <span
+                >I, the second approver, have independently reviewed the subject candidates, the
+                match evidence, and the rationale above. I attest that the disposition is
+                appropriate under FDL Art.20-21 and Cabinet Res 134/2025 Art.14/19, and that I am
+                not the same person as the first reviewer.</span
               >
             </label>
           </div>

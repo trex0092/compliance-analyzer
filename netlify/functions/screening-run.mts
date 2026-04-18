@@ -84,6 +84,12 @@ import {
   type RiskTier,
 } from '../../src/services/screeningWatchlist';
 import { createAsanaTask } from '../../src/services/asanaClient';
+import {
+  runDeepBrain,
+  type OrchestrationResult,
+  type SearchFn,
+  type SearchHit,
+} from '../../src/services/brain';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -173,6 +179,7 @@ export interface ScreeningRunInput {
   runAdverseMedia?: boolean;
   adverseMediaPredicates?: string[];
   createAsanaTask?: boolean;
+  runDeepBrain?: boolean;
 }
 
 /**
@@ -341,6 +348,7 @@ function validateInput(
       runAdverseMedia: o.runAdverseMedia !== false,
       adverseMediaPredicates,
       createAsanaTask: o.createAsanaTask !== false,
+      runDeepBrain: o.runDeepBrain === true,
     },
   };
 }
@@ -776,6 +784,65 @@ export default async (req: Request, context: Context): Promise<Response> => {
     nationality: input.jurisdiction,
   });
 
+  // ─── 3.5. Deep brain — three-layer PEER reasoning ─────────────────────
+  // Runs ONLY when the classical score already surfaced a signal OR when
+  // the caller explicitly opts in with `runDeepBrain=true` on the input.
+  // Keeps the default path fast and only pays the reasoning cost when
+  // the MLRO actually needs the extra explanation.
+  const deepBrainEnabled =
+    overallTopClassification !== 'none' ||
+    adverseMediaHits > 0 ||
+    input.runDeepBrain === true;
+  let deepBrain: OrchestrationResult | null = null;
+  if (deepBrainEnabled) {
+    const atomHits: SearchHit[] = [];
+    for (const l of perList) {
+      for (const h of l.hits) {
+        atomHits.push({
+          fact: `${l.list} candidate ${h.name} (score ${h.score.toFixed(2)}, ${h.classification})`,
+          source: `${l.list}_${ranAt.slice(0, 10)}`,
+          sourceTimestamp: ranAt,
+          confidence: h.score,
+        });
+      }
+    }
+    for (const am of adverseMediaTop) {
+      atomHits.push({
+        fact: `adverse media: ${am.title}`,
+        source: `ADVERSE_MEDIA_${am.source ?? 'unknown'}`,
+        sourceTimestamp: ranAt,
+        confidence: 0.7,
+      });
+    }
+    const precomputedSearch: SearchFn = (q) => {
+      if (q.id === 'q-sanctions') {
+        return atomHits.filter((a) =>
+          /UN|OFAC|EU|UK_OFSI|UAE_EOCN|INTERPOL/i.test(a.source)
+        );
+      }
+      if (q.id === 'q-adverse') {
+        return atomHits.filter((a) => a.source.startsWith('ADVERSE_MEDIA'));
+      }
+      return [];
+    };
+    try {
+      deepBrain = await runDeepBrain(
+        {
+          name: input.subjectName,
+          aliases: input.aliases,
+          jurisdiction: input.jurisdiction,
+          entityType:
+            input.entityType === 'legal_entity' ? 'entity' : 'individual',
+          dob: input.dob,
+          notes: input.notes,
+        },
+        { searchFn: precomputedSearch, deadlineMs: 4000 }
+      );
+    } catch {
+      deepBrain = null;
+    }
+  }
+
   // ─── 4. Watchlist enrollment ──────────────────────────────────────────
   let enrollment: EnrollmentResult = { action: 'skipped' };
   if (input.enrollInWatchlist) {
@@ -870,6 +937,19 @@ export default async (req: Request, context: Context): Promise<Response> => {
     },
     watchlist: enrollment,
     asana,
+    deepBrain: deepBrain
+      ? {
+          verdict: deepBrain.verdict,
+          requiresFourEyes: deepBrain.requiresFourEyes,
+          confidence: deepBrain.confidence,
+          narrative: deepBrain.narrative,
+          topHypothesis: deepBrain.reasoning.top.hypothesisId,
+          posterior: deepBrain.reasoning.top.posterior,
+          rationale: deepBrain.reasoning.top.rationale,
+          coverage: deepBrain.investigation.coverage,
+          lessons: deepBrain.lessons,
+        }
+      : null,
   });
 };
 
