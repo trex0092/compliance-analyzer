@@ -171,6 +171,7 @@ export interface ScreeningRunInput {
   selectedLists?: SelectableList[];
   enrollInWatchlist?: boolean;
   runAdverseMedia?: boolean;
+  adverseMediaPredicates?: string[];
   createAsanaTask?: boolean;
 }
 
@@ -295,6 +296,32 @@ function validateInput(
     if (cleaned.length > 0) aliases = cleaned;
   }
 
+  let adverseMediaPredicates: string[] | undefined;
+  if (o.adverseMediaPredicates !== undefined) {
+    if (!Array.isArray(o.adverseMediaPredicates)) {
+      return { ok: false, error: 'adverseMediaPredicates must be an array of strings' };
+    }
+    if ((o.adverseMediaPredicates as unknown[]).length > 64) {
+      return { ok: false, error: 'adverseMediaPredicates cannot exceed 64 entries' };
+    }
+    const cleaned: string[] = [];
+    const seen = new Set<string>();
+    for (const p of o.adverseMediaPredicates as unknown[]) {
+      if (typeof p !== 'string') {
+        return { ok: false, error: 'adverseMediaPredicates entries must be strings' };
+      }
+      const t = p.trim();
+      if (t.length === 0) continue;
+      if (t.length > 64) {
+        return { ok: false, error: 'adverseMediaPredicates entry too long (max 64 chars)' };
+      }
+      if (seen.has(t)) continue;
+      seen.add(t);
+      cleaned.push(t);
+    }
+    if (cleaned.length > 0) adverseMediaPredicates = cleaned;
+  }
+
   return {
     ok: true,
     input: {
@@ -312,6 +339,7 @@ function validateInput(
       selectedLists,
       enrollInWatchlist: o.enrollInWatchlist !== false,
       runAdverseMedia: o.runAdverseMedia !== false,
+      adverseMediaPredicates,
       createAsanaTask: o.createAsanaTask !== false,
     },
   };

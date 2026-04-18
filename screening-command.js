@@ -227,6 +227,65 @@
     return el ? !!el.checked : true;
   }
 
+  // -----------------------------------------------------------------
+  // Adverse Media predicate offences — FATF 40+9 + FDL No.10/2025
+  // Art.2 predicate list + MoE Circular 08/AML/2021 DPMS typologies.
+  // Every category is a boolean filter on the open-source negative-
+  // news search. Regulatory traceability: each key is cited in the
+  // /run request body and persisted with the screening event.
+  // -----------------------------------------------------------------
+  const ADVERSE_MEDIA_PREDICATES = [
+    { key: 'bribery_corruption',          label: 'Bribery and corruption',                         ref: 'FATF Rec 10/12; UNCAC' },
+    { key: 'hostage_taking',              label: 'Hostage taking',                                 ref: 'UNSCR 2178; FDL Art.2' },
+    { key: 'kidnapping',                  label: 'Kidnapping',                                     ref: 'FDL Art.2; Penal Code' },
+    { key: 'piracy_counterfeit_products', label: 'Piracy, counterfeiting & product piracy',        ref: 'FATF Rec 10; TRIPS' },
+    { key: 'human_trafficking',           label: 'Human trafficking & human rights abuses',        ref: 'FDL Art.2; Palermo Protocol' },
+    { key: 'organized_crime',             label: 'Organized crime',                                ref: 'UNTOC; FDL Art.2' },
+    { key: 'currency_counterfeiting',     label: 'Currency counterfeiting',                        ref: 'FDL Art.2; UAE Penal Code' },
+    { key: 'illicit_trafficking_goods',   label: 'Illicit trafficking in stolen / other goods',    ref: 'FATF Rec 10; FDL Art.2' },
+    { key: 'racketeering',                label: 'Racketeering',                                   ref: 'UNTOC Art.5' },
+    { key: 'cybercrime',                  label: 'Cybercrime',                                     ref: 'Budapest Convention' },
+    { key: 'hacking',                     label: 'Hacking',                                        ref: 'UAE FDL 34/2021' },
+    { key: 'phishing',                    label: 'Phishing',                                       ref: 'UAE FDL 34/2021' },
+    { key: 'insider_trading_market_manip',label: 'Insider trading & market manipulation',          ref: 'FDL Art.2; SCA' },
+    { key: 'robbery',                     label: 'Robbery',                                        ref: 'FDL Art.2; Penal Code' },
+    { key: 'environmental_crimes',        label: 'Environmental crimes',                           ref: 'FATF 2021 Env Crime Report' },
+    { key: 'migrant_smuggling',           label: 'Migrant smuggling',                              ref: 'UNTOC Smuggling Protocol' },
+    { key: 'slave_labor',                 label: 'Slave labour / forced labour',                   ref: 'ILO C029; FDL Art.2' },
+    { key: 'securities_fraud',            label: 'Securities fraud',                               ref: 'SCA Board Res 37/R.M.' },
+    { key: 'extortion',                   label: 'Extortion',                                      ref: 'FDL Art.2' },
+    { key: 'child_sexual_exploitation',   label: 'Sexual exploitation of children',                ref: 'OPSC; FDL Art.2' },
+    { key: 'money_laundering',            label: 'Money laundering',                               ref: 'FDL No.10/2025 Art.2' },
+    { key: 'falsifying_official_docs',    label: 'Falsifying information on official documents',   ref: 'FDL Art.2; Penal Code' },
+    { key: 'narcotics_arms_trafficking',  label: 'Narcotics & arms trafficking',                   ref: 'UN 1988 Conv; ATT' },
+    { key: 'smuggling',                   label: 'Smuggling',                                      ref: 'FDL Art.2; Customs Law' },
+    { key: 'forgery',                     label: 'Forgery',                                        ref: 'FDL Art.2' },
+    { key: 'price_fixing',                label: 'Price fixing',                                   ref: 'UAE Competition Law 4/2012' },
+    { key: 'illegal_cartel_formation',    label: 'Illegal cartel formation',                       ref: 'UAE Competition Law 4/2012' },
+    { key: 'antitrust_violations',        label: 'Antitrust violations',                           ref: 'UAE Competition Law 4/2012' },
+    { key: 'terrorism',                   label: 'Terrorism',                                      ref: 'FDL No.7/2014; UNSCR 1373' },
+    { key: 'terror_financing',            label: 'Terror financing',                               ref: 'FDL No.10/2025 Art.2; UNSCR 1267' },
+    { key: 'fraud',                       label: 'Fraud',                                          ref: 'FDL Art.2; Penal Code' },
+    { key: 'embezzlement',                label: 'Embezzlement',                                   ref: 'FDL Art.2; UNCAC Art.17' },
+    { key: 'theft',                       label: 'Theft',                                          ref: 'FDL Art.2; Penal Code' },
+    { key: 'cheating',                    label: 'Cheating',                                       ref: 'FDL Art.2; Penal Code' },
+    { key: 'pharma_trafficking',          label: 'Pharmaceutical product trafficking',             ref: 'MEDICRIME Conv; FATF' },
+    { key: 'illegal_distribution',        label: 'Illegal distribution',                           ref: 'FDL Art.2' },
+    { key: 'illegal_production',          label: 'Illegal production',                             ref: 'FDL Art.2' },
+    { key: 'banned_fake_medicines',       label: 'Banned / fake medicines',                        ref: 'MEDICRIME Conv' },
+    { key: 'war_crimes',                  label: 'War crimes',                                     ref: 'Rome Statute; Geneva Conv' },
+    { key: 'tax_evasion',                 label: 'Tax evasion',                                    ref: 'FDL No.10/2025 Art.2' },
+    { key: 'tax_fraud',                   label: 'Tax fraud',                                      ref: 'FDL No.10/2025 Art.2; FTA Law' },
+  ];
+
+  // Default scope for every Adverse Media sweep — not a UI toggle, just
+  // the server-facing contract. POSTed to /api/screening/run when the
+  // Adverse Media category is ON so the audit record names exactly
+  // which predicate offences were searched.
+  function allPredicateKeys() {
+    return ADVERSE_MEDIA_PREDICATES.map((p) => p.key);
+  }
+
   function collectSelectedCategories() {
     const out = [];
     document.querySelectorAll('input[data-category][data-tier="enhanced"]').forEach((el) => {
@@ -669,6 +728,7 @@
       selectedLists: selectedLists,
       enrollInWatchlist: enrollSelect.value === 'true',
       runAdverseMedia: isAdverseMediaEnabled(),
+      adverseMediaPredicates: isAdverseMediaEnabled() ? allPredicateKeys() : undefined,
       createAsanaTask: true,
     };
     const result = await apiPost(SCREENING_ENDPOINT, body);
