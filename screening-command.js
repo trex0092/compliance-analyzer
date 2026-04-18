@@ -1757,6 +1757,7 @@
   const tmCustomerIdInput = $('tmCustomerId');
   const tmCustomerNameInput = $('tmCustomerName');
   const tmAmountInput = $('tmAmount');
+  const tmCurrencySelect = $('tmCurrency');
   const tmRiskRatingSelect = $('tmRiskRating');
   const tmOriginCountryInput = $('tmOriginCountry');
   const tmDestCountryInput = $('tmDestCountry');
@@ -1764,6 +1765,9 @@
   const tmCumLast30Input = $('tmCumLast30');
   const tmPaymentMethodSelect = $('tmPaymentMethod');
   const tmPayerMatchesSelect = $('tmPayerMatches');
+  const tmCommodityInput = $('tmCommodity');
+  const tmEnrollMonitoringSelect = $('tmEnrollMonitoring');
+  const tmNotesInput = $('tmNotes');
   const tmBtn = $('tmBtn');
   const tmMsg = $('tmMsg');
   const tmResult = $('tmResult');
@@ -1867,7 +1871,7 @@
 
     const tx = {
       amount: amount,
-      currency: 'AED',
+      currency: tmCurrencySelect.value,
       customerName: customerName,
       customerRiskRating: tmRiskRatingSelect.value,
       payerMatchesCustomer: tmPayerMatchesSelect.value === 'true',
@@ -1876,6 +1880,8 @@
       transactionsLast30Days: Number(tmTxLast30Input.value) || 0,
       cumulativeAmountLast30Days: Number(tmCumLast30Input.value) || 0,
       paymentMethod: tmPaymentMethodSelect.value,
+      commodity: tmCommodityInput.value.trim() || undefined,
+      notes: tmNotesInput.value.trim() || undefined,
     };
 
     const result = await apiPost(TM_ENDPOINT, {
@@ -1883,6 +1889,7 @@
       customerName: customerName,
       transactions: [tx],
       createAsanaOnCritical: true,
+      enrollInDailyMonitoring: tmEnrollMonitoringSelect.value === 'true',
     });
     if (!result.ok) {
       showMessage(tmMsg, result.error, 'error');
