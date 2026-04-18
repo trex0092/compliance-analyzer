@@ -104,10 +104,20 @@
       header {
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
         flex-wrap: wrap;
         gap: 8px;
         margin-bottom: 6px;
+      }
+      .title-group {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .header-logo {
+        flex-shrink: 0;
+        border-radius: 8px;
+        display: block;
       }
       h1 {
         font-family: 'Cinzel', serif;
@@ -1351,7 +1361,16 @@
   </head>
   <body>
     <header>
-      <h1>Hawkeye Sterling V2 &mdash; Screening Command</h1>
+      <div class="title-group">
+        <img
+          src="assets/logos/hawkeye-icon.svg"
+          alt="Hawkeye Sterling"
+          class="header-logo"
+          width="56"
+          height="56"
+        />
+        <h1>Hawkeye Sterling V2 &mdash; Screening Command</h1>
+      </div>
       <a href="/" class="muted">&larr; Main tool</a>
     </header>
     <section class="intro-panel">
