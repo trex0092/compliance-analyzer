@@ -227,6 +227,13 @@ export function createDefaultAdvisorEscalation(deps: AdvisorCallDeps = {}): Advi
           // high-quality second opinion, not a multi-turn debate.
           maxAdvisorUses: 1,
           maxTokens: 800,
+          // Stream by default: Opus advisor sub-inferences regularly
+          // run 20-40s with no bytes flowing during the sub-inference
+          // window. Without SSE + keepalive the intermediate layers
+          // (Netlify Edge, CDN, browser) close the socket and surface
+          // a truncated "Stream idle timeout - partial response
+          // received" to the caller even though the upstream is fine.
+          stream: true,
           additionalSystemPrompt:
             'You are reviewing a compliance verdict produced by the Weaponized Brain. ' +
             'The verdict itself is already decided — do not attempt to change it. ' +

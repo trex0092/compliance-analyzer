@@ -357,3 +357,167 @@ describe('advisorStrategy — callAdvisorAssisted', () => {
     expect(fake.calls[0].url).toBe('/custom/advisor');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Streaming path — SSE + keepalive
+// ---------------------------------------------------------------------------
+
+describe('advisorStrategy — streaming mode', () => {
+  it('buildAdvisorRequest sets stream on both proxy-level and payload-level', () => {
+    const body = buildAdvisorRequest({ userMessage: 'x', stream: true });
+    expect(body.stream).toBe(true);
+    expect(body.payload.stream).toBe(true);
+  });
+
+  it('buildAdvisorRequest omits stream flags by default', () => {
+    const body = buildAdvisorRequest({ userMessage: 'x' });
+    expect(body.stream).toBeUndefined();
+    expect(body.payload.stream).toBeUndefined();
+  });
+
+  /**
+   * Build a ReadableStream of SSE bytes for a canonical Anthropic
+   * streamed /v1/messages response. Interleaves a `: keepalive` comment
+   * frame to prove the accumulator skips idle-gap fillers.
+   */
+  function sseStream(frames: string[]): ReadableStream<Uint8Array> {
+    const encoder = new TextEncoder();
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const f of frames) controller.enqueue(encoder.encode(f));
+        controller.close();
+      },
+    });
+  }
+
+  function frameEvent(type: string, data: Record<string, unknown>): string {
+    return `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+  }
+
+  function fakeStreamingFetch(frames: string[]): {
+    fn: FetchLike;
+    calls: Array<{ url: string; init: { method: string; headers: Record<string, string>; body: string } }>;
+  } {
+    const calls: Array<{ url: string; init: { method: string; headers: Record<string, string>; body: string } }> = [];
+    const fn: FetchLike = async (url, init) => {
+      calls.push({ url, init });
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+        body: sseStream(frames),
+      };
+    };
+    return { fn, calls };
+  }
+
+  it('sends Accept: text/event-stream when streaming', async () => {
+    const fake = fakeStreamingFetch([
+      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 5, output_tokens: 0 } } }),
+      frameEvent('message_stop', { type: 'message_stop' }),
+    ]);
+    await callAdvisorAssisted(
+      { userMessage: 'x', stream: true },
+      { fetch: fake.fn, authToken: 'tok' }
+    );
+    expect(fake.calls[0].init.headers['Accept']).toBe('text/event-stream');
+  });
+
+  it('accumulates text_delta events into the executor text output', async () => {
+    const fake = fakeStreamingFetch([
+      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 10, output_tokens: 0 } } }),
+      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
+      frameEvent('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hello ' } }),
+      ': keepalive\n\n',
+      frameEvent('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'world.' } }),
+      frameEvent('content_block_stop', { type: 'content_block_stop', index: 0 }),
+      frameEvent('message_delta', { type: 'message_delta', usage: { output_tokens: 42 } }),
+      frameEvent('message_stop', { type: 'message_stop' }),
+    ]);
+    const result = await callAdvisorAssisted(
+      { userMessage: 'x', stream: true },
+      { fetch: fake.fn, authToken: 'tok' }
+    );
+    expect(result.text).toBe('Hello world.');
+    expect(result.usage.executorInputTokens).toBe(10);
+    expect(result.usage.executorOutputTokens).toBe(42);
+  });
+
+  it('counts server_tool_use blocks named "advisor" in a streamed response', async () => {
+    const fake = fakeStreamingFetch([
+      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
+      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'server_tool_use', name: 'advisor' } }),
+      frameEvent('content_block_stop', { type: 'content_block_stop', index: 0 }),
+      frameEvent('content_block_start', { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } }),
+      frameEvent('content_block_delta', { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'done' } }),
+      frameEvent('content_block_stop', { type: 'content_block_stop', index: 1 }),
+      frameEvent('message_stop', { type: 'message_stop' }),
+    ]);
+    const result = await callAdvisorAssisted(
+      { userMessage: 'x', stream: true },
+      { fetch: fake.fn, authToken: 'tok' }
+    );
+    expect(result.advisorCallCount).toBe(1);
+    expect(result.text).toBe('done');
+  });
+
+  it('handles SSE frames split across multiple chunks', async () => {
+    // Split a single frame across three TCP chunks to prove the
+    // buffer-accumulation logic does not drop or duplicate bytes.
+    const full = frameEvent('content_block_delta', {
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'text_delta', text: 'chunked' },
+    });
+    const third = Math.floor(full.length / 3);
+    const chunkA = full.slice(0, third);
+    const chunkB = full.slice(third, 2 * third);
+    const chunkC = full.slice(2 * third);
+    const fake = fakeStreamingFetch([
+      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
+      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
+      chunkA,
+      chunkB,
+      chunkC,
+      frameEvent('content_block_stop', { type: 'content_block_stop', index: 0 }),
+      frameEvent('message_stop', { type: 'message_stop' }),
+    ]);
+    const result = await callAdvisorAssisted(
+      { userMessage: 'x', stream: true },
+      { fetch: fake.fn, authToken: 'tok' }
+    );
+    expect(result.text).toBe('chunked');
+  });
+
+  it('throws when a stream-level error frame arrives', async () => {
+    const fake = fakeStreamingFetch([
+      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
+      frameEvent('error', { type: 'error', error: { type: 'overloaded_error', message: 'overloaded' } }),
+    ]);
+    await expect(
+      callAdvisorAssisted({ userMessage: 'x', stream: true }, { fetch: fake.fn, authToken: 'tok' })
+    ).rejects.toThrow(/advisor SSE error: overloaded/);
+  });
+
+  it('throws when stream is requested but the response has no body', async () => {
+    const fn: FetchLike = async () => ({ ok: true, status: 200, json: async () => ({}), body: null });
+    await expect(
+      callAdvisorAssisted({ userMessage: 'x', stream: true }, { fetch: fn, authToken: 'tok' })
+    ).rejects.toThrow(/no body/);
+  });
+
+  it('ignores malformed JSON frames and keeps accumulating', async () => {
+    const fake = fakeStreamingFetch([
+      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
+      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
+      'data: {not valid json\n\n',
+      frameEvent('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'survived' } }),
+      frameEvent('message_stop', { type: 'message_stop' }),
+    ]);
+    const result = await callAdvisorAssisted(
+      { userMessage: 'x', stream: true },
+      { fetch: fake.fn, authToken: 'tok' }
+    );
+    expect(result.text).toBe('survived');
+  });
+});

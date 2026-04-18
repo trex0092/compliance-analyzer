@@ -125,6 +125,25 @@ export interface AdvisorRequestInput {
   advisorCaching?: { type: 'ephemeral'; ttl: '5m' | '1h' };
   /** Any extra client-side tools to include alongside the advisor tool. */
   additionalTools?: ReadonlyArray<Record<string, unknown>>;
+  /**
+   * Request an SSE-streamed response from /api/ai-proxy.
+   *
+   * Why enable this: Opus advisor sub-inferences routinely run 20-40s
+   * end-to-end, during which no bytes flow over the socket. Intermediate
+   * proxies (Netlify Edge, corporate TLS terminators, the browser) enforce
+   * idle-read timeouts in the 30-60s range and will close an otherwise
+   * healthy connection, surfacing as "Stream idle timeout - partial
+   * response received". The /api/ai-proxy Netlify function injects
+   * `: keepalive` SSE comments every 10s when it sees `stream: true`, so
+   * the TCP write window never goes idle long enough to trip those
+   * timers. Without this flag the caller gets the non-streaming path
+   * and loses the keepalive protection.
+   *
+   * Default: undefined (non-streaming) to preserve backwards compat.
+   * Production callers should set this to true — see
+   * brainBridge.createDefaultAdvisorEscalation.
+   */
+  stream?: boolean;
 }
 
 /** Shape of the POST body that gets sent to /api/ai-proxy. */
@@ -132,6 +151,12 @@ export interface AiProxyBody {
   provider: 'anthropic';
   path: '/v1/messages';
   betas: string[];
+  /**
+   * Top-level stream flag read by /api/ai-proxy. When true, the proxy
+   * uses its streaming code path (extended upstream timeout + SSE
+   * keepalive comment injection). See ai-proxy.mts STREAM_KEEPALIVE_MS.
+   */
+  stream?: boolean;
   payload: {
     model: string;
     max_tokens: number;
@@ -141,6 +166,13 @@ export interface AiProxyBody {
       role: 'user' | 'assistant';
       content: string | Array<Record<string, unknown>>;
     }>;
+    /**
+     * Inner stream flag read by Anthropic's /v1/messages. Must be
+     * mirrored alongside the top-level flag above — the proxy only
+     * controls its own connection behaviour, Anthropic only emits
+     * SSE when its own payload asks for it.
+     */
+    stream?: boolean;
   };
 }
 
@@ -222,7 +254,7 @@ export function buildAdvisorRequest(input: AdvisorRequestInput): AiProxyBody {
     tools.push(...input.additionalTools);
   }
 
-  return {
+  const body: AiProxyBody = {
     provider: 'anthropic',
     path: '/v1/messages',
     betas: [ADVISOR_BETA_HEADER],
@@ -234,6 +266,13 @@ export function buildAdvisorRequest(input: AdvisorRequestInput): AiProxyBody {
       messages: [{ role: 'user', content: input.userMessage }],
     },
   };
+
+  if (input.stream) {
+    body.stream = true;
+    body.payload.stream = true;
+  }
+
+  return body;
 }
 
 // ---------------------------------------------------------------------------
@@ -311,11 +350,147 @@ export function parseAdvisorResponse(raw: unknown): AdvisorCallResult {
 /**
  * Minimal fetch-like transport. Matches the subset of the global fetch
  * surface we actually use, which makes it trivial to mock in tests.
+ *
+ * The optional `body` field is only consumed on the streaming path
+ * (input.stream === true). Non-streaming callers can ignore it and
+ * return `{ ok, status, json }` as before.
  */
 export type FetchLike = (
   input: string,
   init: { method: string; headers: Record<string, string>; body: string }
-) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
+) => Promise<{
+  ok: boolean;
+  status: number;
+  json: () => Promise<unknown>;
+  body?: ReadableStream<Uint8Array> | null;
+}>;
+
+/**
+ * Accumulate an Anthropic SSE stream into the same `RawAnthropicResponse`
+ * shape that parseAdvisorResponse understands. We reconstruct the content
+ * blocks and the usage totals as the events arrive, so downstream parsing
+ * stays identical between streaming and non-streaming callers.
+ *
+ * Events we care about (anthropic-sdk / API docs):
+ *   message_start         → carries initial usage.input_tokens
+ *   content_block_start   → opens a block (text, server_tool_use, etc.)
+ *   content_block_delta   → appends to the current block (text_delta, input_json_delta)
+ *   content_block_stop    → closes the block
+ *   message_delta         → carries usage.output_tokens on completion
+ *   message_stop          → end-of-stream marker (no payload of interest)
+ *   error                 → stream-level error (surfaces as thrown error)
+ *   ping / : keepalive    → ignored — these exist precisely to hold the
+ *                           socket open during idle gaps
+ *
+ * Ignoring unknown events is deliberate: Anthropic has added new event
+ * types over time (e.g. server_tool_use sub-events) and the advisor
+ * transcript only needs the text + usage totals.
+ */
+async function accumulateAdvisorStream(
+  stream: ReadableStream<Uint8Array>
+): Promise<RawAnthropicResponse> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  const content: Array<{ type: string; text?: string; name?: string }> = [];
+  const usage: RawAnthropicResponse['usage'] = { input_tokens: 0, output_tokens: 0 };
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE frames are separated by a blank line. Split conservatively so
+      // a partial frame at the tail of the buffer is kept for the next
+      // chunk instead of dropped.
+      let sep = buffer.indexOf('\n\n');
+      while (sep !== -1) {
+        const frame = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        sep = buffer.indexOf('\n\n');
+
+        // Comment frames (":keepalive") are how the proxy prevents idle
+        // timeouts — skip them before we try to parse as JSON.
+        const dataLines: string[] = [];
+        for (const line of frame.split('\n')) {
+          if (line.startsWith(':')) continue;
+          if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
+        }
+        if (dataLines.length === 0) continue;
+        const dataJson = dataLines.join('\n');
+        if (!dataJson || dataJson === '[DONE]') continue;
+
+        let event: {
+          type?: string;
+          index?: number;
+          content_block?: { type?: string; text?: string; name?: string };
+          delta?: { type?: string; text?: string };
+          message?: { usage?: { input_tokens?: number; output_tokens?: number } };
+          usage?: { input_tokens?: number; output_tokens?: number };
+          error?: { message?: string; type?: string };
+        };
+        try {
+          event = JSON.parse(dataJson);
+        } catch {
+          // Malformed frame — skip rather than throw, so a single bad
+          // line can't tear down a long-running advisor transcript.
+          continue;
+        }
+
+        if (event.type === 'error') {
+          const msg = event.error?.message ?? 'advisor stream error';
+          throw new Error(`advisor SSE error: ${msg}`);
+        }
+
+        if (event.type === 'message_start' && event.message?.usage) {
+          usage.input_tokens = event.message.usage.input_tokens ?? usage.input_tokens;
+          usage.output_tokens = event.message.usage.output_tokens ?? usage.output_tokens;
+          continue;
+        }
+
+        if (event.type === 'content_block_start' && typeof event.index === 'number') {
+          const block = event.content_block ?? { type: 'text' };
+          content[event.index] = {
+            type: block.type ?? 'text',
+            text: block.type === 'text' ? '' : undefined,
+            name: block.name,
+          };
+          continue;
+        }
+
+        if (event.type === 'content_block_delta' && typeof event.index === 'number') {
+          const existing = content[event.index] ?? { type: 'text', text: '' };
+          if (event.delta?.type === 'text_delta' && typeof event.delta.text === 'string') {
+            existing.text = (existing.text ?? '') + event.delta.text;
+          }
+          content[event.index] = existing;
+          continue;
+        }
+
+        if (event.type === 'message_delta' && event.usage) {
+          if (typeof event.usage.output_tokens === 'number') {
+            usage.output_tokens = event.usage.output_tokens;
+          }
+          if (typeof event.usage.input_tokens === 'number') {
+            usage.input_tokens = event.usage.input_tokens;
+          }
+          continue;
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  // Drop undefined gaps in the sparse array (content blocks arrive in order
+  // but via indexed events, so an in-flight disconnect could leave holes).
+  return {
+    content: content.filter((b) => b !== undefined),
+    usage,
+  };
+}
 
 export interface AdvisorCallDeps {
   /** HTTP transport. Defaults to the global fetch at call time. */
@@ -375,17 +550,34 @@ export async function callAdvisorAssisted(
   const endpoint = deps.endpoint ?? '/api/ai-proxy';
   const fetchImpl = deps.fetch ?? defaultFetch();
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  };
+  // Signal SSE intent to any intermediary (Netlify Edge, corporate
+  // proxies) so content negotiation and buffering flip to the
+  // streaming path. The ai-proxy keepalive only works end-to-end
+  // when every hop treats the response as text/event-stream.
+  if (input.stream) headers['Accept'] = 'text/event-stream';
+
   const res = await fetchImpl(endpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     throw new Error(`callAdvisorAssisted: proxy returned HTTP ${res.status}`);
+  }
+
+  if (input.stream) {
+    if (!res.body) {
+      throw new Error(
+        'callAdvisorAssisted: stream requested but proxy response has no body'
+      );
+    }
+    const raw = await accumulateAdvisorStream(res.body);
+    return parseAdvisorResponse(raw);
   }
 
   const raw = await res.json();
