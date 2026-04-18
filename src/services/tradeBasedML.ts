@@ -57,16 +57,7 @@ export interface TbmlResult {
   riskScore: number;
 }
 
-const HIGH_RISK_JURISDICTIONS = new Set([
-  'IR',
-  'KP',
-  'SY',
-  'MM',
-  'AF',
-  'YE',
-  'CU',
-  'VE',
-]);
+const HIGH_RISK_JURISDICTIONS = new Set(['IR', 'KP', 'SY', 'MM', 'AF', 'YE', 'CU', 'VE']);
 
 export function analyzeTbml(
   shipment: Shipment,

@@ -158,9 +158,7 @@ export async function runInvestigation(
     iterations += 1;
     // Pick the highest-value open question: ones we don't yet have
     // atoms for, cheapest first.
-    const remaining = questions.filter(
-      (q) => !atoms.some((a) => a.questionId === q.id)
-    );
+    const remaining = questions.filter((q) => !atoms.some((a) => a.questionId === q.id));
     if (remaining.length === 0) break;
     remaining.sort((a, b) => a.cost - b.cost);
 
@@ -210,10 +208,7 @@ function clamp01(n: number): number {
   return n;
 }
 
-function computeCoverage(
-  questions: ResearchQuestion[],
-  atoms: ResearchAtom[]
-): number {
+function computeCoverage(questions: ResearchQuestion[], atoms: ResearchAtom[]): number {
   if (questions.length === 0) return 1;
   let sum = 0;
   for (const q of questions) {
@@ -245,9 +240,7 @@ function buildSummary(
       parts.push(`- [${q.id}] NO EVIDENCE`);
       continue;
     }
-    const top = qAtoms.reduce((best, a) =>
-      a.confidence > best.confidence ? a : best
-    );
+    const top = qAtoms.reduce((best, a) => (a.confidence > best.confidence ? a : best));
     parts.push(
       `- [${q.id}] ${top.fact} — source ${top.source}` +
         (top.sourceTimestamp ? ` (${top.sourceTimestamp})` : '') +

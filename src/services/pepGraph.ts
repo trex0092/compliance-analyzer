@@ -151,8 +151,7 @@ export function matchAgainstPepGraph(
     if (best < threshold) continue;
 
     const pepPaths = findPepPaths(graph, node.id, maxHops);
-    const uboChains =
-      node.role === 'entity' ? findUboChains(graph, node.id, maxHops) : [];
+    const uboChains = node.role === 'entity' ? findUboChains(graph, node.id, maxHops) : [];
     const exposure = computeExposure(node, pepPaths);
     const attributedRole = deriveRole(node, pepPaths);
 
@@ -232,11 +231,12 @@ function findUboChains(graph: PepGraph, seedId: string, maxHops: number): PepMat
   ];
   while (queue.length > 0) {
     const cur = queue.shift()!;
-    if (cur.trail.length > 1) chains.push({
-      nodeIds: cur.trail,
-      edgeTypes: cur.edges,
-      accumulatedWeight: cur.weight,
-    });
+    if (cur.trail.length > 1)
+      chains.push({
+        nodeIds: cur.trail,
+        edgeTypes: cur.edges,
+        accumulatedWeight: cur.weight,
+      });
     if (cur.trail.length - 1 >= maxHops) continue;
     for (const edge of graph.edges) {
       if (edge.from !== cur.id) continue;
@@ -332,10 +332,7 @@ function similarity(a: string, b: string): number {
     k += 1;
   }
   const jaro =
-    (matches / a.length +
-      matches / b.length +
-      (matches - transpositions / 2) / matches) /
-    3;
+    (matches / a.length + matches / b.length + (matches - transpositions / 2) / matches) / 3;
   // Winkler prefix bonus.
   let prefix = 0;
   for (let i = 0; i < Math.min(4, a.length, b.length); i += 1) {
