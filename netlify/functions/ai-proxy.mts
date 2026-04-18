@@ -317,6 +317,16 @@ export default async (req: Request, context: Context) => {
             }
           };
 
+          // Flush response headers immediately with a zero-cost
+          // keepalive comment. Some intermediaries (CDNs, corporate
+          // TLS terminators) hold the response headers until the
+          // first body byte arrives. Anthropic's extended thinking
+          // can delay the first real byte by 10-30s, during which
+          // the client sees no "200 OK" at all — which surfaces as
+          // the same "Stream idle timeout - partial response
+          // received" error as a mid-stream stall.
+          safeEnqueue(keepaliveBytes);
+
           const keepaliveTimer = setInterval(() => {
             if (closed) return;
             if (Date.now() - lastByteAt >= STREAM_KEEPALIVE_MS) {

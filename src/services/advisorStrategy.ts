@@ -386,6 +386,20 @@ export type FetchLike = (
  * types over time (e.g. server_tool_use sub-events) and the advisor
  * transcript only needs the text + usage totals.
  */
+/**
+ * Maximum time we'll wait between any two bytes on an advisor stream.
+ *
+ * The server-side proxy emits `: keepalive` SSE comment frames every 10s
+ * (see ai-proxy.mts STREAM_KEEPALIVE_MS). If 60s pass without ANY byte
+ * — not even a keepalive — the upstream is not merely thinking, it's
+ * gone. Without this watchdog the `reader.read()` loop can hang
+ * indefinitely if a middlebox silently half-closes the socket, which
+ * is the same failure mode reported upstream in anthropics/claude-code
+ * issue #25979. Fail fast and let the caller fall back to the
+ * deterministic advisor (anthropicAdvisor.ts handles this).
+ */
+const STREAM_IDLE_READ_TIMEOUT_MS = 60_000;
+
 async function accumulateAdvisorStream(
   stream: ReadableStream<Uint8Array>
 ): Promise<RawAnthropicResponse> {
@@ -396,9 +410,46 @@ async function accumulateAdvisorStream(
   const content: Array<{ type: string; text?: string; name?: string }> = [];
   const usage: RawAnthropicResponse['usage'] = { input_tokens: 0, output_tokens: 0 };
 
+  /**
+   * Race each read against a timer. If no byte arrives within
+   * STREAM_IDLE_READ_TIMEOUT_MS, cancel the reader and throw a
+   * diagnosable error. Keepalive comment frames count as bytes, so
+   * this only fires on a truly silent connection.
+   */
+  const readWithIdleTimeout = async (): Promise<ReadableStreamReadResult<Uint8Array>> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(
+          new Error(
+            `advisor stream idle for >${STREAM_IDLE_READ_TIMEOUT_MS}ms — upstream stalled`
+          )
+        );
+      }, STREAM_IDLE_READ_TIMEOUT_MS);
+    });
+    try {
+      return await Promise.race([reader.read(), timeout]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  };
+
   try {
     for (;;) {
-      const { value, done } = await reader.read();
+      let result: ReadableStreamReadResult<Uint8Array>;
+      try {
+        result = await readWithIdleTimeout();
+      } catch (err) {
+        // Watchdog fired — cancel the upstream read so we don't leak
+        // the TCP socket, then rethrow so the caller can fall back.
+        try {
+          await reader.cancel(err instanceof Error ? err : new Error(String(err)));
+        } catch {
+          /* reader already detached */
+        }
+        throw err;
+      }
+      const { value, done } = result;
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
 
