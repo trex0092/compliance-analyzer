@@ -282,7 +282,10 @@ describe('advisorStrategy — parseAdvisorResponse', () => {
 describe('advisorStrategy — callAdvisorAssisted', () => {
   /** Build a fake fetch that records the request and returns a canned response. */
   function fakeFetch(response: unknown, ok = true, status = 200) {
-    const calls: Array<{ url: string; init: { method: string; headers: Record<string, string>; body: string } }> = [];
+    const calls: Array<{
+      url: string;
+      init: { method: string; headers: Record<string, string>; body: string };
+    }> = [];
     const fn: FetchLike = async (url, init) => {
       calls.push({ url, init });
       return {
@@ -296,10 +299,7 @@ describe('advisorStrategy — callAdvisorAssisted', () => {
 
   it('POSTs to /api/ai-proxy by default with Authorization header', async () => {
     const fake = fakeFetch({ content: [{ type: 'text', text: 'ok' }] });
-    await callAdvisorAssisted(
-      { userMessage: 'test' },
-      { fetch: fake.fn, authToken: 'tok-123' }
-    );
+    await callAdvisorAssisted({ userMessage: 'test' }, { fetch: fake.fn, authToken: 'tok-123' });
     expect(fake.calls).toHaveLength(1);
     expect(fake.calls[0].url).toBe('/api/ai-proxy');
     expect(fake.calls[0].init.method).toBe('POST');
@@ -309,10 +309,7 @@ describe('advisorStrategy — callAdvisorAssisted', () => {
 
   it('sends a body with the advisor tool and beta header in payload', async () => {
     const fake = fakeFetch({ content: [{ type: 'text', text: 'ok' }] });
-    await callAdvisorAssisted(
-      { userMessage: 'test' },
-      { fetch: fake.fn, authToken: 'tok-123' }
-    );
+    await callAdvisorAssisted({ userMessage: 'test' }, { fetch: fake.fn, authToken: 'tok-123' });
     const body = JSON.parse(fake.calls[0].init.body);
     expect(body.betas).toEqual([ADVISOR_BETA_HEADER]);
     expect(body.payload.tools[0].type).toBe(ADVISOR_TOOL_TYPE);
@@ -397,9 +394,15 @@ describe('advisorStrategy — streaming mode', () => {
 
   function fakeStreamingFetch(frames: string[]): {
     fn: FetchLike;
-    calls: Array<{ url: string; init: { method: string; headers: Record<string, string>; body: string } }>;
+    calls: Array<{
+      url: string;
+      init: { method: string; headers: Record<string, string>; body: string };
+    }>;
   } {
-    const calls: Array<{ url: string; init: { method: string; headers: Record<string, string>; body: string } }> = [];
+    const calls: Array<{
+      url: string;
+      init: { method: string; headers: Record<string, string>; body: string };
+    }> = [];
     const fn: FetchLike = async (url, init) => {
       calls.push({ url, init });
       return {
@@ -414,7 +417,10 @@ describe('advisorStrategy — streaming mode', () => {
 
   it('sends Accept: text/event-stream when streaming', async () => {
     const fake = fakeStreamingFetch([
-      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 5, output_tokens: 0 } } }),
+      frameEvent('message_start', {
+        type: 'message_start',
+        message: { usage: { input_tokens: 5, output_tokens: 0 } },
+      }),
       frameEvent('message_stop', { type: 'message_stop' }),
     ]);
     await callAdvisorAssisted(
@@ -426,11 +432,26 @@ describe('advisorStrategy — streaming mode', () => {
 
   it('accumulates text_delta events into the executor text output', async () => {
     const fake = fakeStreamingFetch([
-      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 10, output_tokens: 0 } } }),
-      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
-      frameEvent('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hello ' } }),
+      frameEvent('message_start', {
+        type: 'message_start',
+        message: { usage: { input_tokens: 10, output_tokens: 0 } },
+      }),
+      frameEvent('content_block_start', {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'text', text: '' },
+      }),
+      frameEvent('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text: 'Hello ' },
+      }),
       ': keepalive\n\n',
-      frameEvent('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'world.' } }),
+      frameEvent('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text: 'world.' },
+      }),
       frameEvent('content_block_stop', { type: 'content_block_stop', index: 0 }),
       frameEvent('message_delta', { type: 'message_delta', usage: { output_tokens: 42 } }),
       frameEvent('message_stop', { type: 'message_stop' }),
@@ -446,11 +467,26 @@ describe('advisorStrategy — streaming mode', () => {
 
   it('counts server_tool_use blocks named "advisor" in a streamed response', async () => {
     const fake = fakeStreamingFetch([
-      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
-      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'server_tool_use', name: 'advisor' } }),
+      frameEvent('message_start', {
+        type: 'message_start',
+        message: { usage: { input_tokens: 0, output_tokens: 0 } },
+      }),
+      frameEvent('content_block_start', {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'server_tool_use', name: 'advisor' },
+      }),
       frameEvent('content_block_stop', { type: 'content_block_stop', index: 0 }),
-      frameEvent('content_block_start', { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } }),
-      frameEvent('content_block_delta', { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'done' } }),
+      frameEvent('content_block_start', {
+        type: 'content_block_start',
+        index: 1,
+        content_block: { type: 'text', text: '' },
+      }),
+      frameEvent('content_block_delta', {
+        type: 'content_block_delta',
+        index: 1,
+        delta: { type: 'text_delta', text: 'done' },
+      }),
       frameEvent('content_block_stop', { type: 'content_block_stop', index: 1 }),
       frameEvent('message_stop', { type: 'message_stop' }),
     ]);
@@ -475,8 +511,15 @@ describe('advisorStrategy — streaming mode', () => {
     const chunkB = full.slice(third, 2 * third);
     const chunkC = full.slice(2 * third);
     const fake = fakeStreamingFetch([
-      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
-      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
+      frameEvent('message_start', {
+        type: 'message_start',
+        message: { usage: { input_tokens: 0, output_tokens: 0 } },
+      }),
+      frameEvent('content_block_start', {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'text', text: '' },
+      }),
       chunkA,
       chunkB,
       chunkC,
@@ -492,8 +535,14 @@ describe('advisorStrategy — streaming mode', () => {
 
   it('throws when a stream-level error frame arrives', async () => {
     const fake = fakeStreamingFetch([
-      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
-      frameEvent('error', { type: 'error', error: { type: 'overloaded_error', message: 'overloaded' } }),
+      frameEvent('message_start', {
+        type: 'message_start',
+        message: { usage: { input_tokens: 0, output_tokens: 0 } },
+      }),
+      frameEvent('error', {
+        type: 'error',
+        error: { type: 'overloaded_error', message: 'overloaded' },
+      }),
     ]);
     await expect(
       callAdvisorAssisted({ userMessage: 'x', stream: true }, { fetch: fake.fn, authToken: 'tok' })
@@ -501,7 +550,12 @@ describe('advisorStrategy — streaming mode', () => {
   });
 
   it('throws when stream is requested but the response has no body', async () => {
-    const fn: FetchLike = async () => ({ ok: true, status: 200, json: async () => ({}), body: null });
+    const fn: FetchLike = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+      body: null,
+    });
     await expect(
       callAdvisorAssisted({ userMessage: 'x', stream: true }, { fetch: fn, authToken: 'tok' })
     ).rejects.toThrow(/no body/);
@@ -509,10 +563,21 @@ describe('advisorStrategy — streaming mode', () => {
 
   it('ignores malformed JSON frames and keeps accumulating', async () => {
     const fake = fakeStreamingFetch([
-      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
-      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
+      frameEvent('message_start', {
+        type: 'message_start',
+        message: { usage: { input_tokens: 0, output_tokens: 0 } },
+      }),
+      frameEvent('content_block_start', {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'text', text: '' },
+      }),
       'data: {not valid json\n\n',
-      frameEvent('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'survived' } }),
+      frameEvent('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text: 'survived' },
+      }),
       frameEvent('message_stop', { type: 'message_stop' }),
     ]);
     const result = await callAdvisorAssisted(
@@ -532,9 +597,20 @@ describe('advisorStrategy — streaming mode', () => {
 
   it('surfaces event: proxy_wall_clock as a retryable AdvisorStreamError', async () => {
     const fake = fakeStreamingFetch([
-      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
-      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
-      frameEvent('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'partial' } }),
+      frameEvent('message_start', {
+        type: 'message_start',
+        message: { usage: { input_tokens: 0, output_tokens: 0 } },
+      }),
+      frameEvent('content_block_start', {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'text', text: '' },
+      }),
+      frameEvent('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text: 'partial' },
+      }),
       'event: proxy_wall_clock\ndata: {"message":"proxy stream closed","wallClockMs":24000}\n\n',
     ]);
     const err = await callAdvisorAssisted(
@@ -548,7 +624,10 @@ describe('advisorStrategy — streaming mode', () => {
 
   it('surfaces event: upstream_error as an AdvisorStreamError with retryable flag', async () => {
     const fake = fakeStreamingFetch([
-      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
+      frameEvent('message_start', {
+        type: 'message_start',
+        message: { usage: { input_tokens: 0, output_tokens: 0 } },
+      }),
       'event: upstream_error\ndata: {"message":"upstream aborted","retryable":true,"name":"TimeoutError"}\n\n',
     ]);
     const err = await callAdvisorAssisted(
@@ -562,7 +641,10 @@ describe('advisorStrategy — streaming mode', () => {
 
   it('treats upstream_error with retryable:false as non-retryable', async () => {
     const fake = fakeStreamingFetch([
-      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
+      frameEvent('message_start', {
+        type: 'message_start',
+        message: { usage: { input_tokens: 0, output_tokens: 0 } },
+      }),
       'event: upstream_error\ndata: {"message":"fatal","retryable":false}\n\n',
     ]);
     const err = await callAdvisorAssisted(
@@ -576,9 +658,20 @@ describe('advisorStrategy — streaming mode', () => {
   it('ignores the advisory event: proxy_ready frame', async () => {
     const fake = fakeStreamingFetch([
       'event: proxy_ready\ndata: {"serverTime":"2026-04-18T00:00:00Z","wallClockMs":24000,"keepaliveMs":10000}\n\n',
-      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 3, output_tokens: 0 } } }),
-      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
-      frameEvent('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'ok' } }),
+      frameEvent('message_start', {
+        type: 'message_start',
+        message: { usage: { input_tokens: 3, output_tokens: 0 } },
+      }),
+      frameEvent('content_block_start', {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'text', text: '' },
+      }),
+      frameEvent('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text: 'ok' },
+      }),
       frameEvent('message_stop', { type: 'message_stop' }),
     ]);
     const result = await callAdvisorAssisted(

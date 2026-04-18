@@ -192,12 +192,15 @@ export default async (req: Request, context: Context): Promise<Response> => {
       // timer enqueued bytes but backpressure kept them in the queue.
       // The check rate is a third of STALE_EMIT_MS so we detect a
       // stall within one window rather than two.
-      staleEmitTimer = setInterval(() => {
-        if (closed) return;
-        if (Date.now() - lastEmitAt >= STALE_EMIT_MS) {
-          safeEnqueue(enc.encode(`: keepalive-stale ${Date.now()}\n\n`));
-        }
-      }, Math.max(1_000, Math.floor(STALE_EMIT_MS / 3)));
+      staleEmitTimer = setInterval(
+        () => {
+          if (closed) return;
+          if (Date.now() - lastEmitAt >= STALE_EMIT_MS) {
+            safeEnqueue(enc.encode(`: keepalive-stale ${Date.now()}\n\n`));
+          }
+        },
+        Math.max(1_000, Math.floor(STALE_EMIT_MS / 3))
+      );
 
       // Hard deadline: close with a terminal `timeout` event before the
       // Netlify wall-clock kills the function. Client should retry.
