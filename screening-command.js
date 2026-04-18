@@ -24,7 +24,6 @@
   const TOKEN_KEY = 'hawkeye.watchlist.adminToken';
   const MLRO_MAIN_KEY = 'hawkeye.mlro.main';
   const MLRO_DEPUTY_KEY = 'hawkeye.mlro.deputy';
-  const MLRO_ACTIVE_KEY = 'hawkeye.mlro.active';
   const TOKEN_MIN = 32;
   const TOKEN_HEX_RE = /^[a-f0-9]+$/i;
   const RATIONALE_MIN = 20;
@@ -55,13 +54,10 @@
   tokenInput.addEventListener('input', saveToken);
   window.addEventListener('beforeunload', saveToken);
 
-  // ─── MLRO identity (main + deputy, persisted + active-officer toggle) ───
+  // ─── MLRO identity (main + deputy, persisted; screener = Main MLRO) ───
   const mlroMainNameInput = $('mlroMainName');
   const mlroDeputyNameInput = $('mlroDeputyName');
-  const mlroMainLabel = $('mlroMainLabel');
-  const mlroDeputyLabel = $('mlroDeputyLabel');
   const mlroActiveBadge = $('mlroActiveBadge');
-  const mlroRoleBtns = document.querySelectorAll('.mlro-role-btn');
 
   function lsGet(key) {
     try {
@@ -79,27 +75,13 @@
     }
   }
 
-  let activeMlroRole = lsGet(MLRO_ACTIVE_KEY) || 'main';
-
   function activeMlroName() {
-    const main = (mlroMainNameInput.value || '').trim();
-    const deputy = (mlroDeputyNameInput.value || '').trim();
-    return activeMlroRole === 'deputy' ? deputy : main;
+    return (mlroMainNameInput.value || '').trim();
   }
 
   function refreshMlroUi() {
-    const main = (mlroMainNameInput.value || '').trim();
-    const deputy = (mlroDeputyNameInput.value || '').trim();
-    if (mlroMainLabel) mlroMainLabel.textContent = main || 'Not set';
-    if (mlroDeputyLabel) mlroDeputyLabel.textContent = deputy || 'Not set';
-    mlroRoleBtns.forEach((btn) => {
-      const isActive = btn.getAttribute('data-role') === activeMlroRole;
-      btn.classList.toggle('selected', isActive);
-      btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
-    });
     const name = activeMlroName();
-    const roleLabel = activeMlroRole === 'deputy' ? 'Deputy MLRO' : 'Main MLRO';
-    const badgeText = name ? `${name} — ${roleLabel}` : `(${roleLabel} — name missing)`;
+    const badgeText = name ? `${name} — Main MLRO` : '(Main MLRO — name missing)';
     if (mlroActiveBadge) mlroActiveBadge.textContent = badgeText;
     const runBadge = $('mlroActiveBadgeRun');
     if (runBadge) runBadge.textContent = badgeText;
@@ -116,14 +98,6 @@
   });
   mlroDeputyNameInput.addEventListener('input', () => {
     lsSet(MLRO_DEPUTY_KEY, mlroDeputyNameInput.value.trim());
-    refreshMlroUi();
-  });
-  mlroRoleBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      activeMlroRole = btn.getAttribute('data-role') || 'main';
-      lsSet(MLRO_ACTIVE_KEY, activeMlroRole);
-      refreshMlroUi();
-    });
   });
 
   refreshMlroUi();
@@ -927,7 +901,7 @@
     if (!screener) {
       showMessage(
         screenMsg,
-        'Screener name required — set the active MLRO identity above before running a screening.',
+        'Main MLRO name required — fill it in above before running a screening.',
         'error'
       );
       return;
@@ -951,7 +925,7 @@
       adverseMediaPredicates: isAdverseMediaEnabled() ? allPredicateKeys() : undefined,
       createAsanaTask: true,
       screenedBy: screener,
-      screenedByRole: activeMlroRole === 'deputy' ? 'deputy_mlro' : 'main_mlro',
+      screenedByRole: 'main_mlro',
     };
     const result = await apiPost(SCREENING_ENDPOINT, body);
     if (!result.ok) {
