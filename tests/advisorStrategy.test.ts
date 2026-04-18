@@ -24,6 +24,7 @@ import {
   buildAdvisorRequest,
   parseAdvisorResponse,
   callAdvisorAssisted,
+  AdvisorStreamError,
   type FetchLike,
 } from '@/services/advisorStrategy';
 
@@ -519,5 +520,71 @@ describe('advisorStrategy — streaming mode', () => {
       { fetch: fake.fn, authToken: 'tok' }
     );
     expect(result.text).toBe('survived');
+  });
+
+  // --- Proxy-level event recognition -------------------------------------
+  // Proves the client recognises the structured frames that the ai-proxy
+  // emits when IT runs into a timeout / wall-clock / upstream failure,
+  // instead of treating them as silent Anthropic frames. This is the
+  // core defence against "API Error: Stream idle timeout - partial
+  // response received" — the proxy tells us exactly what went wrong
+  // and we surface it as a typed, retryable error.
+
+  it('surfaces event: proxy_wall_clock as a retryable AdvisorStreamError', async () => {
+    const fake = fakeStreamingFetch([
+      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
+      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
+      frameEvent('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'partial' } }),
+      'event: proxy_wall_clock\ndata: {"message":"proxy stream closed","wallClockMs":24000}\n\n',
+    ]);
+    const err = await callAdvisorAssisted(
+      { userMessage: 'x', stream: true },
+      { fetch: fake.fn, authToken: 'tok' }
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AdvisorStreamError);
+    expect((err as AdvisorStreamError).kind).toBe('proxy_wall_clock');
+    expect((err as AdvisorStreamError).retryable).toBe(true);
+  });
+
+  it('surfaces event: upstream_error as an AdvisorStreamError with retryable flag', async () => {
+    const fake = fakeStreamingFetch([
+      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
+      'event: upstream_error\ndata: {"message":"upstream aborted","retryable":true,"name":"TimeoutError"}\n\n',
+    ]);
+    const err = await callAdvisorAssisted(
+      { userMessage: 'x', stream: true },
+      { fetch: fake.fn, authToken: 'tok' }
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AdvisorStreamError);
+    expect((err as AdvisorStreamError).kind).toBe('proxy_upstream_error');
+    expect((err as AdvisorStreamError).retryable).toBe(true);
+  });
+
+  it('treats upstream_error with retryable:false as non-retryable', async () => {
+    const fake = fakeStreamingFetch([
+      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
+      'event: upstream_error\ndata: {"message":"fatal","retryable":false}\n\n',
+    ]);
+    const err = await callAdvisorAssisted(
+      { userMessage: 'x', stream: true },
+      { fetch: fake.fn, authToken: 'tok' }
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AdvisorStreamError);
+    expect((err as AdvisorStreamError).retryable).toBe(false);
+  });
+
+  it('ignores the advisory event: proxy_ready frame', async () => {
+    const fake = fakeStreamingFetch([
+      'event: proxy_ready\ndata: {"serverTime":"2026-04-18T00:00:00Z","wallClockMs":24000,"keepaliveMs":10000}\n\n',
+      frameEvent('message_start', { type: 'message_start', message: { usage: { input_tokens: 3, output_tokens: 0 } } }),
+      frameEvent('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
+      frameEvent('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'ok' } }),
+      frameEvent('message_stop', { type: 'message_stop' }),
+    ]);
+    const result = await callAdvisorAssisted(
+      { userMessage: 'x', stream: true },
+      { fetch: fake.fn, authToken: 'tok' }
+    );
+    expect(result.text).toBe('ok');
   });
 });
