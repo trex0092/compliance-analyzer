@@ -934,9 +934,356 @@
       'Saved event ' + data.eventId + '. ' + asanaMsg + ' MoE audit record locked.',
       'success'
     );
+    renderComplianceReport(body, data, asana);
   }
 
   saveBtn.addEventListener('click', saveScreeningEvent);
+
+  // ─── Compliance-disposition report (post-save) ────────────────────
+  //
+  // Renders the full audit-grade disposition record on-page and offers
+  // a PDF export. Structure adapts per outcome (level-clear / level-
+  // false / level-escalate / level-freeze) and every branch carries
+  // the explicit regulatory citation the branch relies on:
+  //   - confirmed_match : Cabinet Res 74/2020 Art.4-7 (24h freeze),
+  //                       FDL Art.26-27 (STR), 5-day CNMR deadline
+  //   - partial_match   : FDL Art.20-21 + Cabinet Res 134/2025 Art.19
+  //                       (escalation to CO, four-eyes)
+  //   - false_positive  : FDL Art.24 (10yr retention of the dismissal)
+  //   - negative_no_match: FDL Art.24 (clearance record for MoE audit)
+  //
+  // The Asana task carrying the same content is created server-side by
+  // /api/screening/save; this panel is the on-page mirror + the PDF
+  // source (pure client-side jsPDF, no extra Netlify spend).
+  const complianceReport = document.getElementById('complianceReport');
+  let lastReportContext = null;
+
+  const OUTCOME_REPORT = {
+    negative_no_match: {
+      tag: 'NEGATIVE — NO MATCH',
+      level: 'clear',
+      bannerClass: 'clear',
+      bannerText:
+        'Cleared. No match above threshold against any screened list. Clearance record retained 10 years (FDL Art.24).',
+      nextActions: [
+        'File the clearance under the subject record (automatic — blob store "screening-events").',
+        'Next periodic review per risk tier (SDD 12 mo / CDD 6 mo / EDD 3 mo).',
+        'No further action required today.',
+      ],
+      citations: 'FDL No.10/2025 Art.20-21, Art.24. Cabinet Decision No.(74)/2020.',
+    },
+    false_positive: {
+      tag: 'FALSE POSITIVE — DISMISSED',
+      level: 'false',
+      bannerClass: 'clear',
+      bannerText:
+        'Dismissed as false positive. Dismissal rationale archived for audit (FDL Art.24).',
+      nextActions: [
+        'Retain the dismissal rationale on file 10 years (FDL Art.24).',
+        'Record in the screening-events blob store (append-only).',
+        'No escalation or filing. Subject is NOT notified (FDL Art.29 no tipping off).',
+      ],
+      citations:
+        'FDL No.10/2025 Art.20-21 (CO attestation), Art.24 (10yr retention), Art.29 (no tipping off).',
+    },
+    partial_match: {
+      tag: 'PARTIAL MATCH — ESCALATED',
+      level: 'escalate',
+      bannerClass: 'escalate',
+      bannerText:
+        'Escalated to Compliance Officer. Four-eyes review required before any freeze or filing decision.',
+      nextActions: [
+        'CO must review within 1 business day and decide: confirm → freeze path, or dismiss → document.',
+        'Collect additional evidence: full DoB, jurisdiction, UBO chain, transaction history.',
+        'Second approver already attested on this record. Do NOT notify the subject (FDL Art.29).',
+      ],
+      citations:
+        'FDL No.10/2025 Art.20-21 (CO attestation). Cabinet Res 134/2025 Art.14, Art.19 (EDD + internal review). FATF Rec 10.',
+    },
+    confirmed_match: {
+      tag: 'CONFIRMED MATCH — FREEZE-24H',
+      level: 'freeze',
+      bannerClass: 'freeze',
+      bannerText:
+        'ASSET FREEZE REQUIRED WITHIN 24 HOURS — Cabinet Res 74/2020 Art.4-7. Report EOCN immediately. File CNMR within 5 business days. Subject MUST NOT be notified (FDL Art.29).',
+      nextActions: [
+        'Execute freeze now. EOCN notification countdown: 24 clock hours from confirmation.',
+        'File CNMR to EOCN within 5 business days (Cabinet Res 74/2020 Art.7).',
+        'Draft STR for the UAE FIU via goAML (FDL Art.26-27).',
+        'Four-eyes approval already captured. Do NOT tip off the subject, their agents, or any third party (FDL Art.29).',
+      ],
+      citations:
+        'Cabinet Res 74/2020 Art.4-7 (TFS freeze + CNMR). FDL No.10/2025 Art.26-27 (STR), Art.29 (no tipping off), Art.35 (TFS), Art.24 (10yr retention). Cabinet Res 71/2024 (penalties up to AED 100M).',
+    },
+  };
+
+  function escapeReportHTML(s) {
+    if (s === undefined || s === null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderComplianceReport(submittedBody, saveData, asana) {
+    if (!complianceReport) return;
+    const outcome = submittedBody.outcome;
+    const meta = OUTCOME_REPORT[outcome];
+    if (!meta) {
+      complianceReport.hidden = true;
+      return;
+    }
+
+    lastReportContext = { submittedBody, saveData, asana, meta };
+
+    const projectGid = (asana && asana.projectGid) || '1213759768596515';
+    const asanaHref =
+      asana && asana.ok && asana.gid
+        ? 'https://app.asana.com/0/' +
+          encodeURIComponent(projectGid) +
+          '/' +
+          encodeURIComponent(asana.gid)
+        : '';
+
+    const h = [];
+    h.push('<h3>' + escapeReportHTML(meta.tag) + '</h3>');
+    h.push(
+      '<div style="color: var(--muted); font-size: 12px; margin-bottom: 6px;">' +
+        'Event ' +
+        escapeReportHTML(saveData.eventId || '(pending)') +
+        ' · saved ' +
+        escapeReportHTML(saveData.savedAt || new Date().toISOString()) +
+        '</div>'
+    );
+    h.push(
+      '<div class="cr-banner ' +
+        meta.bannerClass +
+        '">' +
+        escapeReportHTML(meta.bannerText) +
+        '</div>'
+    );
+
+    h.push('<h4>Subject</h4>');
+    h.push('<dl>');
+    h.push('<dt>Name</dt><dd>' + escapeReportHTML(submittedBody.subjectName) + '</dd>');
+    h.push(
+      '<dt>Subject ID</dt><dd>' + escapeReportHTML(submittedBody.subjectId || '(auto)') + '</dd>'
+    );
+    h.push('<dt>Entity type</dt><dd>' + escapeReportHTML(submittedBody.entityType) + '</dd>');
+    if (submittedBody.dob)
+      h.push('<dt>DoB</dt><dd>' + escapeReportHTML(submittedBody.dob) + '</dd>');
+    if (submittedBody.country)
+      h.push('<dt>Country</dt><dd>' + escapeReportHTML(submittedBody.country) + '</dd>');
+    if (submittedBody.idNumber)
+      h.push('<dt>ID / Register no.</dt><dd>' + escapeReportHTML(submittedBody.idNumber) + '</dd>');
+    if (submittedBody.jurisdiction)
+      h.push('<dt>Jurisdiction</dt><dd>' + escapeReportHTML(submittedBody.jurisdiction) + '</dd>');
+    if (submittedBody.riskTier)
+      h.push('<dt>Risk tier</dt><dd>' + escapeReportHTML(submittedBody.riskTier) + '</dd>');
+    h.push('</dl>');
+
+    h.push('<h4>Screening</h4>');
+    h.push('<dl>');
+    h.push('<dt>Event type</dt><dd>' + escapeReportHTML(submittedBody.eventType) + '</dd>');
+    h.push(
+      '<dt>Lists screened</dt><dd>' +
+        escapeReportHTML((submittedBody.listsScreened || []).join(', ') || '—') +
+        '</dd>'
+    );
+    const scorePct = ((submittedBody.overallTopScore || 0) * 100).toFixed(1) + '%';
+    h.push(
+      '<dt>Top score</dt><dd>' +
+        scorePct +
+        ' (' +
+        escapeReportHTML(submittedBody.overallTopClassification || 'none') +
+        ')</dd>'
+    );
+    if (Array.isArray(submittedBody.anomalies) && submittedBody.anomalies.length > 0) {
+      h.push(
+        '<dt>Anomalies</dt><dd>' +
+          submittedBody.anomalies
+            .map((a) => escapeReportHTML(a.list) + ': ' + escapeReportHTML(a.error))
+            .join('<br/>') +
+          '</dd>'
+      );
+    }
+    h.push('</dl>');
+
+    h.push('<h4>MLRO disposition</h4>');
+    h.push('<dl>');
+    h.push('<dt>Screening date</dt><dd>' + escapeReportHTML(submittedBody.screeningDate) + '</dd>');
+    h.push('<dt>Reviewed by</dt><dd>' + escapeReportHTML(submittedBody.reviewedBy) + '</dd>');
+    if (submittedBody.secondApprover) {
+      h.push(
+        '<dt>Second approver</dt><dd>' +
+          escapeReportHTML(submittedBody.secondApprover) +
+          (submittedBody.secondApproverRole
+            ? ' — ' + escapeReportHTML(submittedBody.secondApproverRole)
+            : '') +
+          '</dd>'
+      );
+    }
+    h.push('<dt>Outcome</dt><dd>' + escapeReportHTML(outcome.toUpperCase()) + '</dd>');
+    h.push('</dl>');
+
+    h.push('<h4>Rationale</h4>');
+    h.push('<div class="cr-rationale">' + escapeReportHTML(submittedBody.rationale) + '</div>');
+
+    if (submittedBody.keyFindings) {
+      h.push('<h4>Key findings</h4>');
+      h.push('<div class="cr-findings">' + escapeReportHTML(submittedBody.keyFindings) + '</div>');
+    }
+
+    h.push('<h4>Next actions</h4>');
+    h.push('<ul>');
+    for (const step of meta.nextActions) h.push('<li>' + escapeReportHTML(step) + '</li>');
+    h.push('</ul>');
+
+    h.push('<div class="cr-footer">');
+    h.push('<strong>Regulatory basis:</strong> ' + escapeReportHTML(meta.citations) + '<br/>');
+    h.push(
+      'Confidential compliance record — do not disclose to the subject (FDL No.10/2025 Art.29 no tipping off).'
+    );
+    h.push('</div>');
+
+    h.push('<div class="cr-actions">');
+    h.push('<button type="button" class="cr-pdf-btn" id="crPdfBtn">Download PDF</button>');
+    if (asanaHref) {
+      h.push(
+        '<a class="cr-asana-link" href="' +
+          asanaHref +
+          '" target="_blank" rel="noopener noreferrer">Open Asana task ' +
+          escapeReportHTML(asana.gid) +
+          ' →</a>'
+      );
+    }
+    h.push('</div>');
+
+    complianceReport.className = 'compliance-report level-' + meta.level;
+    complianceReport.innerHTML = h.join('');
+    complianceReport.hidden = false;
+
+    const pdfBtn = document.getElementById('crPdfBtn');
+    if (pdfBtn) pdfBtn.addEventListener('click', downloadCompliancePdf);
+
+    complianceReport.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function downloadCompliancePdf() {
+    if (!lastReportContext) return;
+    const ctx = lastReportContext;
+    const jsPdfCtor = (window.jspdf && window.jspdf.jsPDF) || (window.jsPDF ? window.jsPDF : null);
+    if (!jsPdfCtor) {
+      window.alert(
+        'PDF library not loaded (CDN blocked?). The Asana task already holds the full record.'
+      );
+      return;
+    }
+    const b = ctx.submittedBody;
+    const d = ctx.saveData;
+    const m = ctx.meta;
+    const doc = new jsPdfCtor({ unit: 'pt', format: 'a4' });
+    const margin = 40;
+    const pageW = doc.internal.pageSize.getWidth();
+    const maxW = pageW - margin * 2;
+    let y = margin;
+
+    const line = (text, opts) => {
+      const fontSize = (opts && opts.size) || 10;
+      const bold = opts && opts.bold;
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      doc.setFontSize(fontSize);
+      const rows = doc.splitTextToSize(String(text == null ? '' : text), maxW);
+      for (const row of rows) {
+        if (y > doc.internal.pageSize.getHeight() - margin) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.text(row, margin, y);
+        y += fontSize * 1.25;
+      }
+    };
+
+    line('Compliance Disposition Report', { size: 16, bold: true });
+    line(m.tag, { size: 12, bold: true });
+    line('Event ' + (d.eventId || '(pending)') + ' · saved ' + (d.savedAt || ''), { size: 9 });
+    y += 6;
+    line(m.bannerText, { size: 10, bold: true });
+    y += 6;
+
+    line('SUBJECT', { size: 10, bold: true });
+    line('Name: ' + b.subjectName);
+    line('Subject ID: ' + (b.subjectId || '(auto)'));
+    line('Entity type: ' + b.entityType);
+    if (b.dob) line('DoB: ' + b.dob);
+    if (b.country) line('Country: ' + b.country);
+    if (b.idNumber) line('ID / Register no.: ' + b.idNumber);
+    if (b.jurisdiction) line('Jurisdiction: ' + b.jurisdiction);
+    if (b.riskTier) line('Risk tier: ' + b.riskTier);
+    y += 4;
+
+    line('SCREENING', { size: 10, bold: true });
+    line('Event type: ' + b.eventType);
+    line('Lists screened: ' + ((b.listsScreened || []).join(', ') || '—'));
+    line(
+      'Top score: ' +
+        ((b.overallTopScore || 0) * 100).toFixed(1) +
+        '% (' +
+        (b.overallTopClassification || 'none') +
+        ')'
+    );
+    if (Array.isArray(b.anomalies) && b.anomalies.length) {
+      line('Anomalies:');
+      for (const a of b.anomalies) line('  - ' + a.list + ': ' + a.error);
+    }
+    y += 4;
+
+    line('MLRO DISPOSITION', { size: 10, bold: true });
+    line('Screening date: ' + b.screeningDate);
+    line('Reviewed by: ' + b.reviewedBy);
+    if (b.secondApprover) {
+      line(
+        'Second approver: ' +
+          b.secondApprover +
+          (b.secondApproverRole ? ' — ' + b.secondApproverRole : '')
+      );
+    }
+    line('Outcome: ' + String(b.outcome).toUpperCase());
+    y += 4;
+
+    line('RATIONALE', { size: 10, bold: true });
+    line(b.rationale);
+    y += 4;
+
+    if (b.keyFindings) {
+      line('KEY FINDINGS', { size: 10, bold: true });
+      line(b.keyFindings);
+      y += 4;
+    }
+
+    line('NEXT ACTIONS', { size: 10, bold: true });
+    for (const step of m.nextActions) line('• ' + step);
+    y += 4;
+
+    line('REGULATORY BASIS', { size: 10, bold: true });
+    line(m.citations);
+    y += 4;
+
+    line(
+      'Confidential compliance record — do not disclose to the subject (FDL No.10/2025 Art.29 no tipping off).',
+      { size: 8 }
+    );
+
+    const fname =
+      'compliance-report-' +
+      (d.eventId || 'event') +
+      '-' +
+      String(b.outcome).replace(/_/g, '-') +
+      '.pdf';
+    doc.save(fname);
+  }
 
   function renderScreeningResult(data) {
     if (!data || !data.ok) {

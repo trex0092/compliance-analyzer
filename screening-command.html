@@ -1126,6 +1126,137 @@
       .outcome-btn.selected .impact {
         color: var(--text);
       }
+      /* Post-save compliance-disposition report. Adapts border colour
+         to outcome severity so the MLRO sees the level at a glance. */
+      .compliance-report {
+        margin-top: 16px;
+        padding: 18px 20px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .compliance-report.level-clear {
+        border-color: var(--green);
+      }
+      .compliance-report.level-false {
+        border-color: rgba(245, 240, 232, 0.45);
+      }
+      .compliance-report.level-escalate {
+        border-color: var(--amber);
+      }
+      .compliance-report.level-freeze {
+        border-color: var(--red);
+      }
+      .compliance-report h3 {
+        margin: 0 0 4px 0;
+        font-family: 'Cinzel', serif;
+        font-size: 14px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--gold);
+      }
+      .compliance-report h4 {
+        margin: 14px 0 4px 0;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .compliance-report .cr-banner {
+        margin: 10px 0;
+        padding: 10px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+      }
+      .compliance-report .cr-banner.freeze {
+        background: rgba(217, 79, 79, 0.14);
+        color: var(--red);
+        border: 1px solid var(--red);
+      }
+      .compliance-report .cr-banner.escalate {
+        background: rgba(232, 160, 48, 0.14);
+        color: var(--amber);
+        border: 1px solid var(--amber);
+      }
+      .compliance-report .cr-banner.clear {
+        background: rgba(61, 168, 118, 0.12);
+        color: var(--green);
+        border: 1px solid var(--green);
+      }
+      .compliance-report dl {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 4px 14px;
+        margin: 6px 0 0 0;
+      }
+      .compliance-report dt {
+        color: var(--muted);
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+      .compliance-report dd {
+        margin: 0;
+        color: var(--text);
+        word-break: break-word;
+      }
+      .compliance-report .cr-rationale,
+      .compliance-report .cr-findings {
+        margin: 6px 0 0 0;
+        padding: 10px 12px;
+        background: var(--bg-elev);
+        border-left: 3px solid var(--border);
+        white-space: pre-wrap;
+        font-family: 'DM Mono', monospace;
+        font-size: 12px;
+      }
+      .compliance-report .cr-footer {
+        margin-top: 14px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .compliance-report .cr-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .compliance-report .cr-actions button,
+      .compliance-report .cr-actions a {
+        flex: 1;
+        min-width: 160px;
+        padding: 10px 14px;
+        border-radius: 4px;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        text-align: center;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .compliance-report .cr-pdf-btn {
+        background: transparent;
+        border: 1px solid var(--gold);
+        color: var(--gold);
+      }
+      .compliance-report .cr-pdf-btn:hover {
+        background: rgba(201, 168, 76, 0.08);
+      }
+      .compliance-report .cr-asana-link {
+        background: transparent;
+        border: 1px solid #273a58;
+        color: #4a90e2;
+      }
+      .compliance-report .cr-asana-link:hover {
+        background: rgba(74, 144, 226, 0.08);
+      }
       .disposition-preview {
         margin-top: 12px;
         padding: 12px 14px;
@@ -2285,6 +2416,13 @@
             <button id="cancelBtn" class="btn-cancel" type="button">Cancel</button>
           </div>
           <div id="saveMsg" style="margin-top: 8px"></div>
+
+          <!-- Compliance-disposition report. Populated after a successful
+               save. Every section adapts to the selected outcome; the
+               "next actions" block switches between clearance / dismissal
+               / escalation / freeze-24h per Cabinet Res 74/2020 Art.4-7
+               and FDL No.10/2025 Art.26-27. -->
+          <div id="complianceReport" class="compliance-report" aria-live="polite" hidden></div>
         </div>
       </div>
 
@@ -2418,6 +2556,15 @@
       08/AML/2021
     </p>
 
-    <script src="screening-command.js?v=2"></script>
+    <!-- jsPDF for client-side PDF export of the compliance-disposition
+         report. CDN is whitelisted in netlify.toml CSP (cdnjs.cloudflare.com).
+         Same pinned version as index.html. -->
+    <script
+      defer
+      crossorigin="anonymous"
+      src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+      onerror="console.warn('jsPDF CDN failed — PDF export unavailable')"
+    ></script>
+    <script src="screening-command.js?v=3"></script>
   </body>
 </html>
