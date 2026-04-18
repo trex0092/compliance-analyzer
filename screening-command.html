@@ -572,6 +572,77 @@
       .disposition.active {
         display: block;
       }
+      .token-budget {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--blue);
+        border-radius: 3px;
+        background: rgba(61, 139, 253, 0.04);
+        color: var(--muted);
+        font-size: 11.5px;
+        line-height: 1.55;
+      }
+      .token-budget .tb-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 6px;
+      }
+      .token-budget .tb-label {
+        font-family: 'Cinzel', serif;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--blue);
+        font-size: 11px;
+      }
+      .token-budget .tb-total {
+        font-family: 'DM Mono', monospace;
+        font-weight: 500;
+        color: var(--text);
+      }
+      .token-budget.over .tb-total,
+      .token-budget.over .tb-label {
+        color: #ff6b6b;
+      }
+      .token-budget .tb-bar {
+        height: 4px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 2px;
+        overflow: hidden;
+        margin-bottom: 8px;
+      }
+      .token-budget .tb-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--blue), var(--gold));
+        transition: width 0.15s ease-out;
+      }
+      .token-budget.warn .tb-bar-fill {
+        background: linear-gradient(90deg, var(--gold), #ffb84d);
+      }
+      .token-budget.over .tb-bar-fill {
+        background: linear-gradient(90deg, #ffb84d, #ff6b6b);
+      }
+      .token-budget .tb-breakdown {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        font-family: 'DM Mono', monospace;
+        font-size: 10.5px;
+      }
+      .token-budget .tb-breakdown b {
+        color: var(--text);
+        font-weight: 500;
+        margin-left: 3px;
+      }
+      .token-budget .tb-footnote {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px dashed var(--border);
+        font-size: 10.5px;
+        color: var(--muted);
+      }
       .legal-notice {
         margin-top: 14px;
         padding: 12px 14px;
@@ -860,6 +931,100 @@
       </div>
     </div>
 
+    <!-- Risk categories ────────────────────────────────────────────── -->
+    <div class="card list-tier enhanced" style="margin-top: 14px">
+      <h2>Risk Categories</h2>
+      <p class="help-text" style="margin-top: -4px">
+        Content categories screened against every selected list + adverse-media corpus. Default:
+        all ON. Turning a category OFF is logged on the screening event (FDL Art.24 — 10-year
+        retention).
+      </p>
+      <div class="grid grid-2" style="gap: 6px 14px">
+        <label class="list-check">
+          <input type="checkbox" data-category="pep" data-tier="enhanced" checked />
+          <span class="list-label"
+            >Politically Exposed Persons (PEP), close associates &amp; family members
+            <span class="list-sub"
+              >Cabinet Res 134/2025 Art.14 — domestic, foreign, IO PEPs + RCAs</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input
+            type="checkbox"
+            data-category="stateOwnedEntities"
+            data-tier="enhanced"
+            checked
+          />
+          <span class="list-label"
+            >State-owned entities &amp; state-invested enterprises
+            <span class="list-sub">SOE ownership screen — FATF Rec 12 / 24 beneficial control</span>
+          </span>
+        </label>
+        <label class="list-check">
+          <input type="checkbox" data-category="globalSanctions" data-tier="enhanced" checked />
+          <span class="list-label"
+            >Global sanctions lists
+            <span class="list-sub"
+              >UN, OFAC SDN + Consolidated, EU CFSP, UK OFSI, UAE EOCN (mandatory)</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input
+            type="checkbox"
+            data-category="narrativeSanctions"
+            data-tier="enhanced"
+            checked
+          />
+          <span class="list-label"
+            >Narrative &amp; implicit sanctions
+            <span class="list-sub"
+              >Sectoral / 50-percent-rule / CAPTA / SSI / country-of-concern exposure</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input
+            type="checkbox"
+            data-category="regulatoryEnforcement"
+            data-tier="enhanced"
+            checked
+          />
+          <span class="list-label"
+            >Global regulatory &amp; law-enforcement lists
+            <span class="list-sub"
+              >FCA, FINRA, FinCEN, SEC, DOJ, Interpol, Europol, national debarments</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input type="checkbox" data-category="adverseMedia" data-tier="enhanced" checked />
+          <span class="list-label"
+            >Adverse media
+            <span class="list-sub"
+              >Open-source negative news — fraud, ML, TF, corruption, sanctions evasion (FATF Rec
+              10 / 12)</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input
+            type="checkbox"
+            data-category="sanctionedSecurities"
+            data-tier="enhanced"
+            checked
+          />
+          <span class="list-label"
+            >Sanctioned securities
+            <span class="list-sub"
+              >ISIN / CUSIP / ticker screen — OFAC NS-SDN, CAPTA, 13(d) CMIC, UK sectoral</span
+            >
+          </span>
+        </label>
+      </div>
+    </div>
+
     <div class="grid grid-2" style="margin-top: 14px">
       <!-- Screen subject ────────────────────────────────────────────── -->
       <div class="card">
@@ -977,6 +1142,30 @@
             <label for="notes">Notes</label>
             <input type="text" id="notes" placeholder="Context for the MLRO" autocomplete="off" />
           </div>
+        </div>
+
+        <div id="tokenBudget" class="token-budget" aria-live="polite">
+          <div class="tb-header">
+            <span class="tb-label">Token budget</span>
+            <span class="tb-total"><span id="tbTotal">0</span>&nbsp;tokens</span>
+          </div>
+          <div class="tb-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div id="tbBarFill" class="tb-bar-fill" style="width: 0%"></div>
+          </div>
+          <div class="tb-breakdown">
+            <span>Name <b id="tbName">0</b></span>
+            <span>Aliases <b id="tbAliases">0</b></span>
+            <span>Notes <b id="tbNotes">0</b></span>
+            <span>Key findings <b id="tbKey">0</b></span>
+            <span>Rationale <b id="tbRationale">0</b></span>
+            <span>Lists <b id="tbLists">0</b></span>
+            <span>Categories <b id="tbCategories">0</b></span>
+          </div>
+          <p class="tb-footnote">
+            Approximation: ~4 characters per token (English). Budget caps: request body 32&nbsp;KB
+            (~8000 tokens); rationale 4000 chars; key findings 4000 chars; aliases 20&times;200
+            chars. Turns red above 6000 tokens — tighten before running.
+          </p>
         </div>
 
         <button id="screenBtn" type="button">Run Screening</button>

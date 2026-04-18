@@ -220,11 +220,77 @@
   }
 
   function isAdverseMediaEnabled() {
+    // Legacy single-toggle path (kept for backward compat).
     const el = document.querySelector(
-      'input[data-tier="enhanced"][data-control="adverseMedia"]'
+      'input[data-tier="enhanced"][data-control="adverseMedia"], input[data-tier="enhanced"][data-category="adverseMedia"]'
     );
     return el ? !!el.checked : true;
   }
+
+  function collectSelectedCategories() {
+    const out = [];
+    document.querySelectorAll('input[data-category][data-tier="enhanced"]').forEach((el) => {
+      if (el.checked) out.push(el.getAttribute('data-category'));
+    });
+    return out;
+  }
+
+  // ----- Token budget (approx 4 chars = 1 token, English) -----
+  const TOKEN_SOFT_CAP = 6000; // warn at 75%
+  const TOKEN_HARD_CAP = 8000; // ~32KB body
+  const tbEl = $('tokenBudget');
+  const tbTotal = $('tbTotal');
+  const tbBarFill = $('tbBarFill');
+  const tbName = $('tbName');
+  const tbAliases = $('tbAliases');
+  const tbNotes = $('tbNotes');
+  const tbKey = $('tbKey');
+  const tbRationale = $('tbRationale');
+  const tbLists = $('tbLists');
+  const tbCategories = $('tbCategories');
+
+  function tokensFor(s) {
+    return Math.ceil((s || '').length / 4);
+  }
+
+  function updateTokenBudget() {
+    if (!tbEl) return;
+    const name = tokensFor(subjectNameInput ? subjectNameInput.value : '');
+    const aliases = tokensFor(aliasesInput ? aliasesInput.value : '');
+    const notes = tokensFor(notesInput ? notesInput.value : '');
+    const key = tokensFor(keyFindingsInput ? keyFindingsInput.value : '');
+    const rationale = tokensFor(rationaleInput ? rationaleInput.value : '');
+    const lists = collectSelectedLists().length * 2;
+    const categories = collectSelectedCategories().length * 3;
+    const total = name + aliases + notes + key + rationale + lists + categories;
+    if (tbName) tbName.textContent = String(name);
+    if (tbAliases) tbAliases.textContent = String(aliases);
+    if (tbNotes) tbNotes.textContent = String(notes);
+    if (tbKey) tbKey.textContent = String(key);
+    if (tbRationale) tbRationale.textContent = String(rationale);
+    if (tbLists) tbLists.textContent = String(lists);
+    if (tbCategories) tbCategories.textContent = String(categories);
+    if (tbTotal) tbTotal.textContent = String(total);
+    const pct = Math.min(100, Math.round((total / TOKEN_HARD_CAP) * 100));
+    if (tbBarFill) tbBarFill.style.width = pct + '%';
+    tbEl.classList.remove('warn', 'over');
+    if (total >= TOKEN_HARD_CAP) tbEl.classList.add('over');
+    else if (total >= TOKEN_SOFT_CAP) tbEl.classList.add('warn');
+  }
+
+  [
+    subjectNameInput,
+    aliasesInput,
+    notesInput,
+    keyFindingsInput,
+    rationaleInput,
+  ].forEach((el) => {
+    if (el) el.addEventListener('input', updateTokenBudget);
+  });
+  document
+    .querySelectorAll('input[data-tier="enhanced"]')
+    .forEach((el) => el.addEventListener('change', updateTokenBudget));
+  updateTokenBudget();
 
   function todayDdMmYyyy() {
     const d = new Date();
