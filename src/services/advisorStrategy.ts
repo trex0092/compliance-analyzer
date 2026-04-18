@@ -397,7 +397,7 @@ async function accumulateAdvisorStream(
   const usage: RawAnthropicResponse['usage'] = { input_tokens: 0, output_tokens: 0 };
 
   try {
-    while (true) {
+    for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -572,9 +572,7 @@ export async function callAdvisorAssisted(
 
   if (input.stream) {
     if (!res.body) {
-      throw new Error(
-        'callAdvisorAssisted: stream requested but proxy response has no body'
-      );
+      throw new Error('callAdvisorAssisted: stream requested but proxy response has no body');
     }
     const raw = await accumulateAdvisorStream(res.body);
     return parseAdvisorResponse(raw);

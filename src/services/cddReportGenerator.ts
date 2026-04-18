@@ -209,7 +209,7 @@ export function buildWeeklyCddReport(input: WeeklyCddReportInput): WeeklyCddRepo
   // 2) Overdue + due-soon reviews.
   const overdueReviews: OverdueReview[] = [];
   for (const schedule of reviewSchedules) {
-    const live = checkReviewStatus(schedule);
+    const live = checkReviewStatus(schedule, now);
     if (live.status !== 'overdue' && live.status !== 'due') continue;
     const source = customers.find((c) => c.id === schedule.customerId);
     const tier = source
