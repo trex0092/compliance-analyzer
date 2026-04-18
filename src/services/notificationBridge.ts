@@ -27,6 +27,7 @@
  */
 
 import type { Verdict } from './asanaCustomFields';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -236,10 +237,14 @@ export async function dispatchTeamsCard(input: NotificationInput): Promise<boole
   if (shouldSuppress(input.caseId, 'teams')) return false;
   const payload = buildTeamsCardPayload(input);
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload.teamsCard),
+      // Teams incoming-webhook endpoints usually answer in under a
+      // second; cap at 10s so a Teams outage cannot stall a freeze /
+      // STR notification path the MLRO is waiting on.
+      timeoutMs: 10_000,
     });
     return res.ok;
   } catch {
