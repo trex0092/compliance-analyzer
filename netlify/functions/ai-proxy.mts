@@ -104,6 +104,26 @@ const STREAM_UPSTREAM_TIMEOUT_MS = 300_000;
 const STREAM_KEEPALIVE_MS = 10_000;
 
 /**
+ * Graceful wall-clock close for streaming responses.
+ *
+ * Netlify standard functions are killed at 26s (Pro tier). When
+ * Netlify kills the function, the socket is torn down abruptly —
+ * the client sees a truncated TCP stream and surfaces the exact
+ * "Stream idle timeout - partial response received" error we are
+ * defending against. Rather than letting Netlify sever the socket,
+ * we close our own stream 2s before the platform would, emitting a
+ * terminal SSE `event: proxy_wall_clock` frame so the client can
+ * diagnose and retry instead of guessing at a truncation.
+ *
+ * 24s leaves enough headroom for the frame to flush before the
+ * hard kill. Non-streaming calls still use the shorter
+ * NONSTREAM_UPSTREAM_TIMEOUT_MS above, which is already safely
+ * below the 26s ceiling once you account for the proxy's own
+ * response construction time.
+ */
+const STREAM_WALL_CLOCK_MS = 24_000;
+
+/**
  * Allowlist of Anthropic beta features we forward from the caller into the
  * `anthropic-beta` header. Anything not in this list is silently dropped so
  * the proxy can't be tricked into enabling unintended betas.
@@ -317,18 +337,26 @@ export default async (req: Request, context: Context) => {
             }
           };
 
-          const keepaliveTimer = setInterval(() => {
-            if (closed) return;
-            if (Date.now() - lastByteAt >= STREAM_KEEPALIVE_MS) {
-              safeEnqueue(keepaliveBytes);
-              lastByteAt = Date.now();
-            }
-          }, STREAM_KEEPALIVE_MS);
+          // Flush response headers immediately with a zero-cost
+          // keepalive comment. Some intermediaries (CDNs, corporate
+          // TLS terminators) hold the response headers until the
+          // first body byte arrives. Anthropic's extended thinking
+          // can delay the first real byte by 10-30s, during which
+          // the client sees no "200 OK" at all — which surfaces as
+          // the same "Stream idle timeout - partial response
+          // received" error as a mid-stream stall.
+          safeEnqueue(keepaliveBytes);
+
+          // Forward-declare timer handles so `finish()` can close them
+          // cleanly regardless of which one fires first.
+          let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+          let wallClockTimer: ReturnType<typeof setTimeout> | null = null;
 
           const finish = () => {
             if (closed) return;
             closed = true;
-            clearInterval(keepaliveTimer);
+            if (keepaliveTimer !== null) clearInterval(keepaliveTimer);
+            if (wallClockTimer !== null) clearTimeout(wallClockTimer);
             if (clientSignal) clientSignal.removeEventListener('abort', onClientAbort);
             try {
               controller.close();
@@ -336,6 +364,37 @@ export default async (req: Request, context: Context) => {
               /* already closed */
             }
           };
+
+          keepaliveTimer = setInterval(() => {
+            if (closed) return;
+            if (Date.now() - lastByteAt >= STREAM_KEEPALIVE_MS) {
+              safeEnqueue(keepaliveBytes);
+              lastByteAt = Date.now();
+            }
+          }, STREAM_KEEPALIVE_MS);
+
+          // Graceful wall-clock close — see STREAM_WALL_CLOCK_MS. We
+          // beat Netlify's hard kill so the client gets a terminal
+          // SSE event instead of a torn socket, which is exactly the
+          // signal that surfaces as "Stream idle timeout - partial
+          // response received" on the browser.
+          wallClockTimer = setTimeout(() => {
+            if (closed) return;
+            safeEnqueue(
+              encoder.encode(
+                `event: proxy_wall_clock\ndata: ${JSON.stringify({
+                  message: 'proxy stream closed gracefully before function wall-clock',
+                  wallClockMs: STREAM_WALL_CLOCK_MS,
+                })}\n\n`
+              )
+            );
+            try {
+              upstreamAbort.abort(new DOMException('proxy wall-clock', 'TimeoutError'));
+            } catch {
+              /* already aborted */
+            }
+            finish();
+          }, STREAM_WALL_CLOCK_MS);
 
           // Pump upstream → controller in the background. We deliberately
           // do not await this inside start() — start() must return
