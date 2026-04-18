@@ -33,6 +33,7 @@
  */
 
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { JwtError, looksLikeJwt, verifyJwt, type JwtPayload } from "../../../src/utils/jwt";
 
 export interface AuthResult {
   ok: boolean;
@@ -40,6 +41,12 @@ export interface AuthResult {
   userId?: string;
   /** Raw username from the approver-keys mapping, if applicable. */
   username?: string;
+  /**
+   * When the caller presented a JWT (browser-issued MLRO login token),
+   * this carries the validated payload so downstream endpoints can log
+   * the `jti` against the audit trail without re-verifying.
+   */
+  jwt?: JwtPayload;
   response?: Response;
 }
 
@@ -64,6 +71,12 @@ function serverMisconfigured(message: string): AuthResult {
   };
 }
 
+/**
+ * Extract the Authorization Bearer value without shape-gating it to hex.
+ * A bearer can be either a 32+ char hex token (backend-to-backend) or
+ * an HS256 JWT (browser MLRO login). The format branch happens in the
+ * caller (`authenticate`), which delegates to the right verifier.
+ */
 function extractBearer(req: Request): { ok: true; token: string } | { ok: false; response: Response } {
   const authHeader = req.headers.get(HEADER_KEY);
   if (!authHeader) {
@@ -83,7 +96,12 @@ function extractBearer(req: Request): { ok: true; token: string } | { ok: false;
     };
   }
   const token = parts[1];
-  if (token.length < TOKEN_MIN_LENGTH || !/^[a-f0-9]+$/i.test(token)) {
+  // Shape gate: must be EITHER a JWT (two dots, ≥20 chars) OR a hex
+  // bearer (≥TOKEN_MIN_LENGTH, all [a-f0-9]). Any other shape is a
+  // malformed credential and is rejected before we touch any secret.
+  const isJwt = looksLikeJwt(token);
+  const isHex = token.length >= TOKEN_MIN_LENGTH && /^[a-f0-9]+$/i.test(token);
+  if (!isJwt && !isHex) {
     return {
       ok: false,
       response: Response.json({ error: "Invalid token" }, { status: 401 }),
@@ -122,31 +140,80 @@ function hashUserId(label: string, token: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Verify a request against the shared HAWKEYE_BRAIN_TOKEN.
+ * Verify a request against either:
+ *   (a) an HS256 JWT issued by /api/hawkeye-login (browser MLRO path), or
+ *   (b) the shared HAWKEYE_BRAIN_TOKEN hex bearer (backend-to-backend).
  *
- * Used for /api/brain and any other backend-to-backend endpoint that
- * doesn't require per-user identity. Fails closed if the env var is
- * not configured.
+ * The JWT path lets the MLRO sign in once with a password and carry a
+ * 1-year session token in localStorage; the hex path stays unchanged
+ * for crons, the orchestrator, and the setup wizard. Whichever path
+ * fires, the returned `userId` is HMAC-derived so log lines and the
+ * audit trail cannot be used to reconstruct the raw credential.
+ *
+ * Server is considered "configured" if EITHER the JWT secret or the
+ * brain token is present — we only fail-closed (503) when both are
+ * absent, since either one alone is enough to authenticate callers.
  */
 export function authenticate(req: Request): AuthResult {
   if (req.method === "OPTIONS") {
     return { ok: true, userId: "preflight" };
   }
 
-  const expected = process.env.HAWKEYE_BRAIN_TOKEN;
-  if (!expected || expected.length < TOKEN_MIN_LENGTH || !/^[a-f0-9]+$/i.test(expected)) {
-    console.error("[auth] HAWKEYE_BRAIN_TOKEN is missing or malformed");
+  const extracted = extractBearer(req);
+  if (!extracted.ok) return { ok: false, response: extracted.response };
+  const token = extracted.token;
+
+  const jwtSecret = process.env.HAWKEYE_JWT_SECRET;
+  const brainToken = process.env.HAWKEYE_BRAIN_TOKEN;
+
+  const jwtConfigured = !!jwtSecret && jwtSecret.length >= TOKEN_MIN_LENGTH;
+  const hexConfigured =
+    !!brainToken && brainToken.length >= TOKEN_MIN_LENGTH && /^[a-f0-9]+$/i.test(brainToken);
+
+  if (!jwtConfigured && !hexConfigured) {
+    console.error(
+      "[auth] Neither HAWKEYE_JWT_SECRET nor HAWKEYE_BRAIN_TOKEN is configured; refusing to authenticate.",
+    );
     return serverMisconfigured("Server authentication is not configured");
   }
 
-  const extracted = extractBearer(req);
-  if (!extracted.ok) return { ok: false, response: extracted.response };
-
-  if (!tokensEqual(extracted.token, expected)) {
-    return unauthorized("Invalid token");
+  // JWT path — browser-issued login token. We route to the JWT
+  // verifier on shape (two dots) so a hex token that happens to
+  // contain dots cannot flip branches, and so a JWT sent when the
+  // server has no JWT secret fails with a clear 401 instead of
+  // silently falling through to the hex compare.
+  if (looksLikeJwt(token)) {
+    if (!jwtConfigured) return unauthorized("Invalid token");
+    try {
+      const payload = verifyJwt({ token, secret: jwtSecret! });
+      // hashUserId uses the JWT id, not the raw token, so the audit
+      // trail identifier is stable across the token's lifetime but
+      // does not leak any part of the signing material.
+      return {
+        ok: true,
+        userId: hashUserId(`jwt:${payload.sub}`, payload.jti),
+        username: payload.sub,
+        jwt: payload,
+      };
+    } catch (err) {
+      if (err instanceof JwtError) {
+        // Log the code (not the message) so we see "expired" vs
+        // "bad-signature" in ops dashboards without leaking payload
+        // content or secret material.
+        console.warn(`[auth] JWT rejected: code=${err.code}`);
+      } else {
+        console.warn("[auth] JWT rejected: unknown error");
+      }
+      return unauthorized("Invalid token");
+    }
   }
 
-  return { ok: true, userId: hashUserId("brain", extracted.token) };
+  // Hex bearer path — backend-to-backend. Constant-time compare.
+  if (!hexConfigured) return unauthorized("Invalid token");
+  if (!tokensEqual(token, brainToken!)) {
+    return unauthorized("Invalid token");
+  }
+  return { ok: true, userId: hashUserId("brain", token) };
 }
 
 // ---------------------------------------------------------------------------

@@ -19,6 +19,8 @@ import {
   authenticateApprover,
   __test__,
 } from '../netlify/functions/middleware/auth.mts';
+import { signJwt } from '../src/utils/jwt';
+import { randomUUID } from 'node:crypto';
 
 const { tokensEqual, hashUserId, parseApproverKeys } = __test__;
 
@@ -27,6 +29,11 @@ const ORIG_ENV = { ...process.env };
 beforeEach(() => {
   delete process.env.HAWKEYE_BRAIN_TOKEN;
   delete process.env.HAWKEYE_APPROVER_KEYS;
+  // The middleware is "configured" if EITHER the hex token OR the JWT
+  // secret is set, so the 503 fail-closed branch only fires when both
+  // are absent. Clear both to keep the misconfigured-server assertions
+  // deterministic.
+  delete process.env.HAWKEYE_JWT_SECRET;
 });
 afterEach(() => {
   process.env = { ...ORIG_ENV };
@@ -246,5 +253,122 @@ describe('authenticateApprover — per-user identity', () => {
   it('OPTIONS preflight bypasses approver auth', () => {
     const r = authenticateApprover(req({}, 'OPTIONS'));
     expect(r.ok).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// authenticate — JWT path (browser MLRO login)
+// ---------------------------------------------------------------------------
+describe('authenticate — JWT path', () => {
+  const JWT_SECRET = 'x'.repeat(48);
+  const signForTest = (overrides: Partial<{ sub: string; ttlSec: number; nowSec: number }> = {}) =>
+    signJwt({
+      sub: overrides.sub ?? 'mlro',
+      ttlSec: overrides.ttlSec ?? 3600,
+      jti: randomUUID(),
+      secret: JWT_SECRET,
+      nowSec: overrides.nowSec,
+    });
+
+  it('accepts a JWT signed with the server secret', () => {
+    process.env.HAWKEYE_JWT_SECRET = JWT_SECRET;
+    const token = signForTest();
+    const r = authenticate(req({ Authorization: `Bearer ${token}` }));
+    expect(r.ok).toBe(true);
+    expect(r.username).toBe('mlro');
+    expect(r.userId).toMatch(/^[a-f0-9]{16}$/);
+    expect(r.jwt?.sub).toBe('mlro');
+  });
+
+  it('rejects a JWT when no JWT secret is configured', () => {
+    // Configure the hex path so we do not fall into the 503 branch;
+    // the JWT must still be rejected since there is no secret to
+    // verify it against.
+    process.env.HAWKEYE_BRAIN_TOKEN = 'a'.repeat(48);
+    const token = signForTest();
+    const r = authenticate(req({ Authorization: `Bearer ${token}` }));
+    expect(r.ok).toBe(false);
+    expect(r.response.status).toBe(401);
+  });
+
+  it('rejects a JWT signed with a different secret', () => {
+    process.env.HAWKEYE_JWT_SECRET = JWT_SECRET;
+    const forged = signJwt({
+      sub: 'mlro',
+      ttlSec: 3600,
+      jti: randomUUID(),
+      secret: 'y'.repeat(48),
+    });
+    const r = authenticate(req({ Authorization: `Bearer ${forged}` }));
+    expect(r.ok).toBe(false);
+    expect(r.response.status).toBe(401);
+  });
+
+  it('rejects an expired JWT', () => {
+    process.env.HAWKEYE_JWT_SECRET = JWT_SECRET;
+    // Issued "in the past" with a short TTL that has already lapsed.
+    const token = signJwt({
+      sub: 'mlro',
+      ttlSec: 60,
+      jti: randomUUID(),
+      secret: JWT_SECRET,
+      nowSec: Math.floor(Date.now() / 1000) - 3600,
+    });
+    const r = authenticate(req({ Authorization: `Bearer ${token}` }));
+    expect(r.ok).toBe(false);
+    expect(r.response.status).toBe(401);
+  });
+
+  it('rejects an alg:none token even when the JWT secret is set', () => {
+    process.env.HAWKEYE_JWT_SECRET = JWT_SECRET;
+    // Hand-craft a three-segment token with a non-HS256 header.
+    const b64url = (s: string): string =>
+      Buffer.from(s, 'utf8')
+        .toString('base64')
+        .replaceAll('+', '-')
+        .replaceAll('/', '_')
+        .replace(/=+$/, '');
+    const header = b64url(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+    const payload = b64url(
+      JSON.stringify({
+        sub: 'mlro',
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        jti: 'xxx',
+        v: 1,
+      })
+    );
+    const forged = `${header}.${payload}.`;
+    const r = authenticate(req({ Authorization: `Bearer ${forged}` }));
+    expect(r.ok).toBe(false);
+    expect(r.response.status).toBe(401);
+  });
+
+  it('returns DIFFERENT userIds for JWT and hex principals on the same secret material', () => {
+    process.env.HAWKEYE_JWT_SECRET = JWT_SECRET;
+    process.env.HAWKEYE_BRAIN_TOKEN = 'a'.repeat(48);
+    const jwtToken = signForTest();
+    const rJwt = authenticate(req({ Authorization: `Bearer ${jwtToken}` }));
+    const rHex = authenticate(req({ Authorization: `Bearer ${'a'.repeat(48)}` }));
+    expect(rJwt.ok).toBe(true);
+    expect(rHex.ok).toBe(true);
+    // JWT principal is labelled "jwt:<sub>", hex is labelled "brain",
+    // so even a constant-JTI coincidence cannot collide the audit id.
+    expect(rJwt.userId).not.toBe(rHex.userId);
+  });
+
+  it('still accepts the hex bearer when JWT secret is also configured', () => {
+    process.env.HAWKEYE_BRAIN_TOKEN = 'a'.repeat(48);
+    process.env.HAWKEYE_JWT_SECRET = JWT_SECRET;
+    const r = authenticate(req({ Authorization: `Bearer ${'a'.repeat(48)}` }));
+    expect(r.ok).toBe(true);
+    expect(r.userId).toMatch(/^[a-f0-9]{16}$/);
+  });
+
+  it('rejects a bearer that is neither a valid JWT shape nor hex', () => {
+    process.env.HAWKEYE_JWT_SECRET = JWT_SECRET;
+    const r = authenticate(req({ Authorization: 'Bearer not.a.token!' }));
+    expect(r.ok).toBe(false);
+    expect(r.response.status).toBe(401);
   });
 });

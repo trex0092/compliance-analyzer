@@ -135,6 +135,138 @@
   if (tokenRevealBtn) tokenRevealBtn.addEventListener('click', toggleReveal);
   if (tokenCopyBtn) tokenCopyBtn.addEventListener('click', copyToken);
 
+  // ─── Password sign-in (returns a 1-year JWT) ─────────────────────
+  //
+  // POSTs { password } to /api/hawkeye-login. On 200 the server returns
+  // { token, expiresAt, jti, sub }; we stash the JWT in the same
+  // localStorage slot the manual hex token uses (TOKEN_KEY), so every
+  // apiPost / apiGet call below keeps working unchanged. The JWT shape
+  // is accepted by tokenFormatError() and by the server's extractBearer.
+  const LOGIN_ENDPOINT = '/api/hawkeye-login';
+  const loginPasswordInput = $('loginPassword');
+  const loginBtn = $('loginBtn');
+  const logoutBtn = $('logoutBtn');
+  const loginMsg = $('loginMsg');
+
+  function setLoginMsg(text, isError) {
+    if (!loginMsg) return;
+    loginMsg.textContent = text || '';
+    loginMsg.classList.toggle('err', !!isError);
+  }
+
+  async function submitLogin() {
+    if (!loginPasswordInput) return;
+    const password = loginPasswordInput.value;
+    if (!password) {
+      setLoginMsg('Enter your password first.', true);
+      return;
+    }
+    if (loginBtn) loginBtn.disabled = true;
+    setLoginMsg('Signing in…', false);
+    try {
+      const res = await fetch(LOGIN_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password }),
+      });
+      let json = null;
+      try {
+        json = await res.json();
+      } catch (_e) {
+        /* not JSON */
+      }
+      if (!res.ok) {
+        const code = res.status;
+        let msg = (json && json.error) || 'Sign-in failed (HTTP ' + code + ').';
+        if (code === 401) msg = 'Invalid credentials.';
+        else if (code === 429) msg = 'Too many attempts — wait 15 minutes and try again.';
+        else if (code === 503)
+          msg = 'Login is not configured on the server. Contact the administrator.';
+        setLoginMsg(msg, true);
+        return;
+      }
+      const token = json && typeof json.token === 'string' ? json.token : '';
+      if (!token) {
+        setLoginMsg('Server did not return a token.', true);
+        return;
+      }
+      try {
+        localStorage.setItem(TOKEN_KEY, token);
+      } catch (_e) {
+        /* localStorage disabled — token only lives in-memory */
+      }
+      if (tokenInput) tokenInput.value = token;
+      // Clear plaintext from the password field so nothing lingers in
+      // the DOM / autofill surface longer than needed.
+      loginPasswordInput.value = '';
+      const expiresAtSec =
+        json && typeof json.expiresAt === 'number' ? json.expiresAt : null;
+      let hint = 'Signed in. Session saved in this browser.';
+      if (expiresAtSec) {
+        const d = new Date(expiresAtSec * 1000);
+        hint += ' Expires ' + d.toISOString().slice(0, 10) + '.';
+      }
+      setLoginMsg(hint, false);
+    } catch (err) {
+      setLoginMsg(
+        'Network error: ' + ((err && err.message) || 'unknown'),
+        true
+      );
+    } finally {
+      if (loginBtn) loginBtn.disabled = false;
+    }
+  }
+
+  function signOut() {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+    } catch (_e) {
+      /* ignore */
+    }
+    if (tokenInput) tokenInput.value = '';
+    if (loginPasswordInput) loginPasswordInput.value = '';
+    setLoginMsg('Signed out. Enter your password to sign back in.', false);
+  }
+
+  if (loginBtn) loginBtn.addEventListener('click', submitLogin);
+  if (logoutBtn) logoutBtn.addEventListener('click', signOut);
+  if (loginPasswordInput) {
+    loginPasswordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitLogin();
+      }
+    });
+  }
+
+  // Surface a hint if the stored token looks like a JWT that has
+  // already expired (parse payload only — never trust it, server still
+  // verifies the signature). This just gives the MLRO a heads-up
+  // BEFORE they click Screen and get a 401.
+  (function checkSessionFreshness() {
+    try {
+      const stored = localStorage.getItem(TOKEN_KEY) || '';
+      if (!looksLikeJwt(stored)) return;
+      const payloadSeg = stored.split('.')[1] || '';
+      const pad = payloadSeg.length % 4 === 0 ? '' : '='.repeat(4 - (payloadSeg.length % 4));
+      const json = atob(payloadSeg.replace(/-/g, '+').replace(/_/g, '/') + pad);
+      const payload = JSON.parse(json);
+      if (typeof payload.exp !== 'number') return;
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (payload.exp <= nowSec) {
+        setLoginMsg('Session expired — sign in again.', true);
+      } else if (payload.exp - nowSec < 7 * 24 * 3600) {
+        const days = Math.max(1, Math.floor((payload.exp - nowSec) / 86400));
+        setLoginMsg(
+          'Session expires in ' + days + ' day' + (days === 1 ? '' : 's') + '.',
+          false
+        );
+      }
+    } catch (_e) {
+      /* best effort — never block the page on a parse failure */
+    }
+  })();
+
   // ─── MLRO identity (main + deputy, persisted; screener = Main MLRO) ───
   const mlroMainNameInput = $('mlroMainName');
   const mlroDeputyNameInput = $('mlroDeputyName');
@@ -184,15 +316,31 @@
   refreshMlroUi();
 
   // ─── Token format check ──────────────────────────────────────────
+  //
+  // The Authorization header accepts EITHER
+  //   (a) a JWT issued by /api/hawkeye-login — three base64url segments
+  //       separated by two dots, at least 20 chars, or
+  //   (b) the legacy hex HAWKEYE_BRAIN_TOKEN — ≥ 32 chars, [0-9a-f].
+  // This mirrors the server-side extractBearer gate.
+  function looksLikeJwt(token) {
+    if (typeof token !== 'string' || token.length < 20) return false;
+    return (token.match(/\./g) || []).length === 2;
+  }
+
   function tokenFormatError(token) {
-    if (!token) return 'Token required — paste it in the Authentication box above.';
+    if (!token) return 'Session required — sign in with your password above.';
+    if (looksLikeJwt(token)) return null;
     if (token.length < TOKEN_MIN) {
       return (
-        'Token too short (' + token.length + ' chars; server requires at least ' + TOKEN_MIN + ').'
+        'Token too short (' +
+        token.length +
+        ' chars; server requires at least ' +
+        TOKEN_MIN +
+        ' or a signed JWT).'
       );
     }
     if (!TOKEN_HEX_RE.test(token)) {
-      return 'Token has non-hex characters. Server only accepts 0-9 and a-f.';
+      return 'Token has non-hex characters. Expected a JWT from sign-in, or a hex fallback token.';
     }
     return null;
   }
@@ -223,7 +371,7 @@
         if (res.status === 401)
           return {
             ok: false,
-            error: 'Server rejected token (401). Check HAWKEYE_BRAIN_TOKEN in Netlify.',
+            error: 'Session rejected (401). Sign in again with your password.',
           };
         if (res.status === 503)
           return { ok: false, error: 'HAWKEYE_BRAIN_TOKEN not configured on the server.' };
@@ -257,7 +405,8 @@
         /* not JSON */
       }
       if (!res.ok) {
-        if (res.status === 401) return { ok: false, error: 'Server rejected token (401).' };
+        if (res.status === 401)
+          return { ok: false, error: 'Session rejected (401). Sign in again.' };
         if (res.status === 503) return { ok: false, error: 'Server misconfigured.' };
         if (res.status === 429) return { ok: false, error: 'Rate limited.' };
         return { ok: false, error: (json && json.error) || 'HTTP ' + res.status };
@@ -290,7 +439,8 @@
         /* not JSON */
       }
       if (!res.ok) {
-        if (res.status === 401) return { ok: false, error: 'Server rejected token (401).' };
+        if (res.status === 401)
+          return { ok: false, error: 'Session rejected (401). Sign in again.' };
         if (res.status === 404) return { ok: false, error: 'Entry not found (already removed?).' };
         if (res.status === 429) return { ok: false, error: 'Rate limited.' };
         if (res.status === 503)
