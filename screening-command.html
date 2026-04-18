@@ -830,12 +830,12 @@
       .list-check input[type='checkbox'] {
         appearance: none;
         -webkit-appearance: none;
-        margin-top: 2px;
-        width: 16px;
-        height: 16px;
+        margin-top: 3px;
+        width: 14px;
+        height: 14px;
         flex-shrink: 0;
         border: 1.5px solid var(--blue);
-        border-radius: 4px;
+        border-radius: 3px;
         background: transparent;
         cursor: pointer;
         position: relative;
@@ -854,13 +854,13 @@
       .list-check input[type='checkbox']:checked::after {
         content: '';
         position: absolute;
-        left: 4px;
-        top: 1px;
-        width: 4px;
-        height: 8px;
+        left: 50%;
+        top: 50%;
+        width: 3px;
+        height: 7px;
         border: solid #fff;
         border-width: 0 2px 2px 0;
-        transform: rotate(45deg);
+        transform: translate(-50%, -60%) rotate(45deg);
       }
       .list-check input[type='checkbox']:focus-visible {
         outline: 2px solid var(--blue);
@@ -900,31 +900,40 @@
         padding-top: 8px;
         border-top: 1px dashed var(--border);
       }
-      .list-refresh-row {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 10px;
-      }
       .list-refresh {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 26px;
+        height: 26px;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
         appearance: none;
         background: transparent;
         color: var(--blue);
         border: 1px solid rgba(74, 144, 226, 0.5);
-        border-radius: 4px;
-        padding: 4px 10px;
-        font-family: 'Cinzel', serif;
-        font-size: 10px;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
         transition: background-color 0.18s ease, border-color 0.18s ease,
-          box-shadow 0.18s ease, transform 0.12s ease;
+          box-shadow 0.18s ease, transform 0.3s ease;
+      }
+      .list-refresh svg {
+        width: 14px;
+        height: 14px;
+        display: block;
       }
       .list-refresh:hover {
-        background: rgba(74, 144, 226, 0.1);
+        background: rgba(74, 144, 226, 0.12);
         border-color: var(--blue);
-        box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.12);
-        transform: translateY(-1px);
+        box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
+        transform: rotate(90deg);
+      }
+      .list-refresh:active {
+        transform: rotate(180deg);
       }
       .list-refresh:focus-visible {
         outline: 2px solid var(--blue);
@@ -1661,6 +1670,20 @@
     <!-- List selector ────────────────────────────────────────────── -->
     <div class="grid grid-2" style="margin-top: 14px">
       <div class="card list-tier mandatory" style="border-color: var(--blue)">
+        <button
+          type="button"
+          class="list-refresh"
+          data-refresh-scope="mandatory"
+          title="Reset to default selection"
+          aria-label="Reset Mandatory UAE Lists to default selection"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/>
+            <path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/>
+            <path d="M3 21v-5h5"/>
+          </svg>
+        </button>
         <h2 style="color: var(--blue)">Mandatory UAE Lists</h2>
         <label class="list-check locked">
           <input
@@ -1698,13 +1721,22 @@
           constitutes a regulatory offence under FDL No.10/2025 Art.35 and is subject to
           administrative penalty under Cabinet Res 71/2024 (AED 10K–100M range).
         </p>
-        <div class="list-refresh-row">
-          <button type="button" class="list-refresh" data-refresh-scope="mandatory">
-            Refresh
-          </button>
-        </div>
       </div>
       <div class="card list-tier enhanced" style="border-color: var(--blue)">
+        <button
+          type="button"
+          class="list-refresh"
+          data-refresh-scope="enhanced"
+          title="Reset to default selection"
+          aria-label="Reset Enhanced Controls to default selection"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/>
+            <path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/>
+            <path d="M3 21v-5h5"/>
+          </svg>
+        </button>
         <h2 style="color: var(--blue)">Enhanced Controls</h2>
         <label class="list-check">
           <input type="checkbox" data-list="OFAC" data-tier="enhanced" checked />
@@ -1743,16 +1775,25 @@
           supervisory authority for appropriate course of action. Opting out is permitted; every
           opt-out is logged with the screening event (FDL Art.24 — 10-year retention).
         </p>
-        <div class="list-refresh-row">
-          <button type="button" class="list-refresh" data-refresh-scope="enhanced">
-            Refresh
-          </button>
-        </div>
       </div>
     </div>
 
     <!-- Risk categories ────────────────────────────────────────────── -->
     <div class="card list-tier enhanced" style="margin-top: 14px; border-color: var(--blue)">
+      <button
+        type="button"
+        class="list-refresh"
+        data-refresh-scope="risk"
+        title="Reset to default selection"
+        aria-label="Reset Risk Categories to default selection"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/>
+          <path d="M3 21v-5h5"/>
+        </svg>
+      </button>
       <h2 style="color: var(--blue)">Risk Categories</h2>
       <p class="help-text" style="margin-top: -4px">
         Content categories screened against every selected list + adverse-media corpus. Default: all
@@ -1850,11 +1891,6 @@
             >
           </span>
         </label>
-      </div>
-      <div class="list-refresh-row">
-        <button type="button" class="list-refresh" data-refresh-scope="risk">
-          Refresh
-        </button>
       </div>
     </div>
 
