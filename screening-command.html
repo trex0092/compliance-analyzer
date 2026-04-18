@@ -1517,18 +1517,20 @@
       </summary>
       <div class="auth-body">
         <label for="loginPassword">Sign in with password</label>
+        <input
+          type="password"
+          id="loginPassword"
+          placeholder="Enter your MLRO password"
+          autocomplete="current-password"
+          spellcheck="false"
+          style="width: 100%; margin-bottom: 8px"
+        />
         <div class="token-row">
-          <input
-            type="password"
-            id="loginPassword"
-            placeholder="Enter your MLRO password"
-            autocomplete="current-password"
-            spellcheck="false"
-          />
           <button
             type="button"
             id="loginBtn"
             class="token-gen-btn"
+            style="flex: 1"
             title="Exchange password for a signed 1-year session token"
           >
             Sign in
@@ -1537,6 +1539,7 @@
             type="button"
             id="logoutBtn"
             class="token-gen-btn"
+            style="flex: 1"
             title="Forget the saved session token and require a new sign-in"
           >
             Sign out
