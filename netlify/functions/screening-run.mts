@@ -860,9 +860,19 @@ export default async (req: Request, context: Context): Promise<Response> => {
   // ─── 5. Asana task — any match, any adverse-media hit, or any anomaly
   // (mandatory-list fetch failure). "If any anomaly or event → notify
   // Asana" — see Cabinet Res 134/2025 Art.19 periodic internal review.
-  let asana: { ok: boolean; gid?: string; error?: string; skipped?: boolean } = {
+  const asanaProjectGid = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
+  let asana: {
+    ok: boolean;
+    gid?: string;
+    error?: string;
+    skipped?: boolean;
+    projectGid: string;
+    projectName: string;
+  } = {
     ok: false,
     skipped: true,
+    projectGid: asanaProjectGid,
+    projectName: 'Hawkeye Screenings',
   };
   const shouldCreateAsana =
     input.createAsanaTask &&
@@ -884,7 +894,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
       anomalies: anomalousListErrors.map((l) => `${l.list}: ${l.error}`),
       eventType: input.eventType,
     });
-    asana = res;
+    asana = { ...res, projectGid: asanaProjectGid, projectName: 'Hawkeye Screenings' };
   }
 
   return jsonResponse({

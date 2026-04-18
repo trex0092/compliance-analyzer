@@ -477,6 +477,50 @@
         font-family: 'DM Mono', 'Courier New', monospace;
         margin-top: 2px;
       }
+      .subject-details {
+        margin-top: 10px;
+        padding: 10px 12px;
+        background: rgba(201, 168, 76, 0.05);
+        border: 1px solid rgba(201, 168, 76, 0.2);
+        border-radius: 4px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 8px 16px;
+      }
+      .subject-detail-item {
+        font-size: 11px;
+      }
+      .subject-detail-label {
+        color: var(--muted);
+        text-transform: uppercase;
+        font-size: 9px;
+        letter-spacing: 0.8px;
+        margin-bottom: 2px;
+      }
+      .subject-detail-value {
+        color: var(--text);
+        font-weight: 500;
+        word-break: break-word;
+      }
+      .asana-destination {
+        margin-top: 10px;
+        padding: 8px 12px;
+        background: rgba(74, 144, 226, 0.06);
+        border-left: 3px solid var(--blue);
+        border-radius: 2px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .asana-destination strong {
+        color: var(--text);
+      }
+      .asana-destination a {
+        color: var(--blue);
+        text-decoration: none;
+      }
+      .asana-destination a:hover {
+        text-decoration: underline;
+      }
       .classification {
         font-size: 10px;
         padding: 3px 8px;
@@ -501,6 +545,29 @@
       .classification.none {
         background: rgba(61, 168, 118, 0.12);
         color: var(--green);
+      }
+      .btn-delete-subject {
+        background: transparent;
+        border: 1px solid rgba(217, 79, 79, 0.4);
+        color: var(--red);
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 3px;
+        cursor: pointer;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        font-weight: 600;
+        transition:
+          background-color 0.12s ease,
+          border-color 0.12s ease;
+      }
+      .btn-delete-subject:hover {
+        background: rgba(217, 79, 79, 0.12);
+        border-color: var(--red);
+      }
+      .btn-delete-subject:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
       }
       .list-grid {
         display: grid;
@@ -2220,6 +2287,6 @@
       08/AML/2021
     </p>
 
-    <script src="screening-command.js?v=1"></script>
+    <script src="screening-command.js?v=2"></script>
   </body>
 </html>
