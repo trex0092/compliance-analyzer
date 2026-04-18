@@ -2254,18 +2254,14 @@
           </div>
         </div>
 
-        <div class="row-2">
-          <div>
-            <label for="enrollInWatchlist">Enroll in daily monitoring</label>
-            <select id="enrollInWatchlist">
-              <option value="true" selected>Yes (06:00 / 14:00 UTC)</option>
-              <option value="false">No</option>
-            </select>
-          </div>
-          <div>
-            <label for="notes">Notes</label>
-            <input type="text" id="notes" placeholder="Context for the MLRO" autocomplete="off" />
-          </div>
+        <div>
+          <label for="notes">Notes</label>
+          <input type="text" id="notes" placeholder="Context for the MLRO" autocomplete="off" />
+          <p class="help-text" style="margin-top: 4px">
+            Every screened subject is automatically enrolled in daily monitoring (06:00 / 14:00 UTC)
+            and in immediate sanctions / adverse-media / PEP / UBO alerts. No opt-out (FDL
+            Art.20-21, Cabinet Res 134/2025 Art.19).
+          </p>
         </div>
 
         <p class="help-text" style="margin-top: 6px">
@@ -2607,23 +2603,14 @@
             </select>
           </div>
         </div>
-        <div class="row-2">
-          <div>
-            <label for="tmCommodity">Commodity Type</label>
-            <input
-              type="text"
-              id="tmCommodity"
-              placeholder="e.g. Gold bars, used vehicles, diamonds"
-              autocomplete="off"
-            />
-          </div>
-          <div>
-            <label for="tmEnrollMonitoring">Enroll in daily monitoring</label>
-            <select id="tmEnrollMonitoring">
-              <option value="true" selected>Yes (06:00 / 14:00 UTC)</option>
-              <option value="false">No</option>
-            </select>
-          </div>
+        <div>
+          <label for="tmCommodity">Commodity Type</label>
+          <input
+            type="text"
+            id="tmCommodity"
+            placeholder="e.g. Gold bars, used vehicles, diamonds"
+            autocomplete="off"
+          />
         </div>
         <div>
           <label for="tmNotes">Notes</label>

@@ -69,8 +69,17 @@ import { getStore } from '@netlify/blobs';
 import { authenticate } from './middleware/auth.mts';
 import { checkRateLimit } from './middleware/rate-limit.mts';
 import { createAsanaTask } from '../../src/services/asanaClient';
+import {
+  addToWatchlist,
+  deserialiseWatchlist,
+  serialiseWatchlist,
+  type ResolvedIdentity,
+  type SerialisedWatchlist,
+} from '../../src/services/screeningWatchlist';
 
 const EVENTS_STORE = 'screening-events';
+const WATCHLIST_STORE = 'screening-watchlist';
+const WATCHLIST_KEY = 'current';
 const MAX_BODY_SIZE = 32 * 1024;
 const MAX_CAS_ATTEMPTS = 5;
 const MIN_RATIONALE_LEN = 20;
@@ -420,6 +429,102 @@ async function saveEvent(event: ScreeningEvent): Promise<{ ok: boolean; error?: 
 }
 
 // ---------------------------------------------------------------------------
+// Auto-enrol — every screen enrols the subject in daily monitoring.
+// Product requirement: "DAILY MONITORING FOR ALL THE SCREENED SUBJECTS
+// (ENTITIES AND INDIVIDUALS) AND ALERTS ... IF SOMETHING HAPPEN RELATED
+// TO THE RISKS AND SANCTIONS APPEAR." — there is no opt-out.
+// FDL Art.20-21 + Cabinet Res 134/2025 Art.19 (ongoing monitoring).
+// ---------------------------------------------------------------------------
+
+function subjectRiskTier(event: ScreeningEvent): 'high' | 'medium' | 'low' {
+  if (event.outcome === 'confirmed_match' || event.outcome === 'partial_match') return 'high';
+  return event.riskTier ?? 'medium';
+}
+
+function buildResolvedIdentity(event: ScreeningEvent): ResolvedIdentity | undefined {
+  const identity: ResolvedIdentity = {};
+  if (event.dob) identity.dob = event.dob;
+  if (event.country) identity.nationality = event.country.toUpperCase().slice(0, 4);
+  if (event.idNumber) {
+    identity.idNumber = event.idNumber;
+    identity.idType = 'other';
+  }
+  identity.resolvedBy = event.reviewedBy;
+  identity.resolvedAtIso = event.savedAt;
+  identity.resolutionNote = `Enrolled from screening event ${event.eventId} (${event.outcome})`;
+  const hasAnyIdField = identity.dob || identity.nationality || identity.idNumber;
+  return hasAnyIdField ? identity : undefined;
+}
+
+async function autoEnrolInWatchlist(
+  event: ScreeningEvent
+): Promise<{ ok: boolean; enrolled: boolean; alreadyEnrolled?: boolean; error?: string }> {
+  const subjectId = event.subjectId || event.eventId;
+  try {
+    const store = getStore(WATCHLIST_STORE);
+    for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
+      const bucket =
+        (await (
+          store as unknown as {
+            getWithMetadata?: (
+              key: string,
+              opts: unknown
+            ) => Promise<{ data: unknown; etag?: string } | null>;
+          }
+        ).getWithMetadata?.(WATCHLIST_KEY, { type: 'json' })) ?? null;
+      const rawData = bucket?.data ?? null;
+      const etag = bucket?.etag ?? null;
+      const wl = deserialiseWatchlist(rawData);
+      if (wl.entries.has(subjectId)) {
+        return { ok: true, enrolled: false, alreadyEnrolled: true };
+      }
+      addToWatchlist(wl, {
+        id: subjectId,
+        subjectName: event.subjectName,
+        riskTier: subjectRiskTier(event),
+        metadata: {
+          sourceEventId: event.eventId,
+          enrolledVia: 'screening-save',
+          enrolledAt: event.savedAt,
+          ...(event.jurisdiction ? { jurisdiction: event.jurisdiction } : {}),
+        },
+        resolvedIdentity: buildResolvedIdentity(event),
+      });
+
+      const opts = etag ? { onlyIfMatch: etag } : { onlyIfNew: true };
+      try {
+        const res: unknown = await (
+          store as unknown as {
+            setJSON: (key: string, value: unknown, opts?: unknown) => Promise<unknown>;
+          }
+        ).setJSON(WATCHLIST_KEY, serialiseWatchlist(wl) as SerialisedWatchlist, opts);
+        const landed =
+          res === null || res === undefined
+            ? true
+            : typeof res === 'object' && 'modified' in (res as Record<string, unknown>)
+              ? (res as { modified: boolean }).modified === true
+              : res !== false;
+        if (landed) return { ok: true, enrolled: true };
+      } catch (err) {
+        return {
+          ok: false,
+          enrolled: false,
+          error: err instanceof Error ? err.message : 'setJSON failed',
+        };
+      }
+      // CAS conflict — re-read and retry.
+    }
+    return { ok: false, enrolled: false, error: 'watchlist CAS contention' };
+  } catch (err) {
+    return {
+      ok: false,
+      enrolled: false,
+      error: err instanceof Error ? err.message : 'blob store unavailable',
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Asana — every saved event creates a task (audit attestation)
 // ---------------------------------------------------------------------------
 
@@ -594,11 +699,26 @@ export default async (req: Request, context: Context): Promise<Response> => {
     projectName: 'Hawkeye Screenings',
   };
 
+  // Auto-enrol in daily monitoring. Product requirement is no opt-out —
+  // every screened subject (individual or legal entity, any outcome,
+  // including negative_no_match) is added to the watchlist so the
+  // sanctions-ingest cron can alert immediately on any future risk
+  // event. Enrolment failure is logged but never blocks the screening
+  // save itself — the event record + Asana attestation is the primary
+  // compliance artefact.
+  const enrolRes = await autoEnrolInWatchlist(event);
+
   return jsonResponse({
     ok: true,
     eventId: event.eventId,
     savedAt: event.savedAt,
     asana,
+    monitoring: {
+      enrolled: enrolRes.enrolled,
+      alreadyEnrolled: enrolRes.alreadyEnrolled === true,
+      ok: enrolRes.ok,
+      error: enrolRes.error,
+    },
   });
 };
 

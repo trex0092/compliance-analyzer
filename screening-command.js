@@ -531,7 +531,6 @@
   const eventTypeSelect = $('eventType');
   const riskTierSelect = $('riskTier');
   const jurisdictionInput = $('jurisdiction');
-  const enrollSelect = $('enrollInWatchlist');
   const notesInput = $('notes');
   const screenBtn = $('screenBtn');
   const screenMsg = $('screenMsg');
@@ -1711,7 +1710,7 @@
       jurisdiction: jurisdictionInput.value.trim() || undefined,
       notes: notesInput.value.trim() || undefined,
       selectedLists: selectedLists,
-      enrollInWatchlist: enrollSelect.value === 'true',
+      enrollInWatchlist: true,
       runAdverseMedia: isAdverseMediaEnabled(),
       adverseMediaPredicates: isAdverseMediaEnabled() ? allPredicateKeys() : undefined,
       createAsanaTask: true,
@@ -1766,7 +1765,6 @@
   const tmPaymentMethodSelect = $('tmPaymentMethod');
   const tmPayerMatchesSelect = $('tmPayerMatches');
   const tmCommodityInput = $('tmCommodity');
-  const tmEnrollMonitoringSelect = $('tmEnrollMonitoring');
   const tmNotesInput = $('tmNotes');
   const tmBtn = $('tmBtn');
   const tmMsg = $('tmMsg');
@@ -1889,7 +1887,7 @@
       customerName: customerName,
       transactions: [tx],
       createAsanaOnCritical: true,
-      enrollInDailyMonitoring: tmEnrollMonitoringSelect.value === 'true',
+      enrollInDailyMonitoring: true,
     });
     if (!result.ok) {
       showMessage(tmMsg, result.error, 'error');
