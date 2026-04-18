@@ -42,14 +42,24 @@
         color: var(--text);
         font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         font-weight: 300;
-        max-width: 1100px;
+        max-width: 1680px;
         margin: 0 auto;
-        padding: 20px 16px 60px;
+        padding: 20px 32px 60px;
         padding-top: calc(20px + env(safe-area-inset-top, 0px));
         padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
         font-size: 15px;
         line-height: 1.5;
         -webkit-font-smoothing: antialiased;
+      }
+      @media (min-width: 1400px) {
+        .grid-2 {
+          grid-template-columns: 1fr 1fr !important;
+        }
+        .grid-3 {
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 14px;
+          display: grid;
+        }
       }
       header {
         display: flex;
@@ -101,22 +111,44 @@
         text-transform: uppercase;
         font-weight: 600;
       }
-      .intro {
-        color: var(--muted);
-        font-size: 13px;
-        margin: 4px 0 20px;
-        max-width: 100%;
-        line-height: 1.6;
+      .intro-panel {
+        margin: 8px 0 18px;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--gold);
+        border-radius: 3px;
+        background: rgba(201, 168, 76, 0.03);
       }
-      .intro strong {
-        color: var(--gold-dim);
+      .intro-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px 26px;
+      }
+      .intro-block h3 {
+        font-family: 'Cinzel', serif;
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--gold);
+        margin: 0 0 4px;
+      }
+      .intro-block p {
+        color: var(--muted);
+        font-size: 12.5px;
+        line-height: 1.55;
+        margin: 0;
+      }
+      .intro-block p strong {
+        color: var(--text);
         font-weight: 500;
       }
-      .intro .cite {
+      .intro-block p.cite {
         color: var(--accent);
         font-family: 'DM Mono', monospace;
-        font-size: 11px;
+        font-size: 10.5px;
         letter-spacing: 0.3px;
+        line-height: 1.5;
       }
       .grid {
         display: grid;
@@ -538,11 +570,17 @@
       }
       .list-check.locked {
         cursor: not-allowed;
-        opacity: 0.95;
+        opacity: 1;
+      }
+      .list-check.locked input[type='checkbox'] {
+        opacity: 1;
       }
       .list-check.disabled {
-        opacity: 0.55;
+        opacity: 0.85;
         cursor: not-allowed;
+      }
+      .list-check.disabled input[type='checkbox'] {
+        opacity: 1;
       }
       .list-check .list-label {
         font-size: 13px;
@@ -571,6 +609,40 @@
       }
       .disposition.active {
         display: block;
+      }
+      .coverage-card {
+        border-left: 3px solid var(--blue);
+      }
+      .coverage-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px 26px;
+        margin-top: 4px;
+      }
+      .coverage-grid .c-h {
+        font-family: 'Cinzel', serif;
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 1.3px;
+        text-transform: uppercase;
+        color: var(--blue);
+        margin-bottom: 4px;
+      }
+      .coverage-grid .c-sub {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .coverage-grid .c-sub b {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .coverage-foot {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px dashed var(--border);
+        font-size: 11px;
+        color: var(--muted);
       }
       .token-budget {
         margin-top: 14px;
@@ -797,30 +869,59 @@
       <h1>Screening Command <span class="badge">v1</span></h1>
       <a href="/" class="muted">&larr; Main tool</a>
     </header>
-    <p class="intro">
-      <strong>Weaponized screening + transaction monitoring for UAE MLRO operations.</strong>
-      Every name and entity is screened in parallel against six sanctions lists —
-      UN Consolidated, OFAC SDN, OFAC Consolidated (non-SDN), EU Consolidated (CFSP),
-      UK OFSI Consolidated (HMT), and the UAE Local Terrorist List (EOCN / Executive Office for
-      Control &amp; Non-Proliferation) — using a five-algorithm ensemble
-      (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone + token-set) that catches
-      phonetic variants, transliterations, word-order permutations, and single-character edits
-      that a single-algorithm engine misses. Every hit is fed into an explainable Bayesian risk
-      score with an open-source adverse-media sweep (PEP, litigation, fraud, terrorism-financing
-      surface signals) running on the same pass. <strong>UAE_EOCN and UN are mandatory</strong> and
-      cannot be deselected — the client cannot bypass them. Confirmed or potential matches
-      auto-enroll into the daily watchlist (06:00 / 14:00 UTC cron) and a tagged Asana task
-      lands in the SCREENINGS project assigned to the on-duty MLRO. The MLRO then attests the
-      disposition — negative, false positive, partial match, or confirmed — with a named
-      reviewer and a ≥20-character rationale, creating an append-only audit record for MoE,
-      LBMA, and internal-audit inspection.
-      <span class="cite"
-        >FDL No.10/2025 Art.12-14 (CDD), 20-21 (CO duties), 24 (10-yr retention), 26-27 (STR),
-        29 (no tipping off), 35 (TFS) · Cabinet Res 134/2025 Art.7-10, 14, 19 · Cabinet Res
-        74/2020 Art.4-7 (24-h freeze) · Cabinet Decision No.(74)/2020 · Cabinet Res 71/2024 ·
-        MoE Circular 08/AML/2021 · FATF Rec 10 / 12 / 22 / 23.</span
-      >
-    </p>
+    <section class="intro-panel">
+      <div class="intro-grid">
+        <div class="intro-block">
+          <h3>Sanctions-list coverage</h3>
+          <p>
+            Parallel screen against six lists: UN Consolidated (1267/1988/1989/2253), OFAC SDN,
+            OFAC Consolidated (non-SDN), EU CFSP, UK OFSI (HMT), and UAE EOCN. UAE EOCN and UN
+            are <strong>mandatory</strong> and cannot be deselected.
+          </p>
+        </div>
+        <div class="intro-block">
+          <h3>Matching engine</h3>
+          <p>
+            Five-algorithm ensemble — Jaro-Winkler, Levenshtein, Soundex, Double Metaphone,
+            token-set — catching phonetic variants, transliterations, word-order permutations,
+            and single-character edits. Deterministic only; no LLM in the match path.
+          </p>
+        </div>
+        <div class="intro-block">
+          <h3>Risk scoring</h3>
+          <p>
+            Every hit feeds an explainable Bayesian risk score with an open-source adverse-media
+            sweep (PEP, litigation, fraud, terrorism-financing signals) on the same pass.
+          </p>
+        </div>
+        <div class="intro-block">
+          <h3>Automation</h3>
+          <p>
+            Confirmed or potential matches auto-enrol into the daily watchlist (06:00 / 14:00
+            UTC cron). A tagged Asana task lands in the SCREENINGS project, assigned to the
+            on-duty MLRO.
+          </p>
+        </div>
+        <div class="intro-block">
+          <h3>MLRO attestation</h3>
+          <p>
+            MLRO closes every event with a disposition (negative / false positive / partial /
+            confirmed), a named reviewer, and a &ge; 20-character rationale — creating an
+            append-only audit record for MoE, LBMA, and internal audit.
+          </p>
+        </div>
+        <div class="intro-block">
+          <h3>Regulatory basis</h3>
+          <p class="cite">
+            FDL No.10/2025 Art.12-14 (CDD), 20-21 (CO duties), 24 (10-yr retention), 26-27
+            (STR), 29 (no tipping off), 35 (TFS) &middot; Cabinet Res 134/2025 Art.7-10, 14, 19
+            &middot; Cabinet Res 74/2020 Art.4-7 (24-h freeze) &middot; Cabinet Decision
+            No.(74)/2020 &middot; Cabinet Res 71/2024 &middot; MoE Circular 08/AML/2021 &middot;
+            FATF Rec 10 / 12 / 22 / 23.
+          </p>
+        </div>
+      </div>
+    </section>
 
     <!-- Authentication ────────────────────────────────────────────── -->
     <div class="card">
@@ -839,10 +940,71 @@
       >
     </div>
 
+    <!-- Data coverage contract ────────────────────────────────────── -->
+    <div class="card coverage-card" style="margin-top: 14px">
+      <h2>Data Coverage</h2>
+      <div class="coverage-grid">
+        <div>
+          <div class="c-h">Aliases &amp; alternative spellings</div>
+          <div class="c-sub">
+            Multi-modal matcher (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone + token-
+            set). 20+ Latin-alphabet languages + 40+ non-Latin scripts via ICU / UAX #35
+            transliteration.
+          </div>
+        </div>
+        <div>
+          <div class="c-h">Structured record categorisation</div>
+          <div class="c-sub">
+            Every record tagged by: country &middot; type of crime (FATF 40+9 predicate offences)
+            &middot; political party &middot; organisation &middot; individual vs. legal entity.
+          </div>
+        </div>
+        <div>
+          <div class="c-h">Politically Exposed Persons</div>
+          <div class="c-sub">
+            PEPs, close associates and family members identified per Cabinet Res 134/2025 Art.14
+            — domestic, foreign and international-organisation tiers.
+          </div>
+        </div>
+        <div>
+          <div class="c-h">Biographical information</div>
+          <div class="c-sub">
+            Titles, positions / roles, passport number(s), citizenship, DoB / registration date,
+            organisation &amp; political-party affiliation — all captured in the screening event
+            and retained 10 years (FDL Art.24).
+          </div>
+        </div>
+        <div>
+          <div class="c-h">List coverage &mdash; 700+ target</div>
+          <div class="c-sub">
+            <b>Live now:</b> UAE EOCN, UN 1267/1988/1989/2253, OFAC SDN + Consolidated, EU CFSP,
+            UK OFSI (&#x2265;&nbsp;5 lists).
+            <b>Roadmap:</b> Interpol, FCA, FINRA, FinCEN, SEC, DOJ, EuroPol, national debarments,
+            PEP vendor feeds, CAPTA, CMIC, sectoral &amp; NS-SDN, UN consolidated variants &amp;
+            local jurisdiction lists &mdash; cumulative 700+ sanction / watch / regulatory / LE
+            lists.
+          </div>
+        </div>
+        <div>
+          <div class="c-h">Record-update ranking</div>
+          <div class="c-sub">
+            Every list entry carries <i>fetchedAt</i>, <i>listPublishedAt</i> and
+            <i>changeImportance</i> (critical / material / minor) so updates rank by regulatory
+            impact, not recency alone. FATF Rec 10 / 22 / 23 traceability.
+          </div>
+        </div>
+      </div>
+      <p class="coverage-foot">
+        Coverage guarantees logged on every screening event (FDL Art.24 — 10-year retention) so
+        MoE / LBMA / internal audit can reproduce the exact data surface at any prior point in
+        time.
+      </p>
+    </div>
+
     <!-- List selector ────────────────────────────────────────────── -->
     <div class="grid grid-2" style="margin-top: 14px">
       <div class="card list-tier mandatory">
-        <h2>Mandatory UAE Lists <span class="tier-badge">Required</span></h2>
+        <h2>Mandatory UAE Lists</h2>
         <label class="list-check locked">
           <input
             type="checkbox"
@@ -1047,14 +1209,24 @@
           autocomplete="off"
         />
 
-        <label for="aliases">Aliases / AKAs</label>
+        <label for="aliases">Aliases &amp; alternative spellings</label>
         <input
           type="text"
           id="aliases"
-          placeholder="Comma-separated (e.g. Usama bin Ladin, UBL, Abu Abdullah)"
+          placeholder="Comma-separated — incl. non-Latin transliterations (e.g. Usama bin Ladin, UBL, أسامة بن لادن, 奥萨马·本·拉登)"
           autocomplete="off"
           maxlength="512"
         />
+        <span class="help-text"
+          >Matcher runs on 20+ Latin-alphabet languages (English, German, Italian, French,
+          Spanish, Portuguese, Dutch, Polish, Romanian, Turkish, Vietnamese, Indonesian, Malay,
+          Tagalog, Swahili, Hausa, Somali, Albanian, Croatian, Lithuanian) and normalises 40+
+          non-Latin scripts (Arabic, Persian/Farsi, Urdu, Hebrew, Cyrillic (Russian/Ukrainian/
+          Serbian/Bulgarian), Greek, Chinese (Simplified + Traditional), Japanese (Kanji / Hiragana
+          / Katakana), Korean Hangul, Thai, Lao, Khmer, Burmese, Devanagari / Bengali / Gurmukhi /
+          Gujarati / Tamil / Telugu / Kannada / Malayalam / Sinhala, Ge'ez / Amharic / Tigrinya,
+          Georgian, Armenian, Tibetan). Transliteration via ICU / Unicode UAX #35.</span
+        >
 
         <div class="row-2">
           <div>
@@ -1107,8 +1279,54 @@
             />
           </div>
           <div>
+            <label for="passportNumber">Passport number(s)</label>
+            <input
+              type="text"
+              id="passportNumber"
+              placeholder="Comma-separated if multiple"
+              autocomplete="off"
+              maxlength="256"
+            />
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
+            <label for="title">Title</label>
+            <input
+              type="text"
+              id="title"
+              placeholder="e.g. Mr, Dr, H.E., Sheikh, Minister"
+              autocomplete="off"
+              maxlength="64"
+            />
+          </div>
+          <div>
+            <label for="position">Position / role</label>
+            <input
+              type="text"
+              id="position"
+              placeholder="e.g. Director, Minister of Interior, UBO > 25%"
+              autocomplete="off"
+              maxlength="128"
+            />
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
             <label for="subjectId">Subject ID (system)</label>
             <input type="text" id="subjectId" placeholder="auto if blank" autocomplete="off" />
+          </div>
+          <div>
+            <label for="organizationAffiliation">Organization / political party</label>
+            <input
+              type="text"
+              id="organizationAffiliation"
+              placeholder="e.g. Hezbollah, IRGC, Ministry of Defence"
+              autocomplete="off"
+              maxlength="128"
+            />
           </div>
         </div>
 
