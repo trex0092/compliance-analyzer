@@ -41,6 +41,7 @@ import {
   type AsanaProvisionDispatcher,
   type CustomFieldSpec,
 } from '../../src/services/asana/tenantProvisioner';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const ASANA_BASE = 'https://app.asana.com/api/1.0';
 
@@ -88,10 +89,10 @@ function makeAsanaDispatcher(accessToken: string): AsanaProvisionDispatcher {
   };
 
   async function asanaRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const res = await fetch(ASANA_BASE + path, {
+    const res = await fetchWithTimeout(ASANA_BASE + path, {
       ...init,
       headers: { ...headers, ...(init.headers ?? {}) },
-      signal: AbortSignal.timeout(30_000),
+      timeoutMs: 30_000,
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');

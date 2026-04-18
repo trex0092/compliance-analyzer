@@ -34,6 +34,7 @@
 
 import type { Config } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const HORIZON_STORE = 'regulatory-horizon';
 const SEEN_STORE = 'regulatory-horizon-seen';
@@ -136,9 +137,9 @@ interface HorizonItem {
   triggersPolicyDeadline: boolean;
 }
 
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<string> {
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(timeoutMs),
+async function fetchFeedBody(url: string, timeoutMs: number): Promise<string> {
+  const res = await fetchWithTimeout(url, {
+    timeoutMs,
     headers: { 'user-agent': 'compliance-analyzer regulatory-horizon-cron/1.0' },
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -188,7 +189,7 @@ async function sha256(input: string): Promise<string> {
 
 async function processFeed(feed: RegulatoryFeed, seen: Set<string>): Promise<HorizonItem[]> {
   try {
-    const body = await fetchWithTimeout(feed.url, FETCH_TIMEOUT_MS);
+    const body = await fetchFeedBody(feed.url, FETCH_TIMEOUT_MS);
     const items: HorizonItem[] = [];
 
     if (feed.kind === 'rss') {

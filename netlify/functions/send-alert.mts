@@ -10,6 +10,7 @@
 import type { Config, Context } from "@netlify/functions";
 import { checkRateLimit } from "./middleware/rate-limit.mts";
 import { authenticate } from "./middleware/auth.mts";
+import { fetchWithTimeout } from "../../src/utils/fetchWithTimeout";
 
 interface AlertPayload {
   subject: string;
@@ -111,11 +112,11 @@ export default async (req: Request, context: Context) => {
       ].join("\n"),
     };
 
-    const response = await fetch(emailServiceUrl, {
+    const response = await fetchWithTimeout(emailServiceUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(emailBody),
-      signal: AbortSignal.timeout(10000),
+      timeoutMs: 10000,
     });
 
     if (!response.ok) {

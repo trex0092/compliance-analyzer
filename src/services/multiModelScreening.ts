@@ -18,6 +18,7 @@
 import { RISK_THRESHOLDS } from '../domain/constants';
 import type { ScreeningRun } from '../domain/screening';
 import type { SanctionsMatch } from './sanctionsApi';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 
 // ─── Configuration ─────────────────────────────────────────────────────────
 
@@ -142,7 +143,7 @@ async function queryModel(
 ): Promise<ModelOpinion> {
   const startTime = Date.now();
 
-  const response = await fetch(OPENROUTER_BASE_URL, {
+  const response = await fetchWithTimeout(OPENROUTER_BASE_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -160,7 +161,7 @@ async function queryModel(
       max_tokens: 1024,
       response_format: { type: 'json_object' },
     }),
-    signal: AbortSignal.timeout(RACE_TIMEOUT_MS),
+    timeoutMs: RACE_TIMEOUT_MS,
   });
 
   if (!response.ok) {

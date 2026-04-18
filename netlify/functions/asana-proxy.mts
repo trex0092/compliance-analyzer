@@ -30,6 +30,7 @@
 import type { Config, Context } from '@netlify/functions';
 import { authenticate } from './middleware/auth.mts';
 import { checkRateLimit } from './middleware/rate-limit.mts';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const ASANA_BASE_URL = 'https://app.asana.com/api/1.0';
 // Pathname of ASANA_BASE_URL, cached. Used by the normalisation-bypass
@@ -187,11 +188,11 @@ export default async (req: Request, context: Context): Promise<Response> => {
 
   let upstream: Response;
   try {
-    upstream = await fetch(target.toString(), {
+    upstream = await fetchWithTimeout(target.toString(), {
       method,
       headers: upstreamHeaders,
       body: upstreamBody,
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      timeoutMs: FETCH_TIMEOUT_MS,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

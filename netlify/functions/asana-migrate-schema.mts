@@ -29,6 +29,7 @@ import {
   type FieldDelta,
   type FieldType,
 } from '../../src/services/asanaSchemaMigrator';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const AUDIT_STORE = 'asana-schema-migrations';
 const ASANA_BASE_URL = 'https://app.asana.com/api/1.0';
@@ -51,10 +52,10 @@ async function fetchExistingFields(
   token: string
 ): Promise<ExistingField[]> {
   const url = `${ASANA_BASE_URL}/workspaces/${workspaceGid}/custom_fields?opt_fields=name,type,enum_options.name`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'GET',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    timeoutMs: FETCH_TIMEOUT_MS,
   });
   if (!res.ok) {
     throw new Error(`Asana fetch failed: ${res.status} ${res.statusText}`);
@@ -86,10 +87,10 @@ async function fetchExistingFieldsWithGids(
   token: string
 ): Promise<AsanaFieldFull[]> {
   const url = `${ASANA_BASE_URL}/workspaces/${workspaceGid}/custom_fields?opt_fields=name,type,resource_subtype,enum_options.gid,enum_options.name`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'GET',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    timeoutMs: FETCH_TIMEOUT_MS,
   });
   if (!res.ok) {
     throw new Error(`Asana fetch failed: ${res.status} ${res.statusText}`);
@@ -117,7 +118,7 @@ async function createCustomField(
   if (delta.type === 'enum' && delta.missingOptions && delta.missingOptions.length > 0) {
     data.enum_options = delta.missingOptions.map((name) => ({ name }));
   }
-  const res = await fetch(`${ASANA_BASE_URL}/custom_fields`, {
+  const res = await fetchWithTimeout(`${ASANA_BASE_URL}/custom_fields`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -125,7 +126,7 @@ async function createCustomField(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ data }),
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    timeoutMs: FETCH_TIMEOUT_MS,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -147,7 +148,7 @@ async function addEnumOptions(
 ): Promise<number> {
   let added = 0;
   for (const name of optionNames) {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${ASANA_BASE_URL}/custom_fields/${fieldGid}/enum_options`,
       {
         method: 'POST',
@@ -157,7 +158,7 @@ async function addEnumOptions(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ data: { name } }),
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        timeoutMs: FETCH_TIMEOUT_MS,
       }
     );
     if (!res.ok) {

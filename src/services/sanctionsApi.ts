@@ -13,6 +13,7 @@
  */
 
 import { normalize, similarity, FUZZY_MATCH_THRESHOLD } from '../utils/fuzzyMatch';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 
 export interface SanctionsEntry {
   id: string;
@@ -50,7 +51,7 @@ export async function fetchUNSanctionsList(proxyUrl?: string): Promise<Sanctions
   const UN_URL = 'https://scsanctions.un.org/resources/xml/en/consolidated.xml';
   const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(UN_URL)}` : UN_URL;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+  const response = await fetchWithTimeout(url, { timeoutMs: 30_000 });
   if (!response.ok) throw new Error(`UN API returned ${response.status}`);
 
   const xmlText = await response.text();
@@ -182,7 +183,7 @@ export async function fetchOFACSanctionsList(proxyUrl?: string): Promise<Sanctio
     'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML';
   const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(OFAC_URL)}` : OFAC_URL;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+  const response = await fetchWithTimeout(url, { timeoutMs: 30_000 });
   if (!response.ok) throw new Error(`OFAC API returned ${response.status}`);
 
   const xmlText = await response.text();
@@ -243,7 +244,7 @@ export async function fetchEUSanctionsList(proxyUrl?: string): Promise<Sanctions
     'https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw';
   const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(EU_URL)}` : EU_URL;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+  const response = await fetchWithTimeout(url, { timeoutMs: 30_000 });
   if (!response.ok) throw new Error(`EU API returned ${response.status}`);
 
   const xmlText = await response.text();
@@ -327,7 +328,7 @@ export async function fetchUKSanctionsList(proxyUrl?: string): Promise<Sanctions
   const UK_URL = 'https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv';
   const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(UK_URL)}` : UK_URL;
 
-  const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  const res = await fetchWithTimeout(url, { timeoutMs: 30_000 });
   if (!res.ok) throw new Error(`UK OFSI API returned ${res.status}`);
 
   const csv = await res.text();

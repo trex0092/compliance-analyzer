@@ -25,6 +25,7 @@ import { getStore } from "@netlify/blobs";
 import { randomUUID } from "node:crypto";
 import { checkRateLimit } from "./middleware/rate-limit.mts";
 import { authenticate } from "./middleware/auth.mts";
+import { fetchWithTimeout } from "../../src/utils/fetchWithTimeout";
 
 // CORS headers applied to both preflight and actual responses. Single
 // allow-origin per env var so cross-site requests can't forge identity.
@@ -256,7 +257,7 @@ async function publishCachet(event: BrainEvent, decision: RouteDecision): Promis
 
   const status = event.severity === "critical" ? 2 /* Identified */ : 1 /* Investigating */;
   try {
-    const res = await fetch(`${base.replace(/\/+$/, "")}/api/v1/incidents`, {
+    const res = await fetchWithTimeout(`${base.replace(/\/+$/, "")}/api/v1/incidents`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -268,7 +269,7 @@ async function publishCachet(event: BrainEvent, decision: RouteDecision): Promis
         status,
         visible: 1,
       }),
-      signal: AbortSignal.timeout(8000),
+      timeoutMs: 8000,
     });
     if (!res.ok) {
       return { published: false, reason: `cachet_http_${res.status}` };

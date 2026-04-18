@@ -34,6 +34,7 @@ import { checkRateLimit } from './middleware/rate-limit.mts';
 import { authenticate } from './middleware/auth.mts';
 import type { Transaction, TmVerdictRecord } from '../../src/domain/transaction';
 import { runTmBrainAllCustomers, type TmBrainOptions } from '../../src/services/txMonitoringBrain';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':
@@ -278,9 +279,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
       let nextUrl: string | null =
         `https://app.asana.com/api/1.0/projects/${encodeURIComponent(tmProjectGid)}/tasks?opt_fields=name&limit=100`;
       while (nextUrl) {
-        const tasksRes = await fetch(nextUrl, {
+        const tasksRes = await fetchWithTimeout(nextUrl, {
           headers: { Authorization: `Bearer ${asanaToken}`, Accept: 'application/json' },
-          signal: AbortSignal.timeout(20_000),
+          timeoutMs: 20_000,
         });
         if (!tasksRes.ok) throw new Error(`HTTP ${tasksRes.status}`);
         const tasksJson = (await tasksRes.json()) as {
@@ -335,7 +336,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
         : undefined;
 
       try {
-        const createRes = await fetch('https://app.asana.com/api/1.0/tasks', {
+        const createRes = await fetchWithTimeout('https://app.asana.com/api/1.0/tasks', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${asanaToken}`,
@@ -351,7 +352,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
               tags: [],
             },
           }),
-          signal: AbortSignal.timeout(15_000),
+          timeoutMs: 15_000,
         });
         if (!createRes.ok) {
           dispatchErrors++;

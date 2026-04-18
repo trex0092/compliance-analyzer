@@ -44,6 +44,7 @@ import {
   scanForLumpedTasks,
   type ExistingTask,
 } from '../../src/services/asana/entityLumpingLinter';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const ASANA_BASE = 'https://app.asana.com/api/1.0';
 
@@ -84,12 +85,12 @@ async function fetchAllTasks(projectGid: string, token: string): Promise<Existin
     if (offset) params.set('offset', offset);
 
     const url = `${ASANA_BASE}/projects/${encodeURIComponent(projectGid)}/tasks?${params.toString()}`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(25_000),
+      timeoutMs: 25_000,
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');

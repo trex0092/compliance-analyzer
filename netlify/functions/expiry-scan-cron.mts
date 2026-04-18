@@ -38,6 +38,7 @@ import { getStore } from '@netlify/blobs';
 import { checkRateLimit } from './middleware/rate-limit.mts';
 import { authenticate } from './middleware/auth.mts';
 import type { CustomerProfileV2 } from '../../src/domain/customerProfile';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 import { scanExpiries, type ExpiryReport } from '../../src/services/customerExpiryAlerter';
 import {
   buildExpiryEmitReport,
@@ -222,11 +223,11 @@ export default async (req: Request, context: Context): Promise<Response> => {
     // Step 1: list existing sections to resolve section names → GIDs.
     let sectionMap: Map<string, string>;
     try {
-      const sectionsRes = await fetch(
+      const sectionsRes = await fetchWithTimeout(
         `https://app.asana.com/api/1.0/projects/${encodeURIComponent(kycProjectGid)}/sections?opt_fields=gid,name&limit=100`,
         {
           headers: { Authorization: `Bearer ${asanaToken}`, Accept: 'application/json' },
-          signal: AbortSignal.timeout(20_000),
+          timeoutMs: 20_000,
         }
       );
       if (!sectionsRes.ok) throw new Error(`HTTP ${sectionsRes.status}`);
@@ -253,9 +254,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
       let nextUrl: string | null =
         `https://app.asana.com/api/1.0/projects/${encodeURIComponent(kycProjectGid)}/tasks?opt_fields=name&limit=100`;
       while (nextUrl) {
-        const tasksRes = await fetch(nextUrl, {
+        const tasksRes = await fetchWithTimeout(nextUrl, {
           headers: { Authorization: `Bearer ${asanaToken}`, Accept: 'application/json' },
-          signal: AbortSignal.timeout(20_000),
+          timeoutMs: 20_000,
         });
         if (!tasksRes.ok) throw new Error(`HTTP ${tasksRes.status}`);
         const tasksJson = (await tasksRes.json()) as {
@@ -288,7 +289,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
       const dueOn = dueParts ? `${dueParts[3]}-${dueParts[2]}-${dueParts[1]}` : undefined;
 
       try {
-        const createRes = await fetch('https://app.asana.com/api/1.0/tasks', {
+        const createRes = await fetchWithTimeout('https://app.asana.com/api/1.0/tasks', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${asanaToken}`,
@@ -305,7 +306,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
               tags: [],
             },
           }),
-          signal: AbortSignal.timeout(15_000),
+          timeoutMs: 15_000,
         });
         if (!createRes.ok) {
           // HTTP error (400, 401, 429, 500 etc.) — count as dispatch error.

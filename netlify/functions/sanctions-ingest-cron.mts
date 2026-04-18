@@ -40,6 +40,7 @@ import {
   type NormalisedSanction,
   type SanctionsDelta,
 } from '../../src/services/sanctionsIngest';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const SNAPSHOT_STORE = 'sanctions-snapshots';
 const DELTA_STORE = 'sanctions-deltas';
@@ -68,9 +69,9 @@ interface IngestResult {
 const INGEST_USER_AGENT =
   'Mozilla/5.0 (compatible; HawkeyeSterlingComplianceBot/1.0; +https://github.com/trex0092/compliance-analyzer)';
 
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<string> {
-  const response = await fetch(url, {
-    signal: AbortSignal.timeout(timeoutMs),
+async function fetchSourceBody(url: string, timeoutMs: number): Promise<string> {
+  const response = await fetchWithTimeout(url, {
+    timeoutMs,
     headers: {
       'User-Agent': INGEST_USER_AGENT,
       Accept: 'text/csv, application/xml, text/xml, */*',
@@ -163,7 +164,7 @@ async function ingestOne(source: SanctionsSource): Promise<IngestResult> {
   const started = Date.now();
   const url = SANCTIONS_SOURCES[source].url;
   try {
-    const body = await fetchWithTimeout(url, FETCH_TIMEOUT_MS);
+    const body = await fetchSourceBody(url, FETCH_TIMEOUT_MS);
     const entries = parseSource(source, body);
     const previous = await loadPreviousSnapshot(source);
     const delta = computeDelta(previous, entries);
