@@ -452,6 +452,50 @@
     }
   }
 
+  // Pin the MLRO's resolution decision onto a watchlist entry. The
+  // identity fields disambiguate "all the Mohameds" — every future
+  // daily hit is scored against this pinned profile via
+  // src/services/identityMatchScore.ts, not the bare name.
+  //
+  // FATF Rec 10 + Cabinet Res 134/2025 Art.7-10 require positive
+  // identification of the customer. FDL No.10/2025 Art.12 + Art.35
+  // make the pinned identity the target of any freeze order.
+  async function apiResolveWatchlistEntry(id, identity) {
+    saveToken();
+    const token = tokenInput.value.trim();
+    const fmtErr = tokenFormatError(token);
+    if (fmtErr) return { ok: false, error: fmtErr };
+
+    try {
+      const res = await fetch(WATCHLIST_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'resolve', id: id, identity: identity }),
+      });
+      let json = null;
+      try {
+        json = await res.json();
+      } catch (_e) {
+        /* not JSON */
+      }
+      if (!res.ok) {
+        if (res.status === 401)
+          return { ok: false, error: 'Session rejected (401). Sign in again.' };
+        if (res.status === 404) return { ok: false, error: 'Watchlist entry not found.' };
+        if (res.status === 429) return { ok: false, error: 'Rate limited.' };
+        if (res.status === 503)
+          return { ok: false, error: 'Write contention — please retry in a moment.' };
+        return { ok: false, error: (json && json.error) || 'HTTP ' + res.status };
+      }
+      return { ok: true, data: json };
+    } catch (err) {
+      return { ok: false, error: 'Network error: ' + ((err && err.message) || 'unknown') };
+    }
+  }
+
   // ─── UI helpers ──────────────────────────────────────────────────
   function showMessage(el, text, kind) {
     el.innerHTML = '';
@@ -1196,7 +1240,10 @@
       const bold = opts && opts.bold;
       doc.setFont('helvetica', bold ? 'bold' : 'normal');
       doc.setFontSize(fontSize);
-      const rows = doc.splitTextToSize(String(text == null ? '' : text), maxW);
+      const rows = doc.splitTextToSize(
+        String(text === null || text === undefined ? '' : text),
+        maxW
+      );
       for (const row of rows) {
         if (y > doc.internal.pageSize.getHeight() - margin) {
           doc.addPage();
@@ -1399,13 +1446,27 @@
     const anyHits = hitLists.some((l) => Array.isArray(l.hits) && l.hits.length > 0);
     if (anyHits) {
       html.push('<details open><summary>Matched candidates</summary>');
+      // Subject resolution explainer — the MLRO must disambiguate
+      // "all the Mohameds" before daily monitoring can fire alerts.
+      // FATF Rec 10 requires positive identification; Cabinet Res
+      // 134/2025 Art.7-10 requires a unique identifier for CDD.
+      html.push(
+        '<div class="help-text" style="margin:6px 0 4px 0;">' +
+          'Resolution: if a candidate IS this subject, pin the identity so ' +
+          'future daily hits are scored against DoB, nationality, ID, and ' +
+          'aliases — not the bare name.' +
+          '</div>'
+      );
+      const subjId = (data.subject && data.subject.id) || '';
       for (const l of hitLists) {
         if (!Array.isArray(l.hits) || l.hits.length === 0) continue;
         html.push(
           '<div class="help-text" style="margin-top:8px;">' + escapeHTML(l.list) + ':</div>'
         );
-        for (const h of l.hits) {
+        for (let i = 0; i < l.hits.length; i++) {
+          const h = l.hits[i];
           const bd = h.breakdown || {};
+          const formId = 'resolve-form-' + escapeHTML(l.list).replace(/[^a-z0-9]/gi, '-') + '-' + i;
           html.push('<div class="hit-row">');
           html.push(
             '<div class="hit-name">' +
@@ -1421,6 +1482,66 @@
               '</span></div>'
           );
           html.push('<div class="hit-score">' + pct(bd.score) + '</div>');
+          if (subjId) {
+            html.push(
+              '<button type="button" class="btn-resolve-subject btn-small" ' +
+                'data-resolve-target="' +
+                escapeHTML(formId) +
+                '" data-subject-id="' +
+                escapeHTML(subjId) +
+                '" data-list="' +
+                escapeHTML(l.list) +
+                '" data-candidate="' +
+                escapeHTML(h.candidate) +
+                '" title="Pin this candidate as the actual subject">' +
+                'Pin as subject</button>'
+            );
+            html.push(
+              '<button type="button" class="btn-resolve-dismiss btn-small" ' +
+                'data-resolve-target="' +
+                escapeHTML(formId) +
+                '" title="Record that this is NOT the subject (name coincidence)">' +
+                'Not the subject</button>'
+            );
+            html.push(
+              '<div class="resolve-form" id="' +
+                escapeHTML(formId) +
+                '" hidden>' +
+                '<div class="resolve-form-grid">' +
+                '<label>DoB (dd/mm/yyyy)<input type="text" data-field="dob" placeholder="12/03/1982" maxlength="10"></label>' +
+                '<label>Nationality (ISO alpha-2)<input type="text" data-field="nationality" placeholder="AE" maxlength="2"></label>' +
+                '<label>ID type<select data-field="idType">' +
+                '<option value="">—</option>' +
+                '<option value="passport">Passport</option>' +
+                '<option value="emirates_id">Emirates ID</option>' +
+                '<option value="national_id">National ID</option>' +
+                '<option value="other">Other</option>' +
+                '</select></label>' +
+                '<label>ID number<input type="text" data-field="idNumber" maxlength="64"></label>' +
+                '<label>ID issuing country<input type="text" data-field="idIssuingCountry" placeholder="AE" maxlength="2"></label>' +
+                '<label>Gender<select data-field="gender">' +
+                '<option value="">—</option>' +
+                '<option value="M">M</option>' +
+                '<option value="F">F</option>' +
+                '<option value="X">X</option>' +
+                '</select></label>' +
+                '<label class="span2">Aliases (comma-separated)<input type="text" data-field="aliases"></label>' +
+                '<label class="span2">Resolution note<textarea data-field="resolutionNote" rows="2" maxlength="2000"></textarea></label>' +
+                '</div>' +
+                '<div class="resolve-form-actions">' +
+                '<button type="button" class="btn-resolve-save btn-small" data-subject-id="' +
+                escapeHTML(subjId) +
+                '" data-list="' +
+                escapeHTML(l.list) +
+                '" data-candidate="' +
+                escapeHTML(h.candidate) +
+                '">Save resolution</button>' +
+                '<button type="button" class="btn-resolve-cancel btn-small">Cancel</button>' +
+                '<span class="resolve-status muted"></span>' +
+                '</div>' +
+                '</div>'
+            );
+          }
           html.push('</div>');
         }
       }
@@ -1945,6 +2066,148 @@
     }
     refreshWatchlist();
   });
+
+  // ─── Identity resolution delegation on the screening result ───────
+  // Per-hit "Pin as subject" / "Not the subject" / Save / Cancel
+  // buttons. The pinned identity is POSTed to /api/watchlist with
+  // action:"resolve" so daily monitoring (scripts/scheduled-screening.ts)
+  // can score every future hit against the resolved profile via
+  // src/services/identityMatchScore.ts. FATF Rec 10 + Cabinet Res
+  // 134/2025 Art.7-10 require positive CDD identification; without
+  // this pin, every "Mohamed Ahmed" hit stays at 'possible' and never
+  // fires an alert.
+  function readResolutionForm(form) {
+    const get = function (field) {
+      const el = form.querySelector('[data-field="' + field + '"]');
+      return el && typeof el.value === 'string' ? el.value.trim() : '';
+    };
+    const identity = {};
+    const dob = get('dob');
+    if (dob) identity.dob = dob;
+    const nat = get('nationality');
+    if (nat) identity.nationality = nat.toUpperCase();
+    const idType = get('idType');
+    if (idType) identity.idType = idType;
+    const idNumber = get('idNumber');
+    if (idNumber) identity.idNumber = idNumber;
+    const idIssuing = get('idIssuingCountry');
+    if (idIssuing) identity.idIssuingCountry = idIssuing.toUpperCase();
+    const gender = get('gender');
+    if (gender) identity.gender = gender;
+    const aliasesRaw = get('aliases');
+    if (aliasesRaw) {
+      identity.aliases = aliasesRaw
+        .split(',')
+        .map(function (a) {
+          return a.trim();
+        })
+        .filter(function (a) {
+          return a.length > 0;
+        });
+    }
+    const note = get('resolutionNote');
+    if (note) identity.resolutionNote = note;
+    return identity;
+  }
+
+  if (screenResult) {
+    screenResult.addEventListener('click', async function (evt) {
+      const target = evt.target;
+      if (!(target instanceof Element)) return;
+
+      // Open the resolution form for a hit row.
+      const pinBtn = target.closest('.btn-resolve-subject');
+      if (pinBtn) {
+        const formId = pinBtn.getAttribute('data-resolve-target');
+        if (!formId) return;
+        const form = document.getElementById(formId);
+        if (form) form.hidden = !form.hidden;
+        return;
+      }
+
+      // Record "not the subject" — name coincidence, no identity pinned.
+      // This is a UI affordance today (no endpoint change needed) — it
+      // collapses any open form for this row so the reviewer can move
+      // on without muddying the watchlist entry.
+      const dismissBtn = target.closest('.btn-resolve-dismiss');
+      if (dismissBtn) {
+        const formId = dismissBtn.getAttribute('data-resolve-target');
+        if (formId) {
+          const form = document.getElementById(formId);
+          if (form) form.hidden = true;
+        }
+        const parent = dismissBtn.closest('.hit-row');
+        if (parent) {
+          parent.style.opacity = '0.55';
+          const note = document.createElement('span');
+          note.className = 'muted';
+          note.style.fontSize = '11px';
+          note.textContent = ' · dismissed as name coincidence';
+          const scoreEl = parent.querySelector('.hit-score');
+          if (scoreEl && !parent.querySelector('.resolve-dismiss-note')) {
+            note.classList.add('resolve-dismiss-note');
+            scoreEl.appendChild(note);
+          }
+        }
+        return;
+      }
+
+      // Cancel the resolution form.
+      const cancelBtn = target.closest('.btn-resolve-cancel');
+      if (cancelBtn) {
+        const form = cancelBtn.closest('.resolve-form');
+        if (form) form.hidden = true;
+        return;
+      }
+
+      // Save the resolution — POST to /api/watchlist.
+      const saveBtn = target.closest('.btn-resolve-save');
+      if (saveBtn) {
+        const subjectId = saveBtn.getAttribute('data-subject-id');
+        if (!subjectId) return;
+        const form = saveBtn.closest('.resolve-form');
+        if (!form) return;
+        const statusEl = form.querySelector('.resolve-status');
+        const list = saveBtn.getAttribute('data-list') || '';
+        const candidate = saveBtn.getAttribute('data-candidate') || '';
+        const identity = readResolutionForm(form);
+        if (list && candidate) {
+          identity.listEntryRef = { list: list, reference: candidate };
+        }
+        identity.resolvedAtIso = new Date().toISOString();
+
+        saveBtn.setAttribute('disabled', 'disabled');
+        if (statusEl) statusEl.textContent = 'Saving…';
+        const result = await apiResolveWatchlistEntry(subjectId, identity);
+        saveBtn.removeAttribute('disabled');
+        if (!result.ok) {
+          if (statusEl) statusEl.textContent = 'Failed: ' + result.error;
+          return;
+        }
+        if (statusEl) statusEl.textContent = '✓ Pinned as subject';
+        const row = form.closest('.hit-row');
+        if (row) {
+          row.style.borderLeft = '3px solid var(--gold)';
+          const scoreEl = row.querySelector('.hit-score');
+          if (scoreEl && !row.querySelector('.resolve-pinned-note')) {
+            const note = document.createElement('span');
+            note.className = 'muted resolve-pinned-note';
+            note.style.fontSize = '11px';
+            note.textContent = ' · pinned';
+            scoreEl.appendChild(note);
+          }
+        }
+        // Refresh the watchlist panel so the resolved state is visible
+        // alongside other entries.
+        try {
+          refreshWatchlist();
+        } catch (_e) {
+          /* best-effort */
+        }
+        return;
+      }
+    });
+  }
 
   // ─── Auto-load watchlist on boot if a token is already saved ──────
   try {
