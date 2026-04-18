@@ -60,6 +60,13 @@ export interface TransactionInput {
   commodityType?: string;
   daysSinceLastTransaction?: number;
   customerRequestedThresholdInfo?: boolean;
+  /**
+   * Free-text MLRO context attached to the transaction — purpose,
+   * source of funds, anomalies worth flagging to the reviewer.
+   * Not used by the rule engine; rendered into downstream Asana task
+   * bodies and retained for audit trail (FDL No.10/2025 Art.24).
+   */
+  notes?: string;
 }
 
 export interface TMAlert {

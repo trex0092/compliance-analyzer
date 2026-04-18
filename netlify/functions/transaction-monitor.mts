@@ -214,7 +214,8 @@ function validateInput(
 
 async function postCriticalAlertAsana(
   customerName: string,
-  alert: EnhancedTMAlert
+  alert: EnhancedTMAlert,
+  tx: TransactionInput
 ): Promise<{ ok: boolean; gid?: string; error?: string }> {
   const projectId = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
   if (!process.env.ASANA_TOKEN && !process.env.ASANA_ACCESS_TOKEN && !process.env.ASANA_API_TOKEN) {
@@ -227,8 +228,18 @@ async function postCriticalAlertAsana(
     `Generated: ${alert.generatedAt}`,
     `Regulatory basis: ${alert.regulatoryRef}`,
     '',
-    alert.message,
+    `Amount: ${tx.amount} ${tx.currency}`,
+    `Payment: ${tx.paymentMethod ?? 'n/a'}${tx.payerMatchesCustomer ? '' : ' (third-party payer)'}`,
+    `Route: ${tx.originCountry ?? '??'} → ${tx.destinationCountry ?? '??'}`,
   ];
+  if (tx.commodityType) lines.push(`Commodity: ${tx.commodityType}`);
+  if (tx.notes && tx.notes.trim().length > 0) {
+    lines.push('');
+    lines.push('MLRO notes:');
+    lines.push(tx.notes.trim());
+  }
+  lines.push('');
+  lines.push(alert.message);
   if (alert.relatedAlertIds.length > 0) {
     lines.push('');
     lines.push(`Related alerts: ${alert.relatedAlertIds.join(', ')}`);
@@ -295,18 +306,18 @@ export default async (req: Request, context: Context): Promise<Response> => {
   if (input.profile) engine.loadProfile(input.profile);
 
   const perTransaction: Array<{ index: number; alerts: EnhancedTMAlert[] }> = [];
-  const allAlerts: EnhancedTMAlert[] = [];
+  const allAlerts: Array<{ alert: EnhancedTMAlert; tx: TransactionInput }> = [];
   for (let i = 0; i < input.transactions.length; i++) {
     const tx = input.transactions[i];
     const alerts = engine.processTransaction(tx, input.customerId);
     perTransaction.push({ index: i, alerts });
-    allAlerts.push(...alerts);
+    for (const alert of alerts) allAlerts.push({ alert, tx });
   }
 
   const countBySeverity = {
-    medium: allAlerts.filter((a) => a.severity === 'medium').length,
-    high: allAlerts.filter((a) => a.severity === 'high').length,
-    critical: allAlerts.filter((a) => a.severity === 'critical').length,
+    medium: allAlerts.filter((a) => a.alert.severity === 'medium').length,
+    high: allAlerts.filter((a) => a.alert.severity === 'high').length,
+    critical: allAlerts.filter((a) => a.alert.severity === 'critical').length,
   };
 
   // Asana tasks for every high+ anomaly — user directive: "if any
@@ -315,10 +326,10 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const asanaResults: Array<{ alertId: string; ok: boolean; gid?: string; error?: string }> = [];
   if (input.createAsanaOnCritical) {
     const pageable = allAlerts.filter(
-      (a) => a.severity === 'critical' || a.severity === 'high'
+      ({ alert }) => alert.severity === 'critical' || alert.severity === 'high'
     );
-    for (const alert of pageable) {
-      const res = await postCriticalAlertAsana(input.customerName, alert);
+    for (const { alert, tx } of pageable) {
+      const res = await postCriticalAlertAsana(input.customerName, alert, tx);
       asanaResults.push({ alertId: alert.alertId, ...res });
     }
   }
@@ -335,6 +346,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
       transactionsProcessed: input.transactions.length,
       alertCount: allAlerts.length,
       countBySeverity,
+      asanaConfigured: Boolean(
+        process.env.ASANA_TOKEN || process.env.ASANA_ACCESS_TOKEN || process.env.ASANA_API_TOKEN
+      ),
     },
     perTransaction,
     asana: asanaResults,

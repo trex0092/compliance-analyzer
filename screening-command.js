@@ -1880,7 +1880,7 @@
       transactionsLast30Days: Number(tmTxLast30Input.value) || 0,
       cumulativeAmountLast30Days: Number(tmCumLast30Input.value) || 0,
       paymentMethod: tmPaymentMethodSelect.value,
-      commodity: tmCommodityInput.value.trim() || undefined,
+      commodityType: tmCommodityInput.value.trim() || undefined,
       notes: tmNotesInput.value.trim() || undefined,
     };
 
