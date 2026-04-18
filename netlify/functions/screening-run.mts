@@ -5,13 +5,30 @@
  *   body = {
  *     subjectName: string,
  *     subjectId?: string,
+ *     entityType: "individual" | "legal_entity",
+ *     dob?: string,                 // dd/mm/yyyy (date of birth or registration)
+ *     country?: string,             // free text (e.g. "UAE", "Iran", "Russia")
+ *     idNumber?: string,            // passport / Emirates ID / trade licence
+ *     eventType: "new_customer_onboarding" | "periodic_review"
+ *              | "transaction_trigger" | "name_change"
+ *              | "adverse_media_hit" | "pep_change" | "ad_hoc",
  *     riskTier?: "high" | "medium" | "low",
  *     jurisdiction?: string,
  *     notes?: string,
- *     enrollInWatchlist?: boolean,   // default true
- *     runAdverseMedia?: boolean,     // default true
- *     createAsanaTask?: boolean,     // default true on confirmed/potential
+ *     selectedLists?: string[],     // optional opt-in for enhanced lists
+ *     enrollInWatchlist?: boolean,  // default true
+ *     runAdverseMedia?: boolean,    // default true
+ *     createAsanaTask?: boolean,    // default true on match / anomaly
  *   }
+ *
+ * List-selection rules (Cabinet Decision 74/2020 + EOCN guidance):
+ *   - UAE_EOCN and UN are LEGALLY MANDATORY — always run, cannot be
+ *     opted out.
+ *   - OFAC, EU, UK_OFSI are "Enhanced Controls" — default on, caller
+ *     may opt out by setting selectedLists.
+ *   - INTERPOL Red Notices — placeholder entry (integration pending);
+ *     selecting it surfaces a manual-verification notice in the
+ *     per-list result.
  *
  * Pipeline (all in-process, one RTT for the client):
  *   1. Multi-modal name matching across six sanctions lists in parallel
@@ -105,15 +122,77 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 // Input validation
 // ---------------------------------------------------------------------------
 
+export type EntityType = 'individual' | 'legal_entity';
+export type ScreeningEventType =
+  | 'new_customer_onboarding'
+  | 'periodic_review'
+  | 'transaction_trigger'
+  | 'name_change'
+  | 'adverse_media_hit'
+  | 'pep_change'
+  | 'ad_hoc';
+
+const ENTITY_TYPES: readonly EntityType[] = ['individual', 'legal_entity'] as const;
+const EVENT_TYPES: readonly ScreeningEventType[] = [
+  'new_customer_onboarding',
+  'periodic_review',
+  'transaction_trigger',
+  'name_change',
+  'adverse_media_hit',
+  'pep_change',
+  'ad_hoc',
+] as const;
+
+/**
+ * Lists the MLRO can opt into. UAE_EOCN and UN are legally mandatory
+ * (Cabinet Decision 74/2020) and are always screened regardless of
+ * this input. INTERPOL is a placeholder — integration pending.
+ */
+export type SelectableList = 'OFAC' | 'EU' | 'UK_OFSI' | 'INTERPOL';
+const SELECTABLE_LISTS: readonly SelectableList[] = [
+  'OFAC',
+  'EU',
+  'UK_OFSI',
+  'INTERPOL',
+] as const;
+
 export interface ScreeningRunInput {
   subjectName: string;
   subjectId?: string;
+  entityType: EntityType;
+  dob?: string;
+  country?: string;
+  idNumber?: string;
+  eventType: ScreeningEventType;
   riskTier?: RiskTier;
   jurisdiction?: string;
   notes?: string;
+  selectedLists?: SelectableList[];
   enrollInWatchlist?: boolean;
   runAdverseMedia?: boolean;
   createAsanaTask?: boolean;
+}
+
+/**
+ * Accepts dd/mm/yyyy (preferred, UAE convention) or ISO-ish
+ * yyyy-mm-dd. Returns null if it cannot be parsed. We do not coerce
+ * — bad formats are rejected so the MLRO sees the error immediately.
+ */
+function validateUaeDate(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const ddmmyyyy = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+  if (ddmmyyyy) {
+    const [, dd, mm, yyyy] = ddmmyyyy;
+    const d = new Date(`${yyyy}-${mm}-${dd}T00:00:00Z`);
+    if (!Number.isNaN(d.getTime())) return trimmed;
+  }
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (iso) {
+    const [, yyyy, mm, dd] = iso;
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  return null;
 }
 
 function validateInput(
@@ -130,6 +209,35 @@ function validateInput(
   if (o.subjectId !== undefined && (typeof o.subjectId !== 'string' || o.subjectId.length > 128)) {
     return { ok: false, error: 'subjectId must be a string up to 128 chars' };
   }
+  if (!ENTITY_TYPES.includes(o.entityType as EntityType)) {
+    return { ok: false, error: 'entityType must be "individual" | "legal_entity"' };
+  }
+  if (!EVENT_TYPES.includes(o.eventType as ScreeningEventType)) {
+    return {
+      ok: false,
+      error:
+        'eventType must be one of: ' +
+        EVENT_TYPES.join(', ') +
+        ' (see Cabinet Res 134/2025 Art.19 periodic-review trigger taxonomy)',
+    };
+  }
+  let dob: string | undefined;
+  if (o.dob !== undefined) {
+    if (typeof o.dob !== 'string' || o.dob.length > 20) {
+      return { ok: false, error: 'dob must be a string up to 20 chars (dd/mm/yyyy preferred)' };
+    }
+    if (o.dob.trim().length > 0) {
+      const parsed = validateUaeDate(o.dob);
+      if (!parsed) return { ok: false, error: 'dob must be dd/mm/yyyy or yyyy-mm-dd' };
+      dob = parsed;
+    }
+  }
+  if (o.country !== undefined && (typeof o.country !== 'string' || o.country.length > 64)) {
+    return { ok: false, error: 'country must be a string up to 64 chars' };
+  }
+  if (o.idNumber !== undefined && (typeof o.idNumber !== 'string' || o.idNumber.length > 64)) {
+    return { ok: false, error: 'idNumber must be a string up to 64 chars' };
+  }
   if (o.riskTier !== undefined && !['high', 'medium', 'low'].includes(o.riskTier as string)) {
     return { ok: false, error: 'riskTier must be "high" | "medium" | "low"' };
   }
@@ -142,14 +250,36 @@ function validateInput(
   if (o.notes !== undefined && (typeof o.notes !== 'string' || o.notes.length > 2000)) {
     return { ok: false, error: 'notes must be a string up to 2000 chars' };
   }
+  let selectedLists: SelectableList[] | undefined;
+  if (o.selectedLists !== undefined) {
+    if (!Array.isArray(o.selectedLists)) {
+      return { ok: false, error: 'selectedLists must be an array of list codes' };
+    }
+    const invalid = (o.selectedLists as unknown[]).filter(
+      (x) => typeof x !== 'string' || !SELECTABLE_LISTS.includes(x as SelectableList)
+    );
+    if (invalid.length > 0) {
+      return {
+        ok: false,
+        error: 'selectedLists contains invalid codes; allowed: ' + SELECTABLE_LISTS.join(', '),
+      };
+    }
+    selectedLists = Array.from(new Set(o.selectedLists as SelectableList[]));
+  }
   return {
     ok: true,
     input: {
       subjectName: o.subjectName.trim(),
       subjectId: typeof o.subjectId === 'string' ? o.subjectId.trim() : undefined,
+      entityType: o.entityType as EntityType,
+      dob,
+      country: typeof o.country === 'string' ? o.country.trim() : undefined,
+      idNumber: typeof o.idNumber === 'string' ? o.idNumber.trim() : undefined,
+      eventType: o.eventType as ScreeningEventType,
       riskTier: o.riskTier as RiskTier | undefined,
       jurisdiction: typeof o.jurisdiction === 'string' ? o.jurisdiction.trim() : undefined,
       notes: typeof o.notes === 'string' ? o.notes.trim() : undefined,
+      selectedLists,
       enrollInWatchlist: o.enrollInWatchlist !== false,
       runAdverseMedia: o.runAdverseMedia !== false,
       createAsanaTask: o.createAsanaTask !== false,
@@ -222,15 +352,47 @@ export interface PerListResult {
   error?: string;
 }
 
+/**
+ * Names of the lists the caller is permitted to opt OUT of. UAE_EOCN
+ * and UN never appear here because they are legally mandatory under
+ * Cabinet Decision 74/2020.
+ */
+const MANDATORY_LISTS: ReadonlySet<string> = new Set(['UAE_EOCN', 'UN']);
+
 function screenAgainstAllLists(
   subjectName: string,
-  snapshot: ListSnapshot
+  snapshot: ListSnapshot,
+  selectedLists?: SelectableList[]
 ): {
   perList: PerListResult[];
   overallTopScore: number;
   overallTopClassification: MultiModalClassification;
 } {
-  const perList: PerListResult[] = snapshot.lists.map((listSnap) => {
+  // When selectedLists is omitted, enhanced lists default to on (back-compat
+  // with the v1 behaviour). When present, only the named enhanced lists
+  // run; mandatory lists ALWAYS run regardless.
+  const runEnhanced = (name: string): boolean => {
+    if (MANDATORY_LISTS.has(name)) return true;
+    if (!selectedLists) return true;
+    return (selectedLists as string[]).includes(name);
+  };
+
+  const perList: PerListResult[] = [];
+
+  for (const listSnap of snapshot.lists) {
+    if (!runEnhanced(listSnap.name)) {
+      perList.push({
+        list: listSnap.name,
+        candidatesChecked: 0,
+        hitCount: 0,
+        topScore: 0,
+        topClassification: 'none',
+        hits: [],
+        error: 'opted out by MLRO (enhanced control)',
+      });
+      continue;
+    }
+
     const candidates: string[] = [];
     for (const e of listSnap.entries) {
       candidates.push(e.name);
@@ -242,7 +404,7 @@ function screenAgainstAllLists(
       threshold: 0.7,
       maxHits: 10,
     });
-    return {
+    perList.push({
       list: listSnap.name,
       candidatesChecked: candidates.length,
       hitCount: resp.hitCount,
@@ -250,8 +412,26 @@ function screenAgainstAllLists(
       topClassification: resp.topClassification,
       hits: [...resp.hits],
       error: listSnap.error,
-    };
-  });
+    });
+  }
+
+  // Interpol Red Notices — placeholder. We expose the list in the
+  // per-list output with an actionable error so MLROs know they must
+  // manually check interpol.int/wanted until we finish the integration.
+  const interpolSelected = !selectedLists || (selectedLists as string[]).includes('INTERPOL');
+  if (interpolSelected) {
+    perList.push({
+      list: 'INTERPOL',
+      candidatesChecked: 0,
+      hitCount: 0,
+      topScore: 0,
+      topClassification: 'none',
+      hits: [],
+      error:
+        'Integration pending — manual verification required via www.interpol.int/wanted (EOCN guidance)',
+    });
+  }
+
   let overallTopScore = 0;
   let overallTopClassification: MultiModalClassification = 'none';
   for (const r of perList) {
@@ -357,6 +537,8 @@ async function postAsanaTask(params: {
   adverseMediaCount: number;
   jurisdiction?: string;
   notes?: string;
+  anomalies?: string[];
+  eventType?: ScreeningEventType;
 }): Promise<{ ok: boolean; gid?: string; error?: string }> {
   const projectId = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
   if (!process.env.ASANA_TOKEN && !process.env.ASANA_ACCESS_TOKEN && !process.env.ASANA_API_TOKEN) {
@@ -366,6 +548,7 @@ async function postAsanaTask(params: {
   const lines: string[] = [];
   lines.push(`Subject: ${params.subjectName}`);
   lines.push(`Subject ID: ${params.subjectId}`);
+  if (params.eventType) lines.push(`Event type: ${params.eventType}`);
   lines.push(`Classification: ${params.classification.toUpperCase()}`);
   lines.push(`Top match score: ${(params.topScore * 100).toFixed(1)}%`);
   if (params.jurisdiction) lines.push(`Jurisdiction: ${params.jurisdiction}`);
@@ -373,11 +556,18 @@ async function postAsanaTask(params: {
   lines.push('Per-list results:');
   for (const l of params.perList) {
     lines.push(
-      `  - ${l.list}: ${l.hitCount} hit(s), top ${(l.topScore * 100).toFixed(1)}% (${l.topClassification})`
+      `  - ${l.list}: ${l.hitCount} hit(s), top ${(l.topScore * 100).toFixed(1)}% (${l.topClassification})${
+        l.error ? ` — ${l.error}` : ''
+      }`
     );
   }
   lines.push('');
   lines.push(`Adverse-media hits: ${params.adverseMediaCount}`);
+  if (params.anomalies && params.anomalies.length > 0) {
+    lines.push('');
+    lines.push('ANOMALIES DETECTED — investigate immediately:');
+    for (const a of params.anomalies) lines.push(`  - ${a}`);
+  }
   if (params.notes) {
     lines.push('');
     lines.push(`Notes: ${params.notes}`);
@@ -391,18 +581,26 @@ async function postAsanaTask(params: {
   lines.push('Do NOT notify the subject — FDL Art.29 no tipping off.');
 
   const severityTag =
-    params.classification === 'confirmed'
-      ? '[CONFIRMED MATCH]'
-      : params.classification === 'potential'
-        ? '[POTENTIAL MATCH]'
-        : '[WEAK MATCH]';
+    params.anomalies && params.anomalies.length > 0 && params.classification === 'none'
+      ? '[ANOMALY]'
+      : params.classification === 'confirmed'
+        ? '[CONFIRMED MATCH]'
+        : params.classification === 'potential'
+          ? '[POTENTIAL MATCH]'
+          : params.classification === 'weak'
+            ? '[WEAK MATCH]'
+            : '[ADVERSE MEDIA]';
   const name = `${severityTag} Screening: ${params.subjectName}`;
+
+  const tags = ['screening-command', params.classification];
+  if (params.anomalies && params.anomalies.length > 0) tags.push('anomaly');
+  if (params.eventType) tags.push(`event-${params.eventType}`);
 
   const result = await createAsanaTask({
     name,
     notes: lines.join('\n'),
     projects: [projectId],
-    tags: ['screening-command', params.classification, `list-${params.perList[0]?.list ?? 'NA'}`],
+    tags,
   });
   return result;
 }
@@ -463,10 +661,21 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const snapshot = await loadAllLists();
   const { perList, overallTopScore, overallTopClassification } = screenAgainstAllLists(
     input.subjectName,
-    snapshot
+    snapshot,
+    input.selectedLists
   );
   const totalCandidates = perList.reduce((acc, l) => acc + l.candidatesChecked, 0);
   const listErrors = perList.filter((l) => l.error).map((l) => ({ list: l.list, error: l.error }));
+  // Distinguish "integration / fetch failure on a mandatory list" —
+  // a real anomaly that the MLRO needs paged on — from the benign
+  // "opted out by MLRO" or the expected Interpol-manual-check notice.
+  const anomalousListErrors = perList.filter(
+    (l) =>
+      l.error &&
+      l.list !== 'INTERPOL' &&
+      l.error !== 'opted out by MLRO (enhanced control)' &&
+      !/^Integration pending/i.test(l.error)
+  );
 
   // ─── 2. Adverse media (optional, provider-dependent) ──────────────────
   let adverseMediaHits: number = 0;
@@ -511,7 +720,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
     enrollment = await enrollIntoWatchlist(subjectId, input.subjectName, riskTier, metadata);
   }
 
-  // ─── 5. Asana task (confirmed / potential / weak match) ───────────────
+  // ─── 5. Asana task — any match, any adverse-media hit, or any anomaly
+  // (mandatory-list fetch failure). "If any anomaly or event → notify
+  // Asana" — see Cabinet Res 134/2025 Art.19 periodic internal review.
   let asana: { ok: boolean; gid?: string; error?: string; skipped?: boolean } = {
     ok: false,
     skipped: true,
@@ -521,7 +732,8 @@ export default async (req: Request, context: Context): Promise<Response> => {
     (overallTopClassification === 'confirmed' ||
       overallTopClassification === 'potential' ||
       overallTopClassification === 'weak' ||
-      adverseMediaHits > 0);
+      adverseMediaHits > 0 ||
+      anomalousListErrors.length > 0);
   if (shouldCreateAsana) {
     const res = await postAsanaTask({
       subjectName: input.subjectName,
@@ -532,6 +744,8 @@ export default async (req: Request, context: Context): Promise<Response> => {
       adverseMediaCount: adverseMediaHits,
       jurisdiction: input.jurisdiction,
       notes: input.notes,
+      anomalies: anomalousListErrors.map((l) => `${l.list}: ${l.error}`),
+      eventType: input.eventType,
     });
     asana = res;
   }
@@ -542,9 +756,15 @@ export default async (req: Request, context: Context): Promise<Response> => {
     subject: {
       id: subjectId,
       name: input.subjectName,
+      entityType: input.entityType,
+      dob: input.dob,
+      country: input.country,
+      idNumber: input.idNumber,
+      eventType: input.eventType,
       riskTier,
       jurisdiction: input.jurisdiction,
     },
+    anomalies: anomalousListErrors.map((l) => ({ list: l.list, error: l.error })),
     sanctions: {
       totalCandidatesChecked: totalCandidates,
       listsChecked: perList.map((l) => l.list),

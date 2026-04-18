@@ -309,12 +309,15 @@ export default async (req: Request, context: Context): Promise<Response> => {
     critical: allAlerts.filter((a) => a.severity === 'critical').length,
   };
 
-  // Asana tasks for critical alerts only — mediums and highs flow via
-  // the normal compliance dashboard and do not raise a paging task.
+  // Asana tasks for every high+ anomaly — user directive: "if any
+  // anomaly or event I need to notification to Asana". Highs page
+  // the MLRO; criticals page the CO; mediums flow via dashboard.
   const asanaResults: Array<{ alertId: string; ok: boolean; gid?: string; error?: string }> = [];
   if (input.createAsanaOnCritical) {
-    const critical = allAlerts.filter((a) => a.severity === 'critical');
-    for (const alert of critical) {
+    const pageable = allAlerts.filter(
+      (a) => a.severity === 'critical' || a.severity === 'high'
+    );
+    for (const alert of pageable) {
       const res = await postCriticalAlertAsana(input.customerName, alert);
       asanaResults.push({ alertId: alert.alertId, ...res });
     }

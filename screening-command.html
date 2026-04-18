@@ -6,6 +6,12 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <title>Screening Command — Hawkeye Sterling</title>
     <link rel="icon" type="image/svg+xml" href="assets/logos/hawkeye-icon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Montserrat:wght@200;300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+    />
     <style>
       :root {
         --gold: #c9a84c;
@@ -34,7 +40,8 @@
       body {
         background: var(--bg);
         color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-weight: 300;
         max-width: 1100px;
         margin: 0 auto;
         padding: 20px 16px 60px;
@@ -54,9 +61,11 @@
       }
       h1 {
         color: var(--gold);
-        font-size: 24px;
+        font-family: 'Cinzel', serif;
+        font-size: 26px;
         font-weight: 600;
-        letter-spacing: 0.5px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
       }
       h1 .badge {
         display: inline-block;
@@ -72,8 +81,11 @@
       }
       h2 {
         color: var(--gold);
-        font-size: 16px;
+        font-family: 'Cinzel', serif;
+        font-size: 15px;
         font-weight: 500;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
         margin-bottom: 6px;
         display: flex;
         align-items: center;
@@ -473,6 +485,178 @@
         margin-top: 6px;
         line-height: 1.5;
       }
+      /* List selector panels (mandatory vs enhanced) */
+      .list-tier {
+        border-left: 3px solid var(--gold);
+      }
+      .list-tier.enhanced {
+        border-left-color: var(--blue);
+      }
+      .list-tier h2 .tier-badge {
+        font-size: 9px;
+        padding: 2px 5px;
+        border-radius: 2px;
+        letter-spacing: 1px;
+        background: rgba(201, 168, 76, 0.2);
+        color: var(--gold);
+      }
+      .list-tier.enhanced h2 .tier-badge {
+        background: rgba(74, 144, 226, 0.2);
+        color: var(--blue);
+      }
+      .list-check {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 8px 0;
+        border-top: 1px solid var(--border);
+        cursor: pointer;
+      }
+      .list-check:first-of-type {
+        border-top: none;
+      }
+      .list-check input[type='checkbox'] {
+        margin-top: 2px;
+        accent-color: var(--gold);
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+      .list-tier.enhanced .list-check input[type='checkbox'] {
+        accent-color: var(--blue);
+      }
+      .list-check.locked {
+        cursor: not-allowed;
+        opacity: 0.95;
+      }
+      .list-check.disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .list-check .list-label {
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .list-check .list-sub {
+        display: block;
+        font-size: 10px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .list-footnote {
+        color: var(--muted);
+        font-size: 10px;
+        margin-top: 10px;
+        line-height: 1.5;
+        padding-top: 8px;
+        border-top: 1px dashed var(--border);
+      }
+      /* Disposition section (hidden until a screening result is rendered) */
+      .disposition {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px dashed var(--border-strong);
+        display: none;
+      }
+      .disposition.active {
+        display: block;
+      }
+      .disposition h3 {
+        color: var(--gold);
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .outcome-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 6px;
+      }
+      @media (min-width: 600px) {
+        .outcome-grid {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+      .outcome-btn {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 10px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        text-align: center;
+        line-height: 1.2;
+      }
+      .outcome-btn .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .outcome-btn[data-outcome='negative_no_match'] .dot {
+        background: var(--green);
+      }
+      .outcome-btn[data-outcome='false_positive'] .dot {
+        background: var(--muted);
+      }
+      .outcome-btn[data-outcome='partial_match'] .dot {
+        background: var(--amber);
+      }
+      .outcome-btn[data-outcome='confirmed_match'] .dot {
+        background: var(--red);
+      }
+      .outcome-btn.selected[data-outcome='negative_no_match'] {
+        border-color: var(--green);
+        background: rgba(61, 168, 118, 0.15);
+      }
+      .outcome-btn.selected[data-outcome='false_positive'] {
+        border-color: var(--muted);
+        background: rgba(245, 240, 232, 0.06);
+      }
+      .outcome-btn.selected[data-outcome='partial_match'] {
+        border-color: var(--amber);
+        background: rgba(232, 160, 48, 0.15);
+      }
+      .outcome-btn.selected[data-outcome='confirmed_match'] {
+        border-color: var(--red);
+        background: rgba(217, 79, 79, 0.15);
+      }
+      .action-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      @media (min-width: 560px) {
+        .action-row {
+          grid-template-columns: 2fr 2fr 1fr;
+        }
+      }
+      button.btn-save {
+        background: var(--gold);
+        color: var(--bg);
+      }
+      button.btn-rerun {
+        background: rgba(74, 144, 226, 0.15);
+        color: var(--blue);
+        border: 1px solid var(--blue);
+      }
+      button.btn-cancel {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
     </style>
   </head>
   <body>
@@ -506,29 +690,159 @@
       >
     </div>
 
+    <!-- List selector ────────────────────────────────────────────── -->
+    <div class="grid grid-2" style="margin-top: 14px">
+      <div class="card list-tier mandatory">
+        <h2>Mandatory UAE Lists <span class="tier-badge">Required</span></h2>
+        <label class="list-check locked">
+          <input
+            type="checkbox"
+            data-list="UAE_EOCN"
+            data-tier="mandatory"
+            checked
+            disabled
+            aria-label="UAE Local Terrorist List (EOCN) — mandatory"
+          />
+          <span class="list-label"
+            >UAE Local Terrorist List — EOCN / Executive Office
+            <span class="list-sub">Executive Office for Control &amp; Non-Proliferation</span>
+          </span>
+        </label>
+        <label class="list-check locked">
+          <input
+            type="checkbox"
+            data-list="UN"
+            data-tier="mandatory"
+            checked
+            disabled
+            aria-label="UNSC Consolidated Sanctions List — mandatory"
+          />
+          <span class="list-label"
+            >UNSC Consolidated Sanctions List — UN Security Council
+            <span class="list-sub">Security Council resolutions + 1267/1988/1989/2253 sanctions</span>
+          </span>
+        </label>
+        <p class="list-footnote">
+          <strong>Cabinet Decision No.(74)/2020.</strong> These two lists are legally mandatory for
+          all UAE reporting entities (DPMS, DNFBP, FI). Failure to screen against either list
+          constitutes a regulatory offence under FDL No.10/2025 Art.35 and is subject to
+          administrative penalty under Cabinet Res 71/2024 (AED 10K–100M range).
+        </p>
+      </div>
+      <div class="card list-tier enhanced">
+        <h2>Enhanced Controls <span class="tier-badge">Not Legally Mandatory</span></h2>
+        <label class="list-check">
+          <input type="checkbox" data-list="OFAC" data-tier="enhanced" checked />
+          <span class="list-label"
+            >OFAC SDN — US unilateral sanctions
+            <span class="list-sub">US Treasury OFAC Specially Designated Nationals + Consolidated</span>
+          </span>
+        </label>
+        <label class="list-check">
+          <input type="checkbox" data-list="EU" data-tier="enhanced" checked />
+          <span class="list-label"
+            >EU Consolidated Sanctions
+            <span class="list-sub">European Union consolidated financial sanctions list (CFSP)</span>
+          </span>
+        </label>
+        <label class="list-check">
+          <input type="checkbox" data-list="UK_OFSI" data-tier="enhanced" checked />
+          <span class="list-label"
+            >UK OFSI Consolidated
+            <span class="list-sub">Office of Financial Sanctions Implementation (HMT)</span>
+          </span>
+        </label>
+        <label class="list-check disabled">
+          <input type="checkbox" data-list="INTERPOL" data-tier="enhanced" disabled />
+          <span class="list-label"
+            >Interpol Red Notices
+            <span class="list-sub">Integration pending — manual check at interpol.int/wanted</span>
+          </span>
+        </label>
+        <p class="list-footnote">
+          <strong>EOCN Guidance.</strong> For non-UAE unilateral / multilateral lists, consult your
+          supervisory authority for appropriate course of action. Opting out is permitted; every
+          opt-out is logged with the screening event (FDL Art.24 — 10-year retention).
+        </p>
+      </div>
+    </div>
+
     <div class="grid grid-2" style="margin-top: 14px">
       <!-- Screen subject ────────────────────────────────────────────── -->
       <div class="card">
         <h2>Screen a Subject <span class="tag">Sanctions + PEP + Adverse Media</span></h2>
         <p class="help-text">
           Runs multi-modal fuzzy matching (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone +
-          token-set) against every candidate across six lists, searches adverse media, and computes
-          an explainable risk score. Regulatory basis: FDL Art.12-14, 20-21, 26-27, 29; Cabinet Res
+          token-set) against every selected list, searches adverse media, and computes an
+          explainable risk score. Regulatory basis: FDL Art.12-14, 20-21, 24, 26-27, 29; Cabinet Res
           134/2025 Art.7-10, 14, 19; Cabinet Res 74/2020 Art.4-7.
         </p>
-        <label for="subjectName">Full name or entity *</label>
+
+        <label for="subjectName">Name screened *</label>
         <input
           type="text"
           id="subjectName"
-          placeholder="e.g. Mohammed Al Rashid"
+          placeholder="Full legal name of individual or entity"
           autocomplete="off"
         />
 
         <div class="row-2">
           <div>
-            <label for="subjectId">Subject ID (optional)</label>
+            <label for="entityType">Entity type *</label>
+            <select id="entityType">
+              <option value="individual" selected>Individual</option>
+              <option value="legal_entity">Legal entity</option>
+            </select>
+          </div>
+          <div>
+            <label for="dob">Date of birth / registration</label>
+            <input type="text" id="dob" placeholder="dd/mm/yyyy" autocomplete="off" maxlength="10" />
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
+            <label for="eventType">Screening event type *</label>
+            <select id="eventType">
+              <option value="new_customer_onboarding" selected>New customer onboarding</option>
+              <option value="periodic_review">Periodic review</option>
+              <option value="transaction_trigger">Transaction trigger</option>
+              <option value="name_change">Name change</option>
+              <option value="adverse_media_hit">Adverse media hit</option>
+              <option value="pep_change">PEP status change</option>
+              <option value="ad_hoc">Ad hoc</option>
+            </select>
+          </div>
+          <div>
+            <label for="country">Country</label>
+            <input
+              type="text"
+              id="country"
+              placeholder="e.g. UAE, Iran, Russia"
+              autocomplete="off"
+              maxlength="64"
+            />
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
+            <label for="idNumber">ID / register no.</label>
+            <input
+              type="text"
+              id="idNumber"
+              placeholder="Passport, EID, Trade Licence"
+              autocomplete="off"
+              maxlength="64"
+            />
+          </div>
+          <div>
+            <label for="subjectId">Subject ID (system)</label>
             <input type="text" id="subjectId" placeholder="auto if blank" autocomplete="off" />
           </div>
+        </div>
+
+        <div class="row-2">
           <div>
             <label for="riskTier">Risk tier</label>
             <select id="riskTier">
@@ -537,9 +851,6 @@
               <option value="low">Low risk</option>
             </select>
           </div>
-        </div>
-
-        <div class="row-2">
           <div>
             <label for="jurisdiction">Jurisdiction (ISO-2)</label>
             <input
@@ -550,6 +861,9 @@
               maxlength="4"
             />
           </div>
+        </div>
+
+        <div class="row-2">
           <div>
             <label for="enrollInWatchlist">Enroll in daily monitoring</label>
             <select id="enrollInWatchlist">
@@ -557,14 +871,82 @@
               <option value="false">No</option>
             </select>
           </div>
+          <div>
+            <label for="notes">Notes</label>
+            <input type="text" id="notes" placeholder="Context for the MLRO" autocomplete="off" />
+          </div>
         </div>
-
-        <label for="notes">Notes (optional)</label>
-        <textarea id="notes" placeholder="Context for the MLRO"></textarea>
 
         <button id="screenBtn" type="button">Run Screening</button>
         <div id="screenMsg"></div>
         <div id="screenResult" style="margin-top: 14px"></div>
+
+        <!-- Disposition / MLRO attestation ─────────────────────────── -->
+        <div id="disposition" class="disposition">
+          <h3>MLRO Disposition &mdash; Attestation Required</h3>
+          <p class="help-text">
+            Every screening event must be closed out with a documented disposition. This record is
+            written to the screening-events blob store (10-year retention per FDL Art.24) and an
+            Asana task is created regardless of outcome so MoE audit can confirm the reviewer
+            actually looked.
+          </p>
+
+          <div class="row-2">
+            <div>
+              <label for="screeningDate">Screening date *</label>
+              <input
+                type="text"
+                id="screeningDate"
+                placeholder="dd/mm/yyyy"
+                autocomplete="off"
+                maxlength="10"
+              />
+            </div>
+            <div>
+              <label for="reviewedBy">Reviewed by *</label>
+              <input
+                type="text"
+                id="reviewedBy"
+                placeholder="Compliance Officer / MLRO name"
+                autocomplete="off"
+                maxlength="128"
+              />
+            </div>
+          </div>
+
+          <label>Screening outcome *</label>
+          <div class="outcome-grid" role="radiogroup" aria-label="Screening outcome">
+            <button type="button" class="outcome-btn" data-outcome="negative_no_match">
+              <span class="dot"></span>Negative &mdash; No match
+            </button>
+            <button type="button" class="outcome-btn" data-outcome="false_positive">
+              <span class="dot"></span>False positive
+            </button>
+            <button type="button" class="outcome-btn" data-outcome="partial_match">
+              <span class="dot"></span>Partial match
+            </button>
+            <button type="button" class="outcome-btn" data-outcome="confirmed_match">
+              <span class="dot"></span>Confirmed match
+            </button>
+          </div>
+
+          <label for="rationale" style="margin-top: 12px">Disposition rationale / notes *</label>
+          <textarea
+            id="rationale"
+            placeholder="Document the full basis for your screening decision. For false positives: state exactly how you differentiated. For confirmed/partial matches: describe the match and actions taken."
+            minlength="20"
+          ></textarea>
+          <span class="help-text"
+            >Minimum 20 characters. This text is the audit record seen by MoE / LBMA inspectors.</span
+          >
+
+          <div class="action-row">
+            <button id="saveBtn" class="btn-save" type="button">Save Screening Event</button>
+            <button id="rerunBtn" class="btn-rerun" type="button">Run Screening</button>
+            <button id="cancelBtn" class="btn-cancel" type="button">Cancel</button>
+          </div>
+          <div id="saveMsg" style="margin-top: 8px"></div>
+        </div>
       </div>
 
       <!-- Transaction monitor ────────────────────────────────────────────── -->
