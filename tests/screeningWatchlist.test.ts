@@ -14,12 +14,14 @@ import {
   getEntry,
   listAllEntries,
   listDueSubjects,
+  setResolvedIdentity,
   watchlistSize,
   fingerprintHit,
   updateAfterScreening,
   serialiseWatchlist,
   deserialiseWatchlist,
   type AddToWatchlistInput,
+  type ResolvedIdentity,
 } from '@/services/screeningWatchlist';
 import type { AdverseMediaHit } from '@/services/adverseMediaSearch';
 
@@ -36,7 +38,11 @@ const mkHit = (id: string, overrides: Partial<AdverseMediaHit> = {}): AdverseMed
   ...overrides,
 });
 
-const input = (id: string, name: string, extra: Partial<AddToWatchlistInput> = {}): AddToWatchlistInput => ({
+const input = (
+  id: string,
+  name: string,
+  extra: Partial<AddToWatchlistInput> = {}
+): AddToWatchlistInput => ({
   id,
   subjectName: name,
   ...extra,
@@ -201,7 +207,10 @@ describe('screeningWatchlist — fingerprintHit', () => {
 
   it('URL fragment is stripped before fingerprinting', async () => {
     const fp1 = await fingerprintHit(hit1);
-    const fp2 = await fingerprintHit({ ...hit1, url: 'https://news.example.com/article/a#section-2' });
+    const fp2 = await fingerprintHit({
+      ...hit1,
+      url: 'https://news.example.com/article/a#section-2',
+    });
     expect(fp1).toBe(fp2);
   });
 
@@ -362,7 +371,9 @@ describe('screeningWatchlist — serialisation', () => {
   });
 
   it('deserialise returns empty when entries is not an array', () => {
-    expect(listAllEntries(deserialiseWatchlist({ version: 1, entries: 'not-array' }))).toHaveLength(0);
+    expect(listAllEntries(deserialiseWatchlist({ version: 1, entries: 'not-array' }))).toHaveLength(
+      0
+    );
     expect(listAllEntries(deserialiseWatchlist({ version: 1, entries: {} }))).toHaveLength(0);
   });
 
@@ -401,5 +412,93 @@ describe('screeningWatchlist — serialisation', () => {
     const entry = getEntry(restored, 'c1');
     expect(entry?.seenHitFingerprints).toEqual([]);
     expect(entry?.alertCount).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Resolved identity — entity disambiguation
+// ---------------------------------------------------------------------------
+
+describe('screeningWatchlist — resolved identity', () => {
+  const sampleIdentity: ResolvedIdentity = {
+    dob: '12/03/1982',
+    nationality: 'AE',
+    idType: 'emirates_id',
+    idNumber: '784-1982-1234567-8',
+    aliases: ['Mohamed A.', 'محمد أحمد'],
+    resolvedBy: 'Luisa Fernanda',
+    resolutionNote: 'Selected from UN SDN list match',
+    listEntryRef: { list: 'UN SDN', reference: 'SDGT-12345' },
+  };
+
+  it('addToWatchlist accepts an initial resolvedIdentity', () => {
+    const wl = createWatchlist();
+    const entry = addToWatchlist(wl, {
+      id: 'c1',
+      subjectName: 'Mohamed Ahmed',
+      resolvedIdentity: sampleIdentity,
+    });
+    expect(entry.resolvedIdentity?.idNumber).toBe('784-1982-1234567-8');
+  });
+
+  it('setResolvedIdentity stamps resolvedAtIso when omitted', () => {
+    const wl = createWatchlist();
+    addToWatchlist(wl, input('c1', 'Mohamed Ahmed'));
+    const updated = setResolvedIdentity(wl, 'c1', { ...sampleIdentity, resolvedAtIso: undefined });
+    expect(updated?.resolvedIdentity?.resolvedAtIso).toBeDefined();
+  });
+
+  it('setResolvedIdentity returns undefined for unknown id', () => {
+    const wl = createWatchlist();
+    expect(setResolvedIdentity(wl, 'nope', sampleIdentity)).toBeUndefined();
+  });
+
+  it('resolvedIdentity survives serialise → deserialise round-trip', () => {
+    const wl = createWatchlist();
+    addToWatchlist(wl, {
+      id: 'c1',
+      subjectName: 'Mohamed Ahmed',
+      resolvedIdentity: sampleIdentity,
+    });
+    const restored = deserialiseWatchlist(serialiseWatchlist(wl));
+    const got = getEntry(restored, 'c1')?.resolvedIdentity;
+    expect(got?.idType).toBe('emirates_id');
+    expect(got?.aliases).toEqual(['Mohamed A.', 'محمد أحمد']);
+    expect(got?.listEntryRef?.list).toBe('UN SDN');
+  });
+
+  it('deserialise drops malformed fields inside resolvedIdentity', () => {
+    const raw = {
+      version: 1,
+      entries: [
+        {
+          id: 'c1',
+          subjectName: 'Mohamed Ahmed',
+          resolvedIdentity: {
+            dob: '12/03/1982',
+            idType: 'invented_type', // invalid enum → dropped
+            aliases: ['ok', 42, 'also ok'], // 42 filtered out
+            gender: 'Z', // invalid → dropped
+            listEntryRef: { list: 'UN SDN' }, // missing reference → dropped
+          },
+        },
+      ],
+    };
+    const restored = deserialiseWatchlist(raw);
+    const got = getEntry(restored, 'c1')?.resolvedIdentity;
+    expect(got?.dob).toBe('12/03/1982');
+    expect(got?.idType).toBeUndefined();
+    expect(got?.aliases).toEqual(['ok', 'also ok']);
+    expect(got?.gender).toBeUndefined();
+    expect(got?.listEntryRef).toBeUndefined();
+  });
+
+  it('deserialise leaves resolvedIdentity undefined when payload is missing', () => {
+    const raw = {
+      version: 1,
+      entries: [{ id: 'c1', subjectName: 'Mohamed Ahmed' }],
+    };
+    const restored = deserialiseWatchlist(raw);
+    expect(getEntry(restored, 'c1')?.resolvedIdentity).toBeUndefined();
   });
 });

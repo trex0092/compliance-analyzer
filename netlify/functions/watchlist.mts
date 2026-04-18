@@ -40,9 +40,11 @@ import {
   createWatchlist,
   addToWatchlist,
   removeFromWatchlist,
+  setResolvedIdentity,
   serialiseWatchlist,
   deserialiseWatchlist,
   watchlistSize,
+  type ResolvedIdentity,
   type RiskTier,
   type SerialisedWatchlist,
   type WatchlistEntry,
@@ -102,11 +104,20 @@ async function loadFromStoreWithMetadata(): Promise<{
     const store = getStore(BLOB_STORE_NAME);
     const withMeta: unknown =
       typeof (store as unknown as { getWithMetadata?: unknown }).getWithMetadata === 'function'
-        ? await (store as unknown as {
-            getWithMetadata: (key: string, opts: unknown) => Promise<{ data: unknown; etag?: string }>;
-          }).getWithMetadata(BLOB_KEY, { type: 'json' })
+        ? await (
+            store as unknown as {
+              getWithMetadata: (
+                key: string,
+                opts: unknown
+              ) => Promise<{ data: unknown; etag?: string }>;
+            }
+          ).getWithMetadata(BLOB_KEY, { type: 'json' })
         : null;
-    if (withMeta && typeof withMeta === 'object' && 'data' in (withMeta as Record<string, unknown>)) {
+    if (
+      withMeta &&
+      typeof withMeta === 'object' &&
+      'data' in (withMeta as Record<string, unknown>)
+    ) {
       const tuple = withMeta as { data: SerialisedWatchlist | null; etag?: string };
       const raw = tuple.data;
       const etag = tuple.etag ?? null;
@@ -136,16 +147,15 @@ async function saveToStore(data: SerialisedWatchlist): Promise<void> {
 // SDK return shapes (modern `{ modified: boolean }`, legacy void,
 // or `false`). On transport failure, falls back to the memory
 // store and returns true so local-dev callers never lose writes.
-async function saveToStoreCas(
-  data: SerialisedWatchlist,
-  etag: string | null,
-): Promise<boolean> {
+async function saveToStoreCas(data: SerialisedWatchlist, etag: string | null): Promise<boolean> {
   try {
     const store = getStore(BLOB_STORE_NAME);
     const opts = etag ? { onlyIfMatch: etag } : { onlyIfNew: true };
-    const res: unknown = await (store as unknown as {
-      setJSON: (key: string, value: unknown, opts?: unknown) => Promise<unknown>;
-    }).setJSON(BLOB_KEY, data, opts);
+    const res: unknown = await (
+      store as unknown as {
+        setJSON: (key: string, value: unknown, opts?: unknown) => Promise<unknown>;
+      }
+    ).setJSON(BLOB_KEY, data, opts);
     if (res == null) return true;
     if (typeof res === 'object' && 'modified' in (res as Record<string, unknown>)) {
       return (res as { modified: boolean }).modified === true;
@@ -168,9 +178,102 @@ type PostAction =
       subjectName: string;
       riskTier?: RiskTier;
       metadata?: Record<string, string | number | boolean>;
+      resolvedIdentity?: ResolvedIdentity;
     }
   | { action: 'remove'; id: string }
+  | { action: 'resolve'; id: string; identity: ResolvedIdentity }
   | { action: 'replace'; watchlist: SerialisedWatchlist };
+
+function validateResolvedIdentity(
+  raw: unknown
+): { ok: true; value: ResolvedIdentity } | { ok: false; error: string } {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, error: 'identity must be an object' };
+  }
+  const r = raw as Record<string, unknown>;
+  const out: ResolvedIdentity = {};
+
+  if (r.dob !== undefined) {
+    if (typeof r.dob !== 'string' || r.dob.length > 20) {
+      return { ok: false, error: 'identity.dob must be a string up to 20 chars' };
+    }
+    out.dob = r.dob.trim() || undefined;
+  }
+  if (r.nationality !== undefined) {
+    if (typeof r.nationality !== 'string' || r.nationality.length > 4) {
+      return { ok: false, error: 'identity.nationality must be a 2-4 char country code' };
+    }
+    out.nationality = r.nationality.trim().toUpperCase() || undefined;
+  }
+  if (r.idType !== undefined) {
+    if (!['passport', 'emirates_id', 'national_id', 'other'].includes(r.idType as string)) {
+      return {
+        ok: false,
+        error: 'identity.idType must be passport|emirates_id|national_id|other',
+      };
+    }
+    out.idType = r.idType as ResolvedIdentity['idType'];
+  }
+  if (r.idNumber !== undefined) {
+    if (typeof r.idNumber !== 'string' || r.idNumber.length > 64) {
+      return { ok: false, error: 'identity.idNumber must be a string up to 64 chars' };
+    }
+    out.idNumber = r.idNumber.trim() || undefined;
+  }
+  if (r.idIssuingCountry !== undefined) {
+    if (typeof r.idIssuingCountry !== 'string' || r.idIssuingCountry.length > 4) {
+      return { ok: false, error: 'identity.idIssuingCountry must be a 2-4 char code' };
+    }
+    out.idIssuingCountry = r.idIssuingCountry.trim().toUpperCase() || undefined;
+  }
+  if (r.gender !== undefined) {
+    if (r.gender !== 'M' && r.gender !== 'F' && r.gender !== 'X') {
+      return { ok: false, error: 'identity.gender must be M|F|X' };
+    }
+    out.gender = r.gender;
+  }
+  if (r.aliases !== undefined) {
+    if (
+      !Array.isArray(r.aliases) ||
+      r.aliases.length > 20 ||
+      r.aliases.some((a) => typeof a !== 'string' || a.length > 200)
+    ) {
+      return {
+        ok: false,
+        error: 'identity.aliases must be an array of strings (<=20 items, <=200 chars each)',
+      };
+    }
+    out.aliases = (r.aliases as string[]).map((a) => a.trim()).filter((a) => a.length > 0);
+  }
+  if (r.listEntryRef !== undefined) {
+    if (!r.listEntryRef || typeof r.listEntryRef !== 'object' || Array.isArray(r.listEntryRef)) {
+      return { ok: false, error: 'identity.listEntryRef must be an object' };
+    }
+    const ref = r.listEntryRef as Record<string, unknown>;
+    if (
+      typeof ref.list !== 'string' ||
+      typeof ref.reference !== 'string' ||
+      ref.list.length > 32 ||
+      ref.reference.length > 128
+    ) {
+      return { ok: false, error: 'identity.listEntryRef must have list + reference strings' };
+    }
+    out.listEntryRef = { list: ref.list.trim(), reference: ref.reference.trim() };
+  }
+  if (r.resolutionNote !== undefined) {
+    if (typeof r.resolutionNote !== 'string' || r.resolutionNote.length > 2000) {
+      return { ok: false, error: 'identity.resolutionNote must be a string up to 2000 chars' };
+    }
+    out.resolutionNote = r.resolutionNote;
+  }
+  if (r.resolvedBy !== undefined) {
+    if (typeof r.resolvedBy !== 'string' || r.resolvedBy.length > 128) {
+      return { ok: false, error: 'identity.resolvedBy must be a string up to 128 chars' };
+    }
+    out.resolvedBy = r.resolvedBy.trim() || undefined;
+  }
+  return { ok: true, value: out };
+}
 
 function validatePostBody(
   input: unknown
@@ -203,6 +306,12 @@ function validatePostBody(
     ) {
       return { ok: false, error: 'add: metadata must be an object' };
     }
+    let resolvedIdentity: ResolvedIdentity | undefined;
+    if (raw.resolvedIdentity !== undefined) {
+      const idRes = validateResolvedIdentity(raw.resolvedIdentity);
+      if (!idRes.ok) return { ok: false, error: `add: ${idRes.error}` };
+      resolvedIdentity = idRes.value;
+    }
     return {
       ok: true,
       body: {
@@ -211,6 +320,7 @@ function validatePostBody(
         subjectName: raw.subjectName.trim(),
         riskTier: raw.riskTier as RiskTier | undefined,
         metadata: raw.metadata as Record<string, string | number | boolean> | undefined,
+        resolvedIdentity,
       },
     };
   }
@@ -220,6 +330,21 @@ function validatePostBody(
       return { ok: false, error: 'remove: id must be a non-empty string' };
     }
     return { ok: true, body: { action: 'remove', id: raw.id.trim() } };
+  }
+
+  if (action === 'resolve') {
+    if (typeof raw.id !== 'string' || raw.id.trim().length === 0) {
+      return { ok: false, error: 'resolve: id must be a non-empty string' };
+    }
+    if (raw.identity === undefined) {
+      return { ok: false, error: 'resolve: identity is required' };
+    }
+    const idRes = validateResolvedIdentity(raw.identity);
+    if (!idRes.ok) return { ok: false, error: `resolve: ${idRes.error}` };
+    return {
+      ok: true,
+      body: { action: 'resolve', id: raw.id.trim(), identity: idRes.value },
+    };
   }
 
   if (action === 'replace') {
@@ -322,7 +447,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
     // unconditionally, which is the caller's intent, so no CAS.
     const MAX_CAS_ATTEMPTS = 5;
     try {
-      if (body.action === 'add' || body.action === 'remove') {
+      if (body.action === 'add' || body.action === 'remove' || body.action === 'resolve') {
         for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
           const { data: current, etag } = await loadFromStoreWithMetadata();
           const wl = deserialiseWatchlist(current);
@@ -339,14 +464,38 @@ export default async (req: Request, context: Context): Promise<Response> => {
               subjectName: body.subjectName,
               riskTier: body.riskTier,
               metadata: body.metadata,
+              resolvedIdentity: body.resolvedIdentity,
             });
             const landed = await saveToStoreCas(serialiseWatchlist(wl), etag);
             if (landed) {
               return jsonResponse({
-                ok: true, action: 'add', entry, size: watchlistSize(wl),
+                ok: true,
+                action: 'add',
+                entry,
+                size: watchlistSize(wl),
               });
             }
             // else: CAS conflict — loop and re-read.
+            continue;
+          }
+
+          if (body.action === 'resolve') {
+            const entry = setResolvedIdentity(wl, body.id, body.identity);
+            if (!entry) {
+              return jsonResponse(
+                { ok: false, error: `subject "${body.id}" not found in watchlist` },
+                { status: 404 }
+              );
+            }
+            const landed = await saveToStoreCas(serialiseWatchlist(wl), etag);
+            if (landed) {
+              return jsonResponse({
+                ok: true,
+                action: 'resolve',
+                entry,
+                size: watchlistSize(wl),
+              });
+            }
             continue;
           }
 
@@ -361,7 +510,10 @@ export default async (req: Request, context: Context): Promise<Response> => {
           const landed = await saveToStoreCas(serialiseWatchlist(wl), etag);
           if (landed) {
             return jsonResponse({
-              ok: true, action: 'remove', id: body.id, size: watchlistSize(wl),
+              ok: true,
+              action: 'remove',
+              id: body.id,
+              size: watchlistSize(wl),
             });
           }
           continue;
@@ -428,12 +580,30 @@ export function applyAction(current: SerialisedWatchlist, action: PostAction): A
       subjectName: action.subjectName,
       riskTier: action.riskTier,
       metadata: action.metadata,
+      resolvedIdentity: action.resolvedIdentity,
     });
     return {
       ok: true,
       status: 200,
       updated: serialiseWatchlist(wl),
       response: { ok: true, action: 'add', entry, size: watchlistSize(wl) },
+    };
+  }
+
+  if (action.action === 'resolve') {
+    const entry = setResolvedIdentity(wl, action.id, action.identity);
+    if (!entry) {
+      return {
+        ok: false,
+        status: 404,
+        error: `subject "${action.id}" not found in watchlist`,
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      updated: serialiseWatchlist(wl),
+      response: { ok: true, action: 'resolve', entry, size: watchlistSize(wl) },
     };
   }
 
