@@ -1001,19 +1001,20 @@
         'FDL No.10/2025 Art.20-21 (CO attestation). Cabinet Res 134/2025 Art.14, Art.19 (EDD + internal review). FATF Rec 10.',
     },
     confirmed_match: {
-      tag: 'CONFIRMED MATCH — FREEZE-24H',
+      tag: 'CONFIRMED MATCH — FREEZE IMMEDIATELY + FILE STR',
       level: 'freeze',
       bannerClass: 'freeze',
       bannerText:
-        'ASSET FREEZE REQUIRED WITHIN 24 HOURS — Cabinet Res 74/2020 Art.4-7. Report EOCN immediately. File CNMR within 5 business days. Subject MUST NOT be notified (FDL Art.29).',
+        'FREEZE FUNDS IMMEDIATELY and FILE STR WITHOUT DELAY. No 24-hour window — FDL No.10/2025 Art.26 requires STR "without delay" once suspicion is confirmed, and Cabinet Res 74/2020 Art.4 (supplemented by EOCN TFS Guidance, July 2025) requires the freeze to be executed immediately (EOCN expectation: within 1-2 hours of confirmation). Applies equally where the subject is convicted of — or reasonably suspected of — money laundering, terrorism financing, or proliferation financing (FDL Art.35; Cabinet Res 156/2025). Subject MUST NOT be notified (FDL Art.29 no tipping off).',
       nextActions: [
-        'Execute freeze now. EOCN notification countdown: 24 clock hours from confirmation.',
-        'File CNMR to EOCN within 5 business days (Cabinet Res 74/2020 Art.7).',
-        'Draft STR for the UAE FIU via goAML (FDL Art.26-27).',
-        'Four-eyes approval already captured. Do NOT tip off the subject, their agents, or any third party (FDL Art.29).',
+        'FREEZE all funds and assets of the subject IMMEDIATELY (FDL No.10/2025 Art.12, Art.35; Cabinet Res 74/2020 Art.4). Freeze must survive any withdrawal / transfer / termination attempt.',
+        'FILE STR to the UAE FIU via goAML WITHOUT DELAY — no minimum monetary threshold once suspicion is confirmed (FDL Art.26-27). Use /goaml to generate the XML.',
+        'Notify EOCN of the freeze without delay and file the CNMR within 5 business days (Cabinet Res 74/2020 Art.6).',
+        'Maintain freeze until EOCN issues a written de-listing or unfreezing order. Do NOT release funds on any other instruction (Cabinet Res 74/2020 Art.7).',
+        'Four-eyes approval already captured. Do NOT tip off the subject, their agents, beneficiaries, or any third party (FDL Art.29 — administrative penalty up to AED 5M, Cabinet Res 71/2024).',
       ],
       citations:
-        'Cabinet Res 74/2020 Art.4-7 (TFS freeze + CNMR). FDL No.10/2025 Art.26-27 (STR), Art.29 (no tipping off), Art.35 (TFS), Art.24 (10yr retention). Cabinet Res 71/2024 (penalties up to AED 100M).',
+        'FDL No.10/2025 Art.12 (CDD failure → freeze), Art.26-27 (STR without delay), Art.29 (no tipping off), Art.35 (TFS), Art.24 (10yr retention). Cabinet Res 74/2020 Art.4 (immediate freeze) + EOCN TFS Guidance July 2025, Art.6 (CNMR 5 business days), Art.7 (no release without EOCN order). Cabinet Res 156/2025 (PF / dual-use). Cabinet Res 71/2024 (penalties up to AED 100M). FATF Rec 6 (targeted financial sanctions) + Rec 20 (STR).',
     },
   };
 
