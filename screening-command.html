@@ -1224,9 +1224,9 @@
     <div class="card" style="margin-top: 14px">
       <h2>MLRO Identity <span class="tag">Who is screening</span></h2>
       <p class="help-text" style="margin-top: -4px">
-        The UAE reporting entity has two authorised officers. Pick the one on duty before running a
-        screening — the name is written to the event as <i>Screened by</i> and auto-fills the MLRO
-        Disposition &gt; Reviewed by field. Saved locally (FDL Art.24 — 10-year audit trail).
+        The UAE reporting entity has two authorised officers. The Main MLRO name is written to every
+        screening event as <i>Screened by</i> and auto-fills the MLRO Disposition &gt; Reviewed by
+        field. Saved locally (FDL Art.24 — 10-year audit trail).
       </p>
       <div class="row-2">
         <div>
@@ -1240,7 +1240,7 @@
           />
         </div>
         <div>
-          <label for="mlroDeputyName">Deputy MLRO — full legal name *</label>
+          <label for="mlroDeputyName">Deputy MLRO — full legal name</label>
           <input
             type="text"
             id="mlroDeputyName"
@@ -1249,40 +1249,6 @@
             maxlength="128"
           />
         </div>
-      </div>
-      <label style="margin-top: 8px">Active officer for this session *</label>
-      <div
-        class="outcome-grid"
-        role="radiogroup"
-        aria-label="Active MLRO"
-        style="grid-template-columns: repeat(2, 1fr); gap: 8px"
-      >
-        <button
-          type="button"
-          class="outcome-btn mlro-role-btn"
-          data-role="main"
-          role="radio"
-          aria-checked="true"
-        >
-          <span class="outcome-head">
-            <span class="glyph" aria-hidden="true">&#9733;</span>
-            <span class="label">Main MLRO</span>
-          </span>
-          <span class="impact" id="mlroMainLabel">—</span>
-        </button>
-        <button
-          type="button"
-          class="outcome-btn mlro-role-btn"
-          data-role="deputy"
-          role="radio"
-          aria-checked="false"
-        >
-          <span class="outcome-head">
-            <span class="glyph" aria-hidden="true">&#9734;</span>
-            <span class="label">Deputy MLRO</span>
-          </span>
-          <span class="impact" id="mlroDeputyLabel">—</span>
-        </button>
       </div>
       <p class="help-text" style="margin-top: 8px">
         <b>Screened by:</b> <span id="mlroActiveBadge" class="tag">—</span>
@@ -1557,6 +1523,29 @@
             >
           </span>
         </label>
+        <label class="list-check">
+          <input type="checkbox" data-category="terrorismFinancing" data-tier="enhanced" checked />
+          <span class="list-label"
+            >Terrorism financing &amp; designated terrorist entities
+            <span class="list-sub"
+              >TF risk screen — UNSCR 1267 / 1373 / 2462 designations, terrorist organisations,
+              foreign terrorist fighters, NPO / charity abuse channels, hawala / informal-value
+              routes. FDL No.10/2025 Art.35 · Cabinet Res 74/2020 · FATF Rec 5 / 6 / 8.</span
+            >
+          </span>
+        </label>
+        <label class="list-check">
+          <input type="checkbox" data-category="taxEvasion" data-tier="enhanced" checked />
+          <span class="list-label"
+            >Tax evasion &amp; tax crimes
+            <span class="list-sub"
+              >Tax-crime predicate screen — direct / indirect tax evasion, VAT carousel fraud,
+              customs undervaluation, trade-based laundering, OECD CRS / FATCA non-compliance, UAE
+              Federal Tax Authority enforcement. FDL No.10/2025 Art.2 (predicate offence) · FATF Rec
+              3.</span
+            >
+          </span>
+        </label>
       </div>
     </div>
 
@@ -1732,9 +1721,6 @@
 
         <p class="help-text" style="margin-top: 6px">
           <b>Screened by:</b> <span id="mlroActiveBadgeRun" class="tag">—</span>
-          <span class="token-hint"
-            >&nbsp;Change the active officer in the <i>MLRO Identity</i> card above.</span
-          >
         </p>
         <button id="screenBtn" type="button">Run Screening</button>
         <div id="screenMsg"></div>
