@@ -17,12 +17,7 @@
         --gold: #c9a84c;
         --gold-bright: #e6c870;
         --gold-dim: rgba(201, 168, 76, 0.6);
-        --gold-grad: linear-gradient(
-          135deg,
-          #e6c870 0%,
-          #c9a84c 40%,
-          #a68432 100%
-        );
+        --gold-grad: linear-gradient(135deg, #e6c870 0%, #c9a84c 40%, #a68432 100%);
         --bg: #080706;
         --bg-elev: #0f0d0a;
         --surface: rgba(201, 168, 76, 0.03);
@@ -51,19 +46,15 @@
       }
       body {
         background:
-          radial-gradient(
-            circle at 20% -10%,
-            rgba(201, 168, 76, 0.07),
-            transparent 55%
-          ),
-          radial-gradient(
-            circle at 100% 100%,
-            rgba(201, 168, 76, 0.04),
-            transparent 45%
-          ),
-          var(--bg);
+          radial-gradient(circle at 20% -10%, rgba(201, 168, 76, 0.07), transparent 55%),
+          radial-gradient(circle at 100% 100%, rgba(201, 168, 76, 0.04), transparent 45%), var(--bg);
         color: var(--text);
-        font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family:
+          'Montserrat',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
         font-weight: 300;
         max-width: 1680px;
         margin: 0 auto;
@@ -75,21 +66,24 @@
         letter-spacing: 0.01em;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1, 'ss01' 1;
+        font-feature-settings:
+          'liga' 1,
+          'calt' 1,
+          'kern' 1,
+          'ss01' 1;
       }
       body::before {
         content: '';
         position: fixed;
         inset: 0;
         pointer-events: none;
-        background-image:
-          linear-gradient(
-            to bottom,
-            rgba(255, 255, 255, 0.01) 0px,
-            rgba(255, 255, 255, 0.01) 1px,
-            transparent 1px,
-            transparent 4px
-          );
+        background-image: linear-gradient(
+          to bottom,
+          rgba(255, 255, 255, 0.01) 0px,
+          rgba(255, 255, 255, 0.01) 1px,
+          transparent 1px,
+          transparent 4px
+        );
         opacity: 0.35;
         z-index: 0;
       }
@@ -138,7 +132,9 @@
         vertical-align: middle;
         font-weight: 700;
         letter-spacing: 1.5px;
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 2px 6px rgba(201, 168, 76, 0.25);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.15) inset,
+          0 2px 6px rgba(201, 168, 76, 0.25);
       }
       h2 {
         color: var(--gold);
@@ -185,8 +181,7 @@
         border-left: 3px solid transparent;
         border-radius: 6px;
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 60%),
-          var(--bg-elev);
+          linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 60%), var(--bg-elev);
         box-shadow: var(--shadow-md), var(--shadow-inset);
         position: relative;
       }
@@ -231,6 +226,12 @@
         letter-spacing: 0.3px;
         line-height: 1.5;
       }
+      .intro-block.intro-block--wide {
+        grid-column: 1 / -1;
+        padding-top: 10px;
+        margin-top: 2px;
+        border-top: 1px dashed var(--border);
+      }
       .grid {
         display: grid;
         grid-template-columns: 1fr;
@@ -243,8 +244,7 @@
       }
       .card {
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 60%),
-          var(--bg-elev);
+          linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 60%), var(--bg-elev);
         border: 1px solid var(--border);
         border-radius: 10px;
         padding: 20px 22px;
@@ -737,82 +737,17 @@
         color: var(--text);
         font-weight: 500;
       }
+      .coverage-grid > .coverage-wide {
+        grid-column: 1 / -1;
+        padding-top: 10px;
+        margin-top: 2px;
+        border-top: 1px dashed var(--border);
+      }
       .coverage-foot {
         margin-top: 10px;
         padding-top: 8px;
         border-top: 1px dashed var(--border);
         font-size: 11px;
-        color: var(--muted);
-      }
-      .token-budget {
-        margin-top: 14px;
-        padding: 10px 12px;
-        border: 1px solid var(--border);
-        border-left: 3px solid var(--blue);
-        border-radius: 3px;
-        background: rgba(61, 139, 253, 0.04);
-        color: var(--muted);
-        font-size: 11.5px;
-        line-height: 1.55;
-      }
-      .token-budget .tb-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        margin-bottom: 6px;
-      }
-      .token-budget .tb-label {
-        font-family: 'Cinzel', serif;
-        font-weight: 600;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
-        color: var(--blue);
-        font-size: 11px;
-      }
-      .token-budget .tb-total {
-        font-family: 'DM Mono', monospace;
-        font-weight: 500;
-        color: var(--text);
-      }
-      .token-budget.over .tb-total,
-      .token-budget.over .tb-label {
-        color: #ff6b6b;
-      }
-      .token-budget .tb-bar {
-        height: 4px;
-        background: rgba(255, 255, 255, 0.06);
-        border-radius: 2px;
-        overflow: hidden;
-        margin-bottom: 8px;
-      }
-      .token-budget .tb-bar-fill {
-        height: 100%;
-        background: linear-gradient(90deg, var(--blue), var(--gold));
-        transition: width 0.15s ease-out;
-      }
-      .token-budget.warn .tb-bar-fill {
-        background: linear-gradient(90deg, var(--gold), #ffb84d);
-      }
-      .token-budget.over .tb-bar-fill {
-        background: linear-gradient(90deg, #ffb84d, #ff6b6b);
-      }
-      .token-budget .tb-breakdown {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px 12px;
-        font-family: 'DM Mono', monospace;
-        font-size: 10.5px;
-      }
-      .token-budget .tb-breakdown b {
-        color: var(--text);
-        font-weight: 500;
-        margin-left: 3px;
-      }
-      .token-budget .tb-footnote {
-        margin-top: 6px;
-        padding-top: 6px;
-        border-top: 1px dashed var(--border);
-        font-size: 10.5px;
         color: var(--muted);
       }
       .legal-notice {
@@ -1182,6 +1117,16 @@
           box-shadow 0.15s ease,
           background 0.15s ease;
       }
+      input[type='number']::-webkit-inner-spin-button,
+      input[type='number']::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        appearance: none;
+        margin: 0;
+      }
+      input[type='number'] {
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
       input[type='text']:focus,
       input[type='date']:focus,
       input[type='email']:focus,
@@ -1218,7 +1163,7 @@
   </head>
   <body>
     <header>
-      <h1>Screening Command <span class="badge">v1</span></h1>
+      <h1>Hawkeye Sterling V2 &mdash; Screening Command</h1>
       <a href="/" class="muted">&larr; Main tool</a>
     </header>
     <section class="intro-panel">
@@ -1226,17 +1171,17 @@
         <div class="intro-block">
           <h3>Sanctions-list coverage</h3>
           <p>
-            Parallel screen against six lists: UN Consolidated (1267/1988/1989/2253), OFAC SDN,
-            OFAC Consolidated (non-SDN), EU CFSP, UK OFSI (HMT), and UAE EOCN. UAE EOCN and UN
-            are <strong>mandatory</strong> and cannot be deselected.
+            Parallel screen against six lists: UN Consolidated (1267/1988/1989/2253), OFAC SDN, OFAC
+            Consolidated (non-SDN), EU CFSP, UK OFSI (HMT), and UAE EOCN. UAE EOCN and UN are
+            <strong>mandatory</strong> and cannot be deselected.
           </p>
         </div>
         <div class="intro-block">
           <h3>Matching engine</h3>
           <p>
             Five-algorithm ensemble — Jaro-Winkler, Levenshtein, Soundex, Double Metaphone,
-            token-set — catching phonetic variants, transliterations, word-order permutations,
-            and single-character edits. Deterministic only; no LLM in the match path.
+            token-set — catching phonetic variants, transliterations, word-order permutations, and
+            single-character edits. Deterministic only; no LLM in the match path.
           </p>
         </div>
         <div class="intro-block">
@@ -1249,9 +1194,9 @@
         <div class="intro-block">
           <h3>Automation</h3>
           <p>
-            Confirmed or potential matches auto-enrol into the daily watchlist (06:00 / 14:00
-            UTC cron). A tagged Asana task lands in the SCREENINGS project, assigned to the
-            on-duty MLRO.
+            Confirmed or potential matches auto-enrol into the daily watchlist (06:00 / 14:00 UTC
+            cron). A tagged Asana task lands in the SCREENINGS project, assigned to the on-duty
+            MLRO.
           </p>
         </div>
         <div class="intro-block">
@@ -1262,21 +1207,90 @@
             append-only audit record for MoE, LBMA, and internal audit.
           </p>
         </div>
-        <div class="intro-block">
+        <div class="intro-block intro-block--wide">
           <h3>Regulatory basis</h3>
-          <p class="cite">
-            FDL No.10/2025 Art.12-14 (CDD), 20-21 (CO duties), 24 (10-yr retention), 26-27
-            (STR), 29 (no tipping off), 35 (TFS) &middot; Cabinet Res 134/2025 Art.7-10, 14, 19
-            &middot; Cabinet Res 74/2020 Art.4-7 (24-h freeze) &middot; Cabinet Decision
-            No.(74)/2020 &middot; Cabinet Res 71/2024 &middot; MoE Circular 08/AML/2021 &middot;
-            FATF Rec 10 / 12 / 22 / 23.
+          <p>
+            FDL No.10/2025 Art.12-14 (CDD), 20-21 (CO duties), 24 (10-yr retention), 26-27 (STR), 29
+            (no tipping off), 35 (TFS) &middot; Cabinet Res 134/2025 Art.7-10, 14, 19 &middot;
+            Cabinet Res 74/2020 Art.4-7 (24-h freeze) &middot; Cabinet Decision No.(74)/2020
+            &middot; Cabinet Res 71/2024 &middot; MoE Circular 08/AML/2021 &middot; FATF Rec 10 / 12
+            / 22 / 23.
           </p>
         </div>
       </div>
     </section>
 
+    <!-- MLRO identity ──────────────────────────────────────────────── -->
+    <div class="card" style="margin-top: 14px">
+      <h2>MLRO Identity <span class="tag">Who is screening</span></h2>
+      <p class="help-text" style="margin-top: -4px">
+        The UAE reporting entity has two authorised officers. Pick the one on duty before running a
+        screening — the name is written to the event as <i>Screened by</i> and auto-fills the MLRO
+        Disposition &gt; Reviewed by field. Saved locally (FDL Art.24 — 10-year audit trail).
+      </p>
+      <div class="row-2">
+        <div>
+          <label for="mlroMainName">Main MLRO — full legal name *</label>
+          <input
+            type="text"
+            id="mlroMainName"
+            placeholder="e.g. Jane A. Sterling"
+            autocomplete="off"
+            maxlength="128"
+          />
+        </div>
+        <div>
+          <label for="mlroDeputyName">Deputy MLRO — full legal name *</label>
+          <input
+            type="text"
+            id="mlroDeputyName"
+            placeholder="e.g. John B. Hawke"
+            autocomplete="off"
+            maxlength="128"
+          />
+        </div>
+      </div>
+      <label style="margin-top: 8px">Active officer for this session *</label>
+      <div
+        class="outcome-grid"
+        role="radiogroup"
+        aria-label="Active MLRO"
+        style="grid-template-columns: repeat(2, 1fr); gap: 8px"
+      >
+        <button
+          type="button"
+          class="outcome-btn mlro-role-btn"
+          data-role="main"
+          role="radio"
+          aria-checked="true"
+        >
+          <span class="outcome-head">
+            <span class="glyph" aria-hidden="true">&#9733;</span>
+            <span class="label">Main MLRO</span>
+          </span>
+          <span class="impact" id="mlroMainLabel">—</span>
+        </button>
+        <button
+          type="button"
+          class="outcome-btn mlro-role-btn"
+          data-role="deputy"
+          role="radio"
+          aria-checked="false"
+        >
+          <span class="outcome-head">
+            <span class="glyph" aria-hidden="true">&#9734;</span>
+            <span class="label">Deputy MLRO</span>
+          </span>
+          <span class="impact" id="mlroDeputyLabel">—</span>
+        </button>
+      </div>
+      <p class="help-text" style="margin-top: 8px">
+        <b>Screened by:</b> <span id="mlroActiveBadge" class="tag">—</span>
+      </p>
+    </div>
+
     <!-- Authentication ────────────────────────────────────────────── -->
-    <div class="card">
+    <div class="card" style="margin-top: 14px">
       <h2>Authentication <span class="tag">Required</span></h2>
       <label for="token">Hawkeye brain token</label>
       <input
@@ -1314,30 +1328,29 @@
         <div>
           <div class="c-h">Politically Exposed Persons</div>
           <div class="c-sub">
-            PEPs, close associates and family members identified per Cabinet Res 134/2025 Art.14
-            — domestic, foreign and international-organisation tiers.
+            PEPs, close associates and family members identified per Cabinet Res 134/2025 Art.14 —
+            domestic, foreign and international-organisation tiers.
           </div>
         </div>
         <div>
           <div class="c-h">Biographical information</div>
           <div class="c-sub">
             Titles, positions / roles, passport number(s), citizenship, DoB / registration date,
-            organisation &amp; political-party affiliation — all captured in the screening event
-            and retained 10 years (FDL Art.24).
+            organisation &amp; political-party affiliation — all captured in the screening event and
+            retained 10 years (FDL Art.24).
           </div>
         </div>
         <div>
           <div class="c-h">List coverage &mdash; 700+ target</div>
           <div class="c-sub">
-            <b>Live now:</b> UAE EOCN, UN 1267/1988/1989/2253, OFAC SDN + Consolidated, EU CFSP,
-            UK OFSI (&#x2265;&nbsp;5 lists).
-            <b>Roadmap:</b> Interpol, FCA, FINRA, FinCEN, SEC, DOJ, EuroPol, national debarments,
-            PEP vendor feeds, CAPTA, CMIC, sectoral &amp; NS-SDN, UN consolidated variants &amp;
-            local jurisdiction lists &mdash; cumulative 700+ sanction / watch / regulatory / LE
-            lists.
+            <b>Live now:</b> UAE EOCN, UN 1267/1988/1989/2253, OFAC SDN + Consolidated, EU CFSP, UK
+            OFSI (&#x2265;&nbsp;5 lists). <b>Roadmap:</b> Interpol, FCA, FINRA, FinCEN, SEC, DOJ,
+            EuroPol, national debarments, PEP vendor feeds, CAPTA, CMIC, sectoral &amp; NS-SDN, UN
+            consolidated variants &amp; local jurisdiction lists &mdash; cumulative 700+ sanction /
+            watch / regulatory / LE lists.
           </div>
         </div>
-        <div>
+        <div class="coverage-wide">
           <div class="c-h">Record-update ranking</div>
           <div class="c-sub">
             Every list entry carries <i>fetchedAt</i>, <i>listPublishedAt</i> and
@@ -1347,9 +1360,8 @@
         </div>
       </div>
       <p class="coverage-foot">
-        Coverage guarantees logged on every screening event (FDL Art.24 — 10-year retention) so
-        MoE / LBMA / internal audit can reproduce the exact data surface at any prior point in
-        time.
+        Coverage guarantees logged on every screening event (FDL Art.24 — 10-year retention) so MoE
+        / LBMA / internal audit can reproduce the exact data surface at any prior point in time.
       </p>
     </div>
 
@@ -1382,7 +1394,9 @@
           />
           <span class="list-label"
             >UNSC Consolidated Sanctions List — UN Security Council
-            <span class="list-sub">Security Council resolutions + 1267/1988/1989/2253 sanctions</span>
+            <span class="list-sub"
+              >Security Council resolutions + 1267/1988/1989/2253 sanctions</span
+            >
           </span>
         </label>
         <p class="list-footnote">
@@ -1398,14 +1412,18 @@
           <input type="checkbox" data-list="OFAC" data-tier="enhanced" checked />
           <span class="list-label"
             >OFAC SDN — US unilateral sanctions
-            <span class="list-sub">US Treasury OFAC Specially Designated Nationals + Consolidated</span>
+            <span class="list-sub"
+              >US Treasury OFAC Specially Designated Nationals + Consolidated</span
+            >
           </span>
         </label>
         <label class="list-check">
           <input type="checkbox" data-list="EU" data-tier="enhanced" checked />
           <span class="list-label"
             >EU Consolidated Sanctions
-            <span class="list-sub">European Union consolidated financial sanctions list (CFSP)</span>
+            <span class="list-sub"
+              >European Union consolidated financial sanctions list (CFSP)</span
+            >
           </span>
         </label>
         <label class="list-check">
@@ -1416,17 +1434,12 @@
           </span>
         </label>
         <label class="list-check">
-          <input
-            type="checkbox"
-            data-control="adverseMedia"
-            data-tier="enhanced"
-            checked
-          />
+          <input type="checkbox" data-control="adverseMedia" data-tier="enhanced" checked />
           <span class="list-label"
             >Adverse Media Sweep
             <span class="list-sub"
-              >Open-source negative-news search — PEP, sanctions, litigation, fraud, terrorism financing
-              (FATF Rec 10 / 12, EOCN guidance)</span
+              >Open-source negative-news search — PEP, sanctions, litigation, fraud, terrorism
+              financing (FATF Rec 10 / 12, EOCN guidance)</span
             >
           </span>
         </label>
@@ -1449,8 +1462,8 @@
     <div class="card list-tier enhanced" style="margin-top: 14px">
       <h2>Risk Categories</h2>
       <p class="help-text" style="margin-top: -4px">
-        Content categories screened against every selected list + adverse-media corpus. Default:
-        all ON. Turning a category OFF is logged on the screening event (FDL Art.24 — 10-year
+        Content categories screened against every selected list + adverse-media corpus. Default: all
+        ON. Turning a category OFF is logged on the screening event (FDL Art.24 — 10-year
         retention).
       </p>
       <div class="grid grid-2" style="gap: 6px 14px">
@@ -1464,12 +1477,7 @@
           </span>
         </label>
         <label class="list-check">
-          <input
-            type="checkbox"
-            data-category="stateOwnedEntities"
-            data-tier="enhanced"
-            checked
-          />
+          <input type="checkbox" data-category="stateOwnedEntities" data-tier="enhanced" checked />
           <span class="list-label"
             >State-owned entities &amp; state-invested enterprises
             <span class="list-sub">SOE ownership screen — FATF Rec 12 / 24 beneficial control</span>
@@ -1485,12 +1493,7 @@
           </span>
         </label>
         <label class="list-check">
-          <input
-            type="checkbox"
-            data-category="narrativeSanctions"
-            data-tier="enhanced"
-            checked
-          />
+          <input type="checkbox" data-category="narrativeSanctions" data-tier="enhanced" checked />
           <span class="list-label"
             >Narrative &amp; implicit sanctions
             <span class="list-sub"
@@ -1538,8 +1541,23 @@
             >
           </span>
         </label>
+        <label class="list-check">
+          <input
+            type="checkbox"
+            data-category="proliferationFinancing"
+            data-tier="enhanced"
+            checked
+          />
+          <span class="list-label"
+            >Proliferation financing &amp; dual-use goods
+            <span class="list-sub"
+              >PF risk screen — WMD-linked entities, strategic / dual-use end-users, diversion
+              networks, front companies. Cabinet Res 156/2025 · UNSCR 1540 · FATF Rec 7 · DPMS
+              gold-provenance exposure.</span
+            >
+          </span>
+        </label>
       </div>
-
     </div>
 
     <div class="grid grid-2" style="margin-top: 14px">
@@ -1569,17 +1587,6 @@
           autocomplete="off"
           maxlength="512"
         />
-        <span class="help-text"
-          >Matcher runs on 20+ Latin-alphabet languages (English, German, Italian, French,
-          Spanish, Portuguese, Dutch, Polish, Romanian, Turkish, Vietnamese, Indonesian, Malay,
-          Tagalog, Swahili, Hausa, Somali, Albanian, Croatian, Lithuanian) and normalises 40+
-          non-Latin scripts (Arabic, Persian/Farsi, Urdu, Hebrew, Cyrillic (Russian/Ukrainian/
-          Serbian/Bulgarian), Greek, Chinese (Simplified + Traditional), Japanese (Kanji / Hiragana
-          / Katakana), Korean Hangul, Thai, Lao, Khmer, Burmese, Devanagari / Bengali / Gurmukhi /
-          Gujarati / Tamil / Telugu / Kannada / Malayalam / Sinhala, Ge'ez / Amharic / Tigrinya,
-          Georgian, Armenian, Tibetan). Transliteration via ICU / Unicode UAX #35.</span
-        >
-
         <div class="row-2">
           <div>
             <label for="entityType">Entity type *</label>
@@ -1590,7 +1597,13 @@
           </div>
           <div>
             <label for="dob">Date of birth / registration</label>
-            <input type="text" id="dob" placeholder="dd/mm/yyyy" autocomplete="off" maxlength="10" />
+            <input
+              type="text"
+              id="dob"
+              placeholder="dd/mm/yyyy"
+              autocomplete="off"
+              maxlength="10"
+            />
           </div>
         </div>
 
@@ -1717,30 +1730,12 @@
           </div>
         </div>
 
-        <div id="tokenBudget" class="token-budget" aria-live="polite">
-          <div class="tb-header">
-            <span class="tb-label">Token budget</span>
-            <span class="tb-total"><span id="tbTotal">0</span>&nbsp;tokens</span>
-          </div>
-          <div class="tb-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-            <div id="tbBarFill" class="tb-bar-fill" style="width: 0%"></div>
-          </div>
-          <div class="tb-breakdown">
-            <span>Name <b id="tbName">0</b></span>
-            <span>Aliases <b id="tbAliases">0</b></span>
-            <span>Notes <b id="tbNotes">0</b></span>
-            <span>Key findings <b id="tbKey">0</b></span>
-            <span>Rationale <b id="tbRationale">0</b></span>
-            <span>Lists <b id="tbLists">0</b></span>
-            <span>Categories <b id="tbCategories">0</b></span>
-          </div>
-          <p class="tb-footnote">
-            Approximation: ~4 characters per token (English). Budget caps: request body 32&nbsp;KB
-            (~8000 tokens); rationale 4000 chars; key findings 4000 chars; aliases 20&times;200
-            chars. Turns red above 6000 tokens — tighten before running.
-          </p>
-        </div>
-
+        <p class="help-text" style="margin-top: 6px">
+          <b>Screened by:</b> <span id="mlroActiveBadgeRun" class="tag">—</span>
+          <span class="token-hint"
+            >&nbsp;Change the active officer in the <i>MLRO Identity</i> card above.</span
+          >
+        </p>
         <button id="screenBtn" type="button">Run Screening</button>
         <div id="screenMsg"></div>
         <div id="screenResult" style="margin-top: 14px"></div>
@@ -1808,8 +1803,8 @@
                 <span class="label">False positive</span>
               </span>
               <span class="impact"
-                >Name hit ruled out on DoB / ID / jurisdiction. Document the differentiator in
-                the rationale.</span
+                >Name hit ruled out on DoB / ID / jurisdiction. Document the differentiator in the
+                rationale.</span
               >
             </button>
             <button
@@ -1853,8 +1848,8 @@
             <span class="dp-value muted" id="dpAction">&mdash;</span>
             <span class="dp-label">Record</span>
             <span class="dp-value muted" id="dpRecord"
-              >Outcome, rationale, key findings, reviewer, IP, and timestamp will be written to
-              the append-only audit log + mirrored to the Asana task.</span
+              >Outcome, rationale, key findings, reviewer, IP, and timestamp will be written to the
+              append-only audit log + mirrored to the Asana task.</span
             >
           </div>
 
@@ -1876,7 +1871,8 @@
             minlength="20"
           ></textarea>
           <span class="help-text"
-            >Minimum 20 characters. This text is the audit record seen by MoE / LBMA inspectors.</span
+            >Minimum 20 characters. This text is the audit record seen by MoE / LBMA
+            inspectors.</span
           >
 
           <div id="legalNotice" class="legal-notice">
@@ -1893,28 +1889,28 @@
               <strong>Data basis.</strong> Name, aliases, DOB / registration date, citizenship /
               registered country, ID / register number, and publicly-available sanctions / PEP /
               adverse-media sources. Processed under UAE PDPL (Federal Decree-Law No.45/2021)
-              Art.6(1)(c) — compliance with legal obligation. Record is append-only,
-              hash-anchored, and replayable by the Compliance Officer on request.
+              Art.6(1)(c) — compliance with legal obligation. Record is append-only, hash-anchored,
+              and replayable by the Compliance Officer on request.
             </p>
             <p>
               <strong>AI / automation transparency.</strong> This screening uses classical
-              deterministic algorithms only (Jaro-Winkler + Levenshtein + Soundex + Double
-              Metaphone + token-set). No LLM is used to produce the match or the risk score. The
-              human MLRO attests the final disposition.
+              deterministic algorithms only (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone
+              + token-set). No LLM is used to produce the match or the risk score. The human MLRO
+              attests the final disposition.
             </p>
             <p id="freezeNotice" class="freeze-notice" hidden>
               <strong>ASSET FREEZE REQUIRED WITHIN 24 HOURS.</strong> This subject has been
-              confirmed on a sanctions list. Execute an asset freeze within 24 clock hours
-              (Cabinet Res 74/2020 Art.4) and file a CNMR with EOCN within 5 business days
-              (Art.5-7). Do NOT notify the subject. Do NOT release the funds. Escalate
-              immediately to the Compliance Officer.
+              confirmed on a sanctions list. Execute an asset freeze within 24 clock hours (Cabinet
+              Res 74/2020 Art.4) and file a CNMR with EOCN within 5 business days (Art.5-7). Do NOT
+              notify the subject. Do NOT release the funds. Escalate immediately to the Compliance
+              Officer.
             </p>
             <label class="legal-ack">
               <input type="checkbox" id="legalAck" />
               <span
                 >I have personally reviewed the candidates, applied professional judgement
-                consistent with the firm's Risk Appetite Statement (Cabinet Res 134/2025 Art.5),
-                and confirm the outcome + rationale above is a true and accurate account of my
+                consistent with the firm's Risk Appetite Statement (Cabinet Res 134/2025 Art.5), and
+                confirm the outcome + rationale above is a true and accurate account of my
                 decision.</span
               >
             </label>

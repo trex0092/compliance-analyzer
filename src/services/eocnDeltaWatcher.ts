@@ -16,6 +16,18 @@
  *   - FDL No.10/2025 Art.35 (TFS compliance)
  */
 
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
+
+/**
+ * 30s is the same budget the rest of the sanctions-ingest
+ * fetchers use (`netlify/functions/sanctions-ingest-cron.mts`
+ * and `src/services/sanctionsApi.ts`). EOCN feeds are CSV/JSON
+ * blobs; if the feed host cannot answer in 30s the delta run is
+ * better off failing loudly so the platform retries on the next
+ * scheduled pass than silently exhausting the Netlify invocation.
+ */
+const EOCN_FETCH_TIMEOUT_MS = 30_000;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -109,7 +121,7 @@ async function defaultFetcher(): Promise<EocnDesignation[]> {
       ? process.env.EOCN_FEED_URL
       : undefined;
   if (!url) return [];
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url, { timeoutMs: EOCN_FETCH_TIMEOUT_MS });
   if (!res.ok) return [];
   const json = (await res.json()) as { designations?: EocnDesignation[] };
   return Array.isArray(json.designations) ? json.designations : [];

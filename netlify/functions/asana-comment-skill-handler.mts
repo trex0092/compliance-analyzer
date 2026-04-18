@@ -29,11 +29,20 @@
 
 import type { Config } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const JOBS_STORE = 'asana-skill-jobs';
 const AUDIT_STORE = 'asana-skill-audit';
 const SANCTIONS_SNAPSHOT_STORE = 'sanctions-snapshots';
 const ASANA_API_BASE = 'https://app.asana.com/api/1.0';
+
+// Asana's p99 latency is sub-second; 10s is the same budget the
+// rest of the Asana callers in this codebase use (`asanaClient.ts`,
+// `asana-proxy.mts`). A hung Asana call here silently burns the
+// whole cron invocation and the MLRO's slash-command goes into
+// the dead-letter slot after 5 retries — a cheap upper bound
+// trades a clean failure for a silent one.
+const ASANA_FETCH_TIMEOUT_MS = 10_000;
 
 // Poison-pill defence: after this many failed attempts, the job is
 // moved to a dead-letter slot and stops being retried every minute.
@@ -332,11 +341,12 @@ interface AsanaGetResult<T> {
 }
 
 async function asanaGet<T>(path: string, token: string): Promise<AsanaGetResult<T>> {
-  const res = await fetch(`${ASANA_API_BASE}${path}`, {
+  const res = await fetchWithTimeout(`${ASANA_API_BASE}${path}`, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
     },
+    timeoutMs: ASANA_FETCH_TIMEOUT_MS,
   });
   if (!res.ok) {
     let snippet: string | undefined;
@@ -372,7 +382,7 @@ async function asanaPost<T>(
   token: string,
   body: unknown
 ): Promise<AsanaPostResult<T>> {
-  const res = await fetch(`${ASANA_API_BASE}${path}`, {
+  const res = await fetchWithTimeout(`${ASANA_API_BASE}${path}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -380,6 +390,7 @@ async function asanaPost<T>(
       Accept: 'application/json',
     },
     body: JSON.stringify({ data: body }),
+    timeoutMs: ASANA_FETCH_TIMEOUT_MS,
   });
   if (!res.ok) {
     let snippet: string | undefined;
