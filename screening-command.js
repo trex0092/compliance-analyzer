@@ -163,6 +163,7 @@
 
   // ─── Screening flow ──────────────────────────────────────────────
   const subjectNameInput = $('subjectName');
+  const aliasesInput = $('aliases');
   const subjectIdInput = $('subjectId');
   const entityTypeSelect = $('entityType');
   const dobInput = $('dob');
@@ -181,12 +182,24 @@
   const dispositionBox = $('disposition');
   const screeningDateInput = $('screeningDate');
   const reviewedByInput = $('reviewedBy');
+  const keyFindingsInput = $('keyFindings');
   const rationaleInput = $('rationale');
+  const legalAckCheckbox = $('legalAck');
+  const freezeNoticeEl = $('freezeNotice');
   const saveBtn = $('saveBtn');
   const rerunBtn = $('rerunBtn');
   const cancelBtn = $('cancelBtn');
   const saveMsg = $('saveMsg');
   const outcomeBtns = document.querySelectorAll('.outcome-btn');
+
+  function parseAliases(raw) {
+    if (!raw) return [];
+    return raw
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && s.length <= 200)
+      .slice(0, 20);
+  }
 
   // Last successful screening run — captured so we can attach the run
   // provenance (lists screened, top score, anomalies) to the saved
@@ -199,11 +212,18 @@
   // enhanced subset the MLRO has checked.
   function collectSelectedLists() {
     const out = [];
-    document.querySelectorAll('input[data-tier="enhanced"]').forEach((el) => {
+    document.querySelectorAll('input[data-tier="enhanced"][data-list]').forEach((el) => {
       if (el.disabled) return; // Interpol placeholder stays off until integrated
       if (el.checked) out.push(el.getAttribute('data-list'));
     });
     return out;
+  }
+
+  function isAdverseMediaEnabled() {
+    const el = document.querySelector(
+      'input[data-tier="enhanced"][data-control="adverseMedia"]'
+    );
+    return el ? !!el.checked : true;
   }
 
   function todayDdMmYyyy() {
@@ -223,6 +243,9 @@
     currentOutcome = null;
     outcomeBtns.forEach((b) => b.classList.remove('selected'));
     rationaleInput.value = '';
+    if (keyFindingsInput) keyFindingsInput.value = '';
+    if (legalAckCheckbox) legalAckCheckbox.checked = false;
+    if (freezeNoticeEl) freezeNoticeEl.hidden = true;
     showMessage(saveMsg, '', 'info');
   }
 
@@ -231,6 +254,9 @@
       outcomeBtns.forEach((b) => b.classList.remove('selected'));
       btn.classList.add('selected');
       currentOutcome = btn.getAttribute('data-outcome');
+      if (freezeNoticeEl) {
+        freezeNoticeEl.hidden = currentOutcome !== 'confirmed_match';
+      }
     });
   });
 
@@ -268,6 +294,15 @@
       );
       return;
     }
+    if (legalAckCheckbox && !legalAckCheckbox.checked) {
+      showMessage(
+        saveMsg,
+        'Acknowledge the legal notice before saving (FDL Art.20-21 attestation).',
+        'error'
+      );
+      return;
+    }
+    const keyFindings = keyFindingsInput ? keyFindingsInput.value.trim() : '';
 
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<span class="spinner"></span>Saving…';
@@ -289,6 +324,7 @@
       reviewedBy: reviewedBy,
       outcome: currentOutcome,
       rationale: rationale,
+      keyFindings: keyFindings || undefined,
       runId: lastRun.ranAt,
       riskTier: lastRun.subject.riskTier,
       jurisdiction: lastRun.subject.jurisdiction || undefined,
@@ -551,8 +587,10 @@
     );
     screenResult.innerHTML = '';
 
+    const aliases = aliasesInput ? parseAliases(aliasesInput.value) : [];
     const body = {
       subjectName: name,
+      aliases: aliases.length > 0 ? aliases : undefined,
       subjectId: subjectIdInput.value.trim() || undefined,
       entityType: entityType,
       dob: dobRaw || undefined,
@@ -564,7 +602,7 @@
       notes: notesInput.value.trim() || undefined,
       selectedLists: selectedLists,
       enrollInWatchlist: enrollSelect.value === 'true',
-      runAdverseMedia: true,
+      runAdverseMedia: isAdverseMediaEnabled(),
       createAsanaTask: true,
     };
     const result = await apiPost(SCREENING_ENDPOINT, body);

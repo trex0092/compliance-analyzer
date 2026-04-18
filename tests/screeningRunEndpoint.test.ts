@@ -155,6 +155,46 @@ describe('screening-run — validateInput', () => {
     }
   });
 
+  // ---- Aliases ----
+
+  it('rejects non-array aliases', () => {
+    const r = validateInput({ ...baseInput(), aliases: 'UBL' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('aliases');
+  });
+
+  it('rejects aliases > 20 entries', () => {
+    const many = Array.from({ length: 21 }, (_, i) => `alias-${i}`);
+    const r = validateInput({ ...baseInput(), aliases: many });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('20');
+  });
+
+  it('rejects non-string alias entries', () => {
+    const r = validateInput({ ...baseInput(), aliases: ['ok', 123] });
+    expect(r.ok).toBe(false);
+  });
+
+  it('dedupes + trims + lowercases alias matches', () => {
+    const r = validateInput({
+      ...baseInput(),
+      aliases: ['  UBL  ', 'ubl', 'Abu Abdullah', ''],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const a = r.input.aliases as string[];
+      expect(a.length).toBe(2);
+      expect(a).toContain('UBL');
+      expect(a).toContain('Abu Abdullah');
+    }
+  });
+
+  it('accepts no aliases', () => {
+    const r = validateInput(baseInput());
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.input.aliases).toBeUndefined();
+  });
+
   it('trims string fields', () => {
     const r = validateInput({
       ...baseInput(),

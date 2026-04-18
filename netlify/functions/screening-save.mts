@@ -135,6 +135,7 @@ export interface ScreeningEvent {
   reviewedBy: string;
   outcome: Outcome;
   rationale: string;
+  keyFindings?: string;
   runId?: string;
   riskTier?: RiskTier;
   jurisdiction?: string;
@@ -283,6 +284,18 @@ function validateInput(
   }
   if (o.rationale.length > 4000) return { ok: false, error: 'rationale too long (max 4000)' };
 
+  let keyFindings: string | undefined;
+  if (o.keyFindings !== undefined) {
+    if (typeof o.keyFindings !== 'string') {
+      return { ok: false, error: 'keyFindings must be a string' };
+    }
+    if (o.keyFindings.length > 4000) {
+      return { ok: false, error: 'keyFindings too long (max 4000)' };
+    }
+    const trimmed = o.keyFindings.trim();
+    if (trimmed.length > 0) keyFindings = trimmed;
+  }
+
   if (o.runId !== undefined && (typeof o.runId !== 'string' || o.runId.length > 64)) {
     return { ok: false, error: 'runId must be a string up to 64 chars' };
   }
@@ -314,6 +327,7 @@ function validateInput(
       reviewedBy: o.reviewedBy.trim(),
       outcome: o.outcome as Outcome,
       rationale: o.rationale.trim(),
+      keyFindings,
       runId: typeof o.runId === 'string' ? o.runId.trim() : undefined,
       riskTier: o.riskTier as RiskTier | undefined,
       jurisdiction: typeof o.jurisdiction === 'string' ? o.jurisdiction.trim() : undefined,
@@ -421,13 +435,35 @@ async function postDispositionAsana(
   lines.push(`Outcome: ${event.outcome.toUpperCase()}`);
   lines.push('Rationale:');
   lines.push(event.rationale);
+  if (event.keyFindings) {
+    lines.push('');
+    lines.push('Key findings:');
+    lines.push(event.keyFindings);
+  }
   if (event.runId) {
     lines.push('');
     lines.push(`Linked run: ${event.runId}`);
   }
   lines.push('');
+  lines.push('— Legal notice acknowledged by reviewer —');
   lines.push(
-    'Regulatory basis: FDL No.10/2025 Art.20-21 (CO duties), Art.24 (10yr retention), Art.26-27 (STR), Art.29 (no tipping off); Cabinet Res 134/2025 Art.14, Art.19; Cabinet Res 74/2020 Art.4-7; Cabinet Decision No.(74)/2020 (mandatory list screening).'
+    'Confidential compliance record — do not disclose to the subject or any unauthorised party (FDL No.10/2025 Art.29 no tipping off; FDL Art.24 10-year retention).'
+  );
+  lines.push(
+    'Data basis: processed under UAE AML/CFT/CPF regime (FDL No.10/2025; Cabinet Res 134/2025) and UAE PDPL Federal Decree-Law No.45/2021 Art.6(1)(c) — legal-obligation basis.'
+  );
+  lines.push(
+    'AI / automation transparency: screening used classical deterministic algorithms only (Jaro-Winkler, Levenshtein, Soundex, Double Metaphone, token-set). No generative AI was used in the match decision. Human MLRO retains final responsibility.'
+  );
+  if (event.outcome === 'confirmed_match') {
+    lines.push('');
+    lines.push(
+      'ASSET FREEZE REQUIRED WITHIN 24 HOURS — Cabinet Res 74/2020 Art.4-7. Report to EOCN without delay; file CNMR within 5 business days.'
+    );
+  }
+  lines.push('');
+  lines.push(
+    'Regulatory basis: FDL No.10/2025 Art.20-21 (CO duties), Art.24 (10yr retention), Art.26-27 (STR), Art.29 (no tipping off), Art.35 (TFS); Cabinet Res 134/2025 Art.14, Art.19; Cabinet Res 74/2020 Art.4-7; Cabinet Decision No.(74)/2020 (mandatory list screening); Cabinet Res 71/2024 (penalties); FATF Rec 10/22/23.'
   );
   lines.push('');
   lines.push('Source: /api/screening/save (Screening Command page).');
