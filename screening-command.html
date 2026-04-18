@@ -435,7 +435,6 @@
       }
       .auth-card {
         padding: 20px 22px;
-        border: 2px solid #22c55e;
       }
       .auth-body {
         margin-top: 0;
@@ -1695,21 +1694,22 @@
         Authentication <span class="tag">Required</span>
       </h2>
       <div class="auth-body">
+        <label for="loginPassword">Sign in with password</label>
+        <input
+          type="password"
+          id="loginPassword"
+          placeholder="Enter your MLRO password"
+          autocomplete="current-password"
+          spellcheck="false"
+          aria-label="MLRO password"
+          style="width: 100%; margin-bottom: 8px"
+        />
         <div class="token-row">
-          <input
-            type="password"
-            id="loginPassword"
-            placeholder="Enter your MLRO password"
-            autocomplete="current-password"
-            spellcheck="false"
-            aria-label="MLRO password"
-            style="flex: 2 1 220px; min-width: 160px"
-          />
           <button
             type="button"
             id="loginBtn"
             class="token-gen-btn"
-            style="flex: 1 1 110px; color: #22c55e; border-color: #22c55e"
+            style="flex: 1; color: #22c55e; border-color: #22c55e"
             title="Exchange password for a signed 1-year session token"
           >
             Sign in
@@ -1718,7 +1718,7 @@
             type="button"
             id="logoutBtn"
             class="token-gen-btn"
-            style="flex: 1 1 110px; color: #ef4444; border-color: #ef4444"
+            style="flex: 1; color: #ef4444; border-color: #ef4444"
             title="Forget the saved session token and require a new sign-in"
           >
             Sign out
