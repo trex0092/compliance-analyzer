@@ -104,10 +104,20 @@
       header {
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
         flex-wrap: wrap;
         gap: 8px;
         margin-bottom: 6px;
+      }
+      .title-group {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .header-logo {
+        flex-shrink: 0;
+        border-radius: 8px;
+        display: block;
       }
       h1 {
         font-family: 'Cinzel', serif;
@@ -423,6 +433,41 @@
       .token-msg.err {
         color: #ff6b6b;
       }
+      .auth-card {
+        padding: 14px 18px;
+      }
+      .auth-card[open] {
+        padding: 20px 22px;
+      }
+      .auth-summary {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+      }
+      .auth-summary::-webkit-details-marker {
+        display: none;
+      }
+      .auth-summary-title {
+        font-family: 'DM Mono', monospace;
+        font-size: 13px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--gold);
+      }
+      .auth-summary-hint {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .auth-card[open] .auth-summary-hint {
+        opacity: 0.6;
+      }
+      .auth-body {
+        margin-top: 14px;
+      }
       .stat {
         display: flex;
         gap: 10px;
@@ -440,16 +485,17 @@
       }
       .stat-value {
         font-size: 22px;
-        font-weight: 600;
-        color: var(--gold);
+        font-weight: 700;
+        color: var(--stat-color, var(--gold));
         line-height: 1;
       }
       .stat-label {
         font-size: 10px;
         text-transform: uppercase;
-        color: var(--muted);
+        color: var(--stat-color, var(--muted));
         margin-top: 6px;
         letter-spacing: 1px;
+        font-weight: 600;
       }
       .subject-row {
         padding: 10px 0;
@@ -897,10 +943,58 @@
         border-top: 1px dashed var(--border);
       }
       .coverage-foot {
-        margin-top: 10px;
-        padding-top: 8px;
+        margin-top: 2px;
+        padding-top: 0;
         font-size: 11px;
         color: var(--muted);
+      }
+      .routing-table-wrap {
+        margin-top: 10px;
+        overflow-x: auto;
+      }
+      .routing-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      .routing-table th,
+      .routing-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+        text-align: left;
+      }
+      .routing-table th {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-strong);
+      }
+      .routing-table tr:last-child td {
+        border-bottom: none;
+      }
+      .routing-table code {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        color: var(--accent);
+        background: var(--surface2);
+        padding: 1px 6px;
+        border-radius: 3px;
+      }
+      .routing-yes {
+        color: #22c55e;
+        font-weight: 600;
+      }
+      .routing-partial {
+        color: #f59e0b;
+        font-weight: 600;
+      }
+      .routing-no {
+        color: #ef4444;
+        font-weight: 600;
       }
       .legal-notice {
         margin-top: 14px;
@@ -1315,7 +1409,16 @@
   </head>
   <body>
     <header>
-      <h1>Hawkeye Sterling V2 &mdash; Screening Command</h1>
+      <div class="title-group">
+        <img
+          src="assets/logos/hawkeye-icon.svg"
+          alt="Hawkeye Sterling"
+          class="header-logo"
+          width="56"
+          height="56"
+        />
+        <h1>Hawkeye Sterling V2 &mdash; Screening Command</h1>
+      </div>
       <a href="/" class="muted">&larr; Main tool</a>
     </header>
     <section class="intro-panel">
@@ -1373,7 +1476,7 @@
     </section>
 
     <!-- MLRO identity ──────────────────────────────────────────────── -->
-    <div class="card" style="margin-top: 14px">
+    <div class="card" style="margin-top: 14px; border-color: #ec4899">
       <h2>MLRO Identity <span class="tag">Who is screening</span></h2>
       <p class="help-text" style="margin-top: -4px">
         The UAE reporting entity has two authorised officers. The Main MLRO name is written to every
@@ -1408,50 +1511,56 @@
     </div>
 
     <!-- Authentication ────────────────────────────────────────────── -->
-    <div class="card" style="margin-top: 14px">
-      <h2>Authentication <span class="tag">Required</span></h2>
-      <label for="token">Hawkeye brain token</label>
-      <div class="token-row">
-        <input
-          type="password"
-          id="token"
-          placeholder="Paste your HAWKEYE_BRAIN_TOKEN"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <button
-          type="button"
-          id="tokenGenBtn"
-          class="token-gen-btn"
-          title="Generate a fresh 32-byte CSPRNG token (local only)"
+    <details class="card auth-card" style="margin-top: 14px">
+      <summary class="auth-summary">
+        <span class="auth-summary-title">Authentication</span>
+        <span class="tag">Required</span>
+        <span class="auth-summary-hint">click to manage token</span>
+      </summary>
+      <div class="auth-body">
+        <label for="token">Hawkeye brain token</label>
+        <div class="token-row">
+          <input
+            type="password"
+            id="token"
+            placeholder="Paste your HAWKEYE_BRAIN_TOKEN"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button
+            type="button"
+            id="tokenGenBtn"
+            class="token-gen-btn"
+            title="Generate a fresh 32-byte CSPRNG token (local only)"
+          >
+            Generate
+          </button>
+          <button
+            type="button"
+            id="tokenRevealBtn"
+            class="token-gen-btn token-reveal-btn"
+            title="Show / hide the token"
+          >
+            Show
+          </button>
+          <button
+            type="button"
+            id="tokenCopyBtn"
+            class="token-gen-btn"
+            title="Copy token to clipboard"
+          >
+            Copy
+          </button>
+        </div>
+        <span class="token-hint"
+          >Saved locally in this browser only. Never sent anywhere except to your own compliance
+          API. <b>Generate</b> produces a 64-char hex token using <code>window.crypto</code> &mdash;
+          paste the same string into <code>HAWKEYE_BRAIN_TOKEN</code> on Netlify (Site settings
+          &rarr; Environment variables) and redeploy.</span
         >
-          Generate
-        </button>
-        <button
-          type="button"
-          id="tokenRevealBtn"
-          class="token-gen-btn token-reveal-btn"
-          title="Show / hide the token"
-        >
-          Show
-        </button>
-        <button
-          type="button"
-          id="tokenCopyBtn"
-          class="token-gen-btn"
-          title="Copy token to clipboard"
-        >
-          Copy
-        </button>
+        <div id="tokenMsg" class="token-msg"></div>
       </div>
-      <span class="token-hint"
-        >Saved locally in this browser only. Never sent anywhere except to your own compliance API.
-        <b>Generate</b> produces a 64-char hex token using <code>window.crypto</code> &mdash; paste
-        the same string into <code>HAWKEYE_BRAIN_TOKEN</code> on Netlify (Site settings &rarr;
-        Environment variables) and redeploy.</span
-      >
-      <div id="tokenMsg" class="token-msg"></div>
-    </div>
+    </details>
 
     <!-- Data coverage contract ────────────────────────────────────── -->
     <div class="card coverage-card" style="margin-top: 14px">
@@ -1564,6 +1673,75 @@
         Coverage guarantees logged on every screening event (FDL Art.24 — 10-year retention) so MoE
         / LBMA / internal audit can reproduce the exact data surface at any prior point in time.
       </p>
+    </div>
+
+    <!-- Asana routing ──────────────────────────────────────────────── -->
+    <div class="card" style="margin-top: 14px">
+      <h2>
+        Asana Routing
+        <span class="tag">Project GID 1214117786912339</span>
+      </h2>
+      <p class="help-text">
+        What lands in Asana vs. what stays in Netlify Blobs or is filed externally. Asana is the
+        action queue for things the MLRO needs to act on; routine records stay in the audit store.
+      </p>
+      <div class="routing-table-wrap">
+        <table class="routing-table">
+          <thead>
+            <tr>
+              <th>What</th>
+              <th>Goes to Asana?</th>
+              <th>Endpoint / skill</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Critical TM alerts</b> (Run Transaction Monitor &rarr; alert fires)</td>
+              <td><span class="routing-yes">&#10003; Auto-creates task</span></td>
+              <td><code>netlify/functions/transaction-monitor.mts</code></td>
+            </tr>
+            <tr>
+              <td><b>Sanctions hit</b> (confirmed match)</td>
+              <td>
+                <span class="routing-yes">&#10003; High-priority task + 24h / 5-day countdowns</span>
+              </td>
+              <td><code>/incident</code> skill</td>
+            </tr>
+            <tr>
+              <td><b>STR / SAR filing</b></td>
+              <td><span class="routing-yes">&#10003; Task + attachment</span></td>
+              <td><code>netlify/functions/str-filing*.mts</code></td>
+            </tr>
+            <tr>
+              <td><b>UBO re-verification</b> (15-day trigger)</td>
+              <td><span class="routing-yes">&#10003; Task</span></td>
+              <td>cron-scheduled</td>
+            </tr>
+            <tr>
+              <td><b>Daily / bi-daily watchlist screen</b></td>
+              <td>
+                <span class="routing-partial">&#9888; Only if a NEW hit appears vs last run (delta)</span>
+              </td>
+              <td><code>netlify/functions/watchlist-*.mts</code></td>
+            </tr>
+            <tr>
+              <td><b>Routine screening events</b> (a clean "Run Screening")</td>
+              <td><span class="routing-no">&#10007; Logged to Netlify Blobs, not Asana</span></td>
+              <td>&mdash;</td>
+            </tr>
+            <tr>
+              <td><b>KPI / MoE / LBMA reports</b></td>
+              <td><span class="routing-no">&#10007; Generated as XLSX / PDF, not Asana tasks</span></td>
+              <td><code>/kpi-report</code>, <code>/audit-pack</code> skills</td>
+            </tr>
+            <tr>
+              <td><b>goAML XML filings</b></td>
+              <td><span class="routing-no">&#10007; Submitted to UAE FIU, not Asana</span></td>
+              <td><code>/goaml</code> skill</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- List selector ────────────────────────────────────────────── -->
@@ -1764,7 +1942,7 @@
     <div class="grid grid-2" style="margin-top: 14px">
       <!-- Screen subject ────────────────────────────────────────────── -->
       <div class="card">
-        <h2>Screen a Subject <span class="tag">Sanctions + PEP + Adverse Media</span></h2>
+        <h2>Screen a Subject</h2>
         <p class="help-text">
           Runs multi-modal fuzzy matching (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone +
           token-set) against every selected list, searches adverse media, and computes an
@@ -2159,7 +2337,7 @@
       </div>
 
       <!-- Transaction monitor ────────────────────────────────────────────── -->
-      <div class="card">
+      <div class="card" style="border-color: #22c55e">
         <h2>Transaction Monitor <span class="tag">Structuring + Velocity + Cross-Border</span></h2>
         <p class="help-text">
           Runs the weaponized TM engine on a batch of transactions: rule-based (structuring,
@@ -2262,15 +2440,15 @@
         Subjects you screen above auto-enroll here (unless you opt out).
       </p>
       <div class="stat">
-        <div class="stat-item">
+        <div class="stat-item" style="--stat-color: #22c55e; border-color: #22c55e">
           <div class="stat-value" id="wlCount">—</div>
           <div class="stat-label">Subjects monitored</div>
         </div>
-        <div class="stat-item">
+        <div class="stat-item" style="--stat-color: #ef4444; border-color: #ef4444">
           <div class="stat-value" id="wlAlerts">—</div>
           <div class="stat-label">Total alerts lifetime</div>
         </div>
-        <div class="stat-item">
+        <div class="stat-item" style="--stat-color: #3b82f6; border-color: #3b82f6">
           <div class="stat-value" id="wlLastRun">—</div>
           <div class="stat-label">Last screened</div>
         </div>
