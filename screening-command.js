@@ -199,11 +199,18 @@
   // enhanced subset the MLRO has checked.
   function collectSelectedLists() {
     const out = [];
-    document.querySelectorAll('input[data-tier="enhanced"]').forEach((el) => {
+    document.querySelectorAll('input[data-tier="enhanced"][data-list]').forEach((el) => {
       if (el.disabled) return; // Interpol placeholder stays off until integrated
       if (el.checked) out.push(el.getAttribute('data-list'));
     });
     return out;
+  }
+
+  function isAdverseMediaEnabled() {
+    const el = document.querySelector(
+      'input[data-tier="enhanced"][data-control="adverseMedia"]'
+    );
+    return el ? !!el.checked : true;
   }
 
   function todayDdMmYyyy() {
@@ -564,7 +571,7 @@
       notes: notesInput.value.trim() || undefined,
       selectedLists: selectedLists,
       enrollInWatchlist: enrollSelect.value === 'true',
-      runAdverseMedia: true,
+      runAdverseMedia: isAdverseMediaEnabled(),
       createAsanaTask: true,
     };
     const result = await apiPost(SCREENING_ENDPOINT, body);
