@@ -49,15 +49,74 @@
  *   - FATF Rec 10 / 11 (record-keeping and traceability)
  */
 
+/**
+ * Hard ceiling on any single round trip. Picked deliberately well
+ * below Netlify's background-function budget (15 min) and above our
+ * slowest legitimate upstream (bulk sanctions list pulls can hit
+ * ~30-45s during a full monthly refresh), so typos like `6_000_000`
+ * fail fast at the boundary instead of silently committing the
+ * whole Netlify invocation to a run-away call. Callers that need
+ * longer than this are in the wrong shape — that work belongs in
+ * a background or scheduled function, not a request-scoped fetch.
+ */
+export const MAX_TIMEOUT_MS = 120_000;
+
+/**
+ * Redact query-string VALUES and userinfo from a URL before surfacing
+ * it in error messages / logs. We keep the host + path + parameter
+ * NAMES (useful for debugging) but replace each value with `***`.
+ *
+ * WHY: three live call sites embed sensitive data directly in the
+ * request URL today:
+ *   - `?api_key=<secret>`  (Brave, SerpAPI, Google Gemini)
+ *   - `?key=<secret>`      (Google Gemini)
+ *   - `?q=<subject-name>`  (adverse media — subject PII, FDL Art.29
+ *     risk: a timeout stacktrace must not echo the subject back into
+ *     an ops log where a non-MLRO could read it)
+ *
+ * A hung fetch was previously logged with the full URL in the
+ * TimeoutError message. That message flows into Netlify function
+ * logs (retained 30 days on Pro) and into Sentry / Datadog if
+ * configured. Both are outside the FDL Art.24 audit perimeter.
+ *
+ * The function is tolerant: if the input is not a parseable URL
+ * (e.g. relative path from a Request object, or a malformed string),
+ * we fall back to the raw input unchanged rather than throwing —
+ * the caller already has a separate failure on its hands.
+ */
+export function redactUrlForLogging(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  if (parsed.username || parsed.password) {
+    parsed.username = '***';
+    parsed.password = '';
+  }
+  if (parsed.search) {
+    const keys = [...parsed.searchParams.keys()];
+    parsed.search = keys.length
+      ? '?' + keys.map((k) => `${encodeURIComponent(k)}=***`).join('&')
+      : '';
+  }
+  return parsed.toString();
+}
+
 export class TimeoutError extends Error {
   readonly url: string;
   readonly timeoutMs: number;
   readonly elapsedMs: number;
 
   constructor(url: string, timeoutMs: number, elapsedMs: number) {
-    super(`fetch timed out after ${elapsedMs}ms (budget ${timeoutMs}ms): ${url}`);
+    const safe = redactUrlForLogging(url);
+    super(`fetch timed out after ${elapsedMs}ms (budget ${timeoutMs}ms): ${safe}`);
     this.name = 'TimeoutError';
-    this.url = url;
+    // Store the REDACTED URL on the error. Callers that genuinely
+    // need the raw URL already have it at the call site — they
+    // should not fish it out of an error surface.
+    this.url = safe;
     this.timeoutMs = timeoutMs;
     this.elapsedMs = elapsedMs;
   }
@@ -75,9 +134,27 @@ export interface FetchWithTimeoutInit extends RequestInit {
 }
 
 /**
+ * Which side won the abort race. Recorded at the exact moment a
+ * signal fires so the catch block can classify the rejection
+ * correctly even when the caller's signal and the timeout signal
+ * both end up aborted by the time we inspect them.
+ *
+ * Before this refactor we classified by looking at
+ * `timeoutController.signal.aborted && !callerSignal.aborted`
+ * after the await resolved. That check was wrong whenever the
+ * timeout fired first and the caller's signal then fired while
+ * the fetch was tearing down (not uncommon on a cancelled user
+ * request that also happens to be slow) — both signals ended up
+ * aborted, so we misclassified a real timeout as a caller abort
+ * and no TimeoutError was raised, so the elapsed-time telemetry
+ * was lost.
+ */
+type RaceWinner = 'timeout' | 'caller' | null;
+
+/**
  * Combine the caller's own AbortSignal (if any) with the
- * timeout signal. Returns a signal that aborts when EITHER
- * the timeout fires OR the caller's signal aborts.
+ * timeout signal. Returns the combined signal and a getter for
+ * which side fired first (for post-hoc classification).
  *
  * We implement this manually rather than using
  * `AbortSignal.any([...])` because that method is Node 20.3+ /
@@ -87,26 +164,51 @@ export interface FetchWithTimeoutInit extends RequestInit {
 function linkSignals(
   timeoutSignal: AbortSignal,
   callerSignal: AbortSignal | null | undefined
-): AbortSignal {
-  if (!callerSignal) return timeoutSignal;
-  const controller = new AbortController();
+): { signal: AbortSignal; winner: () => RaceWinner } {
+  let winner: RaceWinner = null;
+  const markWinner = (who: Exclude<RaceWinner, null>): void => {
+    if (winner === null) winner = who;
+  };
 
+  if (!callerSignal) {
+    if (timeoutSignal.aborted) markWinner('timeout');
+    else timeoutSignal.addEventListener('abort', () => markWinner('timeout'), { once: true });
+    return { signal: timeoutSignal, winner: () => winner };
+  }
+
+  const controller = new AbortController();
   const abort = (reason: unknown): void => {
     if (!controller.signal.aborted) controller.abort(reason);
   };
 
   if (callerSignal.aborted) {
+    markWinner('caller');
     abort(callerSignal.reason);
   } else {
-    callerSignal.addEventListener('abort', () => abort(callerSignal.reason), { once: true });
+    callerSignal.addEventListener(
+      'abort',
+      () => {
+        markWinner('caller');
+        abort(callerSignal.reason);
+      },
+      { once: true }
+    );
   }
   if (timeoutSignal.aborted) {
+    markWinner('timeout');
     abort(timeoutSignal.reason);
   } else {
-    timeoutSignal.addEventListener('abort', () => abort(timeoutSignal.reason), { once: true });
+    timeoutSignal.addEventListener(
+      'abort',
+      () => {
+        markWinner('timeout');
+        abort(timeoutSignal.reason);
+      },
+      { once: true }
+    );
   }
 
-  return controller.signal;
+  return { signal: controller.signal, winner: () => winner };
 }
 
 /**
@@ -130,6 +232,13 @@ export async function fetchWithTimeout(
       `fetchWithTimeout: timeoutMs must be a positive finite number (got ${timeoutMs})`
     );
   }
+  if (timeoutMs > MAX_TIMEOUT_MS) {
+    throw new TypeError(
+      `fetchWithTimeout: timeoutMs ${timeoutMs} exceeds the MAX_TIMEOUT_MS ceiling of ${MAX_TIMEOUT_MS}ms. ` +
+        `Work that needs a longer budget belongs in a Netlify background or scheduled function, ` +
+        `not a request-scoped fetch.`
+    );
+  }
 
   const urlForError =
     typeof input === 'string'
@@ -141,17 +250,19 @@ export async function fetchWithTimeout(
 
   const timeoutController = new AbortController();
   const timer = setTimeout(() => timeoutController.abort(), timeoutMs);
-  const signal = linkSignals(timeoutController.signal, callerSignal as AbortSignal | undefined);
+  const { signal, winner } = linkSignals(
+    timeoutController.signal,
+    callerSignal as AbortSignal | undefined
+  );
   const startedAt = Date.now();
 
   try {
     return await fetch(input, { ...rest, signal });
   } catch (err) {
-    if (
-      timeoutController.signal.aborted &&
-      !(callerSignal && (callerSignal as AbortSignal).aborted)
-    ) {
-      // The timeout won the race.
+    // Classify by which side of the race fired FIRST, not by which
+    // signals happen to be aborted after the fetch rejected. See
+    // the RaceWinner doc comment above for why this matters.
+    if (winner() === 'timeout') {
       throw new TimeoutError(urlForError, timeoutMs, Date.now() - startedAt);
     }
     throw err;
