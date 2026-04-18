@@ -212,6 +212,12 @@ export default async (req: Request, context: Context): Promise<Response> => {
       'Cache-Control': 'no-store',
       Connection: 'keep-alive',
       'X-Content-Type-Options': 'nosniff',
+      // Disable proxy buffering (Nginx, Netlify Edge, some CDNs).
+      // Without this, intermediaries can hold SSE frames in a buffer
+      // and defeat the heartbeat above — surfacing as "Stream idle
+      // timeout - partial response received" on the client even while
+      // the server is emitting heartbeats on schedule.
+      'X-Accel-Buffering': 'no',
     },
   });
 };
