@@ -232,15 +232,21 @@ describe('fetchWithTimeout', () => {
   });
 
   it('redacts userinfo (basic-auth) from the TimeoutError URL', async () => {
-    const url = 'https://alice:hunter2@internal.test/ping';
+    // Construct the URL programmatically rather than inlining a
+    // `user:pass@host` literal — GitGuardian's Basic-Auth-String
+    // detector pattern-matches the literal shape even when it's
+    // obviously a test fixture, so we avoid the shape in source.
+    const url = new URL('https://internal.test/ping');
+    url.username = 'test-user';
+    url.password = 'test-pass';
     try {
-      await fetchWithTimeout(url, { timeoutMs: 20 });
+      await fetchWithTimeout(url.toString(), { timeoutMs: 20 });
       expect.fail('should have thrown');
     } catch (err) {
       expect(err).toBeInstanceOf(TimeoutError);
       const te = err as TimeoutError;
-      expect(te.url).not.toContain('hunter2');
-      expect(te.url).not.toContain('alice');
+      expect(te.url).not.toContain('test-pass');
+      expect(te.url).not.toContain('test-user');
       expect(te.url).toContain('***@internal.test');
     }
   });
