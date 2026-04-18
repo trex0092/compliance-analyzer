@@ -79,9 +79,9 @@ export function levenshteinDistance(a: string, b: string): number {
     for (let i = 1; i <= la; i++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       curr[i] = Math.min(
-        curr[i - 1] + 1,       // insertion
-        prev[i] + 1,           // deletion
-        prev[i - 1] + cost,    // substitution
+        curr[i - 1] + 1, // insertion
+        prev[i] + 1, // deletion
+        prev[i - 1] + cost // substitution
       );
     }
     [prev, curr] = [curr, prev];
@@ -108,11 +108,23 @@ export function levenshteinSimilarity(a: string, b: string): number {
 // ---------------------------------------------------------------------------
 
 const SOUNDEX_CODE: Record<string, string> = {
-  b: '1', f: '1', p: '1', v: '1',
-  c: '2', g: '2', j: '2', k: '2', q: '2', s: '2', x: '2', z: '2',
-  d: '3', t: '3',
+  b: '1',
+  f: '1',
+  p: '1',
+  v: '1',
+  c: '2',
+  g: '2',
+  j: '2',
+  k: '2',
+  q: '2',
+  s: '2',
+  x: '2',
+  z: '2',
+  d: '3',
+  t: '3',
   l: '4',
-  m: '5', n: '5',
+  m: '5',
+  n: '5',
   r: '6',
 };
 
@@ -180,10 +192,11 @@ export function soundex(raw: string): string {
   // The loop above mapped s[0] as well. Peel it off now.
   dedup = dedup.replace(/\?/g, '');
   // Remove the code corresponding to the first letter.
-  const firstCode =
-    'aeiouy'.includes(s[0]) ? '?' :
-    s[0] === 'h' || s[0] === 'w' ? '.' :
-    SOUNDEX_CODE[s[0]] ?? '?';
+  const firstCode = 'aeiouy'.includes(s[0])
+    ? '?'
+    : s[0] === 'h' || s[0] === 'w'
+      ? '.'
+      : (SOUNDEX_CODE[s[0]] ?? '?');
   if (firstCode !== '?' && firstCode !== '.' && dedup[0] === firstCode) {
     dedup = dedup.slice(1);
   }
@@ -221,16 +234,15 @@ export interface MultiModalWeights {
  *   - Arabic ↔ Latin after translit.     → ≥ 0.70 (flagged)
  */
 export const DEFAULT_WEIGHTS: MultiModalWeights = Object.freeze({
-  jaroWinkler: 0.20,
+  jaroWinkler: 0.2,
   levenshtein: 0.15,
-  soundex: 0.10,
+  soundex: 0.1,
   metaphone: 0.15,
-  tokenSet: 0.40,
+  tokenSet: 0.4,
 });
 
 function normaliseWeights(w: MultiModalWeights): MultiModalWeights {
-  const sum =
-    w.jaroWinkler + w.levenshtein + w.soundex + w.metaphone + w.tokenSet;
+  const sum = w.jaroWinkler + w.levenshtein + w.soundex + w.metaphone + w.tokenSet;
   if (sum === 0) return DEFAULT_WEIGHTS;
   return {
     jaroWinkler: w.jaroWinkler / sum,
@@ -306,7 +318,7 @@ function agreementOf(scores: readonly number[]): number {
 export function multiModalMatch(
   rawA: string,
   rawB: string,
-  weights?: Partial<MultiModalWeights>,
+  weights?: Partial<MultiModalWeights>
 ): MultiModalMatchBreakdown {
   // Pre-process: legal-suffix strip, transliterate if one side is Arabic.
   let a = stripLegalSuffix(rawA);
@@ -331,8 +343,16 @@ export function multiModalMatch(
   // signals. Character-level algorithms (Jaro-Winkler, Levenshtein)
   // are positional — without this, surname-first ↔ surname-last
   // swaps tank their scores even though the names are identical.
-  const sortedA = normA.split(/\s+/).filter((t) => t.length > 0).sort().join(' ');
-  const sortedB = normB.split(/\s+/).filter((t) => t.length > 0).sort().join(' ');
+  const sortedA = normA
+    .split(/\s+/)
+    .filter((t) => t.length > 0)
+    .sort()
+    .join(' ');
+  const sortedB = normB
+    .split(/\s+/)
+    .filter((t) => t.length > 0)
+    .sort()
+    .join(' ');
 
   const jw = jaroWinkler(sortedA, sortedB);
   const lev = levenshteinSimilarity(sortedA, sortedB);
@@ -361,8 +381,7 @@ export function multiModalMatch(
   // by token-order false positives. See nameMatching.ts §matchScore.
   let token = tsb.mean;
   const heavilyDistinct = tsb.min < 0.6;
-  const sharedSingleTokenWithDistinctOther =
-    tsb.max >= 0.999 && tsb.min < 0.8;
+  const sharedSingleTokenWithDistinctOther = tsb.max >= 0.999 && tsb.min < 0.8;
   if (heavilyDistinct || sharedSingleTokenWithDistinctOther) {
     token = tsb.min * tsb.min;
   }
@@ -374,7 +393,7 @@ export function multiModalMatch(
       lev * w.levenshtein +
       sx * w.soundex +
       meta * w.metaphone +
-      token * w.tokenSet,
+      token * w.tokenSet
   );
 
   const agreement = agreementOf([jw, lev, sx, meta, token]);
@@ -396,11 +415,7 @@ export function multiModalMatch(
 }
 
 /** True if `multiModalMatch(a, b).score >= threshold`. */
-export function isMultiModalMatch(
-  a: string,
-  b: string,
-  threshold = 0.7,
-): boolean {
+export function isMultiModalMatch(a: string, b: string, threshold = 0.7): boolean {
   return multiModalMatch(a, b).score >= threshold;
 }
 
@@ -415,10 +430,9 @@ export function findBestMultiModalMatch(
   query: string,
   candidates: readonly string[],
   threshold = 0.7,
-  weights?: Partial<MultiModalWeights>,
+  weights?: Partial<MultiModalWeights>
 ): { candidate: string; breakdown: MultiModalMatchBreakdown } | null {
-  let best: { candidate: string; breakdown: MultiModalMatchBreakdown } | null =
-    null;
+  let best: { candidate: string; breakdown: MultiModalMatchBreakdown } | null = null;
   for (const c of candidates) {
     const breakdown = multiModalMatch(query, c, weights);
     if (breakdown.score < threshold) continue;
@@ -476,7 +490,7 @@ export interface MultiModalScreeningResponse {
  * how close a "no hit" actually was.
  */
 export function runMultiModalNameMatcher(
-  req: MultiModalScreeningRequest,
+  req: MultiModalScreeningRequest
 ): MultiModalScreeningResponse {
   const threshold = req.threshold ?? 0.7;
   const maxHits = req.maxHits ?? 20;

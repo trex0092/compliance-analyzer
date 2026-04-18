@@ -57,9 +57,22 @@ export function createReviewSchedule(
   };
 }
 
-export function checkReviewStatus(schedule: PeriodicReviewSchedule): PeriodicReviewSchedule {
+/**
+ * Derive the live status of a review schedule against the wall-clock.
+ *
+ * Accepts an optional `now` so callers that already hold an authoritative
+ * report clock (weekly CDD rollup, audit snapshots, MLRO timeline replay)
+ * can thread it through instead of re-reading the system clock. Without
+ * this, a test that pins NOW via its own fixture and a production call
+ * that happens at real-time diverge mid-run — which is exactly the
+ * failure mode the CDD weekly-report test hit when fixture-now and
+ * real-now fell on opposite sides of a scheduled date.
+ */
+export function checkReviewStatus(
+  schedule: PeriodicReviewSchedule,
+  now: Date = new Date()
+): PeriodicReviewSchedule {
   if (schedule.status === 'completed') return schedule;
-  const now = new Date();
   const next = new Date(schedule.nextReviewDate);
   if (isNaN(next.getTime())) return { ...schedule, status: 'scheduled' };
   if (next < now) return { ...schedule, status: 'overdue' };
