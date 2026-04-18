@@ -948,6 +948,54 @@
         font-size: 11px;
         color: var(--muted);
       }
+      .routing-table-wrap {
+        margin-top: 10px;
+        overflow-x: auto;
+      }
+      .routing-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      .routing-table th,
+      .routing-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+        text-align: left;
+      }
+      .routing-table th {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-strong);
+      }
+      .routing-table tr:last-child td {
+        border-bottom: none;
+      }
+      .routing-table code {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        color: var(--accent);
+        background: var(--surface2);
+        padding: 1px 6px;
+        border-radius: 3px;
+      }
+      .routing-yes {
+        color: #22c55e;
+        font-weight: 600;
+      }
+      .routing-partial {
+        color: #f59e0b;
+        font-weight: 600;
+      }
+      .routing-no {
+        color: #ef4444;
+        font-weight: 600;
+      }
       .legal-notice {
         margin-top: 14px;
         padding: 12px 14px;
@@ -1625,6 +1673,75 @@
         Coverage guarantees logged on every screening event (FDL Art.24 — 10-year retention) so MoE
         / LBMA / internal audit can reproduce the exact data surface at any prior point in time.
       </p>
+    </div>
+
+    <!-- Asana routing ──────────────────────────────────────────────── -->
+    <div class="card" style="margin-top: 14px">
+      <h2>
+        Asana Routing
+        <span class="tag">Project GID 1214117786912339</span>
+      </h2>
+      <p class="help-text">
+        What lands in Asana vs. what stays in Netlify Blobs or is filed externally. Asana is the
+        action queue for things the MLRO needs to act on; routine records stay in the audit store.
+      </p>
+      <div class="routing-table-wrap">
+        <table class="routing-table">
+          <thead>
+            <tr>
+              <th>What</th>
+              <th>Goes to Asana?</th>
+              <th>Endpoint / skill</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Critical TM alerts</b> (Run Transaction Monitor &rarr; alert fires)</td>
+              <td><span class="routing-yes">&#10003; Auto-creates task</span></td>
+              <td><code>netlify/functions/transaction-monitor.mts</code></td>
+            </tr>
+            <tr>
+              <td><b>Sanctions hit</b> (confirmed match)</td>
+              <td>
+                <span class="routing-yes">&#10003; High-priority task + 24h / 5-day countdowns</span>
+              </td>
+              <td><code>/incident</code> skill</td>
+            </tr>
+            <tr>
+              <td><b>STR / SAR filing</b></td>
+              <td><span class="routing-yes">&#10003; Task + attachment</span></td>
+              <td><code>netlify/functions/str-filing*.mts</code></td>
+            </tr>
+            <tr>
+              <td><b>UBO re-verification</b> (15-day trigger)</td>
+              <td><span class="routing-yes">&#10003; Task</span></td>
+              <td>cron-scheduled</td>
+            </tr>
+            <tr>
+              <td><b>Daily / bi-daily watchlist screen</b></td>
+              <td>
+                <span class="routing-partial">&#9888; Only if a NEW hit appears vs last run (delta)</span>
+              </td>
+              <td><code>netlify/functions/watchlist-*.mts</code></td>
+            </tr>
+            <tr>
+              <td><b>Routine screening events</b> (a clean "Run Screening")</td>
+              <td><span class="routing-no">&#10007; Logged to Netlify Blobs, not Asana</span></td>
+              <td>&mdash;</td>
+            </tr>
+            <tr>
+              <td><b>KPI / MoE / LBMA reports</b></td>
+              <td><span class="routing-no">&#10007; Generated as XLSX / PDF, not Asana tasks</span></td>
+              <td><code>/kpi-report</code>, <code>/audit-pack</code> skills</td>
+            </tr>
+            <tr>
+              <td><b>goAML XML filings</b></td>
+              <td><span class="routing-no">&#10007; Submitted to UAE FIU, not Asana</span></td>
+              <td><code>/goaml</code> skill</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- List selector ────────────────────────────────────────────── -->
