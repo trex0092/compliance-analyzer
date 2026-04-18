@@ -690,22 +690,67 @@
         display: flex;
         align-items: flex-start;
         gap: 10px;
-        padding: 8px 0;
+        padding: 10px 8px;
+        margin: 0 -8px;
         border-top: 1px solid var(--border);
         cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.12s ease;
       }
       .list-check:first-of-type {
         border-top: none;
       }
+      .list-check:hover:not(.locked):not(.disabled) {
+        background-color: rgba(255, 255, 255, 0.03);
+      }
+      .list-check:active:not(.locked):not(.disabled) {
+        background-color: rgba(255, 255, 255, 0.06);
+      }
       .list-check input[type='checkbox'] {
-        margin-top: 2px;
-        accent-color: var(--gold);
-        width: 16px;
-        height: 16px;
+        appearance: none;
+        -webkit-appearance: none;
+        margin-top: 1px;
+        width: 20px;
+        height: 20px;
         flex-shrink: 0;
+        border: 2px solid var(--gold);
+        border-radius: 3px;
+        background: transparent;
+        cursor: pointer;
+        position: relative;
+        transition: background-color 0.12s ease, border-color 0.12s ease;
+      }
+      .list-check input[type='checkbox']:checked {
+        background-color: var(--gold);
+        border-color: var(--gold);
+      }
+      .list-check input[type='checkbox']:checked::after {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 1px;
+        width: 6px;
+        height: 11px;
+        border: solid #111;
+        border-width: 0 2.5px 2.5px 0;
+        transform: rotate(45deg);
+      }
+      .list-check input[type='checkbox']:focus-visible {
+        outline: 2px solid var(--gold);
+        outline-offset: 2px;
       }
       .list-tier.enhanced .list-check input[type='checkbox'] {
-        accent-color: var(--blue);
+        border-color: var(--blue);
+      }
+      .list-tier.enhanced .list-check input[type='checkbox']:checked {
+        background-color: var(--blue);
+        border-color: var(--blue);
+      }
+      .list-tier.enhanced .list-check input[type='checkbox']:checked::after {
+        border-color: #fff;
+      }
+      .list-tier.enhanced .list-check input[type='checkbox']:focus-visible {
+        outline-color: var(--blue);
       }
       .list-check.locked {
         cursor: not-allowed;
@@ -713,6 +758,7 @@
       }
       .list-check.locked input[type='checkbox'] {
         opacity: 1;
+        cursor: not-allowed;
       }
       .list-check.disabled {
         opacity: 0.85;
@@ -720,6 +766,7 @@
       }
       .list-check.disabled input[type='checkbox'] {
         opacity: 1;
+        cursor: not-allowed;
       }
       .list-check .list-label {
         font-size: 13px;
