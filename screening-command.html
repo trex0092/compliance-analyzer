@@ -440,16 +440,17 @@
       }
       .stat-value {
         font-size: 22px;
-        font-weight: 600;
-        color: var(--gold);
+        font-weight: 700;
+        color: var(--stat-color, var(--gold));
         line-height: 1;
       }
       .stat-label {
         font-size: 10px;
         text-transform: uppercase;
-        color: var(--muted);
+        color: var(--stat-color, var(--muted));
         margin-top: 6px;
         letter-spacing: 1px;
+        font-weight: 600;
       }
       .subject-row {
         padding: 10px 0;
@@ -2262,15 +2263,15 @@
         Subjects you screen above auto-enroll here (unless you opt out).
       </p>
       <div class="stat">
-        <div class="stat-item" style="border-color: #22c55e">
+        <div class="stat-item" style="--stat-color: #22c55e; border-color: #22c55e">
           <div class="stat-value" id="wlCount">—</div>
           <div class="stat-label">Subjects monitored</div>
         </div>
-        <div class="stat-item" style="border-color: #ef4444">
+        <div class="stat-item" style="--stat-color: #ef4444; border-color: #ef4444">
           <div class="stat-value" id="wlAlerts">—</div>
           <div class="stat-label">Total alerts lifetime</div>
         </div>
-        <div class="stat-item" style="border-color: #3b82f6">
+        <div class="stat-item" style="--stat-color: #3b82f6; border-color: #3b82f6">
           <div class="stat-value" id="wlLastRun">—</div>
           <div class="stat-label">Last screened</div>
         </div>
