@@ -1220,8 +1220,77 @@
       </div>
     </section>
 
+    <!-- MLRO identity ──────────────────────────────────────────────── -->
+    <div class="card" style="margin-top: 14px">
+      <h2>MLRO Identity <span class="tag">Who is screening</span></h2>
+      <p class="help-text" style="margin-top: -4px">
+        The UAE reporting entity has two authorised officers. Pick the one on duty before running a
+        screening — the name is written to the event as <i>Screened by</i> and auto-fills the MLRO
+        Disposition &gt; Reviewed by field. Saved locally (FDL Art.24 — 10-year audit trail).
+      </p>
+      <div class="row-2">
+        <div>
+          <label for="mlroMainName">Main MLRO — full legal name *</label>
+          <input
+            type="text"
+            id="mlroMainName"
+            placeholder="e.g. Jane A. Sterling"
+            autocomplete="off"
+            maxlength="128"
+          />
+        </div>
+        <div>
+          <label for="mlroDeputyName">Deputy MLRO — full legal name *</label>
+          <input
+            type="text"
+            id="mlroDeputyName"
+            placeholder="e.g. John B. Hawke"
+            autocomplete="off"
+            maxlength="128"
+          />
+        </div>
+      </div>
+      <label style="margin-top: 8px">Active officer for this session *</label>
+      <div
+        class="outcome-grid"
+        role="radiogroup"
+        aria-label="Active MLRO"
+        style="grid-template-columns: repeat(2, 1fr); gap: 8px"
+      >
+        <button
+          type="button"
+          class="outcome-btn mlro-role-btn"
+          data-role="main"
+          role="radio"
+          aria-checked="true"
+        >
+          <span class="outcome-head">
+            <span class="glyph" aria-hidden="true">&#9733;</span>
+            <span class="label">Main MLRO</span>
+          </span>
+          <span class="impact" id="mlroMainLabel">—</span>
+        </button>
+        <button
+          type="button"
+          class="outcome-btn mlro-role-btn"
+          data-role="deputy"
+          role="radio"
+          aria-checked="false"
+        >
+          <span class="outcome-head">
+            <span class="glyph" aria-hidden="true">&#9734;</span>
+            <span class="label">Deputy MLRO</span>
+          </span>
+          <span class="impact" id="mlroDeputyLabel">—</span>
+        </button>
+      </div>
+      <p class="help-text" style="margin-top: 8px">
+        <b>Screened by:</b> <span id="mlroActiveBadge" class="tag">—</span>
+      </p>
+    </div>
+
     <!-- Authentication ────────────────────────────────────────────── -->
-    <div class="card">
+    <div class="card" style="margin-top: 14px">
       <h2>Authentication <span class="tag">Required</span></h2>
       <label for="token">Hawkeye brain token</label>
       <input
@@ -1661,6 +1730,12 @@
           </div>
         </div>
 
+        <p class="help-text" style="margin-top: 6px">
+          <b>Screened by:</b> <span id="mlroActiveBadgeRun" class="tag">—</span>
+          <span class="token-hint"
+            >&nbsp;Change the active officer in the <i>MLRO Identity</i> card above.</span
+          >
+        </p>
         <button id="screenBtn" type="button">Run Screening</button>
         <div id="screenMsg"></div>
         <div id="screenResult" style="margin-top: 14px"></div>

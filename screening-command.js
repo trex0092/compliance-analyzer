@@ -22,6 +22,9 @@
   const TM_ENDPOINT = '/api/transaction/monitor';
   const WATCHLIST_ENDPOINT = '/api/watchlist';
   const TOKEN_KEY = 'hawkeye.watchlist.adminToken';
+  const MLRO_MAIN_KEY = 'hawkeye.mlro.main';
+  const MLRO_DEPUTY_KEY = 'hawkeye.mlro.deputy';
+  const MLRO_ACTIVE_KEY = 'hawkeye.mlro.active';
   const TOKEN_MIN = 32;
   const TOKEN_HEX_RE = /^[a-f0-9]+$/i;
   const RATIONALE_MIN = 20;
@@ -51,6 +54,79 @@
   tokenInput.addEventListener('blur', saveToken);
   tokenInput.addEventListener('input', saveToken);
   window.addEventListener('beforeunload', saveToken);
+
+  // ─── MLRO identity (main + deputy, persisted + active-officer toggle) ───
+  const mlroMainNameInput = $('mlroMainName');
+  const mlroDeputyNameInput = $('mlroDeputyName');
+  const mlroMainLabel = $('mlroMainLabel');
+  const mlroDeputyLabel = $('mlroDeputyLabel');
+  const mlroActiveBadge = $('mlroActiveBadge');
+  const mlroRoleBtns = document.querySelectorAll('.mlro-role-btn');
+
+  function lsGet(key) {
+    try {
+      return localStorage.getItem(key) || '';
+    } catch (_e) {
+      return '';
+    }
+  }
+  function lsSet(key, value) {
+    try {
+      if (value) localStorage.setItem(key, value);
+      else localStorage.removeItem(key);
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  let activeMlroRole = lsGet(MLRO_ACTIVE_KEY) || 'main';
+
+  function activeMlroName() {
+    const main = (mlroMainNameInput.value || '').trim();
+    const deputy = (mlroDeputyNameInput.value || '').trim();
+    return activeMlroRole === 'deputy' ? deputy : main;
+  }
+
+  function refreshMlroUi() {
+    const main = (mlroMainNameInput.value || '').trim();
+    const deputy = (mlroDeputyNameInput.value || '').trim();
+    if (mlroMainLabel) mlroMainLabel.textContent = main || 'Not set';
+    if (mlroDeputyLabel) mlroDeputyLabel.textContent = deputy || 'Not set';
+    mlroRoleBtns.forEach((btn) => {
+      const isActive = btn.getAttribute('data-role') === activeMlroRole;
+      btn.classList.toggle('selected', isActive);
+      btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    });
+    const name = activeMlroName();
+    const roleLabel = activeMlroRole === 'deputy' ? 'Deputy MLRO' : 'Main MLRO';
+    const badgeText = name ? `${name} — ${roleLabel}` : `(${roleLabel} — name missing)`;
+    if (mlroActiveBadge) mlroActiveBadge.textContent = badgeText;
+    const runBadge = $('mlroActiveBadgeRun');
+    if (runBadge) runBadge.textContent = badgeText;
+    const reviewedByEl = $('reviewedBy');
+    if (reviewedByEl && !reviewedByEl.value && name) reviewedByEl.value = name;
+  }
+
+  mlroMainNameInput.value = lsGet(MLRO_MAIN_KEY);
+  mlroDeputyNameInput.value = lsGet(MLRO_DEPUTY_KEY);
+
+  mlroMainNameInput.addEventListener('input', () => {
+    lsSet(MLRO_MAIN_KEY, mlroMainNameInput.value.trim());
+    refreshMlroUi();
+  });
+  mlroDeputyNameInput.addEventListener('input', () => {
+    lsSet(MLRO_DEPUTY_KEY, mlroDeputyNameInput.value.trim());
+    refreshMlroUi();
+  });
+  mlroRoleBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activeMlroRole = btn.getAttribute('data-role') || 'main';
+      lsSet(MLRO_ACTIVE_KEY, activeMlroRole);
+      refreshMlroUi();
+    });
+  });
+
+  refreshMlroUi();
 
   // ─── Token format check ──────────────────────────────────────────
   function tokenFormatError(token) {
@@ -336,14 +412,6 @@
   // which predicate offences were searched.
   function allPredicateKeys() {
     return ADVERSE_MEDIA_PREDICATES.map((p) => p.key);
-  }
-
-  function collectSelectedCategories() {
-    const out = [];
-    document.querySelectorAll('input[data-category][data-tier="enhanced"]').forEach((el) => {
-      if (el.checked) out.push(el.getAttribute('data-category'));
-    });
-    return out;
   }
 
   function todayDdMmYyyy() {
@@ -855,6 +923,15 @@
     );
     screenResult.innerHTML = '';
 
+    const screener = activeMlroName();
+    if (!screener) {
+      showMessage(
+        screenMsg,
+        'Screener name required — set the active MLRO identity above before running a screening.',
+        'error'
+      );
+      return;
+    }
     const aliases = aliasesInput ? parseAliases(aliasesInput.value) : [];
     const body = {
       subjectName: name,
@@ -873,6 +950,8 @@
       runAdverseMedia: isAdverseMediaEnabled(),
       adverseMediaPredicates: isAdverseMediaEnabled() ? allPredicateKeys() : undefined,
       createAsanaTask: true,
+      screenedBy: screener,
+      screenedByRole: activeMlroRole === 'deputy' ? 'deputy_mlro' : 'main_mlro',
     };
     const result = await apiPost(SCREENING_ENDPOINT, body);
     if (!result.ok) {
