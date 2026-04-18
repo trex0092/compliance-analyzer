@@ -200,15 +200,21 @@ function formatCanonicalJson(input: ScreeningReportInput, integrityHash: string)
 }
 
 const REGULATORY_BASIS = [
+  'FDL No.10/2025 Art.12 (CDD failure triggers freeze)',
   'FDL No.10/2025 Art.20-21 (CO duty of care)',
   'FDL No.10/2025 Art.24 (10-year record retention)',
-  'FDL No.10/2025 Art.26-27 (STR filing obligations)',
+  'FDL No.10/2025 Art.26-27 (STR filing without delay upon suspicion)',
   'FDL No.10/2025 Art.29 (no tipping off)',
   'FDL No.10/2025 Art.35 (targeted financial sanctions)',
+  'Cabinet Res 134/2025 Art.14 (EDD triggers, PEP, senior-management approval)',
   'Cabinet Res 134/2025 Art.19 (internal review before decision)',
-  'Cabinet Res 74/2020 Art.4-7 (EOCN freeze protocol, 24h + 5bd CNMR)',
+  'Cabinet Res 74/2020 Art.4 (freeze executed immediately per EOCN TFS Guidance July 2025, 1-2h maximum)',
+  'Cabinet Res 74/2020 Art.6 (CNMR filed within 5 business days of freeze)',
+  'Cabinet Res 74/2020 Art.7 (no release of frozen assets without written EOCN order)',
+  'Cabinet Res 156/2025 (proliferation financing and dual-use screening)',
+  'Cabinet Res 71/2024 (administrative penalties up to AED 100M)',
   'MoE Circular 08/AML/2021 (DPMS sector guidance + goAML reporting)',
-  'FATF Rec 10 (CDD), Rec 18 (internal controls), Rec 20 (STR)',
+  'FATF Rec 10 (CDD), Rec 18 (internal controls), Rec 20 (STR), Rec 6 (TFS)',
 ] as const;
 
 // ---------------------------------------------------------------------------
