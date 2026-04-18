@@ -1422,7 +1422,7 @@
 
     <!-- MLRO identity ──────────────────────────────────────────────── -->
     <div class="card" style="margin-top: 14px; border-color: #ec4899">
-      <h2>MLRO Identity <span class="tag">Who is screening</span></h2>
+      <h2 style="color: #ec4899">MLRO Identity <span class="tag">Who is screening</span></h2>
       <p class="help-text" style="margin-top: -4px">
         The UAE reporting entity has two authorised officers. The Main MLRO name is written to every
         screening event as <i>Screened by</i> and auto-fills the MLRO Disposition &gt; Reviewed by
@@ -1623,7 +1623,7 @@
     <!-- List selector ────────────────────────────────────────────── -->
     <div class="grid grid-2" style="margin-top: 14px">
       <div class="card list-tier mandatory">
-        <h2>Mandatory UAE Lists</h2>
+        <h2 style="color: var(--blue)">Mandatory UAE Lists</h2>
         <label class="list-check locked">
           <input
             type="checkbox"
@@ -1662,7 +1662,7 @@
         </p>
       </div>
       <div class="card list-tier enhanced">
-        <h2>Enhanced Controls</h2>
+        <h2 style="color: var(--blue)">Enhanced Controls</h2>
         <label class="list-check">
           <input type="checkbox" data-list="OFAC" data-tier="enhanced" checked />
           <span class="list-label"
@@ -1688,16 +1688,6 @@
             <span class="list-sub">Office of Financial Sanctions Implementation (HMT)</span>
           </span>
         </label>
-        <label class="list-check">
-          <input type="checkbox" data-control="adverseMedia" data-tier="enhanced" checked />
-          <span class="list-label"
-            >Adverse Media Sweep
-            <span class="list-sub"
-              >Open-source negative-news search — PEP, sanctions, litigation, fraud, terrorism
-              financing (FATF Rec 10 / 12, EOCN guidance)</span
-            >
-          </span>
-        </label>
         <label class="list-check disabled">
           <input type="checkbox" data-list="INTERPOL" data-tier="enhanced" checked disabled />
           <span class="list-label"
@@ -1715,7 +1705,7 @@
 
     <!-- Risk categories ────────────────────────────────────────────── -->
     <div class="card list-tier enhanced" style="margin-top: 14px">
-      <h2>Risk Categories</h2>
+      <h2 style="color: var(--blue)">Risk Categories</h2>
       <p class="help-text" style="margin-top: -4px">
         Content categories screened against every selected list + adverse-media corpus. Default: all
         ON. Turning a category OFF is logged on the screening event (FDL Art.24 — 10-year
@@ -1818,7 +1808,7 @@
     <div class="grid grid-2" style="margin-top: 14px">
       <!-- Screen subject ────────────────────────────────────────────── -->
       <div class="card" style="border-color: #ec4899">
-        <h2>Screen a Subject</h2>
+        <h2 style="color: #ec4899">Screen a Subject</h2>
         <p class="help-text">
           Runs multi-modal fuzzy matching (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone +
           token-set) against every selected list, searches adverse media, and computes an
@@ -2214,7 +2204,7 @@
 
       <!-- Transaction monitor ────────────────────────────────────────────── -->
       <div class="card" style="border-color: #22c55e">
-        <h2>Transaction Monitor <span class="tag">Structuring + Velocity + Cross-Border</span></h2>
+        <h2 style="color: #22c55e">Transaction Monitor <span class="tag">Structuring + Velocity + Cross-Border</span></h2>
         <p class="help-text">
           Runs the weaponized TM engine on a batch of transactions: rule-based (structuring,
           profile-mismatch, third-party, offshore routing, AED 55K DPMS CTR, round-number,
