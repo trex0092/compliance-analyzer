@@ -151,10 +151,7 @@ export interface VerifyJwtInput {
 export function verifyJwt(input: VerifyJwtInput): JwtPayload {
   const { token, secret } = input;
   if (!secret || secret.length < 32) {
-    throw new JwtError(
-      'malformed',
-      'verifyJwt: secret must be at least 32 bytes.'
-    );
+    throw new JwtError('malformed', 'verifyJwt: secret must be at least 32 bytes.');
   }
   const parts = token.split('.');
   if (parts.length !== 3) {
