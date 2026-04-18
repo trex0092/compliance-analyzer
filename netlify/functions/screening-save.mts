@@ -361,7 +361,7 @@ async function saveEvent(
           }
         ).setJSON(event.eventId, event, { onlyIfNew: true });
         const landed =
-          res == null
+          res === null || res === undefined
             ? true
             : typeof res === 'object' && 'modified' in (res as Record<string, unknown>)
               ? (res as { modified: boolean }).modified === true

@@ -148,7 +148,7 @@
   }
 
   function escapeHTML(s) {
-    return String(s == null ? '' : s)
+    return String(s ?? '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -371,19 +371,105 @@
     if (keyFindingsInput) keyFindingsInput.value = '';
     if (legalAckCheckbox) legalAckCheckbox.checked = false;
     if (freezeNoticeEl) freezeNoticeEl.hidden = true;
+    outcomeBtns.forEach((b) => {
+      b.classList.remove('selected');
+      b.setAttribute('aria-checked', 'false');
+    });
+    currentOutcome = null;
+    setDisposition(null);
+    if (typeof updateRationaleCounter === 'function') updateRationaleCounter();
     showMessage(saveMsg, '', 'info');
+  }
+
+  const OUTCOME_META = {
+    negative_no_match: {
+      label: 'Negative — No match',
+      action:
+        'Proceed to standard CDD / SDD path for the subject. No further sanctions obligation.',
+      level: 'clear',
+    },
+    false_positive: {
+      label: 'False positive',
+      action:
+        'Record the differentiator (DoB / ID / jurisdiction / biometric) in the rationale. No freeze, no escalation.',
+      level: 'clear',
+    },
+    partial_match: {
+      label: 'Partial match — escalate',
+      action:
+        'Escalate to the Compliance Officer within 1 business day. Suspend onboarding / transaction pending adjudication (Cabinet Res 134/2025 Art.14).',
+      level: 'escalate',
+    },
+    confirmed_match: {
+      label: 'Confirmed match — FREEZE',
+      action:
+        'Execute asset freeze within 24 clock hours (Cabinet Res 74/2020 Art.4). File CNMR with EOCN in 5 business days (Art.5-7). DO NOT tip off the subject (FDL Art.29).',
+      level: 'freeze',
+    },
+  };
+  const dispositionPreview = document.getElementById('dispositionPreview');
+  const dpOutcome = document.getElementById('dpOutcome');
+  const dpAction = document.getElementById('dpAction');
+
+  function setDisposition(outcomeKey) {
+    if (!dispositionPreview || !dpOutcome || !dpAction) return;
+    dispositionPreview.classList.remove(
+      'level-clear',
+      'level-escalate',
+      'level-freeze'
+    );
+    if (!outcomeKey || !OUTCOME_META[outcomeKey]) {
+      dpOutcome.textContent = 'Select an outcome above.';
+      dpOutcome.classList.add('muted');
+      dpAction.textContent = '—';
+      dpAction.classList.add('muted');
+      return;
+    }
+    const meta = OUTCOME_META[outcomeKey];
+    dpOutcome.textContent = meta.label;
+    dpOutcome.classList.remove('muted');
+    dpAction.textContent = meta.action;
+    dpAction.classList.remove('muted');
+    dispositionPreview.classList.add('level-' + meta.level);
   }
 
   outcomeBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      outcomeBtns.forEach((b) => b.classList.remove('selected'));
+      outcomeBtns.forEach((b) => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-checked', 'false');
+      });
       btn.classList.add('selected');
+      btn.setAttribute('aria-checked', 'true');
       currentOutcome = btn.getAttribute('data-outcome');
       if (freezeNoticeEl) {
         freezeNoticeEl.hidden = currentOutcome !== 'confirmed_match';
       }
+      setDisposition(currentOutcome);
     });
   });
+
+  // Rationale char counter — enforces the 20-char minimum visibly.
+  const rationaleCounter = document.createElement('div');
+  rationaleCounter.className = 'char-counter short';
+  rationaleCounter.innerHTML =
+    '<span>Minimum 20 characters for the audit record.</span><span class="count"><span id="rationaleCount">0</span> / 20+</span>';
+  if (rationaleInput && rationaleInput.parentNode) {
+    rationaleInput.insertAdjacentElement('afterend', rationaleCounter);
+  }
+  const rationaleCountEl = document.getElementById('rationaleCount');
+
+  function updateRationaleCounter() {
+    if (!rationaleInput || !rationaleCountEl) return;
+    const len = rationaleInput.value.trim().length;
+    rationaleCountEl.textContent = String(len);
+    rationaleCounter.classList.toggle('short', len < 20);
+    rationaleCounter.classList.toggle('ok', len >= 20);
+  }
+  if (rationaleInput) {
+    rationaleInput.addEventListener('input', updateRationaleCounter);
+    updateRationaleCounter();
+  }
 
   cancelBtn.addEventListener('click', hideDisposition);
   rerunBtn.addEventListener('click', () => {

@@ -571,7 +571,7 @@ async function enrollIntoWatchlist(
           }
         ).setJSON(WATCHLIST_KEY, next, opts);
         const landed =
-          res == null
+          res === null || res === undefined
             ? true
             : typeof res === 'object' && 'modified' in (res as Record<string, unknown>)
               ? (res as { modified: boolean }).modified === true
