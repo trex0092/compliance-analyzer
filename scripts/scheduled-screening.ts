@@ -69,6 +69,7 @@
 
 import { searchAdverseMedia, type AdverseMediaHit } from '../src/services/adverseMediaSearch';
 import { normalizeBrainUrl } from '../src/utils/normalizeBrainUrl';
+import { fetchWithTimeout } from '../src/utils/fetchWithTimeout';
 import {
   deserialiseWatchlist,
   listDueSubjects,
@@ -119,10 +120,10 @@ async function fetchWatchlist(cfg: RunConfig): Promise<SerialisedWatchlist> {
     throw new Error('HAWKEYE_BRAIN_TOKEN is not set — cannot fetch watchlist');
   }
   const url = `${cfg.brainUrl.replace(/\/+$/, '')}/api/watchlist`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'GET',
     headers: { Authorization: `Bearer ${cfg.brainToken}` },
-    signal: AbortSignal.timeout(15_000),
+    timeoutMs: 15_000,
   });
   if (!res.ok) {
     const body = await res.text();
@@ -142,14 +143,14 @@ async function fetchWatchlist(cfg: RunConfig): Promise<SerialisedWatchlist> {
 async function saveWatchlist(cfg: RunConfig, watchlist: SerialisedWatchlist): Promise<void> {
   if (!cfg.brainToken) throw new Error('HAWKEYE_BRAIN_TOKEN is not set');
   const url = `${cfg.brainUrl.replace(/\/+$/, '')}/api/watchlist`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${cfg.brainToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ action: 'replace', watchlist }),
-    signal: AbortSignal.timeout(15_000),
+    timeoutMs: 15_000,
   });
   if (!res.ok) {
     const body = await res.text();
@@ -198,13 +199,13 @@ async function uploadScreeningAttachment(
   form.append('file', new Blob([content], { type: contentType }), fileName);
 
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://app.asana.com/api/1.0/tasks/${encodeURIComponent(taskGid)}/attachments`,
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${cfg.asanaToken}` },
         body: form,
-        signal: AbortSignal.timeout(30_000),
+        timeoutMs: 30_000,
       }
     );
     if (!res.ok) {
@@ -247,14 +248,14 @@ async function createScreeningTask(
   if (dueOn) payload.due_on = dueOn;
 
   try {
-    const res = await fetch('https://app.asana.com/api/1.0/tasks', {
+    const res = await fetchWithTimeout('https://app.asana.com/api/1.0/tasks', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${cfg.asanaToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ data: payload }),
-      signal: AbortSignal.timeout(15_000),
+      timeoutMs: 15_000,
     });
     if (!res.ok) {
       const body = await res.text();
@@ -277,10 +278,10 @@ async function resolveAssigneeGid(cfg: RunConfig): Promise<string | undefined> {
   }
   try {
     const url = `https://app.asana.com/api/1.0/workspaces/${encodeURIComponent(cfg.asanaWorkspaceGid)}/users?opt_fields=gid,name,email`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'GET',
       headers: { Authorization: `Bearer ${cfg.asanaToken}` },
-      signal: AbortSignal.timeout(15_000),
+      timeoutMs: 15_000,
     });
     if (!res.ok) {
       console.warn(`[resolveAssignee] HTTP ${res.status} — alert tasks will be unassigned`);
@@ -473,7 +474,7 @@ async function emitBrainEvent(cfg: RunConfig, summary: RunSummary): Promise<void
 
   const url = `${cfg.brainUrl.replace(/\/+$/, '')}/api/brain`;
   try {
-    await fetch(url, {
+    await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${cfg.brainToken}`,
@@ -492,7 +493,7 @@ async function emitBrainEvent(cfg: RunConfig, summary: RunSummary): Promise<void
           errorCount: summary.subjectsWithErrors.length,
         },
       }),
-      signal: AbortSignal.timeout(15_000),
+      timeoutMs: 15_000,
     });
   } catch (err) {
     console.warn(`[emitBrainEvent] failed (non-fatal): ${(err as Error).message}`);

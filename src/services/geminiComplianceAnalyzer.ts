@@ -24,6 +24,7 @@ import {
   UBO_OWNERSHIP_THRESHOLD_PCT,
   RECORD_RETENTION_YEARS,
 } from '../domain/constants';
+import { fetchWithTimeout, TimeoutError } from '../utils/fetchWithTimeout';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -333,7 +334,7 @@ export async function analyzeCompliance(
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -345,11 +346,11 @@ export async function analyzeCompliance(
           responseMimeType: 'application/json',
         },
       }),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      timeoutMs: REQUEST_TIMEOUT_MS,
     });
   } catch (err) {
     const elapsed = Date.now() - startTime;
-    if (err instanceof DOMException && err.name === 'TimeoutError') {
+    if (err instanceof TimeoutError) {
       throw new Error(`Gemini API request timed out after ${elapsed}ms`);
     }
     throw new Error(`Gemini API network error: ${(err as Error).message}`);

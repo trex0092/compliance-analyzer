@@ -20,6 +20,7 @@
 import type { Config } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import { USD_TO_AED } from '../../src/domain/constants';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const FX_STORE = 'fx-rates';
 const FX_AUDIT_STORE = 'fx-rates-audit';
@@ -80,7 +81,7 @@ export default async (): Promise<Response> => {
   let snapshot: FxSnapshot;
 
   try {
-    const response = await fetch(CBUAE_URL, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    const response = await fetchWithTimeout(CBUAE_URL, { timeoutMs: FETCH_TIMEOUT_MS });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const html = await response.text();
     const rates = parseCBUAERates(html);

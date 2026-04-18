@@ -26,6 +26,7 @@
  */
 
 import type { Config } from '@netlify/functions';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const INGEST_USER_AGENT =
   'Mozilla/5.0 (compatible; HawkeyeSterlingComplianceBot/1.0; +https://github.com/trex0092/compliance-analyzer)';
@@ -85,8 +86,8 @@ export default async (req: Request): Promise<Response> => {
   const startedAt = new Date().toISOString();
 
   try {
-    const res = await fetch(targetUrl, {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    const res = await fetchWithTimeout(targetUrl, {
+      timeoutMs: FETCH_TIMEOUT_MS,
       headers: {
         'User-Agent': INGEST_USER_AGENT,
         Accept: 'text/csv, application/xml, text/xml, */*',

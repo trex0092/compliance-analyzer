@@ -54,6 +54,7 @@ import {
   diffSections,
   type ExistingSection,
 } from '../../src/services/asana/kycCddTrackerSections';
+import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 
 const ASANA_BASE = 'https://app.asana.com/api/1.0';
 
@@ -78,12 +79,12 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 // ---------------------------------------------------------------------------
 
 async function asanaGet<T>(path: string, token: string): Promise<T> {
-  const res = await fetch(ASANA_BASE + path, {
+  const res = await fetchWithTimeout(ASANA_BASE + path, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
     },
-    signal: AbortSignal.timeout(20_000),
+    timeoutMs: 20_000,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -94,7 +95,7 @@ async function asanaGet<T>(path: string, token: string): Promise<T> {
 }
 
 async function asanaPost<T>(path: string, body: unknown, token: string): Promise<T> {
-  const res = await fetch(ASANA_BASE + path, {
+  const res = await fetchWithTimeout(ASANA_BASE + path, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -102,7 +103,7 @@ async function asanaPost<T>(path: string, body: unknown, token: string): Promise
       Accept: 'application/json',
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(20_000),
+    timeoutMs: 20_000,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -113,10 +114,10 @@ async function asanaPost<T>(path: string, body: unknown, token: string): Promise
 }
 
 async function asanaDelete(path: string, token: string): Promise<void> {
-  const res = await fetch(ASANA_BASE + path, {
+  const res = await fetchWithTimeout(ASANA_BASE + path, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(20_000),
+    timeoutMs: 20_000,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');

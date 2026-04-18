@@ -12,6 +12,7 @@
  */
 
 import { USD_TO_AED } from '../domain/constants';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 
 export interface ExchangeRates {
   baseCurrency: 'AED';
@@ -35,7 +36,7 @@ export async function fetchCBUAERates(proxyUrl?: string): Promise<ExchangeRates>
   try {
     const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(CBUAE_URL)}` : CBUAE_URL;
 
-    const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    const response = await fetchWithTimeout(url, { timeoutMs: 15000 });
     if (!response.ok) throw new Error(`CBUAE returned ${response.status}`);
 
     const html = await response.text();

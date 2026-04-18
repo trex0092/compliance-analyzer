@@ -19,6 +19,8 @@
  * Cabinet Res 134/2025 Art.14 (EDD for high-risk).
  */
 
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
+
 // ---------------------------------------------------------------------------
 // Prompt builder
 // ---------------------------------------------------------------------------
@@ -259,9 +261,9 @@ async function searchViaBrave(query: string): Promise<AdverseMediaHit[]> {
   const key = process.env.BRAVE_SEARCH_API_KEY;
   if (!key) return [];
   const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=20`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     headers: { 'X-Subscription-Token': key, Accept: 'application/json' },
-    signal: AbortSignal.timeout(15_000),
+    timeoutMs: 15_000,
   });
   if (!res.ok) return [];
   const data = (await res.json()) as {
@@ -288,7 +290,7 @@ async function searchViaSerpApi(query: string): Promise<AdverseMediaHit[]> {
   const key = process.env.SERPAPI_KEY;
   if (!key) return [];
   const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&api_key=${key}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  const res = await fetchWithTimeout(url, { timeoutMs: 15_000 });
   if (!res.ok) return [];
   const data = (await res.json()) as {
     organic_results?: Array<{
@@ -313,7 +315,7 @@ async function searchViaGoogleCse(query: string): Promise<AdverseMediaHit[]> {
   const cx = process.env.GOOGLE_CSE_CX;
   if (!key || !cx) return [];
   const url = `https://www.googleapis.com/customsearch/v1?key=${key}&cx=${cx}&q=${encodeURIComponent(query)}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  const res = await fetchWithTimeout(url, { timeoutMs: 15_000 });
   if (!res.ok) return [];
   const data = (await res.json()) as {
     items?: Array<{ title: string; link: string; snippet: string; displayLink: string }>;
