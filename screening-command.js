@@ -1395,7 +1395,11 @@
   // (e.g. coverage-foot counters) recompute.
   document.addEventListener('click', function (evt) {
     const target = evt.target;
-    if (!(target instanceof HTMLElement)) return;
+    // Element (not HTMLElement) covers the inner SVG / <path> nodes
+    // that receive the click when the user hits the icon itself.
+    // A stricter HTMLElement guard here was returning early and
+    // leaving the button non-functional.
+    if (!(target instanceof Element)) return;
     const btn = target.closest('.list-refresh');
     if (!btn) return;
     const card = btn.closest('.card.list-tier');
