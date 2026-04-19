@@ -68,6 +68,33 @@
   to = "/screening-command.html"
   status = 200
 
+# Sub-path deep links. Every module inside a landing page is a
+# client-side view (history.pushState in landing-module-viewer.js, or
+# the inline filter handler in routines.html); Netlify serves the
+# landing .html for any /<page>/<slug> path so a refresh, share, or
+# direct open resolves correctly. The splat is discarded server-side —
+# the client JS reads location.pathname on load and auto-opens the
+# matching module or selects the matching filter chip.
+[[redirects]]
+  from = "/workbench/*"
+  to = "/workbench.html"
+  status = 200
+
+[[redirects]]
+  from = "/logistics/*"
+  to = "/logistics.html"
+  status = 200
+
+[[redirects]]
+  from = "/routines/*"
+  to = "/routines.html"
+  status = 200
+
+[[redirects]]
+  from = "/compliance-ops/*"
+  to = "/compliance-ops.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

@@ -747,17 +747,44 @@
         document.getElementById('weeklyCount').textContent = counts.weekly || 0;
       })();
 
-      // Filter chip handlers
+      // URL ↔ filter sync. A deep link like /routines/continuous selects
+      // the "continuous" chip on load; clicking a chip pushes the matching
+      // URL so the address bar reflects the active cadence.
+      const FILTER_SLUGS = ['all', 'continuous', 'daily', 'weekly'];
+
+      function filterFromLocation() {
+        const segs = (location.pathname || '/').split('/').filter(Boolean);
+        const first = segs.length ? segs[0].replace(/\.html$/, '') : '';
+        if (first !== 'routines' || segs.length < 2) return 'all';
+        return FILTER_SLUGS.indexOf(segs[1]) !== -1 ? segs[1] : 'all';
+      }
+
+      function applyFilter(filter, pushHistory) {
+        ACTIVE_FILTER = FILTER_SLUGS.indexOf(filter) !== -1 ? filter : 'all';
+        document.querySelectorAll('.chip').forEach(c => {
+          c.setAttribute('aria-pressed', c.getAttribute('data-filter') === ACTIVE_FILTER ? 'true' : 'false');
+        });
+        render(ACTIVE_FILTER);
+        if (pushHistory !== false) {
+          const base = '/routines';
+          const target = ACTIVE_FILTER === 'all' ? base : base + '/' + ACTIVE_FILTER;
+          if (location.pathname !== target) {
+            history.pushState({ filter: ACTIVE_FILTER }, '', target);
+          }
+        }
+      }
+
       document.querySelectorAll('.chip').forEach(chip => {
         chip.addEventListener('click', () => {
-          document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', 'false'));
-          chip.setAttribute('aria-pressed', 'true');
-          ACTIVE_FILTER = chip.getAttribute('data-filter');
-          render(ACTIVE_FILTER);
+          applyFilter(chip.getAttribute('data-filter'), true);
         });
       });
 
-      render(ACTIVE_FILTER);
+      window.addEventListener('popstate', () => {
+        applyFilter(filterFromLocation(), false);
+      });
+
+      applyFilter(filterFromLocation(), false);
 
       // ── Drawer (routine detail) ────────────────────────────────────
       const drawer = document.getElementById('routineDrawer');
