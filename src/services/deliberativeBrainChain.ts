@@ -46,11 +46,7 @@ import { evaluateHypotheses, type HypothesisReasoningResult } from './hypothesis
 import { describeFreshness, temporalDecayMultiplier } from './temporalDecay';
 import { triageCalibratedScore, type ConfidenceTriageResult } from './confidenceTriage';
 import { analyseCounterfactuals, type CounterfactualAnalysis } from './counterfactualReasoner';
-import {
-  runRedTeamBrain,
-  type RedTeamContext,
-  type RedTeamReasoningResult,
-} from './redTeamBrain';
+import { runRedTeamBrain, type RedTeamContext, type RedTeamReasoningResult } from './redTeamBrain';
 import { runMetaCognition, type MetaCognitionReport } from './metaCognition';
 import {
   projectCausalInterventions,
@@ -233,7 +229,11 @@ export function runDeliberativeBrain(input: DeliberativeBrainInput): Deliberativ
   }
 
   // STEP 6 — per-feature counterfactual attribution (SHAP-style).
-  const counterfactual = analyseCounterfactuals(input.breakdown, input.evidence, calibrated.logOdds);
+  const counterfactual = analyseCounterfactuals(
+    input.breakdown,
+    input.evidence,
+    calibrated.logOdds
+  );
   trace.push('STEP 6 — Counterfactual attribution');
   trace.push(`  ${counterfactual.summary}`);
   for (const a of counterfactual.attributions.slice(0, 3)) {
