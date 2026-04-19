@@ -534,6 +534,38 @@
     el.appendChild(div);
   }
 
+  // Flash + scroll to a field the user needs to action. When screening
+  // validation fails because the Main MLRO name or password/token live
+  // high up on a long page, the error text next to the Run Screening
+  // button is easy to miss. This helper makes the missing field the
+  // obvious next step (FDL Art.20-21 — MLRO attestation must precede
+  // every screening; we must make that precondition easy to satisfy).
+  function focusRequiredField(el) {
+    if (!el || typeof el.focus !== 'function') return;
+    try {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (_e) {
+      /* older browsers — ignore */
+    }
+    try {
+      el.focus({ preventScroll: true });
+    } catch (_e) {
+      try {
+        el.focus();
+      } catch (_e2) {
+        /* ignore */
+      }
+    }
+    const prevOutline = el.style.outline;
+    const prevShadow = el.style.boxShadow;
+    el.style.outline = '2px solid #ec4899';
+    el.style.boxShadow = '0 0 0 4px rgba(236, 72, 153, 0.25)';
+    setTimeout(() => {
+      el.style.outline = prevOutline;
+      el.style.boxShadow = prevShadow;
+    }, 1800);
+  }
+
   function escapeHTML(s) {
     return String(s ?? '')
       .replace(/&/g, '&amp;')
@@ -1345,7 +1377,21 @@
   }
 
   function renderScreeningResult(data) {
-    if (!data || !data.ok) {
+    // Accept any response shape that carries the screening payload. The
+    // server currently sets `ok: true` but it also returns a usable body
+    // (subject, sanctions, ranAt, …) — if the `ok` flag is ever dropped
+    // or renamed on the server, the MLRO still gets the evidence they
+    // need (FDL Art.20-21 — CO must see what was screened).
+    if (!data) {
+      screenResult.innerHTML = '';
+      return;
+    }
+    const hasScreeningPayload =
+      data.ok === true ||
+      (data.subject && typeof data.subject === 'object') ||
+      (data.sanctions && typeof data.sanctions === 'object') ||
+      typeof data.ranAt === 'string';
+    if (!hasScreeningPayload) {
       screenResult.innerHTML = '';
       return;
     }
@@ -1763,24 +1809,41 @@
     if (screenBtn.disabled) return;
 
     saveToken();
+
+    // Pre-flight: sign-in must have already happened. A missing/invalid
+    // token means the Authorization header will be rejected server-side
+    // (401), so fail fast with a helpful pointer at the password field
+    // instead of letting the MLRO fill out the whole form for nothing.
+    const preflightToken = tokenInput ? tokenInput.value.trim() : '';
+    const preflightTokenErr = tokenFormatError(preflightToken);
+    if (preflightTokenErr) {
+      showMessage(screenMsg, preflightTokenErr, 'error');
+      focusRequiredField(loginPasswordInput || tokenInput);
+      return;
+    }
+
     const name = subjectNameInput.value.trim();
     if (!name) {
       showMessage(screenMsg, 'Name screened is required.', 'error');
+      focusRequiredField(subjectNameInput);
       return;
     }
     const entityType = entityTypeSelect.value;
     if (entityType !== 'individual' && entityType !== 'legal_entity') {
       showMessage(screenMsg, 'Entity type is required.', 'error');
+      focusRequiredField(entityTypeSelect);
       return;
     }
     const eventType = eventTypeSelect.value;
     if (!eventType) {
       showMessage(screenMsg, 'Screening event type is required.', 'error');
+      focusRequiredField(eventTypeSelect);
       return;
     }
     const dobRaw = dobInput.value.trim();
     if (dobRaw && !/^\d{2}\/\d{2}\/\d{4}$/.test(dobRaw)) {
       showMessage(screenMsg, 'DoB / registration must be dd/mm/yyyy.', 'error');
+      focusRequiredField(dobInput);
       return;
     }
     const screener = activeMlroName();
@@ -1790,6 +1853,7 @@
         'Main MLRO name required — fill it in above before running a screening.',
         'error'
       );
+      focusRequiredField(mlroMainNameInput);
       return;
     }
 
