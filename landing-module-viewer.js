@@ -5,151 +5,153 @@
   var closeBtn = document.getElementById('moduleViewClose');
   if (!view || !frame || !titleEl || !closeBtn) return;
 
-  // Opt-in URL sub-routing. When a landing page marks an element with
-  // data-landing-base (e.g. "/workbench"), the viewer pushes the active
-  // module slug into the address bar (/workbench/<slug>) so the MLRO
-  // can bookmark, share, and use the browser back button. Pages that
-  // don't opt in keep the original iframe-only behaviour.
-  var baseEl = document.querySelector('[data-landing-base]');
-  var landingBase = baseEl ? baseEl.getAttribute('data-landing-base') || '' : '';
-  if (landingBase.slice(-1) === '/') {
-    landingBase = landingBase.slice(0, -1);
+  // Landing slugs that resolve to a root-level .html via netlify.toml
+  // redirects. Any first URL segment outside this list is treated as a
+  // raw .html file (defensive: local file:// / preview deploys).
+  var LANDING_SLUGS = ['logistics', 'workbench', 'compliance-ops', 'routines'];
+
+  // Base path for the current landing page — never includes a module
+  // sub-slug. "/logistics", "/workbench", etc. Falls back to the raw
+  // first path segment when the current URL is something we do not
+  // recognise (still non-destructive — we just push "/<first>/<slug>").
+  function getBasePath() {
+    var segs = (location.pathname || '/').split('/').filter(Boolean);
+    if (!segs.length) return '/';
+    var first = segs[0].replace(/\.html$/, '');
+    if (LANDING_SLUGS.indexOf(first) !== -1) return '/' + first;
+    return '/' + segs[0];
   }
 
-  function cardsBySlug() {
-    var idx = {};
-    var nodes = document.querySelectorAll('.card[data-route]');
-    for (var i = 0; i < nodes.length; i++) {
-      var card = nodes[i];
-      var slug = card.getAttribute('data-slug') || card.getAttribute('data-route');
-      if (slug) idx[slug] = card;
+  function findCardBySlug(slug) {
+    if (!slug) return null;
+    var cards = document.querySelectorAll('.card[data-route]');
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      var s = c.getAttribute('data-slug') || c.getAttribute('data-route');
+      if (s === slug) return c;
     }
-    return idx;
+    return null;
   }
 
-  function routeFor(card) {
-    return card.getAttribute('data-route') || card.getAttribute('data-slug') || '';
+  function slugForCard(card) {
+    return card.getAttribute('data-slug') || card.getAttribute('data-route');
   }
 
-  function slugFor(card) {
-    return card.getAttribute('data-slug') || card.getAttribute('data-route') || '';
-  }
-
-  function titleFor(card) {
-    var t = card.querySelector('.card-title');
-    return t ? t.textContent : 'Module';
-  }
-
-  function openFromCard(card, opts) {
-    var route = routeFor(card);
-    if (!route) return;
+  function openModule(route, label, slug, pushHistory) {
     // ?embedded=1 is a belt-and-braces signal for the chrome-strip CSS in
-    // index.html. The primary detector is `window.self !== window.top`,
-    // but same-origin iframe detection has failed in the wild (cached
-    // HTML, SW shims, cross-frame Permission-Policy). The query param is
-    // a deterministic second channel the head-script also checks.
+    // index.html. Primary detector is `window.self !== window.top`, but
+    // the query param is a deterministic second channel the head-script
+    // also checks.
     frame.src = 'index.html?embedded=1#' + route;
-    titleEl.textContent = titleFor(card);
+    titleEl.textContent = label || 'Module';
     view.classList.add('is-open');
     view.setAttribute('aria-hidden', 'false');
-    if (!opts || opts.scroll !== false) {
-      requestAnimationFrame(function () {
-        view.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+    if (pushHistory !== false && slug) {
+      var target = getBasePath() + '/' + slug;
+      if (location.pathname !== target) {
+        history.pushState({ slug: slug, route: route, label: label }, '', target);
+      }
     }
+    requestAnimationFrame(function () {
+      view.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
-  function closeModule() {
+  function closeModule(pushHistory) {
     view.classList.remove('is-open');
     view.setAttribute('aria-hidden', 'true');
     frame.src = 'about:blank';
-  }
-
-  function pushUrl(url) {
-    try {
-      window.history.pushState({ module: true }, '', url);
-    } catch (_e) {
-      // History API can throw in sandboxed / cross-origin frames. Silent
-      // fail — the iframe still opens, only the address bar stays put.
+    if (pushHistory !== false) {
+      var base = getBasePath();
+      if (location.pathname !== base) {
+        history.pushState({}, '', base);
+      }
     }
   }
 
-  function urlForSlug(slug) {
-    return (landingBase || '') + '/' + slug;
+  function openSlug(slug, pushHistory) {
+    var card = findCardBySlug(slug);
+    if (!card) return false;
+    var route = card.getAttribute('data-route');
+    var labelEl = card.querySelector('.card-title');
+    var label = labelEl ? labelEl.textContent : 'Module';
+    openModule(route, label, slug, pushHistory);
+    return true;
   }
 
-  function landingUrl() {
-    return landingBase || window.location.pathname;
-  }
-
-  // If the user deep-linked to /<base>/<slug> (or hit back/forward),
-  // open the module whose slug matches.
-  function syncFromUrl(opts) {
-    if (!landingBase) return;
-    var path = window.location.pathname || '';
-    if (path.slice(-1) === '/' && path.length > 1) path = path.slice(0, -1);
-    if (path === landingBase) {
-      closeModule();
-      return;
-    }
-    var prefix = landingBase + '/';
-    if (path.indexOf(prefix) !== 0) return;
-    var slug = path.slice(prefix.length);
-    // Ignore deeper paths so /workbench/approvals/foo doesn't try to
-    // open "approvals/foo".
-    if (slug.indexOf('/') !== -1) return;
-    var card = cardsBySlug()[slug];
-    if (card) {
-      openFromCard(card, opts);
-    } else {
-      closeModule();
-    }
-  }
-
+  // Card click → open module in-page and push the deep-link URL.
   document.addEventListener(
     'click',
     function (event) {
       var card = event.target.closest && event.target.closest('.card[data-route]');
       if (!card) return;
-      // Allow modifier-click (new tab / window / download) to follow the
-      // card's real href so the OS-level affordance keeps working.
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      ) {
-        return;
-      }
+      // Honour modifier clicks (cmd/ctrl/middle) for open-in-new-tab.
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
       event.preventDefault();
       event.stopPropagation();
-      openFromCard(card, { scroll: true });
-      if (landingBase) {
-        var slug = slugFor(card);
-        if (slug) pushUrl(urlForSlug(slug));
-      }
+      openSlug(slugForCard(card), true);
     },
     true
   );
 
-  closeBtn.addEventListener('click', function () {
-    closeModule();
-    if (landingBase) pushUrl(landingUrl());
-  });
-
+  closeBtn.addEventListener('click', function () { closeModule(true); });
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape' && view.classList.contains('is-open')) {
-      closeModule();
-      if (landingBase) pushUrl(landingUrl());
+      closeModule(true);
     }
   });
 
+  // Browser back/forward: react to URL changes without pushing new state.
   window.addEventListener('popstate', function () {
-    syncFromUrl({ scroll: false });
+    var segs = (location.pathname || '/').split('/').filter(Boolean);
+    var first = segs.length ? segs[0].replace(/\.html$/, '') : '';
+    var tail = segs.length >= 2 && LANDING_SLUGS.indexOf(first) !== -1 ? segs[1] : '';
+    if (tail) {
+      if (!openSlug(tail, false)) closeModule(false);
+    } else {
+      closeModule(false);
+    }
   });
 
-  // Auto-open the module that matches the current URL on first paint.
-  syncFromUrl({ scroll: false });
+  // Deep-link entry: /logistics/inbound-advice auto-opens that module on
+  // page load. The Netlify splat redirect serves logistics.html for any
+  // /logistics/* path while preserving the clean URL in the address bar.
+  (function initialDeepLink() {
+    var segs = (location.pathname || '/').split('/').filter(Boolean);
+    if (segs.length < 2) return;
+    var first = segs[0].replace(/\.html$/, '');
+    if (LANDING_SLUGS.indexOf(first) === -1) return;
+    openSlug(segs[1], false);
+  })();
+
+  // When the embedded app navigates internally (user clicks a nav-bar
+  // item inside index.html), mirror the new route into the parent URL
+  // so the address bar reflects the active module. replaceState (not
+  // pushState) keeps the history stack flat — internal nav in the
+  // iframe should not pollute browser back.
+  frame.addEventListener('load', function () {
+    var inner;
+    try { inner = frame.contentWindow; } catch (_) { return; }
+    if (!inner) return;
+    try {
+      inner.addEventListener('hashchange', function () {
+        if (!view.classList.contains('is-open')) return;
+        var raw;
+        try { raw = inner.location.hash || ''; } catch (_) { return; }
+        var route = raw.replace(/^#\/?/, '').split('?')[0];
+        if (!route) return;
+        // Prefer an existing card's slug (nicer URL) when one matches
+        // the hash; otherwise kebab-case the raw hash as a fallback.
+        var card = findCardBySlug(route);
+        var slug = card ? slugForCard(card) : route.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        if (!slug) return;
+        var target = getBasePath() + '/' + slug;
+        if (location.pathname !== target) {
+          history.replaceState({ slug: slug, route: route }, '', target);
+        }
+      });
+    } catch (_) {
+      // Cross-origin iframe — can't observe. Fine; card clicks still push URL.
+    }
+  });
 })();

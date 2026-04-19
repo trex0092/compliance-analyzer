@@ -48,16 +48,6 @@
   to = "/workbench.html"
   status = 200
 
-# Sub-routes for the Workbench in-page module viewer
-# (/workbench/compliance-tasks, /workbench/onboarding, /workbench/approvals).
-# The SPA reads the slug from window.location.pathname on load and opens
-# the matching module inside workbench.html — address bar stays on the
-# sub-URL so the MLRO can bookmark or share a direct link.
-[[redirects]]
-  from = "/workbench/*"
-  to = "/workbench.html"
-  status = 200
-
 [[redirects]]
   from = "/logistics"
   to = "/logistics.html"
@@ -76,6 +66,33 @@
 [[redirects]]
   from = "/screening-command"
   to = "/screening-command.html"
+  status = 200
+
+# Sub-path deep links. Every module inside a landing page is a
+# client-side view (history.pushState in landing-module-viewer.js, or
+# the inline filter handler in routines.html); Netlify serves the
+# landing .html for any /<page>/<slug> path so a refresh, share, or
+# direct open resolves correctly. The splat is discarded server-side —
+# the client JS reads location.pathname on load and auto-opens the
+# matching module or selects the matching filter chip.
+[[redirects]]
+  from = "/workbench/*"
+  to = "/workbench.html"
+  status = 200
+
+[[redirects]]
+  from = "/logistics/*"
+  to = "/logistics.html"
+  status = 200
+
+[[redirects]]
+  from = "/routines/*"
+  to = "/routines.html"
+  status = 200
+
+[[redirects]]
+  from = "/compliance-ops/*"
+  to = "/compliance-ops.html"
   status = 200
 
 [[headers]]
