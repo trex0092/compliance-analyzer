@@ -2182,19 +2182,10 @@
           <!-- Removed duplicate header TRADING link — the same Trading tab
            lives in the lower tab navigation (◈ Trading). One entry point
            is enough; the header was a duplicate. -->
-          <div id="currentUserInfo" style="display: flex; align-items: center; gap: 6px">
-            <span
-              id="currentUserName"
-              style="font-size: 11px; color: var(--muted); font-family: 'Montserrat', sans-serif"
-            ></span>
+          <div id="currentUserInfo" style="display: none">
+            <span id="currentUserName"></span>
             <span id="currentUserRole" class="role-badge"></span>
-            <button
-              class="btn btn-sm"
-              data-action="logoutUser"
-              style="padding: 2px 8px; font-size: 9px"
-            >
-              Logout
-            </button>
+            <button class="btn btn-sm" data-action="logoutUser">Logout</button>
           </div>
         </div>
       </div>
