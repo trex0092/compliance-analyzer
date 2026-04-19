@@ -223,6 +223,10 @@
         -webkit-text-fill-color: transparent;
       }
 
+      .hero-title .nowrap { white-space: nowrap; }
+      @media (max-width: 720px) {
+        .hero-title .nowrap { white-space: normal; }
+      }
       .hero-title em {
         font-style: italic;
         font-weight: 600;
@@ -647,7 +651,8 @@
         <div>
           <div class="hero-eyebrow">Shipments Control Tower</div>
           <h1 class="hero-title">
-            Every gram, <em>tracked</em>.<br />Every shipment, accounted for.
+            <span class="nowrap">Every gram, <em>tracked</em>.</span><br />
+            <span class="nowrap">Every shipment, accounted for.</span>
           </h1>
           <p class="hero-lede">
             Inbound advice, in-transit custody, and intra-UAE movement — unified under one
