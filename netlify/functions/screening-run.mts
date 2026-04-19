@@ -95,6 +95,11 @@ import {
   type SearchFn,
   type SearchHit,
 } from '../../src/services/brain';
+import { runWeaponizedAssessment } from '../../src/services/brainBridge';
+import type { WeaponizedBrainResponse } from '../../src/services/weaponizedBrain';
+import type { AdverseMediaHit as WeaponizedAdverseMediaHit } from '../../src/services/adverseMediaRanker';
+import type { MegaBrainRequest } from '../../src/services/megaBrain';
+import type { StrFeatures } from '../../src/services/predictiveStr';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -153,6 +158,12 @@ const HYDRATE_TIMEOUT_MS = 1_200;
 // without starving Phase C. Sits inside the 10s Netlify sync ceiling
 // alongside the other phase budgets.
 const DEEP_BRAIN_DEADLINE_MS = 2_500;
+// Weaponized brain (19 subsystems) runs entirely in-process with no
+// network hops — advisor is disabled in this sync path because the
+// Opus sub-inference would blow the 10s ceiling. Typical wall-clock
+// is <100ms; the cap is a safety net against pathological inputs.
+// FDL Art.20 — CO must still receive a deterministic verdict.
+const WEAPONIZED_BRAIN_DEADLINE_MS = 800;
 // Asana + Watchlist run in parallel. ASANA_TIMEOUT_MS bounds the
 // Asana POST (CO needs a clear "task timed out" diagnostic, never a
 // silent hang). WATCHLIST_TIMEOUT_MS is shorter because watchlist is a
@@ -459,6 +470,7 @@ interface ListSnapshot {
 
 let listCache: ListSnapshot | null = null;
 let uaeSeedAttemptedAt = 0;
+let uaeSeedSucceeded = false;
 
 /**
  * Hydrate the in-process UAE / EOCN sanctions cache from the
@@ -475,10 +487,19 @@ let uaeSeedAttemptedAt = 0;
  * → SanctionsEntry, and call `seedUaeSanctionsList`. Silent on any
  * failure — the caller still throws with the existing diagnostic if no
  * snapshot is available, which is the correct Art.35 signal.
+ *
+ * Retry semantics: once a hydrate succeeds, we respect the 6h TTL
+ * (SANCTIONS_CACHE_TTL_MS) before re-hydrating — the in-memory cache
+ * is good. But when hydrate FAILS (blob store empty, cold-start error),
+ * we only back off for RETRY_BACKOFF_MS before trying again. Otherwise
+ * a single cold-start miss poisons the instance for 6h even after the
+ * MLRO uploads the missing circular (FDL Art.35 gate stays hot).
  */
+const UAE_SEED_RETRY_BACKOFF_MS = 30_000;
 async function hydrateUaeSanctionsFromBlob(): Promise<void> {
   const now = Date.now();
-  if (now - uaeSeedAttemptedAt < SANCTIONS_CACHE_TTL_MS) return;
+  const backoff = uaeSeedSucceeded ? SANCTIONS_CACHE_TTL_MS : UAE_SEED_RETRY_BACKOFF_MS;
+  if (now - uaeSeedAttemptedAt < backoff) return;
   uaeSeedAttemptedAt = now;
   try {
     const store = getStore('sanctions-snapshots');
@@ -509,9 +530,14 @@ async function hydrateUaeSanctionsFromBlob(): Promise<void> {
         };
       })
       .filter((e) => e.name.length > 0);
-    if (entries.length > 0) seedUaeSanctionsList(entries);
+    if (entries.length > 0) {
+      seedUaeSanctionsList(entries);
+      uaeSeedSucceeded = true;
+    }
   } catch {
     // Silent — the Art.35 gate in fetchUAESanctionsList still fires.
+    // uaeSeedSucceeded stays false so the next request retries after
+    // UAE_SEED_RETRY_BACKOFF_MS rather than waiting 6h.
   }
 }
 
@@ -633,8 +659,26 @@ async function loadAllLists(): Promise<ListSnapshot> {
     raceListFetch('UK_OFSI', (signal, timeoutMs) => fetchUKSanctionsList(proxy, { signal, timeoutMs })),
     raceListFetch('UAE_EOCN', () => fetchUAESanctionsList()),
   ]);
-  listCache = { fetchedAt: Date.now(), lists: lists as ListSnapshot['lists'] };
-  return listCache;
+  const snapshot: ListSnapshot = { fetchedAt: Date.now(), lists: lists as ListSnapshot['lists'] };
+
+  // Cache ONLY when every mandatory list (UN, UAE_EOCN) came back without
+  // an error. Otherwise a cold-start miss poisons the warm instance for
+  // 6h (SANCTIONS_CACHE_TTL_MS) and every subsequent screening surfaces
+  // the same "fetch cancelled / cache empty" message even after upstream
+  // recovers or the MLRO uploads the missing circular. Cabinet Res
+  // 74/2020 Art.4 + FDL No.10/2025 Art.35 require fresh UAE coverage;
+  // serving a stale error for 6h is the exact failure mode we just
+  // saw in production.
+  const MANDATORY_FOR_CACHE = new Set<string>(['UN', 'UAE_EOCN']);
+  const mandatoryClean = snapshot.lists
+    .filter((l) => MANDATORY_FOR_CACHE.has(l.name))
+    .every((l) => !l.error);
+  if (mandatoryClean) {
+    listCache = snapshot;
+  } else {
+    listCache = null;
+  }
+  return snapshot;
 }
 
 // ---------------------------------------------------------------------------
@@ -1307,6 +1351,90 @@ export default async (req: Request, context: Context): Promise<Response> => {
     }
   }
 
+  // ─── Phase B.5. Weaponized brain — 19-subsystem safety-clamp pass ────
+  // Runs the full Weaponized Brain whenever a high-risk signal surfaces:
+  //   - any non-"none" multi-modal classification from any list, OR
+  //   - screening integrity degraded/incomplete (mandatory-list failure
+  //     or adverse-media provider missing → absence of evidence is NOT
+  //     evidence of absence under FDL Art.20-21), OR
+  //   - deep brain confidence below 0.7 (uncertain posterior).
+  //
+  // The brain runs fully in-process (no advisor network call in this
+  // synchronous path — advisor would blow the 10s Netlify ceiling). Its
+  // 19 subsystems apply deterministic safety clamps over the MegaBrain
+  // verdict: sanctions → freeze, adverse-media-critical → escalate,
+  // undisclosed UBO / shell-company / structuring → flag.
+  //
+  // Regulatory basis: FDL No.10/2025 Art.20-21 (CO duty of care, can
+  // never report clean when data is incomplete), Cabinet Res 134/2025
+  // Art.19 (internal review before decision), Cabinet Res 74/2020
+  // Art.4-7 (mandatory freeze on sanctions).
+  let weaponized: WeaponizedBrainResponse | null = null;
+  const deepBrainConfidence = deepBrain?.confidence ?? 1;
+  const weaponizedNeeded =
+    overallTopClassification !== 'none' ||
+    screeningIntegrity !== 'complete' ||
+    deepBrainConfidence < 0.7;
+  if (weaponizedNeeded) {
+    const entityFeatures: StrFeatures = {
+      priorAlerts90d: 0,
+      txValue30dAED: 0,
+      nearThresholdCount30d: 0,
+      crossBorderRatio30d: 0,
+      isPep: false,
+      highRiskJurisdiction: false,
+      hasAdverseMedia: adverseMediaHits > 0,
+      daysSinceOnboarding: 0,
+      sanctionsMatchScore: Math.max(0, Math.min(1, overallTopScore)),
+      cashRatio30d: 0,
+    };
+    const isSanctionsConfirmed =
+      overallTopClassification === 'confirmed' || overallTopScore >= 0.9;
+    const megaReq: MegaBrainRequest = {
+      topic: `screening ${input.subjectName} (${ranAt.slice(0, 10)})`,
+      entity: {
+        id: subjectId,
+        name: input.subjectName,
+        features: entityFeatures,
+        isSanctionsConfirmed,
+      },
+    };
+    // Map adverse media hits into the weaponized brain's ranker input
+    // shape. The ranker is subsystem 14 and produces impact categories
+    // the clamp layer uses to force escalate on "critical".
+    const adverseMediaForBrain: readonly WeaponizedAdverseMediaHit[] = input.runAdverseMedia
+      ? amRes.value.hits.slice(0, 30).map((h, idx) => ({
+          id: h.url ?? `am-${idx}`,
+          entityNameQueried: input.subjectName,
+          headline: h.title,
+          snippet: h.snippet,
+          sourceDomain: h.source ?? 'unknown',
+          publishedAtIso: h.publishedAt,
+        }))
+      : [];
+    try {
+      const weaponizedRes = await withTimeout(
+        runWeaponizedAssessment(
+          {
+            mega: megaReq,
+            adverseMedia: adverseMediaForBrain,
+            // No advisor in the serverless sync path — the Opus
+            // sub-inference would exceed the 10s Netlify ceiling. UI
+            // callers can re-run with the advisor enabled on demand.
+            sealProofBundle: false,
+          },
+          { advisor: null }
+        ),
+        WEAPONIZED_BRAIN_DEADLINE_MS,
+        null,
+        'weaponized-brain'
+      );
+      weaponized = weaponizedRes.value;
+    } catch {
+      weaponized = null;
+    }
+  }
+
   // ─── Phase C. Watchlist + Asana in parallel ─────────────────────────
   // FDL Art.24 10-yr retention: every screening lands in Asana even on
   // a clean run. Cabinet Res 134/2025 Art.19: periodic internal review
@@ -1471,6 +1599,37 @@ export default async (req: Request, context: Context): Promise<Response> => {
           rationale: deepBrain.reasoning.top.rationale,
           coverage: deepBrain.investigation.coverage,
           lessons: deepBrain.lessons,
+        }
+      : null,
+    weaponized: weaponized
+      ? {
+          megaVerdict: weaponized.mega.verdict,
+          finalVerdict: weaponized.finalVerdict,
+          confidence: weaponized.confidence,
+          requiresHumanReview: weaponized.requiresHumanReview,
+          clampReasons: weaponized.clampReasons,
+          subsystemFailures: weaponized.subsystemFailures,
+          auditNarrative: weaponized.auditNarrative,
+          advisor: weaponized.advisorResult
+            ? {
+                text: weaponized.advisorResult.text,
+                advisorCallCount: weaponized.advisorResult.advisorCallCount,
+                modelUsed: weaponized.advisorResult.modelUsed,
+              }
+            : null,
+          extensions: {
+            adverseMediaTopCategory:
+              weaponized.extensions.adverseMedia?.topCategory ?? null,
+            adverseMediaCriticalCount:
+              weaponized.extensions.adverseMedia?.counts.critical ?? 0,
+            explainableScore: weaponized.extensions.explanation
+              ? {
+                  score: weaponized.extensions.explanation.score,
+                  rating: weaponized.extensions.explanation.rating,
+                  cddLevel: weaponized.extensions.explanation.cddLevel,
+                }
+              : null,
+          },
         }
       : null,
   });

@@ -1380,6 +1380,35 @@
         }
         html.push('</ul>');
       }
+      // EOCN-specific actionable hint. When the integrity reason is
+      // "UAE_EOCN cache is empty" the gate is operational, not
+      // transient — no amount of re-running will seed the cache.
+      // Point the MLRO at the upload endpoint so they can post the
+      // latest EOCN circular and close the Art.35 gap. We emit a
+      // plain URL the MLRO can copy instead of a clickable form —
+      // this page has a strict CSP and the upload requires a bearer
+      // token that must not be entered in the browser console.
+      var uaeCacheEmpty = integrityReasons.some(function (r) {
+        return (
+          typeof r === 'string' &&
+          /UAE_EOCN/i.test(r) &&
+          /cache is empty|cache empty/i.test(r)
+        );
+      });
+      if (uaeCacheEmpty) {
+        html.push(
+          '<div style="margin-top:10px; padding:10px 12px; border-left:3px solid var(--red); ' +
+            'background: rgba(201,52,52,0.04); font-size:12px; line-height:1.5;">' +
+            '<strong>ACTION REQUIRED · UPLOAD EOCN CIRCULAR.</strong><br>' +
+            'No EOCN circular has been ingested into <code>sanctions-snapshots</code>. ' +
+            'The ingest cron does not poll EOCN (PDF-distributed); the MLRO must POST ' +
+            'the normalised circular to the manual upload endpoint. ' +
+            'Endpoint: <code>POST /api/sanctions/eocn-upload</code> ' +
+            '(bearer <code>SANCTIONS_UPLOAD_TOKEN</code>). ' +
+            'See <code>netlify/functions/sanctions-eocn-upload.mts</code> for the payload shape.' +
+            '</div>'
+        );
+      }
       html.push('</div>');
     } else if (integrity === 'degraded') {
       html.push(

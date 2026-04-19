@@ -61,17 +61,92 @@ export async function fetchUNSanctionsList(
   if (!response.ok) throw new Error(`UN API returned ${response.status}`);
 
   const xmlText = await response.text();
-  return parseUNXml(xmlText);
+  return parseUNXml(xmlText, opts?.signal);
 }
 
 /**
- * Parse UN Consolidated Sanctions XML into structured entries.
+ * Yield control back to the Node event loop. Used between chunks of a
+ * long synchronous XML parse so that setTimeout-based abort and hard
+ * timers inside screening-run.mts can actually fire. Without these
+ * yields a 5 MB UN or EU payload can block the event loop for 10+
+ * seconds, silently pushing the whole function past Netlify's 10 s
+ * sync ceiling — which surfaces to the browser as
+ * "Stream idle timeout - partial response received" even though the
+ * upstream fetch completed cleanly. The yield itself costs ~0 ms but
+ * it is what lets the clock actually tick.
  */
-function parseUNXml(xml: string): SanctionsEntry[] {
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => {
+    const si = (globalThis as { setImmediate?: (cb: () => void) => unknown }).setImmediate;
+    if (typeof si === 'function') {
+      si(() => resolve());
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+}
+
+/** Throw an AbortError if the signal is aborted. */
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    const err = new Error('aborted');
+    err.name = 'AbortError';
+    throw err;
+  }
+}
+
+/**
+ * Iterate all non-overlapping occurrences of `<tag>...</tag>` in `xml`
+ * using indexOf instead of a global regex. Avoids the pathological
+ * backtracking cost of `/<tag>[\s\S]*?<\/tag>/g` on a 5 MB string,
+ * which is the primary driver of the EU-parser event-loop stall.
+ */
+function* iterateBlocks(xml: string, tag: string): IterableIterator<string> {
+  const openLower = `<${tag.toLowerCase()}`;
+  const closeLower = `</${tag.toLowerCase()}>`;
+  const xmlLower = xml.toLowerCase();
+  let cursor = 0;
+  while (cursor < xmlLower.length) {
+    const openIdx = xmlLower.indexOf(openLower, cursor);
+    if (openIdx === -1) return;
+    // Ensure we match `<tag ` or `<tag>` — not `<tagOther>`.
+    const afterTag = xmlLower.charCodeAt(openIdx + openLower.length);
+    // ' ' (0x20), '>' (0x3e), '/' (0x2f), '\t' (0x09), '\n' (0x0a), '\r' (0x0d)
+    if (
+      afterTag !== 0x20 &&
+      afterTag !== 0x3e &&
+      afterTag !== 0x2f &&
+      afterTag !== 0x09 &&
+      afterTag !== 0x0a &&
+      afterTag !== 0x0d
+    ) {
+      cursor = openIdx + openLower.length;
+      continue;
+    }
+    const closeIdx = xmlLower.indexOf(closeLower, openIdx + openLower.length);
+    if (closeIdx === -1) return;
+    const blockEnd = closeIdx + closeLower.length;
+    yield xml.slice(openIdx, blockEnd);
+    cursor = blockEnd;
+  }
+}
+
+/** How many blocks to parse between event-loop yields. */
+const PARSE_YIELD_EVERY = 100;
+
+/**
+ * Parse UN Consolidated Sanctions XML into structured entries.
+ * Async + signal-aware so abort timers in the caller can fire while
+ * we're chewing through the payload.
+ */
+async function parseUNXml(xml: string, signal?: AbortSignal): Promise<SanctionsEntry[]> {
   const entries: SanctionsEntry[] = [];
+  let parsed = 0;
   // Parse INDIVIDUAL entries
-  const individualBlocks = xml.match(/<INDIVIDUAL>[\s\S]*?<\/INDIVIDUAL>/g) || [];
-  for (const block of individualBlocks) {
+  for (const block of iterateBlocks(xml, 'INDIVIDUAL')) {
+    throwIfAborted(signal);
+    if (parsed > 0 && parsed % PARSE_YIELD_EVERY === 0) await yieldToEventLoop();
+    parsed++;
     const id = extractTag(block, 'DATAID') || extractTag(block, 'REFERENCE_NUMBER') || '';
     const firstName = extractTag(block, 'FIRST_NAME') || '';
     const secondName = extractTag(block, 'SECOND_NAME') || '';
@@ -96,8 +171,10 @@ function parseUNXml(xml: string): SanctionsEntry[] {
   }
 
   // Parse ENTITY entries
-  const entityBlocks = xml.match(/<ENTITY>[\s\S]*?<\/ENTITY>/g) || [];
-  for (const block of entityBlocks) {
+  for (const block of iterateBlocks(xml, 'ENTITY')) {
+    throwIfAborted(signal);
+    if (parsed > 0 && parsed % PARSE_YIELD_EVERY === 0) await yieldToEventLoop();
+    parsed++;
     const id = extractTag(block, 'DATAID') || extractTag(block, 'REFERENCE_NUMBER') || '';
     const name = extractTag(block, 'FIRST_NAME') || '';
     const aliases = extractAllTags(block, 'ALIAS_NAME');
@@ -266,7 +343,7 @@ export async function fetchEUSanctionsList(
   if (!response.ok) throw new Error(`EU API returned ${response.status}`);
 
   const xmlText = await response.text();
-  return parseEUXml(xmlText);
+  return parseEUXml(xmlText, opts?.signal);
 }
 
 /**
@@ -280,12 +357,21 @@ function extractAttribute(tagString: string, attrName: string): string | null {
 
 /**
  * Parse EU Consolidated Sanctions XML into structured entries.
+ * Async + signal-aware so abort timers in the caller can fire while
+ * we're chewing through the ~5 MB payload. Uses indexOf-based block
+ * iteration instead of `/<sanctionEntity[\s\S]*?<\/sanctionEntity>/gi`
+ * against the whole string, which was the primary event-loop stall
+ * the "aborted at 10364ms" diagnostic in screening-run.mts was
+ * catching.
  */
-function parseEUXml(xml: string): SanctionsEntry[] {
+async function parseEUXml(xml: string, signal?: AbortSignal): Promise<SanctionsEntry[]> {
   const entries: SanctionsEntry[] = [];
-  const entityBlocks = xml.match(/<sanctionEntity[\s\S]*?<\/sanctionEntity>/gi) || [];
+  let parsed = 0;
 
-  for (const block of entityBlocks) {
+  for (const block of iterateBlocks(xml, 'sanctionEntity')) {
+    throwIfAborted(signal);
+    if (parsed > 0 && parsed % PARSE_YIELD_EVERY === 0) await yieldToEventLoop();
+    parsed++;
     const logicalId =
       extractAttribute(block, 'logicalId') || extractAttribute(block, 'designationId') || '';
 
