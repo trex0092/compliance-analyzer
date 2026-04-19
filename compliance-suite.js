@@ -3086,8 +3086,7 @@ window.csFormatDateInput = function (el) {
   // ── INJECT NEW TABS ─────────────────────────────────────────────────────────
   const SUITE2_TABS = [
     // TFS merged into Screening & TFS tab
-    { id: 'dpmsr',   icon: '📊', label: 'DPMSR',      title: 'DPMSR Threshold Reporting' },
-    { id: 'retention', icon: '🗄️', label: 'Retention', title: 'Record Retention — Art.25' },
+    // DPMSR + Retention removed from main-tool nav per product decision
     { id: 'ailog',   icon: '🤖', label: 'AI Govern',  title: 'AI Output Governance' },
   ];
 
