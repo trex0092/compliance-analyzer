@@ -6,7 +6,12 @@
   if (!view || !frame || !titleEl || !closeBtn) return;
 
   function openModule(route, label) {
-    frame.src = 'index.html#' + route;
+    // ?embedded=1 is a belt-and-braces signal for the chrome-strip CSS in
+    // index.html. The primary detector is `window.self !== window.top`, but
+    // same-origin iframe detection has failed in the wild (cached HTML,
+    // SW shims, cross-frame Permission-Policy). The query param is a
+    // deterministic second channel the head-script also checks.
+    frame.src = 'index.html?embedded=1#' + route;
     titleEl.textContent = label || 'Module';
     view.classList.add('is-open');
     view.setAttribute('aria-hidden', 'false');

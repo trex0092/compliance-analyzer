@@ -20,11 +20,25 @@
     <script>
       // When index.html is embedded in an iframe (landing pages
       // /workbench, /compliance-ops, /logistics use landing-module-viewer
-      // to load the main app inline), skip the full-screen preloader
-      // so the landing page does not appear to "navigate to the main
-      // page" — FDL No.10/2025 Art.20 operational continuity.
-      if (window.self !== window.top) {
-        document.documentElement.classList.add('embedded');
+      // to load the main app inline), skip the full-screen preloader and
+      // strip the main-app chrome so the landing page does not appear to
+      // "navigate to the main page" — FDL No.10/2025 Art.20 operational
+      // continuity. The URL param is a deterministic second channel
+      // because same-origin iframe detection has failed in the wild
+      // (CDN-cached HTML, SW shims, cross-frame permission policies).
+      try {
+        var _isEmbedded =
+          window.self !== window.top ||
+          /[?&]embedded=1\b/.test(window.location.search);
+        if (_isEmbedded) {
+          document.documentElement.classList.add('embedded');
+        }
+      } catch (_e) {
+        // Cross-origin window.top access throws in some sandboxed frames.
+        // Fall back to the URL-param signal alone.
+        if (/[?&]embedded=1\b/.test(window.location.search)) {
+          document.documentElement.classList.add('embedded');
+        }
       }
       // KILL all service workers and caches — must run FIRST
       if ('serviceWorker' in navigator) {
