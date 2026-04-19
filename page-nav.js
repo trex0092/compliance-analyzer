@@ -59,6 +59,12 @@
       { label: 'APPROVALS',    slug: 'approvals',    route: 'approvals' },
       { label: 'REG MONITOR',  slug: 'reg-monitor',  route: 'monitor' },
       { label: 'AI GOVERN',    slug: 'ai-govern',    route: 'aigovern' }
+    ],
+    'screening-command': [
+      { label: 'SUBJECT SCREENING',   slug: 'subject-screening',   route: 'screening' },
+      { label: 'TRANSACTION MONITOR', slug: 'transaction-monitor', route: 'screening' },
+      { label: 'STR CASES',           slug: 'str-cases',           route: 'incidents' },
+      { label: 'WATCHLIST',           slug: 'watchlist',           route: 'screening' }
     ]
     // /routines renders its own cadence-chip filter bar in routines.html
     // (All / Continuous / Daily / Weekly) — no separate page-nav here.

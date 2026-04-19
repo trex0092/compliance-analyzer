@@ -10123,23 +10123,37 @@ function initNewFeatures() {
         toast('Saved configuration loaded','info', 2500);
       }
     } else {
-      // Check for existing users — require setup wizard if none exist
-      var users = getUsers();
-      if (!users || !users.length) {
-        // No users — show setup wizard (do NOT auto-create with hardcoded credentials)
-        document.getElementById('mainApp').style.display = 'none';
-      }
-      // Login as first active admin only if users exist
-      var allUsers = getUsers() || [];
-      var adminUser = allUsers.find(function(u) { return u.active && u.role === 'admin'; });
-      if (adminUser) {
-        currentUser = { id: adminUser.id, username: adminUser.username, displayName: adminUser.displayName, role: adminUser.role };
-        localStorage.setItem(SESSION_STORAGE, JSON.stringify(currentUser));
-        showMainApp();
+      // No valid session. Two paths:
+      //   1. Users exist → show the login form so the operator must
+      //      authenticate. This MUST require a password — auto-logging
+      //      in as "the first active admin" without challenge bypasses
+      //      authentication entirely (FDL No.10/2025 Art.20 forbids
+      //      anonymous CO actions; CLAUDE.md §5 forbids credential-less
+      //      sessions). The previous behaviour also caused the displayed
+      //      MLRO name + PASSWORD prompt to flash and then disappear as
+      //      the auto-login swapped the login overlay for the main app.
+      //   2. No users → show the setup wizard so the first MLRO
+      //      account can be created.
+      var users = getUsers() || [];
+      document.getElementById('mainApp').style.display = 'none';
+      document.getElementById('loginOverlay').style.display = 'flex';
+      if (!users.length) {
+        var lb = document.getElementById('loginBox');
+        var sw = document.getElementById('setupWizard');
+        if (lb) lb.style.display = 'none';
+        if (sw) sw.style.display = 'block';
       } else {
-        document.getElementById('mainApp').style.display = 'none';
-        document.getElementById('loginOverlay').style.display = 'flex';
-        await initDefaultUsers();
+        var lb2 = document.getElementById('loginBox');
+        var sw2 = document.getElementById('setupWizard');
+        if (lb2) lb2.style.display = 'block';
+        if (sw2) sw2.style.display = 'none';
+        // Re-focus the username field so the operator can start typing
+        // immediately. Without this the cursor lands nowhere visible
+        // after the overlay swaps in.
+        var loginUserEl = document.getElementById('loginUser');
+        if (loginUserEl && typeof loginUserEl.focus === 'function') {
+          try { loginUserEl.focus(); } catch (_) {}
+        }
       }
     }
   } catch(e) {
