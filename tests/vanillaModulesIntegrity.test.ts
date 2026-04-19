@@ -99,11 +99,13 @@ describe('index.html references the modules it loads', () => {
   }
 });
 
-describe('Customer 360 tab is wired into the navigation', () => {
+// The top-level "Customer 360" nav tab was retired in PR #322 — the
+// data-arg="customer360" trigger no longer exists. The panel itself is
+// still mounted in index.html (reachable from other surfaces), so we
+// keep an integrity check on the content block without asserting the
+// removed tab entry.
+describe('Customer 360 panel is mounted in index.html', () => {
   const html = readSrc('index.html');
-  it('has a tab entry for customer360', () => {
-    expect(html).toMatch(/data-arg="customer360"/);
-  });
   it('has a tab-customer360 content block', () => {
     expect(html).toMatch(/id="tab-customer360"/);
   });
