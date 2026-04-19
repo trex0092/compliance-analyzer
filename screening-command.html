@@ -1543,6 +1543,58 @@
       </div>
       <a href="/" class="muted">&larr; Main tool</a>
     </header>
+    <div
+      id="sanctionsStaleBanner"
+      role="status"
+      hidden
+      style="
+        margin: 12px 24px 0;
+        padding: 10px 14px;
+        border: 1px solid #d4af37;
+        border-left: 3px solid #d4af37;
+        border-radius: 3px;
+        background: rgba(212, 175, 55, 0.06);
+        color: #f5f1e6;
+        font-size: 13px;
+        line-height: 1.4;
+      "
+    ></div>
+    <script>
+      // Sanctions-list freshness banner. Reads the same localStorage key
+      // the legacy TFS tab wrote to (fgl_tfs_lists) and surfaces the count
+      // of lists past the 24h refresh window. FATF Rec 6-7 / FDL Art.35 /
+      // Cabinet Res 74/2020 Art.4 — screening on stale lists is a finding.
+      (function () {
+        try {
+          var key = 'fgl_tfs_lists';
+          var raw = null;
+          try {
+            raw = localStorage.getItem(key);
+          } catch (_) {
+            return;
+          }
+          if (!raw) return;
+          var lists = JSON.parse(raw);
+          if (!Array.isArray(lists) || lists.length === 0) return;
+          var now = Date.now();
+          var STALE_MS = 24 * 60 * 60 * 1000;
+          var stale = lists.filter(function (l) {
+            if (!l || !l.lastRefreshed) return true;
+            var t = new Date(l.lastRefreshed).getTime();
+            return isNaN(t) || now - t > STALE_MS;
+          });
+          if (stale.length === 0) return;
+          var el = document.getElementById('sanctionsStaleBanner');
+          if (!el) return;
+          el.hidden = false;
+          el.textContent =
+            stale.length +
+            ' sanctions list(s) need refresh (>24h since last pull). Upload the latest UAE EOCN circular via /api/sanctions/eocn-upload and re-run the /api/sanctions-ingest-cron job before the next screening batch.';
+        } catch (_) {
+          /* swallow — banner is best-effort */
+        }
+      })();
+    </script>
     <section class="intro-panel">
       <div class="intro-grid">
         <div class="intro-block">
@@ -1969,15 +2021,6 @@
           </span>
         </label>
         <label class="list-check">
-          <input type="checkbox" data-category="narrativeSanctions" data-tier="enhanced" checked />
-          <span class="list-label"
-            >Narrative &amp; implicit sanctions
-            <span class="list-sub"
-              >Sectoral / 50-percent-rule / CAPTA / SSI / country-of-concern exposure</span
-            >
-          </span>
-        </label>
-        <label class="list-check">
           <input type="checkbox" data-category="adverseMedia" data-tier="enhanced" checked />
           <span class="list-label"
             >Adverse media
@@ -1986,20 +2029,6 @@
               taxonomy (bribery &amp; corruption, organized crime, terrorism / TF, human
               trafficking, cybercrime, sanctions evasion, tax evasion, war crimes, environmental
               crimes, securities fraud, and 30+ more). FATF Rec 10 / 12; FDL No.10/2025 Art.2.</span
-            >
-          </span>
-        </label>
-        <label class="list-check">
-          <input
-            type="checkbox"
-            data-category="sanctionedSecurities"
-            data-tier="enhanced"
-            checked
-          />
-          <span class="list-label"
-            >Sanctioned securities
-            <span class="list-sub"
-              >ISIN / CUSIP / ticker screen — OFAC NS-SDN, CAPTA, 13(d) CMIC, UK sectoral</span
             >
           </span>
         </label>

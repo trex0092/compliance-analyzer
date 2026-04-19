@@ -148,12 +148,15 @@ window.csFormatDateInput = function (el) {
   }
 
   // ─── INJECT TABS ─────────────────────────────────────────────────────────────
+  // STR Cases anchors next to Incidents (middle of the nav) — STR
+  // investigations are the natural follow-on from an incident alert,
+  // so the MLRO finds the two workflows side-by-side instead of at
+  // opposite ends of the tab strip. Red Flags + 4-Eyes continue to
+  // append to the tail.
   const NEW_TABS = [
-    // CRA merged into Risk Assessment tab
-    // UBO tab removed from main-tool nav per product decision
+    { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management', insertAfter: 'incidents' },
     { id: 'redflags',  icon: '🚩', label: 'Red Flags', title: 'Red Flag Library' },
     { id: 'approvals2','icon':'✅', label: '4-Eyes', title: 'Four-Eyes Approval Matrix' },
-    { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management' },
   ];
 
   function injectTabs() {
@@ -167,6 +170,13 @@ window.csFormatDateInput = function (el) {
       el.title = t.title;
       el.innerHTML = (t.icon ? t.icon + ' ' : '') + t.label;
       el.onclick = () => switchToSuiteTab(t.id);
+      if (t.insertAfter) {
+        const anchor = nav.querySelector('[data-arg="' + t.insertAfter + '"]');
+        if (anchor && anchor.parentNode === nav) {
+          anchor.insertAdjacentElement('afterend', el);
+          return;
+        }
+      }
       nav.appendChild(el);
     });
   }
