@@ -169,9 +169,9 @@
         grid-template-columns: 1.3fr 1fr;
         gap: 48px;
         align-items: end;
-        margin: 10px 0 2.75rem;
+        margin: 10px 0 36px;
       }
-      @media (max-width: 920px) {
+      @media (max-width: 900px) {
         .hero { grid-template-columns: 1fr; gap: 28px; }
       }
 
@@ -197,22 +197,18 @@
         background: linear-gradient(90deg, transparent, var(--azure-bright), transparent);
       }
       .hero-summary-cell {
-        padding: 14px 14px 12px;
+        padding: 12px 14px;
         border: 1px solid var(--border);
         border-radius: 12px;
         background: rgba(10, 40, 24, 0.5);
-        aspect-ratio: 1 / 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        min-height: 120px;
       }
       .hero-summary-cell .k {
         font-family: 'DM Mono', monospace;
-        font-size: 9.5px;
+        font-size: 9px;
         letter-spacing: 2px;
         text-transform: uppercase;
         color: var(--steel);
+        margin-bottom: 4px;
       }
       .hero-summary-cell .v {
         font-family: 'Playfair Display', serif;
@@ -225,9 +221,8 @@
         font-family: 'DM Mono', monospace;
         font-size: 10px;
         color: var(--sky);
-        display: block;
-        margin-top: 6px;
-        letter-spacing: 1px;
+        margin-left: 6px;
+        letter-spacing: 0;
         font-weight: 400;
       }
       .hero-summary-cell .dot {
@@ -271,11 +266,12 @@
       .hero-title {
         font-family: 'Playfair Display', serif;
         font-weight: 700;
-        font-size: clamp(44px, 6vw, 76px);
-        line-height: 1.02;
+        font-size: clamp(36px, 4.4vw, 56px);
+        line-height: 1.15;
         letter-spacing: -0.02em;
         color: var(--mist);
         margin: 0 0 1.25rem;
+        padding-bottom: 0.12em;
         background: linear-gradient(180deg, #ffffff 0%, var(--ice) 45%, var(--sky) 100%);
         -webkit-background-clip: text;
         background-clip: text;
