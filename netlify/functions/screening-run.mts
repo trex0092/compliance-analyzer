@@ -75,12 +75,16 @@ import {
   seedUaeSanctionsList,
   type SanctionsEntry,
 } from '../../src/services/sanctionsApi';
-import { searchAdverseMedia } from '../../src/services/adverseMediaSearch';
+import {
+  searchAdverseMedia,
+  type AdverseMediaHit,
+} from '../../src/services/adverseMediaSearch';
 import { explainableScore } from '../../src/services/explainableScoring';
 import {
   addToWatchlist,
   deserialiseWatchlist,
   serialiseWatchlist,
+  updateAfterScreening,
   type SerialisedWatchlist,
   type RiskTier,
 } from '../../src/services/screeningWatchlist';
@@ -757,13 +761,22 @@ interface EnrollmentResult {
   action: 'enrolled' | 'already-present' | 'skipped' | 'failed';
   id?: string;
   error?: string;
+  /**
+   * Number of hits whose fingerprint was NOT already on the entry — these
+   * are the ones that incremented `alertCount`. Zero on the 'skipped' or
+   * 'failed' paths, and zero on a clean screen with no hits.
+   */
+  newHits?: number;
+  /** Cumulative lifetime hit count on the entry after this update. */
+  totalHits?: number;
 }
 
 async function enrollIntoWatchlist(
   id: string,
   subjectName: string,
   riskTier: RiskTier,
-  metadata: Record<string, string | number | boolean>
+  metadata: Record<string, string | number | boolean>,
+  initialHits: readonly AdverseMediaHit[] = []
 ): Promise<EnrollmentResult> {
   try {
     const store = getStore(WATCHLIST_STORE);
@@ -794,10 +807,19 @@ async function enrollIntoWatchlist(
       }
 
       const wl = deserialiseWatchlist(data);
-      if (wl.entries.has(id)) {
-        return { action: 'already-present', id };
+      const alreadyPresent = wl.entries.has(id);
+      if (!alreadyPresent) {
+        addToWatchlist(wl, { id, subjectName, riskTier, metadata });
       }
-      addToWatchlist(wl, { id, subjectName, riskTier, metadata });
+
+      // Fingerprint + diff the initial-screening hits against the entry's
+      // seen-set so alertCount reflects reality from the first write. Without
+      // this, a subject with confirmed adverse-media matches would land in
+      // the watchlist with alertCount=0 and render as "0 lifetime hits" in
+      // the MLRO UI — the OZCAN HALAC bug. Using the same updateAfterScreening
+      // helper that the daily cron uses keeps the on-demand + scheduled
+      // paths consistent (FDL Art.24 audit trail parity).
+      const update = await updateAfterScreening(wl, id, initialHits);
       const next = serialiseWatchlist(wl);
 
       try {
@@ -813,7 +835,14 @@ async function enrollIntoWatchlist(
             : typeof res === 'object' && 'modified' in (res as Record<string, unknown>)
               ? (res as { modified: boolean }).modified === true
               : res !== false;
-        if (landed) return { action: 'enrolled', id };
+        if (landed) {
+          return {
+            action: alreadyPresent ? 'already-present' : 'enrolled',
+            id,
+            newHits: update.newHits.length,
+            totalHits: update.entry.alertCount,
+          };
+        }
       } catch (err) {
         return {
           action: 'failed',
@@ -1303,8 +1332,16 @@ export default async (req: Request, context: Context): Promise<Response> => {
           };
           if (input.jurisdiction) metadata.jurisdiction = input.jurisdiction;
           if (input.notes) metadata.notes = input.notes.slice(0, 512);
+          const initialAdverseHits: readonly AdverseMediaHit[] =
+            input.runAdverseMedia && amRes.value.hits ? amRes.value.hits : [];
           return withTimeout(
-            enrollIntoWatchlist(subjectId, input.subjectName, riskTier, metadata),
+            enrollIntoWatchlist(
+              subjectId,
+              input.subjectName,
+              riskTier,
+              metadata,
+              initialAdverseHits
+            ),
             WATCHLIST_TIMEOUT_MS,
             { action: 'skipped', error: 'watchlist enrollment timed out' } as EnrollmentResult,
             'watchlist-enroll'
