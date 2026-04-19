@@ -855,6 +855,39 @@
         position: relative;
         box-shadow: 0 16px 40px rgba(0,0,0,0.6);
       }
+      .str-modal-card-wide { max-width: 780px; }
+      .str-redflags {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px 18px;
+        max-height: 180px;
+        overflow-y: auto;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: rgba(10, 10, 14, 0.55);
+      }
+      .str-redflag {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 12px;
+        line-height: 1.35;
+        color: var(--mist);
+        font-family: inherit;
+        letter-spacing: 0;
+        text-transform: none;
+        cursor: pointer;
+      }
+      .str-redflag input[type=checkbox] {
+        width: auto;
+        margin: 2px 0 0;
+        accent-color: var(--gold);
+        flex-shrink: 0;
+      }
+      @media (max-width: 640px) {
+        .str-redflags { grid-template-columns: 1fr; max-height: 220px; }
+      }
       .str-modal-close {
         position: absolute; top: 10px; right: 10px;
         background: transparent; border: 0; cursor: pointer;
@@ -2025,20 +2058,20 @@
         }
       })();
 
-      // STR Case Management — live counts from localStorage (fgl_str_cases_v2).
-      // Confidentiality notice + counts + deep-link to the full case workspace
-      // in compliance-suite.js (#str tab) are the only things rendered here.
+      // STR Case Management — live counts + inline STR Case File modal.
+      // Previously these two IIFEs ran immediately at parse time, BEFORE
+      // the #strNewCaseBtn and #strModal elements were in the DOM (the
+      // STR section sits below this <script> block in the document). So
+      // getElementById returned null and the "+ New STR Case" button was
+      // never wired. Wrapping in DOMContentLoaded guarantees the handler
+      // binds after every element exists.
       // FDL No.(10)/2025 Art.26-27 (STR filing) + Art.21 (no tipping off).
       (function () {
-        try {
-          var raw = null;
-          try {
-            raw = localStorage.getItem('fgl_str_cases_v2');
-          } catch (_) {
-            return;
-          }
-          var cases = raw ? JSON.parse(raw) : [];
-          if (!Array.isArray(cases)) cases = [];
+        function setStrCount(id, n) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = String(n);
+        }
+        function strCountsFromCases(cases) {
           var counts = { draft: 0, review: 0, pending: 0, filed: 0 };
           cases.forEach(function (c) {
             var s = (c && c.status) || 'Draft';
@@ -2047,113 +2080,152 @@
             else if (s.indexOf('Pending Filing') !== -1 || s.indexOf('Approved') === 0) counts.pending++;
             else if (s.indexOf('Filed') !== -1) counts.filed++;
           });
-          var setNum = function (id, n) {
-            var el = document.getElementById(id);
-            if (el) el.textContent = String(n);
-          };
-          setNum('strCountDraft', counts.draft);
-          setNum('strCountReview', counts.review);
-          setNum('strCountPending', counts.pending);
-          setNum('strCountFiled', counts.filed);
+          return counts;
+        }
+        function loadStrCases() {
+          try {
+            var raw = localStorage.getItem('fgl_str_cases_v2');
+            var cases = raw ? JSON.parse(raw) : [];
+            return Array.isArray(cases) ? cases : [];
+          } catch (_) {
+            return [];
+          }
+        }
+        function recount() {
+          var cases = loadStrCases();
+          var counts = strCountsFromCases(cases);
+          setStrCount('strCountDraft', counts.draft);
+          setStrCount('strCountReview', counts.review);
+          setStrCount('strCountPending', counts.pending);
+          setStrCount('strCountFiled', counts.filed);
           var empty = document.getElementById('strEmpty');
           if (empty) {
             if (cases.length > 0) empty.classList.add('hidden');
             else empty.classList.remove('hidden');
           }
-        } catch (_) {
-          /* swallow — STR counts are best-effort */
         }
-      })();
-
-      // STR Case Management — inline modal to capture a new case on this
-      // page (no redirect to index.html). Saves to fgl_str_cases_v2.
-      // FDL No.(10)/2025 Art.26-27 + Art.21 (no tipping off).
-      (function () {
-        var openBtn = document.getElementById('strNewCaseBtn');
-        var modal = document.getElementById('strModal');
-        if (!openBtn || !modal) return;
-        var closeBtn = document.getElementById('strModalClose');
-        var cancelBtn = document.getElementById('strModalCancel');
-        var saveBtn = document.getElementById('strModalSave');
-        var subjectInput = document.getElementById('strCaseSubject');
-        var suspicionInput = document.getElementById('strCaseSuspicion');
-        var statusSelect = document.getElementById('strCaseStatus');
-        var prioritySelect = document.getElementById('strCasePriority');
-
-        function openModal() {
-          modal.hidden = false;
-          if (subjectInput) subjectInput.focus();
-        }
-        function closeModal() {
-          modal.hidden = true;
-          if (subjectInput) subjectInput.value = '';
-          if (suspicionInput) suspicionInput.value = '';
-          if (statusSelect) statusSelect.value = 'Draft';
-          if (prioritySelect) prioritySelect.value = 'Medium';
-        }
-        function recount() {
-          try {
-            var raw = localStorage.getItem('fgl_str_cases_v2');
-            var cases = raw ? JSON.parse(raw) : [];
-            if (!Array.isArray(cases)) cases = [];
-            var counts = { draft: 0, review: 0, pending: 0, filed: 0 };
-            cases.forEach(function (c) {
-              var s = (c && c.status) || 'Draft';
-              if (s === 'Draft') counts.draft++;
-              else if (s === 'Under Review') counts.review++;
-              else if (s.indexOf('Pending Filing') !== -1 || s.indexOf('Approved') === 0) counts.pending++;
-              else if (s.indexOf('Filed') !== -1) counts.filed++;
-            });
-            var setNum = function (id, n) {
-              var el = document.getElementById(id);
-              if (el) el.textContent = String(n);
-            };
-            setNum('strCountDraft', counts.draft);
-            setNum('strCountReview', counts.review);
-            setNum('strCountPending', counts.pending);
-            setNum('strCountFiled', counts.filed);
-            var empty = document.getElementById('strEmpty');
-            if (empty) {
-              if (cases.length > 0) empty.classList.add('hidden');
-              else empty.classList.remove('hidden');
-            }
-          } catch (_) {}
-        }
-        function save() {
-          var subject = subjectInput ? subjectInput.value.trim() : '';
-          var suspicion = suspicionInput ? suspicionInput.value.trim() : '';
-          if (!subject) { if (subjectInput) subjectInput.focus(); return; }
-          try {
-            var raw = localStorage.getItem('fgl_str_cases_v2');
-            var cases = raw ? JSON.parse(raw) : [];
-            if (!Array.isArray(cases)) cases = [];
-            var now = new Date();
-            var rand = Math.random().toString(36).slice(2, 7).toUpperCase();
-            cases.push({
-              id: 'STR-' + now.getTime().toString(36).toUpperCase() + '-' + rand,
-              subject: subject,
-              suspicion: suspicion,
-              status: statusSelect ? statusSelect.value : 'Draft',
-              priority: prioritySelect ? prioritySelect.value : 'Medium',
-              createdAt: now.toISOString(),
-              updatedAt: now.toISOString(),
-            });
-            localStorage.setItem('fgl_str_cases_v2', JSON.stringify(cases));
-          } catch (_) {}
-          closeModal();
+        function initStrCaseManager() {
           recount();
-        }
+          var openBtn = document.getElementById('strNewCaseBtn');
+          var modal = document.getElementById('strModal');
+          if (!openBtn || !modal) return;
+          var closeBtn = document.getElementById('strModalClose');
+          var cancelBtn = document.getElementById('strModalCancel');
+          var saveBtn = document.getElementById('strModalSave');
+          var reportTypeSel = document.getElementById('strCaseReportType');
+          var prioritySel = document.getElementById('strCasePriority');
+          var subjectInput = document.getElementById('strCaseSubject');
+          var subjectTypeSel = document.getElementById('strCaseSubjectType');
+          var suspicionDateInput = document.getElementById('strCaseSuspicionDate');
+          var filingDeadlineInput = document.getElementById('strCaseFilingDeadline');
+          var redFlagsContainer = document.getElementById('strCaseRedFlags');
+          var suspicionInput = document.getElementById('strCaseSuspicion');
+          var txnAmountInput = document.getElementById('strCaseTxnAmount');
+          var txnDatesInput = document.getElementById('strCaseTxnDates');
+          var investigatorInput = document.getElementById('strCaseInvestigator');
+          var statusSel = document.getElementById('strCaseStatus');
+          var goamlRefInput = document.getElementById('strCaseGoamlRef');
+          var internalNotesInput = document.getElementById('strCaseInternalNotes');
 
-        openBtn.addEventListener('click', openModal);
-        if (closeBtn) closeBtn.addEventListener('click', closeModal);
-        if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-        if (saveBtn) saveBtn.addEventListener('click', save);
-        modal.addEventListener('click', function (e) {
-          if (e.target === modal) closeModal();
-        });
-        document.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape' && !modal.hidden) closeModal();
-        });
+          function clearForm() {
+            if (reportTypeSel) reportTypeSel.value = '';
+            if (prioritySel) prioritySel.value = 'Without Delay';
+            if (subjectInput) subjectInput.value = '';
+            if (subjectTypeSel) subjectTypeSel.value = '';
+            if (suspicionDateInput) suspicionDateInput.value = '';
+            if (filingDeadlineInput) filingDeadlineInput.value = '';
+            if (redFlagsContainer) {
+              var boxes = redFlagsContainer.querySelectorAll('input[type=checkbox]');
+              for (var i = 0; i < boxes.length; i++) boxes[i].checked = false;
+            }
+            if (suspicionInput) suspicionInput.value = '';
+            if (txnAmountInput) txnAmountInput.value = '';
+            if (txnDatesInput) txnDatesInput.value = '';
+            if (investigatorInput) investigatorInput.value = '';
+            if (statusSel) statusSel.value = 'Draft';
+            if (goamlRefInput) goamlRefInput.value = '';
+            if (internalNotesInput) internalNotesInput.value = '';
+          }
+          function openModal() {
+            modal.hidden = false;
+            if (subjectInput) subjectInput.focus();
+          }
+          function closeModal() {
+            modal.hidden = true;
+            clearForm();
+          }
+          function collectRedFlags() {
+            if (!redFlagsContainer) return [];
+            var checked = redFlagsContainer.querySelectorAll('input[type=checkbox]:checked');
+            var arr = [];
+            for (var i = 0; i < checked.length; i++) arr.push(checked[i].value);
+            return arr;
+          }
+          function save() {
+            var subject = subjectInput ? subjectInput.value.trim() : '';
+            var suspicion = suspicionInput ? suspicionInput.value.trim() : '';
+            var reportType = reportTypeSel ? reportTypeSel.value : '';
+            var suspicionDate = suspicionDateInput ? suspicionDateInput.value.trim() : '';
+            var redFlags = collectRedFlags();
+            // FDL Art.26-27 requires subject + suspicion + report type +
+            // suspicion date + at least one red flag. Reject silently to
+            // the offending field instead of saving an incomplete case.
+            if (!subject) { if (subjectInput) subjectInput.focus(); return; }
+            if (!reportType) { if (reportTypeSel) reportTypeSel.focus(); return; }
+            if (!suspicionDate) { if (suspicionDateInput) suspicionDateInput.focus(); return; }
+            if (redFlags.length === 0) {
+              if (redFlagsContainer) {
+                var first = redFlagsContainer.querySelector('input[type=checkbox]');
+                if (first) first.focus();
+              }
+              return;
+            }
+            if (!suspicion) { if (suspicionInput) suspicionInput.focus(); return; }
+            try {
+              var cases = loadStrCases();
+              var now = new Date();
+              var rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+              cases.push({
+                id: 'STR-' + now.getTime().toString(36).toUpperCase() + '-' + rand,
+                reportType: reportType,
+                priority: prioritySel ? prioritySel.value : 'Without Delay',
+                subject: subject,
+                subjectType: subjectTypeSel ? subjectTypeSel.value : '',
+                suspicionDate: suspicionDate,
+                filingDeadline: filingDeadlineInput ? filingDeadlineInput.value.trim() : '',
+                redFlags: redFlags,
+                suspicion: suspicion,
+                txnAmount: txnAmountInput ? txnAmountInput.value.trim() : '',
+                txnDates: txnDatesInput ? txnDatesInput.value.trim() : '',
+                investigator: investigatorInput ? investigatorInput.value.trim() : '',
+                status: statusSel ? statusSel.value : 'Draft',
+                goamlRef: goamlRefInput ? goamlRefInput.value.trim() : '',
+                internalNotes: internalNotesInput ? internalNotesInput.value.trim() : '',
+                createdAt: now.toISOString(),
+                updatedAt: now.toISOString(),
+              });
+              localStorage.setItem('fgl_str_cases_v2', JSON.stringify(cases));
+            } catch (_) {}
+            closeModal();
+            recount();
+          }
+
+          openBtn.addEventListener('click', openModal);
+          if (closeBtn) closeBtn.addEventListener('click', closeModal);
+          if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+          if (saveBtn) saveBtn.addEventListener('click', save);
+          modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeModal();
+          });
+          document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !modal.hidden) closeModal();
+          });
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initStrCaseManager);
+        } else {
+          initStrCaseManager();
+        }
       })();
     </script>
     <section class="hero">
@@ -3132,48 +3204,132 @@
     </div>
 
     <!-- STR New Case modal ──────────────────────────────────────────────
-         Inline case-intake form. Saves into localStorage.fgl_str_cases_v2
-         — the same key compliance-suite.js reads/writes. No tip-off risk:
-         nothing is transmitted until the MLRO files via goAML.
+         Inline STR Case File form. Saves into localStorage.fgl_str_cases_v2
+         — the same key compliance-suite.js reads/writes. Captures every
+         field UAE FDL No.(10)/2025 Art.26-27 + goAML require (report
+         type, priority, subject name + type, suspicion date, filing
+         deadline, red flags, narrative, transaction amount + dates,
+         investigator, status, goAML reference, internal notes). No
+         tip-off risk (FDL Art.21) — nothing is transmitted until the
+         MLRO files via goAML.
     -->
     <div id="strModal" class="str-modal" role="dialog" aria-modal="true" aria-labelledby="strModalTitle" hidden>
-      <div class="str-modal-card">
+      <div class="str-modal-card str-modal-card-wide">
         <button type="button" class="str-modal-close" id="strModalClose" aria-label="Close">&times;</button>
-        <h2 id="strModalTitle" class="str-modal-title">New STR Case</h2>
-        <p class="str-modal-cite">UAE FDL No.(10)/2025 Art.26-27 &middot; File WITHOUT DELAY upon suspicion</p>
-        <div class="str-modal-row">
-          <label for="strCaseSubject">Subject name</label>
-          <input type="text" id="strCaseSubject" maxlength="256" placeholder="Full legal name of the subject" autocomplete="off" />
-        </div>
-        <div class="str-modal-row">
-          <label for="strCaseSuspicion">Reason for suspicion</label>
-          <textarea id="strCaseSuspicion" maxlength="4000" placeholder="What triggered the suspicion? (typology, red flags, transaction pattern, source)" rows="4"></textarea>
-        </div>
+        <h2 id="strModalTitle" class="str-modal-title">STR Case File</h2>
+        <p class="str-modal-cite">UAE FDL No.(10) of 2025 Art.26-27 &middot; File to UAE FIU via goAML WITHOUT DELAY upon suspicion arising</p>
         <div class="str-modal-row-2">
           <div>
-            <label for="strCaseStatus">Status</label>
-            <select id="strCaseStatus">
-              <option value="Draft" selected>Draft</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Approved - Pending Filing">Approved &mdash; Pending Filing</option>
-              <option value="Filed - goAML">Filed &mdash; goAML</option>
+            <label for="strCaseReportType">Report type *</label>
+            <select id="strCaseReportType" required>
+              <option value="" selected>Select</option>
+              <option value="STR">STR &mdash; Suspicious Transaction Report</option>
+              <option value="SAR">SAR &mdash; Suspicious Activity Report</option>
+              <option value="AIF">AIF &mdash; Additional Information File</option>
+              <option value="PEPR">PEPR &mdash; Politically Exposed Person Report</option>
+              <option value="HRCR">HRCR &mdash; High-Risk Country Report</option>
+              <option value="FTFR">FTFR &mdash; Funds Transfer Report</option>
             </select>
           </div>
           <div>
             <label for="strCasePriority">Priority</label>
             <select id="strCasePriority">
+              <option value="Without Delay" selected>Without Delay (FDL Art.26-27)</option>
               <option value="High">High</option>
-              <option value="Medium" selected>Medium</option>
+              <option value="Medium">Medium</option>
               <option value="Low">Low</option>
             </select>
           </div>
+        </div>
+        <div class="str-modal-row-2">
+          <div>
+            <label for="strCaseSubject">Subject name *</label>
+            <input type="text" id="strCaseSubject" maxlength="256" placeholder="Individual or entity name" autocomplete="off" />
+          </div>
+          <div>
+            <label for="strCaseSubjectType">Subject type</label>
+            <select id="strCaseSubjectType">
+              <option value="" selected>Select</option>
+              <option value="Individual">Individual</option>
+              <option value="Legal Entity">Legal Entity</option>
+              <option value="Trust">Trust / Arrangement</option>
+              <option value="Government">Government / PEP</option>
+            </select>
+          </div>
+        </div>
+        <div class="str-modal-row-2">
+          <div>
+            <label for="strCaseSuspicionDate">Date suspicion arose *</label>
+            <input type="text" id="strCaseSuspicionDate" maxlength="10" placeholder="dd/mm/yyyy" autocomplete="off" />
+          </div>
+          <div>
+            <label for="strCaseFilingDeadline">Filing deadline (Without Delay &mdash; file immediately)</label>
+            <input type="text" id="strCaseFilingDeadline" maxlength="10" placeholder="dd/mm/yyyy" autocomplete="off" />
+          </div>
+        </div>
+        <div class="str-modal-row">
+          <label>Red flags identified (select all that apply) *</label>
+          <div class="str-redflags" id="strCaseRedFlags">
+            <label class="str-redflag"><input type="checkbox" value="Customer reluctant to provide identification" /> Customer reluctant to provide identification</label>
+            <label class="str-redflag"><input type="checkbox" value="Customer declines to complete CDD documentation" /> Customer declines to complete CDD documentation</label>
+            <label class="str-redflag"><input type="checkbox" value="Inconsistency between declared source of funds and known business" /> Inconsistency between declared source of funds and known business</label>
+            <label class="str-redflag"><input type="checkbox" value="Customer behaviour changes after CDD request" /> Customer behaviour changes after CDD request</label>
+            <label class="str-redflag"><input type="checkbox" value="Customer requests anonymity or third-party payment" /> Customer requests anonymity or third-party payment</label>
+            <label class="str-redflag"><input type="checkbox" value="Customer cannot be reached at declared address or phone" /> Customer cannot be reached at declared address or phone</label>
+            <label class="str-redflag"><input type="checkbox" value="Transactions structured below AED 55,000 CTR threshold" /> Transactions structured below AED 55,000 CTR threshold</label>
+            <label class="str-redflag"><input type="checkbox" value="Transactions inconsistent with customer profile or history" /> Transactions inconsistent with customer profile or history</label>
+            <label class="str-redflag"><input type="checkbox" value="Unusual high-value cash transactions" /> Unusual high-value cash transactions</label>
+            <label class="str-redflag"><input type="checkbox" value="Cross-border transfers to high-risk jurisdictions" /> Cross-border transfers to high-risk jurisdictions</label>
+            <label class="str-redflag"><input type="checkbox" value="Sanctions list hit (UN/OFAC/EU/UK/UAE EOCN)" /> Sanctions list hit (UN/OFAC/EU/UK/UAE EOCN)</label>
+            <label class="str-redflag"><input type="checkbox" value="Adverse media hit (financial crime, corruption, terror)" /> Adverse media hit (financial crime, corruption, terror)</label>
+            <label class="str-redflag"><input type="checkbox" value="PEP involvement without adequate source of wealth evidence" /> PEP involvement without adequate source of wealth evidence</label>
+            <label class="str-redflag"><input type="checkbox" value="UBO obscured behind shell-company layering" /> UBO obscured behind shell-company layering</label>
+          </div>
+        </div>
+        <div class="str-modal-row">
+          <label for="strCaseSuspicion">Suspicion narrative *</label>
+          <textarea id="strCaseSuspicion" maxlength="8000" rows="5" placeholder="Describe the basis for suspicion in detail. Include: (1) subject profile, (2) transaction chronology, (3) red flags observed, (4) why suspicion arose, (5) any mitigating factors considered and rejected. This narrative will form the basis of the goAML submission."></textarea>
+        </div>
+        <div class="str-modal-row-2">
+          <div>
+            <label for="strCaseTxnAmount">Transaction amount (AED)</label>
+            <input type="text" id="strCaseTxnAmount" maxlength="32" placeholder="0.00" autocomplete="off" inputmode="decimal" />
+          </div>
+          <div>
+            <label for="strCaseTxnDates">Transaction date(s)</label>
+            <input type="text" id="strCaseTxnDates" maxlength="128" placeholder="e.g. 01/04/2026" autocomplete="off" />
+          </div>
+        </div>
+        <div class="str-modal-row-2">
+          <div>
+            <label for="strCaseInvestigator">Investigator / MLRO</label>
+            <input type="text" id="strCaseInvestigator" maxlength="128" placeholder="Name of person handling" autocomplete="off" />
+          </div>
+          <div>
+            <label for="strCaseStatus">Case status *</label>
+            <select id="strCaseStatus">
+              <option value="Draft" selected>Draft</option>
+              <option value="Under Review">Under Review</option>
+              <option value="Approved - Pending Filing">Approved &mdash; Pending Filing</option>
+              <option value="Filed - goAML">Filed &mdash; goAML</option>
+              <option value="Closed - No Filing">Closed &mdash; No Filing</option>
+            </select>
+          </div>
+        </div>
+        <div class="str-modal-row">
+          <label for="strCaseGoamlRef">goAML reference number (after filing)</label>
+          <input type="text" id="strCaseGoamlRef" maxlength="64" placeholder="goAML submission reference" autocomplete="off" />
+        </div>
+        <div class="str-modal-row">
+          <label for="strCaseInternalNotes">Internal notes</label>
+          <textarea id="strCaseInternalNotes" maxlength="4000" rows="3" placeholder="Internal escalation notes, management approvals, supporting documents..."></textarea>
         </div>
         <div class="str-modal-actions">
           <button type="button" class="str-modal-btn str-modal-btn-secondary" id="strModalCancel">Cancel</button>
           <button type="button" class="str-modal-btn str-modal-btn-primary" id="strModalSave">Save STR Case</button>
         </div>
         <p class="str-modal-help">
-          Saved locally under <code>fgl_str_cases_v2</code> (FDL Art.24 &mdash; 10yr audit trail). Use the full compliance suite to draft the goAML XML.
+          Saved locally under <code>fgl_str_cases_v2</code> (FDL Art.24 &mdash; 10yr audit trail). Do NOT tip off the subject (FDL Art.21). Use the full compliance suite to draft the goAML XML submission.
         </p>
       </div>
     </div>
