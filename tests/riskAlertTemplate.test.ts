@@ -293,3 +293,108 @@ describe('buildRiskAlertTask — formatting', () => {
     expect(task.notes).toContain('abc1234');
   });
 });
+
+describe('buildRiskAlertTask — reasoning block', () => {
+  it('renders a WHY THIS ALERT narrative with component-by-component read', () => {
+    const task = buildRiskAlertTask(baseInput());
+    expect(task.notes).toContain('WHY THIS ALERT');
+    // Name is 0.95 → exact-ish; our threshold for "exact" is 0.999 so it
+    // renders as a partial match. Either way the line is present.
+    expect(task.notes).toMatch(/Name\s+(exact match|partial match|weak signal)/);
+    // DoB in the baseline is 0.5 → partial match line rendered.
+    expect(task.notes).toMatch(/Date of birth\s+partial match/);
+    // Nationality is 1.0 → exact match.
+    expect(task.notes).toMatch(/Nationality\s+exact match/);
+  });
+
+  it('renders a Dominant signal line', () => {
+    const task = buildRiskAlertTask(baseInput());
+    expect(task.notes).toContain('Dominant signal:');
+  });
+
+  it('renders a near-miss warning when a POSSIBLE is within 0.05 of ALERT', () => {
+    const input = baseInput();
+    input.subject = PINNED_SUBJECT;
+    input.match.reference = 'QDi.123';
+    // Composite 0.78 → POSSIBLE, within 0.02 of the 0.80 ALERT band.
+    input.score = {
+      composite: 0.78,
+      breakdown: { name: 0.95, dob: 0.9, nationality: 1, id: 0, alias: 0 },
+      classification: 'possible',
+      clamped: false,
+    };
+    const task = buildRiskAlertTask(input);
+    expect(task.notes).toContain('Near the ALERT band');
+    expect(task.notes).toContain('pinning the identity is likely to promote this to ALERT');
+  });
+
+  it('renders a near-miss warning when a suppress is within 0.05 of POSSIBLE', () => {
+    const input = baseInput();
+    // Force the renderer to emit the "near POSSIBLE" warning for an
+    // unresolved subject whose score is just below the 0.50 band. We
+    // call buildRiskAlertTask on a CHANGE event so severity is CHANGE
+    // (bypassing the POSSIBLE branch) and the suppress-near-POSSIBLE
+    // branch fires.
+    input.match.changeType = 'AMENDMENT';
+    input.match.amendmentSummary = 'nationality added';
+    input.subject = PINNED_SUBJECT;
+    input.match.reference = 'QDi.123';
+    input.score = {
+      composite: 0.48,
+      breakdown: { name: 0.6, dob: 0, nationality: 1, id: 0, alias: 0 },
+      classification: 'suppress',
+      clamped: false,
+    };
+    const task = buildRiskAlertTask(input);
+    expect(task.notes).toContain('Near the POSSIBLE band');
+  });
+
+  it('flags a pin-mismatch when the hit is on a different designation', () => {
+    const input = baseInput();
+    input.subject = PINNED_SUBJECT; // pinned to UN/QDi.123
+    input.match.list = 'UN';
+    input.match.reference = 'QDi.777'; // different designation
+    const task = buildRiskAlertTask(input);
+    expect(task.notes).toContain('Pinned to UN/QDi.123');
+    expect(task.notes).toContain('this hit is a different designation');
+  });
+
+  it('flags the Rec 10 clamp in the reasoning block when it fires', () => {
+    const input = baseInput();
+    input.score = {
+      composite: 0.9,
+      breakdown: { name: 1, dob: 1, nationality: 1, id: 0.5, alias: 0 },
+      classification: 'alert',
+      clamped: true, // unresolved + alert → clamped to possible
+    };
+    const task = buildRiskAlertTask(input);
+    expect(task.notes).toContain('FATF Rec 10 clamp active');
+    expect(task.notes).toContain('auto-downgraded from "alert" to "possible"');
+  });
+});
+
+describe('buildRiskAlertTask — surrogate-safe truncation', () => {
+  it('does not split astral-plane characters when truncating the reason', () => {
+    const input = baseInput();
+    // Emoji are encoded as UTF-16 surrogate pairs (length 2 per code
+    // point). Fill well beyond the 300-char reason cap with emoji so a
+    // naive String.prototype.slice would cut a pair in half and emit an
+    // orphan surrogate. The surrogate-safe truncate must keep the
+    // output valid UTF-16 (no lone surrogates).
+    input.match.reason = '🚨'.repeat(400);
+    const task = buildRiskAlertTask(input);
+    for (let i = 0; i < task.notes.length; i += 1) {
+      const code = task.notes.charCodeAt(i);
+      if (code >= 0xd800 && code <= 0xdbff) {
+        // High surrogate — must be followed by a low surrogate.
+        const next = task.notes.charCodeAt(i + 1);
+        expect(next >= 0xdc00 && next <= 0xdfff).toBe(true);
+      }
+      if (code >= 0xdc00 && code <= 0xdfff) {
+        // Low surrogate — must be preceded by a high surrogate.
+        const prev = task.notes.charCodeAt(i - 1);
+        expect(prev >= 0xd800 && prev <= 0xdbff).toBe(true);
+      }
+    }
+  });
+});

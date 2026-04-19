@@ -127,9 +127,19 @@ export function resolveSeverity(
 // Formatters
 // ---------------------------------------------------------------------------
 
+/**
+ * Surrogate-safe truncation. `String.prototype.slice` cuts at UTF-16
+ * code units, which splits astral-plane characters (emoji, some CJK,
+ * rare scripts) mid-surrogate-pair and produces an invalid UTF-16
+ * sequence. Asana (and any JSON consumer) can silently mangle or
+ * reject the payload when that happens. We truncate at grapheme-safe
+ * code points via the Array iterator.
+ */
 function truncate(s: string, n: number): string {
   if (s.length <= n) return s;
-  return s.slice(0, n - 1) + '…';
+  const codePoints = Array.from(s);
+  if (codePoints.length <= n) return s;
+  return codePoints.slice(0, n - 1).join('') + '…';
 }
 
 function fmt2(n: number): string {
@@ -215,6 +225,126 @@ function renderScoreBlock(score: RiskAlertScore): string {
   lines.push('  Weights:      name 0.30, dob 0.30, nat 0.20, id 0.20, alias bonus 0.10');
   lines.push(`  Composite:    ${fmt2(score.composite)}  → ${score.classification}`);
   lines.push(`  Clamp:        ${score.clamped ? "'alert' → 'possible' (unresolved)" : 'none'}`);
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Reasoning block — explains WHY the score landed where it did so the
+// MLRO can read a short narrative instead of interpreting raw weights.
+// Renders:
+//   - Which identifiers corroborated the match (name, DoB, nat, ID, alias)
+//   - Which identifiers were missing or conflicted
+//   - Near-miss warnings when the composite is within 0.05 of a band boundary
+//   - The dominant signal that drove the classification
+// ---------------------------------------------------------------------------
+
+const ALERT_BAND = 0.8;
+const POSSIBLE_BAND = 0.5;
+const NEAR_MISS_WINDOW = 0.05;
+
+function describeComponent(
+  label: string,
+  raw: number,
+  hitValue: string | undefined,
+  subjectValue: string | undefined
+): string | null {
+  if (raw >= 0.999) {
+    return `  ✓ ${label.padEnd(13)} exact match${subjectValue ? ` (${subjectValue})` : ''}`;
+  }
+  if (raw >= 0.5) {
+    return `  ~ ${label.padEnd(13)} partial match${subjectValue ? ` (subj: ${subjectValue}, hit: ${hitValue ?? '?'})` : ''}`;
+  }
+  if (raw > 0) {
+    return `  ~ ${label.padEnd(13)} weak signal (${fmt2(raw)})`;
+  }
+  if (subjectValue && hitValue && subjectValue !== hitValue) {
+    return `  ✗ ${label.padEnd(13)} MISMATCH (subj: ${subjectValue}, hit: ${hitValue})`;
+  }
+  if (!subjectValue) {
+    return `  · ${label.padEnd(13)} subject has no ${label.toLowerCase()} on file`;
+  }
+  if (!hitValue) {
+    return `  · ${label.padEnd(13)} list entry carries no ${label.toLowerCase()}`;
+  }
+  return null;
+}
+
+function dominantSignal(b: IdentityMatchBreakdown): string {
+  // Weighted contributions per the published formula.
+  const contrib: Array<[string, number]> = [
+    ['name', b.name * 0.3],
+    ['dob', b.dob * 0.3],
+    ['nationality', b.nationality * 0.2],
+    ['id', b.id * 0.2],
+    ['alias bonus', b.alias],
+  ];
+  contrib.sort((a, b2) => b2[1] - a[1]);
+  const [top, topVal] = contrib[0];
+  if (topVal <= 0) return 'none (every component is zero)';
+  return `${top} (contribution ${fmt2(topVal)})`;
+}
+
+function renderReasoningBlock(
+  severity: 'ALERT' | 'POSSIBLE' | 'CHANGE',
+  subject: WatchlistEntry,
+  match: RiskAlertMatch,
+  score: RiskAlertScore
+): string {
+  const lines: string[] = ['WHY THIS ALERT'];
+  const rid = subject.resolvedIdentity;
+  const b = score.breakdown;
+
+  const nameLine = describeComponent('Name', b.name, match.entryName, subject.subjectName);
+  if (nameLine) lines.push(nameLine);
+  const dobLine = describeComponent('Date of birth', b.dob, match.entryDob, rid?.dob);
+  if (dobLine) lines.push(dobLine);
+  const natLine = describeComponent(
+    'Nationality',
+    b.nationality,
+    match.entryNationality,
+    rid?.nationality
+  );
+  if (natLine) lines.push(natLine);
+  const idLine = describeComponent('ID number', b.id, match.entryId, rid?.idNumber);
+  if (idLine) lines.push(idLine);
+  if (b.alias > 0) {
+    lines.push('  ✓ Alias       hit matched a recorded alias of the subject');
+  }
+
+  if (rid?.listEntryRef) {
+    const pinMatches =
+      rid.listEntryRef.list.trim().toUpperCase() === match.list.trim().toUpperCase() &&
+      rid.listEntryRef.reference.trim() === match.reference.trim();
+    lines.push(
+      pinMatches
+        ? `  ✓ Designation pin matches THIS entry (${match.list}/${match.reference})`
+        : `  · Pinned to ${rid.listEntryRef.list}/${rid.listEntryRef.reference}; this hit is a different designation`
+    );
+  } else if (rid) {
+    lines.push('  · No designation pin set — identifier match only, no list-ref anchor');
+  } else {
+    lines.push('  ⚠ No resolved identity on file — FATF Rec 10 clamp active');
+  }
+
+  lines.push(`  Dominant signal: ${dominantSignal(b)}`);
+
+  if (severity === 'POSSIBLE' && score.composite >= ALERT_BAND - NEAR_MISS_WINDOW) {
+    lines.push(
+      `  ⚠ Near the ALERT band (${fmt2(score.composite)} vs ${fmt2(ALERT_BAND)}); pinning the identity is likely to promote this to ALERT.`
+    );
+  } else if (
+    score.classification === 'suppress' &&
+    score.composite >= POSSIBLE_BAND - NEAR_MISS_WINDOW
+  ) {
+    lines.push(
+      `  ⚠ Near the POSSIBLE band (${fmt2(score.composite)} vs ${fmt2(POSSIBLE_BAND)}); if the subject has a second identifier in common this could flip to POSSIBLE.`
+    );
+  }
+  if (score.clamped) {
+    lines.push(
+      '  ⚠ Classification was auto-downgraded from "alert" to "possible" because the subject has no resolved identity (FATF Rec 10).'
+    );
+  }
   return lines.join('\n');
 }
 
@@ -309,6 +439,8 @@ export function buildRiskAlertTask(input: RiskAlertInput): RiskAlertTask {
     renderMatchBlock(match),
     '',
     renderScoreBlock(score),
+    '',
+    renderReasoningBlock(severity, subject, match, score),
     '',
     REGULATORY_BLOCK,
     '',

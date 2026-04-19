@@ -1647,6 +1647,9 @@
   }
 
   async function runScreening() {
+    // Guard against double-click re-entry while a run is in flight.
+    if (screenBtn.disabled) return;
+
     saveToken();
     const name = subjectNameInput.value.trim();
     if (!name) {
@@ -1668,25 +1671,6 @@
       showMessage(screenMsg, 'DoB / registration must be dd/mm/yyyy.', 'error');
       return;
     }
-
-    // Hide any stale disposition while a fresh screen runs
-    hideDisposition();
-
-    screenBtn.disabled = true;
-    screenBtn.innerHTML = '<span class="spinner"></span>Screening…';
-
-    const selectedLists = collectSelectedLists();
-    const listBanner =
-      selectedLists.length > 0
-        ? 'UAE EOCN + UN (mandatory) + ' + selectedLists.join(', ')
-        : 'UAE EOCN + UN (mandatory) only';
-    showMessage(
-      screenMsg,
-      'Running multi-list screen: ' + listBanner + ' + adverse media…',
-      'info'
-    );
-    screenResult.innerHTML = '';
-
     const screener = activeMlroName();
     if (!screener) {
       showMessage(
@@ -1696,58 +1680,85 @@
       );
       return;
     }
-    const aliases = aliasesInput ? parseAliases(aliasesInput.value) : [];
-    const body = {
-      subjectName: name,
-      aliases: aliases.length > 0 ? aliases : undefined,
-      subjectId: subjectIdInput.value.trim() || undefined,
-      entityType: entityType,
-      dob: dobRaw || undefined,
-      country: countryInput.value.trim() || undefined,
-      idNumber: idNumberInput.value.trim() || undefined,
-      eventType: eventType,
-      riskTier: riskTierSelect.value,
-      jurisdiction: jurisdictionInput.value.trim() || undefined,
-      notes: notesInput.value.trim() || undefined,
-      selectedLists: selectedLists,
-      enrollInWatchlist: true,
-      runAdverseMedia: isAdverseMediaEnabled(),
-      adverseMediaPredicates: isAdverseMediaEnabled() ? allPredicateKeys() : undefined,
-      createAsanaTask: true,
-      screenedBy: screener,
-      screenedByRole: 'main_mlro',
-    };
-    const result = await apiPost(SCREENING_ENDPOINT, body);
-    if (!result.ok) {
-      showMessage(screenMsg, result.error, 'error');
-      lastRun = null;
-    } else {
-      lastRun = result.data;
-      const topClass =
-        (result.data && result.data.sanctions && result.data.sanctions.topClassification) || 'none';
-      const anomalies = (result.data && result.data.anomalies) || [];
-      const verb =
-        topClass === 'confirmed'
-          ? 'CONFIRMED sanctions match — freeze workflow triggered'
-          : topClass === 'potential'
-            ? 'POTENTIAL match — MLRO review required'
-            : topClass === 'weak'
-              ? 'Weak match — documented and dismissed if false positive'
-              : 'No sanctions match';
-      const anomSuffix =
-        anomalies.length > 0 ? ' · ' + anomalies.length + ' anomaly(ies) routed to Asana' : '';
+
+    // All validation passed — hide stale disposition and lock the button.
+    hideDisposition();
+    screenBtn.disabled = true;
+    screenBtn.innerHTML = '<span class="spinner"></span>Screening…';
+    try {
+      const selectedLists = collectSelectedLists();
+      const listBanner =
+        selectedLists.length > 0
+          ? 'UAE EOCN + UN (mandatory) + ' + selectedLists.join(', ')
+          : 'UAE EOCN + UN (mandatory) only';
       showMessage(
         screenMsg,
-        verb + anomSuffix + '. Complete the disposition below to close the event.',
-        topClass === 'none' && anomalies.length === 0 ? 'success' : 'error'
+        'Running multi-list screen: ' + listBanner + ' + adverse media…',
+        'info'
       );
-      renderScreeningResult(result.data);
-      showDisposition();
-      refreshWatchlist();
-    }
+      screenResult.innerHTML = '';
 
-    screenBtn.disabled = false;
-    screenBtn.textContent = 'Run Screening';
+      const aliases = aliasesInput ? parseAliases(aliasesInput.value) : [];
+      const body = {
+        subjectName: name,
+        aliases: aliases.length > 0 ? aliases : undefined,
+        subjectId: subjectIdInput.value.trim() || undefined,
+        entityType: entityType,
+        dob: dobRaw || undefined,
+        country: countryInput.value.trim() || undefined,
+        idNumber: idNumberInput.value.trim() || undefined,
+        eventType: eventType,
+        riskTier: riskTierSelect.value,
+        jurisdiction: jurisdictionInput.value.trim() || undefined,
+        notes: notesInput.value.trim() || undefined,
+        selectedLists: selectedLists,
+        enrollInWatchlist: true,
+        runAdverseMedia: isAdverseMediaEnabled(),
+        adverseMediaPredicates: isAdverseMediaEnabled() ? allPredicateKeys() : undefined,
+        createAsanaTask: true,
+        screenedBy: screener,
+        screenedByRole: 'main_mlro',
+      };
+      const result = await apiPost(SCREENING_ENDPOINT, body);
+      if (!result.ok) {
+        showMessage(screenMsg, result.error, 'error');
+        lastRun = null;
+      } else {
+        lastRun = result.data;
+        const topClass =
+          (result.data && result.data.sanctions && result.data.sanctions.topClassification) ||
+          'none';
+        const anomalies = (result.data && result.data.anomalies) || [];
+        const verb =
+          topClass === 'confirmed'
+            ? 'CONFIRMED sanctions match — freeze workflow triggered'
+            : topClass === 'potential'
+              ? 'POTENTIAL match — MLRO review required'
+              : topClass === 'weak'
+                ? 'Weak match — documented and dismissed if false positive'
+                : 'No sanctions match';
+        const anomSuffix =
+          anomalies.length > 0 ? ' · ' + anomalies.length + ' anomaly(ies) routed to Asana' : '';
+        showMessage(
+          screenMsg,
+          verb + anomSuffix + '. Complete the disposition below to close the event.',
+          topClass === 'none' && anomalies.length === 0 ? 'success' : 'error'
+        );
+        renderScreeningResult(result.data);
+        showDisposition();
+        refreshWatchlist();
+      }
+    } catch (err) {
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String(err.message)
+          : 'Screening failed unexpectedly.';
+      showMessage(screenMsg, msg, 'error');
+      lastRun = null;
+    } finally {
+      screenBtn.disabled = false;
+      screenBtn.textContent = 'Run Screening';
+    }
   }
 
   screenBtn.addEventListener('click', runScreening);
@@ -1850,6 +1861,9 @@
   }
 
   async function runTm() {
+    // Guard against double-click re-entry while a run is in flight.
+    if (tmBtn.disabled) return;
+
     saveToken();
     const customerId = tmCustomerIdInput.value.trim();
     const customerName = tmCustomerNameInput.value.trim();
@@ -1860,51 +1874,59 @@
     }
     tmBtn.disabled = true;
     tmBtn.innerHTML = '<span class="spinner"></span>Scanning…';
-    showMessage(
-      tmMsg,
-      'Running rule + velocity + behavioral + cumulative + cross-border checks…',
-      'info'
-    );
-    tmResult.innerHTML = '';
+    try {
+      showMessage(
+        tmMsg,
+        'Running rule + velocity + behavioral + cumulative + cross-border checks…',
+        'info'
+      );
+      tmResult.innerHTML = '';
 
-    const tx = {
-      amount: amount,
-      currency: tmCurrencySelect.value,
-      customerName: customerName,
-      customerRiskRating: tmRiskRatingSelect.value,
-      payerMatchesCustomer: tmPayerMatchesSelect.value === 'true',
-      originCountry: tmOriginCountryInput.value.trim() || undefined,
-      destinationCountry: tmDestCountryInput.value.trim() || undefined,
-      transactionsLast30Days: Number(tmTxLast30Input.value) || 0,
-      cumulativeAmountLast30Days: Number(tmCumLast30Input.value) || 0,
-      paymentMethod: tmPaymentMethodSelect.value,
-      commodityType: tmCommodityInput.value.trim() || undefined,
-      notes: tmNotesInput.value.trim() || undefined,
-    };
+      const tx = {
+        amount: amount,
+        currency: tmCurrencySelect.value,
+        customerName: customerName,
+        customerRiskRating: tmRiskRatingSelect.value,
+        payerMatchesCustomer: tmPayerMatchesSelect.value === 'true',
+        originCountry: tmOriginCountryInput.value.trim() || undefined,
+        destinationCountry: tmDestCountryInput.value.trim() || undefined,
+        transactionsLast30Days: Number(tmTxLast30Input.value) || 0,
+        cumulativeAmountLast30Days: Number(tmCumLast30Input.value) || 0,
+        paymentMethod: tmPaymentMethodSelect.value,
+        commodityType: tmCommodityInput.value.trim() || undefined,
+        notes: tmNotesInput.value.trim() || undefined,
+      };
 
-    const result = await apiPost(TM_ENDPOINT, {
-      customerId: customerId,
-      customerName: customerName,
-      transactions: [tx],
-      createAsanaOnCritical: true,
-      enrollInDailyMonitoring: true,
-    });
-    if (!result.ok) {
-      showMessage(tmMsg, result.error, 'error');
-    } else {
-      const summary = (result.data && result.data.summary) || { alertCount: 0 };
+      const result = await apiPost(TM_ENDPOINT, {
+        customerId: customerId,
+        customerName: customerName,
+        transactions: [tx],
+        createAsanaOnCritical: true,
+        enrollInDailyMonitoring: true,
+      });
+      if (!result.ok) {
+        showMessage(tmMsg, result.error, 'error');
+      } else {
+        const summary = (result.data && result.data.summary) || { alertCount: 0 };
+        const msg =
+          'Processed ' +
+          summary.transactionsProcessed +
+          ' transaction(s). ' +
+          summary.alertCount +
+          ' alert(s) fired.';
+        showMessage(tmMsg, msg, summary.alertCount === 0 ? 'success' : 'error');
+        renderTmResult(result.data);
+      }
+    } catch (err) {
       const msg =
-        'Processed ' +
-        summary.transactionsProcessed +
-        ' transaction(s). ' +
-        summary.alertCount +
-        ' alert(s) fired.';
-      showMessage(tmMsg, msg, summary.alertCount === 0 ? 'success' : 'error');
-      renderTmResult(result.data);
+        err && typeof err === 'object' && 'message' in err
+          ? String(err.message)
+          : 'Transaction scan failed unexpectedly.';
+      showMessage(tmMsg, msg, 'error');
+    } finally {
+      tmBtn.disabled = false;
+      tmBtn.textContent = 'Run Transaction Monitor';
     }
-
-    tmBtn.disabled = false;
-    tmBtn.textContent = 'Run Transaction Monitor';
   }
 
   tmBtn.addEventListener('click', runTm);
