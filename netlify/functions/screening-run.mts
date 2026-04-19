@@ -72,6 +72,7 @@ import {
   fetchEUSanctionsList,
   fetchUKSanctionsList,
   fetchUAESanctionsList,
+  seedUaeSanctionsList,
   type SanctionsEntry,
 } from '../../src/services/sanctionsApi';
 import { searchAdverseMedia } from '../../src/services/adverseMediaSearch';
@@ -428,11 +429,68 @@ interface ListSnapshot {
 }
 
 let listCache: ListSnapshot | null = null;
+let uaeSeedAttemptedAt = 0;
+
+/**
+ * Hydrate the in-process UAE / EOCN sanctions cache from the
+ * `sanctions-snapshots` Netlify Blob store. The store is populated by
+ * `/api/sanctions/eocn-upload` (manual MoE circular ingest) under keys
+ * of the form `UAE_EOCN/<YYYY-MM-DD>/snapshot.json`. Without this
+ * hydration, `fetchUAESanctionsList()` throws and every screening
+ * surfaces "UAE EOCN sanctions cache is empty", failing the Cabinet
+ * Res 74/2020 Art.4 mandatory-coverage gate even when the MLRO has
+ * already uploaded today's designations.
+ *
+ * Strategy: list keys under `UAE_EOCN/`, pick the lexicographically
+ * greatest (= most recent ISO date), read it, map NormalisedSanctionLike
+ * → SanctionsEntry, and call `seedUaeSanctionsList`. Silent on any
+ * failure — the caller still throws with the existing diagnostic if no
+ * snapshot is available, which is the correct Art.35 signal.
+ */
+async function hydrateUaeSanctionsFromBlob(): Promise<void> {
+  const now = Date.now();
+  if (now - uaeSeedAttemptedAt < SANCTIONS_CACHE_TTL_MS) return;
+  uaeSeedAttemptedAt = now;
+  try {
+    const store = getStore('sanctions-snapshots');
+    const listing = await store.list({ prefix: 'UAE_EOCN/' });
+    const keys = (listing.blobs ?? [])
+      .map((b) => b.key)
+      .filter((k): k is string => typeof k === 'string' && k.endsWith('/snapshot.json'))
+      .sort();
+    const latest = keys[keys.length - 1];
+    if (!latest) return;
+    const raw = await store.get(latest, { type: 'json' });
+    if (!Array.isArray(raw)) return;
+    const entries = raw
+      .filter((e): e is Record<string, unknown> => !!e && typeof e === 'object')
+      .map((e) => {
+        const type = e.type === 'individual' || e.type === 'entity' ? e.type : 'entity';
+        const aliases = Array.isArray(e.aliases)
+          ? (e.aliases as unknown[]).filter((a): a is string => typeof a === 'string')
+          : [];
+        return {
+          id: typeof e.sourceId === 'string' ? e.sourceId : undefined,
+          name: typeof e.primaryName === 'string' ? e.primaryName : '',
+          aliases,
+          type: type as 'individual' | 'entity',
+          nationality: typeof e.nationality === 'string' ? e.nationality : undefined,
+          listDate: typeof e.listDate === 'string' ? e.listDate : undefined,
+          designationRef: typeof e.sourceId === 'string' ? e.sourceId : undefined,
+        };
+      })
+      .filter((e) => e.name.length > 0);
+    if (entries.length > 0) seedUaeSanctionsList(entries);
+  } catch {
+    // Silent — the Art.35 gate in fetchUAESanctionsList still fires.
+  }
+}
 
 async function loadAllLists(): Promise<ListSnapshot> {
   if (listCache && Date.now() - listCache.fetchedAt < SANCTIONS_CACHE_TTL_MS) {
     return listCache;
   }
+  await hydrateUaeSanctionsFromBlob();
   const proxy = process.env.HAWKEYE_SANCTIONS_PROXY_URL;
   const [un, ofac, eu, uk, uae] = await Promise.allSettled([
     fetchUNSanctionsList(proxy),

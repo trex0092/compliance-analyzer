@@ -6825,173 +6825,31 @@
 
         <div id="tab-settings" class="tab-content">
           <div class="card">
-            <span class="lbl">API Keys & Integrations</span>
-            <div class="row row-2" style="margin-bottom: 12px">
-              <div>
-                <span class="lbl">AI Provider</span
-                ><select id="aiProvider2" data-change="_aiProviderChange">
-                  <option value="mixed">Mixed Mode (Copilot + Gemini + Claude)</option>
-                  <option value="copilot">GitHub Copilot (FREE)</option>
-                  <option value="gemini">Google Gemini</option>
-                  <option value="claude">Anthropic Claude</option>
-                  <option value="openai">OpenAI GPT</option>
-                </select>
-              </div>
-              <div style="display: flex; align-items: flex-end; padding-bottom: 2px">
-                <span id="aiProviderHint" style="font-size: 11px; color: var(--muted)"
-                  >Mixed: uses free Copilot first, then Gemini, then Claude as fallback.</span
-                >
-              </div>
-            </div>
-            <div id="copilotKeySection" class="ai-key-section" style="margin-bottom: 12px">
-              <div>
-                <span class="lbl"
-                  >GitHub Token
-                  <span style="font-size: 10px; color: var(--green)"
-                    >FREE — github.com/settings/tokens → Fine-grained → Models: read</span
-                  ></span
-                ><input type="password" id="copilotKey2" placeholder="github_pat_..." />
-              </div>
-            </div>
-            <div id="geminiKeySection" class="ai-key-section" style="margin-bottom: 12px">
-              <div>
-                <span class="lbl"
-                  >Google Gemini API Key
-                  <span style="font-size: 10px; color: var(--muted)"
-                    >(Free key at ai.google.dev)</span
-                  ></span
-                ><input type="password" id="geminiKey2" placeholder="AIza..." />
-              </div>
-            </div>
-            <div
-              id="claudeKeySection"
-              class="ai-key-section"
-              style="display: none; margin-bottom: 12px"
-            >
-              <div>
-                <span class="lbl">Anthropic API Key</span
-                ><input type="password" id="anthropicKey2" placeholder="sk-ant-..." />
-              </div>
-            </div>
-            <div
-              id="openaiKeySection"
-              class="ai-key-section"
-              style="display: none; margin-bottom: 12px"
-            >
-              <div>
-                <span class="lbl">OpenAI API Key</span
-                ><input type="password" id="openaiKey2" placeholder="sk-..." />
-              </div>
-            </div>
-            <div class="row" style="margin-bottom: 12px">
-              <div>
-                <span class="lbl">Asana Personal Access Token</span
-                ><input type="password" id="asanaToken2" placeholder="1/xxxxxxxx..." />
-              </div>
-            </div>
-            <div class="row" style="margin-bottom: 12px">
-              <div>
-                <span class="lbl"
-                  >Tavily API Key
-                  <span style="font-size: 10px; color: var(--muted)"
-                    >(FREE — 1,000 searches/month — live web search for screening)</span
-                  ></span
-                ><input type="password" id="tavilyKey2" placeholder="tvly-..." />
-              </div>
-            </div>
-            <div class="row" style="margin-bottom: 12px">
-              <div>
-                <span class="lbl"
-                  >Hawkeye Brain Token
-                  <span style="font-size: 10px; color: var(--muted)"
-                    >(matches HAWKEYE_BRAIN_TOKEN in Netlify env vars — required for Brain Console
-                    toast stream auth)</span
-                  ></span
-                ><input
-                  type="password"
-                  id="hawkeyeBrainToken2"
-                  placeholder="32+ hex chars from openssl rand -hex 24"
-                  autocomplete="off"
-                />
-              </div>
-            </div>
-            <input type="hidden" id="gdriveFolderId2" value="" />
-            <div id="gdriveStatus" style="display: none"></div>
-            <input type="hidden" id="gdriveClientId2" value="" />
-            <input type="hidden" id="proxyUrl2" value="" />
-            <button class="btn btn-gold" data-action="updateKeys">Update Keys</button>
+            <span class="lbl">Sign in</span>
+            <p style="font-size: 12px; color: var(--muted); margin: 6px 0 0">
+              This tool runs with every integration wired up server-side via Netlify environment
+              variables — Claude, Gemini, Asana, Tavily, Hawkeye Brain, sanctions proxy, Google
+              Drive. Nothing else needs to be configured from the browser. Sign in with your
+              password at the top of the page to unlock the authenticated views.
+            </p>
           </div>
-          <div id="cloudSyncStatus" style="display: none"></div>
+          <!--
+            Hidden inputs preserved for modules that still read these IDs from
+            localStorage / window globals. The server no longer accepts
+            browser-supplied API keys — the values come from Netlify env vars.
+          -->
+          <input type="hidden" id="aiProvider2" value="mixed" />
+          <input type="hidden" id="copilotKey2" value="" />
+          <input type="hidden" id="geminiKey2" value="" />
+          <input type="hidden" id="anthropicKey2" value="" />
+          <input type="hidden" id="openaiKey2" value="" />
+          <input type="hidden" id="asanaToken2" value="" />
+          <input type="hidden" id="tavilyKey2" value="" />
+          <input type="hidden" id="hawkeyeBrainToken2" value="" />
+          <input type="hidden" id="gdriveFolderId2" value="" />
+          <input type="hidden" id="gdriveClientId2" value="" />
+          <input type="hidden" id="proxyUrl2" value="" />
           <input type="hidden" id="autoSyncEnabled" value="" />
-          <!-- Alerts section removed -->
-          <!-- Configurable Alert Windows -->
-          <div class="card">
-            <span class="lbl">Alert & Risk Configuration</span>
-            <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px">
-              Customize alert windows and risk scoring thresholds per your compliance policy.
-            </p>
-            <div class="row row-2" style="margin-bottom: 12px">
-              <div>
-                <span class="lbl">Document Expiry Alert (days before)</span
-                ><input type="number" id="cfgDocExpiryDays" value="10" min="1" max="90" />
-              </div>
-              <div>
-                <span class="lbl">Gap Remediation Window (days)</span
-                ><input type="number" id="cfgGapRemediationDays" value="15" min="1" max="90" />
-              </div>
-            </div>
-            <div class="row row-2" style="margin-bottom: 12px">
-              <div>
-                <span class="lbl">Screening Staleness Threshold (days)</span
-                ><input type="number" id="cfgScreeningStaleDays" value="90" min="7" max="365" />
-              </div>
-              <div>
-                <span class="lbl">Auto Re-screening Interval (days, 0=off)</span
-                ><input type="number" id="cfgAutoRescreenDays" value="0" min="0" max="365" />
-              </div>
-            </div>
-            <span class="lbl" style="margin-top: 8px">Risk Score Thresholds</span>
-            <div class="row row-3" style="margin-bottom: 12px">
-              <div>
-                <span class="lbl">Critical ≥</span
-                ><input type="number" id="cfgRiskCritical" value="12" min="1" />
-              </div>
-              <div>
-                <span class="lbl">High ≥</span
-                ><input type="number" id="cfgRiskHigh" value="8" min="1" />
-              </div>
-              <div>
-                <span class="lbl">Medium ≥</span
-                ><input type="number" id="cfgRiskMedium" value="4" min="1" />
-              </div>
-            </div>
-            <span class="lbl" style="margin-top: 8px">High-Risk Country List</span>
-            <textarea
-              id="cfgHighRiskCountries"
-              style="min-height: 60px; font-size: 12px"
-              placeholder="Comma-separated: iran, north korea, syria..."
-            ></textarea>
-            <div style="margin-top: 10px; display: flex; gap: 8px">
-              <button class="btn btn-gold" data-action="saveComplianceConfig">
-                Save Configuration
-              </button>
-              <button class="btn btn-sm" data-action="resetComplianceConfig">
-                Reset to Defaults
-              </button>
-            </div>
-          </div>
-          <div class="card">
-            <span class="lbl">Local Storage</span>
-            <p style="font-size: 12px; color: var(--muted); margin-bottom: 10px">
-              Evidence tracker links and schedule history are saved in your browser.
-            </p>
-            <div
-              id="storageQuotaInfo"
-              style="font-size: 11px; color: var(--muted); margin-bottom: 8px"
-            ></div>
-            <button class="btn btn-sm btn-red" data-action="clearAppData">Clear Local Data</button>
-          </div>
-          <!-- User Management removed (single-user) -->
         </div>
 
         <!-- REPORTS TAB -->
