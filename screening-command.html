@@ -950,8 +950,14 @@
         grid-template-columns: 1fr 1fr;
         gap: 12px;
       }
+      .row-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+      }
       @media (max-width: 500px) {
-        .row-2 {
+        .row-2,
+        .row-3 {
           grid-template-columns: 1fr;
         }
       }
@@ -1782,97 +1788,74 @@
       </aside>
     </section>
 
-    <!-- MLRO identity ──────────────────────────────────────────────── -->
-    <div class="card" style="margin-top: 14px; border-color: #ec4899">
-      <h2 style="color: #ec4899">MLRO Identity <span class="tag">Who is screening</span></h2>
-      <p class="help-text" style="margin-top: -4px">
-        The UAE reporting entity has two authorised officers. The Main MLRO name is written to every
-        screening event as <i>Screened by</i> and auto-fills the MLRO Disposition &gt; Reviewed by
-        field. Saved locally (FDL Art.24 — 10-year audit trail).
-      </p>
-      <div class="row-2">
+    <!-- MLRO Identity + Authentication (merged, compact) ───────────── -->
+    <div class="card auth-card" style="margin-top: 14px; border-color: #ec4899">
+      <h2 style="color: #ec4899; margin: 0 0 10px !important">
+        MLRO Identity &amp; Authentication <span class="tag">Required</span>
+      </h2>
+      <div class="row-3">
         <div>
-          <label for="mlroMainName">Main MLRO — full legal name *</label>
+          <label for="mlroMainName">Main MLRO *</label>
           <input
             type="text"
             id="mlroMainName"
-            placeholder="e.g. Jane A. Sterling"
+            placeholder="Full legal name"
             autocomplete="off"
             maxlength="128"
           />
         </div>
         <div>
-          <label for="mlroDeputyName">Deputy MLRO — full legal name</label>
+          <label for="mlroDeputyName">Deputy MLRO</label>
           <input
             type="text"
             id="mlroDeputyName"
-            placeholder="e.g. John B. Hawke"
+            placeholder="Full legal name"
             autocomplete="off"
             maxlength="128"
           />
         </div>
-      </div>
-      <p class="help-text" style="margin-top: 8px">
-        <b>Screened by:</b> <span id="mlroActiveBadge" class="tag">—</span>
-      </p>
-    </div>
-
-    <!-- Authentication ────────────────────────────────────────────── -->
-    <div class="card auth-card" style="margin-top: 14px; border-color: var(--gold)">
-      <h2
-        style="
-          font-family: 'DM Mono', monospace;
-          font-size: 13px;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          color: var(--gold);
-          margin: 0 0 14px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        "
-      >
-        Authentication <span class="tag">Required</span>
-      </h2>
-      <div class="auth-body">
-        <label for="loginPassword">Sign in with password</label>
-        <input
-          type="password"
-          id="loginPassword"
-          placeholder="Enter your MLRO password"
-          autocomplete="current-password"
-          spellcheck="false"
-          aria-label="MLRO password"
-          style="width: 100%; margin-bottom: 8px"
-        />
-        <div class="token-row">
-          <button
-            type="button"
-            id="loginBtn"
-            class="token-gen-btn"
-            style="flex: 1; color: #22c55e; border-color: var(--gold)"
-            title="Exchange password for a signed 1-year session token"
-          >
-            Sign in
-          </button>
-          <button
-            type="button"
-            id="logoutBtn"
-            class="token-gen-btn"
-            style="flex: 1; color: #ef4444; border-color: var(--gold)"
-            title="Forget the saved session token and require a new sign-in"
-          >
-            Sign out
-          </button>
+        <div>
+          <label for="loginPassword">Password</label>
+          <input
+            type="password"
+            id="loginPassword"
+            placeholder="MLRO password"
+            autocomplete="current-password"
+            spellcheck="false"
+            aria-label="MLRO password"
+          />
         </div>
-        <div id="loginMsg" class="token-msg"></div>
-
-        <!-- Hidden token store. The screening-command.js auth helpers
-             read/write `#token` to keep the bearer in localStorage and
-             attach it to every API call. After sign-in the JWT lands
-             here; the field is never shown to the MLRO. -->
-        <input type="hidden" id="token" autocomplete="off" />
       </div>
+      <div class="token-row" style="margin-top: 10px">
+        <button
+          type="button"
+          id="loginBtn"
+          class="token-gen-btn"
+          style="flex: 1; color: #22c55e; border-color: #ec4899"
+          title="Exchange password for a signed 1-year session token"
+        >
+          Sign in
+        </button>
+        <button
+          type="button"
+          id="logoutBtn"
+          class="token-gen-btn"
+          style="flex: 1; color: #ef4444; border-color: #ec4899"
+          title="Forget the saved session token and require a new sign-in"
+        >
+          Sign out
+        </button>
+      </div>
+      <p class="help-text" style="margin: 10px 0 0; font-size: 11px">
+        <b>Screened by:</b> <span id="mlroActiveBadge" class="tag">—</span>
+        &middot; Saved locally (FDL Art.24 &mdash; 10yr audit trail)
+      </p>
+      <div id="loginMsg" class="token-msg"></div>
+      <!-- Hidden token store. The screening-command.js auth helpers
+           read/write `#token` to keep the bearer in localStorage and
+           attach it to every API call. After sign-in the JWT lands
+           here; the field is never shown to the MLRO. -->
+      <input type="hidden" id="token" autocomplete="off" />
     </div>
 
     <!-- Data coverage contract ────────────────────────────────────── -->
