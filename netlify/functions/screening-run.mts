@@ -153,25 +153,24 @@ const SANCTIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 // fallback and every list surfaces the generic "sanctions fetch timed
 // out" instead of its own diagnostic.
 //
-// loadAllLists now has TWO serial phases inside this budget:
-//   Phase 1 — Promise.all of 5 raceListFetch calls (up to
-//             PER_LIST_TIMEOUT_MS + 200ms hard pad = 4_000ms).
-//   Phase 2 — Promise.all of blob-snapshot fallbacks for every list
-//             that errored in Phase 1. Netlify Blobs cold-start can
-//             add 500-1500ms per call (runs in parallel, so the
-//             slowest caps the phase).
-// Worst case Phase 1 + Phase 2 ≈ 5_500ms. 6_500ms gives Promise.all
-// overhead and a safety margin without blowing the 10s Netlify
-// sync-function ceiling.
+// loadAllLists() now uses a shared per-list accumulator with an
+// INTERNAL deadline at SANCTIONS_FETCH_TIMEOUT_MS - 400ms. Each list
+// fetch + blob fallback runs in parallel and writes its per-list
+// result into the accumulator as it resolves. On internal deadline,
+// loadAllLists returns the current state of the accumulator — any
+// list still in flight keeps its pre-seeded "pending at deadline"
+// diagnostic, never a blanket "sanctions fetch timed out" row. The
+// outer withTimeout below is now a belt-and-braces safety net that
+// should essentially never fire; if it does, it's a genuine panic
+// (the internal deadline itself hung, or the event loop was stalled
+// for >400ms) and we surface a single "sanctions-pipeline panic"
+// diagnostic instead of five identical blanket rows.
 //
 // Sum of phase budgets MUST fit inside Netlify's 10s sync-function
 // ceiling. Typical (live fetches succeed, Phase 2 no-op):
 //   6_500 (A) + 1_800 (B) + 600 (B.5 no adv) + 1_500 (C) = 10_400ms
 // This is over on paper, but C rarely runs to its cap (asana POST is
-// typically <400ms) and B rarely runs to its cap either. The Phase-A
-// raise is strictly better than the previous 4_500ms which caused
-// 100% of runs to surface the generic fallback after #317's blob
-// pass landed.
+// typically <400ms) and B rarely runs to its cap either.
 const SANCTIONS_FETCH_TIMEOUT_MS = 6_500;
 const ADVERSE_MEDIA_TIMEOUT_MS = 3_000;
 // Blob-store hydration cap. Netlify Blobs cold-start can take multiple
@@ -892,18 +891,41 @@ async function loadAllLists(): Promise<ListSnapshot> {
   if (listCache && Date.now() - listCache.fetchedAt < SANCTIONS_CACHE_TTL_MS) {
     return listCache;
   }
-  // Run blob hydration IN PARALLEL with the other 5 list fetches (not
-  // serially before them). Netlify Blobs cold-start latency used to eat
-  // 400-900ms of the outer budget and leave <300ms of headroom between
-  // PER_LIST_TIMEOUT_MS (4200ms) and SANCTIONS_FETCH_TIMEOUT_MS (4500ms).
-  // The symptom: every list surfaced the generic outer fallback
-  // "sanctions fetch timed out" instead of the per-list diagnostic.
-  // Hydration is best-effort and swallows its own errors, so racing it
-  // alongside the network fetches is safe. UAE_EOCN's fetcher reads the
-  // in-memory cache seeded by hydrate; if hydrate has not finished when
-  // fetchUAESanctionsList fires, the Art.35 gate throws with a clear
-  // "cache empty" message (which raceListFetch surfaces as that list's
-  // error) — strictly better than silently-wiped per-list diagnostics.
+  // Per-list accumulator. Every list writes its result here as it
+  // resolves, and the function ALWAYS returns the current state of
+  // this map — never a blanket-replaced snapshot. If our internal
+  // deadline (LOAD_ALL_LISTS_DEADLINE_MS, just under
+  // SANCTIONS_FETCH_TIMEOUT_MS) fires before a list finishes, the
+  // map still holds the pre-seeded "pending at deadline" diagnostic
+  // for that specific list, so the MLRO sees WHICH list is the
+  // problem instead of five identical "sanctions fetch timed out"
+  // rows. FDL Art.20-21 + Cabinet Res 74/2020 Art.4 require per-list
+  // evidence, not an opaque blanket timeout. This replaces the prior
+  // Promise.all([...5 raceListFetch]) pattern whose results were
+  // thrown away by the outer withTimeout when any single list was
+  // late, collapsing all five into the generic fallback snapshot.
+  type ListEntry = ListSnapshot['lists'][number];
+  type LiveListName = Exclude<ListEntry['name'], 'UAE_EOCN'>;
+  const listResults = new Map<ListEntry['name'], ListEntry>();
+  const LIST_NAMES: readonly ListEntry['name'][] = [
+    'UN',
+    'OFAC',
+    'EU',
+    'UK_OFSI',
+    'UAE_EOCN',
+  ];
+  for (const name of LIST_NAMES) {
+    listResults.set(name, {
+      name,
+      entries: [],
+      error: `${name} fetch did not complete before sanctions-pipeline deadline`,
+    });
+  }
+  // Internal deadline inside loadAllLists(). Set just below the outer
+  // SANCTIONS_FETCH_TIMEOUT_MS so the outer withTimeout almost never
+  // fires — when it does, it's a genuine panic, not a fan-out stall.
+  const LOAD_ALL_LISTS_DEADLINE_MS = SANCTIONS_FETCH_TIMEOUT_MS - 400;
+
   const proxy = process.env.HAWKEYE_SANCTIONS_PROXY_URL;
   // raceHydrate() caps hydrate at HYDRATE_TIMEOUT_MS (1_200ms). Without
   // this wrapper, Netlify Blobs cold-start on store.list() + store.get()
@@ -915,25 +937,8 @@ async function loadAllLists(): Promise<ListSnapshot> {
   // exactly this purpose but was never wired into the fan-out — the
   // symptom the MLRO dashboard reports as five "timed out" rows on
   // /screening-command.html. FDL Art.20-21 + Cabinet Res 74/2020 Art.4.
-  const [, ...rawLists] = await Promise.all([
-    raceHydrate(),
-    raceListFetch('UN', (signal, timeoutMs) => fetchUNSanctionsList(proxy, { signal, timeoutMs })),
-    raceListFetch('OFAC', (signal, timeoutMs) => fetchOFACSanctionsList(proxy, { signal, timeoutMs })),
-    raceListFetch('EU', (signal, timeoutMs) => fetchEUSanctionsList(proxy, { signal, timeoutMs })),
-    raceListFetch('UK_OFSI', (signal, timeoutMs) => fetchUKSanctionsList(proxy, { signal, timeoutMs })),
-    raceListFetch('UAE_EOCN', () => fetchUAESanctionsList()),
-  ]);
-  // Blob-snapshot fallback for the four live-fetch lists. When the
-  // upstream (EU/UN/OFAC/UK) cancels mid-flight — e.g. EU's 5MB XML
-  // during an event-loop stall — drop back to the most recent
-  // cron-produced snapshot rather than returning an empty list with an
-  // error. This keeps Cabinet Res 74/2020 Art.4 list-coverage intact
-  // even when a single upstream is stalled, so long as the ingest cron
-  // (sanctions-ingest-cron.mts) has run at least once. If no blob
-  // snapshot exists either, the original live-fetch error is preserved
-  // and surfaced exactly as before so the MLRO sees the coverage gap.
   const BLOB_FALLBACK_SOURCES: Record<
-    'UN' | 'OFAC' | 'EU' | 'UK_OFSI',
+    LiveListName,
     'UN' | 'OFAC_SDN' | 'EU' | 'UK_OFSI'
   > = {
     UN: 'UN',
@@ -941,35 +946,83 @@ async function loadAllLists(): Promise<ListSnapshot> {
     EU: 'EU',
     UK_OFSI: 'UK_OFSI',
   };
-  const lists = await Promise.all(
-    rawLists.map(async (result) => {
-      if (!result.error || result.name === 'UAE_EOCN') return result;
-      const blobKey = BLOB_FALLBACK_SOURCES[result.name as keyof typeof BLOB_FALLBACK_SOURCES];
-      if (!blobKey) return result;
-      // Cap the blob-snapshot read so cold-start latency on up to 4
-      // parallel fallback reads can't push this phase past the outer
-      // SANCTIONS_FETCH_TIMEOUT_MS. If the cap fires we preserve the
-      // original live-fetch error so the MLRO sees the per-list cause
-      // rather than the generic outer-fallback message.
-      let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
-      const fallbackTimeout = new Promise<null>((resolve) => {
-        fallbackTimer = setTimeout(() => resolve(null), BLOB_FALLBACK_TIMEOUT_MS);
-      });
-      let fallback: SanctionsEntry[] | null;
-      try {
-        fallback = await Promise.race([loadBlobSnapshot(blobKey, result.name), fallbackTimeout]);
-      } finally {
-        if (fallbackTimer) clearTimeout(fallbackTimer);
-      }
-      if (!fallback) return result;
-      return {
-        name: result.name,
-        entries: fallback,
-        error: `${result.error} — served ${fallback.length} rows from cached ingest-cron snapshot`,
-      };
-    })
-  );
-  const snapshot: ListSnapshot = { fetchedAt: Date.now(), lists: lists as ListSnapshot['lists'] };
+  const runListWithFallback = async (
+    name: ListEntry['name'],
+    fetcher: (signal: AbortSignal, timeoutMs: number) => Promise<SanctionsEntry[]>
+  ): Promise<void> => {
+    const initial = await raceListFetch(name, fetcher);
+    listResults.set(name, initial);
+    // Blob-snapshot fallback for the four live-fetch lists. When the
+    // upstream (EU/UN/OFAC/UK) cancels mid-flight — e.g. EU's 5MB XML
+    // during an event-loop stall — drop back to the most recent
+    // cron-produced snapshot rather than returning an empty list with
+    // an error. Cabinet Res 74/2020 Art.4 list-coverage stays intact
+    // when a single upstream is stalled, provided the ingest cron
+    // (sanctions-ingest-cron.mts) has run at least once.
+    if (!initial.error || name === 'UAE_EOCN') return;
+    const blobKey = BLOB_FALLBACK_SOURCES[name as LiveListName];
+    if (!blobKey) return;
+    // Cap the blob-snapshot read so cold-start latency on up to 4
+    // parallel fallback reads can't push this phase past the outer
+    // SANCTIONS_FETCH_TIMEOUT_MS. If the cap fires we preserve the
+    // original live-fetch error so the MLRO sees the per-list cause
+    // rather than the generic outer-fallback message.
+    let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+    const fallbackTimeout = new Promise<null>((resolve) => {
+      fallbackTimer = setTimeout(() => resolve(null), BLOB_FALLBACK_TIMEOUT_MS);
+    });
+    let fallback: SanctionsEntry[] | null;
+    try {
+      fallback = await Promise.race([loadBlobSnapshot(blobKey, name), fallbackTimeout]);
+    } finally {
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+    }
+    if (!fallback) return;
+    listResults.set(name, {
+      name,
+      entries: fallback,
+      error: `${initial.error} — served ${fallback.length} rows from cached ingest-cron snapshot`,
+    });
+  };
+
+  // Kick off hydrate + 5 list fetches (each with its own blob fallback)
+  // in parallel. Each writes to listResults as it completes, so partial
+  // results are always visible in the accumulator regardless of which
+  // race wins below. Errors are swallowed — raceListFetch already
+  // converts throws into per-list error diagnostics, and any unexpected
+  // throw from the fallback shouldn't abort sibling lists.
+  const fanout = Promise.all([
+    raceHydrate(),
+    runListWithFallback('UN', (signal, timeoutMs) =>
+      fetchUNSanctionsList(proxy, { signal, timeoutMs })
+    ).catch(() => {}),
+    runListWithFallback('OFAC', (signal, timeoutMs) =>
+      fetchOFACSanctionsList(proxy, { signal, timeoutMs })
+    ).catch(() => {}),
+    runListWithFallback('EU', (signal, timeoutMs) =>
+      fetchEUSanctionsList(proxy, { signal, timeoutMs })
+    ).catch(() => {}),
+    runListWithFallback('UK_OFSI', (signal, timeoutMs) =>
+      fetchUKSanctionsList(proxy, { signal, timeoutMs })
+    ).catch(() => {}),
+    runListWithFallback('UAE_EOCN', () => fetchUAESanctionsList()).catch(() => {}),
+  ]);
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<'deadline'>((resolve) => {
+    deadlineTimer = setTimeout(() => resolve('deadline'), LOAD_ALL_LISTS_DEADLINE_MS);
+  });
+  try {
+    await Promise.race([fanout, deadline]);
+  } finally {
+    if (deadlineTimer) clearTimeout(deadlineTimer);
+  }
+  // Let the fan-out continue in the background if the deadline won so
+  // the warm-instance cache picks up on the next request. No unhandled
+  // rejection risk — every branch above catches and writes to the map.
+  fanout.catch(() => {});
+
+  const lists = LIST_NAMES.map((name) => listResults.get(name) as ListEntry);
+  const snapshot: ListSnapshot = { fetchedAt: Date.now(), lists };
 
   // Cache ONLY when every mandatory list (UN, UAE_EOCN) came back without
   // an error. Otherwise a cold-start miss poisons the warm instance for
@@ -1459,14 +1512,26 @@ export default async (req: Request, context: Context): Promise<Response> => {
   // the brain, watchlist, and Asana stages. Running them as a racing
   // pair caps the phase at max(sanctions, adverse) instead of their sum.
   // FDL Art.20 still requires a deterministic verdict inside the budget.
+  // Outer panic snapshot. loadAllLists() now owns its own internal
+  // deadline and returns partial per-list results even when lists are
+  // slow — so this outer fallback only fires on a genuine catastrophic
+  // hang (internal deadline timer itself stalled, or the whole
+  // function is wedged). Emit a single "pipeline panic" per-list
+  // diagnostic (not the old blanket "sanctions fetch timed out" row)
+  // so the MLRO sees it is a system-level failure, not five
+  // independent upstream outages. FDL Art.20-21 + Cabinet Res 74/2020
+  // Art.4-7 still require re-screening before a disposition is
+  // recorded — the integrity gate below flags this as "incomplete".
+  const SANCTIONS_PIPELINE_PANIC_ERROR =
+    'sanctions pipeline exceeded outer safety deadline — re-run screening (FDL Art.20-21)';
   const sanctionsTimeoutSnapshot: ListSnapshot = {
     fetchedAt: Date.now(),
     lists: [
-      { name: 'UN', entries: [], error: 'sanctions fetch timed out' },
-      { name: 'OFAC', entries: [], error: 'sanctions fetch timed out' },
-      { name: 'EU', entries: [], error: 'sanctions fetch timed out' },
-      { name: 'UK_OFSI', entries: [], error: 'sanctions fetch timed out' },
-      { name: 'UAE_EOCN', entries: [], error: 'sanctions fetch timed out' },
+      { name: 'UN', entries: [], error: SANCTIONS_PIPELINE_PANIC_ERROR },
+      { name: 'OFAC', entries: [], error: SANCTIONS_PIPELINE_PANIC_ERROR },
+      { name: 'EU', entries: [], error: SANCTIONS_PIPELINE_PANIC_ERROR },
+      { name: 'UK_OFSI', entries: [], error: SANCTIONS_PIPELINE_PANIC_ERROR },
+      { name: 'UAE_EOCN', entries: [], error: SANCTIONS_PIPELINE_PANIC_ERROR },
     ],
   };
   const amFallback = {
