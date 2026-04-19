@@ -2222,39 +2222,40 @@
         </div>
         <div>
           <label for="loginPassword">Password</label>
-          <input
-            type="password"
-            id="loginPassword"
-            placeholder="MLRO password"
-            autocomplete="current-password"
-            spellcheck="false"
-            aria-label="MLRO password"
-          />
+          <div style="display: flex; gap: 6px; align-items: center">
+            <input
+              type="password"
+              id="loginPassword"
+              placeholder="MLRO password"
+              autocomplete="current-password"
+              spellcheck="false"
+              aria-label="MLRO password"
+              style="flex: 1; min-width: 0; margin-bottom: 0"
+            />
+            <button
+              type="button"
+              id="loginBtn"
+              class="token-gen-btn auth-icon-btn"
+              style="color: #22c55e; border-color: #ec4899"
+              title="Sign in — exchange password for a signed 1-year session token"
+              aria-label="Sign in"
+            >
+              &rarr;
+            </button>
+            <button
+              type="button"
+              id="logoutBtn"
+              class="token-gen-btn auth-icon-btn"
+              style="color: #ef4444; border-color: #ec4899"
+              title="Sign out — forget the saved session token"
+              aria-label="Sign out"
+            >
+              &times;
+            </button>
+          </div>
         </div>
       </div>
-      <div class="token-row" style="margin-top: 10px; justify-content: flex-end; gap: 6px">
-        <button
-          type="button"
-          id="loginBtn"
-          class="token-gen-btn auth-icon-btn"
-          style="color: #22c55e; border-color: #ec4899"
-          title="Sign in — exchange password for a signed 1-year session token"
-          aria-label="Sign in"
-        >
-          &rarr;
-        </button>
-        <button
-          type="button"
-          id="logoutBtn"
-          class="token-gen-btn auth-icon-btn"
-          style="color: #ef4444; border-color: #ec4899"
-          title="Sign out — forget the saved session token"
-          aria-label="Sign out"
-        >
-          &times;
-        </button>
-      </div>
-      <p class="help-text" style="margin: 10px 0 0; font-size: 11px">
+      <p class="help-text" style="margin: 8px 0 0; font-size: 11px">
         <b>Screened by:</b> <span id="mlroActiveBadge" class="tag">—</span>
         &middot; Saved locally (FDL Art.24 &mdash; 10yr audit trail)
       </p>
