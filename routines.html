@@ -334,6 +334,42 @@
       .drawer-btn:hover { background: rgba(47, 125, 255, 0.22); color: #fff; }
       .drawer-btn.secondary { border-color: var(--border-strong); color: var(--ice); background: transparent; }
       .drawer-btn.secondary:hover { border-color: var(--azure-bright); color: #fff; }
+      .drawer-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      /* Inline MLRO sign-in block inside the routine drawer. Shown when
+         no auth token is present in localStorage; hidden once signed in. */
+      .drawer-auth {
+        margin: 6px 0 14px; padding: 14px 16px; border-radius: 12px;
+        border: 1px solid rgba(236, 72, 153, 0.35);
+        background: linear-gradient(160deg, rgba(40, 10, 30, 0.65) 0%, rgba(15, 6, 20, 0.6) 100%);
+      }
+      .drawer-auth[hidden] { display: none; }
+      .drawer-auth-head {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 2px; text-transform: uppercase;
+        color: #ec4899; margin-bottom: 10px;
+        display: flex; align-items: center; gap: 8px;
+      }
+      .drawer-auth-head .tag {
+        font-size: 9px; padding: 2px 7px; border-radius: 4px;
+        border: 1px solid rgba(236, 72, 153, 0.5); color: #ec4899;
+      }
+      .drawer-auth-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+      }
+      @media (max-width: 560px) { .drawer-auth-grid { grid-template-columns: 1fr; } }
+      .drawer-auth-grid input {
+        padding: 10px 12px;
+        font-family: 'DM Mono', monospace; font-size: 12px;
+        color: var(--mist);
+        background: rgba(10, 22, 40, 0.75);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        outline: none;
+      }
+      .drawer-auth-grid input:focus { border-color: var(--azure-bright); }
+      .drawer-auth-grid .drawer-btn { min-width: 110px; }
       .routine::after {
         content: ''; position: absolute; top: 0; left: 20%; right: 20%;
         height: 1px; background: linear-gradient(90deg, transparent, rgba(127, 193, 255, 0.55), transparent); opacity: 0.5;
@@ -581,6 +617,17 @@
             <div class="v" id="drawerLastSeen">—</div>
           </div>
         </div>
+        <div class="drawer-auth" id="drawerAuth" hidden>
+          <div class="drawer-auth-head">
+            MLRO Sign-in <span class="tag">Required</span>
+          </div>
+          <div class="drawer-auth-grid">
+            <input type="text" id="drawerMlroName" placeholder="MLRO name" autocomplete="username" maxlength="128" />
+            <input type="password" id="drawerMlroPassword" placeholder="Password" autocomplete="current-password" maxlength="128" />
+            <button type="button" class="drawer-btn" id="drawerSignInBtn">Sign In</button>
+          </div>
+          <p class="help-text" id="drawerAuthMsg" style="font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--steel); margin: 10px 0 0; min-height: 1em"></p>
+        </div>
         <div class="drawer-actions">
           <button type="button" class="drawer-btn secondary" id="drawerRunBtn" title="Trigger this cron manually (requires MLRO sign-in)">Run now</button>
         </div>
@@ -717,7 +764,19 @@
       const drawerCloseBtn = document.getElementById('drawerCloseBtn');
       const drawerRunBtn = document.getElementById('drawerRunBtn');
       const drawerRunMsg = document.getElementById('drawerRunMsg');
+      const drawerAuth = document.getElementById('drawerAuth');
+      const drawerAuthMsg = document.getElementById('drawerAuthMsg');
+      const drawerMlroName = document.getElementById('drawerMlroName');
+      const drawerMlroPassword = document.getElementById('drawerMlroPassword');
+      const drawerSignInBtn = document.getElementById('drawerSignInBtn');
       let DRAWER_ROUTINE = null;
+
+      // Hide the inline MLRO sign-in block iff we already hold a token.
+      function refreshAuthBlock() {
+        const token = getAuthToken();
+        if (drawerAuth) drawerAuth.hidden = !!token;
+        if (drawerRunBtn) drawerRunBtn.disabled = !token;
+      }
 
       function openDrawer(routineId) {
         const r = ROUTINES.find(x => x.id === routineId);
@@ -734,7 +793,75 @@
         document.getElementById('drawerStatus').textContent = live ? stateLabelFor(live) : 'Sign in for live status';
         document.getElementById('drawerLastSeen').textContent = live && live.lastRun ? live.lastRun : '—';
         drawerRunMsg.textContent = '';
+        if (drawerAuthMsg) drawerAuthMsg.textContent = '';
+        // Pre-fill MLRO name from localStorage on reopen (same key that
+        // screening-command.js writes — keeps sign-in state consistent
+        // across pages per FDL No.10/2025 Art.24 audit continuity).
+        try {
+          const savedName = localStorage.getItem('hawkeye.mlro.main') || '';
+          if (drawerMlroName && !drawerMlroName.value) drawerMlroName.value = savedName;
+        } catch (_e) { /* ignore */ }
+        refreshAuthBlock();
         drawer.classList.add('open');
+      }
+
+      // Inline MLRO sign-in. Same contract as screening-command.js →
+      // POST /api/hawkeye-login { password } → { token, expiresAt }.
+      // Stored under the canonical TOKEN_KEY so Run now + live status
+      // pick it up without a page switch.
+      async function submitDrawerSignIn() {
+        if (!drawerMlroPassword) return;
+        const pwd = drawerMlroPassword.value;
+        const name = drawerMlroName ? drawerMlroName.value.trim() : '';
+        if (!pwd) {
+          if (drawerAuthMsg) drawerAuthMsg.textContent = 'Enter the MLRO password.';
+          drawerMlroPassword.focus();
+          return;
+        }
+        if (drawerSignInBtn) drawerSignInBtn.disabled = true;
+        if (drawerAuthMsg) drawerAuthMsg.textContent = 'Signing in…';
+        try {
+          const res = await fetch('/api/hawkeye-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: pwd }),
+          });
+          let json = null;
+          try { json = await res.json(); } catch (_e) { /* not JSON */ }
+          if (!res.ok) {
+            const code = res.status;
+            let msg = (json && json.error) || ('Sign-in failed (HTTP ' + code + ').');
+            if (code === 401) msg = 'Invalid credentials.';
+            else if (code === 429) msg = 'Too many attempts — wait 15 minutes.';
+            else if (code === 503) msg = 'Login not configured on the server.';
+            if (drawerAuthMsg) drawerAuthMsg.textContent = msg;
+            return;
+          }
+          const token = json && typeof json.token === 'string' ? json.token : '';
+          if (!token) {
+            if (drawerAuthMsg) drawerAuthMsg.textContent = 'Server did not return a token.';
+            return;
+          }
+          try {
+            localStorage.setItem('hawkeye.watchlist.adminToken', token);
+            if (name) localStorage.setItem('hawkeye.mlro.main', name);
+          } catch (_e) { /* localStorage disabled — token only in-memory */ }
+          drawerMlroPassword.value = '';
+          if (drawerAuthMsg) drawerAuthMsg.textContent = 'Signed in.';
+          refreshAuthBlock();
+          fetchLiveStatus();
+        } catch (err) {
+          if (drawerAuthMsg) drawerAuthMsg.textContent = 'Network error signing in.';
+        } finally {
+          if (drawerSignInBtn) drawerSignInBtn.disabled = false;
+        }
+      }
+
+      if (drawerSignInBtn) drawerSignInBtn.addEventListener('click', submitDrawerSignIn);
+      if (drawerMlroPassword) {
+        drawerMlroPassword.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); submitDrawerSignIn(); }
+        });
       }
 
       function closeDrawer() {
@@ -756,7 +883,9 @@
         if (!DRAWER_ROUTINE) return;
         const token = getAuthToken();
         if (!token) {
-          drawerRunMsg.innerHTML = 'Sign in first to trigger a manual run. <a href="screening-command.html#mlroAuth" style="color: var(--azure-bright); text-decoration: underline">Go to MLRO sign-in &rarr;</a>';
+          drawerRunMsg.textContent = 'Sign in above to trigger a manual run.';
+          refreshAuthBlock();
+          if (drawerMlroPassword) drawerMlroPassword.focus();
           return;
         }
         drawerRunMsg.textContent = 'Triggering ' + DRAWER_ROUTINE.id + '…';
@@ -778,8 +907,11 @@
       });
 
       // ── Live status wiring ──────────────────────────────────────────
+      // Canonical token key matches screening-command.js (TOKEN_KEY).
+      // Previously this read 'auth.token', which no other page writes,
+      // so the drawer never saw the MLRO session even after sign-in.
       function getAuthToken() {
-        try { return localStorage.getItem('auth.token') || ''; } catch { return ''; }
+        try { return localStorage.getItem('hawkeye.watchlist.adminToken') || ''; } catch { return ''; }
       }
 
       function setLiveIndicator(state, label) {
