@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Hawkeye Sterling V2 — Shipments</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --gold: #c9a84c;
+        --gold-bright: #e6c870;
+        --gold-dim: rgba(201, 168, 76, 0.6);
+        --bg: #0b0b0f;
+        --surface: #14141a;
+        --surface2: #1a1a22;
+        --border: rgba(201, 168, 76, 0.22);
+        --text: #e8e4dc;
+        --muted: #8a8a94;
+        --green: #3da876;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Montserrat', system-ui, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2.5rem 2rem;
+        width: 100%;
+        flex: 1;
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 2rem;
+      }
+      .brand {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        color: var(--gold);
+        font-size: 22px;
+        letter-spacing: 2px;
+      }
+      .back-link {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 12px;
+        font-family: 'DM Mono', monospace;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        border: 1px solid var(--border);
+        padding: 8px 14px;
+        border-radius: 3px;
+        transition: border-color 0.2s, color 0.2s;
+      }
+      .back-link:hover {
+        color: var(--gold);
+        border-color: var(--gold);
+      }
+      h1 {
+        font-family: 'DM Mono', monospace;
+        font-size: 14px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--gold);
+        margin: 0 0 8px;
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 0 0 2rem;
+        max-width: 720px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 18px;
+        margin-top: 1.5rem;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 1.6rem 1.4rem;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        position: relative;
+        transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      }
+      .card:hover {
+        border-color: var(--gold);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+      }
+      .card .icon {
+        font-size: 26px;
+      }
+      .card .title {
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        color: var(--gold);
+        font-family: 'DM Mono', monospace;
+        font-size: 13px;
+        text-transform: uppercase;
+      }
+      .card .desc {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .card .cta {
+        margin-top: auto;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--gold-bright);
+        font-family: 'DM Mono', monospace;
+      }
+      .reg {
+        margin-top: 2.5rem;
+        padding: 1rem 1.2rem;
+        background: var(--surface2);
+        border-left: 3px solid var(--gold-dim);
+        border-radius: 3px;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+      .footer {
+        text-align: center;
+        padding: 2rem 1rem;
+        font-size: 11px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="top">
+        <div class="brand">HAWKEYE STERLING V2</div>
+        <a href="index.html" class="back-link">&larr; Main App</a>
+      </div>
+
+      <h1>SHIPMENTS</h1>
+      <p class="subtitle">
+        Inbound (IAR), in-transit tracking, and local-movement logs for every
+        active entity. Each section maps to a distinct regulatory obligation and
+        produces its own audit trail.
+      </p>
+
+      <div class="grid">
+        <a class="card" href="index.html#shipments" data-route="shipments">
+          <span class="icon">🚚</span>
+          <span class="title">IAR Shipments</span>
+          <span class="desc">
+            Inbound Advice of Receipt — every incoming shipment recorded against
+            the relevant supplier, invoice, assay, and Dubai Customs / Brinks
+            paperwork. Primary control for supply-chain traceability.
+          </span>
+          <span class="cta">Open &rarr;</span>
+        </a>
+
+        <a class="card" href="index.html#tracking" data-route="tracking">
+          <span class="icon">✈️</span>
+          <span class="title">Tracking</span>
+          <span class="desc">
+            Live in-transit status, ETA, carrier, and custody handovers for every
+            shipment currently on the move. Flags deviations from the declared
+            routing.
+          </span>
+          <span class="cta">Open &rarr;</span>
+        </a>
+
+        <a class="card" href="index.html#localshipments" data-route="localshipments">
+          <span class="icon">📦</span>
+          <span class="title">Local Shipments</span>
+          <span class="desc">
+            Intra-UAE and counter-to-counter transfers, including same-day
+            movements between branches or to refiner / vault counterparties.
+            Ties into the DPMS CTR threshold (AED 55,000) where applicable.
+          </span>
+          <span class="cta">Open &rarr;</span>
+        </a>
+      </div>
+
+      <div class="reg">
+        <strong style="color: var(--gold); letter-spacing: 1.2px">Regulatory basis.</strong>
+        MoE Circular 08/AML/2021 (DPMS record-keeping) &middot; FDL No.10/2025
+        Art.24 (10-year retention) &middot; Cabinet Res 134/2025 Art.16
+        (cross-border cash AED 60,000) &middot; LBMA RGG v9 &middot; UAE MoE RSG
+        framework (origin traceability).
+      </div>
+    </div>
+
+    <div class="footer">&copy; 2026 Hawkeye Sterling. All rights reserved.</div>
+  </body>
+</html>

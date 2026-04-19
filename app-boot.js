@@ -129,11 +129,19 @@
     }
   };
 
-  // Handle #metals-trading URL hash on page load
+  // Handle URL-hash deep links on page load. Used by the Logistics
+  // landing page (logistics.html) to route back into index.html and
+  // auto-open the requested shipments sub-tab.
   setTimeout(function () {
     var hash = window.location.hash;
     if (hash === '#metals-trading' || hash === '#metalstrading') {
       window.switchTab('metalstrading');
+    } else if (hash === '#shipments' || hash === '#tab-shipments') {
+      window.switchTab('shipments');
+    } else if (hash === '#tracking' || hash === '#tab-tracking') {
+      window.switchTab('tracking');
+    } else if (hash === '#localshipments' || hash === '#tab-localshipments') {
+      window.switchTab('localshipments');
     }
   }, 500);
 

@@ -2331,14 +2331,10 @@
           >
             &times;
           </button>
-          <div class="tab active" data-action="switchTab" data-arg="shipments">
-            🚚 IAR Shipments
-          </div>
-          <div class="tab" data-action="switchTab" data-arg="tracking">✈️ Tracking</div>
-          <div class="tab" data-action="switchTab" data-arg="localshipments">
-            📦 Local Shipments
-          </div>
-          <div class="tab" data-action="switchTab" data-arg="iarreport">📝 IAR Report</div>
+          <a class="tab" href="logistics.html" style="text-decoration: none">
+            🚢 Shipments
+          </a>
+          <div class="tab active" data-action="switchTab" data-arg="iarreport">📝 IAR Report</div>
           <div class="tab" data-action="switchTab" data-arg="asana">📋 Compliance Tasks</div>
           <!-- Evidence Tracker removed -->
           <div class="tab" data-action="switchTab" data-arg="gaps">🔴 Gap Register</div>
@@ -2443,7 +2439,7 @@
         </div>
 
         <!-- SHIPMENTS TAB -->
-        <div id="tab-shipments" class="tab-content active">
+        <div id="tab-shipments" class="tab-content">
           <div class="card">
             <div class="top-bar" style="margin-bottom: 10px">
               <span class="lbl" style="margin: 0">Add Shipment Record</span>
@@ -3039,7 +3035,7 @@
         </div>
 
         <!-- IAR COMPLIANCE REPORT TAB -->
-        <div id="tab-iarreport" class="tab-content">
+        <div id="tab-iarreport" class="tab-content active">
           <div class="card">
             <div class="top-bar" style="margin-bottom: 10px">
               <span class="lbl" style="margin: 0">IAR Compliance Report</span>
