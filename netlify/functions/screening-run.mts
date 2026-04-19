@@ -107,6 +107,58 @@ const MAX_CAS_ATTEMPTS = 5;
  * /api/sanctions-ingest-cron still does the authoritative refresh.
  */
 const SANCTIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+/**
+ * Per-stage timeout budgets. Netlify sync functions die at ~10s, so the
+ * whole pipeline MUST finish inside that ceiling. Budgeting is coarse
+ * but conservative: every slow external call gets its own cap and a
+ * graceful fallback so a single hung list cannot 504 the whole run.
+ * Sum of worst-case budgets ≈ 8s, leaving headroom for serialisation,
+ * blob writes, and Asana. (FDL Art.20 — CO must still receive a
+ * deterministic verdict even if an upstream list is slow.)
+ */
+const SANCTIONS_FETCH_TIMEOUT_MS = 4_000;
+const ADVERSE_MEDIA_TIMEOUT_MS = 3_000;
+const ASANA_TIMEOUT_MS = 2_500;
+const WATCHLIST_TIMEOUT_MS = 2_500;
+
+/**
+ * Race a promise against a timeout. On timeout, returns `fallback` and
+ * lets the slow promise settle in the background — no unhandled
+ * rejection, no client-visible error. Used to keep the screening
+ * pipeline inside Netlify's 10s function budget.
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+  label: string
+): Promise<{ value: T; timedOut: boolean; error?: string }> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<{ __timeout: true }>((resolve) => {
+    timeoutHandle = setTimeout(() => resolve({ __timeout: true }), timeoutMs);
+  });
+  try {
+    const raced = await Promise.race([
+      promise.then((value) => ({ __timeout: false as const, value })),
+      timeoutPromise,
+    ]);
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+    if ('value' in raced) {
+      return { value: raced.value, timedOut: false };
+    }
+    // Allow the slow promise to resolve/reject in the background; swallow
+    // to prevent unhandled rejection warnings.
+    promise.catch(() => {});
+    return { value: fallback, timedOut: true, error: `${label} timed out after ${timeoutMs}ms` };
+  } catch (err) {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+    return {
+      value: fallback,
+      timedOut: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':
@@ -657,8 +709,13 @@ async function postAsanaTask(params: {
   lines.push('Source: /api/screening/run (Screening Command page).');
   lines.push('Do NOT notify the subject — FDL Art.29 no tipping off.');
 
+  // Severity tag ordering: anomaly > confirmed > potential > weak >
+  // adverse media > clean. A clean run (no match, no adverse media,
+  // no anomalies) still lands in Asana tagged [CLEAN] — FDL Art.24
+  // 10-year retention requires every screening be discoverable.
+  const hasAnomaly = params.anomalies && params.anomalies.length > 0;
   const severityTag =
-    params.anomalies && params.anomalies.length > 0 && params.classification === 'none'
+    hasAnomaly && params.classification === 'none'
       ? '[ANOMALY]'
       : params.classification === 'confirmed'
         ? '[CONFIRMED MATCH]'
@@ -666,11 +723,16 @@ async function postAsanaTask(params: {
           ? '[POTENTIAL MATCH]'
           : params.classification === 'weak'
             ? '[WEAK MATCH]'
-            : '[ADVERSE MEDIA]';
+            : params.adverseMediaCount > 0
+              ? '[ADVERSE MEDIA]'
+              : '[CLEAN]';
   const name = `${severityTag} Screening: ${params.subjectName}`;
 
   const tags = ['screening-command', params.classification];
-  if (params.anomalies && params.anomalies.length > 0) tags.push('anomaly');
+  if (hasAnomaly) tags.push('anomaly');
+  if (params.classification === 'none' && !hasAnomaly && params.adverseMediaCount === 0) {
+    tags.push('clean-screen');
+  }
   if (params.eventType) tags.push(`event-${params.eventType}`);
 
   const result = await createAsanaTask({
@@ -735,7 +797,25 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const ranAt = new Date().toISOString();
 
   // ─── 1. Sanctions screen across all six lists ─────────────────────────
-  const snapshot = await loadAllLists();
+  // Hard-cap the multi-list fetch. If one upstream hangs, we still return
+  // a deterministic verdict inside Netlify's 10s budget with the slow
+  // list reported as an error (anomaly → Asana still paged).
+  const sanctionsLoad = await withTimeout(
+    loadAllLists(),
+    SANCTIONS_FETCH_TIMEOUT_MS,
+    {
+      fetchedAt: Date.now(),
+      lists: [
+        { name: 'UN', entries: [], error: 'sanctions fetch timed out' },
+        { name: 'OFAC', entries: [], error: 'sanctions fetch timed out' },
+        { name: 'EU', entries: [], error: 'sanctions fetch timed out' },
+        { name: 'UK_OFSI', entries: [], error: 'sanctions fetch timed out' },
+        { name: 'UAE_EOCN', entries: [], error: 'sanctions fetch timed out' },
+      ],
+    } as ListSnapshot,
+    'sanctions-lists'
+  );
+  const snapshot = sanctionsLoad.value;
   const { perList, overallTopScore, overallTopClassification } = screenAgainstAllLists(
     input.subjectName,
     snapshot,
@@ -761,18 +841,22 @@ export default async (req: Request, context: Context): Promise<Response> => {
   let adverseMediaTop: Array<{ title: string; url: string; source?: string }> = [];
   let adverseMediaError: string | undefined;
   if (input.runAdverseMedia) {
-    try {
-      const am = await searchAdverseMedia(input.subjectName);
-      adverseMediaHits = am.hits.length;
-      adverseMediaProvider = am.provider;
-      adverseMediaTop = am.hits.slice(0, 5).map((h) => ({
-        title: h.title,
-        url: h.url,
-        source: h.source,
-      }));
-    } catch (err) {
-      adverseMediaError = err instanceof Error ? err.message : 'adverse media failed';
+    const amRes = await withTimeout(
+      searchAdverseMedia(input.subjectName),
+      ADVERSE_MEDIA_TIMEOUT_MS,
+      { provider: 'none', hits: [] as Array<{ title: string; url: string; source?: string }> },
+      'adverse-media'
+    );
+    if (amRes.timedOut || amRes.error) {
+      adverseMediaError = amRes.error ?? 'adverse media failed';
     }
+    adverseMediaHits = amRes.value.hits.length;
+    adverseMediaProvider = amRes.value.provider;
+    adverseMediaTop = amRes.value.hits.slice(0, 5).map((h) => ({
+      title: h.title,
+      url: h.url,
+      source: h.source,
+    }));
   }
 
   // ─── 3. Explainable risk score ────────────────────────────────────────
@@ -854,12 +938,20 @@ export default async (req: Request, context: Context): Promise<Response> => {
     };
     if (input.jurisdiction) metadata.jurisdiction = input.jurisdiction;
     if (input.notes) metadata.notes = input.notes.slice(0, 512);
-    enrollment = await enrollIntoWatchlist(subjectId, input.subjectName, riskTier, metadata);
+    const enrollRes = await withTimeout(
+      enrollIntoWatchlist(subjectId, input.subjectName, riskTier, metadata),
+      WATCHLIST_TIMEOUT_MS,
+      { action: 'skipped', error: 'watchlist enrollment timed out' } as EnrollmentResult,
+      'watchlist-enroll'
+    );
+    enrollment = enrollRes.value;
   }
 
-  // ─── 5. Asana task — any match, any adverse-media hit, or any anomaly
-  // (mandatory-list fetch failure). "If any anomaly or event → notify
-  // Asana" — see Cabinet Res 134/2025 Art.19 periodic internal review.
+  // ─── 5. Asana task — ALWAYS create so FDL Art.24 10-yr retention sees
+  // every screening, including clean runs. Severity tag distinguishes
+  // clean vs match vs anomaly; the task body carries the full reasoning.
+  // Cabinet Res 134/2025 Art.19 (periodic internal review) + FDL Art.20
+  // (CO situational awareness) — the MLRO must see every event.
   const asanaProjectGid = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
   let asana: {
     ok: boolean;
@@ -874,27 +966,29 @@ export default async (req: Request, context: Context): Promise<Response> => {
     projectGid: asanaProjectGid,
     projectName: 'Hawkeye Screenings',
   };
-  const shouldCreateAsana =
-    input.createAsanaTask &&
-    (overallTopClassification === 'confirmed' ||
-      overallTopClassification === 'potential' ||
-      overallTopClassification === 'weak' ||
-      adverseMediaHits > 0 ||
-      anomalousListErrors.length > 0);
-  if (shouldCreateAsana) {
-    const res = await postAsanaTask({
-      subjectName: input.subjectName,
-      subjectId,
-      classification: overallTopClassification,
-      topScore: overallTopScore,
-      perList,
-      adverseMediaCount: adverseMediaHits,
-      jurisdiction: input.jurisdiction,
-      notes: input.notes,
-      anomalies: anomalousListErrors.map((l) => `${l.list}: ${l.error}`),
-      eventType: input.eventType,
-    });
-    asana = { ...res, projectGid: asanaProjectGid, projectName: 'Hawkeye Screenings' };
+  if (input.createAsanaTask) {
+    const asanaRes = await withTimeout(
+      postAsanaTask({
+        subjectName: input.subjectName,
+        subjectId,
+        classification: overallTopClassification,
+        topScore: overallTopScore,
+        perList,
+        adverseMediaCount: adverseMediaHits,
+        jurisdiction: input.jurisdiction,
+        notes: input.notes,
+        anomalies: anomalousListErrors.map((l) => `${l.list}: ${l.error}`),
+        eventType: input.eventType,
+      }),
+      ASANA_TIMEOUT_MS,
+      { ok: false, error: 'asana task timed out' },
+      'asana-task'
+    );
+    asana = {
+      ...asanaRes.value,
+      projectGid: asanaProjectGid,
+      projectName: 'Hawkeye Screenings',
+    };
   }
 
   return jsonResponse({

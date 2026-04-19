@@ -33,8 +33,10 @@
  */
 
 import type { IdentityMatchBreakdown } from './identityMatchScore';
-import type { ListPriority } from './dynamicPrior';
+import type { DynamicPriorInput } from './dynamicPrior';
 import type { TemporalVerdict } from './temporalPatternMemory';
+
+export type ListPriority = DynamicPriorInput['listPriority'];
 
 // ---------------------------------------------------------------------------
 // Public surface
@@ -98,6 +100,8 @@ function listOrdinal(list: ListPriority): number {
       return 2 / 3;
     case 'primary':
       return 1;
+    default:
+      return 1 / 3;
   }
 }
 
