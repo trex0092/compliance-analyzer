@@ -46,6 +46,16 @@ import {
   type RiskAlertScore,
   type RiskAlertTrigger,
 } from './riskAlertTemplate';
+import {
+  calibrateIdentityScore,
+  observeIdentityEvidence,
+  type CalibratedIdentityScore,
+} from './identityScoreBayesian';
+import {
+  computeCorroboration,
+  corroborationForSubject,
+  type SubjectCorroboration,
+} from './multiListCorroboration';
 import type { NormalisedSanction } from './sanctionsIngest';
 
 // ---------------------------------------------------------------------------
@@ -334,6 +344,16 @@ export async function dispatchImmediateAlerts(
   const seenFingerprints = overrides.fingerprints ?? (await deps.loadDispatchFingerprints());
   const newlyFingerprinted = new Set<string>();
 
+  // Cross-list corroboration is computed ONCE from the dedup fingerprint
+  // set at the start of the run. The map is then looked up per-subject
+  // inside the loop — cheap, no extra I/O, and shared across every
+  // candidate for a given subject. The set already includes dispatches
+  // from earlier sources in the same cron batch, so by the time we
+  // reach source N the map reflects "how many lists have flagged THIS
+  // subject today across all sources" — exactly the World-Check
+  // consolidated-list view.
+  const corroborationMap = computeCorroboration(seenFingerprints);
+
   for (const subject of subjects) {
     for (const candidate of candidates) {
       if (!isValidCandidate(candidate)) {
@@ -372,11 +392,35 @@ export async function dispatchImmediateAlerts(
         commitSha: ctx.commitSha,
       };
       const riskScore = buildScore(score, score.hasResolvedIdentity);
+
+      // Bayesian calibration of the linear composite — gives the MLRO
+      // a true posterior P(match | evidence), an uncertainty interval,
+      // and the top counterfactual moves. The identity shape passed to
+      // observeIdentityEvidence mirrors the "hit" shape that
+      // scoreHitAgainstProfile consumed, so observation and scoring
+      // stay in lockstep.
+      const evidence = observeIdentityEvidence(subject.resolvedIdentity, {
+        listEntryDob: candidate.dateOfBirth,
+        listEntryNationality: candidate.nationality,
+        listEntryIdNumber: candidate.idNumber,
+        listEntryRef: { list: candidate.list, reference: candidate.reference },
+      });
+      const calibrated: CalibratedIdentityScore = calibrateIdentityScore(
+        riskScore.breakdown,
+        evidence
+      );
+      const corroboration: SubjectCorroboration = corroborationForSubject(
+        corroborationMap,
+        subject.id
+      );
+
       const task = buildRiskAlertTask({
         subject,
         match: candidateToMatch(candidate),
         score: riskScore,
         ctx: alertCtx,
+        calibrated,
+        corroboration,
       });
 
       summary.tasksAttempted += 1;

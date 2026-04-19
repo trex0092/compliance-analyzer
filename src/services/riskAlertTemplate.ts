@@ -32,6 +32,9 @@
 
 import type { WatchlistEntry } from './screeningWatchlist';
 import type { IdentityMatchBreakdown, IdentityClassification } from './identityMatchScore';
+import type { CalibratedIdentityScore, IdentityCounterfactual } from './identityScoreBayesian';
+import type { SubjectCorroboration } from './multiListCorroboration';
+import { buildStrNarrativeDraft } from './strNarrativePreDraft';
 
 // ---------------------------------------------------------------------------
 // Public surface
@@ -93,6 +96,20 @@ export interface RiskAlertInput {
   match: RiskAlertMatch;
   score: RiskAlertScore;
   ctx: RiskAlertContext;
+  /**
+   * Bayesian calibration of the identity match. Optional for backwards
+   * compatibility with the ~40 existing call sites; when omitted the
+   * task renders exactly as before. When provided, the renderer emits
+   * three additional blocks: calibrated posterior + uncertainty
+   * interval, top counterfactuals, and an alerting on contradictions.
+   */
+  calibrated?: CalibratedIdentityScore;
+  /**
+   * Multi-list cross-corroboration for THIS subject (not this match).
+   * Rendered as a single line when boost > 0 so the MLRO sees the
+   * strength-in-numbers signal immediately.
+   */
+  corroboration?: SubjectCorroboration;
 }
 
 export interface RiskAlertTask {
@@ -348,6 +365,126 @@ function renderReasoningBlock(
   return lines.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Bayesian calibration blocks — the Refinitiv-World-Check-tier layer.
+// These blocks only render when the dispatcher passed a calibrated
+// score. They NEVER replace the linear composite score above; they
+// supplement it with:
+//   - A calibrated posterior probability P(match | observed evidence)
+//   - A min/max uncertainty interval over unobserved identifiers
+//   - The top-3 counterfactual actions ranked by log-odds delta
+//   - Cross-list corroboration (same subject on UN + OFAC + EU + …)
+//   - FIU-ready STR narrative pre-draft (ALERT severity only)
+// All blocks are deterministic and re-rendering-stable so the audit
+// trail diffs cleanly across re-runs.
+// ---------------------------------------------------------------------------
+
+function pct1(p: number): string {
+  const clamped = Math.max(0, Math.min(1, p));
+  return `${(clamped * 100).toFixed(1)}%`;
+}
+
+function fmtDelta(x: number): string {
+  if (!Number.isFinite(x)) return '0.00';
+  const sign = x > 0 ? '+' : '';
+  return `${sign}${x.toFixed(2)}`;
+}
+
+function renderUncertaintyBlock(c: CalibratedIdentityScore): string {
+  const lines: string[] = ['CALIBRATED POSTERIOR'];
+  const [lo, hi] = c.interval;
+  lines.push(
+    `  P(same person | evidence) = ${pct1(c.probability)}   (log-odds ${fmtDelta(c.logOdds)})`
+  );
+  lines.push(`  Uncertainty interval: [${pct1(lo)} .. ${pct1(hi)}]`);
+  lines.push(
+    '  Interval widens with the evidence we have NOT yet observed (missing DoB, id, nationality, alias, pin).'
+  );
+  if (c.unobserved.length > 0) {
+    lines.push(`  Unobserved identifiers: ${c.unobserved.join(', ')}`);
+  } else {
+    lines.push('  Unobserved identifiers: none — the evidence set is complete on both sides.');
+  }
+  if (c.contradictions.length > 0) {
+    lines.push(
+      `  ⚠ Contradictions observed: ${c.contradictions.join(', ')} — investigate before filing.`
+    );
+  }
+  return lines.join('\n');
+}
+
+function describeCounterfactual(cf: IdentityCounterfactual): string {
+  const cls = cf.projectedClassification.toUpperCase().padEnd(8);
+  const delta = fmtDelta(cf.logOddsDelta);
+  return `  ${cls} if ${cf.action}   (Δcomposite→${fmt2(cf.projectedComposite)}, Δlog-odds ${delta})`;
+}
+
+function renderCounterfactualsBlock(c: CalibratedIdentityScore): string {
+  if (c.counterfactuals.length === 0) {
+    return ['COUNTERFACTUALS', '  (no counterfactual moves available — evidence is complete)'].join(
+      '\n'
+    );
+  }
+  const lines: string[] = ['COUNTERFACTUALS'];
+  lines.push('  The following evidence moves would change the classification. Ranked by');
+  lines.push('  log-odds delta so the MLRO sees the highest-leverage next action first:');
+  for (const cf of c.counterfactuals.slice(0, 3)) {
+    lines.push(describeCounterfactual(cf));
+  }
+  return lines.join('\n');
+}
+
+function renderCorroborationBlock(corro: SubjectCorroboration): string {
+  if (corro.lists.length <= 1 || corro.boost <= 0) {
+    return '';
+  }
+  const lines: string[] = ['CROSS-LIST CORROBORATION'];
+  lines.push(
+    `  Same subject is concurrently flagged on ${corro.lists.length} sanctions lists: ${corro.lists.join(' + ')}`
+  );
+  lines.push(`  Total dispatches this window: ${corro.dispatchCount}`);
+  lines.push(
+    `  Confidence booster: +${corro.boost.toFixed(2)} (orders-of-magnitude stronger than a single-list hit).`
+  );
+  lines.push('  FATF Rec 6 + FDL Art.35: consolidated-designation view enables the freeze.');
+  return lines.join('\n');
+}
+
+function renderStrDraftBlock(
+  input: RiskAlertInput,
+  severity: 'ALERT' | 'POSSIBLE' | 'CHANGE'
+): string {
+  if (severity !== 'ALERT') return '';
+  if (!input.calibrated || !input.corroboration) return '';
+  const draft = buildStrNarrativeDraft({
+    subject: input.subject,
+    match: input.match,
+    score: input.score,
+    calibrated: input.calibrated,
+    corroboration: input.corroboration,
+    generatedAtIso: input.ctx.generatedAtIso,
+    runId: input.ctx.runId,
+  });
+  const lines: string[] = [];
+  lines.push('┌─ STR NARRATIVE PRE-DRAFT ─────────────────────────────────────┐');
+  lines.push('│ DRAFT — MLRO MUST REVIEW BEFORE FILING                        │');
+  lines.push('│ This draft is NOT auto-filed. goAML submission still routes   │');
+  lines.push('│ through the four-eyes gate. FDL Art.29 (no tipping off).      │');
+  lines.push('└───────────────────────────────────────────────────────────────┘');
+  lines.push('');
+  lines.push(draft.paragraph);
+  lines.push('');
+  lines.push('FACTS CITED (cross-check before submission):');
+  for (const fact of draft.factList) {
+    lines.push(`  • ${fact}`);
+  }
+  lines.push('');
+  lines.push(
+    `FILING DEADLINES: STR ${draft.filingDeadline.strBusinessDays} business days (FDL Art.27) · CNMR ${draft.filingDeadline.cnmrBusinessDays} business days (Cabinet Res 74/2020 Art.6).`
+  );
+  return lines.join('\n');
+}
+
 const REGULATORY_BLOCK = [
   'REGULATORY BASIS',
   '  FATF Rec 10              positive identification required',
@@ -431,6 +568,19 @@ export function buildRiskAlertTask(input: RiskAlertInput): RiskAlertTask {
     '└───────────────────────────────────────────────────────────────┘',
   ].join('\n');
 
+  const brainBlocks: string[] = [];
+  if (input.calibrated) {
+    brainBlocks.push('', renderUncertaintyBlock(input.calibrated));
+    brainBlocks.push('', renderCounterfactualsBlock(input.calibrated));
+  }
+  if (input.corroboration) {
+    const corroLines = renderCorroborationBlock(input.corroboration);
+    if (corroLines.length > 0) {
+      brainBlocks.push('', corroLines);
+    }
+  }
+  const strBlock = renderStrDraftBlock(input, severity);
+
   const notes = [
     header,
     '',
@@ -441,10 +591,12 @@ export function buildRiskAlertTask(input: RiskAlertInput): RiskAlertTask {
     renderScoreBlock(score),
     '',
     renderReasoningBlock(severity, subject, match, score),
+    ...brainBlocks,
     '',
     REGULATORY_BLOCK,
     '',
     renderActionBlock(severity, subject.id),
+    ...(strBlock.length > 0 ? ['', strBlock] : []),
     '',
     renderSourceBlock(ctx),
     '',
