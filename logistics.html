@@ -886,6 +886,27 @@
         </a>
       </div>
 
+      <section
+        class="module-view"
+        id="moduleView"
+        aria-label="Embedded module view"
+        aria-hidden="true"
+      >
+        <div class="module-view-head">
+          <h2 class="module-view-title" id="moduleViewTitle">Module</h2>
+          <button type="button" class="module-view-close" id="moduleViewClose">
+            &larr; Back to surfaces
+          </button>
+        </div>
+        <iframe
+          class="module-view-frame"
+          id="moduleViewFrame"
+          title="Shipments module"
+          loading="lazy"
+          src="about:blank"
+        ></iframe>
+      </section>
+
       <div class="reg-strip" role="note">
         <div class="reg-badge" aria-hidden="true">§</div>
         <div class="reg-body">
@@ -935,5 +956,6 @@
         });
       })();
     </script>
+    <script src="landing-module-viewer.js?v=1"></script>
   </body>
 </html>

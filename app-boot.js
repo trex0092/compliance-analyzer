@@ -129,29 +129,44 @@
     }
   };
 
-  // Handle URL-hash deep links on page load. Used by the Logistics
-  // landing page (logistics.html) to route back into index.html and
-  // auto-open the requested shipments sub-tab.
-  setTimeout(function () {
+  // Handle URL-hash deep links. Used by the landing pages (logistics.html,
+  // compliance-ops.html, workbench.html) that embed index.html in an iframe
+  // and switch sub-tabs by rewriting the iframe hash. Fires on load AND on
+  // hashchange so the embedded tab follows the parent's navigation.
+  var HASH_TAB_MAP = {
+    '#metals-trading': 'metalstrading',
+    '#metalstrading': 'metalstrading',
+    '#shipments': 'shipments',
+    '#tab-shipments': 'shipments',
+    '#tracking': 'tracking',
+    '#tab-tracking': 'tracking',
+    '#localshipments': 'localshipments',
+    '#tab-localshipments': 'localshipments',
+    '#training': 'training',
+    '#tab-training': 'training',
+    '#employees': 'employees',
+    '#tab-employees': 'employees',
+    '#incidents': 'incidents',
+    '#tab-incidents': 'incidents',
+    '#reports': 'reports',
+    '#tab-reports': 'reports',
+    '#asana': 'asana',
+    '#tab-asana': 'asana',
+    '#onboarding': 'onboarding',
+    '#tab-onboarding': 'onboarding',
+    '#approvals': 'approvals',
+    '#tab-approvals': 'approvals',
+  };
+  function applyHashRoute() {
     var hash = window.location.hash;
-    if (hash === '#metals-trading' || hash === '#metalstrading') {
-      window.switchTab('metalstrading');
-    } else if (hash === '#shipments' || hash === '#tab-shipments') {
-      window.switchTab('shipments');
-    } else if (hash === '#tracking' || hash === '#tab-tracking') {
-      window.switchTab('tracking');
-    } else if (hash === '#localshipments' || hash === '#tab-localshipments') {
-      window.switchTab('localshipments');
-    } else if (hash === '#training' || hash === '#tab-training') {
-      window.switchTab('training');
-    } else if (hash === '#employees' || hash === '#tab-employees') {
-      window.switchTab('employees');
-    } else if (hash === '#incidents' || hash === '#tab-incidents') {
-      window.switchTab('incidents');
-    } else if (hash === '#reports' || hash === '#tab-reports') {
-      window.switchTab('reports');
+    if (!hash) return;
+    var target = HASH_TAB_MAP[hash];
+    if (target && typeof window.switchTab === 'function') {
+      window.switchTab(target);
     }
-  }, 500);
+  }
+  setTimeout(applyHashRoute, 500);
+  window.addEventListener('hashchange', applyHashRoute);
 
   // If the hero was dismissed earlier in this session, keep it hidden
   // on reload so the user does not see it flash before the JS hides it.
