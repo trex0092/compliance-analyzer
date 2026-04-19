@@ -5,28 +5,35 @@
   var closeBtn = document.getElementById('moduleViewClose');
   if (!view || !frame || !titleEl || !closeBtn) return;
 
-  // Inject styles that collapse the landing-page chrome (hero, summary,
-  // card grid, regulatory strip) when a module is active. Sub-routes
-  // like /workbench/compliance-tasks must show ONLY the module content,
-  // never the landing-page module cards (URL → content must be
-  // deterministic). Topbar + page-nav + module-view stay visible so the
-  // user can still navigate or close.
+  // Landing chrome (hero, summary, card grid, regulatory strip) must be
+  // MUTUALLY EXCLUSIVE with module content: sub-routes like
+  // /workbench/compliance-tasks render ONLY the module, landing roots
+  // like /workbench render ONLY the cards. Never both stacked.
+  //
+  // The primary enforcement is an inline <head> script + <style> on
+  // every landing HTML (workbench.html, compliance-ops.html,
+  // logistics.html, screening-command.html) that sets
+  // html.module-view-active before first paint when the URL is a
+  // sub-route — zero FOUC, works even if this .js file fails to load.
+  // This block is the belt-and-braces fallback for dynamic transitions
+  // (card click, back/forward) and for any landing page that hasn't
+  // been updated with the inline head block yet.
   (function injectModuleViewStyles() {
     if (document.getElementById('moduleViewActiveStyles')) return;
     var style = document.createElement('style');
     style.id = 'moduleViewActiveStyles';
     style.textContent =
-      'body.module-view-active .hero,' +
-      'body.module-view-active .summary,' +
-      'body.module-view-active .hero-summary,' +
-      'body.module-view-active .section-head,' +
-      'body.module-view-active .cards,' +
-      'body.module-view-active .grid,' +
-      'body.module-view-active .reg-strip,' +
-      'body.module-view-active .reg-basis' +
+      'html.module-view-active .hero,' +
+      'html.module-view-active .summary,' +
+      'html.module-view-active .hero-summary,' +
+      'html.module-view-active .section-head,' +
+      'html.module-view-active .cards,' +
+      'html.module-view-active .grid,' +
+      'html.module-view-active .reg-strip,' +
+      'html.module-view-active .reg-basis' +
       '{display:none !important;}' +
-      'body.module-view-active .module-view{margin-top:0;}' +
-      'body.module-view-active .module-view-frame{height:calc(100vh - 180px);min-height:640px;}';
+      'html.module-view-active .module-view{margin-top:0;}' +
+      'html.module-view-active .module-view-frame{height:calc(100vh - 180px);min-height:640px;}';
     document.head.appendChild(style);
   })();
 
@@ -85,7 +92,7 @@
     titleEl.textContent = label || 'Module';
     view.classList.add('is-open');
     view.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('module-view-active');
+    document.documentElement.classList.add('module-view-active');
     if (pushHistory !== false && slug) {
       var target = getBasePath() + '/' + slug;
       if (location.pathname !== target) {
@@ -101,7 +108,7 @@
   function closeModule(pushHistory) {
     view.classList.remove('is-open');
     view.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('module-view-active');
+    document.documentElement.classList.remove('module-view-active');
     frame.src = 'about:blank';
     if (pushHistory !== false) {
       var base = getBasePath();
