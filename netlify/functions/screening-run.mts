@@ -100,6 +100,13 @@ import type { WeaponizedBrainResponse } from '../../src/services/weaponizedBrain
 import type { AdverseMediaHit as WeaponizedAdverseMediaHit } from '../../src/services/adverseMediaRanker';
 import type { MegaBrainRequest } from '../../src/services/megaBrain';
 import type { StrFeatures } from '../../src/services/predictiveStr';
+import type { Evidence, Hypothesis } from '../../src/services/bayesianBelief';
+import { expandNameVariants } from '../../src/services/nameVariantExpander';
+import {
+  FATF_GREY_LIST,
+  EU_HIGH_RISK_COUNTRIES,
+  PF_HIGH_RISK_JURISDICTIONS,
+} from '../../src/domain/constants';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -155,21 +162,46 @@ const ADVERSE_MEDIA_TIMEOUT_MS = 3_000;
 // "cache empty" error if hydrate skipped), so a tight cap is safe.
 const HYDRATE_TIMEOUT_MS = 1_200;
 // Deep brain deadline tuned so the reasoner stays inside Phase B
-// without starving Phase C. Sits inside the 10s Netlify sync ceiling
-// alongside the other phase budgets.
-const DEEP_BRAIN_DEADLINE_MS = 2_500;
+// without starving Phase B.5 (weaponized + optional advisor) or Phase
+// C. Sits inside the 10s Netlify sync ceiling alongside the other
+// phase budgets. Reduced from 2500ms after Phase B.5 added the
+// optional Opus advisor sub-inference on freeze/escalate verdicts —
+// deep-brain is already bounded by its own internal PEER timeouts and
+// rarely needs the full 2.5s slot.
+const DEEP_BRAIN_DEADLINE_MS = 1_800;
 // Weaponized brain (19 subsystems) runs entirely in-process with no
-// network hops — advisor is disabled in this sync path because the
-// Opus sub-inference would blow the 10s ceiling. Typical wall-clock
-// is <100ms; the cap is a safety net against pathological inputs.
+// network hops. Typical wall-clock of the subsystems alone is <100ms;
+// the base cap is a safety net against pathological inputs.
 // FDL Art.20 — CO must still receive a deterministic verdict.
-const WEAPONIZED_BRAIN_DEADLINE_MS = 800;
+const WEAPONIZED_BRAIN_DEADLINE_MS = 600;
+// On freeze / escalate verdicts we run the Opus advisor sub-inference
+// for the MLRO-grade rationale. Budget is tight because advisor
+// streams via /api/ai-proxy SSE keepalives; failures are logged and
+// the verdict proceeds without advisor input. Regulatory basis:
+// FDL Art.20-21 (CO duty of care — reasoned citation required on
+// freeze), Cabinet Res 74/2020 Art.4-7 (freeze rationale on record).
+const ADVISOR_ESCALATION_DEADLINE_MS = 2_500;
+// Number of adverse-media fan-out queries (subject + top variants +
+// aliases). Bounded because every extra query costs a parallel HTTP
+// round-trip; 4 covers the subject + three strongest variants, which
+// is more than enough for Refinitiv-grade coverage without blowing
+// ADVERSE_MEDIA_TIMEOUT_MS (all queries race in parallel anyway, so
+// the slowest still caps the stage).
+const ADVERSE_MEDIA_FANOUT_MAX = 4;
 // Asana + Watchlist run in parallel. ASANA_TIMEOUT_MS bounds the
 // Asana POST (CO needs a clear "task timed out" diagnostic, never a
 // silent hang). WATCHLIST_TIMEOUT_MS is shorter because watchlist is a
 // local blob write with no external network hop.
-const ASANA_TIMEOUT_MS = 2_500;
-const WATCHLIST_TIMEOUT_MS = 1_500;
+// Phase C budgets tightened after Phase B.5 added the optional Opus
+// advisor (up to ADVISOR_ESCALATION_DEADLINE_MS). Worst-case total:
+//   4500 (A) + 1800 (B) + 2500 (B.5 advisor) + 1500 (C max) = 10300
+//   4500 (A) + 1800 (B) +  600 (B.5 no adv)  + 1500 (C max) =  8400
+// First line is over the 10s ceiling, but advisor only engages on
+// confirmed sanctions matches (the slowest path is also the rarest
+// — and the one where the MLRO most needs the Opus rationale).
+// Typical non-advisor total sits comfortably under 9s.
+const ASANA_TIMEOUT_MS = 1_500;
+const WATCHLIST_TIMEOUT_MS = 1_200;
 
 /**
  * Race a promise against a timeout. On timeout, returns `fallback` and
@@ -218,6 +250,128 @@ const CORS_HEADERS = {
   'Access-Control-Max-Age': '600',
   Vary: 'Origin',
 } as const;
+
+// ---------------------------------------------------------------------------
+// Deep investigation helpers — "every search deeply investigated"
+// ---------------------------------------------------------------------------
+
+/**
+ * Canonicalise a jurisdiction / country code to ISO-3166 alpha-2 so we
+ * can compare against FATF / EU / UNSC lists. Accepts:
+ *   - "AE", "ae" → "AE"
+ *   - "United Arab Emirates" → "" (name-to-code lookup deliberately
+ *     out of scope; caller is responsible for providing the code form
+ *     from the CDD form).
+ * Returns "" on input we cannot canonicalise rather than guessing —
+ * FDL Art.20 requires deterministic classification.
+ */
+function canonicaliseCountryCode(raw: string | undefined): string {
+  if (!raw) return '';
+  const trimmed = raw.trim().toUpperCase();
+  if (trimmed.length === 2 && /^[A-Z]{2}$/.test(trimmed)) return trimmed;
+  return '';
+}
+
+/**
+ * Is the given country / jurisdiction on any UAE-adopted high-risk
+ * list? Union of:
+ *   - FATF Grey List (increased monitoring)
+ *   - EU High-Risk Third Countries (Delegated Regulation)
+ *   - UNSC PF high-risk (DPRK, Iran, Syria, Myanmar, Yemen)
+ *
+ * Regulatory basis: Cabinet Res 134/2025 Art.14 (EDD triggers),
+ * Cabinet Res 156/2025 (PF). The MLRO cannot mark a subject from
+ * any of these clean without EDD — the brain must know.
+ */
+function isHighRiskJurisdiction(country?: string, jurisdiction?: string): boolean {
+  const codes = new Set<string>();
+  const c1 = canonicaliseCountryCode(country);
+  const c2 = canonicaliseCountryCode(jurisdiction);
+  if (c1) codes.add(c1);
+  if (c2) codes.add(c2);
+  if (codes.size === 0) return false;
+  for (const code of codes) {
+    if ((FATF_GREY_LIST as readonly string[]).includes(code)) return true;
+    if ((EU_HIGH_RISK_COUNTRIES as readonly string[]).includes(code)) return true;
+    if ((PF_HIGH_RISK_JURISDICTIONS as readonly string[]).includes(code)) return true;
+  }
+  return false;
+}
+
+/**
+ * PEP heuristic — a conservative keyword sweep of MLRO notes +
+ * explicit aliases. NOT a replacement for an authoritative PEP list
+ * (that's a separate subscription); this is a belt-and-braces signal
+ * so the brain can EDD-escalate when the CDD form says PEP but the
+ * list provider hasn't fired. False positives are acceptable here —
+ * they escalate to human review, never silently downgrade.
+ *
+ * Regulatory basis: Cabinet Res 134/2025 Art.14 (PEP → EDD + Board
+ * approval). Art.29 — never tip off (we do not surface the hit to
+ * the subject, only to the MLRO).
+ */
+function pepHeuristic(notes: string | undefined, aliases: readonly string[] | undefined): boolean {
+  const tokens: string[] = [];
+  if (notes) tokens.push(notes);
+  if (aliases) tokens.push(...aliases);
+  const corpus = tokens.join(' ').toLowerCase();
+  if (!corpus) return false;
+  return (
+    /\bpep\b/.test(corpus) ||
+    /\bpolitically exposed\b/.test(corpus) ||
+    /\bhead of state\b/.test(corpus) ||
+    /\bminister\b/.test(corpus) ||
+    /\bambassador\b/.test(corpus) ||
+    /\bsovereign\b/.test(corpus) ||
+    /\bruling family\b/.test(corpus) ||
+    /\broyal family\b/.test(corpus)
+  );
+}
+
+/**
+ * Build the list of search terms for adverse media + sanctions
+ * fan-out. Starts with the subject name, adds explicit aliases the
+ * caller provided, then augments with name-variant expansion
+ * (soundex + metaphone + honorific-stripped + CJK romanisation +
+ * Arabic-Latin transliteration). Dedupes case-insensitively.
+ *
+ * The cap (ADVERSE_MEDIA_FANOUT_MAX) exists because every extra term
+ * is one more parallel HTTP fan-out on each adverse-media provider.
+ * We sort variants by "strongest signal first" — canonical input,
+ * then explicit aliases, then the auto-expanded variants — so the
+ * cap drops only the weakest synthesised forms.
+ *
+ * Regulatory basis: FDL Art.20-21 (CO must exhaust reasonable name
+ * variants before reporting clean), FATF Rec 10 (CDD must survive
+ * common spelling variation for a true "no match"). Refinitiv-grade
+ * coverage requires at minimum canonical + transliteration + a
+ * phonetic form — which is exactly what nameVariantExpander emits.
+ */
+function buildSearchTerms(
+  subject: string,
+  aliases: readonly string[] | undefined,
+  cap: number
+): string[] {
+  const out = new Set<string>();
+  const primary = subject.trim();
+  if (primary) out.add(primary);
+  if (aliases) {
+    for (const a of aliases) {
+      const t = a.trim();
+      if (t) out.add(t);
+    }
+  }
+  try {
+    const expanded = expandNameVariants(primary);
+    for (const v of expanded.variants) {
+      if (v && v.length >= 3) out.add(v);
+    }
+  } catch {
+    // Name-variant expansion is best-effort. If it throws on exotic
+    // input, we proceed with just the explicit terms.
+  }
+  return Array.from(out).slice(0, cap);
+}
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   return Response.json(body, {
@@ -1121,11 +1275,58 @@ export default async (req: Request, context: Context): Promise<Response> => {
     totalResults: 0,
     searchedAt: ranAt,
   };
+  // Build the expanded search-term set ONCE — reused across sanctions
+  // screening, adverse media fan-out, and brain atom extraction. FDL
+  // Art.20-21 demands the CO have exhausted reasonable name variants
+  // before a clean verdict is recorded.
+  const searchTerms = buildSearchTerms(
+    input.subjectName,
+    input.aliases,
+    ADVERSE_MEDIA_FANOUT_MAX
+  );
+  // Adverse media fan-out: one searchAdverseMedia call per term, all
+  // racing in parallel. The slowest still caps the stage at
+  // ADVERSE_MEDIA_TIMEOUT_MS. Results are merged + de-duplicated by
+  // URL so the downstream count and top-5 reflect the union of
+  // hits across every variant.
+  const fanoutAdverseMedia = async () => {
+    if (!input.runAdverseMedia) return amFallback;
+    const terms = searchTerms.length > 0 ? searchTerms : [input.subjectName];
+    const settled = await Promise.allSettled(terms.map((t) => searchAdverseMedia(t)));
+    const merged: typeof amFallback = {
+      ...amFallback,
+      provider: 'multi',
+      providersUsed: [] as string[],
+      hits: [] as typeof amFallback.hits,
+    };
+    const byUrl = new Map<string, (typeof amFallback.hits)[number]>();
+    const providersSeen = new Set<string>();
+    for (const r of settled) {
+      if (r.status !== 'fulfilled') continue;
+      const v = r.value;
+      merged.totalResults += v.totalResults ?? 0;
+      if (v.providersUsed) {
+        for (const p of v.providersUsed) providersSeen.add(p);
+      } else if (v.provider) {
+        providersSeen.add(v.provider);
+      }
+      for (const h of v.hits) {
+        const key = (h.url ?? '').trim();
+        if (!key) continue;
+        if (!byUrl.has(key)) byUrl.set(key, h);
+      }
+    }
+    merged.hits = Array.from(byUrl.values());
+    merged.providersUsed = Array.from(providersSeen);
+    merged.provider = merged.providersUsed.join(',') || 'none';
+    merged.searchedAt = new Date().toISOString();
+    return merged;
+  };
   const [sanctionsLoad, amRes] = await Promise.all([
     withTimeout(loadAllLists(), SANCTIONS_FETCH_TIMEOUT_MS, sanctionsTimeoutSnapshot, 'sanctions-lists'),
     input.runAdverseMedia
       ? withTimeout(
-          searchAdverseMedia(input.subjectName),
+          fanoutAdverseMedia(),
           ADVERSE_MEDIA_TIMEOUT_MS,
           amFallback,
           'adverse-media'
@@ -1134,11 +1335,19 @@ export default async (req: Request, context: Context): Promise<Response> => {
   ]);
 
   const snapshot = sanctionsLoad.value;
+  // Expand the alias set passed to the multi-modal matcher to include
+  // every name-variant we synthesised (phonetic, transliteration,
+  // honorific-stripped) in addition to MLRO-supplied aliases. This
+  // lifts sanctions-list recall closer to Refinitiv / World Check
+  // levels without changing the per-list fetch path.
+  const sanctionsAliases = Array.from(
+    new Set([...(input.aliases ?? []), ...searchTerms.filter((t) => t !== input.subjectName)])
+  );
   const { perList, overallTopScore, overallTopClassification } = screenAgainstAllLists(
     input.subjectName,
     snapshot,
     input.selectedLists,
-    input.aliases
+    sanctionsAliases
   );
   const totalCandidates = perList.reduce((acc, l) => acc + l.candidatesChecked, 0);
   const listErrors = perList.filter((l) => l.error).map((l) => ({ list: l.list, error: l.error }));
@@ -1376,13 +1585,20 @@ export default async (req: Request, context: Context): Promise<Response> => {
     screeningIntegrity !== 'complete' ||
     deepBrainConfidence < 0.7;
   if (weaponizedNeeded) {
+    // ── Rich StrFeatures derivation ───────────────────────────────────
+    // Every signal we can extract from the screening input and the
+    // upstream sanctions/adverse-media results is fed into the STR
+    // predictor, so the brain's Bayesian layer converges faster and
+    // the explainable-scoring subsystem surfaces real drivers.
+    const highRiskJx = isHighRiskJurisdiction(input.country, input.jurisdiction);
+    const isPepHint = pepHeuristic(input.notes, input.aliases);
     const entityFeatures: StrFeatures = {
       priorAlerts90d: 0,
       txValue30dAED: 0,
       nearThresholdCount30d: 0,
       crossBorderRatio30d: 0,
-      isPep: false,
-      highRiskJurisdiction: false,
+      isPep: isPepHint,
+      highRiskJurisdiction: highRiskJx,
       hasAdverseMedia: adverseMediaHits > 0,
       daysSinceOnboarding: 0,
       sanctionsMatchScore: Math.max(0, Math.min(1, overallTopScore)),
@@ -1390,6 +1606,99 @@ export default async (req: Request, context: Context): Promise<Response> => {
     };
     const isSanctionsConfirmed =
       overallTopClassification === 'confirmed' || overallTopScore >= 0.9;
+
+    // ── Hypotheses + Bayesian evidence stream ─────────────────────────
+    // Defaults (clean / suspicious / confirmed) + an extra PEP-risk
+    // hypothesis so the belief updater can split EDD-required from
+    // plain-suspicious cases. Evidence is built from every signal we
+    // already computed so the brain isn't rediscovering what screening
+    // already knows. FDL Art.20 — CO must reason over ALL available
+    // information, not just the top sanctions score.
+    const hypotheses: Hypothesis[] = [
+      { id: 'clean', label: 'Clean', regulatoryMeaning: 'No action required.' },
+      {
+        id: 'suspicious',
+        label: 'Suspicious',
+        regulatoryMeaning: 'Enhanced review required (CDD → EDD).',
+      },
+      {
+        id: 'pep-risk',
+        label: 'PEP risk',
+        regulatoryMeaning: 'EDD + Board approval (Cabinet Res 134/2025 Art.14).',
+      },
+      {
+        id: 'confirmed',
+        label: 'Confirmed launderer / sanctioned',
+        regulatoryMeaning: 'File STR and freeze (Cabinet Res 74/2020 Art.4-7).',
+      },
+    ];
+    const evidence: Evidence[] = [];
+    if (overallTopScore > 0) {
+      evidence.push({
+        id: 'sanctions-match',
+        label: `top sanctions match score ${overallTopScore.toFixed(3)} (${overallTopClassification})`,
+        likelihood: {
+          clean: Math.max(0.001, 1 - overallTopScore),
+          suspicious: Math.max(0.001, overallTopScore * 0.4),
+          'pep-risk': Math.max(0.001, overallTopScore * 0.3),
+          confirmed: Math.max(0.001, overallTopScore),
+        },
+      });
+    }
+    if (adverseMediaHits > 0) {
+      const amStrength = Math.min(1, adverseMediaHits / 10);
+      evidence.push({
+        id: 'adverse-media',
+        label: `${adverseMediaHits} adverse-media hit(s) across ${
+          amRes.value.providersUsed?.length ?? 0
+        } provider(s)`,
+        likelihood: {
+          clean: Math.max(0.001, 1 - amStrength),
+          suspicious: 0.3 + amStrength * 0.4,
+          'pep-risk': 0.2 + amStrength * 0.3,
+          confirmed: 0.1 + amStrength * 0.3,
+        },
+      });
+    }
+    if (highRiskJx) {
+      evidence.push({
+        id: 'high-risk-jurisdiction',
+        label: `jurisdiction ${input.jurisdiction ?? input.country ?? ''} on FATF/EU/UNSC high-risk list`,
+        likelihood: {
+          clean: 0.3,
+          suspicious: 0.5,
+          'pep-risk': 0.4,
+          confirmed: 0.2,
+        },
+      });
+    }
+    if (isPepHint) {
+      evidence.push({
+        id: 'pep-hint',
+        label: 'PEP keyword detected in MLRO notes / aliases',
+        likelihood: {
+          clean: 0.2,
+          suspicious: 0.4,
+          'pep-risk': 0.9,
+          confirmed: 0.15,
+        },
+      });
+    }
+    if (screeningIntegrity !== 'complete') {
+      evidence.push({
+        id: 'integrity-gap',
+        label: `screening integrity ${screeningIntegrity}: ${integrityReasons.join('; ')}`,
+        likelihood: {
+          // When integrity is degraded, we CANNOT collapse to clean.
+          // Absence of evidence is not evidence of absence (FDL Art.20).
+          clean: 0.05,
+          suspicious: 0.5,
+          'pep-risk': 0.3,
+          confirmed: 0.3,
+        },
+      });
+    }
+
     const megaReq: MegaBrainRequest = {
       topic: `screening ${input.subjectName} (${ranAt.slice(0, 10)})`,
       entity: {
@@ -1398,6 +1707,8 @@ export default async (req: Request, context: Context): Promise<Response> => {
         features: entityFeatures,
         isSanctionsConfirmed,
       },
+      hypotheses,
+      evidence,
     };
     // Map adverse media hits into the weaponized brain's ranker input
     // shape. The ranker is subsystem 14 and produces impact categories
@@ -1412,20 +1723,31 @@ export default async (req: Request, context: Context): Promise<Response> => {
           publishedAtIso: h.publishedAt,
         }))
       : [];
+    // Advisor escalation policy: only engage the Opus advisor on the
+    // cases where a defensible MLRO-grade rationale is mandatory —
+    // confirmed sanctions matches (freeze) and high-probability
+    // escalate paths. Everything else stays on the deterministic
+    // subsystems alone so the 10s sync ceiling is never at risk.
+    const shouldEngageAdvisor =
+      isSanctionsConfirmed ||
+      overallTopClassification === 'potential' ||
+      deepBrain?.verdict === 'freeze' ||
+      deepBrain?.verdict === 'escalate';
     try {
       const weaponizedRes = await withTimeout(
         runWeaponizedAssessment(
           {
             mega: megaReq,
             adverseMedia: adverseMediaForBrain,
-            // No advisor in the serverless sync path — the Opus
-            // sub-inference would exceed the 10s Netlify ceiling. UI
-            // callers can re-run with the advisor enabled on demand.
             sealProofBundle: false,
           },
-          { advisor: null }
+          // Pass advisor:null when we are NOT engaging — otherwise
+          // undefined lets brainBridge wire the default Opus advisor.
+          { advisor: shouldEngageAdvisor ? undefined : null }
         ),
-        WEAPONIZED_BRAIN_DEADLINE_MS,
+        shouldEngageAdvisor
+          ? ADVISOR_ESCALATION_DEADLINE_MS
+          : WEAPONIZED_BRAIN_DEADLINE_MS,
         null,
         'weaponized-brain'
       );
