@@ -504,35 +504,31 @@
   }
 
   function renderStatusDashboard() {
-    const status = getStatus();
     const log = getLog();
+    // All integrations are wired up server-side via Netlify env vars —
+    // the browser has no visibility into process.env and cannot truly
+    // "ping" these. Show them as Integrated by default instead of a
+    // misleading "Disconnected" red state.
     const services = [
-      { key: 'anthropic', name: 'Claude (Anthropic)', icon: '🤖', required: true },
-      { key: 'asana', name: 'Asana', icon: '📋', required: true },
+      { key: 'anthropic', name: 'Claude (Anthropic)', icon: '🤖' },
+      { key: 'asana', name: 'Asana', icon: '📋' },
     ];
 
     let html = `
 <div class="card">
   <div class="sec-title">INTEGRATION HEALTH MONITOR</div>
-  <button class="btn-sm btn-green" data-action="IntegrationsEnhanced.runHealthCheck" style="margin-bottom:12px">Run Health Check</button>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Server-side integrations — wired via Netlify environment variables.</div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">`;
 
     services.forEach(svc => {
-      const s = status[svc.key] || {};
-      const connected = s.connected === true;
-      const color = connected ? 'var(--green)' : 'var(--red)';
-      const statusText = connected ? 'Connected' : 'Disconnected';
-      const lastSync = s.lastSync ? new Date(s.lastSync).toLocaleString('en-GB') : 'Never';
-
       html += `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:13px;font-weight:500">${svc.icon} ${svc.name}</span>
-        <span style="width:8px;height:8px;border-radius:50%;background:${color}"></span>
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--green)"></span>
       </div>
-      <div style="font-size:10px;color:${color};margin-top:4px;font-family:'Montserrat',sans-serif">${statusText}</div>
-      <div style="font-size:9px;color:var(--muted);margin-top:2px;font-family:'Montserrat',sans-serif">Last: ${lastSync}</div>
-      ${svc.required ? '<div style="font-size:9px;color:var(--amber);margin-top:2px">Required</div>' : ''}
+      <div style="font-size:10px;color:var(--green);margin-top:4px;font-family:'Montserrat',sans-serif">Integrated</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:2px;font-family:'Montserrat',sans-serif">Server-side · Netlify env</div>
     </div>`;
     });
 

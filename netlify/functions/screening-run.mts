@@ -126,9 +126,12 @@ const SANCTIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
  * Leaves ~0.5s headroom before Netlify's 10s sync-function ceiling.
  */
 const SANCTIONS_FETCH_TIMEOUT_MS = 4_500;
-const ADVERSE_MEDIA_TIMEOUT_MS = 3_500;
-const DEEP_BRAIN_DEADLINE_MS = 2_500;
-const ASANA_TIMEOUT_MS = 2_500;
+const ADVERSE_MEDIA_TIMEOUT_MS = 3_200;
+// Deep brain deadline raised so the reasoner gets a realistic thinking
+// budget instead of always timing out at 2.5s. Sits inside the 10s
+// Netlify sync ceiling alongside the other phase budgets.
+const DEEP_BRAIN_DEADLINE_MS = 3_200;
+const ASANA_TIMEOUT_MS = 2_000;
 const WATCHLIST_TIMEOUT_MS = 1_500;
 
 /**
@@ -486,40 +489,50 @@ async function hydrateUaeSanctionsFromBlob(): Promise<void> {
   }
 }
 
+/**
+ * Per-list timeout budget. Each list races its OWN deadline, so a slow
+ * fetch on (say) UN's XML does not cascade into reported timeouts for
+ * OFAC/EU/UK/EOCN. The outer caller still clamps the whole phase at
+ * SANCTIONS_FETCH_TIMEOUT_MS, but inside that window every list that
+ * returns fast actually surfaces its rows instead of being nuked by the
+ * slowest sibling.
+ */
+const PER_LIST_TIMEOUT_MS = 4_200;
+
+async function raceListFetch(
+  name: ListSnapshot['lists'][number]['name'],
+  fetcher: () => Promise<SanctionsEntry[]>
+): Promise<ListSnapshot['lists'][number]> {
+  const started = Date.now();
+  const result = await withTimeout<SanctionsEntry[]>(
+    fetcher(),
+    PER_LIST_TIMEOUT_MS,
+    [],
+    `${name} fetch`
+  );
+  if (result.timedOut) {
+    return { name, entries: [], error: `${name} fetch timed out after ${PER_LIST_TIMEOUT_MS}ms (took >${Date.now() - started}ms)` };
+  }
+  if (result.error) {
+    return { name, entries: [], error: result.error };
+  }
+  return { name, entries: result.value };
+}
+
 async function loadAllLists(): Promise<ListSnapshot> {
   if (listCache && Date.now() - listCache.fetchedAt < SANCTIONS_CACHE_TTL_MS) {
     return listCache;
   }
   await hydrateUaeSanctionsFromBlob();
   const proxy = process.env.HAWKEYE_SANCTIONS_PROXY_URL;
-  const [un, ofac, eu, uk, uae] = await Promise.allSettled([
-    fetchUNSanctionsList(proxy),
-    fetchOFACSanctionsList(proxy),
-    fetchEUSanctionsList(proxy),
-    fetchUKSanctionsList(proxy),
-    fetchUAESanctionsList(),
+  const lists = await Promise.all([
+    raceListFetch('UN', () => fetchUNSanctionsList(proxy)),
+    raceListFetch('OFAC', () => fetchOFACSanctionsList(proxy)),
+    raceListFetch('EU', () => fetchEUSanctionsList(proxy)),
+    raceListFetch('UK_OFSI', () => fetchUKSanctionsList(proxy)),
+    raceListFetch('UAE_EOCN', () => fetchUAESanctionsList()),
   ]);
-  const pick = (
-    name: ListSnapshot['lists'][number]['name'],
-    s: PromiseSettledResult<SanctionsEntry[]>
-  ): ListSnapshot['lists'][number] =>
-    s.status === 'fulfilled'
-      ? { name, entries: s.value }
-      : {
-          name,
-          entries: [],
-          error: s.reason instanceof Error ? s.reason.message : String(s.reason),
-        };
-  listCache = {
-    fetchedAt: Date.now(),
-    lists: [
-      pick('UN', un),
-      pick('OFAC', ofac),
-      pick('EU', eu),
-      pick('UK_OFSI', uk),
-      pick('UAE_EOCN', uae),
-    ],
-  };
+  listCache = { fetchedAt: Date.now(), lists };
   return listCache;
 }
 
@@ -1040,19 +1053,17 @@ export default async (req: Request, context: Context): Promise<Response> => {
   });
 
   // ─── Phase B. Deep brain — three-layer PEER reasoning ────────────────
-  // Runs whenever classical signal fires OR integrity is degraded/
-  // incomplete (so the MLRO still gets a reasoned narrative even when
-  // an upstream was missing). Extra cost is bounded by DEEP_BRAIN_DEADLINE_MS.
-  const deepBrainEnabled =
-    overallTopClassification !== 'none' ||
-    adverseMediaHits > 0 ||
-    screeningIntegrity !== 'complete' ||
-    input.runDeepBrain === true;
+  // Runs on EVERY screening (opt-out only). A clean "none" classification
+  // still benefits from a reasoned narrative — so the MLRO always has an
+  // explainable audit entry (FDL Art.24). Cost is bounded by
+  // DEEP_BRAIN_DEADLINE_MS.
+  const deepBrainEnabled = input.runDeepBrain !== false;
   let deepBrain: OrchestrationResult | null = null;
   if (deepBrainEnabled) {
     const atomHits: SearchHit[] = [];
+    // Sanctions list candidates — one atom per hit, top 20 per list.
     for (const l of perList) {
-      for (const h of l.hits) {
+      for (const h of l.hits.slice(0, 20)) {
         atomHits.push({
           fact: `${l.list} candidate ${h.name} (score ${h.score.toFixed(2)}, ${h.classification})`,
           source: `${l.list}_${ranAt.slice(0, 10)}`,
@@ -1060,13 +1071,68 @@ export default async (req: Request, context: Context): Promise<Response> => {
           confidence: h.score,
         });
       }
+      // Per-list error signal so the reasoner can weigh "list X was
+      // unreachable" vs "list X returned no candidates" (very different
+      // conclusions for FDL Art.20 coverage).
+      if (l.error && l.error !== 'opted out by MLRO (enhanced control)') {
+        atomHits.push({
+          fact: `${l.list} fetch error: ${l.error}`,
+          source: `${l.list}_ERROR`,
+          sourceTimestamp: ranAt,
+          confidence: 0.95,
+        });
+      }
     }
-    for (const am of adverseMediaTop) {
+    // Full adverse-media corpus (not just top 5) so the reasoner can see
+    // the density and recency of the negative-news signal.
+    const amSource = input.runAdverseMedia ? amRes.value.hits : [];
+    for (const am of amSource.slice(0, 30)) {
       atomHits.push({
-        fact: `adverse media: ${am.title}`,
+        fact: `adverse media: ${am.title}${am.snippet ? ' — ' + am.snippet.slice(0, 200) : ''}`,
         source: `ADVERSE_MEDIA_${am.source ?? 'unknown'}`,
-        sourceTimestamp: ranAt,
+        sourceTimestamp: am.publishedAt ?? ranAt,
         confidence: 0.7,
+      });
+    }
+    // Subject context atoms — country + entity type + aliases feed the
+    // reasoner explicit priors (jurisdictional risk, entity-type base
+    // rates, name-variant coverage).
+    if (input.country) {
+      atomHits.push({
+        fact: `subject country: ${input.country}`,
+        source: 'SUBJECT_CONTEXT',
+        sourceTimestamp: ranAt,
+        confidence: 1.0,
+      });
+    }
+    if (input.jurisdiction && input.jurisdiction !== input.country) {
+      atomHits.push({
+        fact: `jurisdiction of interest: ${input.jurisdiction}`,
+        source: 'SUBJECT_CONTEXT',
+        sourceTimestamp: ranAt,
+        confidence: 1.0,
+      });
+    }
+    atomHits.push({
+      fact: `entity type: ${input.entityType}; event type: ${input.eventType}; risk tier: ${riskTier}`,
+      source: 'SUBJECT_CONTEXT',
+      sourceTimestamp: ranAt,
+      confidence: 1.0,
+    });
+    if (Array.isArray(input.aliases) && input.aliases.length > 0) {
+      atomHits.push({
+        fact: `aliases / variants screened: ${input.aliases.slice(0, 10).join('; ')}`,
+        source: 'SUBJECT_CONTEXT',
+        sourceTimestamp: ranAt,
+        confidence: 1.0,
+      });
+    }
+    if (input.notes) {
+      atomHits.push({
+        fact: `MLRO notes: ${input.notes.slice(0, 400)}`,
+        source: 'SUBJECT_CONTEXT',
+        sourceTimestamp: ranAt,
+        confidence: 0.85,
       });
     }
     // Surface integrity as an explicit brain fact so the reasoning chain
@@ -1092,7 +1158,11 @@ export default async (req: Request, context: Context): Promise<Response> => {
       if (q.id === 'q-integrity') {
         return atomHits.filter((a) => a.source.startsWith('INTEGRITY_'));
       }
-      return [];
+      if (q.id === 'q-context' || q.id === 'q-subject') {
+        return atomHits.filter((a) => a.source === 'SUBJECT_CONTEXT');
+      }
+      // Default: return every atom so novel queries still see full corpus.
+      return atomHits;
     };
     try {
       deepBrain = await runDeepBrain(

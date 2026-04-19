@@ -1387,13 +1387,13 @@
     // the chip flips to show the integrity state and force re-screen.
     if (integrity === 'incomplete') {
       html.push(
-        '<span class="classification confirmed" style="background:var(--red);">' +
+        '<span class="classification confirmed" style="background:var(--red); color:#fff;">' +
           'INCOMPLETE · RE-SCREEN' +
           '</span>'
       );
     } else if (integrity === 'degraded' && topClass === 'none') {
       html.push(
-        '<span class="classification potential" style="background:var(--amber);">' +
+        '<span class="classification potential" style="background:var(--amber); color:#1a1a1a;">' +
           'DEGRADED · ' +
           pct(topScore) +
           '</span>'

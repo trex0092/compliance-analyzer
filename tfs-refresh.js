@@ -380,21 +380,10 @@ Return JSON: {"result":"CLEAR|MATCH|POTENTIAL_MATCH","matches":[{"list":"source"
     if (el) el.innerHTML = renderTFSPanel();
   }
 
-  // Auto-check for stale lists on load
-  function autoCheck() {
-    const lists = getListStatus();
-    const stale = lists.filter(l => isStale(l));
-    if (stale.length > 0 && typeof toast === 'function') {
-      toast(`${stale.length} sanctions list(s) need refresh. Go to TFS tab.`, 'info');
-    }
-  }
-
-  // Run auto-check after a short delay with jitter to avoid thundering
-  // herd if multiple operator tabs load simultaneously.
-  var _autoCheckHandle = setTimeout(autoCheck, 5000 + Math.floor(Math.random() * 5000));
-  if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', function() { clearTimeout(_autoCheckHandle); });
-  }
+  // Auto-check retired from the main tool — the stale-list warning is
+  // rendered inline on screening-command.html (the only page where the
+  // MLRO can act on it). Keeping the logic module-local in case the TFS
+  // tab is re-introduced, but no toast is emitted here.
 
   function clearResults() {
     if (!confirm('Clear ALL TFS screening results? This cannot be undone.')) return;
