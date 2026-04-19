@@ -151,8 +151,7 @@ export function buildLifeStoryMarkdown(input: LifeStoryInput): string {
   out.push('');
   out.push(`## 1. VERDICT — ${verdictLine(input.verdict)}`);
   const vParts: string[] = [];
-  if (typeof input.confidence === 'number')
-    vParts.push(`Confidence ${fmtPct(input.confidence)}`);
+  if (typeof input.confidence === 'number') vParts.push(`Confidence ${fmtPct(input.confidence)}`);
   if (input.opusAdvisorInvoked) vParts.push('Opus advisor invoked');
   vParts.push('**do NOT notify the subject (FDL Art.29)**');
   out.push(vParts.join(' — '));
@@ -164,17 +163,14 @@ export function buildLifeStoryMarkdown(input: LifeStoryInput): string {
   out.push(`| **${risk}${rating}** | **${input.cddLevel ?? HYPHEN}** | ${cadence} |`);
 
   out.push('');
-  const variantCount =
-    input.nameVariants?.length ?? (input.aliases ? input.aliases.length + 1 : 1);
+  const variantCount = input.nameVariants?.length ?? (input.aliases ? input.aliases.length + 1 : 1);
   out.push(
     `## 2. SANCTIONS (${input.sanctionsTopClassification} — ${variantCount} name variants fanned out)`
   );
   out.push('| List | Status | Top | Note |');
   out.push('|---|---|---:|---|');
   for (const row of input.perList) {
-    out.push(
-      `| ${row.list} | ${row.status} | ${fmt(row.topScore)} | ${row.note ?? HYPHEN} |`
-    );
+    out.push(`| ${row.list} | ${row.status} | ${fmt(row.topScore)} | ${row.note ?? HYPHEN} |`);
   }
 
   out.push('');
@@ -198,9 +194,7 @@ export function buildLifeStoryMarkdown(input: LifeStoryInput): string {
     out.push('|---|---|---|---:|');
     for (const h of input.adverseMediaHits!) {
       const relStr = typeof h.relevance === 'number' ? h.relevance.toFixed(2) : HYPHEN;
-      out.push(
-        `| ${h.date ?? HYPHEN} | ${h.source ?? HYPHEN} | ${h.title} | ${relStr} |`
-      );
+      out.push(`| ${h.date ?? HYPHEN} | ${h.source ?? HYPHEN} | ${h.title} | ${relStr} |`);
     }
   }
   if (input.adverseMediaWhyItMatters) {
