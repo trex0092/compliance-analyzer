@@ -1,5 +1,5 @@
 /**
- * Deliberative Brain Chain — five-step chain-of-thought orchestrator
+ * Deliberative Brain Chain — eight-step chain-of-thought orchestrator
  * that composes the enhanced-brain modules into a single auditable
  * reasoning trace per (subject, hit) pair.
  *
@@ -10,6 +10,9 @@
  *   3. evaluateHypotheses          — posterior context → 5-hypothesis ranking
  *   4. temporalDecayMultiplier     — age of evidence → recency weight
  *   5. triageCalibratedScore       — posterior → action band + deadline
+ *   6. analyseCounterfactuals      — per-feature attribution + fragility
+ *   7. runRedTeamBrain             — six adversarial scenarios scored
+ *   8. runMetaCognition            — six self-audit diagnostics → HIGH/MOD/LOW
  *
  * This is the MLRO-facing explainable-AI layer: every step records a
  * short reasoning line, and the final `trace` field is a flat array
@@ -40,6 +43,13 @@ import { classifyListPriority, selectDynamicPrior, type DynamicPriorResult } fro
 import { evaluateHypotheses, type HypothesisReasoningResult } from './hypothesisReasoner';
 import { describeFreshness, temporalDecayMultiplier } from './temporalDecay';
 import { triageCalibratedScore, type ConfidenceTriageResult } from './confidenceTriage';
+import { analyseCounterfactuals, type CounterfactualAnalysis } from './counterfactualReasoner';
+import {
+  runRedTeamBrain,
+  type RedTeamContext,
+  type RedTeamReasoningResult,
+} from './redTeamBrain';
+import { runMetaCognition, type MetaCognitionReport } from './metaCognition';
 
 // ---------------------------------------------------------------------------
 // Public surface
@@ -64,6 +74,12 @@ export interface DeliberativeBrainInput {
   isPep?: boolean;
   /** Optional — recent adverse-media hit on this subject. */
   hasRecentAdverseMedia?: boolean;
+  /** Optional — subject name appears in the portfolio common-names register. */
+  isCommonName?: boolean;
+  /** Optional — list entry carries non-Latin / Arabic characters. */
+  hasTransliteration?: boolean;
+  /** Optional — subject amended identifiers within the last 30 days. */
+  recentIdentifierAmendment?: boolean;
 }
 
 export interface DeliberativeBrainResult {
@@ -83,6 +99,12 @@ export interface DeliberativeBrainResult {
   decayedProbability: number;
   /** Confidence triage band + deadline + filings. */
   triage: ConfidenceTriageResult;
+  /** SHAP-style per-feature attribution + fragility diagnosis. */
+  counterfactual: CounterfactualAnalysis;
+  /** Six adversarial counter-narratives + elevated challenges. */
+  redTeam: RedTeamReasoningResult;
+  /** Six self-audit diagnostics + confidence band. */
+  metaCognition: MetaCognitionReport;
   /** Flat, chronological reasoning trace — renderable as-is. */
   trace: readonly string[];
 }
@@ -197,6 +219,45 @@ export function runDeliberativeBrain(input: DeliberativeBrainInput): Deliberativ
     trace.push(`  Filings triggered: ${triage.filings.join(', ')}`);
   }
 
+  // STEP 6 — per-feature counterfactual attribution (SHAP-style).
+  const counterfactual = analyseCounterfactuals(input.breakdown, input.evidence, calibrated.logOdds);
+  trace.push('STEP 6 — Counterfactual attribution');
+  trace.push(`  ${counterfactual.summary}`);
+  for (const a of counterfactual.attributions.slice(0, 3)) {
+    const sign = a.contributionPp >= 0 ? '+' : '';
+    trace.push(
+      `  - ${a.feature} ${sign}${a.contributionPp.toFixed(1)}pp (LLR ${a.llr.toFixed(2)}, dom ${(a.dominance * 100).toFixed(0)}%)`
+    );
+  }
+
+  // STEP 7 — red-team adversarial challenges.
+  const redTeamCtx: RedTeamContext = {
+    isCommonName: input.isCommonName,
+    hasTransliteration: input.hasTransliteration,
+    recentIdentifierAmendment: input.recentIdentifierAmendment,
+    recentAlertCount: input.recentAlertCount,
+  };
+  const redTeam = runRedTeamBrain(input.breakdown, input.evidence, redTeamCtx);
+  trace.push('STEP 7 — Red-team challenges');
+  trace.push(`  ${redTeam.summary}`);
+  for (const c of redTeam.challenges.slice(0, 3)) {
+    trace.push(`  - ${c.scenario} @ ${(c.plausibility * 100).toFixed(0)}% — ${c.probe}`);
+  }
+
+  // STEP 8 — metacognition self-audit.
+  const metaCognition = runMetaCognition({
+    calibrated,
+    hypotheses,
+    counterfactual,
+    redTeam,
+    decayMultiplier: multiplier,
+  });
+  trace.push('STEP 8 — Metacognition self-audit');
+  trace.push(`  ${metaCognition.summary}`);
+  for (const w of metaCognition.warnings) {
+    trace.push(`  ! ${w}`);
+  }
+
   return {
     prior,
     calibrated,
@@ -204,6 +265,9 @@ export function runDeliberativeBrain(input: DeliberativeBrainInput): Deliberativ
     decay: { multiplier, ageDays, freshness },
     decayedProbability,
     triage,
+    counterfactual,
+    redTeam,
+    metaCognition,
     trace,
   };
 }
