@@ -398,3 +398,197 @@ describe('buildRiskAlertTask — surrogate-safe truncation', () => {
     }
   });
 });
+
+describe('buildRiskAlertTask — calibrated posterior block', () => {
+  it('renders CALIBRATED POSTERIOR + interval + unobserved list when calibrated is passed', () => {
+    const input: RiskAlertInput = {
+      ...baseInput(),
+      subject: PINNED_SUBJECT,
+      score: {
+        composite: 0.85,
+        breakdown: { name: 1, dob: 1, nationality: 1, id: 1, alias: 0 },
+        classification: 'alert',
+        clamped: false,
+      },
+      calibrated: {
+        probability: 0.972,
+        logOdds: 3.55,
+        interval: [0.93, 0.99],
+        counterfactuals: [],
+        unobserved: ['alias'],
+        contradictions: [],
+      },
+    };
+    const task = buildRiskAlertTask(input);
+    expect(task.notes).toContain('CALIBRATED POSTERIOR');
+    expect(task.notes).toContain('97.2%');
+    expect(task.notes).toContain('93.0%');
+    expect(task.notes).toContain('99.0%');
+    expect(task.notes).toContain('Unobserved identifiers: alias');
+  });
+
+  it('renders contradictions when present', () => {
+    const input: RiskAlertInput = {
+      ...baseInput(),
+      subject: PINNED_SUBJECT,
+      calibrated: {
+        probability: 0.05,
+        logOdds: -3.0,
+        interval: [0.02, 0.1],
+        counterfactuals: [],
+        unobserved: [],
+        contradictions: ['dob', 'id'],
+      },
+    };
+    const task = buildRiskAlertTask(input);
+    expect(task.notes).toContain('Contradictions observed: dob, id');
+  });
+
+  it('omits all calibration blocks when calibrated is not passed (backwards compat)', () => {
+    const task = buildRiskAlertTask(baseInput());
+    expect(task.notes).not.toContain('CALIBRATED POSTERIOR');
+    expect(task.notes).not.toContain('COUNTERFACTUALS');
+  });
+});
+
+describe('buildRiskAlertTask — counterfactuals block', () => {
+  it('renders up to three counterfactuals sorted by input order (caller pre-sorts)', () => {
+    const input: RiskAlertInput = {
+      ...baseInput(),
+      subject: PINNED_SUBJECT,
+      calibrated: {
+        probability: 0.5,
+        logOdds: 0,
+        interval: [0.2, 0.8],
+        counterfactuals: [
+          {
+            component: 'dob',
+            action: 'Confirm the list entry DoB matches',
+            projectedComposite: 0.95,
+            projectedClassification: 'alert',
+            logOddsDelta: 2.5,
+          },
+          {
+            component: 'id',
+            action: 'Capture passport number',
+            projectedComposite: 0.9,
+            projectedClassification: 'alert',
+            logOddsDelta: 3.0,
+          },
+          {
+            component: 'nationality',
+            action: 'Verify nationality',
+            projectedComposite: 0.7,
+            projectedClassification: 'possible',
+            logOddsDelta: 0.8,
+          },
+          {
+            component: 'alias',
+            action: 'Verify subject alias',
+            projectedComposite: 0.6,
+            projectedClassification: 'possible',
+            logOddsDelta: 0.6,
+          },
+        ],
+        unobserved: [],
+        contradictions: [],
+      },
+    };
+    const task = buildRiskAlertTask(input);
+    expect(task.notes).toContain('COUNTERFACTUALS');
+    expect(task.notes).toContain('Confirm the list entry DoB matches');
+    expect(task.notes).toContain('Capture passport number');
+    expect(task.notes).toContain('Verify nationality');
+    // Only top-3 render; alias counterfactual should NOT appear.
+    expect(task.notes).not.toContain('Verify subject alias');
+  });
+});
+
+describe('buildRiskAlertTask — cross-list corroboration block', () => {
+  it('renders CROSS-LIST CORROBORATION when boost > 0', () => {
+    const input: RiskAlertInput = {
+      ...baseInput(),
+      subject: PINNED_SUBJECT,
+      corroboration: {
+        lists: ['UN', 'OFAC_SDN', 'EU'],
+        dispatchCount: 3,
+        boost: 0.5,
+      },
+    };
+    const task = buildRiskAlertTask(input);
+    expect(task.notes).toContain('CROSS-LIST CORROBORATION');
+    expect(task.notes).toContain('UN + OFAC_SDN + EU');
+    expect(task.notes).toContain('+0.50');
+  });
+
+  it('does not render the block for single-list corroboration (boost=0)', () => {
+    const input: RiskAlertInput = {
+      ...baseInput(),
+      subject: PINNED_SUBJECT,
+      corroboration: {
+        lists: ['UN'],
+        dispatchCount: 1,
+        boost: 0,
+      },
+    };
+    const task = buildRiskAlertTask(input);
+    expect(task.notes).not.toContain('CROSS-LIST CORROBORATION');
+  });
+});
+
+describe('buildRiskAlertTask — STR narrative pre-draft', () => {
+  it('renders an STR draft only for ALERT severity (pinned + alert classification)', () => {
+    const input: RiskAlertInput = {
+      ...baseInput(),
+      subject: PINNED_SUBJECT,
+      match: { ...baseInput().match, reference: 'QDi.123' }, // pin matches
+      score: {
+        composite: 0.95,
+        breakdown: { name: 1, dob: 1, nationality: 1, id: 1, alias: 0 },
+        classification: 'alert',
+        clamped: false,
+      },
+      calibrated: {
+        probability: 0.97,
+        logOdds: 3.5,
+        interval: [0.9, 0.99],
+        counterfactuals: [],
+        unobserved: [],
+        contradictions: [],
+      },
+      corroboration: {
+        lists: ['UN', 'OFAC_SDN'],
+        dispatchCount: 2,
+        boost: 0.25,
+      },
+    };
+    const task = buildRiskAlertTask(input);
+    expect(task.severity).toBe('ALERT');
+    expect(task.notes).toContain('STR NARRATIVE PRE-DRAFT');
+    expect(task.notes).toContain('DRAFT — MLRO MUST REVIEW');
+    expect(task.notes).toContain('FILING DEADLINES');
+    expect(task.notes).toContain('FACTS CITED');
+  });
+
+  it('does NOT render the STR draft for POSSIBLE severity', () => {
+    const input: RiskAlertInput = {
+      ...baseInput(),
+      calibrated: {
+        probability: 0.5,
+        logOdds: 0,
+        interval: [0.2, 0.8],
+        counterfactuals: [],
+        unobserved: [],
+        contradictions: [],
+      },
+      corroboration: {
+        lists: ['UN'],
+        dispatchCount: 1,
+        boost: 0,
+      },
+    };
+    const task = buildRiskAlertTask(input);
+    expect(task.severity).toBe('POSSIBLE');
+    expect(task.notes).not.toContain('STR NARRATIVE PRE-DRAFT');
+  });
+});

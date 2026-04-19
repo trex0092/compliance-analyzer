@@ -46,6 +46,18 @@ import {
   type RiskAlertScore,
   type RiskAlertTrigger,
 } from './riskAlertTemplate';
+import {
+  calibrateIdentityScore,
+  observeIdentityEvidence,
+  type CalibratedIdentityScore,
+} from './identityScoreBayesian';
+import {
+  computeCorroboration,
+  corroborationForSubject,
+  type SubjectCorroboration,
+} from './multiListCorroboration';
+import { runDeliberativeBrain, type DeliberativeBrainResult } from './deliberativeBrainChain';
+import { runForensicInvestigation, type ForensicInvestigation } from './forensicInvestigator';
 import type { NormalisedSanction } from './sanctionsIngest';
 
 // ---------------------------------------------------------------------------
@@ -334,6 +346,16 @@ export async function dispatchImmediateAlerts(
   const seenFingerprints = overrides.fingerprints ?? (await deps.loadDispatchFingerprints());
   const newlyFingerprinted = new Set<string>();
 
+  // Cross-list corroboration is computed ONCE from the dedup fingerprint
+  // set at the start of the run. The map is then looked up per-subject
+  // inside the loop — cheap, no extra I/O, and shared across every
+  // candidate for a given subject. The set already includes dispatches
+  // from earlier sources in the same cron batch, so by the time we
+  // reach source N the map reflects "how many lists have flagged THIS
+  // subject today across all sources" — exactly the World-Check
+  // consolidated-list view.
+  const corroborationMap = computeCorroboration(seenFingerprints);
+
   for (const subject of subjects) {
     for (const candidate of candidates) {
       if (!isValidCandidate(candidate)) {
@@ -372,11 +394,68 @@ export async function dispatchImmediateAlerts(
         commitSha: ctx.commitSha,
       };
       const riskScore = buildScore(score, score.hasResolvedIdentity);
+
+      // Bayesian calibration of the linear composite — gives the MLRO
+      // a true posterior P(match | evidence), an uncertainty interval,
+      // and the top counterfactual moves. The identity shape passed to
+      // observeIdentityEvidence mirrors the "hit" shape that
+      // scoreHitAgainstProfile consumed, so observation and scoring
+      // stay in lockstep.
+      const evidence = observeIdentityEvidence(subject.resolvedIdentity, {
+        listEntryDob: candidate.dateOfBirth,
+        listEntryNationality: candidate.nationality,
+        listEntryIdNumber: candidate.idNumber,
+        listEntryRef: { list: candidate.list, reference: candidate.reference },
+      });
+      const calibrated: CalibratedIdentityScore = calibrateIdentityScore(
+        riskScore.breakdown,
+        evidence
+      );
+      const corroboration: SubjectCorroboration = corroborationForSubject(
+        corroborationMap,
+        subject.id
+      );
+
+      // Five-step deliberative chain — dynamic prior → calibrated
+      // posterior → hypothesis ranking → temporal decay → confidence
+      // triage. Produces the auditable chain-of-thought block that
+      // makes the decision legible to MLRO + MoE inspectors. The
+      // `listedOn` field on the candidate is the closest we have to
+      // an "evidence observed at" timestamp; when missing we fall
+      // back to generatedAtIso so the chain still runs (decay=1.0).
+      const evidenceObservedAtIso = candidate.listedOn || generatedAtIso;
+      const brain: DeliberativeBrainResult = runDeliberativeBrain({
+        subject,
+        breakdown: riskScore.breakdown,
+        evidence,
+        list: candidate.list,
+        evidenceObservedAtIso,
+        nowIso: generatedAtIso,
+      });
+
+      // Forensic investigation packet — red flags, identity gaps,
+      // prioritised next investigative steps. Runs downstream of the
+      // brain chain so it can consume the calibrated posterior + the
+      // hypothesis ranking.
+      const forensic: ForensicInvestigation = runForensicInvestigation({
+        subject,
+        breakdown: riskScore.breakdown,
+        evidence,
+        calibrated,
+        hypotheses: brain.hypotheses,
+        corroboration,
+        isAmendment: candidate.changeType === 'AMENDMENT',
+      });
+
       const task = buildRiskAlertTask({
         subject,
         match: candidateToMatch(candidate),
         score: riskScore,
         ctx: alertCtx,
+        calibrated,
+        corroboration,
+        brain,
+        forensic,
       });
 
       summary.tasksAttempted += 1;

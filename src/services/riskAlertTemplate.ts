@@ -32,6 +32,11 @@
 
 import type { WatchlistEntry } from './screeningWatchlist';
 import type { IdentityMatchBreakdown, IdentityClassification } from './identityMatchScore';
+import type { CalibratedIdentityScore, IdentityCounterfactual } from './identityScoreBayesian';
+import type { SubjectCorroboration } from './multiListCorroboration';
+import type { DeliberativeBrainResult } from './deliberativeBrainChain';
+import type { ForensicInvestigation } from './forensicInvestigator';
+import { buildStrNarrativeDraft } from './strNarrativePreDraft';
 
 // ---------------------------------------------------------------------------
 // Public surface
@@ -93,6 +98,34 @@ export interface RiskAlertInput {
   match: RiskAlertMatch;
   score: RiskAlertScore;
   ctx: RiskAlertContext;
+  /**
+   * Bayesian calibration of the identity match. Optional for backwards
+   * compatibility with the ~40 existing call sites; when omitted the
+   * task renders exactly as before. When provided, the renderer emits
+   * three additional blocks: calibrated posterior + uncertainty
+   * interval, top counterfactuals, and an alerting on contradictions.
+   */
+  calibrated?: CalibratedIdentityScore;
+  /**
+   * Multi-list cross-corroboration for THIS subject (not this match).
+   * Rendered as a single line when boost > 0 so the MLRO sees the
+   * strength-in-numbers signal immediately.
+   */
+  corroboration?: SubjectCorroboration;
+  /**
+   * Optional five-step deliberative brain chain — dynamic prior →
+   * calibrated posterior → hypothesis ranking → temporal decay →
+   * confidence triage. Renders a multi-block chain-of-thought trace
+   * that makes the MLRO's reasoning auditable under FDL Art.20-21 +
+   * EU AI Act Art.13 + NIST AI RMF Measure 2.9.
+   */
+  brain?: DeliberativeBrainResult;
+  /**
+   * Optional forensic investigation packet — findings + prioritised
+   * next investigative steps. Rendered as a detective's notebook so
+   * the MLRO sees the shortest path to a defensible decision.
+   */
+  forensic?: ForensicInvestigation;
 }
 
 export interface RiskAlertTask {
@@ -348,6 +381,213 @@ function renderReasoningBlock(
   return lines.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Bayesian calibration blocks — the Refinitiv-World-Check-tier layer.
+// These blocks only render when the dispatcher passed a calibrated
+// score. They NEVER replace the linear composite score above; they
+// supplement it with:
+//   - A calibrated posterior probability P(match | observed evidence)
+//   - A min/max uncertainty interval over unobserved identifiers
+//   - The top-3 counterfactual actions ranked by log-odds delta
+//   - Cross-list corroboration (same subject on UN + OFAC + EU + …)
+//   - FIU-ready STR narrative pre-draft (ALERT severity only)
+// All blocks are deterministic and re-rendering-stable so the audit
+// trail diffs cleanly across re-runs.
+// ---------------------------------------------------------------------------
+
+function pct1(p: number): string {
+  const clamped = Math.max(0, Math.min(1, p));
+  return `${(clamped * 100).toFixed(1)}%`;
+}
+
+function fmtDelta(x: number): string {
+  if (!Number.isFinite(x)) return '0.00';
+  const sign = x > 0 ? '+' : '';
+  return `${sign}${x.toFixed(2)}`;
+}
+
+function renderUncertaintyBlock(c: CalibratedIdentityScore): string {
+  const lines: string[] = ['CALIBRATED POSTERIOR'];
+  const [lo, hi] = c.interval;
+  lines.push(
+    `  P(same person | evidence) = ${pct1(c.probability)}   (log-odds ${fmtDelta(c.logOdds)})`
+  );
+  lines.push(`  Uncertainty interval: [${pct1(lo)} .. ${pct1(hi)}]`);
+  lines.push(
+    '  Interval widens with the evidence we have NOT yet observed (missing DoB, id, nationality, alias, pin).'
+  );
+  if (c.unobserved.length > 0) {
+    lines.push(`  Unobserved identifiers: ${c.unobserved.join(', ')}`);
+  } else {
+    lines.push('  Unobserved identifiers: none — the evidence set is complete on both sides.');
+  }
+  if (c.contradictions.length > 0) {
+    lines.push(
+      `  ⚠ Contradictions observed: ${c.contradictions.join(', ')} — investigate before filing.`
+    );
+  }
+  return lines.join('\n');
+}
+
+function describeCounterfactual(cf: IdentityCounterfactual): string {
+  const cls = cf.projectedClassification.toUpperCase().padEnd(8);
+  const delta = fmtDelta(cf.logOddsDelta);
+  return `  ${cls} if ${cf.action}   (Δcomposite→${fmt2(cf.projectedComposite)}, Δlog-odds ${delta})`;
+}
+
+function renderCounterfactualsBlock(c: CalibratedIdentityScore): string {
+  if (c.counterfactuals.length === 0) {
+    return ['COUNTERFACTUALS', '  (no counterfactual moves available — evidence is complete)'].join(
+      '\n'
+    );
+  }
+  const lines: string[] = ['COUNTERFACTUALS'];
+  lines.push('  The following evidence moves would change the classification. Ranked by');
+  lines.push('  log-odds delta so the MLRO sees the highest-leverage next action first:');
+  for (const cf of c.counterfactuals.slice(0, 3)) {
+    lines.push(describeCounterfactual(cf));
+  }
+  return lines.join('\n');
+}
+
+function renderCorroborationBlock(corro: SubjectCorroboration): string {
+  if (corro.lists.length <= 1 || corro.boost <= 0) {
+    return '';
+  }
+  const lines: string[] = ['CROSS-LIST CORROBORATION'];
+  lines.push(
+    `  Same subject is concurrently flagged on ${corro.lists.length} sanctions lists: ${corro.lists.join(' + ')}`
+  );
+  lines.push(`  Total dispatches this window: ${corro.dispatchCount}`);
+  lines.push(
+    `  Confidence booster: +${corro.boost.toFixed(2)} (orders-of-magnitude stronger than a single-list hit).`
+  );
+  lines.push('  FATF Rec 6 + FDL Art.35: consolidated-designation view enables the freeze.');
+  return lines.join('\n');
+}
+
+function renderBrainChainBlock(brain: DeliberativeBrainResult): string {
+  const lines: string[] = ['DELIBERATIVE BRAIN CHAIN'];
+  lines.push('  Five-step chain-of-thought (FDL Art.20-21; EU AI Act Art.13; NIST AI RMF 2.9):');
+  for (const line of brain.trace) {
+    lines.push(`  ${line}`);
+  }
+  return lines.join('\n');
+}
+
+function renderHypothesisBlock(brain: DeliberativeBrainResult): string {
+  const lines: string[] = ['HYPOTHESIS RANKING'];
+  lines.push('  Five competing explanations for this hit; posteriors normalised to 100%.');
+  for (const h of brain.hypotheses.ranked) {
+    const pct = (h.posterior * 100).toFixed(1).padStart(5);
+    const tag = h.hypothesis.padEnd(17);
+    lines.push(`  ${pct}%  ${tag}  ${h.description}`);
+    if (h.supporting.length > 0) {
+      lines.push(`          supports: ${h.supporting.join('; ')}`);
+    }
+    if (h.refuting.length > 0) {
+      lines.push(`          refutes:  ${h.refuting.join('; ')}`);
+    }
+    lines.push(`          next:     ${h.nextAction}`);
+  }
+  const { leading, decisive } = brain.hypotheses;
+  lines.push(
+    `  Leader: ${leading.hypothesis} (${(leading.posterior * 100).toFixed(1)}%, margin ${(leading.margin * 100).toFixed(1)} pp) — ${decisive ? 'DECISIVE' : 'AMBIGUOUS'}`
+  );
+  return lines.join('\n');
+}
+
+function renderTriageBlock(brain: DeliberativeBrainResult): string {
+  const lines: string[] = ['CONFIDENCE TRIAGE'];
+  lines.push(`  Band:      ${brain.triage.band.toUpperCase()}`);
+  lines.push(`  Verdict:   ${brain.triage.verdict}`);
+  if (brain.triage.deadlineBusinessHours !== undefined) {
+    lines.push(`  Deadline:  ${brain.triage.deadlineBusinessHours} business hours`);
+  }
+  lines.push(`  Approvers: ${brain.triage.approvers.join(', ')}`);
+  if (brain.triage.filings.length > 0) {
+    lines.push(`  Filings:   ${brain.triage.filings.join(', ')}`);
+  }
+  lines.push('  Actions:');
+  for (const a of brain.triage.actions) {
+    lines.push(`    - ${a}`);
+  }
+  return lines.join('\n');
+}
+
+function renderTemporalDecayBlock(brain: DeliberativeBrainResult): string {
+  const lines: string[] = ['TEMPORAL DECAY'];
+  lines.push(
+    `  Evidence age: ${brain.decay.ageDays.toFixed(1)} days   multiplier: ${brain.decay.multiplier.toFixed(2)}   (${brain.decay.freshness})`
+  );
+  lines.push(
+    `  Age-weighted posterior: ${pct1(brain.decayedProbability)}   (half-life 90d; FATF Rec 10 + Cabinet Res 134/2025 Art.19)`
+  );
+  return lines.join('\n');
+}
+
+function renderForensicBlock(f: ForensicInvestigation): string {
+  const lines: string[] = ['FORENSIC INVESTIGATION'];
+  lines.push(`  Overall severity: ${f.overallSeverity.toUpperCase()}`);
+  lines.push(`  Verdict: ${f.verdict}`);
+  if (f.findings.length === 0) {
+    lines.push('  No findings — evidence set is complete and unambiguous.');
+  } else {
+    lines.push(`  Findings (${f.findings.length}):`);
+    for (const finding of f.findings) {
+      const sev = finding.severity.toUpperCase().padEnd(10);
+      lines.push(`    [${sev}] ${finding.label}`);
+      lines.push(`              ${finding.detail}`);
+      lines.push(`              Regulatory: ${finding.regulatory}`);
+    }
+  }
+  if (f.nextSteps.length > 0) {
+    lines.push('  Next investigative steps (sorted by expected probability gain):');
+    for (const step of f.nextSteps.slice(0, 5)) {
+      lines.push(
+        `    +${step.expectedProbabilityGain.toFixed(1)} pp  [${step.identifier}]  ${step.action}`
+      );
+      lines.push(`              Regulatory: ${step.regulatory}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function renderStrDraftBlock(
+  input: RiskAlertInput,
+  severity: 'ALERT' | 'POSSIBLE' | 'CHANGE'
+): string {
+  if (severity !== 'ALERT') return '';
+  if (!input.calibrated || !input.corroboration) return '';
+  const draft = buildStrNarrativeDraft({
+    subject: input.subject,
+    match: input.match,
+    score: input.score,
+    calibrated: input.calibrated,
+    corroboration: input.corroboration,
+    generatedAtIso: input.ctx.generatedAtIso,
+    runId: input.ctx.runId,
+  });
+  const lines: string[] = [];
+  lines.push('┌─ STR NARRATIVE PRE-DRAFT ─────────────────────────────────────┐');
+  lines.push('│ DRAFT — MLRO MUST REVIEW BEFORE FILING                        │');
+  lines.push('│ This draft is NOT auto-filed. goAML submission still routes   │');
+  lines.push('│ through the four-eyes gate. FDL Art.29 (no tipping off).      │');
+  lines.push('└───────────────────────────────────────────────────────────────┘');
+  lines.push('');
+  lines.push(draft.paragraph);
+  lines.push('');
+  lines.push('FACTS CITED (cross-check before submission):');
+  for (const fact of draft.factList) {
+    lines.push(`  • ${fact}`);
+  }
+  lines.push('');
+  lines.push(
+    `FILING DEADLINES: STR ${draft.filingDeadline.strBusinessDays} business days (FDL Art.27) · CNMR ${draft.filingDeadline.cnmrBusinessDays} business days (Cabinet Res 74/2020 Art.6).`
+  );
+  return lines.join('\n');
+}
+
 const REGULATORY_BLOCK = [
   'REGULATORY BASIS',
   '  FATF Rec 10              positive identification required',
@@ -431,6 +671,28 @@ export function buildRiskAlertTask(input: RiskAlertInput): RiskAlertTask {
     '└───────────────────────────────────────────────────────────────┘',
   ].join('\n');
 
+  const brainBlocks: string[] = [];
+  if (input.calibrated) {
+    brainBlocks.push('', renderUncertaintyBlock(input.calibrated));
+    brainBlocks.push('', renderCounterfactualsBlock(input.calibrated));
+  }
+  if (input.corroboration) {
+    const corroLines = renderCorroborationBlock(input.corroboration);
+    if (corroLines.length > 0) {
+      brainBlocks.push('', corroLines);
+    }
+  }
+  if (input.brain) {
+    brainBlocks.push('', renderBrainChainBlock(input.brain));
+    brainBlocks.push('', renderHypothesisBlock(input.brain));
+    brainBlocks.push('', renderTemporalDecayBlock(input.brain));
+    brainBlocks.push('', renderTriageBlock(input.brain));
+  }
+  if (input.forensic) {
+    brainBlocks.push('', renderForensicBlock(input.forensic));
+  }
+  const strBlock = renderStrDraftBlock(input, severity);
+
   const notes = [
     header,
     '',
@@ -441,10 +703,12 @@ export function buildRiskAlertTask(input: RiskAlertInput): RiskAlertTask {
     renderScoreBlock(score),
     '',
     renderReasoningBlock(severity, subject, match, score),
+    ...brainBlocks,
     '',
     REGULATORY_BLOCK,
     '',
     renderActionBlock(severity, subject.id),
+    ...(strBlock.length > 0 ? ['', strBlock] : []),
     '',
     renderSourceBlock(ctx),
     '',
