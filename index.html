@@ -2132,6 +2132,11 @@
               cursor: pointer;
               outline: none;
               padding: 4px 8px;
+              max-width: 260px;
+              width: auto;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+              overflow: hidden;
             "
           ></select>
           <button
@@ -2182,11 +2187,11 @@
           <!-- Removed duplicate header TRADING link — the same Trading tab
            lives in the lower tab navigation (◈ Trading). One entry point
            is enough; the header was a duplicate. -->
-          <div id="currentUserInfo" style="display: none">
-            <span id="currentUserName"></span>
-            <span id="currentUserRole" class="role-badge"></span>
-            <button class="btn btn-sm" data-action="logoutUser">Logout</button>
-          </div>
+          <!-- User badge + logout cluster removed from header per MLRO UX
+               directive. currentUserName / currentUserRole / logoutUser
+               handlers still work from the user-management panel. -->
+          <span id="currentUserName" style="display: none"></span>
+          <span id="currentUserRole" style="display: none"></span>
         </div>
       </div>
 
