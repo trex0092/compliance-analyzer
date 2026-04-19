@@ -22,11 +22,18 @@
     return '/' + segs[0];
   }
 
+  // `.card[data-route]` targets the landing page's primary cards; the
+  // broader `[data-route][data-slug]` selector also picks up the items
+  // rendered by page-nav.js into #pageNav. Both resolve to the same
+  // open-module-in-iframe behaviour so the address bar stays on the
+  // landing page while the user navigates between modules.
+  var MODULE_TARGET_SELECTOR = '.card[data-route], [data-route][data-slug]';
+
   function findCardBySlug(slug) {
     if (!slug) return null;
-    var cards = document.querySelectorAll('.card[data-route]');
-    for (var i = 0; i < cards.length; i++) {
-      var c = cards[i];
+    var targets = document.querySelectorAll(MODULE_TARGET_SELECTOR);
+    for (var i = 0; i < targets.length; i++) {
+      var c = targets[i];
       var s = c.getAttribute('data-slug') || c.getAttribute('data-route');
       if (s === slug) return c;
     }
@@ -35,6 +42,13 @@
 
   function slugForCard(card) {
     return card.getAttribute('data-slug') || card.getAttribute('data-route');
+  }
+
+  // Re-render the page-nav pill highlight after every URL change that
+  // pushState/replaceState would otherwise swallow (popstate only fires
+  // for back/forward, not for programmatic pushes).
+  function refreshPageNav() {
+    if (typeof window.__renderPageNav === 'function') window.__renderPageNav();
   }
 
   function openModule(route, label, slug, pushHistory) {
@@ -52,6 +66,7 @@
         history.pushState({ slug: slug, route: route, label: label }, '', target);
       }
     }
+    refreshPageNav();
     requestAnimationFrame(function () {
       view.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -67,29 +82,39 @@
         history.pushState({}, '', base);
       }
     }
+    refreshPageNav();
   }
 
   function openSlug(slug, pushHistory) {
     var card = findCardBySlug(slug);
     if (!card) return false;
     var route = card.getAttribute('data-route');
-    var labelEl = card.querySelector('.card-title');
-    var label = labelEl ? labelEl.textContent : 'Module';
+    // Cards expose a `.card-title` child; page-nav pills only carry their
+    // own text. Fall back to the element's own text (trimmed) so the
+    // module-view header still reads correctly in both cases.
+    var labelEl = card.querySelector && card.querySelector('.card-title');
+    var label = 'Module';
+    if (labelEl && labelEl.textContent) label = labelEl.textContent.trim();
+    else if (card.textContent) label = card.textContent.trim();
     openModule(route, label, slug, pushHistory);
     return true;
   }
 
-  // Card click → open module in-page and push the deep-link URL.
+  // Card or nav-link click → open module in-page and push the deep-link
+  // URL. Both the primary surface cards and the page-nav pills resolve
+  // through the same handler so the sub-route + iframe module stay in
+  // sync no matter which control the user clicked.
   document.addEventListener(
     'click',
     function (event) {
-      var card = event.target.closest && event.target.closest('.card[data-route]');
-      if (!card) return;
+      if (!event.target || !event.target.closest) return;
+      var target = event.target.closest(MODULE_TARGET_SELECTOR);
+      if (!target) return;
       // Honour modifier clicks (cmd/ctrl/middle) for open-in-new-tab.
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
       event.preventDefault();
       event.stopPropagation();
-      openSlug(slugForCard(card), true);
+      openSlug(slugForCard(target), true);
     },
     true
   );
@@ -148,6 +173,7 @@
         var target = getBasePath() + '/' + slug;
         if (location.pathname !== target) {
           history.replaceState({ slug: slug, route: route }, '', target);
+          refreshPageNav();
         }
       });
     } catch (_) {
