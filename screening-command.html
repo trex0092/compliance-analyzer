@@ -241,7 +241,7 @@
         display: grid;
         grid-template-columns: 1.3fr 1fr;
         gap: 48px;
-        align-items: end;
+        align-items: start;
         margin: 10px 0 36px;
       }
       @keyframes pulse {
@@ -2359,10 +2359,6 @@
           &times;
         </button>
       </div>
-      <p class="help-text" style="margin: 6px 0 0; font-size: 11px">
-        <b>Screened by:</b> <span id="mlroActiveBadge" class="tag">—</span>
-        &middot; FDL Art.24 &mdash; 10yr audit trail
-      </p>
       <div id="loginMsg" class="token-msg"></div>
       <!-- Hidden token store. The screening-command.js auth helpers
            read/write `#token` to keep the bearer in localStorage and
