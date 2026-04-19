@@ -168,45 +168,61 @@
         margin: 0 auto;
         padding: 2rem 2.5rem;
       }
+      /* Header — routines.html-style topbar: logo + serif title on left,
+         action cluster on right, hairline border below. Replaces the old
+         centered stack. */
       .header {
-        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
         margin-bottom: 2rem;
-        padding-bottom: 1.5rem;
-        border-bottom: 1px solid rgba(245, 158, 11, 0.08);
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid var(--border);
       }
       .logo {
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         gap: 14px;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0;
       }
       .logo-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 4px;
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 22px;
+        box-shadow:
+          0 0 0 1px rgba(245, 158, 11, 0.35),
+          0 8px 24px rgba(245, 158, 11, 0.25),
+          inset 0 1px 0 rgba(255, 255, 255, 0.12);
         transition: all 0.3s;
       }
       .logo-text {
-        font-family: 'Cinzel', serif;
-        font-size: 20px;
-        font-weight: 400;
-        letter-spacing: 6px;
-        text-transform: uppercase;
-        color: var(--gold);
+        font-family: 'Playfair Display', 'Cinzel', serif;
+        font-size: clamp(22px, 2.4vw, 30px);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+        padding-bottom: 0.12em;
+        text-transform: none;
+        background: linear-gradient(180deg, #ffffff 0%, var(--gold-light) 45%, var(--gold) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
         transition: color 0.3s;
       }
       .subtitle {
         font-size: 10px;
-        color: var(--gold-dark);
-        letter-spacing: 6px;
+        color: var(--orange);
+        letter-spacing: 3px;
         text-transform: uppercase;
-        font-family: 'Montserrat', sans-serif;
-        margin-top: 6px;
+        font-family: 'DM Mono', 'Montserrat', monospace;
+        margin-top: 4px;
         font-weight: 500;
       }
       .card {
@@ -1916,14 +1932,14 @@
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <circle cx="50" cy="40" r="18" stroke="#C9A84C" stroke-width="1.5" fill="none" />
-        <circle cx="50" cy="40" r="8" fill="#C9A84C" opacity="0.3" />
-        <circle cx="50" cy="40" r="3" fill="#C9A84C" />
-        <path d="M30 55 Q50 75 70 55" stroke="#C9A84C" stroke-width="1.5" fill="none" />
-        <path d="M22 50 Q50 82 78 50" stroke="#C9A84C" stroke-width="1" fill="none" opacity="0.5" />
-        <line x1="50" y1="22" x2="50" y2="10" stroke="#C9A84C" stroke-width="1" opacity="0.4" />
-        <line x1="35" y1="28" x2="28" y2="18" stroke="#C9A84C" stroke-width="1" opacity="0.4" />
-        <line x1="65" y1="28" x2="72" y2="18" stroke="#C9A84C" stroke-width="1" opacity="0.4" />
+        <circle cx="50" cy="40" r="18" stroke="#F59E0B" stroke-width="1.5" fill="none" />
+        <circle cx="50" cy="40" r="8" fill="#F59E0B" opacity="0.3" />
+        <circle cx="50" cy="40" r="3" fill="#F59E0B" />
+        <path d="M30 55 Q50 75 70 55" stroke="#F59E0B" stroke-width="1.5" fill="none" />
+        <path d="M22 50 Q50 82 78 50" stroke="#F59E0B" stroke-width="1" fill="none" opacity="0.5" />
+        <line x1="50" y1="22" x2="50" y2="10" stroke="#F59E0B" stroke-width="1" opacity="0.4" />
+        <line x1="35" y1="28" x2="28" y2="18" stroke="#F59E0B" stroke-width="1" opacity="0.4" />
+        <line x1="65" y1="28" x2="72" y2="18" stroke="#F59E0B" stroke-width="1" opacity="0.4" />
       </svg>
       <div class="hs-preloader-text">Hawkeye Sterling V2</div>
       <div class="hs-preloader-line"></div>
@@ -1986,13 +2002,13 @@
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <circle cx="50" cy="40" r="18" stroke="#C9A84C" stroke-width="1.5" fill="none" />
-            <circle cx="50" cy="40" r="8" fill="#C9A84C" opacity="0.3" />
-            <circle cx="50" cy="40" r="3" fill="#C9A84C" />
-            <path d="M30 55 Q50 75 70 55" stroke="#C9A84C" stroke-width="1.5" fill="none" />
+            <circle cx="50" cy="40" r="18" stroke="#F59E0B" stroke-width="1.5" fill="none" />
+            <circle cx="50" cy="40" r="8" fill="#F59E0B" opacity="0.3" />
+            <circle cx="50" cy="40" r="3" fill="#F59E0B" />
+            <path d="M30 55 Q50 75 70 55" stroke="#F59E0B" stroke-width="1.5" fill="none" />
             <path
               d="M22 50 Q50 82 78 50"
-              stroke="#C9A84C"
+              stroke="#F59E0B"
               stroke-width="1"
               fill="none"
               opacity="0.5"
@@ -2047,10 +2063,10 @@
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <circle cx="50" cy="40" r="18" stroke="#C9A84C" stroke-width="1.5" fill="none" />
-            <circle cx="50" cy="40" r="8" fill="#C9A84C" opacity="0.3" />
-            <circle cx="50" cy="40" r="3" fill="#C9A84C" />
-            <path d="M30 55 Q50 75 70 55" stroke="#C9A84C" stroke-width="1.5" fill="none" />
+            <circle cx="50" cy="40" r="18" stroke="#F59E0B" stroke-width="1.5" fill="none" />
+            <circle cx="50" cy="40" r="8" fill="#F59E0B" opacity="0.3" />
+            <circle cx="50" cy="40" r="3" fill="#F59E0B" />
+            <path d="M30 55 Q50 75 70 55" stroke="#F59E0B" stroke-width="1.5" fill="none" />
           </svg>
         </div>
         <div class="login-title">First-Time Setup</div>
@@ -2107,39 +2123,40 @@
     <div class="app" id="mainApp">
       <!-- HEADER -->
       <div class="header" style="position: relative">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 10px">
-          <div class="logo" style="margin-bottom: 0">
-            <div class="logo-icon" style="background: transparent">
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 100 100"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <circle cx="50" cy="40" r="18" stroke="#C9A84C" stroke-width="1.5" fill="none" />
-                <circle cx="50" cy="40" r="8" fill="#C9A84C" opacity="0.3" />
-                <circle cx="50" cy="40" r="3" fill="#C9A84C" />
-                <path d="M30 55 Q50 75 70 55" stroke="#C9A84C" stroke-width="1.5" fill="none" />
-              </svg>
-            </div>
-            <div class="logo-text">Hawkeye Sterling V2</div>
+        <div class="logo" style="margin-bottom: 0">
+          <div class="logo-icon" style="background: transparent">
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 100 100"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="50" cy="40" r="18" stroke="#F59E0B" stroke-width="1.5" fill="none" />
+              <circle cx="50" cy="40" r="8" fill="#F59E0B" opacity="0.3" />
+              <circle cx="50" cy="40" r="3" fill="#F59E0B" />
+              <path d="M30 55 Q50 75 70 55" stroke="#F59E0B" stroke-width="1.5" fill="none" />
+            </svg>
           </div>
-          <span style="color: var(--border); font-size: 18px; font-weight: 300">|</span>
+          <div class="logo-text">Hawkeye Sterling V2</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
           <select
             id="headerCompanySelect"
             data-change="_switchCompanyAndUpdateBar"
             style="
-              background: rgba(245, 158, 11, 0.05);
-              border: 1px solid var(--border);
-              border-radius: 3px;
+              background: rgba(245, 158, 11, 0.06);
+              border: 1px solid var(--border-strong);
+              border-radius: 999px;
               color: var(--gold);
               font-size: 11px;
               font-weight: 600;
-              font-family: 'Montserrat', sans-serif;
+              font-family: 'DM Mono', 'Montserrat', monospace;
+              letter-spacing: 1.5px;
+              text-transform: uppercase;
               cursor: pointer;
               outline: none;
-              padding: 4px 8px;
+              padding: 8px 14px;
               max-width: 260px;
               width: auto;
               text-overflow: ellipsis;
@@ -2265,32 +2282,65 @@
             style="
               margin-top: 24px;
               margin-bottom: 24px;
-              background: #0a0805;
-              border: 1px solid #2a2113;
-              padding: 56px 32px;
+              background: linear-gradient(160deg, rgba(245, 158, 11, 0.06) 0%, rgba(10, 7, 5, 0.95) 100%);
+              border: 1px solid var(--border);
+              border-radius: 18px;
+              padding: 64px 32px 56px;
               text-align: center;
             "
           >
-            <h2
+            <div
               style="
-                font-family: Georgia, 'Times New Roman', serif;
-                font-weight: 300;
-                font-size: 36px;
-                letter-spacing: 0.08em;
-                color: #f5f1e6;
-                margin: 0 0 16px;
-                line-height: 1.15;
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                font-family: 'DM Mono', 'Montserrat', monospace;
+                font-size: 11px;
+                letter-spacing: 3px;
+                text-transform: uppercase;
+                color: var(--orange);
+                margin-bottom: 1.25rem;
               "
             >
-              EXPERIENCE THE STANDARD
+              <span
+                style="
+                  width: 7px;
+                  height: 7px;
+                  border-radius: 50%;
+                  background: var(--gold-light);
+                  box-shadow: 0 0 12px var(--gold-light);
+                "
+              ></span>
+              Precision Screening Redefined
+            </div>
+            <h2
+              style="
+                font-family: 'Playfair Display', Georgia, serif;
+                font-weight: 700;
+                font-size: clamp(40px, 5vw, 64px);
+                letter-spacing: -0.02em;
+                line-height: 1.08;
+                margin: 0 0 18px;
+                padding-bottom: 0.12em;
+                background: linear-gradient(180deg, #ffffff 0%, var(--gold-light) 45%, var(--gold) 100%);
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
+                -webkit-text-fill-color: transparent;
+              "
+            >
+              Experience the Standard.
             </h2>
             <div
               style="
-                font-family: Georgia, 'Times New Roman', serif;
+                font-family: 'Inter', system-ui, sans-serif;
                 font-size: 15px;
-                color: #cfc7b3;
-                margin-bottom: 32px;
-                letter-spacing: 0.08em;
+                color: var(--ivory);
+                opacity: 0.78;
+                margin: 0 auto 32px;
+                letter-spacing: 0.02em;
+                line-height: 1.65;
+                max-width: 560px;
               "
             >
               By invitation. By reputation. By design.
@@ -2307,12 +2357,12 @@
               style="
                 margin-top: 40px;
                 padding-top: 24px;
-                border-top: 1px solid #2a2113;
-                font-family: Georgia, 'Times New Roman', serif;
+                border-top: 1px solid var(--border);
+                font-family: 'DM Mono', 'Montserrat', monospace;
                 font-size: 10px;
                 letter-spacing: 0.4em;
-                color: #d4af37;
-                opacity: 0.65;
+                color: var(--gold);
+                opacity: 0.72;
               "
             >
               HAWKEYE STERLING
