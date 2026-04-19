@@ -148,15 +148,12 @@ window.csFormatDateInput = function (el) {
   }
 
   // ─── INJECT TABS ─────────────────────────────────────────────────────────────
-  // STR Cases anchors next to Incidents (middle of the nav) — STR
-  // investigations are the natural follow-on from an incident alert,
-  // so the MLRO finds the two workflows side-by-side instead of at
-  // opposite ends of the tab strip. Red Flags + 4-Eyes continue to
-  // append to the tail.
+  // Red Flags + 4-Eyes append to the tail.
+  // STR Cases tab removed from main-tool nav — STR workflows surface via
+  // Incidents on /compliance-ops and via the Approvals queue on /workbench.
   // CRA merged into Risk Assessment tab
   // UBO tab removed from main-tool nav per product decision
   const NEW_TABS = [
-    { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management', insertAfter: 'incidents' },
     { id: 'redflags',  icon: '🚩', label: 'Red Flags', title: 'Red Flag Library' },
     { id: 'approvals2','icon':'✅', label: '4-Eyes', title: 'Four-Eyes Approval Matrix' },
   ];
