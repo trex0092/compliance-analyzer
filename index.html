@@ -2292,111 +2292,391 @@
           </div>
         </div>
 
-        <!-- HAWKEYE STERLING INTRODUCTION — always rendered BEFORE the tab nav so
-         it is the first thing every visitor sees when the SPA loads. -->
-        <section class="hawkeye-intro" aria-label="Hawkeye Sterling introduction">
+        <!-- HAWKEYE STERLING INTRODUCTION — workbench-style landing with
+             pink / yellow / green accents. Two surface cards link to the
+             Integrations and Trading tabs below. Kept before the tab nav so
+             it is the first thing every visitor sees when the SPA loads. -->
+        <style>
+          .hi-landing {
+            --hi-pink: #ec4899;
+            --hi-pink-bright: #f472b6;
+            --hi-pink-dim: rgba(236, 72, 153, 0.14);
+            --hi-pink-border: rgba(236, 72, 153, 0.4);
+            --hi-yellow: #facc15;
+            --hi-yellow-bright: #fde047;
+            --hi-yellow-dim: rgba(250, 204, 21, 0.14);
+            --hi-yellow-border: rgba(250, 204, 21, 0.4);
+            --hi-green: #22c55e;
+            --hi-green-bright: #4ade80;
+            --hi-green-dim: rgba(34, 197, 94, 0.14);
+            --hi-green-border: rgba(34, 197, 94, 0.4);
+            --hi-ink: #fef3c7;
+            --hi-muted: rgba(254, 243, 199, 0.58);
+            --hi-border: rgba(250, 204, 21, 0.18);
+            --hi-border-strong: rgba(250, 204, 21, 0.38);
+            position: relative;
+            margin: 24px 0 32px;
+            padding: 0;
+          }
+          .hi-hero {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 48px;
+            align-items: start;
+            margin-bottom: 2.25rem;
+          }
+          .hi-eyebrow {
+            display: inline-flex; align-items: center; gap: 10px;
+            font-family: 'DM Mono', 'Montserrat', monospace; font-size: 11px;
+            letter-spacing: 3px; text-transform: uppercase;
+            color: var(--hi-pink-bright);
+            margin-bottom: 1.1rem;
+          }
+          .hi-eyebrow::before {
+            content: ''; width: 7px; height: 7px; border-radius: 50%;
+            background: var(--hi-pink-bright);
+            box-shadow: 0 0 12px var(--hi-pink-bright);
+            animation: hiPulse 2.2s ease-in-out infinite;
+          }
+          @keyframes hiPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.55;transform:scale(1.25)} }
+          .hi-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 700;
+            font-size: clamp(36px, 4.4vw, 56px);
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            margin: 0 0 1.1rem;
+            padding-bottom: 0.12em;
+            background: linear-gradient(180deg, #ffffff 0%, var(--hi-yellow-bright) 40%, var(--hi-pink-bright) 75%, var(--hi-green-bright) 100%);
+            -webkit-background-clip: text; background-clip: text;
+            color: transparent; -webkit-text-fill-color: transparent;
+          }
+          .hi-title em {
+            font-style: italic; font-weight: 600;
+            color: var(--hi-pink-bright);
+            -webkit-text-fill-color: var(--hi-pink-bright);
+          }
+          .hi-lede {
+            color: var(--hi-ink); font-size: 15px; line-height: 1.65;
+            max-width: 560px; margin: 0; opacity: 0.82;
+          }
+          .hi-summary {
+            background: linear-gradient(160deg, rgba(250, 204, 21, 0.06) 0%, rgba(10, 7, 5, 0.9) 100%);
+            border: 1px solid var(--hi-border); border-radius: 18px;
+            padding: 1.5rem;
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 14px; position: relative;
+          }
+          .hi-summary::before {
+            content: ''; position: absolute; top: -1px; left: 10%; right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--hi-pink) 25%, var(--hi-yellow) 50%, var(--hi-green) 75%, transparent);
+            opacity: 0.6;
+          }
+          .hi-cell {
+            padding: 12px 14px;
+            border: 1px solid var(--hi-border);
+            border-radius: 12px;
+            background: rgba(10, 7, 5, 0.55);
+          }
+          .hi-cell .k {
+            font-family: 'DM Mono', monospace; font-size: 9px;
+            letter-spacing: 2px; text-transform: uppercase; color: var(--hi-muted);
+            margin-bottom: 4px;
+          }
+          .hi-cell .v {
+            font-family: 'Playfair Display', Georgia, serif; font-weight: 700;
+            font-size: 26px; color: var(--hi-ink); line-height: 1;
+          }
+          .hi-cell .v small { font-family: 'DM Mono', monospace; font-size: 11px; margin-left: 6px; letter-spacing: 0; }
+          .hi-cell[data-tone="pink"] { border-color: var(--hi-pink-border); }
+          .hi-cell[data-tone="pink"] .v small { color: var(--hi-pink-bright); }
+          .hi-cell[data-tone="yellow"] { border-color: var(--hi-yellow-border); }
+          .hi-cell[data-tone="yellow"] .v small { color: var(--hi-yellow-bright); }
+          .hi-cell[data-tone="green"] { border-color: var(--hi-green-border); }
+          .hi-cell[data-tone="green"] .v small { color: var(--hi-green-bright); }
 
-          <div
-            id="heroIntro"
-            class="card hero-intro"
-            style="
-              margin-top: 24px;
-              margin-bottom: 24px;
-              background: linear-gradient(160deg, rgba(245, 158, 11, 0.06) 0%, rgba(10, 7, 5, 0.95) 100%);
-              border: 1px solid var(--border);
-              border-radius: 18px;
-              padding: 64px 32px 56px;
-              text-align: center;
-            "
-          >
-            <div
-              style="
-                display: inline-flex;
-                align-items: center;
-                gap: 10px;
-                font-family: 'DM Mono', 'Montserrat', monospace;
-                font-size: 11px;
-                letter-spacing: 3px;
-                text-transform: uppercase;
-                color: var(--orange);
-                margin-bottom: 1.25rem;
-              "
-            >
-              <span
-                style="
-                  width: 7px;
-                  height: 7px;
-                  border-radius: 50%;
-                  background: var(--gold-light);
-                  box-shadow: 0 0 12px var(--gold-light);
-                "
-              ></span>
-              Precision Screening Redefined
+          .hi-section-head {
+            display: flex; align-items: baseline; justify-content: space-between;
+            gap: 16px; flex-wrap: wrap; margin-bottom: 1.25rem;
+          }
+          .hi-section-label {
+            font-family: 'DM Mono', monospace; font-size: 11px;
+            letter-spacing: 3px; text-transform: uppercase;
+            color: var(--hi-yellow-bright);
+          }
+          .hi-section-count {
+            font-family: 'DM Mono', monospace; font-size: 11px;
+            color: var(--hi-muted); letter-spacing: 2px;
+          }
+
+          .hi-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+          }
+          .hi-card {
+            position: relative;
+            display: flex; flex-direction: column; gap: 14px;
+            padding: 1.75rem 1.75rem 1.5rem;
+            background: linear-gradient(180deg, rgba(24, 16, 10, 0.9) 0%, rgba(10, 7, 5, 0.96) 100%);
+            border: 1px solid var(--hi-border);
+            border-radius: 18px;
+            text-decoration: none; color: inherit;
+            overflow: hidden;
+            cursor: pointer;
+            font-family: inherit;
+            text-align: left;
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+          }
+          .hi-card::before {
+            content: ''; position: absolute; top: 0; left: 20%; right: 20%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, currentColor, transparent);
+            opacity: 0.6;
+          }
+          .hi-card::after {
+            content: ''; position: absolute; inset: 0;
+            pointer-events: none; opacity: 0.08;
+            background: radial-gradient(ellipse 50% 60% at 0% 0%, currentColor, transparent 60%);
+          }
+          .hi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 50px -22px rgba(0, 0, 0, 0.6);
+          }
+          .hi-card[data-tone="pink"]  { color: var(--hi-pink);  border-color: var(--hi-pink-border); }
+          .hi-card[data-tone="pink"]:hover   { box-shadow: 0 20px 50px -22px rgba(236, 72, 153, 0.55); }
+          .hi-card[data-tone="yellow"] { color: var(--hi-yellow); border-color: var(--hi-yellow-border); }
+          .hi-card[data-tone="yellow"]:hover { box-shadow: 0 20px 50px -22px rgba(250, 204, 21, 0.55); }
+          .hi-card[data-tone="green"] { color: var(--hi-green); border-color: var(--hi-green-border); }
+          .hi-card[data-tone="green"]:hover  { box-shadow: 0 20px 50px -22px rgba(34, 197, 94, 0.55); }
+
+          .hi-card-icon {
+            width: 52px; height: 52px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            background: rgba(10, 7, 5, 0.65);
+            border: 1px solid currentColor;
+            box-shadow: 0 8px 24px -12px currentColor;
+          }
+          .hi-card-meta {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-family: 'DM Mono', monospace; font-size: 10px;
+            letter-spacing: 2px; text-transform: uppercase;
+            color: currentColor;
+          }
+          .hi-card-meta .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: currentColor; box-shadow: 0 0 10px currentColor;
+          }
+          .hi-card-title {
+            font-family: 'Playfair Display', Georgia, serif; font-weight: 700;
+            font-size: 22px; color: var(--hi-ink); margin: 0; line-height: 1.2;
+          }
+          .hi-card-desc {
+            color: var(--hi-ink); font-size: 13px; line-height: 1.6;
+            opacity: 0.8; margin: 0;
+          }
+          .hi-card-stats {
+            margin-top: 4px;
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+          .hi-stat {
+            padding: 10px 12px;
+            border: 1px solid var(--hi-border);
+            border-radius: 10px;
+            background: rgba(10, 7, 5, 0.6);
+          }
+          .hi-stat-val {
+            display: block;
+            font-family: 'Playfair Display', Georgia, serif; font-weight: 700;
+            font-size: 18px; color: var(--hi-ink); line-height: 1;
+          }
+          .hi-stat-key {
+            display: block; margin-top: 4px;
+            font-family: 'DM Mono', monospace; font-size: 9px;
+            letter-spacing: 1.8px; text-transform: uppercase;
+            color: var(--hi-muted);
+          }
+          .hi-card-cta {
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid var(--hi-border);
+            display: flex; align-items: center; justify-content: space-between;
+            font-family: 'DM Mono', monospace; font-size: 11px;
+            letter-spacing: 2px; text-transform: uppercase;
+            color: currentColor;
+          }
+          .hi-card-cta-arrow { transition: transform 0.25s ease; }
+          .hi-card:hover .hi-card-cta-arrow { transform: translateX(4px); }
+
+          .hi-reg-strip {
+            margin-top: 2.25rem;
+            padding: 1.5rem 1.75rem;
+            background: linear-gradient(180deg, rgba(24, 16, 10, 0.6) 0%, rgba(10, 7, 5, 0.4) 100%);
+            border: 1px solid var(--hi-border);
+            border-radius: 16px;
+            display: grid; grid-template-columns: auto 1fr;
+            gap: 24px; align-items: center;
+          }
+          .hi-reg-badge {
+            width: 52px; height: 52px; border-radius: 12px;
+            background: linear-gradient(135deg, var(--hi-pink) 0%, var(--hi-yellow) 50%, var(--hi-green) 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Playfair Display', Georgia, serif; font-weight: 700;
+            font-size: 20px; color: #0a0706;
+            box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.4), 0 10px 28px rgba(236, 72, 153, 0.28);
+          }
+          .hi-reg-title {
+            font-family: 'DM Mono', monospace; font-size: 10px;
+            letter-spacing: 3px; text-transform: uppercase;
+            color: var(--hi-pink-bright); margin-bottom: 6px;
+          }
+          .hi-reg-text {
+            font-size: 12px; line-height: 1.7;
+            color: var(--hi-ink); opacity: 0.8;
+          }
+          .hi-reg-text strong { color: var(--hi-ink); font-weight: 600; }
+
+          @media (max-width: 860px) {
+            .hi-hero { grid-template-columns: 1fr; gap: 28px; }
+            .hi-summary { grid-template-columns: 1fr; }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .hi-landing *, .hi-landing *::before, .hi-landing *::after {
+              animation-duration: 0.01ms !important;
+              transition-duration: 0.01ms !important;
+            }
+          }
+        </style>
+        <section
+          id="heroIntro"
+          class="hi-landing hawkeye-intro"
+          aria-label="Hawkeye Sterling introduction"
+        >
+          <div class="hi-hero">
+            <div>
+              <div class="hi-eyebrow">Precision Screening System</div>
+              <h1 class="hi-title">
+                Experience the<br /><em>standard.</em>
+              </h1>
+              <p class="hi-lede">
+                Two surfaces, one bench. Connect your compliance integrations
+                and run precious-metals trading desks from a single operator
+                view — every action logged to the 10-year audit trail.
+              </p>
             </div>
-            <h2
-              style="
-                font-family: 'Playfair Display', Georgia, serif;
-                font-weight: 700;
-                font-size: clamp(40px, 5vw, 64px);
-                letter-spacing: -0.02em;
-                line-height: 1.08;
-                margin: 0 0 18px;
-                padding-bottom: 0.12em;
-                background: linear-gradient(180deg, #ffffff 0%, var(--gold-light) 45%, var(--gold) 100%);
-                -webkit-background-clip: text;
-                background-clip: text;
-                color: transparent;
-                -webkit-text-fill-color: transparent;
-              "
-            >
-              Experience the Standard.
-            </h2>
-            <div
-              style="
-                font-family: 'Inter', system-ui, sans-serif;
-                font-size: 15px;
-                color: var(--ivory);
-                opacity: 0.78;
-                margin: 0 auto 32px;
-                letter-spacing: 0.02em;
-                line-height: 1.65;
-                max-width: 560px;
-              "
-            >
-              By invitation. By reputation. By design.
-            </div>
+
+            <aside class="hi-summary" aria-label="Operations summary">
+              <div class="hi-cell" data-tone="pink">
+                <div class="k">Integrations</div>
+                <div class="v">Live<small>connected</small></div>
+              </div>
+              <div class="hi-cell" data-tone="yellow">
+                <div class="k">Trading Desk</div>
+                <div class="v">Active<small>real time</small></div>
+              </div>
+              <div class="hi-cell" data-tone="green">
+                <div class="k">Screening</div>
+                <div class="v">6/6<small>lists</small></div>
+              </div>
+              <div class="hi-cell">
+                <div class="k">Audit trail</div>
+                <div class="v">10yr<small>FDL Art.24</small></div>
+              </div>
+            </aside>
+          </div>
+
+          <div class="hi-section-head">
+            <span class="hi-section-label">Operations Surfaces</span>
+            <span class="hi-section-count">02 / 02</span>
+          </div>
+
+          <div class="hi-cards">
             <button
-              class="btn launch-analyzer-btn"
+              type="button"
+              class="hi-card"
+              data-tone="pink"
               data-action="switchTab"
-              data-arg="analyse"
-              aria-label="Launch the compliance analyzer — jumps to the Analyze tab"
+              data-arg="integrations"
+              aria-label="Open the Integrations surface"
             >
-              LAUNCH ANALYZER &darr;
+              <div class="hi-card-icon" aria-hidden="true">&#128279;</div>
+              <div class="hi-card-meta">
+                <span class="dot"></span>
+                <span>Surface 01 &middot; Integrations</span>
+              </div>
+              <h2 class="hi-card-title">Integrations</h2>
+              <p class="hi-card-desc">
+                API keys, Asana sync, goAML export and every outbound
+                connector that drives the Hawkeye compliance pipeline.
+                Configure once, screen everywhere.
+              </p>
+              <div class="hi-card-stats">
+                <div class="hi-stat">
+                  <span class="hi-stat-val">Live</span>
+                  <span class="hi-stat-key">Connected</span>
+                </div>
+                <div class="hi-stat">
+                  <span class="hi-stat-val">Asana</span>
+                  <span class="hi-stat-key">Sync</span>
+                </div>
+              </div>
+              <div class="hi-card-cta">
+                <span>Open surface</span>
+                <span class="hi-card-cta-arrow" aria-hidden="true">&rarr;</span>
+              </div>
             </button>
-            <div
-              style="
-                margin-top: 40px;
-                padding-top: 24px;
-                border-top: 1px solid var(--border);
-                font-family: 'DM Mono', 'Montserrat', monospace;
-                font-size: 10px;
-                letter-spacing: 0.4em;
-                color: var(--gold);
-                opacity: 0.72;
-              "
+
+            <button
+              type="button"
+              class="hi-card"
+              data-tone="green"
+              data-action="switchTab"
+              data-arg="metalstrading"
+              aria-label="Open the Trading surface"
             >
-              HAWKEYE STERLING
-            </div>
-            <div
-              style="
-                margin-top: 8px;
-                font-family: Georgia, 'Times New Roman', serif;
-                font-size: 9px;
-                letter-spacing: 0.3em;
-                color: #7a7160;
-              "
-            >
-              © 2026 HAWKEYE STERLING · ALL RIGHTS RESERVED
+              <div class="hi-card-icon" aria-hidden="true">&#9670;</div>
+              <div class="hi-card-meta">
+                <span class="dot"></span>
+                <span>Surface 02 &middot; Trading</span>
+              </div>
+              <h2 class="hi-card-title">Trading</h2>
+              <p class="hi-card-desc">
+                Precious-metals trading desk &mdash; bullion orders, LBMA
+                responsible-sourcing checks and the AED 55K DPMS threshold
+                monitor, all wired to live sanctions screening.
+              </p>
+              <div class="hi-card-stats">
+                <div class="hi-stat">
+                  <span class="hi-stat-val">AED 55K</span>
+                  <span class="hi-stat-key">DPMS CTR</span>
+                </div>
+                <div class="hi-stat">
+                  <span class="hi-stat-val">LBMA</span>
+                  <span class="hi-stat-key">RGG v9</span>
+                </div>
+              </div>
+              <div class="hi-card-cta">
+                <span>Open surface</span>
+                <span class="hi-card-cta-arrow" aria-hidden="true">&rarr;</span>
+              </div>
+            </button>
+          </div>
+
+          <div class="hi-reg-strip" role="note">
+            <div class="hi-reg-badge" aria-hidden="true">&sect;</div>
+            <div>
+              <div class="hi-reg-title">Regulatory Basis</div>
+              <div class="hi-reg-text">
+                Integrations and trading surfaces trace to
+                <strong>FDL No.10/2025 Art.20 &amp; Art.24</strong> (CO duties
+                and 10-year record retention). Trading desk enforces the
+                <strong>MoE Circular 08/AML/2021</strong> AED 55K DPMS CTR
+                threshold and <strong>LBMA RGG v9</strong> responsible-sourcing
+                due diligence on every bullion transaction.
+              </div>
             </div>
           </div>
         </section>
