@@ -87,9 +87,9 @@
       .shell {
         position: relative;
         z-index: 1;
-        max-width: 1240px;
+        max-width: 1680px;
         margin: 0 auto;
-        padding: 2.5rem 2rem 4rem;
+        padding: 1.75rem 2.25rem 4rem;
         width: 100%;
         flex: 1;
       }
@@ -163,13 +163,40 @@
         box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
       }
 
-      /* Hero */
+      /* Hero — status pills inline at top, title uses full width */
       .hero {
-        display: grid;
-        grid-template-columns: 1.3fr 1fr;
-        gap: 48px;
-        align-items: end;
-        margin-bottom: 3.5rem;
+        margin-bottom: 2.75rem;
+      }
+
+      .status-row-top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 1.5rem;
+      }
+      .status-pill-top {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 14px 7px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(17, 70, 46, 0.55);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        font-family: 'DM Mono', monospace;
+        font-size: 10.5px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--ice);
+      }
+      .status-pill-top::before {
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--azure-bright);
+        box-shadow: 0 0 10px var(--azure-bright);
       }
 
       .hero-eyebrow {
@@ -556,6 +583,64 @@
         font-weight: 600;
       }
 
+      /* In-page module viewer — opens the index.html tab inline via iframe
+         so the user stays on logistics.html. */
+      .module-view {
+        display: none;
+        margin-top: 1.5rem;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: rgba(5, 11, 24, 0.65);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        overflow: hidden;
+        position: relative;
+        z-index: 1;
+      }
+      .module-view.is-open { display: block; }
+      .module-view-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(17, 70, 46, 0.45);
+      }
+      .module-view-title {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: 20px;
+        color: var(--mist);
+        margin: 0;
+      }
+      .module-view-close {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--steel);
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 7px 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .module-view-close:hover {
+        color: var(--mist);
+        border-color: var(--azure-bright);
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+      }
+      .module-view-frame {
+        width: 100%;
+        height: 78vh;
+        min-height: 640px;
+        border: 0;
+        background: var(--midnight, #050b18);
+        display: block;
+      }
+
       /* Footer */
       .footer {
         position: relative;
@@ -641,41 +726,23 @@
       </header>
 
       <section class="hero">
-        <div>
-          <div class="hero-eyebrow">Shipments Control Tower</div>
-          <h1 class="hero-title">
-            <span class="nowrap">Every gram, <em>tracked</em>.</span><br />
-            <span class="nowrap">Every shipment, accounted for.</span>
-          </h1>
-          <p class="hero-lede">
-            Inbound advice, in-transit custody, and intra-UAE movement — unified under one
-            audit-ready workspace. Each surface below maps to a distinct regulatory
-            obligation and produces its own evidentiary trail.
-          </p>
+        <div class="status-row-top" aria-label="Shipments live status">
+          <span class="status-pill-top">Inbound queue &middot; Operational</span>
+          <span class="status-pill-top">In-transit &middot; Real-time</span>
+          <span class="status-pill-top">Local movements &middot; Logged</span>
+          <span class="status-pill-top">Audit trail &middot; 10 yr retention</span>
+          <span class="status-pill-top" id="liveClock">&mdash;</span>
         </div>
-
-        <aside class="status-panel" aria-label="Shipments live status">
-          <div class="status-title">
-            <span>Live Status</span>
-            <span id="liveClock">—</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label">Inbound queue</span>
-            <span class="status-pill ok">Operational</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label">In-transit monitoring</span>
-            <span class="status-pill ok">Real-time</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label">Local movements</span>
-            <span class="status-pill ok">Logged</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label">Audit trail</span>
-            <span class="status-pill">10 yr retention</span>
-          </div>
-        </aside>
+        <div class="hero-eyebrow">Shipments Control Tower</div>
+        <h1 class="hero-title">
+          <span class="nowrap">Every gram, <em>tracked</em>.</span><br />
+          <span class="nowrap">Every shipment, accounted for.</span>
+        </h1>
+        <p class="hero-lede">
+          Inbound advice, in-transit custody, and intra-UAE movement — unified under one
+          audit-ready workspace. Each surface below maps to a distinct regulatory
+          obligation and produces its own evidentiary trail.
+        </p>
       </section>
 
       <div class="section-head">
@@ -768,6 +835,20 @@
         </a>
       </div>
 
+      <section id="moduleView" class="module-view" aria-live="polite">
+        <div class="module-view-head">
+          <h2 id="moduleViewTitle" class="module-view-title">Module</h2>
+          <button type="button" id="moduleViewClose" class="module-view-close">&times; Close module</button>
+        </div>
+        <iframe
+          id="moduleViewFrame"
+          class="module-view-frame"
+          title="Module viewer"
+          referrerpolicy="same-origin"
+          loading="lazy"
+        ></iframe>
+      </section>
+
       <div class="reg-strip" role="note">
         <div class="reg-badge" aria-hidden="true">§</div>
         <div class="reg-body">
@@ -817,5 +898,6 @@
         });
       })();
     </script>
+    <script src="module-viewer.js?v=1"></script>
   </body>
 </html>
