@@ -674,23 +674,7 @@
 
       // Live status keyed by routine id. Populated by fetchLiveStatus().
       let LIVE_STATUS = {};
-
-      // Cadence filter is URL-driven so direct links, shares, and the
-      // browser back/forward buttons all round-trip. Path shape:
-      //   /routines           → all
-      //   /routines/all       → all
-      //   /routines/continuous → 8 continuous routines
-      //   /routines/daily     → 9 daily routines
-      //   /routines/weekly    → 3 weekly routines
-      const VALID_FILTERS = ['all', 'continuous', 'daily', 'weekly'];
-      function filterFromPath() {
-        const seg = (window.location.pathname || '/routines').split('/')[2] || 'all';
-        return VALID_FILTERS.indexOf(seg) === -1 ? 'all' : seg;
-      }
-      function pathFor(filter) {
-        return filter === 'all' ? '/routines' : '/routines/' + filter;
-      }
-      let ACTIVE_FILTER = filterFromPath();
+      let ACTIVE_FILTER = 'all';
 
       function humanSchedule(cron) {
         // Minimal cron → human label, blue-dashboard style.
@@ -763,36 +747,44 @@
         document.getElementById('weeklyCount').textContent = counts.weekly || 0;
       })();
 
-      // Sync chip pressed-state + rendered list to a filter value.
-      function applyFilter(filter, opts) {
-        const next = VALID_FILTERS.indexOf(filter) === -1 ? 'all' : filter;
-        ACTIVE_FILTER = next;
+      // URL ↔ filter sync. A deep link like /routines/continuous selects
+      // the "continuous" chip on load; clicking a chip pushes the matching
+      // URL so the address bar reflects the active cadence.
+      const FILTER_SLUGS = ['all', 'continuous', 'daily', 'weekly'];
+
+      function filterFromLocation() {
+        const segs = (location.pathname || '/').split('/').filter(Boolean);
+        const first = segs.length ? segs[0].replace(/\.html$/, '') : '';
+        if (first !== 'routines' || segs.length < 2) return 'all';
+        return FILTER_SLUGS.indexOf(segs[1]) !== -1 ? segs[1] : 'all';
+      }
+
+      function applyFilter(filter, pushHistory) {
+        ACTIVE_FILTER = FILTER_SLUGS.indexOf(filter) !== -1 ? filter : 'all';
         document.querySelectorAll('.chip').forEach(c => {
-          c.setAttribute('aria-pressed', c.getAttribute('data-filter') === next ? 'true' : 'false');
+          c.setAttribute('aria-pressed', c.getAttribute('data-filter') === ACTIVE_FILTER ? 'true' : 'false');
         });
-        render(next);
-        if (opts && opts.push) {
-          const target = pathFor(next);
-          if (window.location.pathname !== target) {
-            history.pushState({ filter: next }, '', target);
+        render(ACTIVE_FILTER);
+        if (pushHistory !== false) {
+          const base = '/routines';
+          const target = ACTIVE_FILTER === 'all' ? base : base + '/' + ACTIVE_FILTER;
+          if (location.pathname !== target) {
+            history.pushState({ filter: ACTIVE_FILTER }, '', target);
           }
         }
       }
 
-      // Filter chip handlers — update the URL so sub-routes stay within
-      // /routines instead of falling through to the SPA root.
       document.querySelectorAll('.chip').forEach(chip => {
         chip.addEventListener('click', () => {
-          applyFilter(chip.getAttribute('data-filter'), { push: true });
+          applyFilter(chip.getAttribute('data-filter'), true);
         });
       });
 
-      // Browser back/forward replays the filter from the URL.
       window.addEventListener('popstate', () => {
-        applyFilter(filterFromPath(), { push: false });
+        applyFilter(filterFromLocation(), false);
       });
 
-      applyFilter(ACTIVE_FILTER, { push: false });
+      applyFilter(filterFromLocation(), false);
 
       // ── Drawer (routine detail) ────────────────────────────────────
       const drawer = document.getElementById('routineDrawer');
