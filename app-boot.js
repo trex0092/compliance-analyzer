@@ -156,6 +156,32 @@
     '#tab-onboarding': 'onboarding',
     '#approvals': 'approvals',
     '#tab-approvals': 'approvals',
+    // Added for page-specific landing navigation (workbench / logistics /
+    // compliance-ops page-nav pills). Each hash maps to an existing
+    // `tab-<id>` block in index.html so switchTab() will activate it when
+    // the iframe loads with the corresponding deep-link hash.
+    '#iarreport': 'iarreport',
+    '#tab-iarreport': 'iarreport',
+    '#riskassessment': 'riskassessment',
+    '#tab-riskassessment': 'riskassessment',
+    '#calendar': 'calendar',
+    '#tab-calendar': 'calendar',
+    '#monitor': 'monitor',
+    '#tab-monitor': 'monitor',
+    '#integrations': 'integrations',
+    '#tab-integrations': 'integrations',
+    '#supplychain': 'supplychain',
+    '#tab-supplychain': 'supplychain',
+    '#workflows': 'workflows',
+    '#tab-workflows': 'workflows',
+    '#pipeline': 'pipeline',
+    '#tab-pipeline': 'pipeline',
+    '#customer360': 'customer360',
+    '#tab-customer360': 'customer360',
+    '#esg': 'esg',
+    '#tab-esg': 'esg',
+    '#redflags': 'redflags',
+    '#tab-redflags': 'redflags',
   };
   function applyHashRoute() {
     var hash = window.location.hash;
