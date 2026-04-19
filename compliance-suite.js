@@ -154,8 +154,9 @@ window.csFormatDateInput = function (el) {
   // CRA merged into Risk Assessment tab
   // UBO tab removed from main-tool nav per product decision
   const NEW_TABS = [
-    { id: 'redflags',  icon: '🚩', label: 'Red Flags', title: 'Red Flag Library' },
-    { id: 'approvals2','icon':'✅', label: '4-Eyes', title: 'Four-Eyes Approval Matrix' },
+    // Red Flags + 4-Eyes removed from main-tool nav per MLRO request.
+    // Red-flag library surfaces inside STR drafter; four-eyes queue is
+    // on /workbench Approvals.
   ];
 
   function injectTabs() {
@@ -3096,7 +3097,8 @@ window.csFormatDateInput = function (el) {
   const SUITE2_TABS = [
     // TFS merged into Screening & TFS tab
     // DPMSR + Retention removed from main-tool nav per product decision
-    { id: 'ailog',   icon: '🤖', label: 'AI Govern',  title: 'AI Output Governance' },
+    // AI Govern removed from main-tool nav per MLRO request — governance
+    // audits run via /agent-review and the AI Governance skill.
   ];
 
   function injectSuite2() {

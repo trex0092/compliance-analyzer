@@ -2173,6 +2173,15 @@
           <div class="logo-text">Hawkeye Sterling V2</div>
         </div>
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+          <!-- Company-branch pill (FINE GOLD (BRANCH)) hidden per MLRO request.
+               Element kept in the DOM so app-core.js renderCompanySelectors()
+               and _switchCompanyAndUpdateBar remain wired without a refactor. -->
+          <select
+            id="headerCompanySelect"
+            data-change="_switchCompanyAndUpdateBar"
+            style="display: none"
+            aria-hidden="true"
+          ></select>
           <button
             class="theme-toggle"
             id="themeToggleBtn"
@@ -2408,21 +2417,23 @@
           <!-- Onboarding moved to /workbench landing page -->
           <div class="tab" data-action="switchTab" data-arg="riskassessment">⚖️ Risk & CRA</div>
           <!-- Incidents moved to /compliance-ops landing page -->
-          <div class="tab" data-action="switchTab" data-arg="calendar">📅 Calendar</div>
-          <div class="tab" data-action="switchTab" data-arg="reports">📑 Reports</div>
-          <div class="tab" data-action="switchTab" data-arg="monitor">🛡️ Reg Monitor</div>
+          <!-- Calendar tab removed per MLRO request -->
+          <!-- Settings tab removed per MLRO request (previously removed on main) -->
+          <!-- Reports tab removed per MLRO request -->
+          <!-- Reg Monitor tab removed per MLRO request -->
+          <div class="tab" data-action="switchTab" data-arg="integrations">🔗 Integrations</div>
           <!-- goAML Export removed -->
           <!-- Thresholds tab removed — DPMS AED 55K monitor surfaces automatically on relevant transaction pages -->
           <div class="tab" data-action="switchTab" data-arg="supplychain">⛏️ Supply</div>
           <div class="tab" data-action="switchTab" data-arg="approvals">✅ Approvals</div>
           <!-- Reg Changes tab removed — regulatory updates surface via Reg Monitor tab -->
 
-          <div class="tab" data-action="switchTab" data-arg="workflows">⚡ Workflows</div>
-          <div class="tab" data-action="switchTab" data-arg="pipeline">📦 Export Pipeline</div>
+          <!-- Workflows tab removed per MLRO request -->
+          <!-- Export Pipeline tab removed per MLRO request -->
           <!-- Intelligence + Brain Console tabs removed \u2014 internal setup, not disclosed in the tool -->
 
           <div class="tab" data-action="switchTab" data-arg="metalstrading">◈ Trading</div>
-          <div class="tab" data-action="switchTab" data-arg="customer360">🗂 Customer 360</div>
+          <!-- Customer 360 tab removed per MLRO request -->
           <div class="tab" data-action="switchTab" data-arg="esg">🌱 ESG</div>
           <!-- Data Upload removed -->
         </div>
