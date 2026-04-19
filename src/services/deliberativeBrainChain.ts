@@ -1,5 +1,5 @@
 /**
- * Deliberative Brain Chain — eight-step chain-of-thought orchestrator
+ * Deliberative Brain Chain — ten-step chain-of-thought orchestrator
  * that composes the enhanced-brain modules into a single auditable
  * reasoning trace per (subject, hit) pair.
  *
@@ -13,6 +13,8 @@
  *   6. analyseCounterfactuals      — per-feature attribution + fragility
  *   7. runRedTeamBrain             — six adversarial scenarios scored
  *   8. runMetaCognition            — six self-audit diagnostics → HIGH/MOD/LOW
+ *   9. projectCausalInterventions  — do-calculus on unverified identifiers
+ *  10. comparePeers (optional)     — k-NN reference-class from fixture bank
  *
  * This is the MLRO-facing explainable-AI layer: every step records a
  * short reasoning line, and the final `trace` field is a flat array
@@ -50,6 +52,11 @@ import {
   type RedTeamReasoningResult,
 } from './redTeamBrain';
 import { runMetaCognition, type MetaCognitionReport } from './metaCognition';
+import {
+  projectCausalInterventions,
+  type CausalInterventionResult,
+} from './causalInterventionReasoner';
+import { comparePeers, type PeerCase, type PeerComparisonReport } from './peerComparisonBrain';
 
 // ---------------------------------------------------------------------------
 // Public surface
@@ -80,6 +87,8 @@ export interface DeliberativeBrainInput {
   hasTransliteration?: boolean;
   /** Optional — subject amended identifiers within the last 30 days. */
   recentIdentifierAmendment?: boolean;
+  /** Optional — curated fixture bank for peer comparison (step 10). */
+  peerBank?: readonly PeerCase[];
 }
 
 export interface DeliberativeBrainResult {
@@ -105,6 +114,10 @@ export interface DeliberativeBrainResult {
   redTeam: RedTeamReasoningResult;
   /** Six self-audit diagnostics + confidence band. */
   metaCognition: MetaCognitionReport;
+  /** Do-calculus projections on unverified identifiers. */
+  interventions: CausalInterventionResult;
+  /** Optional — only populated when peerBank was supplied. */
+  peers?: PeerComparisonReport;
   /** Flat, chronological reasoning trace — renderable as-is. */
   trace: readonly string[];
 }
@@ -258,6 +271,38 @@ export function runDeliberativeBrain(input: DeliberativeBrainInput): Deliberativ
     trace.push(`  ! ${w}`);
   }
 
+  // STEP 9 — causal intervention projections (do-calculus).
+  const interventions = projectCausalInterventions(
+    input.breakdown,
+    input.evidence,
+    calibrated.logOdds
+  );
+  trace.push('STEP 9 — Causal interventions');
+  trace.push(`  ${interventions.summary}`);
+  for (const p of interventions.projections.slice(0, 3)) {
+    trace.push(
+      `  - do(${p.target}): +${p.uplift.toFixed(1)}pp / -${p.drop.toFixed(1)}pp (value ${p.interventionValue.toFixed(1)}pp)`
+    );
+  }
+
+  // STEP 10 — peer comparison (only when a bank is supplied).
+  let peers: PeerComparisonReport | undefined;
+  if (input.peerBank && input.peerBank.length > 0) {
+    peers = comparePeers({
+      breakdown: input.breakdown,
+      riskTier: input.subject.riskTier,
+      listPriority,
+      bank: input.peerBank,
+    });
+    trace.push('STEP 10 — Peer comparison');
+    trace.push(`  ${peers.summary}`);
+    for (const n of peers.neighbours.slice(0, 3)) {
+      trace.push(
+        `  - ${n.case.caseId} (${n.case.verdict}) distance=${n.distance.toFixed(2)} sim=${(n.similarity * 100).toFixed(0)}%`
+      );
+    }
+  }
+
   return {
     prior,
     calibrated,
@@ -268,6 +313,8 @@ export function runDeliberativeBrain(input: DeliberativeBrainInput): Deliberativ
     counterfactual,
     redTeam,
     metaCognition,
+    interventions,
+    peers,
     trace,
   };
 }
