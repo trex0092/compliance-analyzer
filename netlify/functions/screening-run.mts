@@ -125,7 +125,13 @@ const SANCTIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
  *   TOTAL worst-case                                    ≈ 9.5s
  * Leaves ~0.5s headroom before Netlify's 10s sync-function ceiling.
  */
-const SANCTIONS_FETCH_TIMEOUT_MS = 4_500;
+// Outer sanctions budget (safety net around loadAllLists). Must exceed
+// PER_LIST_TIMEOUT_MS (4_200ms) with enough headroom for Promise.all to
+// settle; otherwise a legitimate per-list timeout trips the outer
+// fallback and every list surfaces the generic "sanctions fetch timed
+// out" instead of its own diagnostic. 5_500ms matches the Phase A
+// budget described above (max(sanctions, adverse) ≈ 5.5s).
+const SANCTIONS_FETCH_TIMEOUT_MS = 5_500;
 const ADVERSE_MEDIA_TIMEOUT_MS = 3_200;
 // Deep brain deadline raised so the reasoner gets a realistic thinking
 // budget instead of always timing out at 2.5s. Sits inside the 10s
@@ -540,16 +546,28 @@ async function loadAllLists(): Promise<ListSnapshot> {
   if (listCache && Date.now() - listCache.fetchedAt < SANCTIONS_CACHE_TTL_MS) {
     return listCache;
   }
-  await hydrateUaeSanctionsFromBlob();
+  // Run blob hydration IN PARALLEL with the other 5 list fetches (not
+  // serially before them). Netlify Blobs cold-start latency used to eat
+  // 400-900ms of the outer budget and leave <300ms of headroom between
+  // PER_LIST_TIMEOUT_MS (4200ms) and SANCTIONS_FETCH_TIMEOUT_MS (4500ms).
+  // The symptom: every list surfaced the generic outer fallback
+  // "sanctions fetch timed out" instead of the per-list diagnostic.
+  // Hydration is best-effort and swallows its own errors, so racing it
+  // alongside the network fetches is safe. UAE_EOCN's fetcher reads the
+  // in-memory cache seeded by hydrate; if hydrate has not finished when
+  // fetchUAESanctionsList fires, the Art.35 gate throws with a clear
+  // "cache empty" message (which raceListFetch surfaces as that list's
+  // error) — strictly better than silently-wiped per-list diagnostics.
   const proxy = process.env.HAWKEYE_SANCTIONS_PROXY_URL;
-  const lists = await Promise.all([
+  const [, ...lists] = await Promise.all([
+    hydrateUaeSanctionsFromBlob(),
     raceListFetch('UN', (signal, timeoutMs) => fetchUNSanctionsList(proxy, { signal, timeoutMs })),
     raceListFetch('OFAC', (signal, timeoutMs) => fetchOFACSanctionsList(proxy, { signal, timeoutMs })),
     raceListFetch('EU', (signal, timeoutMs) => fetchEUSanctionsList(proxy, { signal, timeoutMs })),
     raceListFetch('UK_OFSI', (signal, timeoutMs) => fetchUKSanctionsList(proxy, { signal, timeoutMs })),
     raceListFetch('UAE_EOCN', () => fetchUAESanctionsList()),
   ]);
-  listCache = { fetchedAt: Date.now(), lists };
+  listCache = { fetchedAt: Date.now(), lists: lists as ListSnapshot['lists'] };
   return listCache;
 }
 
