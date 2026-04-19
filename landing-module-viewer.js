@@ -21,14 +21,19 @@
     frame.src = 'about:blank';
   }
 
-  document.querySelectorAll('.card[data-route]').forEach(function (card) {
-    card.addEventListener('click', function (event) {
+  document.addEventListener(
+    'click',
+    function (event) {
+      var card = event.target.closest && event.target.closest('.card[data-route]');
+      if (!card) return;
       event.preventDefault();
+      event.stopPropagation();
       var route = card.getAttribute('data-route');
       var label = card.querySelector('.card-title');
       openModule(route, label ? label.textContent : 'Module');
-    });
-  });
+    },
+    true
+  );
 
   closeBtn.addEventListener('click', closeModule);
   document.addEventListener('keydown', function (event) {
