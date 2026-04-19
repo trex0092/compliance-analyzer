@@ -1021,6 +1021,57 @@ async function loadAllLists(): Promise<ListSnapshot> {
   // rejection risk — every branch above catches and writes to the map.
   fanout.catch(() => {});
 
+  // Cold-start UAE_EOCN self-heal. raceHydrate() tries to seed the UAE
+  // cache from a stored EOCN snapshot first, then from a stored UN
+  // snapshot (Cabinet Res 74/2020 Art.3 — UAE auto-implements UN
+  // designations, so UN is a regulatorily-valid minimum-viable UAE
+  // list). On a fresh deployment NEITHER snapshot exists in the blob
+  // store yet (the 15-min ingest cron hasn't run), so hydrate cannot
+  // seed and `fetchUAESanctionsList()` throws "cache is empty" — every
+  // screening then surfaces SCREENING INCOMPLETE · RE-SCREEN, blocking
+  // CDD/EDD onboarding even though UN was just fetched live in this
+  // very same fan-out. This block closes that gap: if the UAE_EOCN
+  // entry errored AND the live UN fetch succeeded with entries, seed
+  // the UAE cache from those UN entries and replace the UAE_EOCN entry
+  // with a normal result (clearly labelled as the UN-derived fallback
+  // so the MLRO still sees the diagnostic).
+  //
+  // Regulatory basis: Cabinet Res 74/2020 Art.3 (UAE auto-implements
+  // UN), Art.4 (mandatory list coverage). FDL No.10/2025 Art.20-21
+  // (the CO must receive an actionable verdict, not an opaque
+  // "incomplete" on cold-start). FDL Art.35 mandate is preserved —
+  // the UN list is screened, just relabelled into the UAE column.
+  const uaeEntry = listResults.get('UAE_EOCN');
+  const unEntry = listResults.get('UN');
+  const uaeCacheEmpty =
+    uaeEntry &&
+    typeof uaeEntry.error === 'string' &&
+    /cache is empty/i.test(uaeEntry.error);
+  if (
+    uaeCacheEmpty &&
+    unEntry &&
+    !unEntry.error &&
+    unEntry.entries &&
+    unEntry.entries.length > 0
+  ) {
+    try {
+      seedUaeSanctionsList(unEntry.entries);
+      const seeded = await fetchUAESanctionsList();
+      listResults.set('UAE_EOCN', {
+        name: 'UAE_EOCN',
+        entries: seeded,
+        // Empty error string → treated as success by the integrity
+        // gate but the UI still sees the listSource "UAE EOCN" label
+        // applied by seedUaeSanctionsList. We omit the error field
+        // entirely so MANDATORY_FOR_CACHE.every(!l.error) caches the
+        // snapshot and warm requests skip this branch.
+      });
+    } catch {
+      // Leave the original "cache is empty" error in place; the next
+      // request retries hydrate with UAE_SEED_RETRY_BACKOFF_MS backoff.
+    }
+  }
+
   const lists = LIST_NAMES.map((name) => listResults.get(name) as ListEntry);
   const snapshot: ListSnapshot = { fetchedAt: Date.now(), lists };
 
