@@ -166,9 +166,9 @@
       /* Hero — 2-column grid: copy left, 2×2 status-tile aside right */
       .hero {
         display: grid;
-        grid-template-columns: 1.3fr 1fr;
-        gap: 48px;
-        align-items: end;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 40px;
+        align-items: center;
         margin: 10px 0 2.75rem;
       }
       @media (max-width: 920px) {
@@ -197,22 +197,18 @@
         background: linear-gradient(90deg, transparent, var(--azure-bright), transparent);
       }
       .hero-summary-cell {
-        padding: 14px 14px 12px;
+        padding: 12px 14px;
         border: 1px solid var(--border);
         border-radius: 12px;
         background: rgba(10, 40, 24, 0.5);
-        aspect-ratio: 1 / 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        min-height: 120px;
       }
       .hero-summary-cell .k {
         font-family: 'DM Mono', monospace;
-        font-size: 9.5px;
+        font-size: 9px;
         letter-spacing: 2px;
         text-transform: uppercase;
         color: var(--steel);
+        margin-bottom: 4px;
       }
       .hero-summary-cell .v {
         font-family: 'Playfair Display', serif;
@@ -225,9 +221,8 @@
         font-family: 'DM Mono', monospace;
         font-size: 10px;
         color: var(--sky);
-        display: block;
-        margin-top: 6px;
-        letter-spacing: 1px;
+        margin-left: 6px;
+        letter-spacing: 0;
         font-weight: 400;
       }
       .hero-summary-cell .dot {
