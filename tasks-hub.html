@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#050b18" />
+    <title>Hawkeye Sterling V2 — Tasks, Onboarding &amp; Approvals</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #030814;
+        --midnight: #050b18;
+        --navy: #0a1628;
+        --navy-2: #0e1f38;
+        --surface: #11284a;
+        --surface-2: #173257;
+        --steel: #3e5d85;
+        --steel-dim: #2a4268;
+        --royal: #1d4ed8;
+        --azure: #2f7dff;
+        --azure-bright: #5ea3ff;
+        --sky: #7fc1ff;
+        --ice: #bcd8f5;
+        --mist: #dceaff;
+        --border: rgba(127, 193, 255, 0.16);
+        --border-strong: rgba(127, 193, 255, 0.38);
+        --muted: #6d87a8;
+
+        /* Card accent palette — orange / yellow / green */
+        --orange: #fb923c;
+        --orange-bright: #fdba74;
+        --orange-dim: rgba(251, 146, 60, 0.14);
+        --orange-border: rgba(251, 146, 60, 0.38);
+
+        --yellow: #facc15;
+        --yellow-bright: #fde047;
+        --yellow-dim: rgba(250, 204, 21, 0.14);
+        --yellow-border: rgba(250, 204, 21, 0.4);
+
+        --green: #22c55e;
+        --green-bright: #4ade80;
+        --green-dim: rgba(34, 197, 94, 0.14);
+        --green-border: rgba(34, 197, 94, 0.4);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--midnight);
+        color: var(--mist);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+          radial-gradient(ellipse 80% 60% at 15% 0%, rgba(251, 146, 60, 0.16), transparent 60%),
+          radial-gradient(ellipse 60% 50% at 85% 10%, rgba(250, 204, 21, 0.12), transparent 55%),
+          radial-gradient(ellipse 70% 40% at 50% 100%, rgba(34, 197, 94, 0.18), transparent 60%);
+      }
+
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image:
+          linear-gradient(to right, rgba(127, 193, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(127, 193, 255, 0.035) 1px, transparent 1px);
+        background-size: 56px 56px;
+        mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 40%, transparent 80%);
+        -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 40%, transparent 80%);
+      }
+
+      .shell {
+        position: relative;
+        z-index: 1;
+        max-width: 1760px;
+        margin: 0 auto;
+        padding: 2.5rem 2rem 4rem;
+        width: 100%;
+        flex: 1;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 3rem;
+      }
+      .brand { display: flex; align-items: center; gap: 16px; }
+      .header-logo {
+        width: 56px; height: 56px;
+        flex-shrink: 0; border-radius: 10px; display: block;
+        box-shadow:
+          0 0 0 1px rgba(127, 193, 255, 0.4),
+          0 8px 24px rgba(47, 125, 255, 0.35),
+          inset 0 1px 0 rgba(255, 255, 255, 0.18);
+      }
+      .brand-title {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: clamp(28px, 3.2vw, 42px);
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+        padding-bottom: 0.12em;
+        margin: 0;
+        background: linear-gradient(180deg, #ffffff 0%, var(--ice) 45%, var(--sky) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .back-link {
+        color: var(--ice); text-decoration: none;
+        font-size: 11px; font-family: 'DM Mono', monospace;
+        letter-spacing: 2px; text-transform: uppercase;
+        border: 1px solid var(--border-strong);
+        padding: 10px 18px; border-radius: 999px;
+        display: inline-flex; align-items: center; gap: 8px;
+        background: rgba(14, 31, 56, 0.6);
+        backdrop-filter: blur(12px);
+        transition: all 0.25s ease;
+      }
+      .back-link:hover { color: var(--mist); border-color: var(--azure-bright); box-shadow: 0 0 0 4px rgba(47, 125, 255, 0.12); }
+
+      /* Hero */
+      .hero {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 48px;
+        align-items: start;
+        margin-bottom: 3rem;
+      }
+      .hero-eyebrow {
+        display: inline-flex; align-items: center; gap: 10px;
+        font-family: 'DM Mono', monospace; font-size: 11px;
+        letter-spacing: 3px; text-transform: uppercase; color: var(--orange-bright);
+        margin-bottom: 1.25rem;
+      }
+      .hero-eyebrow::before {
+        content: ''; width: 7px; height: 7px; border-radius: 50%;
+        background: var(--orange-bright);
+        box-shadow: 0 0 12px var(--orange-bright);
+        animation: pulse 2.2s ease-in-out infinite;
+      }
+      @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.55;transform:scale(1.25)} }
+
+      .hero-title {
+        font-family: 'Playfair Display', serif; font-weight: 700;
+        font-size: clamp(36px, 4.4vw, 56px); line-height: 1.15;
+        letter-spacing: -0.02em; margin: 0 0 1.25rem;
+        padding-bottom: 0.12em;
+        background: linear-gradient(180deg, #fff 0%, var(--ice) 45%, var(--sky) 100%);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .hero-title .nowrap { white-space: nowrap; }
+      @media (max-width: 640px) { .hero-title .nowrap { white-space: normal; } }
+      .hero-title em {
+        font-style: italic; font-weight: 600; color: var(--orange-bright);
+        -webkit-text-fill-color: var(--orange-bright);
+      }
+      .hero-lede { color: var(--ice); font-size: 15px; line-height: 1.65; max-width: 560px; margin: 0; opacity: 0.8; }
+
+      /* Summary panel */
+      .summary {
+        background: linear-gradient(160deg, rgba(23, 50, 87, 0.8) 0%, rgba(10, 22, 40, 0.6) 100%);
+        border: 1px solid var(--border); border-radius: 18px;
+        padding: 1.5rem; backdrop-filter: blur(18px);
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        position: relative;
+      }
+      .summary::before {
+        content: ''; position: absolute; top: -1px; left: 10%; right: 10%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--orange) 25%, var(--yellow) 50%, var(--green) 75%, transparent);
+        opacity: 0.55;
+      }
+      .summary-cell {
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: rgba(10, 22, 40, 0.5);
+      }
+      .summary-cell .k {
+        font-family: 'DM Mono', monospace; font-size: 9px;
+        letter-spacing: 2px; text-transform: uppercase; color: var(--steel);
+        margin-bottom: 4px;
+      }
+      .summary-cell .v {
+        font-family: 'Playfair Display', serif; font-weight: 700;
+        font-size: 26px; color: var(--mist); line-height: 1;
+      }
+      .summary-cell .v small { font-family: 'DM Mono', monospace; font-size: 11px; margin-left: 6px; letter-spacing: 0; }
+      .summary-cell[data-tone="orange"] { border-color: var(--orange-border); }
+      .summary-cell[data-tone="orange"] .v small { color: var(--orange-bright); }
+      .summary-cell[data-tone="yellow"] { border-color: var(--yellow-border); }
+      .summary-cell[data-tone="yellow"] .v small { color: var(--yellow-bright); }
+      .summary-cell[data-tone="green"] { border-color: var(--green-border); }
+      .summary-cell[data-tone="green"] .v small { color: var(--green-bright); }
+
+      /* Section label */
+      .section-head {
+        display: flex; align-items: baseline; justify-content: space-between;
+        gap: 16px; flex-wrap: wrap; margin-bottom: 1.5rem;
+      }
+      .section-label { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--orange-bright); }
+      .section-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--steel); letter-spacing: 2px; }
+
+      /* Card grid */
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+      }
+
+      .card {
+        position: relative;
+        display: flex; flex-direction: column; gap: 14px;
+        padding: 1.75rem 1.75rem 1.5rem;
+        background: linear-gradient(180deg, rgba(14, 31, 56, 0.85) 0%, rgba(10, 22, 40, 0.95) 100%);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        text-decoration: none; color: inherit;
+        overflow: hidden;
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+      }
+      .card::before {
+        content: ''; position: absolute; top: 0; left: 20%; right: 20%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, currentColor, transparent);
+        opacity: 0.55;
+      }
+      .card::after {
+        content: ''; position: absolute; inset: 0;
+        pointer-events: none; opacity: 0.08;
+        background: radial-gradient(ellipse 50% 60% at 0% 0%, currentColor, transparent 60%);
+      }
+      .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 20px 50px -22px rgba(0, 0, 0, 0.6);
+      }
+
+      .card[data-tone="orange"] { color: var(--orange); border-color: var(--orange-border); }
+      .card[data-tone="orange"]:hover { box-shadow: 0 20px 50px -22px rgba(251, 146, 60, 0.55); }
+      .card[data-tone="yellow"] { color: var(--yellow); border-color: var(--yellow-border); }
+      .card[data-tone="yellow"]:hover { box-shadow: 0 20px 50px -22px rgba(250, 204, 21, 0.55); }
+      .card[data-tone="green"] { color: var(--green); border-color: var(--green-border); }
+      .card[data-tone="green"]:hover { box-shadow: 0 20px 50px -22px rgba(34, 197, 94, 0.55); }
+
+      .card-icon {
+        width: 52px; height: 52px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 24px;
+        background: rgba(10, 22, 40, 0.6);
+        border: 1px solid currentColor;
+        box-shadow: 0 8px 24px -12px currentColor;
+      }
+      .card-meta {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 2px; text-transform: uppercase;
+        color: currentColor;
+      }
+      .card-meta .dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: currentColor; box-shadow: 0 0 10px currentColor;
+      }
+      .card-title {
+        font-family: 'Playfair Display', serif; font-weight: 700;
+        font-size: 22px; color: var(--mist); margin: 0; line-height: 1.2;
+      }
+      .card-desc {
+        color: var(--ice); font-size: 13px; line-height: 1.6;
+        opacity: 0.78; margin: 0;
+      }
+
+      .card-stats {
+        margin-top: 4px;
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .stat {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(10, 22, 40, 0.55);
+      }
+      .stat-val {
+        display: block;
+        font-family: 'Playfair Display', serif; font-weight: 700;
+        font-size: 18px; color: var(--mist); line-height: 1;
+      }
+      .stat-key {
+        display: block; margin-top: 4px;
+        font-family: 'DM Mono', monospace; font-size: 9px;
+        letter-spacing: 1.8px; text-transform: uppercase; color: var(--steel);
+      }
+
+      .card-cta {
+        margin-top: auto;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        font-family: 'DM Mono', monospace; font-size: 11px;
+        letter-spacing: 2px; text-transform: uppercase;
+        color: currentColor;
+      }
+      .card-cta-arrow { transition: transform 0.25s ease; }
+      .card:hover .card-cta-arrow { transform: translateX(4px); }
+
+      /* Regulatory footer */
+      .reg-strip {
+        margin-top: 3rem;
+        padding: 1.5rem 1.75rem;
+        background: linear-gradient(180deg, rgba(14, 31, 56, 0.5) 0%, rgba(10, 22, 40, 0.3) 100%);
+        border: 1px solid var(--border); border-radius: 16px;
+        display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center;
+      }
+      .reg-badge {
+        width: 52px; height: 52px; border-radius: 12px;
+        background: linear-gradient(135deg, var(--orange) 0%, var(--yellow) 50%, var(--green) 100%);
+        display: flex; align-items: center; justify-content: center;
+        font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; color: #041018;
+        box-shadow: 0 0 0 1px rgba(127, 193, 255, 0.4), 0 10px 28px rgba(250, 204, 21, 0.28);
+      }
+      .reg-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--orange-bright); margin-bottom: 6px; }
+      .reg-text { font-size: 12px; line-height: 1.7; color: var(--ice); opacity: 0.78; }
+      .reg-text strong { color: var(--mist); font-weight: 600; }
+
+      .footer {
+        position: relative; z-index: 1;
+        padding: 2rem; border-top: 1px solid var(--border);
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 16px; max-width: 1760px; margin: 0 auto; width: 100%;
+      }
+      .footer-text { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--steel); }
+
+      @media (max-width: 860px) {
+        .hero { grid-template-columns: 1fr; gap: 28px; }
+        .summary { grid-template-columns: 1fr; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <img
+            src="assets/logos/hawkeye-icon.svg"
+            alt="Hawkeye Sterling"
+            class="header-logo"
+            width="56"
+            height="56"
+          />
+          <h1 class="brand-title">Hawkeye Sterling V2 &mdash; Tasks, Onboarding &amp; Approvals</h1>
+        </div>
+        <a href="index.html" class="back-link">&larr; Main App</a>
+      </header>
+
+      <section class="hero">
+        <div>
+          <div class="hero-eyebrow">MLRO Operations Hub</div>
+          <h1 class="hero-title">
+            <span class="nowrap">Tasks, onboarding,</span><br />
+            <span class="nowrap"><em>approvals.</em></span>
+          </h1>
+          <p class="hero-lede">
+            Three MLRO surfaces, one hub. Assign and track compliance tasks,
+            run CDD/EDD onboarding for new customers, and gate high-risk
+            decisions through four-eyes approval — every action logged to the
+            10-year audit trail.
+          </p>
+        </div>
+
+        <aside class="summary" aria-label="Operations summary">
+          <div class="summary-cell" data-tone="orange">
+            <div class="k">Compliance Tasks</div>
+            <div class="v">12<small>open</small></div>
+          </div>
+          <div class="summary-cell" data-tone="yellow">
+            <div class="k">Onboarding</div>
+            <div class="v">4<small>in review</small></div>
+          </div>
+          <div class="summary-cell" data-tone="green">
+            <div class="k">Approvals</div>
+            <div class="v">3<small>pending</small></div>
+          </div>
+          <div class="summary-cell">
+            <div class="k">Audit trail</div>
+            <div class="v">10yr<small>FDL Art.24</small></div>
+          </div>
+        </aside>
+      </section>
+
+      <div class="section-head">
+        <span class="section-label">Operations Surfaces</span>
+        <span class="section-count">03 / 03</span>
+      </div>
+
+      <div class="cards">
+        <a class="card" data-tone="orange" href="index.html#asana">
+          <div class="card-icon" aria-hidden="true">📋</div>
+          <div class="card-meta">
+            <span class="dot"></span>
+            <span>Module 01 · Tasks</span>
+          </div>
+          <h2 class="card-title">Compliance Tasks</h2>
+          <p class="card-desc">
+            Every MLRO task, assignment, and deadline tracked against the
+            responsible owner. Syncs with Asana and the goAML filing calendar;
+            every status change audit-logged.
+          </p>
+          <div class="card-stats">
+            <div class="stat">
+              <span class="stat-val">12</span>
+              <span class="stat-key">Open</span>
+            </div>
+            <div class="stat">
+              <span class="stat-val">Asana</span>
+              <span class="stat-key">Sync</span>
+            </div>
+          </div>
+          <div class="card-cta">
+            <span>Open module</span>
+            <span class="card-cta-arrow" aria-hidden="true">&rarr;</span>
+          </div>
+        </a>
+
+        <a class="card" data-tone="yellow" href="index.html#onboarding">
+          <div class="card-icon" aria-hidden="true">👤</div>
+          <div class="card-meta">
+            <span class="dot"></span>
+            <span>Module 02 · CDD/EDD</span>
+          </div>
+          <h2 class="card-title">Onboarding</h2>
+          <p class="card-desc">
+            KYC / CDD / EDD wizard for new customers and counterparties.
+            Runs the risk-scoring engine, PEP + sanctions screen, and UBO
+            capture — routes high-risk cases to senior-management approval.
+          </p>
+          <div class="card-stats">
+            <div class="stat">
+              <span class="stat-val">4</span>
+              <span class="stat-key">In review</span>
+            </div>
+            <div class="stat">
+              <span class="stat-val">EDD</span>
+              <span class="stat-key">Senior mgmt</span>
+            </div>
+          </div>
+          <div class="card-cta">
+            <span>Open module</span>
+            <span class="card-cta-arrow" aria-hidden="true">&rarr;</span>
+          </div>
+        </a>
+
+        <a class="card" data-tone="green" href="index.html#approvals">
+          <div class="card-icon" aria-hidden="true">✅</div>
+          <div class="card-meta">
+            <span class="dot"></span>
+            <span>Module 03 · Four-Eyes</span>
+          </div>
+          <h2 class="card-title">Approvals</h2>
+          <p class="card-desc">
+            Four-eyes approval queue for high-risk decisions — EDD upgrades,
+            freeze confirmations, STR filings. Two independent approvers
+            enforce the separation of duties required by Cabinet Res 134/2025.
+          </p>
+          <div class="card-stats">
+            <div class="stat">
+              <span class="stat-val">3</span>
+              <span class="stat-key">Pending</span>
+            </div>
+            <div class="stat">
+              <span class="stat-val">4-eyes</span>
+              <span class="stat-key">SoD</span>
+            </div>
+          </div>
+          <div class="card-cta">
+            <span>Open module</span>
+            <span class="card-cta-arrow" aria-hidden="true">&rarr;</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="reg-strip" role="note">
+        <div class="reg-badge" aria-hidden="true">§</div>
+        <div>
+          <div class="reg-title">Regulatory Basis</div>
+          <div class="reg-text">
+            MLRO task ownership and the 10-year audit trail trace to
+            <strong>FDL No.10/2025 Art.20 &amp; Art.24</strong>. CDD / EDD
+            onboarding follows <strong>Cabinet Res 134/2025 Art.7-10 &amp; Art.14</strong>
+            (risk-tiered due diligence). Four-eyes approval enforces the
+            separation of duties under <strong>Cabinet Res 134/2025 Art.19</strong>
+            and the high-risk escalation required by <strong>FDL No.10/2025 Art.21</strong>.
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span class="footer-text">© 2026 Hawkeye Sterling</span>
+      <span class="footer-text">Confidential · Audit-ready</span>
+    </footer>
+  </body>
+</html>
