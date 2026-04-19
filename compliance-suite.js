@@ -150,7 +150,7 @@ window.csFormatDateInput = function (el) {
   // ─── INJECT TABS ─────────────────────────────────────────────────────────────
   const NEW_TABS = [
     // CRA merged into Risk Assessment tab
-    { id: 'ubo',       icon: '🏛️', label: 'UBO',       title: 'UBO Register' },
+    // UBO tab removed from main-tool nav per product decision
     { id: 'redflags',  icon: '🚩', label: 'Red Flags', title: 'Red Flag Library' },
     { id: 'approvals2','icon':'✅', label: '4-Eyes', title: 'Four-Eyes Approval Matrix' },
     { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management' },

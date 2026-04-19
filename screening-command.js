@@ -542,8 +542,6 @@
   const reviewedByInput = $('reviewedBy');
   const keyFindingsInput = $('keyFindings');
   const rationaleInput = $('rationale');
-  const legalAckCheckbox = $('legalAck');
-  const freezeNoticeEl = $('freezeNotice');
   const fourEyesBlock = $('fourEyesBlock');
   const secondApproverInput = $('secondApprover');
   const secondApproverRoleInput = $('secondApproverRole');
@@ -714,8 +712,6 @@
     outcomeBtns.forEach((b) => b.classList.remove('selected'));
     rationaleInput.value = '';
     if (keyFindingsInput) keyFindingsInput.value = '';
-    if (legalAckCheckbox) legalAckCheckbox.checked = false;
-    if (freezeNoticeEl) freezeNoticeEl.hidden = true;
     outcomeBtns.forEach((b) => {
       b.classList.remove('selected');
       b.setAttribute('aria-checked', 'false');
@@ -802,9 +798,6 @@
       btn.classList.add('selected');
       btn.setAttribute('aria-checked', 'true');
       currentOutcome = btn.getAttribute('data-outcome');
-      if (freezeNoticeEl) {
-        freezeNoticeEl.hidden = currentOutcome !== 'confirmed_match';
-      }
       setDisposition(currentOutcome);
       setFourEyesVisibility(currentOutcome);
     });
@@ -866,15 +859,6 @@
       );
       return;
     }
-    if (legalAckCheckbox && !legalAckCheckbox.checked) {
-      showMessage(
-        saveMsg,
-        'Acknowledge the legal notice before saving (FDL Art.20-21 attestation).',
-        'error'
-      );
-      return;
-    }
-
     // Four-eyes gate — partial/confirmed matches require an
     // independent second approver (FDL Art.20-21; Cabinet Res
     // 134/2025 Art.19). Enforced client-side AND must be mirrored

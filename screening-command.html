@@ -1038,57 +1038,6 @@
         font-size: 11px;
         color: var(--muted);
       }
-      .legal-notice {
-        margin-top: 14px;
-        padding: 12px 14px;
-        border: 1px solid var(--border-strong);
-        border-left: 3px solid var(--gold);
-        border-radius: 3px;
-        background: rgba(201, 168, 76, 0.04);
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.55;
-      }
-      .legal-notice h4 {
-        color: var(--gold);
-        font-family: 'Cinzel', serif;
-        font-size: 13px;
-        font-weight: 600;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin-bottom: 6px;
-      }
-      .legal-notice p {
-        margin: 6px 0;
-      }
-      .legal-notice strong {
-        color: var(--text);
-      }
-      .legal-notice .freeze-notice {
-        margin-top: 10px;
-        padding: 8px 10px;
-        border: 1px solid #d94b4b;
-        border-radius: 3px;
-        background: rgba(217, 75, 75, 0.08);
-        color: #ffb5b5;
-      }
-      .legal-notice .freeze-notice strong {
-        color: #ff6b6b;
-        letter-spacing: 0.5px;
-      }
-      .legal-ack {
-        display: flex;
-        gap: 8px;
-        margin-top: 10px;
-        padding-top: 8px;
-        border-top: 1px dashed var(--border);
-        color: var(--text);
-        font-size: 12px;
-        cursor: pointer;
-      }
-      .legal-ack input {
-        margin-top: 2px;
-      }
       .disposition h3 {
         color: var(--gold);
         font-size: 13px;
@@ -2403,47 +2352,6 @@
             >Minimum 20 characters. This text is the audit record seen by MoE / LBMA
             inspectors.</span
           >
-
-          <div id="legalNotice" class="legal-notice">
-            <h4>Legal notice &mdash; acknowledge before saving</h4>
-            <p>
-              <strong>Confidential compliance record — do not disclose to the subject.</strong>
-              This screening is performed under FDL No.10/2025 Art.20-21 and Cabinet Res 134/2025.
-              Disclosing the existence, outcome, or intent of this screening to the subject or any
-              third party is a regulatory offence under <strong>FDL Art.29 (no tipping off)</strong>
-              and may attract administrative penalty up to AED 5M (Cabinet Res 71/2024). Record
-              retained for 10 years per FDL Art.24.
-            </p>
-            <p>
-              <strong>Data basis.</strong> Name, aliases, DOB / registration date, citizenship /
-              registered country, ID / register number, and publicly-available sanctions / PEP /
-              adverse-media sources. Processed under UAE PDPL (Federal Decree-Law No.45/2021)
-              Art.6(1)(c) — compliance with legal obligation. Record is append-only, hash-anchored,
-              and replayable by the Compliance Officer on request.
-            </p>
-            <p>
-              <strong>AI / automation transparency.</strong> This screening uses classical
-              deterministic algorithms only (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone
-              + token-set). No LLM is used to produce the match or the risk score. The human MLRO
-              attests the final disposition.
-            </p>
-            <p id="freezeNotice" class="freeze-notice" hidden>
-              <strong>ASSET FREEZE REQUIRED WITHIN 24 HOURS.</strong> This subject has been
-              confirmed on a sanctions list. Execute an asset freeze within 24 clock hours (Cabinet
-              Res 74/2020 Art.4) and file a CNMR with EOCN within 5 business days (Art.5-7). Do NOT
-              notify the subject. Do NOT release the funds. Escalate immediately to the Compliance
-              Officer.
-            </p>
-            <label class="legal-ack">
-              <input type="checkbox" id="legalAck" />
-              <span
-                >I have personally reviewed the candidates, applied professional judgement
-                consistent with the firm's Risk Appetite Statement (Cabinet Res 134/2025 Art.5), and
-                confirm the outcome + rationale above is a true and accurate account of my
-                decision.</span
-              >
-            </label>
-          </div>
 
           <div id="fourEyesBlock" class="four-eyes" aria-hidden="true">
             <h4>Four-eyes approval required</h4>

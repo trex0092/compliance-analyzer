@@ -124,10 +124,10 @@ const SANCTIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
  *   TOTAL worst-case                                    ≈ 9.5s
  * Leaves ~0.5s headroom before Netlify's 10s sync-function ceiling.
  */
-const SANCTIONS_FETCH_TIMEOUT_MS = 5_500;
-const ADVERSE_MEDIA_TIMEOUT_MS = 4_500;
+const SANCTIONS_FETCH_TIMEOUT_MS = 4_500;
+const ADVERSE_MEDIA_TIMEOUT_MS = 3_500;
 const DEEP_BRAIN_DEADLINE_MS = 2_500;
-const ASANA_TIMEOUT_MS = 1_500;
+const ASANA_TIMEOUT_MS = 2_500;
 const WATCHLIST_TIMEOUT_MS = 1_500;
 
 /**
