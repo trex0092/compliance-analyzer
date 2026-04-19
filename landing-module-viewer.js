@@ -5,6 +5,31 @@
   var closeBtn = document.getElementById('moduleViewClose');
   if (!view || !frame || !titleEl || !closeBtn) return;
 
+  // Inject styles that collapse the landing-page chrome (hero, summary,
+  // card grid, regulatory strip) when a module is active. Sub-routes
+  // like /workbench/compliance-tasks must show ONLY the module content,
+  // never the landing-page module cards (URL → content must be
+  // deterministic). Topbar + page-nav + module-view stay visible so the
+  // user can still navigate or close.
+  (function injectModuleViewStyles() {
+    if (document.getElementById('moduleViewActiveStyles')) return;
+    var style = document.createElement('style');
+    style.id = 'moduleViewActiveStyles';
+    style.textContent =
+      'body.module-view-active .hero,' +
+      'body.module-view-active .summary,' +
+      'body.module-view-active .hero-summary,' +
+      'body.module-view-active .section-head,' +
+      'body.module-view-active .cards,' +
+      'body.module-view-active .grid,' +
+      'body.module-view-active .reg-strip,' +
+      'body.module-view-active .reg-basis' +
+      '{display:none !important;}' +
+      'body.module-view-active .module-view{margin-top:0;}' +
+      'body.module-view-active .module-view-frame{height:calc(100vh - 180px);min-height:640px;}';
+    document.head.appendChild(style);
+  })();
+
   // Landing slugs that resolve to a root-level .html via netlify.toml
   // redirects. Any first URL segment outside this list is treated as a
   // raw .html file (defensive: local file:// / preview deploys).
@@ -60,6 +85,7 @@
     titleEl.textContent = label || 'Module';
     view.classList.add('is-open');
     view.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('module-view-active');
     if (pushHistory !== false && slug) {
       var target = getBasePath() + '/' + slug;
       if (location.pathname !== target) {
@@ -75,6 +101,7 @@
   function closeModule(pushHistory) {
     view.classList.remove('is-open');
     view.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('module-view-active');
     frame.src = 'about:blank';
     if (pushHistory !== false) {
       var base = getBasePath();
