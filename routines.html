@@ -76,7 +76,7 @@
       .shell {
         position: relative;
         z-index: 1;
-        max-width: 1360px;
+        max-width: 1760px;
         margin: 0 auto;
         padding: 2.5rem 2rem 4rem;
         width: 100%;
@@ -228,8 +228,112 @@
         border-radius: 16px;
         display: flex; flex-direction: column; gap: 10px;
         overflow: hidden;
+        cursor: pointer;
         transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease;
       }
+
+      /* Brain / intelligence strip */
+      .brain-strip {
+        display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 18px;
+        align-items: center;
+        margin: 0 0 1.5rem;
+        padding: 14px 20px;
+        border: 1px solid rgba(168, 85, 247, 0.35);
+        background: linear-gradient(180deg, rgba(60, 20, 110, 0.35) 0%, rgba(30, 10, 60, 0.45) 100%);
+        border-radius: 16px;
+        box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.1) inset, 0 10px 30px -20px rgba(168, 85, 247, 0.55);
+      }
+      .brain-dot {
+        width: 10px; height: 10px; border-radius: 50%; background: #a855f7;
+        box-shadow: 0 0 14px #a855f7, 0 0 28px rgba(168, 85, 247, 0.5);
+        animation: pulse 2.2s ease-in-out infinite;
+      }
+      .brain-label {
+        font-family: 'Playfair Display', serif; font-size: 15px; color: #fff; line-height: 1.3;
+      }
+      .brain-label em { color: #e9d5ff; font-style: italic; }
+      .brain-badge {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 2px; text-transform: uppercase; color: #e9d5ff;
+        padding: 6px 12px; border-radius: 999px;
+        border: 1px solid rgba(168, 85, 247, 0.45);
+        background: rgba(168, 85, 247, 0.12); white-space: nowrap;
+      }
+      @media (max-width: 860px) {
+        .brain-strip { grid-template-columns: 1fr; text-align: center; }
+      }
+
+      /* Routine detail drawer */
+      .drawer-overlay {
+        position: fixed; inset: 0; z-index: 100;
+        background: rgba(4, 10, 24, 0.72);
+        backdrop-filter: blur(6px);
+        display: none;
+        align-items: center; justify-content: center;
+        padding: 20px;
+      }
+      .drawer-overlay.open { display: flex; }
+      .drawer {
+        width: min(720px, 100%); max-height: 90vh; overflow-y: auto;
+        background: linear-gradient(180deg, rgba(14, 31, 56, 0.95) 0%, rgba(10, 22, 40, 0.98) 100%);
+        border: 1px solid var(--border-strong);
+        border-radius: 18px; padding: 28px;
+        box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6);
+        position: relative;
+      }
+      .drawer-close {
+        position: absolute; top: 14px; right: 14px;
+        width: 32px; height: 32px; border-radius: 50%;
+        background: rgba(14, 31, 56, 0.9); border: 1px solid var(--border);
+        color: var(--ice); font-size: 16px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .drawer-close:hover { color: #fff; border-color: var(--azure-bright); }
+      .drawer-title {
+        font-family: 'Playfair Display', serif; font-weight: 700;
+        font-size: 24px; color: #fff; margin: 0 0 4px;
+      }
+      .drawer-sub {
+        font-family: 'DM Mono', monospace; font-size: 11px;
+        letter-spacing: 2px; text-transform: uppercase; color: var(--steel);
+        margin: 0 0 18px;
+      }
+      .drawer-desc { color: var(--ice); font-size: 14px; line-height: 1.6; margin: 0 0 18px; opacity: 0.85; }
+      .drawer-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px;
+      }
+      @media (max-width: 560px) { .drawer-grid { grid-template-columns: 1fr; } }
+      .drawer-cell {
+        padding: 12px 14px; border-radius: 10px;
+        background: rgba(10, 22, 40, 0.6);
+        border: 1px solid var(--border);
+      }
+      .drawer-cell .k {
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1.8px; text-transform: uppercase; color: var(--steel);
+        margin-bottom: 4px;
+      }
+      .drawer-cell .v {
+        font-family: 'DM Mono', monospace; font-size: 12.5px;
+        color: var(--mist); word-break: break-word;
+      }
+      .drawer-cell .v.reg { color: var(--azure-bright); }
+      .drawer-actions {
+        display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px;
+      }
+      .drawer-btn {
+        flex: 1; min-width: 160px;
+        padding: 11px 18px; border-radius: 10px;
+        font-family: 'DM Mono', monospace; font-size: 11px;
+        letter-spacing: 2px; text-transform: uppercase;
+        border: 1px solid var(--azure); color: var(--azure-bright);
+        background: rgba(47, 125, 255, 0.1);
+        text-decoration: none; text-align: center; cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .drawer-btn:hover { background: rgba(47, 125, 255, 0.22); color: #fff; }
+      .drawer-btn.secondary { border-color: var(--border-strong); color: var(--ice); background: transparent; }
+      .drawer-btn.secondary:hover { border-color: var(--azure-bright); color: #fff; }
       .routine::after {
         content: ''; position: absolute; top: 0; left: 20%; right: 20%;
         height: 1px; background: linear-gradient(90deg, transparent, rgba(127, 193, 255, 0.55), transparent); opacity: 0.5;
@@ -337,7 +441,7 @@
         position: relative; z-index: 1;
         padding: 2rem; border-top: 1px solid var(--border);
         display: flex; justify-content: space-between; align-items: center;
-        gap: 16px; max-width: 1360px; margin: 0 auto; width: 100%;
+        gap: 16px; max-width: 1760px; margin: 0 auto; width: 100%;
       }
       .footer-text { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--steel); }
 
@@ -401,6 +505,16 @@
         </aside>
       </section>
 
+      <div class="brain-strip" role="note">
+        <span class="brain-dot" aria-hidden="true"></span>
+        <div class="brain-label">
+          Routed through the <em>Weaponized Brain</em> — 19 subsystems + Opus advisor for highest-intelligence compliance decisions.
+        </div>
+        <span class="brain-badge">19 Subsystems</span>
+        <span class="brain-badge">Opus Advisor</span>
+        <span class="brain-badge">Highest Intelligence</span>
+      </div>
+
       <div class="filter-bar">
         <div class="filter-left">
           <span class="section-label">Registered Routines</span>
@@ -433,6 +547,47 @@
         </div>
       </div>
     </main>
+
+    <!-- Routine detail drawer ──────────────────────────────────────── -->
+    <div class="drawer-overlay" id="routineDrawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+      <div class="drawer">
+        <button type="button" class="drawer-close" id="drawerCloseBtn" aria-label="Close">&times;</button>
+        <h2 class="drawer-title" id="drawerTitle">Routine</h2>
+        <p class="drawer-sub" id="drawerCadence">Cadence</p>
+        <p class="drawer-desc" id="drawerDesc"></p>
+        <div class="drawer-grid">
+          <div class="drawer-cell">
+            <div class="k">Schedule (cron)</div>
+            <div class="v" id="drawerCron">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Human readable</div>
+            <div class="v" id="drawerHuman">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Regulation</div>
+            <div class="v reg" id="drawerReg">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Audit store</div>
+            <div class="v" id="drawerStore">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Live status</div>
+            <div class="v" id="drawerStatus">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Last seen</div>
+            <div class="v" id="drawerLastSeen">—</div>
+          </div>
+        </div>
+        <div class="drawer-actions">
+          <a class="drawer-btn" id="drawerSourceLink" href="#" target="_blank" rel="noopener noreferrer">View source on GitHub</a>
+          <button type="button" class="drawer-btn secondary" id="drawerRunBtn" title="Trigger this cron manually (requires MLRO sign-in)">Run now</button>
+        </div>
+        <p class="help-text" id="drawerRunMsg" style="font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--steel); margin: 12px 0 0; min-height: 1.4em"></p>
+      </div>
+    </div>
 
     <footer class="footer">
       <span class="footer-text">© 2026 Hawkeye Sterling</span>
@@ -557,6 +712,70 @@
       });
 
       render(ACTIVE_FILTER);
+
+      // ── Drawer (routine detail) ────────────────────────────────────
+      const drawer = document.getElementById('routineDrawer');
+      const drawerCloseBtn = document.getElementById('drawerCloseBtn');
+      const drawerRunBtn = document.getElementById('drawerRunBtn');
+      const drawerRunMsg = document.getElementById('drawerRunMsg');
+      let DRAWER_ROUTINE = null;
+
+      function openDrawer(routineId) {
+        const r = ROUTINES.find(x => x.id === routineId);
+        if (!r) return;
+        DRAWER_ROUTINE = r;
+        document.getElementById('drawerTitle').textContent = r.title;
+        document.getElementById('drawerCadence').textContent = cadenceLabel[r.cadence] + ' \u00B7 ' + humanSchedule(r.schedule);
+        document.getElementById('drawerDesc').textContent = r.desc;
+        document.getElementById('drawerCron').textContent = r.schedule;
+        document.getElementById('drawerHuman').textContent = humanSchedule(r.schedule);
+        document.getElementById('drawerReg').textContent = r.reg;
+        document.getElementById('drawerStore').textContent = r.store;
+        const live = LIVE_STATUS[r.id];
+        document.getElementById('drawerStatus').textContent = live ? stateLabelFor(live) : 'Sign in for live status';
+        document.getElementById('drawerLastSeen').textContent = live && live.lastRun ? live.lastRun : '—';
+        const src = document.getElementById('drawerSourceLink');
+        src.href = 'https://github.com/trex0092/compliance-analyzer/blob/main/netlify/functions/' + r.id + '-cron.mts';
+        drawerRunMsg.textContent = '';
+        drawer.classList.add('open');
+      }
+
+      function closeDrawer() {
+        drawer.classList.remove('open');
+        DRAWER_ROUTINE = null;
+      }
+
+      document.getElementById('routinesGrid').addEventListener('click', (e) => {
+        const card = e.target.closest('.routine');
+        if (!card) return;
+        const id = card.getAttribute('data-routine');
+        if (id) openDrawer(id);
+      });
+      drawerCloseBtn.addEventListener('click', closeDrawer);
+      drawer.addEventListener('click', (e) => { if (e.target === drawer) closeDrawer(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer(); });
+
+      drawerRunBtn.addEventListener('click', async () => {
+        if (!DRAWER_ROUTINE) return;
+        const token = getAuthToken();
+        if (!token) { drawerRunMsg.textContent = 'Sign in first to trigger a manual run.'; return; }
+        drawerRunMsg.textContent = 'Triggering ' + DRAWER_ROUTINE.id + '…';
+        try {
+          const res = await fetch('/api/' + DRAWER_ROUTINE.id + '-cron', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ manual: true })
+          });
+          if (res.ok) {
+            drawerRunMsg.textContent = 'Triggered. Refreshing status…';
+            setTimeout(fetchLiveStatus, 1500);
+          } else {
+            drawerRunMsg.textContent = 'Run failed (HTTP ' + res.status + '). Endpoint may not accept manual triggers.';
+          }
+        } catch (err) {
+          drawerRunMsg.textContent = 'Network error triggering run.';
+        }
+      });
 
       // ── Live status wiring ──────────────────────────────────────────
       function getAuthToken() {
