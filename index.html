@@ -211,21 +211,21 @@
         margin-bottom: 0;
       }
       .logo-icon {
-        width: 48px;
-        height: 48px;
+        width: 56px;
+        height: 56px;
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
         box-shadow:
-          0 0 0 1px rgba(245, 158, 11, 0.35),
-          0 8px 24px rgba(245, 158, 11, 0.25),
-          inset 0 1px 0 rgba(255, 255, 255, 0.12);
+          0 0 0 1px rgba(245, 158, 11, 0.4),
+          0 8px 24px rgba(245, 158, 11, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.18);
         transition: all 0.3s;
       }
       .logo-text {
         font-family: 'Playfair Display', 'Cinzel', serif;
-        font-size: clamp(22px, 2.4vw, 30px);
+        font-size: clamp(28px, 3.2vw, 42px);
         font-weight: 700;
         letter-spacing: -0.01em;
         line-height: 1.2;
@@ -776,38 +776,40 @@
       .tabs {
         display: flex;
         flex-wrap: wrap;
-        gap: 4px;
-        margin-bottom: 1.2rem;
+        gap: 10px;
+        margin-bottom: 1.5rem;
       }
       .tab {
-        padding: 10px 14px;
-        border-radius: 0;
-        font-size: 10px;
+        padding: 10px 18px;
+        border-radius: 999px;
+        font-size: 11px;
         cursor: pointer;
-        background: transparent;
-        border: 1px solid rgba(245, 158, 11, 0.08);
-        border-bottom: 2px solid transparent;
+        background: rgba(14, 31, 56, 0.35);
+        border: 1px solid rgba(245, 158, 11, 0.22);
         color: var(--ivory-dim);
-        transition: all 0.3s;
+        transition: all 0.25s ease;
         white-space: nowrap;
         text-align: center;
         box-sizing: border-box;
         overflow: hidden;
         text-overflow: ellipsis;
-        letter-spacing: 1px;
+        letter-spacing: 2px;
         text-transform: uppercase;
+        font-family: 'DM Mono', 'Montserrat', monospace;
         font-weight: 400;
+        backdrop-filter: blur(10px);
       }
       .tab.active {
-        background: rgba(245, 158, 11, 0.06);
-        border-color: rgba(245, 158, 11, 0.15);
-        border-bottom-color: var(--gold);
+        background: rgba(245, 158, 11, 0.12);
+        border-color: var(--gold);
         color: var(--gold);
         font-weight: 500;
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
       }
       .tab:hover {
         color: var(--gold);
-        border-bottom-color: rgba(245, 158, 11, 0.3);
+        border-color: rgba(245, 158, 11, 0.55);
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.08);
       }
       .tab-content {
         display: none;
@@ -2409,7 +2411,7 @@
           </button>
           <!-- Shipments moved to /logistics landing page -->
           <!-- Routines moved to /routines landing page -->
-          <div class="tab active" data-action="switchTab" data-arg="iarreport">📝 IAR Report</div>
+          <!-- IAR Report tab removed per MLRO request -->
           <!-- Compliance Tasks tab removed per MLRO request -->
           <!-- Evidence Tracker removed -->
           <!-- Training moved to /compliance-ops landing page -->
@@ -2421,10 +2423,10 @@
           <!-- Settings tab removed per MLRO request (previously removed on main) -->
           <!-- Reports tab removed per MLRO request -->
           <!-- Reg Monitor tab removed per MLRO request -->
-          <div class="tab" data-action="switchTab" data-arg="integrations">🔗 Integrations</div>
+          <div class="tab active" data-action="switchTab" data-arg="integrations">🔗 Integrations</div>
           <!-- goAML Export removed -->
           <!-- Thresholds tab removed — DPMS AED 55K monitor surfaces automatically on relevant transaction pages -->
-          <div class="tab" data-action="switchTab" data-arg="supplychain">⛏️ Supply</div>
+          <!-- Supply tab removed per MLRO request -->
           <!-- Approvals tab removed per MLRO request -->
           <!-- Reg Changes tab removed — regulatory updates surface via Reg Monitor tab -->
 
@@ -3109,7 +3111,7 @@
         </div>
 
         <!-- IAR COMPLIANCE REPORT TAB -->
-        <div id="tab-iarreport" class="tab-content active">
+        <div id="tab-iarreport" class="tab-content">
           <div class="card">
             <div class="top-bar" style="margin-bottom: 10px">
               <span class="lbl" style="margin: 0">IAR Compliance Report</span>
@@ -6919,7 +6921,7 @@
         <div id="tab-monitor" class="tab-content"></div>
 
         <!-- INTEGRATIONS TAB -->
-        <div id="tab-integrations" class="tab-content"></div>
+        <div id="tab-integrations" class="tab-content active"></div>
 
         <!-- BRAIN CONSOLE TAB — populated by brain-console.js on first switchTab('brain') -->
         <div id="tab-brain" class="tab-content">
