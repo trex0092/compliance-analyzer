@@ -48,8 +48,21 @@
   to = "/workbench.html"
   status = 200
 
+# Sub-routes like /workbench/asana, /workbench/onboarding, /workbench/approvals
+# serve the same workbench landing; landing-module-viewer.js reads the path
+# and opens the matching module in-page so the user stays on the landing.
+[[redirects]]
+  from = "/workbench/*"
+  to = "/workbench.html"
+  status = 200
+
 [[redirects]]
   from = "/logistics"
+  to = "/logistics.html"
+  status = 200
+
+[[redirects]]
+  from = "/logistics/*"
   to = "/logistics.html"
   status = 200
 
@@ -60,6 +73,15 @@
 
 [[redirects]]
   from = "/compliance-ops"
+  to = "/compliance-ops.html"
+  status = 200
+
+# Sub-routes like /compliance-ops/training, /compliance-ops/employees,
+# /compliance-ops/incidents, /compliance-ops/reports serve the same
+# compliance-ops landing; landing-module-viewer.js reads the path and
+# opens the matching module in-page.
+[[redirects]]
+  from = "/compliance-ops/*"
   to = "/compliance-ops.html"
   status = 200
 
