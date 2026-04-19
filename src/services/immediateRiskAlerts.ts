@@ -56,6 +56,8 @@ import {
   corroborationForSubject,
   type SubjectCorroboration,
 } from './multiListCorroboration';
+import { runDeliberativeBrain, type DeliberativeBrainResult } from './deliberativeBrainChain';
+import { runForensicInvestigation, type ForensicInvestigation } from './forensicInvestigator';
 import type { NormalisedSanction } from './sanctionsIngest';
 
 // ---------------------------------------------------------------------------
@@ -414,6 +416,37 @@ export async function dispatchImmediateAlerts(
         subject.id
       );
 
+      // Five-step deliberative chain — dynamic prior → calibrated
+      // posterior → hypothesis ranking → temporal decay → confidence
+      // triage. Produces the auditable chain-of-thought block that
+      // makes the decision legible to MLRO + MoE inspectors. The
+      // `listedOn` field on the candidate is the closest we have to
+      // an "evidence observed at" timestamp; when missing we fall
+      // back to generatedAtIso so the chain still runs (decay=1.0).
+      const evidenceObservedAtIso = candidate.listedOn || generatedAtIso;
+      const brain: DeliberativeBrainResult = runDeliberativeBrain({
+        subject,
+        breakdown: riskScore.breakdown,
+        evidence,
+        list: candidate.list,
+        evidenceObservedAtIso,
+        nowIso: generatedAtIso,
+      });
+
+      // Forensic investigation packet — red flags, identity gaps,
+      // prioritised next investigative steps. Runs downstream of the
+      // brain chain so it can consume the calibrated posterior + the
+      // hypothesis ranking.
+      const forensic: ForensicInvestigation = runForensicInvestigation({
+        subject,
+        breakdown: riskScore.breakdown,
+        evidence,
+        calibrated,
+        hypotheses: brain.hypotheses,
+        corroboration,
+        isAmendment: candidate.changeType === 'AMENDMENT',
+      });
+
       const task = buildRiskAlertTask({
         subject,
         match: candidateToMatch(candidate),
@@ -421,6 +454,8 @@ export async function dispatchImmediateAlerts(
         ctx: alertCtx,
         calibrated,
         corroboration,
+        brain,
+        forensic,
       });
 
       summary.tasksAttempted += 1;

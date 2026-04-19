@@ -36,6 +36,7 @@
 import type { IdentityMatchBreakdown, IdentityMatchResult } from './identityMatchScore';
 import { IDENTITY_MATCH_THRESHOLDS, IDENTITY_MATCH_WEIGHTS } from './identityMatchScore';
 import type { ResolvedIdentity } from './screeningWatchlist';
+import type { DynamicPriorResult } from './dynamicPrior';
 
 // ---------------------------------------------------------------------------
 // Public surface
@@ -162,9 +163,17 @@ function aliasLlr(alias: number): number {
  */
 export function calibrateIdentityScore(
   breakdown: IdentityMatchBreakdown,
-  obs: EvidenceObservations
+  obs: EvidenceObservations,
+  /**
+   * Optional dynamic prior. When omitted, the portfolio-wide
+   * PRIOR_TRUE_MATCH (0.1) is used — behaviour unchanged from the
+   * first revision of this module. When provided, the caller's
+   * risk-tier + adverse-media + PEP signal drive the prior instead.
+   */
+  priorOverride?: DynamicPriorResult
 ): CalibratedIdentityScore {
-  const prior = logit(PRIOR_TRUE_MATCH);
+  const priorValue = priorOverride?.prior ?? PRIOR_TRUE_MATCH;
+  const prior = logit(priorValue);
   const nameContribution = nameLlr(breakdown.name);
   const dobContribution = dobLlr(breakdown.dob, obs);
   const natContribution = natLlr(breakdown.nationality, obs);

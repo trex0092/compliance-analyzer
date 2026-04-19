@@ -34,6 +34,8 @@ import type { WatchlistEntry } from './screeningWatchlist';
 import type { IdentityMatchBreakdown, IdentityClassification } from './identityMatchScore';
 import type { CalibratedIdentityScore, IdentityCounterfactual } from './identityScoreBayesian';
 import type { SubjectCorroboration } from './multiListCorroboration';
+import type { DeliberativeBrainResult } from './deliberativeBrainChain';
+import type { ForensicInvestigation } from './forensicInvestigator';
 import { buildStrNarrativeDraft } from './strNarrativePreDraft';
 
 // ---------------------------------------------------------------------------
@@ -110,6 +112,20 @@ export interface RiskAlertInput {
    * strength-in-numbers signal immediately.
    */
   corroboration?: SubjectCorroboration;
+  /**
+   * Optional five-step deliberative brain chain — dynamic prior →
+   * calibrated posterior → hypothesis ranking → temporal decay →
+   * confidence triage. Renders a multi-block chain-of-thought trace
+   * that makes the MLRO's reasoning auditable under FDL Art.20-21 +
+   * EU AI Act Art.13 + NIST AI RMF Measure 2.9.
+   */
+  brain?: DeliberativeBrainResult;
+  /**
+   * Optional forensic investigation packet — findings + prioritised
+   * next investigative steps. Rendered as a detective's notebook so
+   * the MLRO sees the shortest path to a defensible decision.
+   */
+  forensic?: ForensicInvestigation;
 }
 
 export interface RiskAlertTask {
@@ -450,6 +466,93 @@ function renderCorroborationBlock(corro: SubjectCorroboration): string {
   return lines.join('\n');
 }
 
+function renderBrainChainBlock(brain: DeliberativeBrainResult): string {
+  const lines: string[] = ['DELIBERATIVE BRAIN CHAIN'];
+  lines.push('  Five-step chain-of-thought (FDL Art.20-21; EU AI Act Art.13; NIST AI RMF 2.9):');
+  for (const line of brain.trace) {
+    lines.push(`  ${line}`);
+  }
+  return lines.join('\n');
+}
+
+function renderHypothesisBlock(brain: DeliberativeBrainResult): string {
+  const lines: string[] = ['HYPOTHESIS RANKING'];
+  lines.push('  Five competing explanations for this hit; posteriors normalised to 100%.');
+  for (const h of brain.hypotheses.ranked) {
+    const pct = (h.posterior * 100).toFixed(1).padStart(5);
+    const tag = h.hypothesis.padEnd(17);
+    lines.push(`  ${pct}%  ${tag}  ${h.description}`);
+    if (h.supporting.length > 0) {
+      lines.push(`          supports: ${h.supporting.join('; ')}`);
+    }
+    if (h.refuting.length > 0) {
+      lines.push(`          refutes:  ${h.refuting.join('; ')}`);
+    }
+    lines.push(`          next:     ${h.nextAction}`);
+  }
+  const { leading, decisive } = brain.hypotheses;
+  lines.push(
+    `  Leader: ${leading.hypothesis} (${(leading.posterior * 100).toFixed(1)}%, margin ${(leading.margin * 100).toFixed(1)} pp) — ${decisive ? 'DECISIVE' : 'AMBIGUOUS'}`
+  );
+  return lines.join('\n');
+}
+
+function renderTriageBlock(brain: DeliberativeBrainResult): string {
+  const lines: string[] = ['CONFIDENCE TRIAGE'];
+  lines.push(`  Band:      ${brain.triage.band.toUpperCase()}`);
+  lines.push(`  Verdict:   ${brain.triage.verdict}`);
+  if (brain.triage.deadlineBusinessHours !== undefined) {
+    lines.push(`  Deadline:  ${brain.triage.deadlineBusinessHours} business hours`);
+  }
+  lines.push(`  Approvers: ${brain.triage.approvers.join(', ')}`);
+  if (brain.triage.filings.length > 0) {
+    lines.push(`  Filings:   ${brain.triage.filings.join(', ')}`);
+  }
+  lines.push('  Actions:');
+  for (const a of brain.triage.actions) {
+    lines.push(`    - ${a}`);
+  }
+  return lines.join('\n');
+}
+
+function renderTemporalDecayBlock(brain: DeliberativeBrainResult): string {
+  const lines: string[] = ['TEMPORAL DECAY'];
+  lines.push(
+    `  Evidence age: ${brain.decay.ageDays.toFixed(1)} days   multiplier: ${brain.decay.multiplier.toFixed(2)}   (${brain.decay.freshness})`
+  );
+  lines.push(
+    `  Age-weighted posterior: ${pct1(brain.decayedProbability)}   (half-life 90d; FATF Rec 10 + Cabinet Res 134/2025 Art.19)`
+  );
+  return lines.join('\n');
+}
+
+function renderForensicBlock(f: ForensicInvestigation): string {
+  const lines: string[] = ['FORENSIC INVESTIGATION'];
+  lines.push(`  Overall severity: ${f.overallSeverity.toUpperCase()}`);
+  lines.push(`  Verdict: ${f.verdict}`);
+  if (f.findings.length === 0) {
+    lines.push('  No findings — evidence set is complete and unambiguous.');
+  } else {
+    lines.push(`  Findings (${f.findings.length}):`);
+    for (const finding of f.findings) {
+      const sev = finding.severity.toUpperCase().padEnd(10);
+      lines.push(`    [${sev}] ${finding.label}`);
+      lines.push(`              ${finding.detail}`);
+      lines.push(`              Regulatory: ${finding.regulatory}`);
+    }
+  }
+  if (f.nextSteps.length > 0) {
+    lines.push('  Next investigative steps (sorted by expected probability gain):');
+    for (const step of f.nextSteps.slice(0, 5)) {
+      lines.push(
+        `    +${step.expectedProbabilityGain.toFixed(1)} pp  [${step.identifier}]  ${step.action}`
+      );
+      lines.push(`              Regulatory: ${step.regulatory}`);
+    }
+  }
+  return lines.join('\n');
+}
+
 function renderStrDraftBlock(
   input: RiskAlertInput,
   severity: 'ALERT' | 'POSSIBLE' | 'CHANGE'
@@ -578,6 +681,15 @@ export function buildRiskAlertTask(input: RiskAlertInput): RiskAlertTask {
     if (corroLines.length > 0) {
       brainBlocks.push('', corroLines);
     }
+  }
+  if (input.brain) {
+    brainBlocks.push('', renderBrainChainBlock(input.brain));
+    brainBlocks.push('', renderHypothesisBlock(input.brain));
+    brainBlocks.push('', renderTemporalDecayBlock(input.brain));
+    brainBlocks.push('', renderTriageBlock(input.brain));
+  }
+  if (input.forensic) {
+    brainBlocks.push('', renderForensicBlock(input.forensic));
   }
   const strBlock = renderStrDraftBlock(input, severity);
 
