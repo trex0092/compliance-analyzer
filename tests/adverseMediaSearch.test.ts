@@ -155,6 +155,7 @@ describe('resultToBrainEvent', () => {
     subject: 'Test Subject',
     query: 'q',
     provider: 'dry_run',
+    providersUsed: ['dry_run'],
     hits: Array.from({ length: hits }, (_, i) => ({
       title: `Hit ${i}`,
       url: `https://example.com/${i}`,
