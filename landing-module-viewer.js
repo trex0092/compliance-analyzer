@@ -8,7 +8,7 @@
   // Landing slugs that resolve to a root-level .html via netlify.toml
   // redirects. Any first URL segment outside this list is treated as a
   // raw .html file (defensive: local file:// / preview deploys).
-  var LANDING_SLUGS = ['logistics', 'workbench', 'compliance-ops', 'routines'];
+  var LANDING_SLUGS = ['logistics', 'workbench', 'compliance-ops', 'routines', 'screening-command'];
 
   // Base path for the current landing page — never includes a module
   // sub-slug. "/logistics", "/workbench", etc. Falls back to the raw

@@ -95,6 +95,11 @@
   to = "/compliance-ops.html"
   status = 200
 
+[[redirects]]
+  from = "/screening-command/*"
+  to = "/screening-command.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
