@@ -153,6 +153,46 @@
         box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.12);
       }
 
+      /* Page-specific navigation — rendered dynamically by page-nav.js.
+         Matches the workbench / compliance-ops / logistics pill pattern
+         so the MLRO gets a consistent navigation affordance across every
+         landing page. Purple accent preserves the screening-command
+         palette. */
+      .page-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 2.25rem;
+        padding: 0;
+      }
+      .page-nav[hidden] { display: none; }
+      .page-nav-link {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(36, 21, 56, 0.45);
+        color: var(--ice);
+        text-decoration: none;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        transition: all 0.2s ease;
+      }
+      .page-nav-link:hover {
+        color: var(--mist);
+        border-color: var(--azure-bright);
+        background: rgba(168, 85, 247, 0.18);
+      }
+      .page-nav-link.is-active {
+        color: var(--mist);
+        border-color: var(--azure-bright);
+        background: rgba(168, 85, 247, 0.28);
+        box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+      }
+
       .hero {
         display: grid;
         grid-template-columns: 1.3fr 1fr;
@@ -525,6 +565,8 @@
         <a href="index.html" class="back-link">&larr; Main app</a>
       </header>
 
+      <nav id="pageNav" class="page-nav" aria-label="Screening Command sections" hidden></nav>
+
       <section class="hero">
         <div>
           <div class="hero-eyebrow">Screening Command</div>
@@ -717,6 +759,7 @@
       <span>© 2026 Hawkeye Sterling</span>
       <span>Confidential &middot; Audit-ready</span>
     </footer>
+    <script src="page-nav.js?v=1"></script>
     <script src="landing-module-viewer.js?v=7"></script>
   </body>
 </html>
