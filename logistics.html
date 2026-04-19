@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <meta name="theme-color" content="#050b18" />
+    <meta name="theme-color" content="#051a10" />
     <title>Hawkeye Sterling V2 — Shipments</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,25 +14,25 @@
     />
     <style>
       :root {
-        /* Blues, top to bottom: ink → midnight → navy → steel → royal → azure → sky → ice */
-        --ink: #030814;
-        --midnight: #050b18;
-        --navy: #0a1628;
-        --navy-2: #0e1f38;
-        --surface: #11284a;
-        --surface-2: #173257;
-        --steel: #3e5d85;
-        --steel-dim: #2a4268;
-        --royal: #1d4ed8;
-        --azure: #2f7dff;
-        --azure-bright: #5ea3ff;
-        --sky: #7fc1ff;
-        --ice: #bcd8f5;
-        --mist: #dceaff;
-        --border: rgba(127, 193, 255, 0.16);
-        --border-strong: rgba(127, 193, 255, 0.38);
-        --glow: rgba(47, 125, 255, 0.55);
-        --muted: #6d87a8;
+        /* Greens, top to bottom: ink → midnight → navy → steel → royal → azure → sky → ice */
+        --ink: #02110a;
+        --midnight: #051a10;
+        --navy: #0a2818;
+        --navy-2: #0e3824;
+        --surface: #11462e;
+        --surface-2: #175538;
+        --steel: #3e856a;
+        --steel-dim: #2a5c46;
+        --royal: #15803d;
+        --azure: #22c55e;
+        --azure-bright: #4ade80;
+        --sky: #86efac;
+        --ice: #bbf7d0;
+        --mist: #dcfce7;
+        --border: rgba(134, 239, 172, 0.16);
+        --border-strong: rgba(134, 239, 172, 0.38);
+        --glow: rgba(34, 197, 94, 0.55);
+        --muted: #6ea88a;
       }
 
       * {
@@ -65,9 +65,9 @@
         pointer-events: none;
         z-index: 0;
         background:
-          radial-gradient(ellipse 80% 60% at 15% 0%, rgba(47, 125, 255, 0.22), transparent 60%),
-          radial-gradient(ellipse 60% 50% at 85% 10%, rgba(29, 78, 216, 0.18), transparent 55%),
-          radial-gradient(ellipse 70% 40% at 50% 100%, rgba(23, 50, 87, 0.55), transparent 60%);
+          radial-gradient(ellipse 80% 60% at 15% 0%, rgba(34, 197, 94, 0.22), transparent 60%),
+          radial-gradient(ellipse 60% 50% at 85% 10%, rgba(21, 128, 61, 0.18), transparent 55%),
+          radial-gradient(ellipse 70% 40% at 50% 100%, rgba(23, 87, 56, 0.55), transparent 60%);
       }
 
       body::after {
@@ -77,8 +77,8 @@
         pointer-events: none;
         z-index: 0;
         background-image:
-          linear-gradient(to right, rgba(127, 193, 255, 0.035) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(127, 193, 255, 0.035) 1px, transparent 1px);
+          linear-gradient(to right, rgba(134, 239, 172, 0.035) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(134, 239, 172, 0.035) 1px, transparent 1px);
         background-size: 56px 56px;
         mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 40%, transparent 80%);
         -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 40%, transparent 80%);
@@ -94,58 +94,48 @@
         flex: 1;
       }
 
-      /* Top bar */
-      .topbar {
+      /* Top bar — matches screening-command.html header pattern */
+      header.topbar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 6px 0 22px;
+        margin-bottom: 2.5rem;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 3rem;
       }
 
-      .brand {
+      .title-group {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 16px;
       }
 
-      .brand-mark {
-        width: 38px;
-        height: 38px;
+      .header-logo {
+        flex-shrink: 0;
         border-radius: 10px;
-        background:
-          linear-gradient(135deg, var(--azure) 0%, var(--royal) 100%);
+        display: block;
         box-shadow:
-          0 0 0 1px rgba(127, 193, 255, 0.4),
-          0 8px 24px rgba(47, 125, 255, 0.35),
+          0 0 0 1px rgba(134, 239, 172, 0.4),
+          0 8px 24px rgba(34, 197, 94, 0.35),
           inset 0 1px 0 rgba(255, 255, 255, 0.18);
-        position: relative;
       }
 
-      .brand-mark::after {
-        content: '';
-        position: absolute;
-        inset: 6px;
-        border-radius: 6px;
-        border: 1.5px solid rgba(255, 255, 255, 0.55);
-      }
-
-      .brand-name {
+      header.topbar h1 {
         font-family: 'Playfair Display', serif;
+        font-size: clamp(26px, 3vw, 38px);
         font-weight: 700;
-        color: var(--mist);
-        font-size: 18px;
-        letter-spacing: 3px;
-      }
-
-      .brand-sub {
-        font-family: 'DM Mono', monospace;
-        color: var(--steel);
-        font-size: 10px;
-        letter-spacing: 2.5px;
-        text-transform: uppercase;
-        margin-top: 2px;
+        letter-spacing: -0.01em;
+        text-transform: none;
+        background: linear-gradient(180deg, #ffffff 0%, var(--ice) 45%, var(--sky) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        line-height: 1.2;
+        padding-bottom: 0.12em;
+        margin: 0;
       }
 
       .back-link {
@@ -161,7 +151,7 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        background: rgba(14, 31, 56, 0.6);
+        background: rgba(14, 56, 36, 0.6);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         transition: all 0.25s ease;
@@ -170,7 +160,7 @@
       .back-link:hover {
         color: var(--mist);
         border-color: var(--azure-bright);
-        box-shadow: 0 0 0 4px rgba(47, 125, 255, 0.12);
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
       }
 
       /* Hero */
@@ -223,6 +213,10 @@
         -webkit-text-fill-color: transparent;
       }
 
+      .hero-title .nowrap { white-space: nowrap; }
+      @media (max-width: 720px) {
+        .hero-title .nowrap { white-space: normal; }
+      }
       .hero-title em {
         font-style: italic;
         font-weight: 600;
@@ -242,7 +236,7 @@
 
       /* Hero side panel — live status */
       .status-panel {
-        background: linear-gradient(160deg, rgba(23, 50, 87, 0.8) 0%, rgba(10, 22, 40, 0.6) 100%);
+        background: linear-gradient(160deg, rgba(17, 70, 46, 0.8) 0%, rgba(10, 40, 24, 0.6) 100%);
         border: 1px solid var(--border);
         border-radius: 18px;
         padding: 1.5rem;
@@ -282,7 +276,7 @@
         justify-content: space-between;
         align-items: center;
         padding: 10px 0;
-        border-bottom: 1px solid rgba(127, 193, 255, 0.08);
+        border-bottom: 1px solid rgba(134, 239, 172, 0.08);
       }
 
       .status-row:last-child {
@@ -301,15 +295,15 @@
         letter-spacing: 1.5px;
         padding: 4px 10px;
         border-radius: 999px;
-        background: rgba(47, 125, 255, 0.12);
+        background: rgba(34, 197, 94, 0.12);
         color: var(--azure-bright);
-        border: 1px solid rgba(47, 125, 255, 0.3);
+        border: 1px solid rgba(34, 197, 94, 0.3);
       }
 
       .status-pill.ok {
-        background: rgba(94, 163, 255, 0.14);
+        background: rgba(74, 222, 128, 0.14);
         color: var(--sky);
-        border-color: rgba(127, 193, 255, 0.4);
+        border-color: rgba(134, 239, 172, 0.4);
       }
 
       /* Section heading */
@@ -346,7 +340,7 @@
         grid-column: span 4;
         position: relative;
         padding: 2rem 1.75rem 1.75rem;
-        background: linear-gradient(180deg, rgba(14, 31, 56, 0.85) 0%, rgba(10, 22, 40, 0.95) 100%);
+        background: linear-gradient(180deg, rgba(14, 56, 36, 0.85) 0%, rgba(10, 40, 24, 0.95) 100%);
         border: 1px solid var(--border);
         border-radius: 18px;
         text-decoration: none;
@@ -368,7 +362,7 @@
         z-index: -1;
         background: radial-gradient(
           600px circle at var(--mx, 50%) var(--my, 0%),
-          rgba(47, 125, 255, 0.18),
+          rgba(34, 197, 94, 0.18),
           transparent 45%
         );
         opacity: 0;
@@ -382,7 +376,7 @@
         left: 20%;
         right: 20%;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(127, 193, 255, 0.55), transparent);
+        background: linear-gradient(90deg, transparent, rgba(134, 239, 172, 0.55), transparent);
         opacity: 0.6;
       }
 
@@ -390,8 +384,8 @@
         transform: translateY(-4px);
         border-color: var(--border-strong);
         box-shadow:
-          0 24px 60px -20px rgba(47, 125, 255, 0.35),
-          0 0 0 1px rgba(127, 193, 255, 0.2);
+          0 24px 60px -20px rgba(34, 197, 94, 0.35),
+          0 0 0 1px rgba(134, 239, 172, 0.2);
       }
 
       .card:hover::before {
@@ -409,7 +403,7 @@
         justify-content: center;
         font-size: 24px;
         box-shadow:
-          inset 0 1px 0 rgba(127, 193, 255, 0.2),
+          inset 0 1px 0 rgba(134, 239, 172, 0.2),
           0 6px 16px rgba(5, 11, 24, 0.5);
       }
 
@@ -515,7 +509,7 @@
       .reg-strip {
         margin-top: 3.5rem;
         padding: 1.75rem 2rem;
-        background: linear-gradient(180deg, rgba(14, 31, 56, 0.5) 0%, rgba(10, 22, 40, 0.3) 100%);
+        background: linear-gradient(180deg, rgba(14, 56, 36, 0.5) 0%, rgba(10, 40, 24, 0.3) 100%);
         border: 1px solid var(--border);
         border-radius: 18px;
         display: grid;
@@ -537,8 +531,8 @@
         font-size: 22px;
         color: #fff;
         box-shadow:
-          0 0 0 1px rgba(127, 193, 255, 0.4),
-          0 10px 28px rgba(29, 78, 216, 0.4);
+          0 0 0 1px rgba(134, 239, 172, 0.4),
+          0 10px 28px rgba(21, 128, 61, 0.4);
       }
 
       .reg-body .reg-title {
@@ -633,12 +627,15 @@
   <body>
     <main class="shell">
       <header class="topbar">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true"></div>
-          <div>
-            <div class="brand-name">HAWKEYE STERLING</div>
-            <div class="brand-sub">V2 · Compliance Suite</div>
-          </div>
+        <div class="title-group">
+          <img
+            src="assets/logos/hawkeye-icon.svg"
+            alt="Hawkeye Sterling"
+            class="header-logo"
+            width="56"
+            height="56"
+          />
+          <h1>Hawkeye Sterling V2 &mdash; Shipments Control Tower</h1>
         </div>
         <a href="index.html" class="back-link">&larr; Main App</a>
       </header>
@@ -647,7 +644,8 @@
         <div>
           <div class="hero-eyebrow">Shipments Control Tower</div>
           <h1 class="hero-title">
-            Every gram, <em>tracked</em>.<br />Every shipment, accounted for.
+            <span class="nowrap">Every gram, <em>tracked</em>.</span><br />
+            <span class="nowrap">Every shipment, accounted for.</span>
           </h1>
           <p class="hero-lede">
             Inbound advice, in-transit custody, and intra-UAE movement — unified under one

@@ -582,7 +582,6 @@
           </div>
         </div>
         <div class="drawer-actions">
-          <a class="drawer-btn" id="drawerSourceLink" href="#" target="_blank" rel="noopener noreferrer">View source on GitHub</a>
           <button type="button" class="drawer-btn secondary" id="drawerRunBtn" title="Trigger this cron manually (requires MLRO sign-in)">Run now</button>
         </div>
         <p class="help-text" id="drawerRunMsg" style="font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--steel); margin: 12px 0 0; min-height: 1.4em"></p>
@@ -734,8 +733,6 @@
         const live = LIVE_STATUS[r.id];
         document.getElementById('drawerStatus').textContent = live ? stateLabelFor(live) : 'Sign in for live status';
         document.getElementById('drawerLastSeen').textContent = live && live.lastRun ? live.lastRun : '—';
-        const src = document.getElementById('drawerSourceLink');
-        src.href = 'https://github.com/trex0092/compliance-analyzer/blob/main/netlify/functions/' + r.id + '-cron.mts';
         drawerRunMsg.textContent = '';
         drawer.classList.add('open');
       }
@@ -758,7 +755,10 @@
       drawerRunBtn.addEventListener('click', async () => {
         if (!DRAWER_ROUTINE) return;
         const token = getAuthToken();
-        if (!token) { drawerRunMsg.textContent = 'Sign in first to trigger a manual run.'; return; }
+        if (!token) {
+          drawerRunMsg.innerHTML = 'Sign in first to trigger a manual run. <a href="screening-command.html#mlroAuth" style="color: var(--azure-bright); text-decoration: underline">Go to MLRO sign-in &rarr;</a>';
+          return;
+        }
         drawerRunMsg.textContent = 'Triggering ' + DRAWER_ROUTINE.id + '…';
         try {
           const res = await fetch('/api/' + DRAWER_ROUTINE.id + '-cron', {

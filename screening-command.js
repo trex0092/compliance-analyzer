@@ -2076,6 +2076,27 @@
 
     const html = [];
     for (const e of sorted.slice(0, 50)) {
+      // Compliance description — risk-tier → CDD cadence per Cabinet Res
+      // 134/2025 Art.14 (High=3mo, Medium=6mo, Low=12mo). Subjects are
+      // auto-enrolled in continuous monitoring (no opt-out per FDL
+      // Art.20-21). Six-list screening coverage per FDL Art.35.
+      const tier = String(e.riskTier || 'medium').toLowerCase();
+      const cddLevel =
+        tier === 'high' ? 'EDD' : tier === 'low' ? 'SDD' : 'CDD';
+      const cadenceMonths = tier === 'high' ? 3 : tier === 'low' ? 12 : 6;
+      const addedMs = Date.parse(e.addedAtIso || '');
+      const reviewDue =
+        !isNaN(addedMs)
+          ? formatDate(new Date(addedMs + cadenceMonths * 30 * 24 * 60 * 60 * 1000).toISOString())
+          : '—';
+      const md = e.metadata || {};
+      const jurisdiction = md.jurisdiction || md.country || '';
+      const entityType = md.entityType || '';
+      const customerId = md.customerId || '';
+      const lifetimeHits = Number(e.alertCount || 0);
+      const hitBadge = lifetimeHits > 0
+        ? '<span class="compliance-flag compliance-flag-hit">' + lifetimeHits + ' hit(s)</span>'
+        : '<span class="compliance-flag compliance-flag-clean">0 hits</span>';
       html.push('<div class="subject-row">');
       html.push('<div class="subject-info">');
       html.push('<div class="subject-name">' + escapeHTML(e.subjectName) + '</div>');
@@ -2091,6 +2112,32 @@
           escapeHTML(String(e.alertCount || 0)) +
           ' lifetime hits</div>'
       );
+      html.push('<div class="compliance-description">');
+      html.push(
+        '<div class="compliance-line"><b>CDD Level:</b> ' +
+          escapeHTML(cddLevel) +
+          ' · <b>Review due:</b> ' +
+          escapeHTML(reviewDue) +
+          ' (' + cadenceMonths + ' months, Cabinet Res 134/2025 Art.14)' +
+          (jurisdiction ? ' · <b>Jurisdiction:</b> ' + escapeHTML(String(jurisdiction)) : '') +
+          (entityType ? ' · <b>Type:</b> ' + escapeHTML(String(entityType)) : '') +
+          (customerId ? ' · <b>Customer ID:</b> ' + escapeHTML(String(customerId)) : '') +
+          '</div>'
+      );
+      html.push(
+        '<div class="compliance-line">' +
+          '<b>Screening cadence:</b> Daily 06:00 / 14:00 UTC · ' +
+          '<b>Coverage:</b> UN / OFAC / EU / UK_OFSI / UAE_EOCN + adverse-media + PEP + UBO (FDL Art.35)' +
+          '</div>'
+      );
+      html.push(
+        '<div class="compliance-line">' +
+          '<b>Continuous monitoring:</b> Auto-enrolled, no opt-out (FDL Art.20-21, Cabinet Res 134/2025 Art.19) · ' +
+          '<b>Audit trail:</b> 10-year retention (FDL Art.24) · ' +
+          hitBadge +
+          '</div>'
+      );
+      html.push('</div>');
       html.push('</div>');
       html.push('<div class="subject-actions">');
       html.push(

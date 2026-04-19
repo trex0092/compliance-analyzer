@@ -731,6 +731,15 @@
       .auth-card .token-row {
         margin-top: 8px;
       }
+      .auth-card .auth-icon-btn {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1;
+        flex: 0 0 auto;
+      }
       .auth-card.authenticated {
         background: linear-gradient(135deg, rgba(52, 211, 153, 0.18) 0%, rgba(52, 211, 153, 0.06) 100%);
         border-color: var(--green) !important;
@@ -802,6 +811,110 @@
         font-family: 'DM Mono', 'Courier New', monospace;
         margin-top: 2px;
       }
+      .compliance-description {
+        margin-top: 8px;
+        padding: 8px 12px;
+        background: rgba(168, 85, 247, 0.06);
+        border-left: 2px solid var(--accent);
+        border-radius: 0 4px 4px 0;
+        font-size: 11px;
+        line-height: 1.55;
+        color: var(--ice, #c9d6e8);
+      }
+      .compliance-line { margin-bottom: 3px; }
+      .compliance-line:last-child { margin-bottom: 0; }
+      .compliance-line b { color: var(--accent); font-weight: 600; }
+      .compliance-flag {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 4px;
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        margin-left: 4px;
+      }
+      .compliance-flag-clean { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4); }
+      .compliance-flag-hit { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+      /* STR modal */
+      .str-modal {
+        position: fixed; inset: 0; z-index: 9999;
+        background: rgba(2, 4, 10, 0.82);
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+      }
+      .str-modal[hidden] { display: none; }
+      .str-modal-card {
+        background: #0a0812;
+        border: 1px solid var(--gold);
+        border-radius: 10px;
+        padding: 26px;
+        width: 100%; max-width: 560px;
+        max-height: 90vh; overflow-y: auto;
+        position: relative;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+      }
+      .str-modal-close {
+        position: absolute; top: 10px; right: 10px;
+        background: transparent; border: 0; cursor: pointer;
+        color: var(--muted); font-size: 24px; line-height: 1;
+        width: 32px; height: 32px;
+      }
+      .str-modal-close:hover { color: #fff; }
+      .str-modal-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 22px; margin: 0 0 4px; color: var(--gold);
+      }
+      .str-modal-cite {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px; letter-spacing: 1px;
+        color: var(--muted); margin: 0 0 18px;
+      }
+      .str-modal-row { margin-bottom: 14px; }
+      .str-modal-row-2 {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 12px; margin-bottom: 14px;
+      }
+      .str-modal-row label, .str-modal-row-2 label {
+        display: block; font-family: 'DM Mono', monospace;
+        font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+        color: var(--muted); margin-bottom: 4px;
+      }
+      .str-modal-row input, .str-modal-row textarea,
+      .str-modal-row-2 input, .str-modal-row-2 select {
+        width: 100%; box-sizing: border-box;
+        padding: 8px 10px; font-size: 13px;
+        background: rgba(10, 10, 14, 0.8);
+        border: 1px solid var(--border);
+        border-radius: 4px; color: var(--mist);
+        font-family: inherit;
+      }
+      .str-modal-row textarea { resize: vertical; min-height: 80px; }
+      .str-modal-actions {
+        display: flex; gap: 10px; justify-content: flex-end;
+        margin-top: 18px;
+      }
+      .str-modal-btn {
+        padding: 8px 16px; font-size: 12px;
+        font-family: 'DM Mono', monospace;
+        letter-spacing: 1.5px; text-transform: uppercase;
+        border-radius: 4px; cursor: pointer;
+        border: 1px solid var(--border); background: transparent;
+      }
+      .str-modal-btn-primary {
+        color: var(--gold); border-color: var(--gold);
+        background: rgba(212, 175, 55, 0.1);
+      }
+      .str-modal-btn-primary:hover { background: rgba(212, 175, 55, 0.22); color: #fff; }
+      .str-modal-btn-secondary { color: var(--muted); }
+      .str-modal-btn-secondary:hover { color: #fff; border-color: var(--mist); }
+      .str-modal-help {
+        font-size: 10px; color: var(--muted);
+        margin: 14px 0 0; font-family: 'DM Mono', monospace;
+        letter-spacing: 0.3px;
+      }
+      .str-modal-help code { color: var(--accent); }
       .subject-details {
         margin-top: 10px;
         padding: 10px 12px;
@@ -1951,6 +2064,97 @@
           /* swallow — STR counts are best-effort */
         }
       })();
+
+      // STR Case Management — inline modal to capture a new case on this
+      // page (no redirect to index.html). Saves to fgl_str_cases_v2.
+      // FDL No.(10)/2025 Art.26-27 + Art.21 (no tipping off).
+      (function () {
+        var openBtn = document.getElementById('strNewCaseBtn');
+        var modal = document.getElementById('strModal');
+        if (!openBtn || !modal) return;
+        var closeBtn = document.getElementById('strModalClose');
+        var cancelBtn = document.getElementById('strModalCancel');
+        var saveBtn = document.getElementById('strModalSave');
+        var subjectInput = document.getElementById('strCaseSubject');
+        var suspicionInput = document.getElementById('strCaseSuspicion');
+        var statusSelect = document.getElementById('strCaseStatus');
+        var prioritySelect = document.getElementById('strCasePriority');
+
+        function openModal() {
+          modal.hidden = false;
+          if (subjectInput) subjectInput.focus();
+        }
+        function closeModal() {
+          modal.hidden = true;
+          if (subjectInput) subjectInput.value = '';
+          if (suspicionInput) suspicionInput.value = '';
+          if (statusSelect) statusSelect.value = 'Draft';
+          if (prioritySelect) prioritySelect.value = 'Medium';
+        }
+        function recount() {
+          try {
+            var raw = localStorage.getItem('fgl_str_cases_v2');
+            var cases = raw ? JSON.parse(raw) : [];
+            if (!Array.isArray(cases)) cases = [];
+            var counts = { draft: 0, review: 0, pending: 0, filed: 0 };
+            cases.forEach(function (c) {
+              var s = (c && c.status) || 'Draft';
+              if (s === 'Draft') counts.draft++;
+              else if (s === 'Under Review') counts.review++;
+              else if (s.indexOf('Pending Filing') !== -1 || s.indexOf('Approved') === 0) counts.pending++;
+              else if (s.indexOf('Filed') !== -1) counts.filed++;
+            });
+            var setNum = function (id, n) {
+              var el = document.getElementById(id);
+              if (el) el.textContent = String(n);
+            };
+            setNum('strCountDraft', counts.draft);
+            setNum('strCountReview', counts.review);
+            setNum('strCountPending', counts.pending);
+            setNum('strCountFiled', counts.filed);
+            var empty = document.getElementById('strEmpty');
+            if (empty) {
+              if (cases.length > 0) empty.classList.add('hidden');
+              else empty.classList.remove('hidden');
+            }
+          } catch (_) {}
+        }
+        function save() {
+          var subject = subjectInput ? subjectInput.value.trim() : '';
+          var suspicion = suspicionInput ? suspicionInput.value.trim() : '';
+          if (!subject) { if (subjectInput) subjectInput.focus(); return; }
+          try {
+            var raw = localStorage.getItem('fgl_str_cases_v2');
+            var cases = raw ? JSON.parse(raw) : [];
+            if (!Array.isArray(cases)) cases = [];
+            var now = new Date();
+            var rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+            cases.push({
+              id: 'STR-' + now.getTime().toString(36).toUpperCase() + '-' + rand,
+              subject: subject,
+              suspicion: suspicion,
+              status: statusSelect ? statusSelect.value : 'Draft',
+              priority: prioritySelect ? prioritySelect.value : 'Medium',
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+            });
+            localStorage.setItem('fgl_str_cases_v2', JSON.stringify(cases));
+          } catch (_) {}
+          closeModal();
+          recount();
+        }
+
+        openBtn.addEventListener('click', openModal);
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+        if (saveBtn) saveBtn.addEventListener('click', save);
+        modal.addEventListener('click', function (e) {
+          if (e.target === modal) closeModal();
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && !modal.hidden) closeModal();
+        });
+      })();
     </script>
     <section class="hero">
       <div>
@@ -1991,7 +2195,7 @@
     </div>
 
     <!-- MLRO Identity + Authentication (merged, compact) ───────────── -->
-    <div class="card auth-card" style="margin-top: 14px; border-color: #ec4899">
+    <div id="mlroAuth" class="card auth-card" style="margin-top: 14px; border-color: #ec4899">
       <h2 style="color: #ec4899; margin: 0 0 10px !important">
         MLRO Identity &amp; Authentication <span class="tag">Required</span>
       </h2>
@@ -2028,24 +2232,26 @@
           />
         </div>
       </div>
-      <div class="token-row" style="margin-top: 10px">
+      <div class="token-row" style="margin-top: 10px; justify-content: flex-end; gap: 6px">
         <button
           type="button"
           id="loginBtn"
-          class="token-gen-btn"
-          style="flex: 1; color: #22c55e; border-color: #ec4899"
-          title="Exchange password for a signed 1-year session token"
+          class="token-gen-btn auth-icon-btn"
+          style="color: #22c55e; border-color: #ec4899"
+          title="Sign in — exchange password for a signed 1-year session token"
+          aria-label="Sign in"
         >
-          Sign in
+          &rarr;
         </button>
         <button
           type="button"
           id="logoutBtn"
-          class="token-gen-btn"
-          style="flex: 1; color: #ef4444; border-color: #ec4899"
-          title="Forget the saved session token and require a new sign-in"
+          class="token-gen-btn auth-icon-btn"
+          style="color: #ef4444; border-color: #ec4899"
+          title="Sign out — forget the saved session token"
+          aria-label="Sign out"
         >
-          Sign out
+          &times;
         </button>
       </div>
       <p class="help-text" style="margin: 10px 0 0; font-size: 11px">
@@ -2810,9 +3016,9 @@
             <input
               type="text"
               id="tmOriginCountry"
-              placeholder="AE"
+              placeholder="AE or United Arab Emirates"
               autocomplete="off"
-              maxlength="4"
+              maxlength="64"
             />
           </div>
           <div>
@@ -2820,9 +3026,9 @@
             <input
               type="text"
               id="tmDestCountry"
-              placeholder="IR"
+              placeholder="IR or Iran"
               autocomplete="off"
-              maxlength="4"
+              maxlength="64"
             />
           </div>
         </div>
@@ -2884,14 +3090,14 @@
         <span class="str-cite">
           UAE FDL No.(10) of 2025 Art.26-27 | goAML | FATF Rec.20 | File WITHOUT DELAY upon suspicion
         </span>
-        <a
+        <button
+          type="button"
           id="strNewCaseBtn"
-          href="index.html#str"
           class="str-new-btn"
-          title="Open STR case file in the full compliance suite"
+          title="Open a new STR case file inline"
         >
           + New STR Case
-        </a>
+        </button>
       </div>
       <div class="str-conf-notice" role="alert">
         <span class="str-conf-icon" aria-hidden="true">&#9888;</span>
@@ -2922,6 +3128,53 @@
       <p class="str-empty" id="strEmpty">
         No STR cases. Click &ldquo;+ New STR Case&rdquo; to begin investigation.
       </p>
+    </div>
+
+    <!-- STR New Case modal ──────────────────────────────────────────────
+         Inline case-intake form. Saves into localStorage.fgl_str_cases_v2
+         — the same key compliance-suite.js reads/writes. No tip-off risk:
+         nothing is transmitted until the MLRO files via goAML.
+    -->
+    <div id="strModal" class="str-modal" role="dialog" aria-modal="true" aria-labelledby="strModalTitle" hidden>
+      <div class="str-modal-card">
+        <button type="button" class="str-modal-close" id="strModalClose" aria-label="Close">&times;</button>
+        <h2 id="strModalTitle" class="str-modal-title">New STR Case</h2>
+        <p class="str-modal-cite">UAE FDL No.(10)/2025 Art.26-27 &middot; File WITHOUT DELAY upon suspicion</p>
+        <div class="str-modal-row">
+          <label for="strCaseSubject">Subject name</label>
+          <input type="text" id="strCaseSubject" maxlength="256" placeholder="Full legal name of the subject" autocomplete="off" />
+        </div>
+        <div class="str-modal-row">
+          <label for="strCaseSuspicion">Reason for suspicion</label>
+          <textarea id="strCaseSuspicion" maxlength="4000" placeholder="What triggered the suspicion? (typology, red flags, transaction pattern, source)" rows="4"></textarea>
+        </div>
+        <div class="str-modal-row-2">
+          <div>
+            <label for="strCaseStatus">Status</label>
+            <select id="strCaseStatus">
+              <option value="Draft" selected>Draft</option>
+              <option value="Under Review">Under Review</option>
+              <option value="Approved - Pending Filing">Approved &mdash; Pending Filing</option>
+              <option value="Filed - goAML">Filed &mdash; goAML</option>
+            </select>
+          </div>
+          <div>
+            <label for="strCasePriority">Priority</label>
+            <select id="strCasePriority">
+              <option value="High">High</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="str-modal-actions">
+          <button type="button" class="str-modal-btn str-modal-btn-secondary" id="strModalCancel">Cancel</button>
+          <button type="button" class="str-modal-btn str-modal-btn-primary" id="strModalSave">Save STR Case</button>
+        </div>
+        <p class="str-modal-help">
+          Saved locally under <code>fgl_str_cases_v2</code> (FDL Art.24 &mdash; 10yr audit trail). Use the full compliance suite to draft the goAML XML.
+        </p>
+      </div>
     </div>
 
     <!-- Watchlist snapshot ────────────────────────────────────────────── -->

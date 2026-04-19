@@ -87,56 +87,64 @@
         padding: 0;
       }
       :root {
-        --gold: #c9a84c;
-        --gold-light: #e8d48b;
-        --gold-dim: rgba(201, 168, 76, 0.15);
-        --gold-dark: #8b6914;
+        /* Yellow + orange system (warm, vibrant). --gold tokens are now
+           aliased to yellow/amber/orange for a Hawkeye Sterling "desert
+           dawn" palette. Kept the `--gold*` names so the 400+ references
+           across index.html and compliance-suite.js keep working. */
+        --gold: #f59e0b;            /* amber-500 */
+        --gold-light: #fcd34d;      /* amber-300 */
+        --gold-dim: rgba(245, 158, 11, 0.15);
+        --gold-dark: #c2410c;       /* orange-700 */
+        --orange: #f97316;          /* orange-500 */
+        --orange-bright: #fb923c;   /* orange-400 */
+        --yellow: #eab308;          /* yellow-500 */
+        --yellow-bright: #fde047;   /* yellow-300 */
         --red: #d94f4f;
         --red-dim: rgba(217, 79, 79, 0.12);
         --green: #3da876;
         --green-dim: rgba(61, 168, 118, 0.12);
-        --amber: #e8a030;
-        --amber-dim: rgba(232, 160, 48, 0.12);
+        --amber: #f97316;           /* now orange-500 */
+        --amber-dim: rgba(249, 115, 22, 0.14);
         --blue: #4a8fc1;
         --blue-dim: rgba(74, 143, 193, 0.12);
         --bg: #0a0a0a;
-        --surface: rgba(201, 168, 76, 0.03);
-        --surface2: rgba(201, 168, 76, 0.06);
-        --border: rgba(201, 168, 76, 0.12);
-        --border-strong: rgba(201, 168, 76, 0.25);
-        --text: #f5f0e8;
-        --muted: rgba(245, 240, 232, 0.45);
-        --ivory: #f5f0e8;
-        --ivory-dim: #d4cfc7;
-        --black: #0a0a0a;
-        --black-soft: #111111;
-        --charcoal: #1a1a1a;
+        --surface: rgba(245, 158, 11, 0.04);
+        --surface2: rgba(245, 158, 11, 0.08);
+        --border: rgba(245, 158, 11, 0.16);
+        --border-strong: rgba(245, 158, 11, 0.32);
+        --text: #fef3c7;            /* amber-50, warm ivory */
+        --muted: rgba(254, 243, 199, 0.5);
+        --ivory: #fef3c7;
+        --ivory-dim: #fcd9a3;
+        --black: #0a0706;
+        --black-soft: #120d08;
+        --charcoal: #1c150d;
 
         /* Theme variables - dark luxury (default) */
-        --bg-primary: #0a0a0a;
-        --bg-secondary: #111111;
-        --bg-card: #1a1a1a;
-        --text-primary: #f5f0e8;
-        --text-secondary: #d4cfc7;
-        --border-color: rgba(201, 168, 76, 0.12);
+        --bg-primary: #0a0706;
+        --bg-secondary: #120d08;
+        --bg-card: #1c150d;
+        --text-primary: #fef3c7;
+        --text-secondary: #fcd9a3;
+        --border-color: rgba(245, 158, 11, 0.16);
         --shadow-color: rgba(0, 0, 0, 0.4);
       }
       /* Dark theme overrides - luxury dark is default, this is deeper dark */
       [data-theme='dark'] {
-        --bg-primary: #080808;
-        --bg-secondary: #0e0e0e;
-        --bg-card: #121212;
-        --text-primary: #f5f0e8;
-        --text-secondary: #d4cfc7;
-        --border-color: rgba(201, 168, 76, 0.15);
+        --bg-primary: #080504;
+        --bg-secondary: #0f0a06;
+        --bg-card: #17110b;
+        --text-primary: #fef3c7;
+        --text-secondary: #fcd9a3;
+        --border-color: rgba(245, 158, 11, 0.2);
         --shadow-color: rgba(0, 0, 0, 0.5);
 
-        --bg: #080808;
-        --surface: rgba(201, 168, 76, 0.04);
-        --surface2: rgba(201, 168, 76, 0.07);
-        --border: rgba(201, 168, 76, 0.15);
-        --text: #f5f0e8;
-        --muted: rgba(245, 240, 232, 0.5);
+        --bg: #080504;
+        --surface: rgba(245, 158, 11, 0.05);
+        --surface2: rgba(245, 158, 11, 0.09);
+        --border: rgba(245, 158, 11, 0.2);
+        --text: #fef3c7;
+        --muted: rgba(254, 243, 199, 0.55);
       }
       /* Smooth theme transition — scoped to theme toggle only */
       body.theme-transitioning,
@@ -164,7 +172,7 @@
         text-align: center;
         margin-bottom: 2rem;
         padding-bottom: 1.5rem;
-        border-bottom: 1px solid rgba(201, 168, 76, 0.08);
+        border-bottom: 1px solid rgba(245, 158, 11, 0.08);
       }
       .logo {
         display: flex;
@@ -204,10 +212,10 @@
       .card {
         background: linear-gradient(
           160deg,
-          rgba(201, 168, 76, 0.04) 0%,
+          rgba(245, 158, 11, 0.04) 0%,
           rgba(10, 10, 10, 0.8) 100%
         );
-        border: 1px solid rgba(201, 168, 76, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.1);
         border-radius: 4px;
         padding: 1.5rem;
         margin-bottom: 1.2rem;
@@ -226,8 +234,8 @@
       input,
       select,
       textarea {
-        background: rgba(201, 168, 76, 0.04);
-        border: 1px solid rgba(201, 168, 76, 0.12);
+        background: rgba(245, 158, 11, 0.04);
+        border: 1px solid rgba(245, 158, 11, 0.12);
         border-radius: 2px;
         color: var(--text);
         font-family: 'Montserrat', sans-serif;
@@ -245,7 +253,7 @@
       }
       select optgroup {
         background: #111111;
-        color: #c9a84c;
+        color: #f59e0b;
       }
       input,
       select {
@@ -275,7 +283,7 @@
       .btn {
         padding: 12px 22px;
         border-radius: 2px;
-        border: 1px solid rgba(201, 168, 76, 0.25);
+        border: 1px solid rgba(245, 158, 11, 0.25);
         font-family: 'Montserrat', sans-serif;
         font-size: 11px;
         font-weight: 500;
@@ -297,7 +305,7 @@
       }
       .btn-gold:hover {
         background: linear-gradient(135deg, var(--gold-light), var(--gold));
-        box-shadow: 0 4px 30px rgba(201, 168, 76, 0.3);
+        box-shadow: 0 4px 30px rgba(245, 158, 11, 0.3);
       }
       .btn-gold:disabled {
         opacity: 0.4;
@@ -326,7 +334,7 @@
         font-size: 9px;
         background: transparent;
         color: var(--ivory-dim);
-        border: 1px solid rgba(201, 168, 76, 0.2);
+        border: 1px solid rgba(245, 158, 11, 0.2);
         border-radius: 2px;
         cursor: pointer;
         transition: all 0.3s;
@@ -337,7 +345,7 @@
       .btn-sm:hover {
         border-color: var(--gold);
         color: var(--gold);
-        background: rgba(201, 168, 76, 0.08);
+        background: rgba(245, 158, 11, 0.08);
       }
       .btn-red {
         background: rgba(217, 79, 79, 0.06);
@@ -374,8 +382,8 @@
         align-items: center;
         gap: 10px;
         padding: 12px 16px;
-        background: rgba(201, 168, 76, 0.06);
-        border: 1px solid rgba(201, 168, 76, 0.2);
+        background: rgba(245, 158, 11, 0.06);
+        border: 1px solid rgba(245, 158, 11, 0.2);
         border-radius: 2px;
         margin-bottom: 1.2rem;
         font-size: 12px;
@@ -402,7 +410,7 @@
         bottom: 30px;
         right: 30px;
         background: var(--charcoal);
-        border: 1px solid rgba(201, 168, 76, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.12);
         border-radius: 3px;
         padding: 14px 28px;
         font-size: 12px;
@@ -427,7 +435,7 @@
         color: var(--red);
       }
       .toast.info {
-        border-color: rgba(201, 168, 76, 0.4);
+        border-color: rgba(245, 158, 11, 0.4);
         color: var(--gold);
       }
       .metrics {
@@ -437,15 +445,15 @@
         margin-bottom: 1.2rem;
       }
       .metric {
-        background: rgba(201, 168, 76, 0.03);
-        border: 1px solid rgba(201, 168, 76, 0.1);
+        background: rgba(245, 158, 11, 0.03);
+        border: 1px solid rgba(245, 158, 11, 0.1);
         border-radius: 4px;
         padding: 1rem;
         text-align: center;
         transition: border-color 0.3s;
       }
       .metric:hover {
-        border-color: rgba(201, 168, 76, 0.25);
+        border-color: rgba(245, 158, 11, 0.25);
       }
       .metric-num {
         font-size: 28px;
@@ -481,7 +489,7 @@
         font-family: 'Cinzel', serif;
         margin-bottom: 10px;
         padding-bottom: 8px;
-        border-bottom: 1px solid rgba(201, 168, 76, 0.08);
+        border-bottom: 1px solid rgba(245, 158, 11, 0.08);
         font-weight: 400;
       }
       .findings {
@@ -491,7 +499,7 @@
         margin-bottom: 1.2rem;
       }
       .finding {
-        background: rgba(201, 168, 76, 0.03);
+        background: rgba(245, 158, 11, 0.03);
         border-radius: 4px;
         padding: 1rem 1.2rem;
         border-left: 3px solid transparent;
@@ -594,7 +602,7 @@
         font-weight: 500;
       }
       .rec {
-        background: rgba(201, 168, 76, 0.04);
+        background: rgba(245, 158, 11, 0.04);
         border-radius: 3px;
         padding: 12px 14px;
         margin-top: 8px;
@@ -616,8 +624,8 @@
         flex-wrap: wrap;
       }
       .summary-box {
-        background: rgba(201, 168, 76, 0.03);
-        border: 1px solid rgba(201, 168, 76, 0.1);
+        background: rgba(245, 158, 11, 0.03);
+        border: 1px solid rgba(245, 158, 11, 0.1);
         border-radius: 4px;
         padding: 1.2rem 1.5rem;
         margin-bottom: 1.2rem;
@@ -671,7 +679,7 @@
         margin-bottom: 10px;
         gap: 12px;
         flex-wrap: wrap;
-        border: 1px solid rgba(201, 168, 76, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.15);
         font-family: 'Montserrat', sans-serif;
         transition: all 0.3s;
       }
@@ -739,7 +747,7 @@
         font-size: 10px;
         cursor: pointer;
         background: transparent;
-        border: 1px solid rgba(201, 168, 76, 0.08);
+        border: 1px solid rgba(245, 158, 11, 0.08);
         border-bottom: 2px solid transparent;
         color: var(--ivory-dim);
         transition: all 0.3s;
@@ -753,15 +761,15 @@
         font-weight: 400;
       }
       .tab.active {
-        background: rgba(201, 168, 76, 0.06);
-        border-color: rgba(201, 168, 76, 0.15);
+        background: rgba(245, 158, 11, 0.06);
+        border-color: rgba(245, 158, 11, 0.15);
         border-bottom-color: var(--gold);
         color: var(--gold);
         font-weight: 500;
       }
       .tab:hover {
         color: var(--gold);
-        border-bottom-color: rgba(201, 168, 76, 0.3);
+        border-bottom-color: rgba(245, 158, 11, 0.3);
       }
       .tab-content {
         display: none;
@@ -808,14 +816,14 @@
         gap: 12px;
         align-items: center;
         padding: 12px 16px;
-        background: rgba(201, 168, 76, 0.03);
+        background: rgba(245, 158, 11, 0.03);
         border-radius: 3px;
         margin-bottom: 8px;
-        border: 1px solid rgba(201, 168, 76, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.1);
         transition: border-color 0.3s;
       }
       .asana-item:hover {
-        border-color: rgba(201, 168, 76, 0.25);
+        border-color: rgba(245, 158, 11, 0.25);
       }
       .asana-name {
         font-size: 13px;
@@ -864,7 +872,7 @@
         border: 1px solid rgba(217, 79, 79, 0.3);
       }
       .s-none {
-        background: rgba(201, 168, 76, 0.05);
+        background: rgba(245, 158, 11, 0.05);
         color: var(--muted);
         border: 1px solid var(--border);
       }
@@ -904,8 +912,8 @@
         margin-bottom: 10px;
       }
       .price-cell {
-        background: rgba(201, 168, 76, 0.04);
-        border: 1px solid rgba(201, 168, 76, 0.1);
+        background: rgba(245, 158, 11, 0.04);
+        border: 1px solid rgba(245, 158, 11, 0.1);
         border-radius: 4px;
         padding: 12px 14px;
       }
@@ -1035,8 +1043,8 @@
         }
       }
       .info-box {
-        background: rgba(201, 168, 76, 0.06);
-        border: 1px solid rgba(201, 168, 76, 0.15);
+        background: rgba(245, 158, 11, 0.06);
+        border: 1px solid rgba(245, 158, 11, 0.15);
         border-radius: 4px;
         padding: 1rem 1.2rem;
         margin-bottom: 1rem;
@@ -1052,8 +1060,8 @@
         margin-top: 10px;
       }
       .chip {
-        background: rgba(201, 168, 76, 0.04);
-        border: 1px solid rgba(201, 168, 76, 0.12);
+        background: rgba(245, 158, 11, 0.04);
+        border: 1px solid rgba(245, 158, 11, 0.12);
         border-radius: 2px;
         padding: 6px 14px;
         font-size: 11px;
@@ -1089,10 +1097,10 @@
         margin-bottom: 1.2rem;
       }
       .gap-stat {
-        background: rgba(201, 168, 76, 0.04);
+        background: rgba(245, 158, 11, 0.04);
         border-radius: 4px;
         padding: 14px;
-        border: 1px solid rgba(201, 168, 76, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.1);
         text-align: center;
       }
       .gap-num {
@@ -1111,8 +1119,8 @@
       }
       /* EVIDENCE TRACKER */
       .evidence-item {
-        background: rgba(201, 168, 76, 0.03);
-        border: 1px solid rgba(201, 168, 76, 0.1);
+        background: rgba(245, 158, 11, 0.03);
+        border: 1px solid rgba(245, 158, 11, 0.1);
         border-radius: 4px;
         padding: 12px 14px;
         margin-bottom: 8px;
@@ -1169,8 +1177,8 @@
       }
       /* SCHEDULE */
       .schedule-item {
-        background: rgba(201, 168, 76, 0.03);
-        border: 1px solid rgba(201, 168, 76, 0.1);
+        background: rgba(245, 158, 11, 0.03);
+        border: 1px solid rgba(245, 158, 11, 0.1);
         border-radius: 4px;
         padding: 14px 16px;
         margin-bottom: 8px;
@@ -1180,7 +1188,7 @@
         transition: border-color 0.3s;
       }
       .schedule-item:hover {
-        border-color: rgba(201, 168, 76, 0.25);
+        border-color: rgba(245, 158, 11, 0.25);
       }
       .schedule-info {
         flex: 1;
@@ -1216,7 +1224,7 @@
       }
       .modal {
         background: var(--charcoal);
-        border: 1px solid rgba(201, 168, 76, 0.2);
+        border: 1px solid rgba(245, 158, 11, 0.2);
         border-radius: 4px;
         padding: 32px;
         max-width: 520px;
@@ -1270,7 +1278,7 @@
       .hamburger-btn {
         display: none;
         background: transparent;
-        border: 1px solid rgba(201, 168, 76, 0.2);
+        border: 1px solid rgba(245, 158, 11, 0.2);
         color: var(--gold);
         font-size: 24px;
         padding: 6px 12px;
@@ -1280,7 +1288,7 @@
         transition: all 0.3s;
       }
       .hamburger-btn:hover {
-        background: rgba(201, 168, 76, 0.08);
+        background: rgba(245, 158, 11, 0.08);
         border-color: var(--gold);
       }
       .mobile-menu-close {
@@ -1305,7 +1313,7 @@
       }
       /* Drag-and-drop upload zone */
       .upload-dropzone {
-        border: 1px dashed rgba(201, 168, 76, 0.2);
+        border: 1px dashed rgba(245, 158, 11, 0.2);
         border-radius: 4px;
         padding: 28px 16px;
         text-align: center;
@@ -1314,7 +1322,7 @@
       }
       .upload-dropzone.drag-over {
         border-color: var(--gold);
-        background: rgba(201, 168, 76, 0.06);
+        background: rgba(245, 158, 11, 0.06);
       }
       .upload-dropzone p {
         color: var(--muted);
@@ -1554,7 +1562,7 @@
         transition: all 0.2s;
       }
       .notif-bell:hover {
-        background: rgba(201, 168, 76, 0.05);
+        background: rgba(245, 158, 11, 0.05);
       }
       .notif-badge {
         position: absolute;
@@ -1581,7 +1589,7 @@
         max-height: 420px;
         overflow-y: auto;
         background: var(--charcoal);
-        border: 1px solid rgba(201, 168, 76, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.15);
         border-radius: 4px;
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
         z-index: 200;
@@ -1642,19 +1650,19 @@
         background:
           radial-gradient(
             ellipse 600px 600px at 50% 45%,
-            rgba(201, 168, 76, 0.06) 0%,
+            rgba(245, 158, 11, 0.06) 0%,
             transparent 70%
           ),
           radial-gradient(
             ellipse 300px 300px at 30% 60%,
-            rgba(201, 168, 76, 0.03) 0%,
+            rgba(245, 158, 11, 0.03) 0%,
             transparent 70%
           );
         pointer-events: none;
       }
       .login-box {
         background: var(--charcoal);
-        border: 1px solid rgba(201, 168, 76, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.15);
         border-radius: 4px;
         padding: 48px 40px;
         width: 100%;
@@ -1666,7 +1674,7 @@
       .login-box .login-logo {
         font-size: 40px;
         margin-bottom: 16px;
-        filter: drop-shadow(0 0 20px rgba(201, 168, 76, 0.3));
+        filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.3));
       }
       .login-box .login-title {
         font-family: 'Cinzel', serif;
@@ -1718,7 +1726,7 @@
       /* Dark mode toggle */
       .theme-toggle {
         background: transparent;
-        border: 1px solid rgba(201, 168, 76, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.15);
         border-radius: 2px;
         cursor: pointer;
         padding: 6px 10px;
@@ -1731,7 +1739,7 @@
       }
       .theme-toggle:hover {
         border-color: var(--gold);
-        background: rgba(201, 168, 76, 0.08);
+        background: rgba(245, 158, 11, 0.08);
       }
       /* === LUXURY PRELOADER === */
       .hs-preloader {
@@ -2122,7 +2130,7 @@
             id="headerCompanySelect"
             data-change="_switchCompanyAndUpdateBar"
             style="
-              background: rgba(201, 168, 76, 0.05);
+              background: rgba(245, 158, 11, 0.05);
               border: 1px solid var(--border);
               border-radius: 3px;
               color: var(--gold);
@@ -3347,7 +3355,7 @@
             >
               <div
                 style="
-                  background: rgba(201, 168, 76, 0.05);
+                  background: rgba(245, 158, 11, 0.05);
                   border-radius: 3px;
                   padding: 10px;
                   text-align: center;
@@ -3372,7 +3380,7 @@
               </div>
               <div
                 style="
-                  background: rgba(201, 168, 76, 0.05);
+                  background: rgba(245, 158, 11, 0.05);
                   border-radius: 3px;
                   padding: 10px;
                   text-align: center;
@@ -3397,7 +3405,7 @@
               </div>
               <div
                 style="
-                  background: rgba(201, 168, 76, 0.05);
+                  background: rgba(245, 158, 11, 0.05);
                   border-radius: 3px;
                   padding: 10px;
                   text-align: center;
@@ -3923,7 +3931,7 @@
               <div id="ewraInherentRisks">
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px">
                   <thead>
-                    <tr style="background: rgba(201, 168, 76, 0.05)">
+                    <tr style="background: rgba(245, 158, 11, 0.05)">
                       <th
                         style="
                           padding: 5px 8px;
@@ -3992,7 +4000,7 @@
               <div id="ewraControls">
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px">
                   <thead>
-                    <tr style="background: rgba(201, 168, 76, 0.05)">
+                    <tr style="background: rgba(245, 158, 11, 0.05)">
                       <th
                         style="
                           padding: 5px 8px;
@@ -4151,7 +4159,7 @@
               <div id="bwraProductRisks">
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px">
                   <thead>
-                    <tr style="background: rgba(201, 168, 76, 0.05)">
+                    <tr style="background: rgba(245, 158, 11, 0.05)">
                       <th
                         style="
                           padding: 5px 8px;
@@ -4215,7 +4223,7 @@
               <div id="bwraCustomerRisks">
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px">
                   <thead>
-                    <tr style="background: rgba(201, 168, 76, 0.05)">
+                    <tr style="background: rgba(245, 158, 11, 0.05)">
                       <th
                         style="
                           padding: 5px 8px;
@@ -4279,7 +4287,7 @@
               <div id="bwraGeoRisks">
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px">
                   <thead>
-                    <tr style="background: rgba(201, 168, 76, 0.05)">
+                    <tr style="background: rgba(245, 158, 11, 0.05)">
                       <th
                         style="
                           padding: 5px 8px;
@@ -4339,7 +4347,7 @@
               <div style="margin-bottom: 10px">
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px">
                   <thead>
-                    <tr style="background: rgba(201, 168, 76, 0.05)">
+                    <tr style="background: rgba(245, 158, 11, 0.05)">
                       <th
                         style="
                           padding: 5px 8px;
@@ -4984,7 +4992,7 @@
                     font-size: 10px;
                     padding: 3px 8px;
                     width: 160px;
-                    background: rgba(201, 168, 76, 0.05);
+                    background: rgba(245, 158, 11, 0.05);
                     border: 1px solid var(--border);
                     border-radius: 3px;
                     color: var(--text);
@@ -4999,7 +5007,7 @@
                 display: none;
                 margin-bottom: 12px;
                 padding: 10px;
-                background: rgba(201, 168, 76, 0.05);
+                background: rgba(245, 158, 11, 0.05);
                 border-radius: 3px;
                 border: 1px solid var(--border);
               "
@@ -5139,7 +5147,7 @@
                       flex-wrap: wrap;
                       gap: 4px;
                       align-items: center;
-                      background: rgba(201, 168, 76, 0.05);
+                      background: rgba(245, 158, 11, 0.05);
                     "
                   >
                     <span id="empBizPlaceholder" style="color: var(--muted); font-size: 13px"
@@ -5290,8 +5298,8 @@
                   font-size: 11px;
                   padding: 4px 10px;
                   width: 180px;
-                  background: rgba(201, 168, 76, 0.05);
-                  border: 1px solid rgba(201, 168, 76, 0.12);
+                  background: rgba(245, 158, 11, 0.05);
+                  border: 1px solid rgba(245, 158, 11, 0.12);
                   border-radius: 2px;
                   color: var(--text);
                   font-family: 'Montserrat', sans-serif;
@@ -5580,7 +5588,7 @@
             <div style="overflow-x: auto">
               <table id="raTable" style="width: 100%; border-collapse: collapse; font-size: 10px">
                 <thead>
-                  <tr style="background: rgba(201, 168, 76, 0.05)">
+                  <tr style="background: rgba(245, 158, 11, 0.05)">
                     <th
                       style="
                         padding: 5px 8px;
@@ -5645,7 +5653,7 @@
                 <tbody id="raCriteriaBody"></tbody>
                 <tfoot>
                   <tr
-                    style="background: rgba(201, 168, 76, 0.05); border-top: 2px solid var(--gold)"
+                    style="background: rgba(245, 158, 11, 0.05); border-top: 2px solid var(--gold)"
                   >
                     <td colspan="3" style="padding: 10px; font-weight: 700; font-size: 13px">
                       TOTAL RISK SCORE
@@ -5905,7 +5913,7 @@
                 display: none;
                 margin-bottom: 16px;
                 padding: 16px;
-                background: rgba(201, 168, 76, 0.05);
+                background: rgba(245, 158, 11, 0.05);
                 border-radius: 4px;
                 border: 1px solid var(--border);
               "
@@ -6611,7 +6619,7 @@
                 display: none;
                 margin-bottom: 16px;
                 padding: 16px;
-                background: rgba(201, 168, 76, 0.05);
+                background: rgba(245, 158, 11, 0.05);
                 border-radius: 4px;
               "
             >
@@ -6696,7 +6704,7 @@
                 display: none;
                 margin-bottom: 16px;
                 padding: 16px;
-                background: rgba(201, 168, 76, 0.05);
+                background: rgba(245, 158, 11, 0.05);
                 border-radius: 4px;
               "
             >
@@ -6800,7 +6808,7 @@
               style="
                 margin-bottom: 12px;
                 padding: 10px;
-                background: rgba(201, 168, 76, 0.05);
+                background: rgba(245, 158, 11, 0.05);
                 border-radius: 3px;
                 font-size: 12px;
               "
@@ -7019,7 +7027,7 @@
                   <col style="width: 40px" />
                 </colgroup>
                 <thead>
-                  <tr style="background: rgba(201, 168, 76, 0.05)">
+                  <tr style="background: rgba(245, 158, 11, 0.05)">
                     <th
                       style="
                         padding: 6px 8px;
@@ -7094,7 +7102,7 @@
               style="
                 display: none;
                 margin-top: 12px;
-                background: rgba(201, 168, 76, 0.05);
+                background: rgba(245, 158, 11, 0.05);
                 border: 1px solid var(--border);
                 border-radius: 4px;
                 padding: 16px;
@@ -7236,7 +7244,7 @@
               style="
                 display: none;
                 margin-top: 12px;
-                background: rgba(201, 168, 76, 0.05);
+                background: rgba(245, 158, 11, 0.05);
                 border: 1px solid var(--border);
                 border-radius: 4px;
                 padding: 16px;
@@ -7346,7 +7354,7 @@
                 style="width: 100%; border-collapse: collapse; font-size: 12px"
               >
                 <thead>
-                  <tr style="background: rgba(201, 168, 76, 0.05)">
+                  <tr style="background: rgba(245, 158, 11, 0.05)">
                     <th
                       style="
                         padding: 8px 12px;
@@ -7387,7 +7395,7 @@
                 style="width: 100%; border-collapse: collapse; font-size: 12px"
               >
                 <thead>
-                  <tr style="background: rgba(201, 168, 76, 0.05)">
+                  <tr style="background: rgba(245, 158, 11, 0.05)">
                     <th
                       style="
                         padding: 8px 12px;
@@ -7428,7 +7436,7 @@
                 style="width: 100%; border-collapse: collapse; font-size: 12px"
               >
                 <thead>
-                  <tr style="background: rgba(201, 168, 76, 0.05)">
+                  <tr style="background: rgba(245, 158, 11, 0.05)">
                     <th
                       style="
                         padding: 8px 12px;
@@ -8143,12 +8151,12 @@
                 style="
                   background: #181818;
                   border: 1px solid #2a2a2a;
-                  border-left: 3px solid #e8a030;
+                  border-left: 3px solid #f97316;
                   border-radius: 4px;
                   padding: 10px;
                 "
               >
-                <div style="font-weight: 700; color: #e8a030; margin-bottom: 4px">
+                <div style="font-weight: 700; color: #f97316; margin-bottom: 4px">
                   📨 Asana Bridge
                 </div>
                 Mirrors the auto-created Asana tasks (STR draft, CDD review, sanctions response) so
@@ -8435,7 +8443,7 @@
             <!-- Upload Form with Drag & Drop -->
             <div
               style="
-                background: rgba(201, 168, 76, 0.05);
+                background: rgba(245, 158, 11, 0.05);
                 border: 1px solid var(--border);
                 border-radius: 4px;
                 padding: 16px;
