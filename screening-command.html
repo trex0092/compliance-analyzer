@@ -2286,86 +2286,82 @@
       <span class="brain-badge-sc">Highest Intelligence</span>
     </div>
 
-    <!-- MLRO Identity + Authentication (merged, compact) ───────────── -->
-    <!-- Layout note: sign-in (→) and sign-out (×) icon buttons live in
-         the top-right of the header so the 3-column name/deputy/password
-         row below can use the full width. Password input gets the whole
-         cell instead of sharing it with the icons. -->
-    <div id="mlroAuth" class="card auth-card" style="margin-top: 14px; border-color: #ec4899">
+    <!-- MLRO Identity + Authentication (single-row compact) ──────────
+         All three inputs (Main, Deputy, Password) + sign-in / sign-out
+         icons share one flex row. Labels live as placeholders; the
+         "Screened by" badge carries the audit context under the row. -->
+    <div
+      id="mlroAuth"
+      class="card auth-card"
+      style="margin-top: 14px; border-color: #ec4899; padding: 10px 14px"
+    >
       <div
         class="auth-head"
-        style="
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          margin: 0 0 10px;
-          flex-wrap: wrap;
-        "
+        style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
       >
-        <h2 style="color: #ec4899; margin: 0; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap">
-          MLRO Identity &amp; Authentication <span class="tag">Required</span>
+        <h2
+          style="
+            color: #ec4899;
+            margin: 0;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            flex-shrink: 0;
+          "
+        >
+          MLRO Auth
         </h2>
-        <div style="display: flex; gap: 6px; align-items: center">
-          <button
-            type="button"
-            id="loginBtn"
-            class="token-gen-btn auth-icon-btn"
-            style="color: #22c55e; border-color: #ec4899"
-            title="Sign in — exchange password for a signed 1-year session token"
-            aria-label="Sign in"
-          >
-            &rarr;
-          </button>
-          <button
-            type="button"
-            id="logoutBtn"
-            class="token-gen-btn auth-icon-btn"
-            style="color: #ef4444; border-color: #ec4899"
-            title="Sign out — forget the saved session token"
-            aria-label="Sign out"
-          >
-            &times;
-          </button>
-        </div>
+        <input
+          type="text"
+          id="mlroMainName"
+          placeholder="Main MLRO *"
+          autocomplete="off"
+          maxlength="128"
+          aria-label="Main MLRO"
+          style="flex: 1 1 140px; margin: 0"
+        />
+        <input
+          type="text"
+          id="mlroDeputyName"
+          placeholder="Deputy MLRO"
+          autocomplete="off"
+          maxlength="128"
+          aria-label="Deputy MLRO"
+          style="flex: 1 1 140px; margin: 0"
+        />
+        <input
+          type="password"
+          id="loginPassword"
+          placeholder="Password"
+          autocomplete="current-password"
+          spellcheck="false"
+          aria-label="MLRO password"
+          style="flex: 1 1 140px; margin: 0"
+        />
+        <button
+          type="button"
+          id="loginBtn"
+          class="token-gen-btn auth-icon-btn"
+          style="color: #22c55e; border-color: #ec4899"
+          title="Sign in — exchange password for a signed 1-year session token"
+          aria-label="Sign in"
+        >
+          &rarr;
+        </button>
+        <button
+          type="button"
+          id="logoutBtn"
+          class="token-gen-btn auth-icon-btn"
+          style="color: #ef4444; border-color: #ec4899"
+          title="Sign out — forget the saved session token"
+          aria-label="Sign out"
+        >
+          &times;
+        </button>
       </div>
-      <div class="row-3">
-        <div>
-          <label for="mlroMainName">Main MLRO *</label>
-          <input
-            type="text"
-            id="mlroMainName"
-            placeholder="Full legal name"
-            autocomplete="off"
-            maxlength="128"
-          />
-        </div>
-        <div>
-          <label for="mlroDeputyName">Deputy MLRO</label>
-          <input
-            type="text"
-            id="mlroDeputyName"
-            placeholder="Full legal name"
-            autocomplete="off"
-            maxlength="128"
-          />
-        </div>
-        <div>
-          <label for="loginPassword">Password</label>
-          <input
-            type="password"
-            id="loginPassword"
-            placeholder="MLRO password"
-            autocomplete="current-password"
-            spellcheck="false"
-            aria-label="MLRO password"
-            style="width: 100%; margin-bottom: 0"
-          />
-        </div>
-      </div>
-      <p class="help-text" style="margin: 8px 0 0; font-size: 11px">
+      <p class="help-text" style="margin: 6px 0 0; font-size: 11px">
         <b>Screened by:</b> <span id="mlroActiveBadge" class="tag">—</span>
-        &middot; Saved locally (FDL Art.24 &mdash; 10yr audit trail)
+        &middot; FDL Art.24 &mdash; 10yr audit trail
       </p>
       <div id="loginMsg" class="token-msg"></div>
       <!-- Hidden token store. The screening-command.js auth helpers

@@ -163,40 +163,82 @@
         box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
       }
 
-      /* Hero — status pills inline at top, title uses full width */
+      /* Hero — 2-column grid: copy left, 2×2 status-tile aside right */
       .hero {
-        margin-bottom: 2.75rem;
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 48px;
+        align-items: end;
+        margin: 10px 0 2.75rem;
+      }
+      @media (max-width: 920px) {
+        .hero { grid-template-columns: 1fr; gap: 28px; }
       }
 
-      .status-row-top {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-bottom: 1.5rem;
-      }
-      .status-pill-top {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 7px 14px 7px 10px;
-        border-radius: 999px;
+      /* 2×2 square summary panel (mirrors screening-command.html .summary) */
+      .hero-summary {
+        background: linear-gradient(160deg, rgba(17, 70, 46, 0.8) 0%, rgba(10, 40, 24, 0.6) 100%);
         border: 1px solid var(--border);
-        background: rgba(17, 70, 46, 0.55);
+        border-radius: 18px;
+        padding: 1.25rem;
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
-        font-family: 'DM Mono', monospace;
-        font-size: 10.5px;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: var(--ice);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        position: relative;
+        overflow: hidden;
       }
-      .status-pill-top::before {
+      .hero-summary::before {
         content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--azure-bright), transparent);
+      }
+      .hero-summary-cell {
+        padding: 14px 14px 12px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: rgba(10, 40, 24, 0.5);
+        aspect-ratio: 1 / 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 120px;
+      }
+      .hero-summary-cell .k {
+        font-family: 'DM Mono', monospace;
+        font-size: 9.5px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--steel);
+      }
+      .hero-summary-cell .v {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: 22px;
+        color: var(--mist);
+        line-height: 1.1;
+      }
+      .hero-summary-cell .v small {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        color: var(--sky);
+        display: block;
+        margin-top: 6px;
+        letter-spacing: 1px;
+        font-weight: 400;
+      }
+      .hero-summary-cell .dot {
         width: 7px;
         height: 7px;
         border-radius: 50%;
         background: var(--azure-bright);
         box-shadow: 0 0 10px var(--azure-bright);
+        display: inline-block;
+        margin-right: 8px;
+        vertical-align: middle;
       }
 
       .hero-eyebrow {
@@ -726,23 +768,36 @@
       </header>
 
       <section class="hero">
-        <div class="status-row-top" aria-label="Shipments live status">
-          <span class="status-pill-top">Inbound queue &middot; Operational</span>
-          <span class="status-pill-top">In-transit &middot; Real-time</span>
-          <span class="status-pill-top">Local movements &middot; Logged</span>
-          <span class="status-pill-top">Audit trail &middot; 10 yr retention</span>
-          <span class="status-pill-top" id="liveClock">&mdash;</span>
+        <div>
+          <div class="hero-eyebrow">Shipments Control Tower</div>
+          <h1 class="hero-title">
+            <span class="nowrap">Every gram, <em>tracked</em>.</span><br />
+            <span class="nowrap">Every shipment, accounted for.</span>
+          </h1>
+          <p class="hero-lede">
+            Inbound advice, in-transit custody, and intra-UAE movement — unified under one
+            audit-ready workspace. Each surface below maps to a distinct regulatory
+            obligation and produces its own evidentiary trail.
+          </p>
         </div>
-        <div class="hero-eyebrow">Shipments Control Tower</div>
-        <h1 class="hero-title">
-          <span class="nowrap">Every gram, <em>tracked</em>.</span><br />
-          <span class="nowrap">Every shipment, accounted for.</span>
-        </h1>
-        <p class="hero-lede">
-          Inbound advice, in-transit custody, and intra-UAE movement — unified under one
-          audit-ready workspace. Each surface below maps to a distinct regulatory
-          obligation and produces its own evidentiary trail.
-        </p>
+        <aside class="hero-summary" aria-label="Shipments live status">
+          <div class="hero-summary-cell">
+            <div class="k"><span class="dot"></span>Inbound Queue</div>
+            <div class="v">Operational<small>Dubai Customs · Brinks</small></div>
+          </div>
+          <div class="hero-summary-cell">
+            <div class="k"><span class="dot"></span>In-Transit</div>
+            <div class="v">Real-Time<small>GPS + assay trail</small></div>
+          </div>
+          <div class="hero-summary-cell">
+            <div class="k"><span class="dot"></span>Local Movements</div>
+            <div class="v">Logged<small>Intra-UAE custody</small></div>
+          </div>
+          <div class="hero-summary-cell">
+            <div class="k"><span class="dot"></span>Audit Trail</div>
+            <div class="v"><span id="liveClock">&mdash;</span><small>10 yr retention · UTC</small></div>
+          </div>
+        </aside>
       </section>
 
       <div class="section-head">
