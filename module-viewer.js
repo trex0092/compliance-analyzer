@@ -1,25 +1,27 @@
-// compliance-ops.js — in-page module viewer
-// Clicking a card on compliance-ops.html opens the corresponding
-// index.html tab inline (via iframe) instead of navigating away,
-// keeping the user on the Compliance Operations landing page.
+// module-viewer.js — shared in-page module viewer for landing pages.
+// Any landing page (compliance-ops.html, logistics.html, etc.) that
+// wires up cards with `class="card" data-route="<tab>"` plus a matching
+// <section id="moduleView"> block will get inline-iframe navigation
+// instead of leaving the page.
 (function () {
   'use strict';
 
-  var MODULE_LABELS = {
-    training: 'Training',
-    employees: 'Employees',
-    incidents: 'Incidents',
-    reports: 'Reports',
-  };
+  function titleFromCard(card, route) {
+    var heading = card.querySelector('.card-title');
+    if (heading && heading.textContent) return heading.textContent.trim();
+    return (route || 'Module').replace(/^\w/, function (c) { return c.toUpperCase(); });
+  }
 
-  function open(route, href) {
+  function open(card) {
     var view = document.getElementById('moduleView');
     var frame = document.getElementById('moduleViewFrame');
     var title = document.getElementById('moduleViewTitle');
     if (!view || !frame || !title) return;
-    title.textContent = MODULE_LABELS[route] || 'Module';
-    // Always bounce the src so the iframe re-routes even when the
-    // user reopens the same card.
+    var route = card.getAttribute('data-route') || '';
+    var href = card.getAttribute('href') || '';
+    title.textContent = titleFromCard(card, route);
+    // Bounce src so the iframe re-navigates even when the same card is
+    // reopened after being closed.
     frame.src = 'about:blank';
     setTimeout(function () {
       frame.src = href;
@@ -36,8 +38,8 @@
     if (!view) return;
     view.classList.remove('is-open');
     if (frame) frame.src = 'about:blank';
-    var grid = document.querySelector('.section-head');
-    if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    var anchor = document.querySelector('.section-head') || document.querySelector('.hero');
+    if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   document.addEventListener(
@@ -45,8 +47,7 @@
     function (e) {
       var t = e && e.target;
       if (!t || typeof t.closest !== 'function') return;
-      var closeBtn = t.closest('#moduleViewClose');
-      if (closeBtn) {
+      if (t.closest('#moduleViewClose')) {
         e.preventDefault();
         close();
         return;
@@ -54,9 +55,7 @@
       var card = t.closest('a.card[data-route]');
       if (card) {
         e.preventDefault();
-        var route = card.getAttribute('data-route') || '';
-        var href = card.getAttribute('href') || '';
-        open(route, href);
+        open(card);
       }
     },
     false

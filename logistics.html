@@ -583,6 +583,64 @@
         font-weight: 600;
       }
 
+      /* In-page module viewer — opens the index.html tab inline via iframe
+         so the user stays on logistics.html. */
+      .module-view {
+        display: none;
+        margin-top: 1.5rem;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: rgba(5, 11, 24, 0.65);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        overflow: hidden;
+        position: relative;
+        z-index: 1;
+      }
+      .module-view.is-open { display: block; }
+      .module-view-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(17, 70, 46, 0.45);
+      }
+      .module-view-title {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: 20px;
+        color: var(--mist);
+        margin: 0;
+      }
+      .module-view-close {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--steel);
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 7px 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .module-view-close:hover {
+        color: var(--mist);
+        border-color: var(--azure-bright);
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+      }
+      .module-view-frame {
+        width: 100%;
+        height: 78vh;
+        min-height: 640px;
+        border: 0;
+        background: var(--midnight, #050b18);
+        display: block;
+      }
+
       /* Footer */
       .footer {
         position: relative;
@@ -777,6 +835,20 @@
         </a>
       </div>
 
+      <section id="moduleView" class="module-view" aria-live="polite">
+        <div class="module-view-head">
+          <h2 id="moduleViewTitle" class="module-view-title">Module</h2>
+          <button type="button" id="moduleViewClose" class="module-view-close">&times; Close module</button>
+        </div>
+        <iframe
+          id="moduleViewFrame"
+          class="module-view-frame"
+          title="Module viewer"
+          referrerpolicy="same-origin"
+          loading="lazy"
+        ></iframe>
+      </section>
+
       <div class="reg-strip" role="note">
         <div class="reg-badge" aria-hidden="true">§</div>
         <div class="reg-body">
@@ -826,5 +898,6 @@
         });
       })();
     </script>
+    <script src="module-viewer.js?v=1"></script>
   </body>
 </html>

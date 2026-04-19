@@ -889,8 +889,14 @@
           return;
         }
         drawerRunMsg.textContent = 'Triggering ' + DRAWER_ROUTINE.id + '…';
+        // Scheduled functions cannot declare a custom `path` (Netlify
+        // forbids combining `path:` + `schedule:`), so manual triggers
+        // must hit the canonical `/.netlify/functions/<name>` URL. The
+        // old `/api/<id>-cron` route 404'd because no matching redirect
+        // is registered.
+        const fnUrl = '/.netlify/functions/' + DRAWER_ROUTINE.id + '-cron';
         try {
-          const res = await fetch('/api/' + DRAWER_ROUTINE.id + '-cron', {
+          const res = await fetch(fnUrl, {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ manual: true })
@@ -898,6 +904,11 @@
           if (res.ok) {
             drawerRunMsg.textContent = 'Triggered. Refreshing status…';
             setTimeout(fetchLiveStatus, 1500);
+          } else if (res.status === 404) {
+            drawerRunMsg.textContent = 'Routine endpoint not deployed (' + DRAWER_ROUTINE.id + '-cron).';
+          } else if (res.status === 401 || res.status === 403) {
+            drawerRunMsg.textContent = 'Sign in expired — sign in again to trigger a manual run.';
+            refreshAuthBlock();
           } else {
             drawerRunMsg.textContent = 'Run failed (HTTP ' + res.status + '). Endpoint may not accept manual triggers.';
           }
