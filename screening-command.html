@@ -731,6 +731,15 @@
       .auth-card .token-row {
         margin-top: 8px;
       }
+      .auth-card .auth-icon-btn {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1;
+        flex: 0 0 auto;
+      }
       .auth-card.authenticated {
         background: linear-gradient(135deg, rgba(52, 211, 153, 0.18) 0%, rgba(52, 211, 153, 0.06) 100%);
         border-color: var(--green) !important;
@@ -1991,7 +2000,7 @@
     </div>
 
     <!-- MLRO Identity + Authentication (merged, compact) ───────────── -->
-    <div class="card auth-card" style="margin-top: 14px; border-color: #ec4899">
+    <div id="mlroAuth" class="card auth-card" style="margin-top: 14px; border-color: #ec4899">
       <h2 style="color: #ec4899; margin: 0 0 10px !important">
         MLRO Identity &amp; Authentication <span class="tag">Required</span>
       </h2>
@@ -2028,24 +2037,26 @@
           />
         </div>
       </div>
-      <div class="token-row" style="margin-top: 10px">
+      <div class="token-row" style="margin-top: 10px; justify-content: flex-end; gap: 6px">
         <button
           type="button"
           id="loginBtn"
-          class="token-gen-btn"
-          style="flex: 1; color: #22c55e; border-color: #ec4899"
-          title="Exchange password for a signed 1-year session token"
+          class="token-gen-btn auth-icon-btn"
+          style="color: #22c55e; border-color: #ec4899"
+          title="Sign in — exchange password for a signed 1-year session token"
+          aria-label="Sign in"
         >
-          Sign in
+          &rarr;
         </button>
         <button
           type="button"
           id="logoutBtn"
-          class="token-gen-btn"
-          style="flex: 1; color: #ef4444; border-color: #ec4899"
-          title="Forget the saved session token and require a new sign-in"
+          class="token-gen-btn auth-icon-btn"
+          style="color: #ef4444; border-color: #ec4899"
+          title="Sign out — forget the saved session token"
+          aria-label="Sign out"
         >
-          Sign out
+          &times;
         </button>
       </div>
       <p class="help-text" style="margin: 10px 0 0; font-size: 11px">
