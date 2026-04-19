@@ -153,6 +153,8 @@ window.csFormatDateInput = function (el) {
   // so the MLRO finds the two workflows side-by-side instead of at
   // opposite ends of the tab strip. Red Flags + 4-Eyes continue to
   // append to the tail.
+  // CRA merged into Risk Assessment tab
+  // UBO tab removed from main-tool nav per product decision
   const NEW_TABS = [
     { id: 'str',       icon: '🚨', label: 'STR Cases', title: 'STR Case Management', insertAfter: 'incidents' },
     { id: 'redflags',  icon: '🚩', label: 'Red Flags', title: 'Red Flag Library' },
