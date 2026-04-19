@@ -1563,10 +1563,6 @@
           padding: 24px 16px;
           margin: 0 12px;
         }
-        /* Company header select */
-        #headerCompanySelect {
-          max-width: 120px;
-        }
       }
 
       /* Fix iOS rubber-banding and notch */
@@ -2163,29 +2159,6 @@
           <div class="logo-text">Hawkeye Sterling V2</div>
         </div>
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
-          <select
-            id="headerCompanySelect"
-            data-change="_switchCompanyAndUpdateBar"
-            style="
-              background: rgba(245, 158, 11, 0.06);
-              border: 1px solid var(--border-strong);
-              border-radius: 999px;
-              color: var(--gold);
-              font-size: 11px;
-              font-weight: 600;
-              font-family: 'DM Mono', 'Montserrat', monospace;
-              letter-spacing: 1.5px;
-              text-transform: uppercase;
-              cursor: pointer;
-              outline: none;
-              padding: 8px 14px;
-              max-width: 260px;
-              width: auto;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-              overflow: hidden;
-            "
-          ></select>
           <button
             class="theme-toggle"
             id="themeToggleBtn"
@@ -2416,17 +2389,14 @@
           <div class="tab active" data-action="switchTab" data-arg="iarreport">📝 IAR Report</div>
           <div class="tab" data-action="switchTab" data-arg="asana">📋 Compliance Tasks</div>
           <!-- Evidence Tracker removed -->
-          <div class="tab" data-action="switchTab" data-arg="gaps">🔴 Gap Register</div>
           <!-- Training moved to /compliance-ops landing page -->
           <!-- Employees moved to /compliance-ops landing page -->
           <!-- Onboarding moved to /workbench landing page -->
           <div class="tab" data-action="switchTab" data-arg="riskassessment">⚖️ Risk & CRA</div>
           <!-- Incidents moved to /compliance-ops landing page -->
           <div class="tab" data-action="switchTab" data-arg="calendar">📅 Calendar</div>
-          <div class="tab" data-action="switchTab" data-arg="settings">⚙️ Settings</div>
           <div class="tab" data-action="switchTab" data-arg="reports">📑 Reports</div>
           <div class="tab" data-action="switchTab" data-arg="monitor">🛡️ Reg Monitor</div>
-          <div class="tab" data-action="switchTab" data-arg="integrations">🔗 Integrations</div>
           <!-- goAML Export removed -->
           <!-- Thresholds tab removed — DPMS AED 55K monitor surfaces automatically on relevant transaction pages -->
           <div class="tab" data-action="switchTab" data-arg="supplychain">⛏️ Supply</div>

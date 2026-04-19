@@ -663,29 +663,44 @@ async function hydrateUaeSanctionsFromBlob(): Promise<void> {
       .filter((k): k is string => typeof k === 'string' && k.endsWith('/snapshot.json'))
       .sort();
     const latest = keys[keys.length - 1];
-    if (!latest) return;
-    const raw = await store.get(latest, { type: 'json' });
-    if (!Array.isArray(raw)) return;
-    const entries = raw
-      .filter((e): e is Record<string, unknown> => !!e && typeof e === 'object')
-      .map((e) => {
-        const type = e.type === 'individual' || e.type === 'entity' ? e.type : 'entity';
-        const aliases = Array.isArray(e.aliases)
-          ? (e.aliases as unknown[]).filter((a): a is string => typeof a === 'string')
-          : [];
-        return {
-          id: typeof e.sourceId === 'string' ? e.sourceId : undefined,
-          name: typeof e.primaryName === 'string' ? e.primaryName : '',
-          aliases,
-          type: type as 'individual' | 'entity',
-          nationality: typeof e.nationality === 'string' ? e.nationality : undefined,
-          listDate: typeof e.listDate === 'string' ? e.listDate : undefined,
-          designationRef: typeof e.sourceId === 'string' ? e.sourceId : undefined,
-        };
-      })
-      .filter((e) => e.name.length > 0);
-    if (entries.length > 0) {
-      seedUaeSanctionsList(entries);
+    if (latest) {
+      const raw = await store.get(latest, { type: 'json' });
+      if (Array.isArray(raw)) {
+        const entries = raw
+          .filter((e): e is Record<string, unknown> => !!e && typeof e === 'object')
+          .map((e) => {
+            const type = e.type === 'individual' || e.type === 'entity' ? e.type : 'entity';
+            const aliases = Array.isArray(e.aliases)
+              ? (e.aliases as unknown[]).filter((a): a is string => typeof a === 'string')
+              : [];
+            return {
+              id: typeof e.sourceId === 'string' ? e.sourceId : undefined,
+              name: typeof e.primaryName === 'string' ? e.primaryName : '',
+              aliases,
+              type: type as 'individual' | 'entity',
+              nationality: typeof e.nationality === 'string' ? e.nationality : undefined,
+              listDate: typeof e.listDate === 'string' ? e.listDate : undefined,
+              designationRef: typeof e.sourceId === 'string' ? e.sourceId : undefined,
+            };
+          })
+          .filter((e) => e.name.length > 0);
+        if (entries.length > 0) {
+          seedUaeSanctionsList(entries);
+          uaeSeedSucceeded = true;
+          return;
+        }
+      }
+    }
+    // Last-resort fallback: no EOCN circular has been uploaded yet, but
+    // Cabinet Res 74/2020 Art.3 makes the UAE implement every UN
+    // Security Council designation automatically. If the ingest cron
+    // has a recent UN snapshot, use it as a MINIMUM-VIABLE UAE list so
+    // Art.35 screening does not hard-fail on cold-boot. The UI / audit
+    // message must still flag this as "seeded from UN — upload EOCN
+    // circular for full UAE coverage" so the MLRO knows it is partial.
+    const unFallback = await loadBlobSnapshot('UN', 'UAE EOCN (UN fallback)');
+    if (unFallback && unFallback.length > 0) {
+      seedUaeSanctionsList(unFallback);
       uaeSeedSucceeded = true;
     }
   } catch {
@@ -706,6 +721,59 @@ async function hydrateUaeSanctionsFromBlob(): Promise<void> {
  * outer fallback fires.
  */
 const PER_LIST_TIMEOUT_MS = 3_800;
+
+/**
+ * Load the most recent normalised snapshot for a source from the
+ * `sanctions-snapshots` Netlify Blob store. Snapshots are written by
+ * `sanctions-ingest-cron.mts` every 15 min under
+ * `<source>/<YYYY-MM-DD>/snapshot.json`. Used as a safety-net when the
+ * live upstream fetch cancels mid-flight (EU's 5MB XML is the usual
+ * offender). Map NormalisedSanction → SanctionsEntry the same way
+ * `hydrateUaeSanctionsFromBlob` does for UAE_EOCN. Returns null if no
+ * snapshot exists OR if the store read itself errors (cold-start) —
+ * the caller then surfaces the original live-fetch error.
+ */
+async function loadBlobSnapshot(
+  source: 'UN' | 'OFAC_SDN' | 'OFAC_CONS' | 'EU' | 'UK_OFSI',
+  listLabel: string
+): Promise<SanctionsEntry[] | null> {
+  try {
+    const store = getStore('sanctions-snapshots');
+    const listing = await store.list({ prefix: `${source}/` });
+    const keys = (listing.blobs ?? [])
+      .map((b) => b.key)
+      .filter((k): k is string => typeof k === 'string' && k.endsWith('/snapshot.json'))
+      .sort();
+    const latest = keys[keys.length - 1];
+    if (!latest) return null;
+    const raw = await store.get(latest, { type: 'json' });
+    if (!Array.isArray(raw)) return null;
+    const entries: SanctionsEntry[] = raw
+      .filter((e): e is Record<string, unknown> => !!e && typeof e === 'object')
+      .map((e, idx) => {
+        const type = e.type === 'individual' || e.type === 'entity' ? e.type : 'entity';
+        const aliases = Array.isArray(e.aliases)
+          ? (e.aliases as unknown[]).filter((a): a is string => typeof a === 'string')
+          : [];
+        return {
+          id:
+            typeof e.sourceId === 'string' ? e.sourceId : `${source}-fallback-${idx}`,
+          name: typeof e.primaryName === 'string' ? e.primaryName : '',
+          aliases,
+          listSource: listLabel,
+          listDate: typeof e.listDate === 'string' ? e.listDate : undefined,
+          type: type as 'individual' | 'entity',
+          nationality: typeof e.nationality === 'string' ? e.nationality : undefined,
+          designationRef:
+            typeof e.sourceId === 'string' ? e.sourceId : undefined,
+        } as SanctionsEntry;
+      })
+      .filter((e) => e.name.length > 0);
+    return entries.length > 0 ? entries : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Race a single list fetch against PER_LIST_TIMEOUT_MS. Two layers of
@@ -805,7 +873,7 @@ async function loadAllLists(): Promise<ListSnapshot> {
   // "cache empty" message (which raceListFetch surfaces as that list's
   // error) — strictly better than silently-wiped per-list diagnostics.
   const proxy = process.env.HAWKEYE_SANCTIONS_PROXY_URL;
-  const [, ...lists] = await Promise.all([
+  const [, ...rawLists] = await Promise.all([
     hydrateUaeSanctionsFromBlob(),
     raceListFetch('UN', (signal, timeoutMs) => fetchUNSanctionsList(proxy, { signal, timeoutMs })),
     raceListFetch('OFAC', (signal, timeoutMs) => fetchOFACSanctionsList(proxy, { signal, timeoutMs })),
@@ -813,6 +881,38 @@ async function loadAllLists(): Promise<ListSnapshot> {
     raceListFetch('UK_OFSI', (signal, timeoutMs) => fetchUKSanctionsList(proxy, { signal, timeoutMs })),
     raceListFetch('UAE_EOCN', () => fetchUAESanctionsList()),
   ]);
+  // Blob-snapshot fallback for the four live-fetch lists. When the
+  // upstream (EU/UN/OFAC/UK) cancels mid-flight — e.g. EU's 5MB XML
+  // during an event-loop stall — drop back to the most recent
+  // cron-produced snapshot rather than returning an empty list with an
+  // error. This keeps Cabinet Res 74/2020 Art.4 list-coverage intact
+  // even when a single upstream is stalled, so long as the ingest cron
+  // (sanctions-ingest-cron.mts) has run at least once. If no blob
+  // snapshot exists either, the original live-fetch error is preserved
+  // and surfaced exactly as before so the MLRO sees the coverage gap.
+  const BLOB_FALLBACK_SOURCES: Record<
+    'UN' | 'OFAC' | 'EU' | 'UK_OFSI',
+    'UN' | 'OFAC_SDN' | 'EU' | 'UK_OFSI'
+  > = {
+    UN: 'UN',
+    OFAC: 'OFAC_SDN',
+    EU: 'EU',
+    UK_OFSI: 'UK_OFSI',
+  };
+  const lists = await Promise.all(
+    rawLists.map(async (result) => {
+      if (!result.error || result.name === 'UAE_EOCN') return result;
+      const blobKey = BLOB_FALLBACK_SOURCES[result.name as keyof typeof BLOB_FALLBACK_SOURCES];
+      if (!blobKey) return result;
+      const fallback = await loadBlobSnapshot(blobKey, result.name);
+      if (!fallback) return result;
+      return {
+        name: result.name,
+        entries: fallback,
+        error: `${result.error} — served ${fallback.length} rows from cached ingest-cron snapshot`,
+      };
+    })
+  );
   const snapshot: ListSnapshot = { fetchedAt: Date.now(), lists: lists as ListSnapshot['lists'] };
 
   // Cache ONLY when every mandatory list (UN, UAE_EOCN) came back without
@@ -1284,15 +1384,36 @@ export default async (req: Request, context: Context): Promise<Response> => {
     input.aliases,
     ADVERSE_MEDIA_FANOUT_MAX
   );
+  // Adverse-media lookback window. The default 30-day window in
+  // buildAdverseMediaQuery is tuned for ONGOING MONITORING where the
+  // same subject is checked daily and only fresh news matters. For
+  // new-customer onboarding or a periodic CDD review, we need a
+  // HISTORICAL screen — a 6-month-old arrest on a Turkey gold refinery
+  // raid still matters for an EDD decision. Widen to 3 years on those
+  // event types so the first-time screen actually catches pre-existing
+  // adverse media (FATF Rec 10 — ongoing CDD + onboarding due diligence).
+  const amSinceDate =
+    input.eventType === 'new_customer_onboarding' || input.eventType === 'periodic_review'
+      ? (() => {
+          const d = new Date();
+          d.setFullYear(d.getFullYear() - 3);
+          return d.toISOString().slice(0, 10);
+        })()
+      : undefined;
   // Adverse media fan-out: one searchAdverseMedia call per term, all
   // racing in parallel. The slowest still caps the stage at
   // ADVERSE_MEDIA_TIMEOUT_MS. Results are merged + de-duplicated by
   // URL so the downstream count and top-5 reflect the union of
-  // hits across every variant.
+  // hits across every variant. The historical sinceDate (if any)
+  // propagates into every fan-out call so onboarding screens cover
+  // the full 3-year window across every name variant.
   const fanoutAdverseMedia = async () => {
     if (!input.runAdverseMedia) return amFallback;
     const terms = searchTerms.length > 0 ? searchTerms : [input.subjectName];
-    const settled = await Promise.allSettled(terms.map((t) => searchAdverseMedia(t)));
+    const amOptions = amSinceDate ? { sinceDate: amSinceDate } : undefined;
+    const settled = await Promise.allSettled(
+      terms.map((t) => searchAdverseMedia(t, amOptions))
+    );
     const merged: typeof amFallback = {
       ...amFallback,
       provider: 'multi',
