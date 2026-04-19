@@ -126,18 +126,34 @@ const SANCTIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
  * Leaves ~0.5s headroom before Netlify's 10s sync-function ceiling.
  */
 // Outer sanctions budget (safety net around loadAllLists). Must exceed
-// PER_LIST_TIMEOUT_MS (4_200ms) with enough headroom for Promise.all to
+// PER_LIST_TIMEOUT_MS (3_800ms) with enough headroom for Promise.all to
 // settle; otherwise a legitimate per-list timeout trips the outer
 // fallback and every list surfaces the generic "sanctions fetch timed
-// out" instead of its own diagnostic. 5_500ms matches the Phase A
-// budget described above (max(sanctions, adverse) ≈ 5.5s).
-const SANCTIONS_FETCH_TIMEOUT_MS = 5_500;
-const ADVERSE_MEDIA_TIMEOUT_MS = 3_200;
-// Deep brain deadline raised so the reasoner gets a realistic thinking
-// budget instead of always timing out at 2.5s. Sits inside the 10s
-// Netlify sync ceiling alongside the other phase budgets.
-const DEEP_BRAIN_DEADLINE_MS = 3_200;
-const ASANA_TIMEOUT_MS = 3_500;
+// out" instead of its own diagnostic. 4_500ms keeps Phase A inside the
+// per-list window plus ~700ms of Promise.all overhead.
+//
+// Sum of phase budgets MUST fit inside Netlify's 10s sync-function
+// ceiling: 4_500 (Phase A) + 2_500 (Phase B) + 2_500 (Phase C) +
+// ~500ms of serialization = 10_000ms exactly. Any regression here
+// cascades into "sanctions fetch timed out" on every list because the
+// outer withTimeout fires before the per-list diagnostics can surface.
+const SANCTIONS_FETCH_TIMEOUT_MS = 4_500;
+const ADVERSE_MEDIA_TIMEOUT_MS = 3_000;
+// Blob-store hydration cap. Netlify Blobs cold-start can take multiple
+// seconds; without this cap, hydrate blocked Promise.all past the outer
+// deadline and every list surfaced the generic fallback. Hydration is
+// best-effort (UAE_EOCN's fetchUAESanctionsList raises its own Art.35
+// "cache empty" error if hydrate skipped), so a tight cap is safe.
+const HYDRATE_TIMEOUT_MS = 1_200;
+// Deep brain deadline tuned so the reasoner stays inside Phase B
+// without starving Phase C. Sits inside the 10s Netlify sync ceiling
+// alongside the other phase budgets.
+const DEEP_BRAIN_DEADLINE_MS = 2_500;
+// Asana + Watchlist run in parallel. ASANA_TIMEOUT_MS bounds the
+// Asana POST (CO needs a clear "task timed out" diagnostic, never a
+// silent hang). WATCHLIST_TIMEOUT_MS is shorter because watchlist is a
+// local blob write with no external network hop.
+const ASANA_TIMEOUT_MS = 2_500;
 const WATCHLIST_TIMEOUT_MS = 1_500;
 
 /**
@@ -501,17 +517,27 @@ async function hydrateUaeSanctionsFromBlob(): Promise<void> {
  * OFAC/EU/UK/EOCN. The outer caller still clamps the whole phase at
  * SANCTIONS_FETCH_TIMEOUT_MS, but inside that window every list that
  * returns fast actually surfaces its rows instead of being nuked by the
- * slowest sibling.
+ * slowest sibling. Must be strictly less than
+ * SANCTIONS_FETCH_TIMEOUT_MS so per-list diagnostics land before the
+ * outer fallback fires.
  */
-const PER_LIST_TIMEOUT_MS = 4_200;
+const PER_LIST_TIMEOUT_MS = 3_800;
 
 /**
- * Race a single list fetch against PER_LIST_TIMEOUT_MS. Unlike the prior
- * version that only raced promises, this one wires an AbortSignal into the
- * underlying fetch so a slow upstream is actually cancelled at the socket
- * level — otherwise the HTTP call keeps running for its own 30s budget,
- * burns Netlify invocation time, and (for the EU feed in particular) the
- * client sees a "timed out after 4200ms (took >9500ms)" telemetry gap.
+ * Race a single list fetch against PER_LIST_TIMEOUT_MS. Two layers of
+ * defence:
+ *   1. An AbortSignal is wired into the underlying fetch so a slow
+ *      upstream is cancelled at the socket level. This keeps the real
+ *      network call from burning Netlify invocation time past the
+ *      deadline.
+ *   2. A hard Promise.race against a setTimeout rejection guarantees
+ *      raceListFetch resolves even if the fetcher ignores the signal
+ *      (e.g. a vendored library that swallows AbortError or a stream
+ *      that never closes). Without this belt-and-braces, a single
+ *      misbehaving list fetcher blocked Promise.all past the outer
+ *      SANCTIONS_FETCH_TIMEOUT_MS and every list surfaced the generic
+ *      "sanctions fetch timed out" fallback instead of its own
+ *      diagnostic — the exact bug this branch is fixing.
  */
 async function raceListFetch(
   name: ListSnapshot['lists'][number]['name'],
@@ -520,8 +546,23 @@ async function raceListFetch(
   const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PER_LIST_TIMEOUT_MS);
+  let hardTimer: ReturnType<typeof setTimeout> | undefined;
+  const hardTimeout = new Promise<never>((_, reject) => {
+    hardTimer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            `${name} fetch exceeded ${PER_LIST_TIMEOUT_MS}ms hard deadline (fetcher ignored AbortSignal)`
+          )
+        ),
+      PER_LIST_TIMEOUT_MS + 200
+    );
+  });
   try {
-    const entries = await fetcher(controller.signal, PER_LIST_TIMEOUT_MS);
+    const entries = await Promise.race([
+      fetcher(controller.signal, PER_LIST_TIMEOUT_MS),
+      hardTimeout,
+    ]);
     return { name, entries };
   } catch (err) {
     const elapsed = Date.now() - started;
@@ -539,6 +580,27 @@ async function raceListFetch(
     };
   } finally {
     clearTimeout(timer);
+    if (hardTimer) clearTimeout(hardTimer);
+  }
+}
+
+/**
+ * Cap hydrateUaeSanctionsFromBlob() at HYDRATE_TIMEOUT_MS. Netlify
+ * Blobs cold-start latency is the most common cause of this hydrate
+ * blocking Promise.all past the outer sanctions deadline. If hydrate
+ * is too slow, we skip it — fetchUAESanctionsList surfaces its own
+ * Art.35 "cache empty" diagnostic, strictly better than every list
+ * collapsing onto the generic outer fallback.
+ */
+async function raceHydrate(): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(() => resolve(), HYDRATE_TIMEOUT_MS);
+  });
+  try {
+    await Promise.race([hydrateUaeSanctionsFromBlob(), timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
