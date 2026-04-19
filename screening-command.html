@@ -244,26 +244,6 @@
         align-items: end;
         margin: 10px 0 36px;
       }
-      .hero-eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        font-family: 'DM Mono', monospace;
-        font-size: 11px;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        color: var(--sky);
-        margin-bottom: 1.25rem;
-      }
-      .hero-eyebrow::before {
-        content: '';
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: var(--azure-bright);
-        box-shadow: 0 0 12px var(--azure-bright);
-        animation: pulse 2.2s ease-in-out infinite;
-      }
       @keyframes pulse {
         0%,
         100% {
@@ -1777,7 +1757,6 @@
     </script>
     <section class="hero">
       <div>
-        <div class="hero-eyebrow">Six-List Sanctions Screening</div>
         <h1 class="hero-title">
           <span class="nowrap">Your subjects, <em>screened</em>.</span><br />
           <span class="nowrap">All audit-logged.</span>
