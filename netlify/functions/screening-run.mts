@@ -131,7 +131,7 @@ const ADVERSE_MEDIA_TIMEOUT_MS = 3_200;
 // budget instead of always timing out at 2.5s. Sits inside the 10s
 // Netlify sync ceiling alongside the other phase budgets.
 const DEEP_BRAIN_DEADLINE_MS = 3_200;
-const ASANA_TIMEOUT_MS = 2_000;
+const ASANA_TIMEOUT_MS = 3_500;
 const WATCHLIST_TIMEOUT_MS = 1_500;
 
 /**
@@ -499,24 +499,41 @@ async function hydrateUaeSanctionsFromBlob(): Promise<void> {
  */
 const PER_LIST_TIMEOUT_MS = 4_200;
 
+/**
+ * Race a single list fetch against PER_LIST_TIMEOUT_MS. Unlike the prior
+ * version that only raced promises, this one wires an AbortSignal into the
+ * underlying fetch so a slow upstream is actually cancelled at the socket
+ * level — otherwise the HTTP call keeps running for its own 30s budget,
+ * burns Netlify invocation time, and (for the EU feed in particular) the
+ * client sees a "timed out after 4200ms (took >9500ms)" telemetry gap.
+ */
 async function raceListFetch(
   name: ListSnapshot['lists'][number]['name'],
-  fetcher: () => Promise<SanctionsEntry[]>
+  fetcher: (signal: AbortSignal, timeoutMs: number) => Promise<SanctionsEntry[]>
 ): Promise<ListSnapshot['lists'][number]> {
   const started = Date.now();
-  const result = await withTimeout<SanctionsEntry[]>(
-    fetcher(),
-    PER_LIST_TIMEOUT_MS,
-    [],
-    `${name} fetch`
-  );
-  if (result.timedOut) {
-    return { name, entries: [], error: `${name} fetch timed out after ${PER_LIST_TIMEOUT_MS}ms (took >${Date.now() - started}ms)` };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PER_LIST_TIMEOUT_MS);
+  try {
+    const entries = await fetcher(controller.signal, PER_LIST_TIMEOUT_MS);
+    return { name, entries };
+  } catch (err) {
+    const elapsed = Date.now() - started;
+    if (controller.signal.aborted) {
+      return {
+        name,
+        entries: [],
+        error: `${name} fetch cancelled after ${PER_LIST_TIMEOUT_MS}ms (aborted at ${elapsed}ms)`,
+      };
+    }
+    return {
+      name,
+      entries: [],
+      error: `${name} fetch failed: ${(err as Error)?.message || 'unknown error'}`,
+    };
+  } finally {
+    clearTimeout(timer);
   }
-  if (result.error) {
-    return { name, entries: [], error: result.error };
-  }
-  return { name, entries: result.value };
 }
 
 async function loadAllLists(): Promise<ListSnapshot> {
@@ -526,10 +543,10 @@ async function loadAllLists(): Promise<ListSnapshot> {
   await hydrateUaeSanctionsFromBlob();
   const proxy = process.env.HAWKEYE_SANCTIONS_PROXY_URL;
   const lists = await Promise.all([
-    raceListFetch('UN', () => fetchUNSanctionsList(proxy)),
-    raceListFetch('OFAC', () => fetchOFACSanctionsList(proxy)),
-    raceListFetch('EU', () => fetchEUSanctionsList(proxy)),
-    raceListFetch('UK_OFSI', () => fetchUKSanctionsList(proxy)),
+    raceListFetch('UN', (signal, timeoutMs) => fetchUNSanctionsList(proxy, { signal, timeoutMs })),
+    raceListFetch('OFAC', (signal, timeoutMs) => fetchOFACSanctionsList(proxy, { signal, timeoutMs })),
+    raceListFetch('EU', (signal, timeoutMs) => fetchEUSanctionsList(proxy, { signal, timeoutMs })),
+    raceListFetch('UK_OFSI', (signal, timeoutMs) => fetchUKSanctionsList(proxy, { signal, timeoutMs })),
     raceListFetch('UAE_EOCN', () => fetchUAESanctionsList()),
   ]);
   listCache = { fetchedAt: Date.now(), lists };

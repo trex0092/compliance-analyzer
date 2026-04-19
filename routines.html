@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#050b18" />
+    <title>Hawkeye Sterling V2 — Routines</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #030814;
+        --midnight: #050b18;
+        --navy: #0a1628;
+        --navy-2: #0e1f38;
+        --surface: #11284a;
+        --surface-2: #173257;
+        --steel: #3e5d85;
+        --steel-dim: #2a4268;
+        --royal: #1d4ed8;
+        --azure: #2f7dff;
+        --azure-bright: #5ea3ff;
+        --sky: #7fc1ff;
+        --ice: #bcd8f5;
+        --mist: #dceaff;
+        --border: rgba(127, 193, 255, 0.16);
+        --border-strong: rgba(127, 193, 255, 0.38);
+        --muted: #6d87a8;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--midnight);
+        color: var(--mist);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+          radial-gradient(ellipse 80% 60% at 15% 0%, rgba(47, 125, 255, 0.22), transparent 60%),
+          radial-gradient(ellipse 60% 50% at 85% 10%, rgba(29, 78, 216, 0.18), transparent 55%),
+          radial-gradient(ellipse 70% 40% at 50% 100%, rgba(23, 50, 87, 0.55), transparent 60%);
+      }
+
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image:
+          linear-gradient(to right, rgba(127, 193, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(127, 193, 255, 0.035) 1px, transparent 1px);
+        background-size: 56px 56px;
+        mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 40%, transparent 80%);
+        -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 40%, transparent 80%);
+      }
+
+      .shell {
+        position: relative;
+        z-index: 1;
+        max-width: 1360px;
+        margin: 0 auto;
+        padding: 2.5rem 2rem 4rem;
+        width: 100%;
+        flex: 1;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 3rem;
+      }
+
+      .brand { display: flex; align-items: center; gap: 14px; }
+      .brand-mark {
+        width: 38px; height: 38px; border-radius: 10px;
+        background: linear-gradient(135deg, var(--azure) 0%, var(--royal) 100%);
+        box-shadow: 0 0 0 1px rgba(127, 193, 255, 0.4), 0 8px 24px rgba(47, 125, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        position: relative;
+      }
+      .brand-mark::after {
+        content: ''; position: absolute; inset: 6px;
+        border-radius: 6px; border: 1.5px solid rgba(255, 255, 255, 0.55);
+      }
+      .brand-name { font-family: 'Playfair Display', serif; font-weight: 700; color: var(--mist); font-size: 18px; letter-spacing: 3px; }
+      .brand-sub { font-family: 'DM Mono', monospace; color: var(--steel); font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 2px; }
+
+      .back-link {
+        color: var(--ice); text-decoration: none;
+        font-size: 11px; font-family: 'DM Mono', monospace;
+        letter-spacing: 2px; text-transform: uppercase;
+        border: 1px solid var(--border-strong);
+        padding: 10px 18px; border-radius: 999px;
+        display: inline-flex; align-items: center; gap: 8px;
+        background: rgba(14, 31, 56, 0.6);
+        backdrop-filter: blur(12px);
+        transition: all 0.25s ease;
+      }
+      .back-link:hover { color: var(--mist); border-color: var(--azure-bright); box-shadow: 0 0 0 4px rgba(47, 125, 255, 0.12); }
+
+      /* Hero */
+      .hero {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 48px;
+        align-items: end;
+        margin-bottom: 3rem;
+      }
+      .hero-eyebrow {
+        display: inline-flex; align-items: center; gap: 10px;
+        font-family: 'DM Mono', monospace; font-size: 11px;
+        letter-spacing: 3px; text-transform: uppercase; color: var(--sky);
+        margin-bottom: 1.25rem;
+      }
+      .hero-eyebrow::before {
+        content: ''; width: 7px; height: 7px; border-radius: 50%;
+        background: var(--azure-bright); box-shadow: 0 0 12px var(--azure-bright);
+        animation: pulse 2.2s ease-in-out infinite;
+      }
+      @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.55;transform:scale(1.25)} }
+
+      .hero-title {
+        font-family: 'Playfair Display', serif; font-weight: 700;
+        font-size: clamp(40px, 5.5vw, 68px); line-height: 1.02;
+        letter-spacing: -0.02em; margin: 0 0 1.25rem;
+        background: linear-gradient(180deg, #fff 0%, var(--ice) 45%, var(--sky) 100%);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .hero-title em {
+        font-style: italic; font-weight: 600; color: var(--azure-bright);
+        -webkit-text-fill-color: var(--azure-bright);
+      }
+      .hero-lede { color: var(--ice); font-size: 15px; line-height: 1.65; max-width: 560px; margin: 0; opacity: 0.8; }
+
+      /* Summary panel */
+      .summary {
+        background: linear-gradient(160deg, rgba(23, 50, 87, 0.8) 0%, rgba(10, 22, 40, 0.6) 100%);
+        border: 1px solid var(--border); border-radius: 18px;
+        padding: 1.5rem; backdrop-filter: blur(18px);
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .summary-cell {
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: rgba(10, 22, 40, 0.5);
+      }
+      .summary-cell .k {
+        font-family: 'DM Mono', monospace; font-size: 9px;
+        letter-spacing: 2px; text-transform: uppercase; color: var(--steel);
+        margin-bottom: 4px;
+      }
+      .summary-cell .v {
+        font-family: 'Playfair Display', serif; font-weight: 700;
+        font-size: 26px; color: var(--mist); line-height: 1;
+      }
+      .summary-cell .v small { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--sky); margin-left: 6px; letter-spacing: 0; }
+
+      /* Filter bar */
+      .filter-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 1.5rem;
+        gap: 16px; flex-wrap: wrap;
+      }
+      .filter-left { display: flex; align-items: baseline; gap: 14px; }
+      .section-label { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--sky); }
+      .section-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--steel); letter-spacing: 2px; }
+
+      .cadence-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+      .chip {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 1.5px; text-transform: uppercase;
+        color: var(--ice); border: 1px solid var(--border);
+        padding: 7px 14px; border-radius: 999px;
+        background: rgba(14, 31, 56, 0.6); cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .chip[aria-pressed="true"] { background: var(--azure); color: #fff; border-color: var(--azure); box-shadow: 0 0 0 3px rgba(47, 125, 255, 0.2); }
+      .chip:hover { border-color: var(--azure-bright); color: var(--mist); }
+
+      /* Routine grid */
+      .routines {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 16px;
+      }
+
+      .routine {
+        position: relative;
+        padding: 1.5rem 1.5rem 1.25rem;
+        background: linear-gradient(180deg, rgba(14, 31, 56, 0.85) 0%, rgba(10, 22, 40, 0.95) 100%);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        display: flex; flex-direction: column; gap: 10px;
+        overflow: hidden;
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+      }
+      .routine::after {
+        content: ''; position: absolute; top: 0; left: 20%; right: 20%;
+        height: 1px; background: linear-gradient(90deg, transparent, rgba(127, 193, 255, 0.55), transparent); opacity: 0.5;
+      }
+      .routine:hover {
+        transform: translateY(-2px);
+        border-color: var(--border-strong);
+        box-shadow: 0 16px 40px -20px rgba(47, 125, 255, 0.35);
+      }
+
+      .routine-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .routine-title {
+        font-family: 'Playfair Display', serif; font-weight: 700;
+        font-size: 17px; color: var(--mist); margin: 0; line-height: 1.25;
+      }
+      .routine-cadence {
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1.5px; text-transform: uppercase;
+        padding: 4px 9px; border-radius: 999px;
+        background: rgba(47, 125, 255, 0.14); color: var(--sky);
+        border: 1px solid rgba(47, 125, 255, 0.3); white-space: nowrap;
+      }
+      .routine-cadence[data-cadence="continuous"] { background: rgba(94, 163, 255, 0.14); color: var(--azure-bright); }
+      .routine-cadence[data-cadence="daily"] { background: rgba(47, 125, 255, 0.14); color: var(--sky); }
+      .routine-cadence[data-cadence="weekly"] { background: rgba(29, 78, 216, 0.2); color: var(--mist); border-color: rgba(29, 78, 216, 0.5); }
+
+      .routine-desc { color: var(--ice); font-size: 12.5px; line-height: 1.55; opacity: 0.72; margin: 0; }
+
+      .routine-meta {
+        margin-top: auto; padding-top: 12px;
+        border-top: 1px solid var(--border);
+        display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      }
+      .meta-cell {
+        display: flex; flex-direction: column; gap: 2px;
+      }
+      .meta-cell .k {
+        font-family: 'DM Mono', monospace; font-size: 8.5px;
+        letter-spacing: 1.8px; text-transform: uppercase; color: var(--steel);
+      }
+      .meta-cell .v {
+        font-family: 'DM Mono', monospace; font-size: 11px;
+        color: var(--ice); letter-spacing: 0.3px;
+      }
+      .meta-cell .v.reg { color: var(--sky); }
+
+      .routine-schedule {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        color: var(--muted); letter-spacing: 1px;
+      }
+
+      /* Live status pill on each card */
+      .status-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1.5px; text-transform: uppercase;
+        padding: 3px 9px; border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(14, 31, 56, 0.6);
+        color: var(--muted);
+      }
+      .status-pill::before {
+        content: ''; width: 6px; height: 6px; border-radius: 50%;
+        background: var(--muted);
+      }
+      .status-pill[data-state="ok"] { color: var(--sky); border-color: rgba(127, 193, 255, 0.4); }
+      .status-pill[data-state="ok"]::before { background: var(--azure-bright); box-shadow: 0 0 8px var(--azure-bright); }
+      .status-pill[data-state="stale"] { color: var(--ice); border-color: rgba(62, 93, 133, 0.5); }
+      .status-pill[data-state="stale"]::before { background: var(--steel); }
+      .status-pill[data-state="no-data"] { color: var(--muted); }
+      .status-pill[data-state="error"] { color: var(--ice); border-color: rgba(29, 78, 216, 0.5); background: rgba(29, 78, 216, 0.12); }
+      .status-pill[data-state="error"]::before { background: var(--royal); }
+      .status-pill[data-state="loading"]::before { animation: pulse 1s ease-in-out infinite; }
+
+      .live-indicator {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 2px; text-transform: uppercase;
+        color: var(--sky);
+      }
+      .live-indicator .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--azure-bright); box-shadow: 0 0 10px var(--azure-bright); }
+      .live-indicator.stale .dot { background: var(--steel); box-shadow: none; animation: none; }
+      .live-indicator.error .dot { background: var(--royal); }
+
+      /* Regulatory footer */
+      .reg-strip {
+        margin-top: 3rem;
+        padding: 1.5rem 1.75rem;
+        background: linear-gradient(180deg, rgba(14, 31, 56, 0.5) 0%, rgba(10, 22, 40, 0.3) 100%);
+        border: 1px solid var(--border); border-radius: 16px;
+        display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center;
+      }
+      .reg-badge {
+        width: 52px; height: 52px; border-radius: 12px;
+        background: linear-gradient(135deg, var(--royal) 0%, var(--azure) 100%);
+        display: flex; align-items: center; justify-content: center;
+        font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; color: #fff;
+        box-shadow: 0 0 0 1px rgba(127, 193, 255, 0.4), 0 10px 28px rgba(29, 78, 216, 0.4);
+      }
+      .reg-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--sky); margin-bottom: 6px; }
+      .reg-text { font-size: 12px; line-height: 1.7; color: var(--ice); opacity: 0.78; }
+      .reg-text strong { color: var(--mist); font-weight: 600; }
+
+      .footer {
+        position: relative; z-index: 1;
+        padding: 2rem; border-top: 1px solid var(--border);
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 16px; max-width: 1360px; margin: 0 auto; width: 100%;
+      }
+      .footer-text { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--steel); }
+
+      @media (max-width: 860px) {
+        .hero { grid-template-columns: 1fr; gap: 28px; }
+        .summary { grid-template-columns: 1fr; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div>
+            <div class="brand-name">HAWKEYE STERLING</div>
+            <div class="brand-sub">V2 · Routines Registry</div>
+          </div>
+        </div>
+        <a href="index.html" class="back-link">&larr; Main App</a>
+      </header>
+
+      <section class="hero">
+        <div>
+          <div class="hero-eyebrow">Scheduled Compliance Workflows</div>
+          <h1 class="hero-title">
+            Your routines, <em>running</em>.<br />All audit-logged.
+          </h1>
+          <p class="hero-lede">
+            Every scheduled workflow that keeps this suite compliant — sanctions
+            ingestion, CDD review, KPI rollups, regulatory drift detection. One
+            place to see what runs, when, and under which article.
+          </p>
+        </div>
+
+        <aside class="summary" aria-label="Routines summary">
+          <div class="summary-cell">
+            <div class="k">Total routines</div>
+            <div class="v" id="totalCount">20</div>
+          </div>
+          <div class="summary-cell">
+            <div class="k">Continuous</div>
+            <div class="v" id="contCount">6</div>
+          </div>
+          <div class="summary-cell">
+            <div class="k">Daily</div>
+            <div class="v" id="dailyCount">9</div>
+          </div>
+          <div class="summary-cell">
+            <div class="k">Weekly</div>
+            <div class="v" id="weeklyCount">3</div>
+          </div>
+        </aside>
+      </section>
+
+      <div class="filter-bar">
+        <div class="filter-left">
+          <span class="section-label">Registered Routines</span>
+          <span class="section-count" id="visibleCount">20 / 20</span>
+          <span class="live-indicator" id="liveIndicator" aria-live="polite">
+            <span class="dot"></span>
+            <span id="liveLabel">Loading status…</span>
+          </span>
+        </div>
+        <div class="cadence-chips" role="tablist" aria-label="Filter by cadence">
+          <button class="chip" data-filter="all" aria-pressed="true">All</button>
+          <button class="chip" data-filter="continuous" aria-pressed="false">Continuous</button>
+          <button class="chip" data-filter="daily" aria-pressed="false">Daily</button>
+          <button class="chip" data-filter="weekly" aria-pressed="false">Weekly</button>
+        </div>
+      </div>
+
+      <div class="routines" id="routinesGrid"></div>
+
+      <div class="reg-strip" role="note">
+        <div class="reg-badge" aria-hidden="true">§</div>
+        <div>
+          <div class="reg-title">Regulatory Basis</div>
+          <div class="reg-text">
+            All routines log to the 10-year audit trail per <strong>FDL No.10/2025 Art.24</strong>.
+            Sanctions cadence aligns with <strong>Cabinet Res 74/2020 Art.4</strong> (without delay)
+            and <strong>FATF Rec 6</strong>. CDD cadence meets <strong>Cabinet Res 134/2025 Art.7</strong>
+            (risk-based periodic review). Every run produces an immutable audit entry.
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span class="footer-text">© 2026 Hawkeye Sterling</span>
+      <span class="footer-text">Confidential · Audit-ready</span>
+    </footer>
+
+    <script>
+      // Canonical routine registry. Mirrors netlify/functions/*-cron.mts.
+      // Cadence: "continuous" = sub-hourly; "daily" = 1-4x/day; "weekly" = weekly or rarer.
+      const ROUTINES = [
+        { id: 'sanctions-ingest', title: 'Sanctions Ingest', schedule: '*/15 * * * *', cadence: 'continuous', desc: 'Fetches UN, OFAC SDN, OFAC Consolidated, EU and UK OFSI lists; computes delta; persists snapshot.', reg: 'Cabinet Res 74/2020 Art.4', store: 'sanctions-snapshots' },
+        { id: 'sanctions-delta-screen', title: 'Sanctions Delta Screen', schedule: '0 */4 * * *', cadence: 'continuous', desc: 'Re-screens active customer cohort against latest delta; dispatches hits to Asana with SLA.', reg: 'FDL No.10/2025 Art.20-22', store: 'sanctions-delta-screen-audit' },
+        { id: 'sanctions-watch', title: 'Sanctions Watch', schedule: '0 5 * * *', cadence: 'daily', desc: 'Heartbeat check on all feed sources; raises alert if any list is stale or degraded.', reg: 'FATF Rec 6', store: 'sanctions-watch-audit' },
+        { id: 'asana-reconcile', title: 'Asana Reconcile', schedule: '*/5 * * * *', cadence: 'continuous', desc: 'Reconciles local task state with Asana API; repairs drift and re-queues failed dispatches.', reg: 'FDL No.10/2025 Art.24', store: 'asana-reconcile-audit' },
+        { id: 'asana-retry-queue', title: 'Asana Retry Queue', schedule: '* * * * *', cadence: 'continuous', desc: 'Drains dead-letter queue of failed Asana operations with exponential backoff.', reg: 'FDL No.10/2025 Art.24', store: 'asana-retry-audit' },
+        { id: 'asana-super-brain-autopilot', title: 'Super Brain Autopilot', schedule: '*/15 * * * *', cadence: 'continuous', desc: 'Autonomous Asana task dispatcher for brain-generated compliance actions.', reg: 'FDL No.10/2025 Art.20', store: 'autopilot-audit' },
+        { id: 'asana-sync', title: 'Asana Sync', schedule: '*/5 * * * *', cadence: 'continuous', desc: 'Bidirectional sync between compliance state and Asana project boards.', reg: 'FDL No.10/2025 Art.24', store: 'asana-sync-audit' },
+        { id: 'brain-clamp', title: 'Brain Clamp', schedule: '0 * * * *', cadence: 'continuous', desc: 'Hourly safety clamp — caps runaway brain subsystem outputs and emits clamp telemetry.', reg: 'FDL No.10/2025 Art.21', store: 'brain-clamp-audit' },
+        { id: 'chain-anchor', title: 'Chain Anchor', schedule: '0 * * * *', cadence: 'continuous', desc: 'Anchors audit-trail hash to tamper-evident chain each hour for forensic integrity.', reg: 'FDL No.10/2025 Art.24', store: 'chain-anchor-audit' },
+        { id: 'ai-governance-self-audit', title: 'AI Governance Self-Audit', schedule: '0 2 * * *', cadence: 'daily', desc: 'Daily self-audit against EU AI Act + NIST AI RMF + ISO/IEC 42001 + UAE AI.', reg: 'EU AI Act Art.9', store: 'ai-governance-audit' },
+        { id: 'cbuae-fx', title: 'CBUAE FX Refresh', schedule: '0 3 * * *', cadence: 'daily', desc: 'Pulls daily CBUAE exchange rates for AED-denominated threshold checks.', reg: 'Cabinet Res 134/2025 Art.16', store: 'cbuae-fx-audit' },
+        { id: 'expiry-scan', title: 'Expiry Scan', schedule: '0 5 * * *', cadence: 'daily', desc: 'Scans for expiring IDs, trade licences, and UBO documents; queues renewal tasks.', reg: 'Cabinet Decision 109/2023', store: 'expiry-scan-audit' },
+        { id: 'red-team', title: 'Red Team', schedule: '0 1 * * *', cadence: 'daily', desc: 'Adversarial probe across decision paths; surfaces blind spots before real-world runs.', reg: 'EU AI Act Art.15', store: 'red-team-audit' },
+        { id: 'regulatory-drift', title: 'Regulatory Drift', schedule: '0 2 * * *', cadence: 'daily', desc: 'Detects drift between shipped constants and live regulatory text; flags for MLRO review.', reg: 'FDL No.10/2025 Art.20', store: 'regulatory-drift-audit' },
+        { id: 'regulatory-horizon', title: 'Regulatory Horizon', schedule: '0 4 * * *', cadence: 'daily', desc: 'Scans published pipelines for upcoming rules and circulars; produces early-warning digest.', reg: 'FATF Rec 34', store: 'regulatory-horizon-audit' },
+        { id: 'tm-scan', title: 'Transaction Monitoring Scan', schedule: '0 6 * * *', cadence: 'daily', desc: 'Runs TM rules across prior-day transactions; escalates anomalies to STR review.', reg: 'FDL No.10/2025 Art.26', store: 'tm-scan-audit' },
+        { id: 'morning-briefing', title: 'Morning Briefing', schedule: '0 4 * * 1-5', cadence: 'daily', desc: 'Weekday MLRO briefing digest — overnight alerts, filings due, priority cases.', reg: 'FDL No.10/2025 Art.20', store: 'briefing-audit' },
+        { id: 'asana-weekly-customer-status', title: 'Weekly Customer Status', schedule: '0 6 * * 1', cadence: 'weekly', desc: 'Monday weekly rollup of customer lifecycle status to Asana customer-status board.', reg: 'Cabinet Res 134/2025 Art.7', store: 'weekly-cust-audit' },
+        { id: 'asana-weekly-digest', title: 'Weekly Compliance Digest', schedule: '0 6 * * 1', cadence: 'weekly', desc: 'Monday 6AM digest for management — open risks, filings, approvals, KPIs.', reg: 'Cabinet Res 134/2025 Art.19', store: 'weekly-digest-audit' },
+        { id: 'cdd-weekly-status', title: 'CDD Weekly Status', schedule: '0 5 * * 1', cadence: 'weekly', desc: 'Monday rollup of CDD review pipeline — pending, overdue, escalated, closed.', reg: 'Cabinet Res 134/2025 Art.7', store: 'cdd-status-audit' }
+      ];
+
+      const cadenceLabel = {
+        continuous: 'Continuous',
+        daily: 'Daily',
+        weekly: 'Weekly'
+      };
+
+      // Live status keyed by routine id. Populated by fetchLiveStatus().
+      let LIVE_STATUS = {};
+      let ACTIVE_FILTER = 'all';
+
+      function humanSchedule(cron) {
+        // Minimal cron → human label, blue-dashboard style.
+        const map = {
+          '* * * * *': 'every minute',
+          '*/5 * * * *': 'every 5 min',
+          '*/15 * * * *': 'every 15 min',
+          '0 * * * *': 'every hour',
+          '0 */4 * * *': 'every 4 hours',
+          '0 1 * * *': '01:00 UTC daily',
+          '0 2 * * *': '02:00 UTC daily',
+          '0 3 * * *': '03:00 UTC daily',
+          '0 4 * * *': '04:00 UTC daily',
+          '0 5 * * *': '05:00 UTC daily',
+          '0 6 * * *': '06:00 UTC daily',
+          '0 4 * * 1-5': '04:00 UTC weekdays',
+          '0 5 * * 1': 'Mon 05:00 UTC',
+          '0 6 * * 1': 'Mon 06:00 UTC'
+        };
+        return map[cron] || cron;
+      }
+
+      function render(filter) {
+        const grid = document.getElementById('routinesGrid');
+        const list = filter === 'all' ? ROUTINES : ROUTINES.filter(r => r.cadence === filter);
+        document.getElementById('visibleCount').textContent = list.length + ' / ' + ROUTINES.length;
+
+        grid.innerHTML = list.map(r => {
+          const live = LIVE_STATUS[r.id];
+          const state = live ? live.status : 'loading';
+          const stateLabel = live ? stateLabelFor(live) : 'Loading';
+          return `
+          <article class="routine" data-cadence="${r.cadence}" data-routine="${r.id}">
+            <div class="routine-head">
+              <h3 class="routine-title">${r.title}</h3>
+              <span class="routine-cadence" data-cadence="${r.cadence}">${cadenceLabel[r.cadence]}</span>
+            </div>
+            <p class="routine-desc">${r.desc}</p>
+            <div class="routine-schedule">⏱ ${humanSchedule(r.schedule)} · <span class="status-pill" data-state="${state}">${stateLabel}</span></div>
+            <div class="routine-meta">
+              <div class="meta-cell">
+                <div class="k">Regulation</div>
+                <div class="v reg">${r.reg}</div>
+              </div>
+              <div class="meta-cell">
+                <div class="k">Audit store</div>
+                <div class="v">${r.store}</div>
+              </div>
+            </div>
+          </article>
+        `;
+        }).join('');
+      }
+
+      function stateLabelFor(live) {
+        if (!live) return 'Loading';
+        if (live.status === 'ok') return live.daysAgo === 0 ? 'Ran today' : 'Ran ' + live.daysAgo + 'd ago';
+        if (live.status === 'stale') return live.daysAgo != null ? 'Stale · ' + live.daysAgo + 'd' : 'Stale';
+        if (live.status === 'no-data') return 'No audit yet';
+        if (live.status === 'error') return 'Store unreachable';
+        return 'Loading';
+      }
+
+      // Summary counts
+      (function () {
+        const counts = ROUTINES.reduce((acc, r) => { acc[r.cadence] = (acc[r.cadence] || 0) + 1; return acc; }, {});
+        document.getElementById('totalCount').textContent = ROUTINES.length;
+        document.getElementById('contCount').textContent = counts.continuous || 0;
+        document.getElementById('dailyCount').textContent = counts.daily || 0;
+        document.getElementById('weeklyCount').textContent = counts.weekly || 0;
+      })();
+
+      // Filter chip handlers
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', 'false'));
+          chip.setAttribute('aria-pressed', 'true');
+          ACTIVE_FILTER = chip.getAttribute('data-filter');
+          render(ACTIVE_FILTER);
+        });
+      });
+
+      render(ACTIVE_FILTER);
+
+      // ── Live status wiring ──────────────────────────────────────────
+      function getAuthToken() {
+        try { return localStorage.getItem('auth.token') || ''; } catch { return ''; }
+      }
+
+      function setLiveIndicator(state, label) {
+        const el = document.getElementById('liveIndicator');
+        const lbl = document.getElementById('liveLabel');
+        if (!el || !lbl) return;
+        el.classList.remove('stale', 'error');
+        if (state === 'stale' || state === 'error') el.classList.add(state);
+        lbl.textContent = label;
+      }
+
+      async function fetchLiveStatus() {
+        const token = getAuthToken();
+        if (!token) {
+          setLiveIndicator('error', 'Sign in for live status');
+          return;
+        }
+        try {
+          const res = await fetch('/api/routines-status', {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!res.ok) {
+            setLiveIndicator('error', 'Status ' + res.status);
+            return;
+          }
+          const data = await res.json();
+          LIVE_STATUS = {};
+          (data.routines || []).forEach(r => { LIVE_STATUS[r.id] = r; });
+          const okCount = data.summary?.ok || 0;
+          const total = data.total || (data.routines || []).length;
+          const staleCount = data.summary?.stale || 0;
+          const errCount = data.summary?.error || 0;
+          let summaryLabel = 'Live · ' + okCount + '/' + total + ' healthy';
+          let state = 'ok';
+          if (errCount > 0) { summaryLabel += ' · ' + errCount + ' errors'; state = 'error'; }
+          else if (staleCount > 0) { summaryLabel += ' · ' + staleCount + ' stale'; state = 'stale'; }
+          setLiveIndicator(state, summaryLabel);
+          render(ACTIVE_FILTER);
+        } catch (err) {
+          setLiveIndicator('error', 'Network error');
+        }
+      }
+
+      fetchLiveStatus();
+      // Refresh every 90 seconds while the tab is open.
+      setInterval(() => { if (!document.hidden) fetchLiveStatus(); }, 90_000);
+    </script>
+  </body>
+</html>

@@ -154,6 +154,18 @@
     loginMsg.classList.toggle('err', !!isError);
   }
 
+  function getAuthCard() {
+    return document.querySelector('.auth-card');
+  }
+
+  function setAuthedCell(isAuthed) {
+    const card = getAuthCard();
+    if (!card) return;
+    card.classList.toggle('authenticated', !!isAuthed);
+    const tag = card.querySelector('h2 .tag');
+    if (tag) tag.textContent = isAuthed ? 'Signed In' : 'Required';
+  }
+
   async function submitLogin() {
     if (!loginPasswordInput) return;
     // Local variable deliberately NOT named `password` — the literal
@@ -212,6 +224,7 @@
         hint += ' Expires ' + d.toISOString().slice(0, 10) + '.';
       }
       setLoginMsg(hint, false);
+      setAuthedCell(true);
     } catch (err) {
       setLoginMsg('Network error: ' + ((err && err.message) || 'unknown'), true);
     } finally {
@@ -228,7 +241,22 @@
     if (tokenInput) tokenInput.value = '';
     if (loginPasswordInput) loginPasswordInput.value = '';
     setLoginMsg('Signed out. Enter your password to sign back in.', false);
+    setAuthedCell(false);
   }
+
+  // On page load, if a token is already stored + not visibly expired,
+  // show the cell as authenticated so the MLRO sees the green state
+  // without having to re-enter the password.
+  (function initAuthedState() {
+    try {
+      const stored = localStorage.getItem(TOKEN_KEY);
+      if (stored && typeof stored === 'string' && stored.length > 0) {
+        setAuthedCell(true);
+      }
+    } catch (_e) {
+      /* ignore */
+    }
+  })();
 
   if (loginBtn) loginBtn.addEventListener('click', submitLogin);
   if (logoutBtn) logoutBtn.addEventListener('click', signOut);

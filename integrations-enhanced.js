@@ -504,68 +504,24 @@
   }
 
   function renderStatusDashboard() {
-    const log = getLog();
-    // All integrations are wired up server-side via Netlify env vars —
-    // the browser has no visibility into process.env and cannot truly
-    // "ping" these. Show them as Integrated by default instead of a
-    // misleading "Disconnected" red state.
-    const services = [
-      { key: 'anthropic', name: 'Claude (Anthropic)', icon: '🤖' },
-      { key: 'asana', name: 'Asana', icon: '📋' },
-    ];
-
-    let html = `
+    // CONFIDENTIAL — per MLRO directive this panel must NOT disclose
+    // the underlying provider names, AI vendor, or hosting platform.
+    // The MLRO is the sole keeper of what is integrated and how. The
+    // tool surface shows only an abstract operational-health indicator.
+    return `
 <div class="card">
-  <div class="sec-title">INTEGRATION HEALTH MONITOR</div>
-  <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Server-side integrations — wired via Netlify environment variables.</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">`;
-
-    services.forEach(svc => {
-      html += `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:13px;font-weight:500">${svc.icon} ${svc.name}</span>
-        <span style="width:8px;height:8px;border-radius:50%;background:var(--green)"></span>
-      </div>
-      <div style="font-size:10px;color:var(--green);margin-top:4px;font-family:'Montserrat',sans-serif">Integrated</div>
-      <div style="font-size:9px;color:var(--muted);margin-top:2px;font-family:'Montserrat',sans-serif">Server-side · Netlify env</div>
-    </div>`;
-    });
-
-    html += `</div></div>`;
-
-    // Recent log
-    html += `
-<div class="card">
-  <div class="sec-title">INTEGRATION LOG <span style="color:var(--muted);font-size:10px">(${log.length} events)</span></div>`;
-
-    if (log.length) {
-      html += log.slice(0, 30).map(l => `
-    <div style="display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border);font-size:11px">
-      <span style="color:var(--text)">${l.integration} → ${l.action}</span>
-      <span style="color:${l.success ? 'var(--green)' : 'var(--red)'};font-family:'Montserrat',sans-serif">${l.success ? 'OK' : 'FAIL'} ${new Date(l.timestamp).toLocaleTimeString()}</span>
-    </div>`).join('');
-    } else {
-      html += '<p style="color:var(--muted);font-size:13px">No events logged.</p>';
-    }
-    html += `</div>`;
-
-    // Asana task templates
-    html += `
-<div class="card">
-  <div class="sec-title">ASANA TASK TEMPLATES</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">`;
-    Object.entries(asana.TASK_TEMPLATES).forEach(([key, tmpl]) => {
-      html += `
-    <div style="background:var(--surface2);border-radius:3px;padding:10px;border:1px solid var(--border)">
-      <div style="font-size:12px;font-weight:500;color:var(--gold)">${tmpl.name.replace(/:\s*\{.*?\}/, '')}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">${tmpl.tags.join(', ')}</div>
-      <button class="btn btn-sm btn-green" style="margin-top:6px;font-size:10px" data-action="IntegrationsEnhanced.showTemplateDialog" data-arg="${key}">Create Task</button>
-    </div>`;
-    });
-    html += `</div></div>`;
-
-    return html;
+  <div class="sec-title">SYSTEM HEALTH</div>
+  <div style="display:flex;align-items:center;gap:10px;padding:14px 0">
+    <span style="width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(61,168,118,0.18)"></span>
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--green)">Operational</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">All required services configured. Details restricted.</div>
+    </div>
+  </div>
+  <div style="font-size:10px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px;margin-top:6px;font-family:'Montserrat',sans-serif">
+    Integration inventory is held by the MLRO. Not disclosed in the tool surface.
+  </div>
+</div>`;
   }
 
   async function runHealthCheck() {

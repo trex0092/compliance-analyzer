@@ -47,11 +47,17 @@ export interface SanctionsMatch {
  * Fetch the UN Consolidated Sanctions List (XML).
  * This is the definitive global sanctions list — free, public, no auth.
  */
-export async function fetchUNSanctionsList(proxyUrl?: string): Promise<SanctionsEntry[]> {
+export async function fetchUNSanctionsList(
+  proxyUrl?: string,
+  opts?: { signal?: AbortSignal; timeoutMs?: number }
+): Promise<SanctionsEntry[]> {
   const UN_URL = 'https://scsanctions.un.org/resources/xml/en/consolidated.xml';
   const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(UN_URL)}` : UN_URL;
 
-  const response = await fetchWithTimeout(url, { timeoutMs: 30_000 });
+  const response = await fetchWithTimeout(url, {
+    timeoutMs: opts?.timeoutMs ?? 30_000,
+    signal: opts?.signal,
+  });
   if (!response.ok) throw new Error(`UN API returned ${response.status}`);
 
   const xmlText = await response.text();
@@ -178,12 +184,18 @@ export function screenAgainstList(entityName: string, entries: SanctionsEntry[])
  * Fetch the OFAC SDN (Specially Designated Nationals) list (XML).
  * Maintained by the US Treasury — free, public, no auth.
  */
-export async function fetchOFACSanctionsList(proxyUrl?: string): Promise<SanctionsEntry[]> {
+export async function fetchOFACSanctionsList(
+  proxyUrl?: string,
+  opts?: { signal?: AbortSignal; timeoutMs?: number }
+): Promise<SanctionsEntry[]> {
   const OFAC_URL =
     'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML';
   const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(OFAC_URL)}` : OFAC_URL;
 
-  const response = await fetchWithTimeout(url, { timeoutMs: 30_000 });
+  const response = await fetchWithTimeout(url, {
+    timeoutMs: opts?.timeoutMs ?? 30_000,
+    signal: opts?.signal,
+  });
   if (!response.ok) throw new Error(`OFAC API returned ${response.status}`);
 
   const xmlText = await response.text();
@@ -239,12 +251,18 @@ function parseOFACXml(xml: string): SanctionsEntry[] {
  * Fetch the EU Consolidated Sanctions List (XML).
  * Maintained by the European Commission — free, public, no auth.
  */
-export async function fetchEUSanctionsList(proxyUrl?: string): Promise<SanctionsEntry[]> {
+export async function fetchEUSanctionsList(
+  proxyUrl?: string,
+  opts?: { signal?: AbortSignal; timeoutMs?: number }
+): Promise<SanctionsEntry[]> {
   const EU_URL =
     'https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw';
   const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(EU_URL)}` : EU_URL;
 
-  const response = await fetchWithTimeout(url, { timeoutMs: 30_000 });
+  const response = await fetchWithTimeout(url, {
+    timeoutMs: opts?.timeoutMs ?? 30_000,
+    signal: opts?.signal,
+  });
   if (!response.ok) throw new Error(`EU API returned ${response.status}`);
 
   const xmlText = await response.text();
@@ -324,11 +342,17 @@ function parseEUXml(xml: string): SanctionsEntry[] {
  * returned [] silently, causing screenAgainstList to miss every
  * UK-designated entity — an Art.35 violation.
  */
-export async function fetchUKSanctionsList(proxyUrl?: string): Promise<SanctionsEntry[]> {
+export async function fetchUKSanctionsList(
+  proxyUrl?: string,
+  opts?: { signal?: AbortSignal; timeoutMs?: number }
+): Promise<SanctionsEntry[]> {
   const UK_URL = 'https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv';
   const url = proxyUrl ? `${proxyUrl}/proxy?url=${encodeURIComponent(UK_URL)}` : UK_URL;
 
-  const res = await fetchWithTimeout(url, { timeoutMs: 30_000 });
+  const res = await fetchWithTimeout(url, {
+    timeoutMs: opts?.timeoutMs ?? 30_000,
+    signal: opts?.signal,
+  });
   if (!res.ok) throw new Error(`UK OFSI API returned ${res.status}`);
 
   const csv = await res.text();

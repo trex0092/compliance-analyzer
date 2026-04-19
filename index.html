@@ -2132,6 +2132,11 @@
               cursor: pointer;
               outline: none;
               padding: 4px 8px;
+              max-width: 260px;
+              width: auto;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+              overflow: hidden;
             "
           ></select>
           <button
@@ -2182,20 +2187,11 @@
           <!-- Removed duplicate header TRADING link — the same Trading tab
            lives in the lower tab navigation (◈ Trading). One entry point
            is enough; the header was a duplicate. -->
-          <div id="currentUserInfo" style="display: flex; align-items: center; gap: 6px">
-            <span
-              id="currentUserName"
-              style="font-size: 11px; color: var(--muted); font-family: 'Montserrat', sans-serif"
-            ></span>
-            <span id="currentUserRole" class="role-badge"></span>
-            <button
-              class="btn btn-sm"
-              data-action="logoutUser"
-              style="padding: 2px 8px; font-size: 9px"
-            >
-              Logout
-            </button>
-          </div>
+          <!-- User badge + logout cluster removed from header per MLRO UX
+               directive. currentUserName / currentUserRole / logoutUser
+               handlers still work from the user-management panel. -->
+          <span id="currentUserName" style="display: none"></span>
+          <span id="currentUserRole" style="display: none"></span>
         </div>
       </div>
 
@@ -2335,15 +2331,14 @@
           >
             &times;
           </button>
-          <div class="tab active" data-action="switchTab" data-arg="shipments">
-            🚚 IAR Shipments
-          </div>
-          <div class="tab" data-action="switchTab" data-arg="tracking">✈️ Tracking</div>
-          <div class="tab" data-action="switchTab" data-arg="localshipments">
-            📦 Local Shipments
-          </div>
-          <div class="tab" data-action="switchTab" data-arg="iarreport">📝 IAR Report</div>
-          <div class="tab" data-action="switchTab" data-arg="asana">📋 Asana Tasks</div>
+          <a class="tab" href="logistics.html" style="text-decoration: none">
+            🚢 Shipments
+          </a>
+          <a class="tab" href="routines.html" style="text-decoration: none">
+            ⚙️ Routines
+          </a>
+          <div class="tab active" data-action="switchTab" data-arg="iarreport">📝 IAR Report</div>
+          <div class="tab" data-action="switchTab" data-arg="asana">📋 Compliance Tasks</div>
           <!-- Evidence Tracker removed -->
           <div class="tab" data-action="switchTab" data-arg="gaps">🔴 Gap Register</div>
           <div class="tab" data-action="switchTab" data-arg="training">🎓 Training</div>
@@ -2447,7 +2442,7 @@
         </div>
 
         <!-- SHIPMENTS TAB -->
-        <div id="tab-shipments" class="tab-content active">
+        <div id="tab-shipments" class="tab-content">
           <div class="card">
             <div class="top-bar" style="margin-bottom: 10px">
               <span class="lbl" style="margin: 0">Add Shipment Record</span>
@@ -3043,7 +3038,7 @@
         </div>
 
         <!-- IAR COMPLIANCE REPORT TAB -->
-        <div id="tab-iarreport" class="tab-content">
+        <div id="tab-iarreport" class="tab-content active">
           <div class="card">
             <div class="top-bar" style="margin-bottom: 10px">
               <span class="lbl" style="margin: 0">IAR Compliance Report</span>
@@ -6822,10 +6817,9 @@
           <div class="card">
             <span class="lbl">Sign in</span>
             <p style="font-size: 12px; color: var(--muted); margin: 6px 0 0">
-              This tool runs with every integration wired up server-side via Netlify environment
-              variables — Claude, Gemini, Asana, Tavily, Hawkeye Brain, sanctions proxy, Google
-              Drive. Nothing else needs to be configured from the browser. Sign in with your
-              password at the top of the page to unlock the authenticated views.
+              All integrations are configured server-side. No browser-side setup is required.
+              Sign in with your password at the top of the page to unlock the authenticated views.
+              Integration inventory is held by the MLRO and is not disclosed here.
             </p>
           </div>
           <!--
