@@ -1344,6 +1344,48 @@
     const am = data.adverseMedia || {};
     const wl = data.watchlist || {};
     const asana = data.asana || {};
+    const integrity = data.screeningIntegrity || 'complete';
+    const integrityReasons = Array.isArray(data.integrityReasons) ? data.integrityReasons : [];
+
+    // Integrity banner — FDL Art.20-21 forces the MLRO to see
+    // "we could not actually screen" as a visually distinct state,
+    // never as a green clean chip. Red for incomplete (mandatory list
+    // unreachable → the screening cannot be trusted), amber for degraded
+    // (partial coverage — re-run when upstream is available).
+    if (integrity === 'incomplete') {
+      html.push(
+        '<div style="margin-bottom:12px; padding:12px 14px; border:2px solid var(--red); ' +
+          'background: rgba(201,52,52,0.08); border-radius:6px; color: var(--red);">' +
+          '<strong>SCREENING INCOMPLETE — RESULT CANNOT BE TRUSTED.</strong> ' +
+          'A mandatory data source (UN or UAE EOCN) was unreachable. ' +
+          'Re-run the screening once upstream is available; do not record a disposition yet ' +
+          '(FDL Art.20-21, Cabinet Res 74/2020 Art.4-7).'
+      );
+      if (integrityReasons.length > 0) {
+        html.push('<ul style="margin:6px 0 0 18px; padding:0;">');
+        for (const r of integrityReasons) {
+          html.push('<li>' + escapeHTML(String(r)) + '</li>');
+        }
+        html.push('</ul>');
+      }
+      html.push('</div>');
+    } else if (integrity === 'degraded') {
+      html.push(
+        '<div style="margin-bottom:12px; padding:12px 14px; border:2px solid var(--amber); ' +
+          'background: rgba(232,160,48,0.08); border-radius:6px; color: var(--amber);">' +
+          '<strong>SCREENING DEGRADED — partial coverage only.</strong> ' +
+          'At least one enhanced data source was unavailable. Record a provisional disposition ' +
+          'and re-screen when upstream recovers (FDL Art.20, FATF Rec 10).'
+      );
+      if (integrityReasons.length > 0) {
+        html.push('<ul style="margin:6px 0 0 18px; padding:0;">');
+        for (const r of integrityReasons) {
+          html.push('<li>' + escapeHTML(String(r)) + '</li>');
+        }
+        html.push('</ul>');
+      }
+      html.push('</div>');
+    }
 
     const subj = data.subject || {};
     html.push('<div class="subject-row">');
@@ -1357,15 +1399,32 @@
         '</div>'
     );
     html.push('</div>');
-    html.push(
-      '<span class="classification ' +
-        escapeHTML(topClass) +
-        '">' +
-        escapeHTML(topClass) +
-        ' · ' +
-        pct(topScore) +
-        '</span>'
-    );
+    // When integrity is compromised we NEVER show a green "none" chip —
+    // the chip flips to show the integrity state and force re-screen.
+    if (integrity === 'incomplete') {
+      html.push(
+        '<span class="classification confirmed" style="background:var(--red);">' +
+          'INCOMPLETE · RE-SCREEN' +
+          '</span>'
+      );
+    } else if (integrity === 'degraded' && topClass === 'none') {
+      html.push(
+        '<span class="classification potential" style="background:var(--amber);">' +
+          'DEGRADED · ' +
+          pct(topScore) +
+          '</span>'
+      );
+    } else {
+      html.push(
+        '<span class="classification ' +
+          escapeHTML(topClass) +
+          '">' +
+          escapeHTML(topClass) +
+          ' · ' +
+          pct(topScore) +
+          '</span>'
+      );
+    }
     html.push('</div>');
 
     // Full subject identity block — so the MLRO can confirm WHO was
@@ -1593,9 +1652,21 @@
         );
       }
       html.push('</details>');
-    } else if (am.provider === 'none') {
+    } else if (am.provider === 'none' || am.provider === 'dry_run' || am.provider === 'disabled') {
       html.push(
-        '<div class="help-text" style="margin-top:8px;">Adverse-media provider not configured (set BRAVE_SEARCH_KEY, SERPAPI_KEY, or GOOGLE_CSE_KEY + GOOGLE_CSE_CX).</div>'
+        '<div class="help-text" style="margin-top:8px;">' +
+          'Adverse-media provider not configured (set BRAVE_SEARCH_API_KEY, SERPAPI_KEY, ' +
+          'BING_SEARCH_API_KEY, or GOOGLE_CSE_KEY + GOOGLE_CSE_CX). ' +
+          'Google News RSS runs with no key but may time out under cold start.' +
+          '</div>'
+      );
+    } else if (Array.isArray(am.providersUsed) && am.providersUsed.length > 0 && am.hits === 0) {
+      html.push(
+        '<div class="help-text" style="margin-top:8px;">' +
+          'Adverse-media providers queried: ' +
+          escapeHTML(am.providersUsed.join(', ')) +
+          ' — 0 hits returned.' +
+          '</div>'
       );
     }
 
@@ -1729,20 +1800,27 @@
           (result.data && result.data.sanctions && result.data.sanctions.topClassification) ||
           'none';
         const anomalies = (result.data && result.data.anomalies) || [];
+        const integrity = (result.data && result.data.screeningIntegrity) || 'complete';
         const verb =
-          topClass === 'confirmed'
-            ? 'CONFIRMED sanctions match — freeze workflow triggered'
-            : topClass === 'potential'
-              ? 'POTENTIAL match — MLRO review required'
-              : topClass === 'weak'
-                ? 'Weak match — documented and dismissed if false positive'
-                : 'No sanctions match';
+          integrity === 'incomplete'
+            ? 'SCREENING INCOMPLETE — mandatory data source unavailable, re-screen required'
+            : topClass === 'confirmed'
+              ? 'CONFIRMED sanctions match — freeze workflow triggered'
+              : topClass === 'potential'
+                ? 'POTENTIAL match — MLRO review required'
+                : topClass === 'weak'
+                  ? 'Weak match — documented and dismissed if false positive'
+                  : integrity === 'degraded'
+                    ? 'Screening DEGRADED — partial coverage only, re-run when upstream recovers'
+                    : 'No sanctions match';
         const anomSuffix =
           anomalies.length > 0 ? ' · ' + anomalies.length + ' anomaly(ies) routed to Asana' : '';
         showMessage(
           screenMsg,
           verb + anomSuffix + '. Complete the disposition below to close the event.',
-          topClass === 'none' && anomalies.length === 0 ? 'success' : 'error'
+          integrity === 'complete' && topClass === 'none' && anomalies.length === 0
+            ? 'success'
+            : 'error'
         );
         renderScreeningResult(result.data);
         showDisposition();

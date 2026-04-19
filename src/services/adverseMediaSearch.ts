@@ -238,7 +238,16 @@ export interface AdverseMediaHit {
 export interface AdverseMediaResult {
   subject: string;
   query: string;
-  provider: 'serp' | 'brave' | 'google_cse' | 'dry_run';
+  /**
+   * Composite provider label: comma-separated list of every provider that
+   * actually ran and returned a response. 'dry_run' means no provider was
+   * configured (API keys missing); 'google_news_rss' is the zero-config
+   * fallback that always runs. The screening-run endpoint treats any result
+   * that contains only 'dry_run' as a DEGRADED integrity state.
+   */
+  provider: string;
+  providersUsed: Array<'serp' | 'brave' | 'google_cse' | 'google_news_rss' | 'bing' | 'dry_run'>;
+  providerErrors?: Array<{ provider: string; error: string }>;
   hits: AdverseMediaHit[];
   totalResults: number;
   searchedAt: string;
@@ -248,13 +257,25 @@ export interface AdverseMediaResult {
 // Providers
 // ---------------------------------------------------------------------------
 
-type Provider = 'serp' | 'brave' | 'google_cse' | 'dry_run';
+type Provider = 'serp' | 'brave' | 'google_cse' | 'google_news_rss' | 'bing' | 'dry_run';
 
-function detectProvider(): Provider {
-  if (process.env.SERPAPI_KEY) return 'serp';
-  if (process.env.BRAVE_SEARCH_API_KEY) return 'brave';
-  if (process.env.GOOGLE_CSE_KEY && process.env.GOOGLE_CSE_CX) return 'google_cse';
-  return 'dry_run';
+/**
+ * Enumerates every provider with a runnable integration at this instant.
+ * Google News RSS has no API-key gate — it is always listed. API-key
+ * providers only list when their env vars are set. This is the list the
+ * screening-run endpoint iterates; every listed provider runs in parallel
+ * so coverage is the UNION of all hits, not the first-match-wins of the
+ * legacy single-provider flow.
+ */
+function enumerateProviders(): Provider[] {
+  const out: Provider[] = [];
+  if (process.env.SERPAPI_KEY) out.push('serp');
+  if (process.env.BRAVE_SEARCH_API_KEY) out.push('brave');
+  if (process.env.GOOGLE_CSE_KEY && process.env.GOOGLE_CSE_CX) out.push('google_cse');
+  if (process.env.BING_SEARCH_API_KEY) out.push('bing');
+  // Google News RSS is always available — no API key required.
+  out.push('google_news_rss');
+  return out;
 }
 
 async function searchViaBrave(query: string): Promise<AdverseMediaHit[]> {
@@ -328,27 +349,203 @@ async function searchViaGoogleCse(query: string): Promise<AdverseMediaHit[]> {
   }));
 }
 
+async function searchViaBing(query: string): Promise<AdverseMediaHit[]> {
+  const key = process.env.BING_SEARCH_API_KEY;
+  if (!key) return [];
+  const url = `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=20&responseFilter=Webpages,News`;
+  const res = await fetchWithTimeout(url, {
+    headers: { 'Ocp-Apim-Subscription-Key': key, Accept: 'application/json' },
+    timeoutMs: 15_000,
+  });
+  if (!res.ok) return [];
+  const data = (await res.json()) as {
+    webPages?: {
+      value?: Array<{ name: string; url: string; snippet: string; dateLastCrawled?: string }>;
+    };
+    news?: {
+      value?: Array<{
+        name: string;
+        url: string;
+        description: string;
+        datePublished?: string;
+        provider?: Array<{ name?: string }>;
+      }>;
+    };
+  };
+  const webHits: AdverseMediaHit[] = (data.webPages?.value ?? []).map((r) => ({
+    title: r.name,
+    url: r.url,
+    snippet: r.snippet,
+    publishedAt: r.dateLastCrawled,
+    source: safeHostname(r.url),
+  }));
+  const newsHits: AdverseMediaHit[] = (data.news?.value ?? []).map((r) => ({
+    title: r.name,
+    url: r.url,
+    snippet: r.description,
+    publishedAt: r.datePublished,
+    source: r.provider?.[0]?.name ?? safeHostname(r.url),
+  }));
+  return [...newsHits, ...webHits];
+}
+
+/**
+ * Google News RSS — zero-config, no API key. Always available so the
+ * MLRO never gets a false-negative "0 adverse media" screen just because
+ * API keys are missing. The feed is public and returns XML; we pull 5s
+ * of content and regex-extract the item list. FATF Rec 10 ongoing DD
+ * depends on a news signal being present at baseline, even without paid
+ * providers — this wires that guarantee in.
+ */
+async function searchViaGoogleNewsRss(query: string): Promise<AdverseMediaHit[]> {
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+  const res = await fetchWithTimeout(url, {
+    headers: { Accept: 'application/rss+xml, application/xml, text/xml' },
+    timeoutMs: 4_000,
+  });
+  if (!res.ok) return [];
+  const xml = await res.text();
+  return parseGoogleNewsRss(xml);
+}
+
+/**
+ * Minimal, defensive RSS parser. Google News RSS uses a stable shape so
+ * a regex extractor is adequate and avoids pulling in an XML parser on
+ * the hot path. Malformed input returns [] — never throws.
+ */
+export function parseGoogleNewsRss(xml: string): AdverseMediaHit[] {
+  const hits: AdverseMediaHit[] = [];
+  if (!xml || typeof xml !== 'string') return hits;
+  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+  let m: RegExpExecArray | null;
+  const capped = 50;
+  let count = 0;
+  while ((m = itemRegex.exec(xml)) !== null && count < capped) {
+    const block = m[1];
+    const title = extractTag(block, 'title');
+    const link = extractTag(block, 'link');
+    const pubDate = extractTag(block, 'pubDate');
+    const source = extractTag(block, 'source');
+    const description = extractTag(block, 'description');
+    if (!title || !link) continue;
+    hits.push({
+      title: decodeEntities(stripHtml(title)),
+      url: link.trim(),
+      snippet: decodeEntities(stripHtml(description || '')),
+      publishedAt: pubDate || undefined,
+      source: source ? decodeEntities(stripHtml(source)) : safeHostname(link),
+    });
+    count += 1;
+  }
+  return hits;
+}
+
+function extractTag(block: string, tag: string): string {
+  const cdata = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`).exec(block);
+  if (cdata) return cdata[1];
+  const plain = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`).exec(block);
+  return plain ? plain[1] : '';
+}
+
+function stripHtml(s: string): string {
+  return s.replace(/<[^>]+>/g, '').trim();
+}
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'");
+}
+
+function safeHostname(u: string): string {
+  try {
+    return new URL(u).hostname;
+  } catch {
+    return 'unknown';
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Top-level search
+// Top-level search — parallel fan-out across every configured provider
 // ---------------------------------------------------------------------------
 
+/**
+ * Runs EVERY configured provider in parallel, merges the hit lists,
+ * de-duplicates by URL, and returns the union. Missing API keys are not
+ * a silent failure — the returned `providersUsed` array is what the
+ * caller inspects to decide if the screening is COMPLETE or DEGRADED.
+ *
+ * FDL Art.20-21 obliges the CO to have maximum signal; relying on a
+ * single first-match-wins provider is strictly inferior to fanning out
+ * to all of them. The only cost is ~O(1) extra wall time since all
+ * providers race in parallel — the slowest still caps the stage.
+ */
 export async function searchAdverseMedia(
   subject: string,
   options: SearchPromptOptions = {}
 ): Promise<AdverseMediaResult> {
   const query = buildAdverseMediaQuery(subject, options);
-  const provider = detectProvider();
+  const providers = enumerateProviders();
   const searchedAt = new Date().toISOString();
 
-  let hits: AdverseMediaHit[] = [];
-  if (provider === 'brave') hits = await searchViaBrave(query);
-  else if (provider === 'serp') hits = await searchViaSerpApi(query);
-  else if (provider === 'google_cse') hits = await searchViaGoogleCse(query);
+  const runProvider = async (p: Provider): Promise<AdverseMediaHit[]> => {
+    switch (p) {
+      case 'brave':
+        return searchViaBrave(query);
+      case 'serp':
+        return searchViaSerpApi(query);
+      case 'google_cse':
+        return searchViaGoogleCse(query);
+      case 'bing':
+        return searchViaBing(query);
+      case 'google_news_rss':
+        return searchViaGoogleNewsRss(query);
+      case 'dry_run':
+        return [];
+    }
+  };
+
+  const results = await Promise.allSettled(providers.map((p) => runProvider(p)));
+
+  const hitsByUrl = new Map<string, AdverseMediaHit>();
+  const providersUsed: Provider[] = [];
+  const providerErrors: Array<{ provider: string; error: string }> = [];
+  for (let i = 0; i < providers.length; i += 1) {
+    const p = providers[i];
+    const r = results[i];
+    if (r.status === 'fulfilled') {
+      providersUsed.push(p);
+      for (const hit of r.value) {
+        const key = hit.url.trim();
+        if (!key) continue;
+        if (!hitsByUrl.has(key)) hitsByUrl.set(key, hit);
+      }
+    } else {
+      providerErrors.push({
+        provider: p,
+        error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+      });
+    }
+  }
+
+  const hits = Array.from(hitsByUrl.values());
+
+  // Compose the display label from every provider that actually ran.
+  // Downstream consumers split on ',' when they need the list form, and
+  // the screening-run endpoint treats a label that is only 'dry_run' as
+  // a degraded integrity state.
+  const providerLabel = providersUsed.length > 0 ? providersUsed.join(',') : 'dry_run';
 
   return {
     subject,
     query,
-    provider,
+    provider: providerLabel,
+    providersUsed,
+    providerErrors: providerErrors.length > 0 ? providerErrors : undefined,
     hits,
     totalResults: hits.length,
     searchedAt,

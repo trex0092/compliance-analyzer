@@ -116,10 +116,19 @@ const SANCTIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
  * blob writes, and Asana. (FDL Art.20 — CO must still receive a
  * deterministic verdict even if an upstream list is slow.)
  */
-const SANCTIONS_FETCH_TIMEOUT_MS = 4_000;
-const ADVERSE_MEDIA_TIMEOUT_MS = 3_000;
-const ASANA_TIMEOUT_MS = 2_500;
-const WATCHLIST_TIMEOUT_MS = 2_500;
+/**
+ * Per-stage timeout budgets. Tuned so that:
+ *   Phase A (parallel):  max(sanctions, adverse media)  ≈ 5.5s
+ *   Phase B (sync):      deep brain deadline            ≈ 2.5s
+ *   Phase C (parallel):  max(watchlist, asana)          ≈ 1.5s
+ *   TOTAL worst-case                                    ≈ 9.5s
+ * Leaves ~0.5s headroom before Netlify's 10s sync-function ceiling.
+ */
+const SANCTIONS_FETCH_TIMEOUT_MS = 5_500;
+const ADVERSE_MEDIA_TIMEOUT_MS = 4_500;
+const DEEP_BRAIN_DEADLINE_MS = 2_500;
+const ASANA_TIMEOUT_MS = 1_500;
+const WATCHLIST_TIMEOUT_MS = 1_500;
 
 /**
  * Race a promise against a timeout. On timeout, returns `fallback` and
@@ -664,10 +673,15 @@ async function postAsanaTask(params: {
   topScore: number;
   perList: PerListResult[];
   adverseMediaCount: number;
+  adverseMediaProvidersUsed?: string[];
+  adverseMediaProviderLabel?: string;
+  adverseMediaTop?: Array<{ title: string; url: string; source?: string }>;
   jurisdiction?: string;
   notes?: string;
   anomalies?: string[];
   eventType?: ScreeningEventType;
+  integrity?: 'complete' | 'degraded' | 'incomplete';
+  integrityReasons?: string[];
 }): Promise<{ ok: boolean; gid?: string; error?: string }> {
   const projectId = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
   if (!process.env.ASANA_TOKEN && !process.env.ASANA_ACCESS_TOKEN && !process.env.ASANA_API_TOKEN) {
@@ -680,6 +694,7 @@ async function postAsanaTask(params: {
   if (params.eventType) lines.push(`Event type: ${params.eventType}`);
   lines.push(`Classification: ${params.classification.toUpperCase()}`);
   lines.push(`Top match score: ${(params.topScore * 100).toFixed(1)}%`);
+  lines.push(`Screening integrity: ${(params.integrity ?? 'complete').toUpperCase()}`);
   if (params.jurisdiction) lines.push(`Jurisdiction: ${params.jurisdiction}`);
   lines.push('');
   lines.push('Per-list results:');
@@ -692,10 +707,33 @@ async function postAsanaTask(params: {
   }
   lines.push('');
   lines.push(`Adverse-media hits: ${params.adverseMediaCount}`);
+  if (params.adverseMediaProviderLabel) {
+    lines.push(`Adverse-media provider(s): ${params.adverseMediaProviderLabel}`);
+  }
+  if (params.adverseMediaTop && params.adverseMediaTop.length > 0) {
+    lines.push('Top adverse-media hits:');
+    for (const h of params.adverseMediaTop) {
+      lines.push(`  - ${h.title}${h.source ? ` (${h.source})` : ''} — ${h.url}`);
+    }
+  }
   if (params.anomalies && params.anomalies.length > 0) {
     lines.push('');
     lines.push('ANOMALIES DETECTED — investigate immediately:');
     for (const a of params.anomalies) lines.push(`  - ${a}`);
+  }
+  if (
+    params.integrity &&
+    params.integrity !== 'complete' &&
+    params.integrityReasons &&
+    params.integrityReasons.length > 0
+  ) {
+    lines.push('');
+    lines.push(
+      params.integrity === 'incomplete'
+        ? 'SCREENING INCOMPLETE — RE-SCREEN REQUIRED (mandatory data source unavailable):'
+        : 'SCREENING DEGRADED — partial coverage only:'
+    );
+    for (const r of params.integrityReasons) lines.push(`  - ${r}`);
   }
   if (params.notes) {
     lines.push('');
@@ -709,28 +747,43 @@ async function postAsanaTask(params: {
   lines.push('Source: /api/screening/run (Screening Command page).');
   lines.push('Do NOT notify the subject — FDL Art.29 no tipping off.');
 
-  // Severity tag ordering: anomaly > confirmed > potential > weak >
-  // adverse media > clean. A clean run (no match, no adverse media,
-  // no anomalies) still lands in Asana tagged [CLEAN] — FDL Art.24
-  // 10-year retention requires every screening be discoverable.
+  // Severity tag ordering: integrity-gated. When data is incomplete or
+  // degraded, the outcome CANNOT be recorded as clean — it must force
+  // a re-screen. Regulatory basis: FDL Art.20-21 (CO must actually have
+  // screened before recording a no-freeze outcome), Cabinet Res 74/2020
+  // Art.4-7 (sanctions screening must occur, not be inferred from a
+  // failed fetch). Order: incomplete > anomaly > confirmed > potential
+  // > weak > degraded > adverse media > clean.
   const hasAnomaly = params.anomalies && params.anomalies.length > 0;
+  const integrity = params.integrity ?? 'complete';
   const severityTag =
-    hasAnomaly && params.classification === 'none'
-      ? '[ANOMALY]'
-      : params.classification === 'confirmed'
-        ? '[CONFIRMED MATCH]'
-        : params.classification === 'potential'
-          ? '[POTENTIAL MATCH]'
-          : params.classification === 'weak'
-            ? '[WEAK MATCH]'
-            : params.adverseMediaCount > 0
-              ? '[ADVERSE MEDIA]'
-              : '[CLEAN]';
+    integrity === 'incomplete'
+      ? '[INCOMPLETE — RE-SCREEN REQUIRED]'
+      : hasAnomaly && params.classification === 'none'
+        ? '[ANOMALY]'
+        : params.classification === 'confirmed'
+          ? '[CONFIRMED MATCH]'
+          : params.classification === 'potential'
+            ? '[POTENTIAL MATCH]'
+            : params.classification === 'weak'
+              ? '[WEAK MATCH]'
+              : integrity === 'degraded' && params.classification === 'none'
+                ? '[DEGRADED — PARTIAL DATA]'
+                : params.adverseMediaCount > 0
+                  ? '[ADVERSE MEDIA]'
+                  : '[CLEAN]';
   const name = `${severityTag} Screening: ${params.subjectName}`;
 
   const tags = ['screening-command', params.classification];
   if (hasAnomaly) tags.push('anomaly');
-  if (params.classification === 'none' && !hasAnomaly && params.adverseMediaCount === 0) {
+  if (integrity === 'incomplete') tags.push('integrity-incomplete', 're-screen-required');
+  else if (integrity === 'degraded') tags.push('integrity-degraded');
+  if (
+    integrity === 'complete' &&
+    params.classification === 'none' &&
+    !hasAnomaly &&
+    params.adverseMediaCount === 0
+  ) {
     tags.push('clean-screen');
   }
   if (params.eventType) tags.push(`event-${params.eventType}`);
@@ -796,25 +849,49 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const riskTier: RiskTier = input.riskTier ?? 'medium';
   const ranAt = new Date().toISOString();
 
-  // ─── 1. Sanctions screen across all six lists ─────────────────────────
-  // Hard-cap the multi-list fetch. If one upstream hangs, we still return
-  // a deterministic verdict inside Netlify's 10s budget with the slow
-  // list reported as an error (anomaly → Asana still paged).
-  const sanctionsLoad = await withTimeout(
-    loadAllLists(),
-    SANCTIONS_FETCH_TIMEOUT_MS,
-    {
-      fetchedAt: Date.now(),
-      lists: [
-        { name: 'UN', entries: [], error: 'sanctions fetch timed out' },
-        { name: 'OFAC', entries: [], error: 'sanctions fetch timed out' },
-        { name: 'EU', entries: [], error: 'sanctions fetch timed out' },
-        { name: 'UK_OFSI', entries: [], error: 'sanctions fetch timed out' },
-        { name: 'UAE_EOCN', entries: [], error: 'sanctions fetch timed out' },
-      ],
-    } as ListSnapshot,
-    'sanctions-lists'
-  );
+  // ─── Phase A. Sanctions + adverse-media in parallel ──────────────────
+  // The legacy pipeline ran these serially — 4s sanctions + 3s adverse
+  // media blew past Netlify's 10s function ceiling when stacked with
+  // the brain, watchlist, and Asana stages. Running them as a racing
+  // pair caps the phase at max(sanctions, adverse) instead of their sum.
+  // FDL Art.20 still requires a deterministic verdict inside the budget.
+  const sanctionsTimeoutSnapshot: ListSnapshot = {
+    fetchedAt: Date.now(),
+    lists: [
+      { name: 'UN', entries: [], error: 'sanctions fetch timed out' },
+      { name: 'OFAC', entries: [], error: 'sanctions fetch timed out' },
+      { name: 'EU', entries: [], error: 'sanctions fetch timed out' },
+      { name: 'UK_OFSI', entries: [], error: 'sanctions fetch timed out' },
+      { name: 'UAE_EOCN', entries: [], error: 'sanctions fetch timed out' },
+    ],
+  };
+  const amFallback = {
+    subject: input.subjectName,
+    query: '',
+    provider: 'none',
+    providersUsed: [] as string[],
+    hits: [] as Array<{
+      title: string;
+      url: string;
+      snippet: string;
+      source: string;
+      publishedAt?: string;
+    }>,
+    totalResults: 0,
+    searchedAt: ranAt,
+  };
+  const [sanctionsLoad, amRes] = await Promise.all([
+    withTimeout(loadAllLists(), SANCTIONS_FETCH_TIMEOUT_MS, sanctionsTimeoutSnapshot, 'sanctions-lists'),
+    input.runAdverseMedia
+      ? withTimeout(
+          searchAdverseMedia(input.subjectName),
+          ADVERSE_MEDIA_TIMEOUT_MS,
+          amFallback,
+          'adverse-media'
+        )
+      : Promise.resolve({ value: amFallback, timedOut: false, error: undefined as string | undefined }),
+  ]);
+
   const snapshot = sanctionsLoad.value;
   const { perList, overallTopScore, overallTopClassification } = screenAgainstAllLists(
     input.subjectName,
@@ -835,29 +912,65 @@ export default async (req: Request, context: Context): Promise<Response> => {
       !/^Integration pending/i.test(l.error)
   );
 
-  // ─── 2. Adverse media (optional, provider-dependent) ──────────────────
-  let adverseMediaHits: number = 0;
-  let adverseMediaProvider: string = 'none';
-  let adverseMediaTop: Array<{ title: string; url: string; source?: string }> = [];
-  let adverseMediaError: string | undefined;
-  if (input.runAdverseMedia) {
-    const amRes = await withTimeout(
-      searchAdverseMedia(input.subjectName),
-      ADVERSE_MEDIA_TIMEOUT_MS,
-      { provider: 'none', hits: [] as Array<{ title: string; url: string; source?: string }> },
-      'adverse-media'
-    );
-    if (amRes.timedOut || amRes.error) {
-      adverseMediaError = amRes.error ?? 'adverse media failed';
-    }
-    adverseMediaHits = amRes.value.hits.length;
-    adverseMediaProvider = amRes.value.provider;
-    adverseMediaTop = amRes.value.hits.slice(0, 5).map((h) => ({
-      title: h.title,
-      url: h.url,
-      source: h.source,
-    }));
+  const adverseMediaHits = input.runAdverseMedia ? amRes.value.hits.length : 0;
+  const adverseMediaProvider = input.runAdverseMedia ? amRes.value.provider : 'disabled';
+  const adverseMediaProvidersUsed = input.runAdverseMedia ? amRes.value.providersUsed ?? [] : [];
+  const adverseMediaTop = input.runAdverseMedia
+    ? amRes.value.hits.slice(0, 5).map((h) => ({
+        title: h.title,
+        url: h.url,
+        source: h.source,
+      }))
+    : [];
+  const adverseMediaError: string | undefined = input.runAdverseMedia
+    ? amRes.timedOut
+      ? 'adverse media timed out'
+      : amRes.error
+    : undefined;
+
+  // ─── Integrity gate — NEVER report clean when the screening was
+  // actually incomplete. Regulatory basis: FDL Art.20-21 (CO situational
+  // awareness), FATF Rec 10 (ongoing CDD), Cabinet Res 74/2020 Art.4-7
+  // (sanctions screening must actually occur before a "no freeze"
+  // outcome is recorded). A silent "none/0.0%" on a timed-out fetch is
+  // a false negative and is strictly forbidden.
+  const MANDATORY_LIST_NAMES = new Set(['UN', 'UAE_EOCN']);
+  const mandatoryFailures = perList.filter(
+    (l) => MANDATORY_LIST_NAMES.has(l.list) && typeof l.error === 'string' && l.error.length > 0
+  );
+  const nonMandatoryFailures = perList.filter(
+    (l) =>
+      typeof l.error === 'string' &&
+      l.error.length > 0 &&
+      !MANDATORY_LIST_NAMES.has(l.list) &&
+      l.list !== 'INTERPOL' &&
+      l.error !== 'opted out by MLRO (enhanced control)' &&
+      !/^Integration pending/i.test(l.error)
+  );
+  const amProviderMissing =
+    input.runAdverseMedia &&
+    (adverseMediaProvidersUsed.length === 0 ||
+      (adverseMediaProvidersUsed.length === 1 &&
+        (adverseMediaProvidersUsed[0] === 'dry_run' || adverseMediaProvider === 'dry_run')));
+  const amFailed = Boolean(adverseMediaError);
+  const screeningIntegrity: 'complete' | 'degraded' | 'incomplete' =
+    mandatoryFailures.length > 0
+      ? 'incomplete'
+      : nonMandatoryFailures.length > 0 || amFailed || amProviderMissing
+        ? 'degraded'
+        : 'complete';
+  const integrityReasons: string[] = [];
+  if (mandatoryFailures.length > 0) {
+    for (const f of mandatoryFailures) integrityReasons.push(`${f.list}: ${f.error}`);
   }
+  if (nonMandatoryFailures.length > 0) {
+    for (const f of nonMandatoryFailures) integrityReasons.push(`${f.list}: ${f.error}`);
+  }
+  if (amFailed) integrityReasons.push(`adverse media: ${adverseMediaError}`);
+  if (amProviderMissing)
+    integrityReasons.push(
+      'adverse media: no search provider configured (set SERPAPI_KEY, BRAVE_SEARCH_API_KEY, BING_SEARCH_API_KEY, or GOOGLE_CSE_KEY+CX)'
+    );
 
   // ─── 3. Explainable risk score ────────────────────────────────────────
   const explanation = explainableScore({
@@ -868,14 +981,14 @@ export default async (req: Request, context: Context): Promise<Response> => {
     nationality: input.jurisdiction,
   });
 
-  // ─── 3.5. Deep brain — three-layer PEER reasoning ─────────────────────
-  // Runs ONLY when the classical score already surfaced a signal OR when
-  // the caller explicitly opts in with `runDeepBrain=true` on the input.
-  // Keeps the default path fast and only pays the reasoning cost when
-  // the MLRO actually needs the extra explanation.
+  // ─── Phase B. Deep brain — three-layer PEER reasoning ────────────────
+  // Runs whenever classical signal fires OR integrity is degraded/
+  // incomplete (so the MLRO still gets a reasoned narrative even when
+  // an upstream was missing). Extra cost is bounded by DEEP_BRAIN_DEADLINE_MS.
   const deepBrainEnabled =
     overallTopClassification !== 'none' ||
     adverseMediaHits > 0 ||
+    screeningIntegrity !== 'complete' ||
     input.runDeepBrain === true;
   let deepBrain: OrchestrationResult | null = null;
   if (deepBrainEnabled) {
@@ -898,14 +1011,28 @@ export default async (req: Request, context: Context): Promise<Response> => {
         confidence: 0.7,
       });
     }
+    // Surface integrity as an explicit brain fact so the reasoning chain
+    // accounts for "absence of evidence vs evidence of absence". Without
+    // this, a timed-out fetch would silently yield a clean posterior.
+    if (screeningIntegrity !== 'complete') {
+      for (const reason of integrityReasons) {
+        atomHits.push({
+          fact: `screening integrity ${screeningIntegrity}: ${reason}`,
+          source: `INTEGRITY_${screeningIntegrity.toUpperCase()}`,
+          sourceTimestamp: ranAt,
+          confidence: 0.9,
+        });
+      }
+    }
     const precomputedSearch: SearchFn = (q) => {
       if (q.id === 'q-sanctions') {
-        return atomHits.filter((a) =>
-          /UN|OFAC|EU|UK_OFSI|UAE_EOCN|INTERPOL/i.test(a.source)
-        );
+        return atomHits.filter((a) => /UN|OFAC|EU|UK_OFSI|UAE_EOCN|INTERPOL/i.test(a.source));
       }
       if (q.id === 'q-adverse') {
         return atomHits.filter((a) => a.source.startsWith('ADVERSE_MEDIA'));
+      }
+      if (q.id === 'q-integrity') {
+        return atomHits.filter((a) => a.source.startsWith('INTEGRITY_'));
       }
       return [];
     };
@@ -915,81 +1042,108 @@ export default async (req: Request, context: Context): Promise<Response> => {
           name: input.subjectName,
           aliases: input.aliases,
           jurisdiction: input.jurisdiction,
-          entityType:
-            input.entityType === 'legal_entity' ? 'entity' : 'individual',
+          entityType: input.entityType === 'legal_entity' ? 'entity' : 'individual',
           dob: input.dob,
           notes: input.notes,
         },
-        { searchFn: precomputedSearch, deadlineMs: 4000 }
+        { searchFn: precomputedSearch, deadlineMs: DEEP_BRAIN_DEADLINE_MS }
       );
     } catch {
       deepBrain = null;
     }
   }
 
-  // ─── 4. Watchlist enrollment ──────────────────────────────────────────
-  let enrollment: EnrollmentResult = { action: 'skipped' };
-  if (input.enrollInWatchlist) {
-    const metadata: Record<string, string | number | boolean> = {
-      enrolledBy: 'screening-command',
-      enrolledAt: ranAt,
-      initialClassification: overallTopClassification,
-      initialTopScore: Number(overallTopScore.toFixed(4)),
-    };
-    if (input.jurisdiction) metadata.jurisdiction = input.jurisdiction;
-    if (input.notes) metadata.notes = input.notes.slice(0, 512);
-    const enrollRes = await withTimeout(
-      enrollIntoWatchlist(subjectId, input.subjectName, riskTier, metadata),
-      WATCHLIST_TIMEOUT_MS,
-      { action: 'skipped', error: 'watchlist enrollment timed out' } as EnrollmentResult,
-      'watchlist-enroll'
-    );
-    enrollment = enrollRes.value;
-  }
-
-  // ─── 5. Asana task — ALWAYS create so FDL Art.24 10-yr retention sees
-  // every screening, including clean runs. Severity tag distinguishes
-  // clean vs match vs anomaly; the task body carries the full reasoning.
-  // Cabinet Res 134/2025 Art.19 (periodic internal review) + FDL Art.20
-  // (CO situational awareness) — the MLRO must see every event.
+  // ─── Phase C. Watchlist + Asana in parallel ─────────────────────────
+  // FDL Art.24 10-yr retention: every screening lands in Asana even on
+  // a clean run. Cabinet Res 134/2025 Art.19: periodic internal review
+  // sees every event. Running the two writes in parallel shaves ~1.5s
+  // off the tail of the pipeline.
   const asanaProjectGid = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
-  let asana: {
+  const asanaAnomalies = [
+    ...anomalousListErrors.map((l) => `${l.list}: ${l.error}`),
+    ...(screeningIntegrity !== 'complete'
+      ? integrityReasons.map((r) => `integrity-${screeningIntegrity}: ${r}`)
+      : []),
+  ];
+
+  const [watchlistRes, asanaRes] = await Promise.all([
+    input.enrollInWatchlist
+      ? (async () => {
+          const metadata: Record<string, string | number | boolean> = {
+            enrolledBy: 'screening-command',
+            enrolledAt: ranAt,
+            initialClassification: overallTopClassification,
+            initialTopScore: Number(overallTopScore.toFixed(4)),
+            screeningIntegrity,
+          };
+          if (input.jurisdiction) metadata.jurisdiction = input.jurisdiction;
+          if (input.notes) metadata.notes = input.notes.slice(0, 512);
+          return withTimeout(
+            enrollIntoWatchlist(subjectId, input.subjectName, riskTier, metadata),
+            WATCHLIST_TIMEOUT_MS,
+            { action: 'skipped', error: 'watchlist enrollment timed out' } as EnrollmentResult,
+            'watchlist-enroll'
+          );
+        })()
+      : Promise.resolve({
+          value: { action: 'skipped' } as EnrollmentResult,
+          timedOut: false,
+          error: undefined as string | undefined,
+        }),
+    input.createAsanaTask
+      ? withTimeout(
+          postAsanaTask({
+            subjectName: input.subjectName,
+            subjectId,
+            classification: overallTopClassification,
+            topScore: overallTopScore,
+            perList,
+            adverseMediaCount: adverseMediaHits,
+            adverseMediaProvidersUsed,
+            adverseMediaProviderLabel: adverseMediaProvider,
+            adverseMediaTop,
+            jurisdiction: input.jurisdiction,
+            notes: input.notes,
+            anomalies: asanaAnomalies,
+            eventType: input.eventType,
+            integrity: screeningIntegrity,
+            integrityReasons,
+          }),
+          ASANA_TIMEOUT_MS,
+          { ok: false, error: 'asana task timed out' },
+          'asana-task'
+        )
+      : Promise.resolve({
+          value: { ok: false, error: 'asana disabled' } as {
+            ok: boolean;
+            gid?: string;
+            error?: string;
+          },
+          timedOut: false,
+          error: undefined as string | undefined,
+        }),
+  ]);
+
+  const enrollment = watchlistRes.value;
+  const asana: {
     ok: boolean;
     gid?: string;
     error?: string;
     skipped?: boolean;
     projectGid: string;
     projectName: string;
-  } = {
-    ok: false,
-    skipped: true,
-    projectGid: asanaProjectGid,
-    projectName: 'Hawkeye Screenings',
-  };
-  if (input.createAsanaTask) {
-    const asanaRes = await withTimeout(
-      postAsanaTask({
-        subjectName: input.subjectName,
-        subjectId,
-        classification: overallTopClassification,
-        topScore: overallTopScore,
-        perList,
-        adverseMediaCount: adverseMediaHits,
-        jurisdiction: input.jurisdiction,
-        notes: input.notes,
-        anomalies: anomalousListErrors.map((l) => `${l.list}: ${l.error}`),
-        eventType: input.eventType,
-      }),
-      ASANA_TIMEOUT_MS,
-      { ok: false, error: 'asana task timed out' },
-      'asana-task'
-    );
-    asana = {
-      ...asanaRes.value,
-      projectGid: asanaProjectGid,
-      projectName: 'Hawkeye Screenings',
-    };
-  }
+  } = input.createAsanaTask
+    ? {
+        ...asanaRes.value,
+        projectGid: asanaProjectGid,
+        projectName: 'Hawkeye Screenings',
+      }
+    : {
+        ok: false,
+        skipped: true,
+        projectGid: asanaProjectGid,
+        projectName: 'Hawkeye Screenings',
+      };
 
   return jsonResponse({
     ok: true,
@@ -1005,6 +1159,8 @@ export default async (req: Request, context: Context): Promise<Response> => {
       riskTier,
       jurisdiction: input.jurisdiction,
     },
+    screeningIntegrity,
+    integrityReasons,
     anomalies: anomalousListErrors.map((l) => ({ list: l.list, error: l.error })),
     sanctions: {
       totalCandidatesChecked: totalCandidates,
@@ -1025,6 +1181,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
     adverseMedia: {
       hits: adverseMediaHits,
       provider: adverseMediaProvider,
+      providersUsed: adverseMediaProvidersUsed,
       top: adverseMediaTop,
       error: adverseMediaError,
     },
