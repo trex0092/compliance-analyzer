@@ -1775,6 +1775,19 @@
         animation: hsPreloaderOut 0.8s ease 2.8s forwards;
       }
       html.embedded .hs-preloader { display: none !important; }
+      /* When index.html is loaded into a landing-page iframe
+         (/workbench, /compliance-ops, /logistics, /routines),
+         strip the main-app chrome so only the requested module
+         renders. The landing page already provides its own header
+         and "Back to surfaces" affordance. */
+      html.embedded .header,
+      html.embedded .hawkeye-intro,
+      html.embedded .hero-intro,
+      html.embedded .tabs,
+      html.embedded #tabsNav { display: none !important; }
+      html.embedded #mainApp,
+      html.embedded .app { padding-top: 0 !important; margin-top: 0 !important; }
+      html.embedded body { padding-top: 0 !important; }
       .hs-preloader-icon {
         width: 80px;
         height: 80px;
