@@ -18,6 +18,14 @@
     <link rel="apple-touch-icon" href="assets/logos/hawkeye-icon.svg" />
     <title>Hawkeye Sterling V2 — Compliance Suite</title>
     <script>
+      // When index.html is embedded in an iframe (landing pages
+      // /workbench, /compliance-ops, /logistics use landing-module-viewer
+      // to load the main app inline), skip the full-screen preloader
+      // so the landing page does not appear to "navigate to the main
+      // page" — FDL No.10/2025 Art.20 operational continuity.
+      if (window.self !== window.top) {
+        document.documentElement.classList.add('embedded');
+      }
       // KILL all service workers and caches — must run FIRST
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (regs) {
@@ -1770,6 +1778,7 @@
         gap: 30px;
         animation: hsPreloaderOut 0.8s ease 2.8s forwards;
       }
+      html.embedded .hs-preloader { display: none !important; }
       .hs-preloader-icon {
         width: 80px;
         height: 80px;
