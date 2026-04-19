@@ -39,6 +39,26 @@
   status = 200
   force = true
 
+# Main-page surface deep links. /integrations and /trading serve the
+# root index.html body while keeping the clean URL in the address bar;
+# app-boot.js reads location.pathname on load and activates the matching
+# tab (tab-integrations or tab-metalstrading) + scrolls it into view.
+# This gives the two Operations Surface cards on the main page
+# (Integrations / Trading) their own shareable deep links instead of
+# silently switching a tab that was already active on first paint.
+# Regulatory basis: FDL No.10/2025 Art.20 (CO-duty traceability) &
+# Art.24 (10-year audit trail — every surface entry is a distinct URL
+# the audit log can reference).
+[[redirects]]
+  from = "/integrations"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/trading"
+  to = "/index.html"
+  status = 200
+
 # Clean-URL rewrites for landing pages (belt-and-suspenders so the URLs
 # work even if the site's Pretty URLs asset-optimization setting is off
 # or temporarily flaky). Status 200 rewrites serve the .html body while

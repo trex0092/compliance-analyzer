@@ -1,19 +1,28 @@
 // Wire all enhanced tabs into switchTab
 (function () {
   var origSwitch = window.switchTab;
-  // Hide the LAUNCH ANALYZER hero with a soft fade the first time
-  // any tab switch happens. Persists for the session via sessionStorage.
+  // Historically, the first switchTab() call faded out the LAUNCH ANALYZER
+  // hero and persisted that dismissal in sessionStorage. After PR #334
+  // adopted the workbench-style landing, `#heroIntro` is no longer just an
+  // intro — it now wraps the entire main-page landing surface (eyebrow +
+  // serif title + summary cells + the two Operations Surface cards
+  // Integrations and Trading + the regulatory strip). Hiding it leaves
+  // only the header above an empty viewport, which is exactly what the
+  // user reported (blank main page after clicking any tab/card).
+  //
+  // hideHeroIntro is now a no-op that ALSO clears any stale
+  // sessionStorage flag from before this fix, so existing browser tabs
+  // self-heal without needing the user to clear storage. The unused
+  // `.hero-intro--gone` CSS in index.html is harmless and left in place.
+  // Regulatory basis: FDL No.10/2025 Art.20 — the CO must always be
+  // able to reach every operations surface from a single landing view.
   function hideHeroIntro() {
     try {
+      sessionStorage.removeItem('heroIntroDismissed');
       var hero = document.getElementById('heroIntro');
       if (!hero) return;
-      if (hero.classList.contains('hero-intro--gone')) return;
-      hero.classList.add('hero-intro--gone');
-      sessionStorage.setItem('heroIntroDismissed', '1');
-      // After the transition removes the box, also remove from layout.
-      setTimeout(function () {
-        if (hero.parentNode) hero.style.display = 'none';
-      }, 700);
+      hero.classList.remove('hero-intro--gone');
+      if (hero.style.display === 'none') hero.style.display = '';
     } catch (err) {
       /* best-effort */
     }
@@ -182,6 +191,21 @@
     '#tab-esg': 'esg',
     '#redflags': 'redflags',
     '#tab-redflags': 'redflags',
+    // Screening-command landing slugs. Cards on screening-command.html
+    // open the embedded iframe with these hashes; without these entries
+    // the matching index.html tab never activates and the iframe shows
+    // whatever tab was last rendered (FDL Art.20-21 — the screening
+    // surface must always reflect the URL the operator deep-linked to).
+    '#screening': 'screening',
+    '#tab-screening': 'screening',
+    '#subject-screening': 'screening',
+    '#transaction-monitor': 'screening',
+    '#str': 'incidents',
+    '#str-cases': 'incidents',
+    '#watchlist': 'screening',
+    // Aliases for the two main-page Operations Surface deep links so
+    // anchor href="#trading" and href="#integrations" both resolve.
+    '#trading': 'metalstrading',
   };
   function applyHashRoute() {
     var hash = window.location.hash;
@@ -194,19 +218,49 @@
   setTimeout(applyHashRoute, 500);
   window.addEventListener('hashchange', applyHashRoute);
 
-  // If the hero was dismissed earlier in this session, keep it hidden
-  // on reload so the user does not see it flash before the JS hides it.
-  try {
-    if (sessionStorage.getItem('heroIntroDismissed') === '1') {
-      var hero = document.getElementById('heroIntro');
-      if (hero) {
-        hero.classList.add('hero-intro--gone');
-        hero.style.display = 'none';
+  // Path-based deep links for the two main-page Operations Surface cards
+  // on index.html. Netlify status-200 rewrites map /integrations and
+  // /trading to the root index.html body while keeping the clean URL in
+  // the address bar; this handler reads location.pathname and activates
+  // the matching tab + scrolls it into view. Without it, /integrations
+  // would silently load index.html with the (already-default) integrations
+  // tab and the user would see no visible response — the original
+  // P0-blocking behaviour.
+  //
+  // Regulatory basis: FDL No.10/2025 Art.20 (CO must be able to deep-
+  // link to a specific surface for evidence) & Art.24 (every surface
+  // visit becomes a distinct URL the 10-year audit trail can reference).
+  var PATH_TAB_MAP = {
+    '/integrations': 'integrations',
+    '/trading': 'metalstrading',
+  };
+  function applyPathRoute() {
+    var path = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
+    var target = PATH_TAB_MAP[path];
+    if (!target || typeof window.switchTab !== 'function') return;
+    window.switchTab(target);
+    // Scroll the activated tab into view so the user can see the surface
+    // they asked for. requestAnimationFrame waits for the tab content to
+    // mount (switchTab toggles classes synchronously, but content
+    // injection inside switchTab can happen after layout).
+    requestAnimationFrame(function () {
+      var el = document.getElementById('tab-' + target);
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    }
-  } catch (err) {
-    /* sessionStorage may be unavailable in private mode — ignore */
+    });
   }
+  setTimeout(applyPathRoute, 500);
+  window.addEventListener('popstate', applyPathRoute);
+
+  // The legacy "rehydrate hero-dismissed state on reload" block lived
+  // here. After PR #334 the `#heroIntro` section became the entire
+  // main-page landing surface (Operations Surface cards + summary +
+  // regulatory strip), so persisting the dismissal across reloads left
+  // the user staring at a blank viewport below the header. The flag is
+  // proactively cleared inside hideHeroIntro() so any browser tab
+  // carrying the stale value self-heals on the next interaction.
+  try { sessionStorage.removeItem('heroIntroDismissed'); } catch (err) { /* ignore */ }
 
   // Auto-migrate localStorage to IndexedDB on first load
   if (typeof ComplianceDB !== 'undefined') {
