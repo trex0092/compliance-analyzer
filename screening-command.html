@@ -2227,6 +2227,26 @@
           initStrCaseManager();
         }
       })();
+
+      // Safety-net event delegation — binds at script parse time against
+      // `document`, so clicks on #strNewCaseBtn open the modal regardless
+      // of the initStrCaseManager IIFE's DOM-ready timing. Cheap
+      // insurance against any browser that delivers DOMContentLoaded
+      // oddly or any init path that bails silently.
+      (function () {
+        document.addEventListener('click', function (e) {
+          var t = e && e.target;
+          if (!t || typeof t.closest !== 'function') return;
+          if (t.closest('#strNewCaseBtn')) {
+            var m = document.getElementById('strModal');
+            if (m) m.hidden = false;
+          }
+          if (t.closest('#strModalClose') || t.closest('#strModalCancel')) {
+            var m2 = document.getElementById('strModal');
+            if (m2) m2.hidden = true;
+          }
+        }, false);
+      })();
     </script>
     <section class="hero">
       <div>

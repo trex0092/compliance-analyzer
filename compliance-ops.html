@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#1a050d" />
+    <title>Hawkeye Sterling V2 — Compliance Operations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Red + pink palette, top to bottom: ink → midnight → wine → rose → pink */
+        --ink: #0e0206;
+        --midnight: #1a050d;
+        --navy: #2a0818;
+        --navy-2: #3a0d22;
+        --surface: #4d112c;
+        --surface-2: #5e1637;
+        --steel: #a35676;
+        --steel-dim: #6e2e4c;
+        --royal: #be123c;
+        --red: #ef4444;
+        --red-bright: #f87171;
+        --pink: #ec4899;
+        --pink-bright: #f472b6;
+        --sky: #f9a8d4;
+        --ice: #fbcfe8;
+        --mist: #fce7f3;
+        --border: rgba(244, 114, 182, 0.18);
+        --border-strong: rgba(244, 114, 182, 0.4);
+        --glow: rgba(236, 72, 153, 0.55);
+        --muted: #b7688f;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--midnight);
+        color: var(--mist);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+          radial-gradient(ellipse 80% 60% at 15% 0%, rgba(236, 72, 153, 0.22), transparent 60%),
+          radial-gradient(ellipse 60% 50% at 85% 10%, rgba(239, 68, 68, 0.18), transparent 55%),
+          radial-gradient(ellipse 70% 40% at 50% 100%, rgba(77, 17, 44, 0.55), transparent 60%);
+      }
+
+      .shell {
+        position: relative;
+        z-index: 1;
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 2.25rem 2rem 3rem;
+        flex: 1;
+      }
+
+      /* Header */
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2.25rem;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .brand-mark {
+        width: 36px; height: 36px; border-radius: 8px;
+        background: linear-gradient(135deg, var(--pink), var(--red));
+        display: grid; place-items: center;
+        font-family: 'Playfair Display', serif;
+        font-weight: 800; font-size: 15px; color: #fff;
+        box-shadow: 0 0 0 1px var(--border-strong), 0 0 28px rgba(236, 72, 153, 0.5);
+      }
+      .brand-text {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700; font-size: 18px;
+        color: var(--mist); letter-spacing: -0.01em;
+      }
+      .brand-text em { color: var(--pink-bright); font-style: italic; font-weight: 600; }
+      .back-link {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase;
+        color: var(--steel);
+        text-decoration: none;
+        padding: 9px 18px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        transition: all 0.2s ease;
+      }
+      .back-link:hover {
+        color: var(--mist);
+        border-color: var(--pink-bright);
+        box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.12);
+      }
+
+      /* Hero — tight layout, status pills up top, title full width */
+      .hero {
+        margin-bottom: 2.5rem;
+      }
+
+      .status-row-top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 1.5rem;
+      }
+      .status-pill-top {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 14px 7px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(58, 13, 34, 0.55);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        font-family: 'DM Mono', monospace;
+        font-size: 10.5px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--ice);
+      }
+      .status-pill-top::before {
+        content: '';
+        width: 7px; height: 7px; border-radius: 50%;
+        background: var(--pink-bright);
+        box-shadow: 0 0 10px var(--pink-bright);
+      }
+      .status-pill-top[data-state="red"]::before { background: var(--red-bright); box-shadow: 0 0 10px var(--red-bright); }
+
+      .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--pink-bright);
+        margin-bottom: 1rem;
+      }
+      .hero-eyebrow::before {
+        content: '';
+        width: 7px; height: 7px; border-radius: 50%;
+        background: var(--pink);
+        box-shadow: 0 0 12px var(--pink);
+        animation: pulse 2.2s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.55; transform: scale(1.25); }
+      }
+
+      .hero-title {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: clamp(40px, 5.5vw, 68px);
+        line-height: 1.02;
+        letter-spacing: -0.02em;
+        color: var(--mist);
+        margin: 0 0 1rem;
+        background: linear-gradient(180deg, #ffffff 0%, var(--ice) 45%, var(--pink-bright) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .hero-title .nowrap { white-space: nowrap; }
+      @media (max-width: 720px) { .hero-title .nowrap { white-space: normal; } }
+      .hero-title em {
+        font-style: italic; font-weight: 600;
+        color: var(--pink-bright);
+        background: none;
+        -webkit-text-fill-color: var(--pink-bright);
+      }
+      .hero-lede {
+        color: var(--ice);
+        font-size: 15px;
+        line-height: 1.65;
+        max-width: 720px;
+        margin: 0;
+        opacity: 0.82;
+      }
+
+      /* Section heading */
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin: 0 0 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .section-label {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+        color: var(--muted);
+      }
+      .section-count {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px; letter-spacing: 2px;
+        color: var(--pink-bright);
+      }
+
+      /* Module card grid */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 18px;
+      }
+      .card {
+        grid-column: span 6;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 1.5rem;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: linear-gradient(160deg, rgba(58, 13, 34, 0.72) 0%, rgba(26, 5, 13, 0.7) 100%);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      .card:hover {
+        transform: translateY(-3px);
+        border-color: var(--pink);
+        box-shadow: 0 22px 48px -24px rgba(236, 72, 153, 0.45);
+      }
+      .card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--pink-bright), transparent);
+        opacity: 0.6;
+      }
+      @media (max-width: 820px) {
+        .card { grid-column: span 12; }
+      }
+      .card-icon {
+        width: 52px; height: 52px; border-radius: 12px;
+        display: grid; place-items: center;
+        font-size: 24px;
+        background: linear-gradient(135deg, rgba(236, 72, 153, 0.22), rgba(239, 68, 68, 0.18));
+        border: 1px solid var(--border-strong);
+      }
+      .card-meta {
+        display: flex; align-items: center; gap: 10px;
+        font-family: 'DM Mono', monospace;
+        font-size: 10.5px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .card-meta .dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--pink-bright);
+        box-shadow: 0 0 8px var(--pink-bright);
+      }
+      .card-title {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: 28px;
+        color: var(--mist);
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      .card-desc {
+        color: var(--ice);
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 0;
+        opacity: 0.82;
+      }
+      .card-stats {
+        display: flex;
+        gap: 18px;
+        margin-top: 4px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+      }
+      .stat { display: flex; flex-direction: column; gap: 2px; }
+      .stat-val {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: 20px;
+        color: var(--pink-bright);
+      }
+      .stat-key {
+        font-family: 'DM Mono', monospace;
+        font-size: 9.5px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .card-cta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 16px;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--pink-bright);
+      }
+      .card-cta-arrow {
+        font-size: 16px;
+        transition: transform 0.2s ease;
+      }
+      .card:hover .card-cta-arrow { transform: translateX(4px); }
+
+      /* Regulatory basis strip */
+      .reg-basis {
+        margin-top: 2.5rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: rgba(58, 13, 34, 0.45);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+      .reg-title {
+        font-family: 'DM Mono', monospace;
+        font-size: 10.5px;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: var(--pink-bright);
+        margin-bottom: 8px;
+      }
+      .reg-text {
+        color: var(--ice);
+        font-size: 13px;
+        line-height: 1.65;
+        opacity: 0.82;
+      }
+      .reg-text strong { color: var(--mist); }
+
+      /* Footer */
+      .footer {
+        margin-top: auto;
+        padding: 1.5rem 2rem;
+        border-top: 1px solid var(--border);
+        background: rgba(14, 2, 6, 0.5);
+        display: flex;
+        justify-content: space-between;
+        font-family: 'DM Mono', monospace;
+        font-size: 10.5px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">HS</span>
+          <span class="brand-text">Hawkeye Sterling <em>V2</em></span>
+        </div>
+        <a href="index.html" class="back-link">&larr; Main App</a>
+      </header>
+
+      <section class="hero">
+        <div class="status-row-top" aria-label="Compliance ops live status">
+          <span class="status-pill-top">People &middot; Active</span>
+          <span class="status-pill-top">Training &middot; 12 due</span>
+          <span class="status-pill-top" data-state="red">Incidents &middot; 2 open</span>
+          <span class="status-pill-top">Reports &middot; Ready</span>
+          <span class="status-pill-top">Audit &middot; 10 yr retention</span>
+        </div>
+        <div class="hero-eyebrow">Compliance Operations</div>
+        <h1 class="hero-title">
+          <span class="nowrap">People, <em>trained</em>.</span><br />
+          <span class="nowrap">Incidents, <em>owned</em>.</span>
+        </h1>
+        <p class="hero-lede">
+          Training attestations, employee registry, incident case files, and regulator-ready
+          reports — unified under one workspace. Each surface below maps to a distinct UAE
+          AML/CFT obligation and writes to the 10-year audit trail.
+        </p>
+      </section>
+
+      <div class="section-head">
+        <span class="section-label">Operational Surfaces</span>
+        <span class="section-count">04 / 04</span>
+      </div>
+
+      <div class="grid">
+        <a class="card" href="index.html#training" data-route="training">
+          <div class="card-icon" aria-hidden="true">🎓</div>
+          <div class="card-meta">
+            <span class="dot"></span>
+            <span>Module 01 &middot; Training</span>
+          </div>
+          <h2 class="card-title">Training</h2>
+          <p class="card-desc">
+            AML/CFT + sanctions + PEP screening curriculum. Attendance logged per employee
+            with quiz scores and certificate expiry tracking. MoE Circular 08/AML/2021 §9.
+          </p>
+          <div class="card-stats">
+            <div class="stat">
+              <span class="stat-val">Annual</span>
+              <span class="stat-key">Cadence</span>
+            </div>
+            <div class="stat">
+              <span class="stat-val">100%</span>
+              <span class="stat-key">Coverage target</span>
+            </div>
+          </div>
+          <div class="card-cta">
+            <span>Open module</span>
+            <span class="card-cta-arrow" aria-hidden="true">&rarr;</span>
+          </div>
+        </a>
+
+        <a class="card" href="index.html#employees" data-route="employees">
+          <div class="card-icon" aria-hidden="true">👥</div>
+          <div class="card-meta">
+            <span class="dot"></span>
+            <span>Module 02 &middot; Employees</span>
+          </div>
+          <h2 class="card-title">Employees</h2>
+          <p class="card-desc">
+            Employee registry with role, MLRO flag, KYC status, and training assignment.
+            Feeds four-eyes approval pool and separation-of-duties checks per Cabinet Res
+            134/2025 Art.19.
+          </p>
+          <div class="card-stats">
+            <div class="stat">
+              <span class="stat-val">RBAC</span>
+              <span class="stat-key">Access control</span>
+            </div>
+            <div class="stat">
+              <span class="stat-val">4-Eyes</span>
+              <span class="stat-key">Approver pool</span>
+            </div>
+          </div>
+          <div class="card-cta">
+            <span>Open module</span>
+            <span class="card-cta-arrow" aria-hidden="true">&rarr;</span>
+          </div>
+        </a>
+
+        <a class="card" href="index.html#incidents" data-route="incidents">
+          <div class="card-icon" aria-hidden="true">🚨</div>
+          <div class="card-meta">
+            <span class="dot"></span>
+            <span>Module 03 &middot; Incidents</span>
+          </div>
+          <h2 class="card-title">Incidents</h2>
+          <p class="card-desc">
+            Incident case files — sanctions matches, suspected tipping off, breach triage,
+            and root-cause log. Wired to the 24h EOCN + 5-business-day CNMR countdowns
+            per Cabinet Res 74/2020 Art.4-7.
+          </p>
+          <div class="card-stats">
+            <div class="stat">
+              <span class="stat-val">24 h</span>
+              <span class="stat-key">EOCN freeze</span>
+            </div>
+            <div class="stat">
+              <span class="stat-val">5 bd</span>
+              <span class="stat-key">CNMR deadline</span>
+            </div>
+          </div>
+          <div class="card-cta">
+            <span>Open module</span>
+            <span class="card-cta-arrow" aria-hidden="true">&rarr;</span>
+          </div>
+        </a>
+
+        <a class="card" href="index.html#reports" data-route="reports">
+          <div class="card-icon" aria-hidden="true">📊</div>
+          <div class="card-meta">
+            <span class="dot"></span>
+            <span>Module 04 &middot; Reports</span>
+          </div>
+          <h2 class="card-title">Reports</h2>
+          <p class="card-desc">
+            Regulator-ready reports — goAML STR/SAR/CTR/DPMSR/CNMR XML, quarterly DPMS
+            rollups, audit packs, and ad-hoc MLRO digests. FDL No.(10)/2025 Art.20 + Art.24.
+          </p>
+          <div class="card-stats">
+            <div class="stat">
+              <span class="stat-val">goAML</span>
+              <span class="stat-key">XML schema</span>
+            </div>
+            <div class="stat">
+              <span class="stat-val">10 yr</span>
+              <span class="stat-key">Retention</span>
+            </div>
+          </div>
+          <div class="card-cta">
+            <span>Open module</span>
+            <span class="card-cta-arrow" aria-hidden="true">&rarr;</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="reg-basis">
+        <div class="reg-title">Regulatory Basis</div>
+        <div class="reg-text">
+          Training + attestation cadence aligns with <strong>MoE Circular 08/AML/2021 §9</strong>
+          and <strong>FDL No.(10)/2025 Art.20</strong>. Employee registry + four-eyes approver
+          pool enforces <strong>Cabinet Res 134/2025 Art.19</strong> (separation of duties).
+          Incident countdowns trace to <strong>Cabinet Res 74/2020 Art.4-7</strong> (24h EOCN,
+          5 bd CNMR). Reports file via goAML per <strong>FDL No.(10)/2025 Art.26-27</strong>
+          and retain for the 10-year audit trail per <strong>Art.24</strong>.
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span>© 2026 Hawkeye Sterling</span>
+      <span>Confidential &middot; Audit-ready</span>
+    </footer>
+  </body>
+</html>

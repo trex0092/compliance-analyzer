@@ -142,6 +142,14 @@
       window.switchTab('tracking');
     } else if (hash === '#localshipments' || hash === '#tab-localshipments') {
       window.switchTab('localshipments');
+    } else if (hash === '#training' || hash === '#tab-training') {
+      window.switchTab('training');
+    } else if (hash === '#employees' || hash === '#tab-employees') {
+      window.switchTab('employees');
+    } else if (hash === '#incidents' || hash === '#tab-incidents') {
+      window.switchTab('incidents');
+    } else if (hash === '#reports' || hash === '#tab-reports') {
+      window.switchTab('reports');
     }
   }, 500);
 
