@@ -66,11 +66,25 @@ export interface ImmediateRiskAlertsDeps {
   env: (key: string) => string | undefined;
   /** Clock — defaults to new Date(). */
   now: () => Date;
+  /**
+   * Load the set of dispatch fingerprints already seen recently — used to
+   * suppress duplicate Asana tasks if the cron re-runs on the same delta
+   * within the dedup window (24h UTC day by default). Default backing
+   * store is Netlify Blobs 'immediate-risk-alerts-dedup'/<YYYY-MM-DD>.
+   */
+  loadDispatchFingerprints: () => Promise<Set<string>>;
+  /** Persist the updated dispatch-fingerprint set. Called at end of run. */
+  saveDispatchFingerprints: (fps: Set<string>) => Promise<void>;
 }
 
 const WATCHLIST_STORE = 'screening-watchlist';
 const WATCHLIST_KEY = 'current';
 const DEFAULT_SCREENINGS_PROJECT_GID = '1213759768596515';
+const DEDUP_STORE = 'immediate-risk-alerts-dedup';
+
+function dedupKeyForDay(iso: string): string {
+  return iso.slice(0, 10);
+}
 
 async function defaultLoadWatchlist(): Promise<WatchlistEntry[]> {
   try {
@@ -80,6 +94,30 @@ async function defaultLoadWatchlist(): Promise<WatchlistEntry[]> {
     return listAllEntries(wl);
   } catch {
     return [];
+  }
+}
+
+async function defaultLoadDispatchFingerprints(): Promise<Set<string>> {
+  try {
+    const store = getStore(DEDUP_STORE);
+    const key = dedupKeyForDay(new Date().toISOString());
+    const raw = (await store.get(key, { type: 'json' })) as unknown;
+    if (!Array.isArray(raw)) return new Set();
+    return new Set(raw.filter((v): v is string => typeof v === 'string'));
+  } catch {
+    return new Set();
+  }
+}
+
+async function defaultSaveDispatchFingerprints(fps: Set<string>): Promise<void> {
+  try {
+    const store = getStore(DEDUP_STORE);
+    const key = dedupKeyForDay(new Date().toISOString());
+    await store.setJSON(key, Array.from(fps));
+  } catch {
+    // Dedup failures are never fatal; the dispatch has already happened
+    // and duplicates within the same day are a strictly better failure
+    // mode than dropped alerts.
   }
 }
 
@@ -95,7 +133,25 @@ export function createDefaultDeps(): ImmediateRiskAlertsDeps {
       }),
     env: (key) => process.env[key],
     now: () => new Date(),
+    loadDispatchFingerprints: defaultLoadDispatchFingerprints,
+    saveDispatchFingerprints: defaultSaveDispatchFingerprints,
   };
+}
+
+/**
+ * Stable fingerprint for a single (subject, candidate) dispatch within
+ * a UTC day. Used to guarantee at-most-once Asana task creation per
+ * (subject, list, reference, changeType) per day even if the cron
+ * retries or multiple crons fire on the same delta.
+ */
+function dispatchFingerprint(subjectId: string, candidate: CandidateEntry, dayIso: string): string {
+  return [
+    subjectId,
+    candidate.list.trim().toUpperCase(),
+    candidate.reference.trim(),
+    candidate.changeType,
+    dayIso,
+  ].join('|');
 }
 
 // ---------------------------------------------------------------------------
@@ -146,11 +202,26 @@ export interface DispatchSummary {
   runId: string;
   watchlistSize: number;
   candidatesEvaluated: number;
+  /** Suppressed by scoring (name-only coincidence / pin-mismatch on CHANGE). */
   suppressed: number;
+  /** Suppressed by the idempotent dispatch-fingerprint cache (duplicate same-day). */
+  deduped: number;
+  /** Suppressed by runtime guards (unknown changeType, malformed candidate). */
+  rejected: number;
   tasksAttempted: number;
   tasksCreated: number;
   tasksFailed: number;
   tasks: DispatchTaskRecord[];
+}
+
+const VALID_CHANGE_TYPES: readonly RiskAlertChangeType[] = ['NEW', 'AMENDMENT', 'DELISTING'];
+
+function isValidCandidate(c: CandidateEntry): boolean {
+  if (typeof c.list !== 'string' || c.list.trim().length === 0) return false;
+  if (typeof c.reference !== 'string' || c.reference.trim().length === 0) return false;
+  if (typeof c.primaryName !== 'string' || c.primaryName.trim().length === 0) return false;
+  if (!VALID_CHANGE_TYPES.includes(c.changeType)) return false;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -212,10 +283,25 @@ function shouldDispatch(
   return score.classification !== 'suppress';
 }
 
+/**
+ * Optional overrides the cron uses to share a single watchlist read and
+ * a single dispatch-fingerprint load across multiple sources in one
+ * invocation. Nothing outside the cron should pass these — the defaults
+ * (loading from Netlify Blobs once per call) are correct for every
+ * other caller.
+ */
+export interface DispatchOverrides {
+  /** Pre-loaded watchlist so the cron doesn't re-fetch the blob N times. */
+  subjects?: readonly WatchlistEntry[];
+  /** Pre-loaded dedup fingerprint set, mutated in place. */
+  fingerprints?: Set<string>;
+}
+
 export async function dispatchImmediateAlerts(
   candidates: readonly CandidateEntry[],
   ctx: DispatchContext,
-  deps: ImmediateRiskAlertsDeps = createDefaultDeps()
+  deps: ImmediateRiskAlertsDeps = createDefaultDeps(),
+  overrides: DispatchOverrides = {}
 ): Promise<DispatchSummary> {
   const summary: DispatchSummary = {
     trigger: ctx.trigger,
@@ -223,6 +309,8 @@ export async function dispatchImmediateAlerts(
     watchlistSize: 0,
     candidatesEvaluated: candidates.length,
     suppressed: 0,
+    deduped: 0,
+    rejected: 0,
     tasksAttempted: 0,
     tasksCreated: 0,
     tasksFailed: 0,
@@ -231,15 +319,28 @@ export async function dispatchImmediateAlerts(
 
   if (candidates.length === 0) return summary;
 
-  const subjects = await deps.loadWatchlist();
+  const subjects = overrides.subjects ?? (await deps.loadWatchlist());
   summary.watchlistSize = subjects.length;
   if (subjects.length === 0) return summary;
 
   const projectGid = deps.env('ASANA_SCREENINGS_PROJECT_GID') || DEFAULT_SCREENINGS_PROJECT_GID;
   const generatedAtIso = deps.now().toISOString();
+  const dayKey = dedupKeyForDay(generatedAtIso);
+
+  // Load the dedup fingerprints once at the start; mutate and save at
+  // the end so every dispatched alert is remembered across the entire
+  // cron run (and re-runs on the same day).
+  const ownsFingerprints = overrides.fingerprints === undefined;
+  const seenFingerprints = overrides.fingerprints ?? (await deps.loadDispatchFingerprints());
+  const newlyFingerprinted = new Set<string>();
 
   for (const subject of subjects) {
     for (const candidate of candidates) {
+      if (!isValidCandidate(candidate)) {
+        summary.rejected += 1;
+        continue;
+      }
+
       const score = scoreHitAgainstProfile(
         {
           listEntryName: candidate.primaryName,
@@ -255,6 +356,12 @@ export async function dispatchImmediateAlerts(
 
       if (!shouldDispatch(subject, candidate, score)) {
         summary.suppressed += 1;
+        continue;
+      }
+
+      const fp = dispatchFingerprint(subject.id, candidate, dayKey);
+      if (seenFingerprints.has(fp)) {
+        summary.deduped += 1;
         continue;
       }
 
@@ -280,6 +387,14 @@ export async function dispatchImmediateAlerts(
         tags: task.tags,
       });
 
+      // Mark the fingerprint as seen the moment the task is posted —
+      // even on Asana failure — so a retry of the same cron doesn't
+      // fire two Asana tasks for the same event. A failed task is
+      // surfaced via summary.tasksFailed + tasks[].error; the MLRO
+      // sees the failure and can re-dispatch manually if needed.
+      seenFingerprints.add(fp);
+      newlyFingerprinted.add(fp);
+
       const record: DispatchTaskRecord = {
         subjectId: subject.id,
         subjectName: subject.subjectName,
@@ -296,6 +411,13 @@ export async function dispatchImmediateAlerts(
       if (res.ok) summary.tasksCreated += 1;
       else summary.tasksFailed += 1;
     }
+  }
+
+  // Persist the fingerprint set only if we own it; when the caller
+  // passes a shared set (cron batch across sources) they will persist
+  // once at the end of the batch.
+  if (ownsFingerprints && newlyFingerprinted.size > 0) {
+    await deps.saveDispatchFingerprints(seenFingerprints);
   }
 
   return summary;

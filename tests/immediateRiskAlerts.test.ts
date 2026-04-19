@@ -41,6 +41,8 @@ function makeDeps(overrides: Partial<ImmediateRiskAlertsDeps>): ImmediateRiskAle
     postTask: vi.fn(async () => ({ ok: true, gid: 'task-1' })),
     env: () => 'PROJ-GID',
     now: () => FIXED_NOW,
+    loadDispatchFingerprints: vi.fn(async () => new Set<string>()),
+    saveDispatchFingerprints: vi.fn(async () => {}),
     ...overrides,
   };
 }
@@ -288,6 +290,168 @@ describe('dispatchImmediateAlerts', () => {
     };
     await dispatchImmediateAlerts([candidate], CTX, deps);
     expect(postTask.mock.calls[0]![0].projects).toEqual(['1213759768596515']);
+  });
+
+  it('suppresses a same-day duplicate via the dispatch-fingerprint cache', async () => {
+    // Pre-seed the cache with the exact fingerprint we're about to produce
+    // so the second dispatch attempt for the same (subject, list, ref,
+    // changeType, day) is skipped. This is the retry-idempotency guarantee
+    // that protects the Asana project from duplicate tasks when the cron
+    // re-runs on an already-processed delta.
+    const dayIso = FIXED_NOW.toISOString().slice(0, 10);
+    const preSeeded = new Set<string>([['CUS-42', 'UN', 'QDi.123', 'NEW', dayIso].join('|')]);
+    const postTask = vi.fn(async () => ({ ok: true, gid: 'G-dup' }));
+    const saveFp = vi.fn(async () => {});
+    const deps = makeDeps({
+      loadWatchlist: vi.fn(async () => [PINNED_UN_SUBJECT]),
+      postTask,
+      loadDispatchFingerprints: vi.fn(async () => preSeeded),
+      saveDispatchFingerprints: saveFp,
+    });
+    const candidate: CandidateEntry = {
+      list: 'UN',
+      reference: 'QDi.123',
+      primaryName: 'Mohamed Ahmed',
+      dateOfBirth: '12/03/1982',
+      nationality: 'AE',
+      changeType: 'NEW',
+    };
+    const res = await dispatchImmediateAlerts([candidate], CTX, deps);
+    expect(res.deduped).toBe(1);
+    expect(res.tasksAttempted).toBe(0);
+    expect(postTask).not.toHaveBeenCalled();
+    // Nothing new was dispatched, so the fingerprint set didn't grow and
+    // we don't write it back — saves one blob RTT per dedup-only pass.
+    expect(saveFp).not.toHaveBeenCalled();
+  });
+
+  it('rejects candidates with a malformed changeType', async () => {
+    const postTask = vi.fn(async () => ({ ok: true, gid: 'GX' }));
+    const deps = makeDeps({
+      loadWatchlist: vi.fn(async () => [PINNED_UN_SUBJECT]),
+      postTask,
+    });
+    // Cast through unknown: the compile-time type forbids this, but the
+    // runtime must still reject it because external callers (cron,
+    // adverse-media hot ingest) aren't TypeScript-checked at the boundary.
+    const bad = {
+      list: 'UN',
+      reference: 'QDi.123',
+      primaryName: 'Mohamed Ahmed',
+      changeType: 'REMOVED', // not one of NEW/AMENDMENT/DELISTING
+    } as unknown as CandidateEntry;
+    const res = await dispatchImmediateAlerts([bad], CTX, deps);
+    expect(res.rejected).toBe(1);
+    expect(res.tasksAttempted).toBe(0);
+    expect(postTask).not.toHaveBeenCalled();
+  });
+
+  it('rejects candidates with an empty list or reference', async () => {
+    const postTask = vi.fn(async () => ({ ok: true, gid: 'GX' }));
+    const deps = makeDeps({
+      loadWatchlist: vi.fn(async () => [PINNED_UN_SUBJECT]),
+      postTask,
+    });
+    const blankList: CandidateEntry = {
+      list: '   ',
+      reference: 'QDi.123',
+      primaryName: 'Mohamed Ahmed',
+      changeType: 'NEW',
+    };
+    const blankRef: CandidateEntry = {
+      list: 'UN',
+      reference: '',
+      primaryName: 'Mohamed Ahmed',
+      changeType: 'NEW',
+    };
+    const blankName: CandidateEntry = {
+      list: 'UN',
+      reference: 'QDi.123',
+      primaryName: '   ',
+      changeType: 'NEW',
+    };
+    const res = await dispatchImmediateAlerts([blankList, blankRef, blankName], CTX, deps);
+    expect(res.rejected).toBe(3);
+    expect(res.tasksAttempted).toBe(0);
+    expect(postTask).not.toHaveBeenCalled();
+  });
+
+  it('uses preloaded subjects override and never calls loadWatchlist', async () => {
+    const loadWatchlist = vi.fn(async () => [] as WatchlistEntry[]);
+    const postTask = vi.fn(async () => ({ ok: true, gid: 'G-ov' }));
+    const deps = makeDeps({ loadWatchlist, postTask });
+    const candidate: CandidateEntry = {
+      list: 'UN',
+      reference: 'QDi.123',
+      primaryName: 'Mohamed Ahmed',
+      dateOfBirth: '12/03/1982',
+      nationality: 'AE',
+      changeType: 'NEW',
+    };
+    const res = await dispatchImmediateAlerts([candidate], CTX, deps, {
+      subjects: [PINNED_UN_SUBJECT],
+    });
+    expect(loadWatchlist).not.toHaveBeenCalled();
+    expect(res.watchlistSize).toBe(1);
+    expect(res.tasksCreated).toBe(1);
+  });
+
+  it('uses shared fingerprints override and never calls saveDispatchFingerprints', async () => {
+    // The cron passes a shared Set across multiple sources so fingerprints
+    // written while processing UN are visible when OFAC runs a moment
+    // later — single save at the end of the batch, not per call.
+    const shared = new Set<string>();
+    const saveFp = vi.fn(async () => {});
+    const loadFp = vi.fn(async () => new Set<string>());
+    const postTask = vi.fn(async () => ({ ok: true, gid: 'G-sh' }));
+    const deps = makeDeps({
+      loadWatchlist: vi.fn(async () => [PINNED_UN_SUBJECT]),
+      postTask,
+      loadDispatchFingerprints: loadFp,
+      saveDispatchFingerprints: saveFp,
+    });
+    const candidate: CandidateEntry = {
+      list: 'UN',
+      reference: 'QDi.123',
+      primaryName: 'Mohamed Ahmed',
+      dateOfBirth: '12/03/1982',
+      nationality: 'AE',
+      changeType: 'NEW',
+    };
+    const res = await dispatchImmediateAlerts([candidate], CTX, deps, {
+      fingerprints: shared,
+    });
+    expect(loadFp).not.toHaveBeenCalled();
+    expect(saveFp).not.toHaveBeenCalled();
+    expect(res.tasksCreated).toBe(1);
+    // The shared set was mutated in place so the next dispatch sees it.
+    expect(shared.size).toBe(1);
+  });
+
+  it('marks fingerprint even when Asana post fails (prevents retry duplicates)', async () => {
+    const postTask = vi.fn(async () => ({ ok: false, error: 'Asana 503' }));
+    const shared = new Set<string>();
+    const deps = makeDeps({
+      loadWatchlist: vi.fn(async () => [PINNED_UN_SUBJECT]),
+      postTask,
+    });
+    const candidate: CandidateEntry = {
+      list: 'UN',
+      reference: 'QDi.123',
+      primaryName: 'Mohamed Ahmed',
+      dateOfBirth: '12/03/1982',
+      nationality: 'AE',
+      changeType: 'NEW',
+    };
+    const res = await dispatchImmediateAlerts([candidate], CTX, deps, {
+      fingerprints: shared,
+    });
+    expect(res.tasksAttempted).toBe(1);
+    expect(res.tasksFailed).toBe(1);
+    // Even though the post failed, the fingerprint is persisted so that a
+    // later retry does not produce a second Asana task. The failure is
+    // visible via summary.tasksFailed for MLRO-driven manual re-dispatch.
+    expect(shared.size).toBe(1);
   });
 });
 
