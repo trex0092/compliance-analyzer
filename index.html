@@ -2173,6 +2173,15 @@
           <div class="logo-text">Hawkeye Sterling V2</div>
         </div>
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+          <!-- Company-branch pill (FINE GOLD (BRANCH)) hidden per MLRO request.
+               Element kept in the DOM so app-core.js renderCompanySelectors()
+               and _switchCompanyAndUpdateBar remain wired without a refactor. -->
+          <select
+            id="headerCompanySelect"
+            data-change="_switchCompanyAndUpdateBar"
+            style="display: none"
+            aria-hidden="true"
+          ></select>
           <button
             class="theme-toggle"
             id="themeToggleBtn"
