@@ -269,6 +269,39 @@
         color: var(--muted); letter-spacing: 1px;
       }
 
+      /* Live status pill on each card */
+      .status-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1.5px; text-transform: uppercase;
+        padding: 3px 9px; border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(14, 31, 56, 0.6);
+        color: var(--muted);
+      }
+      .status-pill::before {
+        content: ''; width: 6px; height: 6px; border-radius: 50%;
+        background: var(--muted);
+      }
+      .status-pill[data-state="ok"] { color: var(--sky); border-color: rgba(127, 193, 255, 0.4); }
+      .status-pill[data-state="ok"]::before { background: var(--azure-bright); box-shadow: 0 0 8px var(--azure-bright); }
+      .status-pill[data-state="stale"] { color: var(--ice); border-color: rgba(62, 93, 133, 0.5); }
+      .status-pill[data-state="stale"]::before { background: var(--steel); }
+      .status-pill[data-state="no-data"] { color: var(--muted); }
+      .status-pill[data-state="error"] { color: var(--ice); border-color: rgba(29, 78, 216, 0.5); background: rgba(29, 78, 216, 0.12); }
+      .status-pill[data-state="error"]::before { background: var(--royal); }
+      .status-pill[data-state="loading"]::before { animation: pulse 1s ease-in-out infinite; }
+
+      .live-indicator {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 2px; text-transform: uppercase;
+        color: var(--sky);
+      }
+      .live-indicator .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--azure-bright); box-shadow: 0 0 10px var(--azure-bright); }
+      .live-indicator.stale .dot { background: var(--steel); box-shadow: none; animation: none; }
+      .live-indicator.error .dot { background: var(--royal); }
+
       /* Regulatory footer */
       .reg-strip {
         margin-top: 3rem;
@@ -356,6 +389,10 @@
         <div class="filter-left">
           <span class="section-label">Registered Routines</span>
           <span class="section-count" id="visibleCount">20 / 20</span>
+          <span class="live-indicator" id="liveIndicator" aria-live="polite">
+            <span class="dot"></span>
+            <span id="liveLabel">Loading status…</span>
+          </span>
         </div>
         <div class="cadence-chips" role="tablist" aria-label="Filter by cadence">
           <button class="chip" data-filter="all" aria-pressed="true">All</button>
@@ -418,6 +455,10 @@
         weekly: 'Weekly'
       };
 
+      // Live status keyed by routine id. Populated by fetchLiveStatus().
+      let LIVE_STATUS = {};
+      let ACTIVE_FILTER = 'all';
+
       function humanSchedule(cron) {
         // Minimal cron → human label, blue-dashboard style.
         const map = {
@@ -444,14 +485,18 @@
         const list = filter === 'all' ? ROUTINES : ROUTINES.filter(r => r.cadence === filter);
         document.getElementById('visibleCount').textContent = list.length + ' / ' + ROUTINES.length;
 
-        grid.innerHTML = list.map(r => `
-          <article class="routine" data-cadence="${r.cadence}">
+        grid.innerHTML = list.map(r => {
+          const live = LIVE_STATUS[r.id];
+          const state = live ? live.status : 'loading';
+          const stateLabel = live ? stateLabelFor(live) : 'Loading';
+          return `
+          <article class="routine" data-cadence="${r.cadence}" data-routine="${r.id}">
             <div class="routine-head">
               <h3 class="routine-title">${r.title}</h3>
               <span class="routine-cadence" data-cadence="${r.cadence}">${cadenceLabel[r.cadence]}</span>
             </div>
             <p class="routine-desc">${r.desc}</p>
-            <div class="routine-schedule">⏱ ${humanSchedule(r.schedule)}</div>
+            <div class="routine-schedule">⏱ ${humanSchedule(r.schedule)} · <span class="status-pill" data-state="${state}">${stateLabel}</span></div>
             <div class="routine-meta">
               <div class="meta-cell">
                 <div class="k">Regulation</div>
@@ -463,7 +508,17 @@
               </div>
             </div>
           </article>
-        `).join('');
+        `;
+        }).join('');
+      }
+
+      function stateLabelFor(live) {
+        if (!live) return 'Loading';
+        if (live.status === 'ok') return live.daysAgo === 0 ? 'Ran today' : 'Ran ' + live.daysAgo + 'd ago';
+        if (live.status === 'stale') return live.daysAgo != null ? 'Stale · ' + live.daysAgo + 'd' : 'Stale';
+        if (live.status === 'no-data') return 'No audit yet';
+        if (live.status === 'error') return 'Store unreachable';
+        return 'Loading';
       }
 
       // Summary counts
@@ -480,11 +535,63 @@
         chip.addEventListener('click', () => {
           document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', 'false'));
           chip.setAttribute('aria-pressed', 'true');
-          render(chip.getAttribute('data-filter'));
+          ACTIVE_FILTER = chip.getAttribute('data-filter');
+          render(ACTIVE_FILTER);
         });
       });
 
-      render('all');
+      render(ACTIVE_FILTER);
+
+      // ── Live status wiring ──────────────────────────────────────────
+      function getAuthToken() {
+        try { return localStorage.getItem('auth.token') || ''; } catch { return ''; }
+      }
+
+      function setLiveIndicator(state, label) {
+        const el = document.getElementById('liveIndicator');
+        const lbl = document.getElementById('liveLabel');
+        if (!el || !lbl) return;
+        el.classList.remove('stale', 'error');
+        if (state === 'stale' || state === 'error') el.classList.add(state);
+        lbl.textContent = label;
+      }
+
+      async function fetchLiveStatus() {
+        const token = getAuthToken();
+        if (!token) {
+          setLiveIndicator('error', 'Sign in for live status');
+          return;
+        }
+        try {
+          const res = await fetch('/api/routines-status', {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!res.ok) {
+            setLiveIndicator('error', 'Status ' + res.status);
+            return;
+          }
+          const data = await res.json();
+          LIVE_STATUS = {};
+          (data.routines || []).forEach(r => { LIVE_STATUS[r.id] = r; });
+          const okCount = data.summary?.ok || 0;
+          const total = data.total || (data.routines || []).length;
+          const staleCount = data.summary?.stale || 0;
+          const errCount = data.summary?.error || 0;
+          let summaryLabel = 'Live · ' + okCount + '/' + total + ' healthy';
+          let state = 'ok';
+          if (errCount > 0) { summaryLabel += ' · ' + errCount + ' errors'; state = 'error'; }
+          else if (staleCount > 0) { summaryLabel += ' · ' + staleCount + ' stale'; state = 'stale'; }
+          setLiveIndicator(state, summaryLabel);
+          render(ACTIVE_FILTER);
+        } catch (err) {
+          setLiveIndicator('error', 'Network error');
+        }
+      }
+
+      fetchLiveStatus();
+      // Refresh every 90 seconds while the tab is open.
+      setInterval(() => { if (!document.hidden) fetchLiveStatus(); }, 90_000);
     </script>
   </body>
 </html>
