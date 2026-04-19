@@ -166,12 +166,12 @@
       /* Hero — 2-column grid: copy left, 2×2 status-tile aside right */
       .hero {
         display: grid;
-        grid-template-columns: 1.6fr 1fr;
-        gap: 40px;
-        align-items: center;
-        margin: 10px 0 2.75rem;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 48px;
+        align-items: end;
+        margin: 10px 0 36px;
       }
-      @media (max-width: 920px) {
+      @media (max-width: 900px) {
         .hero { grid-template-columns: 1fr; gap: 28px; }
       }
 
@@ -266,11 +266,12 @@
       .hero-title {
         font-family: 'Playfair Display', serif;
         font-weight: 700;
-        font-size: clamp(44px, 6vw, 76px);
-        line-height: 1.02;
+        font-size: clamp(36px, 4.4vw, 56px);
+        line-height: 1.15;
         letter-spacing: -0.02em;
         color: var(--mist);
         margin: 0 0 1.25rem;
+        padding-bottom: 0.12em;
         background: linear-gradient(180deg, #ffffff 0%, var(--ice) 45%, var(--sky) 100%);
         -webkit-background-clip: text;
         background-clip: text;
