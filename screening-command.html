@@ -538,6 +538,13 @@
       .asana-destination a:hover {
         text-decoration: underline;
       }
+      .subject-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        flex-shrink: 0;
+      }
       .classification {
         font-size: 10px;
         padding: 3px 8px;
@@ -1677,7 +1684,7 @@
     </div>
 
     <!-- Authentication ────────────────────────────────────────────── -->
-    <div class="card auth-card" style="margin-top: 14px">
+    <div class="card auth-card" style="margin-top: 14px; border-color: var(--gold)">
       <h2
         style="
           font-family: 'DM Mono', monospace;
@@ -1709,7 +1716,7 @@
             type="button"
             id="loginBtn"
             class="token-gen-btn"
-            style="flex: 1; color: #22c55e; border-color: #22c55e"
+            style="flex: 1; color: #22c55e; border-color: var(--gold)"
             title="Exchange password for a signed 1-year session token"
           >
             Sign in
@@ -1718,7 +1725,7 @@
             type="button"
             id="logoutBtn"
             class="token-gen-btn"
-            style="flex: 1; color: #ef4444; border-color: #ef4444"
+            style="flex: 1; color: #ef4444; border-color: var(--gold)"
             title="Forget the saved session token and require a new sign-in"
           >
             Sign out
@@ -1806,12 +1813,12 @@
           </div>
         </div>
         <div>
-          <div class="c-h">goAML filing index</div>
+          <div class="c-h">Device / session / screener context</div>
           <div class="c-sub">
-            Full STR / SAR / CTR / DPMSR / CNMR filing history per entity, with filing reference
-            numbers, submission timestamps and UAE FIU acknowledgement receipts &mdash; retained 10
-            years so audit can prove timely filing. FDL No.10/2025 Art.26-27 (filing) &middot;
-            Art.24 (retention).
+            Every screening event binds the MLRO identity, token hash, IP, user-agent, session id
+            and server timestamp to the result &mdash; sealed into an append-only audit record so
+            repudiation is impossible. FDL No.10/2025 Art.20-21 (CO accountability) &middot; Art.24
+            (10-year retention).
           </div>
         </div>
         <div>
@@ -1821,15 +1828,6 @@
             signature, SHA-256 checksum, <i>fetchedAt</i> and <i>listPublishedAt</i> &mdash; so MoE
             / LBMA / internal audit can reproduce the exact data surface that fed any prior
             screening. FATF Rec 22 / 23 traceability.
-          </div>
-        </div>
-        <div>
-          <div class="c-h">Device / session / screener context</div>
-          <div class="c-sub">
-            Every screening event binds the MLRO identity, token hash, IP, user-agent, session id
-            and server timestamp to the result &mdash; sealed into an append-only audit record so
-            repudiation is impossible. FDL No.10/2025 Art.20-21 (CO accountability) &middot; Art.24
-            (10-year retention).
           </div>
         </div>
         <div class="coverage-wide">
@@ -2254,18 +2252,14 @@
           </div>
         </div>
 
-        <div class="row-2">
-          <div>
-            <label for="enrollInWatchlist">Enroll in daily monitoring</label>
-            <select id="enrollInWatchlist">
-              <option value="true" selected>Yes (06:00 / 14:00 UTC)</option>
-              <option value="false">No</option>
-            </select>
-          </div>
-          <div>
-            <label for="notes">Notes</label>
-            <input type="text" id="notes" placeholder="Context for the MLRO" autocomplete="off" />
-          </div>
+        <div>
+          <label for="notes">Notes</label>
+          <input type="text" id="notes" placeholder="Context for the MLRO" autocomplete="off" />
+          <p class="help-text" style="margin-top: 4px">
+            Every screened subject is automatically enrolled in daily monitoring (06:00 / 14:00 UTC)
+            and in immediate sanctions / adverse-media / PEP / UBO alerts. No opt-out (FDL
+            Art.20-21, Cabinet Res 134/2025 Art.19).
+          </p>
         </div>
 
         <p class="help-text" style="margin-top: 6px">
@@ -2607,23 +2601,14 @@
             </select>
           </div>
         </div>
-        <div class="row-2">
-          <div>
-            <label for="tmCommodity">Commodity Type</label>
-            <input
-              type="text"
-              id="tmCommodity"
-              placeholder="e.g. Gold bars, used vehicles, diamonds"
-              autocomplete="off"
-            />
-          </div>
-          <div>
-            <label for="tmEnrollMonitoring">Enroll in daily monitoring</label>
-            <select id="tmEnrollMonitoring">
-              <option value="true" selected>Yes (06:00 / 14:00 UTC)</option>
-              <option value="false">No</option>
-            </select>
-          </div>
+        <div>
+          <label for="tmCommodity">Commodity Type</label>
+          <input
+            type="text"
+            id="tmCommodity"
+            placeholder="e.g. Gold bars, used vehicles, diamonds"
+            autocomplete="off"
+          />
         </div>
         <div>
           <label for="tmNotes">Notes</label>
@@ -2640,7 +2625,7 @@
     </div>
 
     <!-- Watchlist snapshot ────────────────────────────────────────────── -->
-    <div class="card" style="margin-top: 14px">
+    <div class="card" style="margin-top: 14px; border-color: var(--amber)">
       <h2>Active Watchlist <span class="tag">Daily 06:00 / 14:00 UTC</span></h2>
       <p class="help-text">
         Subjects currently enrolled in ongoing monitoring. The scheduled cron screens every entry on
@@ -2648,15 +2633,15 @@
         Subjects you screen above auto-enroll here (unless you opt out).
       </p>
       <div class="stat">
-        <div class="stat-item" style="--stat-color: #22c55e; border-color: #22c55e">
+        <div class="stat-item" style="--stat-color: #22c55e; border-color: var(--gold)">
           <div class="stat-value" id="wlCount">—</div>
           <div class="stat-label">Subjects monitored</div>
         </div>
-        <div class="stat-item" style="--stat-color: #ef4444; border-color: #ef4444">
+        <div class="stat-item" style="--stat-color: #ef4444; border-color: var(--gold)">
           <div class="stat-value" id="wlAlerts">—</div>
           <div class="stat-label">Total alerts lifetime</div>
         </div>
-        <div class="stat-item" style="--stat-color: #3b82f6; border-color: #3b82f6">
+        <div class="stat-item" style="--stat-color: #3b82f6; border-color: var(--gold)">
           <div class="stat-value" id="wlLastRun">—</div>
           <div class="stat-label">Last screened</div>
         </div>

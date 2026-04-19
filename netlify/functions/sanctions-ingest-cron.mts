@@ -41,6 +41,12 @@ import {
   type SanctionsDelta,
 } from '../../src/services/sanctionsIngest';
 import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
+import {
+  createDefaultDeps,
+  dispatchImmediateAlerts,
+  candidatesFromSanctionsDelta,
+  type DispatchSummary,
+} from '../../src/services/immediateRiskAlerts';
 
 const SNAPSHOT_STORE = 'sanctions-snapshots';
 const DELTA_STORE = 'sanctions-deltas';
@@ -191,6 +197,77 @@ async function ingestOne(source: SanctionsSource): Promise<IngestResult> {
   }
 }
 
+/**
+ * Immediate-risk-alert dispatch. For every successful source with a
+ * non-empty delta, score every added/modified/removed entry against
+ * every watched subject and create an Asana task whenever the
+ * identity-match score passes the 'possible' band (or the subject is
+ * pinned to an amended/delisted designation). Runs sequentially per
+ * source so Asana rate limiting is honoured by the client's adaptive
+ * backoff; the per-subject × per-candidate grid is small (watchlist
+ * is typically <100; delta per 15 min is typically <10).
+ *
+ * FDL Art.20-21 requires the CO to see material events immediately.
+ * Cabinet Res 74/2020 Art.4 + EOCN TFS Guidance July 2025 require
+ * freezing within 1-2 hours of a confirmed match — hence the 15-min
+ * cron + immediate Asana task per event.
+ */
+async function dispatchAlertsForResults(results: IngestResult[]): Promise<DispatchSummary[]> {
+  const summaries: DispatchSummary[] = [];
+  const runIdBase = `sanctions-ingest-${new Date().toISOString()}`;
+
+  // Fan-out-safe pattern: load the watchlist + dedup fingerprints ONCE
+  // for the whole cron run, then pass them into each per-source
+  // dispatch. This avoids 6x blob reads per run and closes the race
+  // window where a watchlist update between sources could change which
+  // subjects are evaluated for which delta.
+  const deps = createDefaultDeps();
+  let sharedSubjects: Awaited<ReturnType<typeof deps.loadWatchlist>> = [];
+  let sharedFingerprints: Set<string> = new Set();
+  try {
+    [sharedSubjects, sharedFingerprints] = await Promise.all([
+      deps.loadWatchlist(),
+      deps.loadDispatchFingerprints(),
+    ]);
+  } catch (err) {
+    console.warn('[sanctions-ingest] failed to pre-load watchlist/fingerprints', err);
+  }
+
+  for (const r of results) {
+    if (!r.ok || !r.delta) continue;
+    const { added, modified, removed } = r.delta;
+    if (added.length === 0 && modified.length === 0 && removed.length === 0) continue;
+    const candidates = candidatesFromSanctionsDelta(added, modified, removed);
+    try {
+      const s = await dispatchImmediateAlerts(
+        candidates,
+        {
+          trigger: 'sanctions-ingest',
+          runId: `${runIdBase}::${r.source}`,
+        },
+        deps,
+        { subjects: sharedSubjects, fingerprints: sharedFingerprints }
+      );
+      summaries.push(s);
+    } catch (err) {
+      console.warn('[sanctions-ingest] alert dispatch failed', r.source, err);
+    }
+  }
+
+  // Persist the shared fingerprint set exactly once at the end of the
+  // batch; individual dispatcher calls skipped the save because we
+  // passed them a shared set.
+  if (summaries.some((s) => s.tasksAttempted > 0)) {
+    try {
+      await deps.saveDispatchFingerprints(sharedFingerprints);
+    } catch (err) {
+      console.warn('[sanctions-ingest] failed to persist dispatch fingerprints', err);
+    }
+  }
+
+  return summaries;
+}
+
 export default async (): Promise<Response> => {
   const startedAt = new Date().toISOString();
   const sources: SanctionsSource[] = ['OFAC_SDN', 'OFAC_CONS', 'UN', 'EU', 'UK_OFSI', 'UAE_EOCN'];
@@ -200,6 +277,12 @@ export default async (): Promise<Response> => {
   // timeout (26 s on standard, 900 s on scheduled), so the 30 s per-
   // source fetch must be provisioned on a scheduled runtime.
   const results = await Promise.all(sources.map(ingestOne));
+
+  // After all ingests complete, fire immediate Asana alerts for every
+  // watched subject impacted by any delta. This runs *after* snapshot
+  // + delta persistence so a dispatcher failure never rolls back the
+  // persisted record.
+  const alertSummaries = await dispatchAlertsForResults(results);
 
   const summary = {
     startedAt,
@@ -217,6 +300,22 @@ export default async (): Promise<Response> => {
       error: r.error,
       durationMs: r.durationMs,
     })),
+    alerts: {
+      runs: alertSummaries.length,
+      watchlistSize: alertSummaries[0]?.watchlistSize ?? 0,
+      tasksCreated: alertSummaries.reduce((acc, s) => acc + s.tasksCreated, 0),
+      tasksFailed: alertSummaries.reduce((acc, s) => acc + s.tasksFailed, 0),
+      suppressed: alertSummaries.reduce((acc, s) => acc + s.suppressed, 0),
+      deduped: alertSummaries.reduce((acc, s) => acc + s.deduped, 0),
+      rejected: alertSummaries.reduce((acc, s) => acc + s.rejected, 0),
+      perSource: alertSummaries.map((s) => ({
+        runId: s.runId,
+        tasksCreated: s.tasksCreated,
+        tasksFailed: s.tasksFailed,
+        deduped: s.deduped,
+        rejected: s.rejected,
+      })),
+    },
   };
 
   await writeAudit({ event: 'sanctions_ingest_cron', ...summary });
