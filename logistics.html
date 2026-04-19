@@ -4,216 +4,820 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#050b18" />
     <title>Hawkeye Sterling V2 — Shipments</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
     <style>
       :root {
-        --gold: #c9a84c;
-        --gold-bright: #e6c870;
-        --gold-dim: rgba(201, 168, 76, 0.6);
-        --bg: #0b0b0f;
-        --surface: #14141a;
-        --surface2: #1a1a22;
-        --border: rgba(201, 168, 76, 0.22);
-        --text: #e8e4dc;
-        --muted: #8a8a94;
-        --green: #3da876;
+        /* Blues, top to bottom: ink → midnight → navy → steel → royal → azure → sky → ice */
+        --ink: #030814;
+        --midnight: #050b18;
+        --navy: #0a1628;
+        --navy-2: #0e1f38;
+        --surface: #11284a;
+        --surface-2: #173257;
+        --steel: #3e5d85;
+        --steel-dim: #2a4268;
+        --royal: #1d4ed8;
+        --azure: #2f7dff;
+        --azure-bright: #5ea3ff;
+        --sky: #7fc1ff;
+        --ice: #bcd8f5;
+        --mist: #dceaff;
+        --border: rgba(127, 193, 255, 0.16);
+        --border-strong: rgba(127, 193, 255, 0.38);
+        --glow: rgba(47, 125, 255, 0.55);
+        --muted: #6d87a8;
       }
+
       * {
         box-sizing: border-box;
       }
+
+      html,
       body {
         margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family: 'Montserrat', system-ui, sans-serif;
+        padding: 0;
+      }
+
+      body {
+        background: var(--midnight);
+        color: var(--mist);
+        font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+        font-feature-settings: 'ss01', 'cv11';
       }
+
+      /* Layered ambient gradients — the "sky" depth */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+          radial-gradient(ellipse 80% 60% at 15% 0%, rgba(47, 125, 255, 0.22), transparent 60%),
+          radial-gradient(ellipse 60% 50% at 85% 10%, rgba(29, 78, 216, 0.18), transparent 55%),
+          radial-gradient(ellipse 70% 40% at 50% 100%, rgba(23, 50, 87, 0.55), transparent 60%);
+      }
+
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image:
+          linear-gradient(to right, rgba(127, 193, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(127, 193, 255, 0.035) 1px, transparent 1px);
+        background-size: 56px 56px;
+        mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 40%, transparent 80%);
+        -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 40%, transparent 80%);
+      }
+
       .shell {
-        max-width: 1200px;
+        position: relative;
+        z-index: 1;
+        max-width: 1240px;
         margin: 0 auto;
-        padding: 2.5rem 2rem;
+        padding: 2.5rem 2rem 4rem;
         width: 100%;
         flex: 1;
       }
-      .top {
+
+      /* Top bar */
+      .topbar {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding-bottom: 1.5rem;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 2rem;
+        margin-bottom: 3rem;
       }
+
       .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand-mark {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background:
+          linear-gradient(135deg, var(--azure) 0%, var(--royal) 100%);
+        box-shadow:
+          0 0 0 1px rgba(127, 193, 255, 0.4),
+          0 8px 24px rgba(47, 125, 255, 0.35),
+          inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        position: relative;
+      }
+
+      .brand-mark::after {
+        content: '';
+        position: absolute;
+        inset: 6px;
+        border-radius: 6px;
+        border: 1.5px solid rgba(255, 255, 255, 0.55);
+      }
+
+      .brand-name {
         font-family: 'Playfair Display', serif;
         font-weight: 700;
-        color: var(--gold);
-        font-size: 22px;
-        letter-spacing: 2px;
+        color: var(--mist);
+        font-size: 18px;
+        letter-spacing: 3px;
       }
-      .back-link {
-        color: var(--muted);
-        text-decoration: none;
-        font-size: 12px;
+
+      .brand-sub {
         font-family: 'DM Mono', monospace;
-        letter-spacing: 1.5px;
+        color: var(--steel);
+        font-size: 10px;
+        letter-spacing: 2.5px;
         text-transform: uppercase;
-        border: 1px solid var(--border);
-        padding: 8px 14px;
-        border-radius: 3px;
-        transition: border-color 0.2s, color 0.2s;
+        margin-top: 2px;
       }
-      .back-link:hover {
-        color: var(--gold);
-        border-color: var(--gold);
-      }
-      h1 {
+
+      .back-link {
+        color: var(--ice);
+        text-decoration: none;
+        font-size: 11px;
         font-family: 'DM Mono', monospace;
-        font-size: 14px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        border: 1px solid var(--border-strong);
+        padding: 10px 18px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(14, 31, 56, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        transition: all 0.25s ease;
+      }
+
+      .back-link:hover {
+        color: var(--mist);
+        border-color: var(--azure-bright);
+        box-shadow: 0 0 0 4px rgba(47, 125, 255, 0.12);
+      }
+
+      /* Hero */
+      .hero {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 48px;
+        align-items: end;
+        margin-bottom: 3.5rem;
+      }
+
+      .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
         letter-spacing: 3px;
         text-transform: uppercase;
-        color: var(--gold);
-        margin: 0 0 8px;
+        color: var(--sky);
+        margin-bottom: 1.5rem;
       }
-      .subtitle {
-        color: var(--muted);
-        font-size: 13px;
-        margin: 0 0 2rem;
-        max-width: 720px;
+
+      .hero-eyebrow::before {
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--azure-bright);
+        box-shadow: 0 0 12px var(--azure-bright);
+        animation: pulse 2.2s ease-in-out infinite;
       }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.55; transform: scale(1.25); }
+      }
+
+      .hero-title {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: clamp(44px, 6vw, 76px);
+        line-height: 1.02;
+        letter-spacing: -0.02em;
+        color: var(--mist);
+        margin: 0 0 1.25rem;
+        background: linear-gradient(180deg, #ffffff 0%, var(--ice) 45%, var(--sky) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .hero-title em {
+        font-style: italic;
+        font-weight: 600;
+        color: var(--azure-bright);
+        background: none;
+        -webkit-text-fill-color: var(--azure-bright);
+      }
+
+      .hero-lede {
+        color: var(--ice);
+        font-size: 15px;
+        line-height: 1.65;
+        max-width: 560px;
+        margin: 0;
+        opacity: 0.8;
+      }
+
+      /* Hero side panel — live status */
+      .status-panel {
+        background: linear-gradient(160deg, rgba(23, 50, 87, 0.8) 0%, rgba(10, 22, 40, 0.6) 100%);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1.5rem;
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .status-panel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--azure-bright), transparent);
+      }
+
+      .status-title {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: var(--steel);
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .status-title span:last-child {
+        color: var(--sky);
+      }
+
+      .status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(127, 193, 255, 0.08);
+      }
+
+      .status-row:last-child {
+        border-bottom: 0;
+      }
+
+      .status-label {
+        font-size: 12px;
+        color: var(--ice);
+        letter-spacing: 0.3px;
+      }
+
+      .status-pill {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 1.5px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(47, 125, 255, 0.12);
+        color: var(--azure-bright);
+        border: 1px solid rgba(47, 125, 255, 0.3);
+      }
+
+      .status-pill.ok {
+        background: rgba(94, 163, 255, 0.14);
+        color: var(--sky);
+        border-color: rgba(127, 193, 255, 0.4);
+      }
+
+      /* Section heading */
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 1.75rem;
+      }
+
+      .section-label {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--sky);
+      }
+
+      .section-count {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        color: var(--steel);
+        letter-spacing: 2px;
+      }
+
+      /* Card grid — bento layout */
       .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 18px;
-        margin-top: 1.5rem;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 20px;
       }
+
       .card {
-        background: var(--surface);
+        grid-column: span 4;
+        position: relative;
+        padding: 2rem 1.75rem 1.75rem;
+        background: linear-gradient(180deg, rgba(14, 31, 56, 0.85) 0%, rgba(10, 22, 40, 0.95) 100%);
         border: 1px solid var(--border);
-        border-radius: 4px;
-        padding: 1.6rem 1.4rem;
+        border-radius: 18px;
         text-decoration: none;
         color: inherit;
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        position: relative;
-        transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+        gap: 14px;
+        overflow: hidden;
+        transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+          border-color 0.3s ease,
+          box-shadow 0.4s ease;
+        isolation: isolate;
       }
+
+      .card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: radial-gradient(
+          600px circle at var(--mx, 50%) var(--my, 0%),
+          rgba(47, 125, 255, 0.18),
+          transparent 45%
+        );
+        opacity: 0;
+        transition: opacity 0.4s ease;
+      }
+
+      .card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20%;
+        right: 20%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(127, 193, 255, 0.55), transparent);
+        opacity: 0.6;
+      }
+
       .card:hover {
-        border-color: var(--gold);
-        transform: translateY(-2px);
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        transform: translateY(-4px);
+        border-color: var(--border-strong);
+        box-shadow:
+          0 24px 60px -20px rgba(47, 125, 255, 0.35),
+          0 0 0 1px rgba(127, 193, 255, 0.2);
       }
-      .card .icon {
-        font-size: 26px;
+
+      .card:hover::before {
+        opacity: 1;
       }
-      .card .title {
+
+      .card-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 100%);
+        border: 1px solid var(--border-strong);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow:
+          inset 0 1px 0 rgba(127, 193, 255, 0.2),
+          0 6px 16px rgba(5, 11, 24, 0.5);
+      }
+
+      .card-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--steel);
+      }
+
+      .card-meta .dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--azure-bright);
+        box-shadow: 0 0 8px var(--azure-bright);
+      }
+
+      .card-title {
+        font-family: 'Playfair Display', serif;
         font-weight: 700;
-        letter-spacing: 1.2px;
-        color: var(--gold);
-        font-family: 'DM Mono', monospace;
+        font-size: 24px;
+        color: var(--mist);
+        letter-spacing: -0.01em;
+        margin: 0;
+        line-height: 1.15;
+      }
+
+      .card-desc {
+        color: var(--ice);
         font-size: 13px;
-        text-transform: uppercase;
+        line-height: 1.6;
+        opacity: 0.72;
+        margin: 0;
       }
-      .card .desc {
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.55;
-      }
-      .card .cta {
-        margin-top: auto;
-        padding-top: 10px;
+
+      .card-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 6px;
+        padding-top: 14px;
         border-top: 1px solid var(--border);
-        font-size: 11px;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: var(--gold-bright);
+      }
+
+      .stat {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .stat-val {
         font-family: 'DM Mono', monospace;
+        font-weight: 500;
+        color: var(--sky);
+        font-size: 18px;
+        letter-spacing: 0.5px;
       }
-      .reg {
-        margin-top: 2.5rem;
-        padding: 1rem 1.2rem;
-        background: var(--surface2);
-        border-left: 3px solid var(--gold-dim);
-        border-radius: 3px;
+
+      .stat-key {
+        font-family: 'DM Mono', monospace;
+        font-size: 9px;
+        letter-spacing: 1.8px;
+        text-transform: uppercase;
+        color: var(--steel);
+      }
+
+      .card-cta {
+        margin-top: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        font-family: 'DM Mono', monospace;
         font-size: 11px;
-        color: var(--muted);
-        line-height: 1.65;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--azure-bright);
       }
+
+      .card-cta-arrow {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 1px solid var(--border-strong);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.3s ease, transform 0.3s ease;
+      }
+
+      .card:hover .card-cta-arrow {
+        background: var(--azure);
+        border-color: var(--azure);
+        color: #fff;
+        transform: translateX(4px);
+      }
+
+      /* Regulatory strip */
+      .reg-strip {
+        margin-top: 3.5rem;
+        padding: 1.75rem 2rem;
+        background: linear-gradient(180deg, rgba(14, 31, 56, 0.5) 0%, rgba(10, 22, 40, 0.3) 100%);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 28px;
+        align-items: center;
+      }
+
+      .reg-badge {
+        width: 58px;
+        height: 58px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--royal) 0%, var(--azure) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: 22px;
+        color: #fff;
+        box-shadow:
+          0 0 0 1px rgba(127, 193, 255, 0.4),
+          0 10px 28px rgba(29, 78, 216, 0.4);
+      }
+
+      .reg-body .reg-title {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--sky);
+        margin-bottom: 8px;
+      }
+
+      .reg-body .reg-text {
+        font-size: 12.5px;
+        line-height: 1.7;
+        color: var(--ice);
+        opacity: 0.78;
+      }
+
+      .reg-body .reg-text strong {
+        color: var(--mist);
+        font-weight: 600;
+      }
+
+      /* Footer */
       .footer {
+        position: relative;
+        z-index: 1;
+        padding: 2rem;
         text-align: center;
-        padding: 2rem 1rem;
-        font-size: 11px;
-        color: var(--muted);
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        max-width: 1240px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      .footer-text {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--steel);
+      }
+
+      /* Responsive */
+      @media (max-width: 980px) {
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 32px;
+        }
+        .card {
+          grid-column: span 6;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .shell {
+          padding: 2rem 1.25rem 3rem;
+        }
+        .card {
+          grid-column: span 12;
+        }
+        .topbar {
+          margin-bottom: 2rem;
+        }
+        .hero {
+          margin-bottom: 2.25rem;
+        }
+        .reg-strip {
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+        .footer {
+          flex-direction: column;
+          text-align: center;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="shell">
-      <div class="top">
-        <div class="brand">HAWKEYE STERLING V2</div>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div>
+            <div class="brand-name">HAWKEYE STERLING</div>
+            <div class="brand-sub">V2 · Compliance Suite</div>
+          </div>
+        </div>
         <a href="index.html" class="back-link">&larr; Main App</a>
-      </div>
+      </header>
 
-      <h1>SHIPMENTS</h1>
-      <p class="subtitle">
-        Inbound (IAR), in-transit tracking, and local-movement logs for every
-        active entity. Each section maps to a distinct regulatory obligation and
-        produces its own audit trail.
-      </p>
+      <section class="hero">
+        <div>
+          <div class="hero-eyebrow">Shipments Control Tower</div>
+          <h1 class="hero-title">
+            Every gram, <em>tracked</em>.<br />Every shipment, accounted for.
+          </h1>
+          <p class="hero-lede">
+            Inbound advice, in-transit custody, and intra-UAE movement — unified under one
+            audit-ready workspace. Each surface below maps to a distinct regulatory
+            obligation and produces its own evidentiary trail.
+          </p>
+        </div>
+
+        <aside class="status-panel" aria-label="Shipments live status">
+          <div class="status-title">
+            <span>Live Status</span>
+            <span id="liveClock">—</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Inbound queue</span>
+            <span class="status-pill ok">Operational</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">In-transit monitoring</span>
+            <span class="status-pill ok">Real-time</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Local movements</span>
+            <span class="status-pill ok">Logged</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Audit trail</span>
+            <span class="status-pill">10 yr retention</span>
+          </div>
+        </aside>
+      </section>
+
+      <div class="section-head">
+        <span class="section-label">Regulated Surfaces</span>
+        <span class="section-count">03 / 03</span>
+      </div>
 
       <div class="grid">
         <a class="card" href="index.html#shipments" data-route="shipments">
-          <span class="icon">🚚</span>
-          <span class="title">IAR Shipments</span>
-          <span class="desc">
-            Inbound Advice of Receipt — every incoming shipment recorded against
-            the relevant supplier, invoice, assay, and Dubai Customs / Brinks
-            paperwork. Primary control for supply-chain traceability.
-          </span>
-          <span class="cta">Open &rarr;</span>
+          <div class="card-icon" aria-hidden="true">🚚</div>
+          <div class="card-meta">
+            <span class="dot"></span>
+            <span>Module 01 · IAR</span>
+          </div>
+          <h2 class="card-title">Inbound Advice</h2>
+          <p class="card-desc">
+            Every incoming shipment recorded against supplier, invoice, assay, and
+            Dubai Customs / Brinks paperwork. Primary control for supply-chain
+            traceability.
+          </p>
+          <div class="card-stats">
+            <div class="stat">
+              <span class="stat-val">10 yr</span>
+              <span class="stat-key">Retention</span>
+            </div>
+            <div class="stat">
+              <span class="stat-val">Auto</span>
+              <span class="stat-key">Assay log</span>
+            </div>
+          </div>
+          <div class="card-cta">
+            <span>Open module</span>
+            <span class="card-cta-arrow" aria-hidden="true">&rarr;</span>
+          </div>
         </a>
 
         <a class="card" href="index.html#tracking" data-route="tracking">
-          <span class="icon">✈️</span>
-          <span class="title">Tracking</span>
-          <span class="desc">
+          <div class="card-icon" aria-hidden="true">✈️</div>
+          <div class="card-meta">
+            <span class="dot"></span>
+            <span>Module 02 · In-Transit</span>
+          </div>
+          <h2 class="card-title">Tracking</h2>
+          <p class="card-desc">
             Live in-transit status, ETA, carrier, and custody handovers for every
-            shipment currently on the move. Flags deviations from the declared
-            routing.
-          </span>
-          <span class="cta">Open &rarr;</span>
+            shipment on the move. Flags any deviation from the declared routing.
+          </p>
+          <div class="card-stats">
+            <div class="stat">
+              <span class="stat-val">Live</span>
+              <span class="stat-key">Custody</span>
+            </div>
+            <div class="stat">
+              <span class="stat-val">GPS</span>
+              <span class="stat-key">Deviation</span>
+            </div>
+          </div>
+          <div class="card-cta">
+            <span>Open module</span>
+            <span class="card-cta-arrow" aria-hidden="true">&rarr;</span>
+          </div>
         </a>
 
         <a class="card" href="index.html#localshipments" data-route="localshipments">
-          <span class="icon">📦</span>
-          <span class="title">Local Shipments</span>
-          <span class="desc">
-            Intra-UAE and counter-to-counter transfers, including same-day
-            movements between branches or to refiner / vault counterparties.
-            Ties into the DPMS CTR threshold (AED 55,000) where applicable.
-          </span>
-          <span class="cta">Open &rarr;</span>
+          <div class="card-icon" aria-hidden="true">📦</div>
+          <div class="card-meta">
+            <span class="dot"></span>
+            <span>Module 03 · Local</span>
+          </div>
+          <h2 class="card-title">Local Shipments</h2>
+          <p class="card-desc">
+            Intra-UAE and counter-to-counter transfers — same-day movements between
+            branches, refiners, and vault counterparties. Ties into the DPMS CTR
+            threshold (AED 55,000).
+          </p>
+          <div class="card-stats">
+            <div class="stat">
+              <span class="stat-val">AED 55K</span>
+              <span class="stat-key">CTR trigger</span>
+            </div>
+            <div class="stat">
+              <span class="stat-val">goAML</span>
+              <span class="stat-key">Auto-file</span>
+            </div>
+          </div>
+          <div class="card-cta">
+            <span>Open module</span>
+            <span class="card-cta-arrow" aria-hidden="true">&rarr;</span>
+          </div>
         </a>
       </div>
 
-      <div class="reg">
-        <strong style="color: var(--gold); letter-spacing: 1.2px">Regulatory basis.</strong>
-        MoE Circular 08/AML/2021 (DPMS record-keeping) &middot; FDL No.10/2025
-        Art.24 (10-year retention) &middot; Cabinet Res 134/2025 Art.16
-        (cross-border cash AED 60,000) &middot; LBMA RGG v9 &middot; UAE MoE RSG
-        framework (origin traceability).
+      <div class="reg-strip" role="note">
+        <div class="reg-badge" aria-hidden="true">§</div>
+        <div class="reg-body">
+          <div class="reg-title">Regulatory Basis</div>
+          <div class="reg-text">
+            <strong>MoE Circular 08/AML/2021</strong> (DPMS record-keeping) ·
+            <strong>FDL No.10/2025 Art.24</strong> (10-year retention) ·
+            <strong>Cabinet Res 134/2025 Art.16</strong> (cross-border cash AED 60,000) ·
+            <strong>LBMA RGG v9</strong> ·
+            <strong>UAE MoE RSG framework</strong> (origin traceability).
+          </div>
+        </div>
       </div>
-    </div>
+    </main>
 
-    <div class="footer">&copy; 2026 Hawkeye Sterling. All rights reserved.</div>
+    <footer class="footer">
+      <span class="footer-text">© 2026 Hawkeye Sterling</span>
+      <span class="footer-text">Confidential · Audit-ready</span>
+    </footer>
+
+    <script>
+      // Live clock in the status panel
+      (function () {
+        var el = document.getElementById('liveClock');
+        if (!el) return;
+        function tick() {
+          var now = new Date();
+          var hh = String(now.getUTCHours()).padStart(2, '0');
+          var mm = String(now.getUTCMinutes()).padStart(2, '0');
+          el.textContent = hh + ':' + mm + ' UTC';
+        }
+        tick();
+        setInterval(tick, 30_000);
+      })();
+
+      // Card cursor-follow glow
+      (function () {
+        var cards = document.querySelectorAll('.card');
+        cards.forEach(function (card) {
+          card.addEventListener('pointermove', function (e) {
+            var rect = card.getBoundingClientRect();
+            var x = ((e.clientX - rect.left) / rect.width) * 100;
+            var y = ((e.clientY - rect.top) / rect.height) * 100;
+            card.style.setProperty('--mx', x + '%');
+            card.style.setProperty('--my', y + '%');
+          });
+        });
+      })();
+    </script>
   </body>
 </html>
