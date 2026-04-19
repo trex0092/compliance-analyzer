@@ -39,6 +39,35 @@
   status = 200
   force = true
 
+# Clean-URL rewrites for landing pages (belt-and-suspenders so the URLs
+# work even if the site's Pretty URLs asset-optimization setting is off
+# or temporarily flaky). Status 200 rewrites serve the .html body while
+# keeping the clean URL in the address bar.
+[[redirects]]
+  from = "/workbench"
+  to = "/workbench.html"
+  status = 200
+
+[[redirects]]
+  from = "/logistics"
+  to = "/logistics.html"
+  status = 200
+
+[[redirects]]
+  from = "/routines"
+  to = "/routines.html"
+  status = 200
+
+[[redirects]]
+  from = "/compliance-ops"
+  to = "/compliance-ops.html"
+  status = 200
+
+[[redirects]]
+  from = "/screening-command"
+  to = "/screening-command.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
