@@ -558,6 +558,110 @@
         padding: 12px 16px;
         transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
       }
+      /* STR Case Management */
+      .str-card {
+        padding: 18px 22px;
+        background: linear-gradient(180deg, rgba(40, 28, 10, 0.45) 0%, rgba(28, 18, 6, 0.6) 100%);
+      }
+      .str-top {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+      .str-title {
+        font-family: 'DM Mono', monospace;
+        font-size: 13px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--gold) !important;
+        margin: 0 !important;
+      }
+      .str-cite {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 1px;
+        color: var(--muted);
+        text-align: center;
+      }
+      .str-new-btn {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--azure-bright);
+        border: 1px solid var(--azure);
+        background: rgba(47, 125, 255, 0.1);
+        padding: 8px 14px;
+        border-radius: 6px;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all 0.15s ease;
+      }
+      .str-new-btn:hover {
+        background: rgba(47, 125, 255, 0.22);
+        color: #fff;
+      }
+      .str-conf-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        background: rgba(217, 79, 79, 0.1);
+        border: 1px solid rgba(217, 79, 79, 0.4);
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #f87171;
+      }
+      .str-conf-icon { font-size: 14px; line-height: 1; margin-top: 1px; }
+      .str-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .str-metric {
+        padding: 18px 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(10, 10, 14, 0.55);
+        text-align: center;
+      }
+      .str-m-num {
+        font-family: 'Playfair Display', serif;
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .str-m-lbl {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .str-m-draft .str-m-num { color: #ef4444; }
+      .str-m-review .str-m-num { color: #f59e0b; }
+      .str-m-pending .str-m-num { color: #3b82f6; }
+      .str-m-filed .str-m-num { color: #22c55e; }
+      .str-empty {
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+        padding: 1.5rem 0 0.5rem;
+        margin: 0;
+      }
+      .str-empty.hidden { display: none; }
+      @media (max-width: 720px) {
+        .str-top { grid-template-columns: 1fr; text-align: center; }
+        .str-cite { text-align: center; }
+        .str-metrics { grid-template-columns: repeat(2, 1fr); }
+      }
+
       .brain-strip-card {
         display: grid;
         grid-template-columns: auto 1fr auto auto auto;
@@ -1807,6 +1911,46 @@
           /* swallow — banner is best-effort */
         }
       })();
+
+      // STR Case Management — live counts from localStorage (fgl_str_cases_v2).
+      // Confidentiality notice + counts + deep-link to the full case workspace
+      // in compliance-suite.js (#str tab) are the only things rendered here.
+      // FDL No.(10)/2025 Art.26-27 (STR filing) + Art.21 (no tipping off).
+      (function () {
+        try {
+          var raw = null;
+          try {
+            raw = localStorage.getItem('fgl_str_cases_v2');
+          } catch (_) {
+            return;
+          }
+          var cases = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(cases)) cases = [];
+          var counts = { draft: 0, review: 0, pending: 0, filed: 0 };
+          cases.forEach(function (c) {
+            var s = (c && c.status) || 'Draft';
+            if (s === 'Draft') counts.draft++;
+            else if (s === 'Under Review') counts.review++;
+            else if (s.indexOf('Pending Filing') !== -1 || s.indexOf('Approved') === 0) counts.pending++;
+            else if (s.indexOf('Filed') !== -1) counts.filed++;
+          });
+          var setNum = function (id, n) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = String(n);
+          };
+          setNum('strCountDraft', counts.draft);
+          setNum('strCountReview', counts.review);
+          setNum('strCountPending', counts.pending);
+          setNum('strCountFiled', counts.filed);
+          var empty = document.getElementById('strEmpty');
+          if (empty) {
+            if (cases.length > 0) empty.classList.add('hidden');
+            else empty.classList.remove('hidden');
+          }
+        } catch (_) {
+          /* swallow — STR counts are best-effort */
+        }
+      })();
     </script>
     <section class="hero">
       <div>
@@ -2731,6 +2875,53 @@
         <div id="tmMsg"></div>
         <div id="tmResult" style="margin-top: 14px"></div>
       </div>
+    </div>
+
+    <!-- STR Case Management (centre of page, between RUN SCREENING and ACTIVE WATCHLIST) -->
+    <div class="card str-card" style="margin-top: 14px; border-color: var(--gold)">
+      <div class="str-top">
+        <h2 class="str-title">STR Case Management</h2>
+        <span class="str-cite">
+          UAE FDL No.(10) of 2025 Art.26-27 | goAML | FATF Rec.20 | File WITHOUT DELAY upon suspicion
+        </span>
+        <a
+          id="strNewCaseBtn"
+          href="index.html#str"
+          class="str-new-btn"
+          title="Open STR case file in the full compliance suite"
+        >
+          + New STR Case
+        </a>
+      </div>
+      <div class="str-conf-notice" role="alert">
+        <span class="str-conf-icon" aria-hidden="true">&#9888;</span>
+        <span>
+          <b>CONFIDENTIALITY NOTICE:</b> STR information is strictly confidential. Tipping off a
+          subject is a criminal offence under UAE FDL No.(10) of 2025 Art.21. Do not disclose to any
+          person that a report has been or will be filed.
+        </span>
+      </div>
+      <div class="str-metrics" id="strMetrics">
+        <div class="str-metric str-m-draft">
+          <div class="str-m-num" id="strCountDraft">0</div>
+          <div class="str-m-lbl">Draft</div>
+        </div>
+        <div class="str-metric str-m-review">
+          <div class="str-m-num" id="strCountReview">0</div>
+          <div class="str-m-lbl">Under Review</div>
+        </div>
+        <div class="str-metric str-m-pending">
+          <div class="str-m-num" id="strCountPending">0</div>
+          <div class="str-m-lbl">Pending Filing</div>
+        </div>
+        <div class="str-metric str-m-filed">
+          <div class="str-m-num" id="strCountFiled">0</div>
+          <div class="str-m-lbl">Filed</div>
+        </div>
+      </div>
+      <p class="str-empty" id="strEmpty">
+        No STR cases. Click &ldquo;+ New STR Case&rdquo; to begin investigation.
+      </p>
     </div>
 
     <!-- Watchlist snapshot ────────────────────────────────────────────── -->
