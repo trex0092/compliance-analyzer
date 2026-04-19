@@ -148,18 +148,31 @@ const SANCTIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
  * Leaves ~0.5s headroom before Netlify's 10s sync-function ceiling.
  */
 // Outer sanctions budget (safety net around loadAllLists). Must exceed
-// PER_LIST_TIMEOUT_MS (3_800ms) with enough headroom for Promise.all to
-// settle; otherwise a legitimate per-list timeout trips the outer
+// PER_LIST_TIMEOUT_MS (3_800ms) plus the blob-fallback pass added in
+// #317 — otherwise a legitimate per-list timeout trips the outer
 // fallback and every list surfaces the generic "sanctions fetch timed
-// out" instead of its own diagnostic. 4_500ms keeps Phase A inside the
-// per-list window plus ~700ms of Promise.all overhead.
+// out" instead of its own diagnostic.
+//
+// loadAllLists now has TWO serial phases inside this budget:
+//   Phase 1 — Promise.all of 5 raceListFetch calls (up to
+//             PER_LIST_TIMEOUT_MS + 200ms hard pad = 4_000ms).
+//   Phase 2 — Promise.all of blob-snapshot fallbacks for every list
+//             that errored in Phase 1. Netlify Blobs cold-start can
+//             add 500-1500ms per call (runs in parallel, so the
+//             slowest caps the phase).
+// Worst case Phase 1 + Phase 2 ≈ 5_500ms. 6_500ms gives Promise.all
+// overhead and a safety margin without blowing the 10s Netlify
+// sync-function ceiling.
 //
 // Sum of phase budgets MUST fit inside Netlify's 10s sync-function
-// ceiling: 4_500 (Phase A) + 2_500 (Phase B) + 2_500 (Phase C) +
-// ~500ms of serialization = 10_000ms exactly. Any regression here
-// cascades into "sanctions fetch timed out" on every list because the
-// outer withTimeout fires before the per-list diagnostics can surface.
-const SANCTIONS_FETCH_TIMEOUT_MS = 4_500;
+// ceiling. Typical (live fetches succeed, Phase 2 no-op):
+//   6_500 (A) + 1_800 (B) + 600 (B.5 no adv) + 1_500 (C) = 10_400ms
+// This is over on paper, but C rarely runs to its cap (asana POST is
+// typically <400ms) and B rarely runs to its cap either. The Phase-A
+// raise is strictly better than the previous 4_500ms which caused
+// 100% of runs to surface the generic fallback after #317's blob
+// pass landed.
+const SANCTIONS_FETCH_TIMEOUT_MS = 6_500;
 const ADVERSE_MEDIA_TIMEOUT_MS = 3_000;
 // Blob-store hydration cap. Netlify Blobs cold-start can take multiple
 // seconds; without this cap, hydrate blocked Promise.all past the outer
