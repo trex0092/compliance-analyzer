@@ -180,6 +180,19 @@ const ADVERSE_MEDIA_TIMEOUT_MS = 3_000;
 // best-effort (UAE_EOCN's fetchUAESanctionsList raises its own Art.35
 // "cache empty" error if hydrate skipped), so a tight cap is safe.
 const HYDRATE_TIMEOUT_MS = 1_200;
+// Blob-snapshot fallback cap for Phase 2. When a live list fetch errors
+// in Phase 1 we retry against the cron-produced snapshot in
+// `sanctions-snapshots`. Each read is a Netlify Blobs list + get; cold
+// start can add 1_000-2_000ms per read, and up to 4 lists can fall
+// through to this phase in parallel. Worst-case the slowest caps the
+// phase — budget here must leave headroom under
+// SANCTIONS_FETCH_TIMEOUT_MS (6_500ms) after Phase 1
+// (max PER_LIST_TIMEOUT_MS + 200ms ≈ 4_000ms) so the outer withTimeout
+// still sees a result. If a fallback exceeds the cap, we preserve the
+// original live-fetch error rather than surfacing the generic "timed
+// out" outer fallback — the MLRO sees the per-list cause, not an opaque
+// blanket message.
+const BLOB_FALLBACK_TIMEOUT_MS = 2_000;
 // Deep brain deadline tuned so the reasoner stays inside Phase B
 // without starving Phase B.5 (weaponized + optional advisor) or Phase
 // C. Sits inside the 10s Netlify sync ceiling alongside the other
@@ -892,8 +905,18 @@ async function loadAllLists(): Promise<ListSnapshot> {
   // "cache empty" message (which raceListFetch surfaces as that list's
   // error) — strictly better than silently-wiped per-list diagnostics.
   const proxy = process.env.HAWKEYE_SANCTIONS_PROXY_URL;
+  // raceHydrate() caps hydrate at HYDRATE_TIMEOUT_MS (1_200ms). Without
+  // this wrapper, Netlify Blobs cold-start on store.list() + store.get()
+  // + the UN-fallback loadBlobSnapshot inside hydrateUaeSanctionsFromBlob
+  // routinely took 3-6s, blowing past SANCTIONS_FETCH_TIMEOUT_MS
+  // (6_500ms) via the shared Promise.all barrier and forcing every
+  // list onto the generic "sanctions fetch timed out" outer fallback
+  // instead of the per-list diagnostic. raceHydrate was defined for
+  // exactly this purpose but was never wired into the fan-out — the
+  // symptom the MLRO dashboard reports as five "timed out" rows on
+  // /screening-command.html. FDL Art.20-21 + Cabinet Res 74/2020 Art.4.
   const [, ...rawLists] = await Promise.all([
-    hydrateUaeSanctionsFromBlob(),
+    raceHydrate(),
     raceListFetch('UN', (signal, timeoutMs) => fetchUNSanctionsList(proxy, { signal, timeoutMs })),
     raceListFetch('OFAC', (signal, timeoutMs) => fetchOFACSanctionsList(proxy, { signal, timeoutMs })),
     raceListFetch('EU', (signal, timeoutMs) => fetchEUSanctionsList(proxy, { signal, timeoutMs })),
@@ -923,7 +946,21 @@ async function loadAllLists(): Promise<ListSnapshot> {
       if (!result.error || result.name === 'UAE_EOCN') return result;
       const blobKey = BLOB_FALLBACK_SOURCES[result.name as keyof typeof BLOB_FALLBACK_SOURCES];
       if (!blobKey) return result;
-      const fallback = await loadBlobSnapshot(blobKey, result.name);
+      // Cap the blob-snapshot read so cold-start latency on up to 4
+      // parallel fallback reads can't push this phase past the outer
+      // SANCTIONS_FETCH_TIMEOUT_MS. If the cap fires we preserve the
+      // original live-fetch error so the MLRO sees the per-list cause
+      // rather than the generic outer-fallback message.
+      let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+      const fallbackTimeout = new Promise<null>((resolve) => {
+        fallbackTimer = setTimeout(() => resolve(null), BLOB_FALLBACK_TIMEOUT_MS);
+      });
+      let fallback: SanctionsEntry[] | null;
+      try {
+        fallback = await Promise.race([loadBlobSnapshot(blobKey, result.name), fallbackTimeout]);
+      } finally {
+        if (fallbackTimer) clearTimeout(fallbackTimer);
+      }
       if (!fallback) return result;
       return {
         name: result.name,
