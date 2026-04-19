@@ -92,19 +92,28 @@
         margin-bottom: 3rem;
       }
 
-      .brand { display: flex; align-items: center; gap: 14px; }
-      .brand-mark {
-        width: 38px; height: 38px; border-radius: 10px;
-        background: linear-gradient(135deg, var(--azure) 0%, var(--royal) 100%);
-        box-shadow: 0 0 0 1px rgba(127, 193, 255, 0.4), 0 8px 24px rgba(47, 125, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
-        position: relative;
+      .brand { display: flex; align-items: center; gap: 16px; }
+      .header-logo {
+        width: 56px; height: 56px;
+        flex-shrink: 0; border-radius: 10px; display: block;
+        box-shadow:
+          0 0 0 1px rgba(127, 193, 255, 0.4),
+          0 8px 24px rgba(47, 125, 255, 0.35),
+          inset 0 1px 0 rgba(255, 255, 255, 0.18);
       }
-      .brand-mark::after {
-        content: ''; position: absolute; inset: 6px;
-        border-radius: 6px; border: 1.5px solid rgba(255, 255, 255, 0.55);
+      .brand-title {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: clamp(28px, 3.2vw, 42px);
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+        padding-bottom: 0.12em;
+        margin: 0;
+        background: linear-gradient(180deg, #ffffff 0%, var(--ice) 45%, var(--sky) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
-      .brand-name { font-family: 'Playfair Display', serif; font-weight: 700; color: var(--mist); font-size: 18px; letter-spacing: 3px; }
-      .brand-sub { font-family: 'DM Mono', monospace; color: var(--steel); font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 2px; }
 
       .back-link {
         color: var(--ice); text-decoration: none;
@@ -142,13 +151,15 @@
 
       .hero-title {
         font-family: 'Playfair Display', serif; font-weight: 700;
-        font-size: clamp(40px, 5.5vw, 68px); line-height: 1.15;
+        font-size: clamp(36px, 4.4vw, 56px); line-height: 1.15;
         letter-spacing: -0.02em; margin: 0 0 1.25rem;
         padding-bottom: 0.12em;
         background: linear-gradient(180deg, #fff 0%, var(--ice) 45%, var(--sky) 100%);
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
       }
+      .hero-title .nowrap { white-space: nowrap; }
+      @media (max-width: 640px) { .hero-title .nowrap { white-space: normal; } }
       .hero-title em {
         font-style: italic; font-weight: 600; color: var(--azure-bright);
         -webkit-text-fill-color: var(--azure-bright);
@@ -344,11 +355,14 @@
     <main class="shell">
       <header class="topbar">
         <div class="brand">
-          <div class="brand-mark" aria-hidden="true"></div>
-          <div>
-            <div class="brand-name">HAWKEYE STERLING</div>
-            <div class="brand-sub">V2 · Routines Registry</div>
-          </div>
+          <img
+            src="assets/logos/hawkeye-icon.svg"
+            alt="Hawkeye Sterling"
+            class="header-logo"
+            width="56"
+            height="56"
+          />
+          <h1 class="brand-title">Hawkeye Sterling V2 &mdash; Routines Registry</h1>
         </div>
         <a href="index.html" class="back-link">&larr; Main App</a>
       </header>
@@ -357,7 +371,8 @@
         <div>
           <div class="hero-eyebrow">Scheduled Compliance Workflows</div>
           <h1 class="hero-title">
-            Your routines, <em>running</em>.<br />All audit-logged.
+            <span class="nowrap">Your routines, <em>running</em>.</span><br />
+            <span class="nowrap">All audit-logged.</span>
           </h1>
           <p class="hero-lede">
             Every scheduled workflow that keeps this suite compliant — sanctions

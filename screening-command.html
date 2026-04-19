@@ -278,7 +278,7 @@
       .hero-title {
         font-family: 'Playfair Display', serif;
         font-weight: 700;
-        font-size: clamp(40px, 5.5vw, 68px);
+        font-size: clamp(36px, 4.4vw, 56px);
         line-height: 1.15;
         letter-spacing: -0.02em;
         margin: 0 0 1.25rem;
@@ -287,6 +287,14 @@
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
+      }
+      .hero-title .nowrap {
+        white-space: nowrap;
+      }
+      @media (max-width: 640px) {
+        .hero-title .nowrap {
+          white-space: normal;
+        }
       }
       .hero-title em {
         font-style: italic;
@@ -567,8 +575,30 @@
         color: #ff6b6b;
       }
       .auth-card {
-        padding: 20px 22px;
+        padding: 12px 16px;
         transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      }
+      .auth-card h2 {
+        font-size: 11px !important;
+        margin: 0 0 10px !important;
+      }
+      .auth-card label {
+        font-size: 10px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 4px;
+      }
+      .auth-card input[type='password'] {
+        padding: 8px 10px;
+        font-size: 13px;
+        border-radius: 4px;
+        margin-bottom: 6px;
+      }
+      .auth-card .token-gen-btn {
+        padding: 8px 12px;
+        font-size: 11px;
       }
       .auth-card.authenticated {
         background: linear-gradient(135deg, rgba(52, 211, 153, 0.18) 0%, rgba(52, 211, 153, 0.06) 100%);
@@ -1749,7 +1779,8 @@
       <div>
         <div class="hero-eyebrow">Six-List Sanctions Screening</div>
         <h1 class="hero-title">
-          Your subjects, <em>screened</em>.<br />All audit-logged.
+          <span class="nowrap">Your subjects, <em>screened</em>.</span><br />
+          <span class="nowrap">All audit-logged.</span>
         </h1>
       </div>
       <aside class="summary" aria-label="Screening coverage summary">
