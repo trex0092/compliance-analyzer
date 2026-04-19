@@ -674,7 +674,23 @@
 
       // Live status keyed by routine id. Populated by fetchLiveStatus().
       let LIVE_STATUS = {};
-      let ACTIVE_FILTER = 'all';
+
+      // Cadence filter is URL-driven so direct links, shares, and the
+      // browser back/forward buttons all round-trip. Path shape:
+      //   /routines           → all
+      //   /routines/all       → all
+      //   /routines/continuous → 8 continuous routines
+      //   /routines/daily     → 9 daily routines
+      //   /routines/weekly    → 3 weekly routines
+      const VALID_FILTERS = ['all', 'continuous', 'daily', 'weekly'];
+      function filterFromPath() {
+        const seg = (window.location.pathname || '/routines').split('/')[2] || 'all';
+        return VALID_FILTERS.indexOf(seg) === -1 ? 'all' : seg;
+      }
+      function pathFor(filter) {
+        return filter === 'all' ? '/routines' : '/routines/' + filter;
+      }
+      let ACTIVE_FILTER = filterFromPath();
 
       function humanSchedule(cron) {
         // Minimal cron → human label, blue-dashboard style.
@@ -747,17 +763,36 @@
         document.getElementById('weeklyCount').textContent = counts.weekly || 0;
       })();
 
-      // Filter chip handlers
+      // Sync chip pressed-state + rendered list to a filter value.
+      function applyFilter(filter, opts) {
+        const next = VALID_FILTERS.indexOf(filter) === -1 ? 'all' : filter;
+        ACTIVE_FILTER = next;
+        document.querySelectorAll('.chip').forEach(c => {
+          c.setAttribute('aria-pressed', c.getAttribute('data-filter') === next ? 'true' : 'false');
+        });
+        render(next);
+        if (opts && opts.push) {
+          const target = pathFor(next);
+          if (window.location.pathname !== target) {
+            history.pushState({ filter: next }, '', target);
+          }
+        }
+      }
+
+      // Filter chip handlers — update the URL so sub-routes stay within
+      // /routines instead of falling through to the SPA root.
       document.querySelectorAll('.chip').forEach(chip => {
         chip.addEventListener('click', () => {
-          document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', 'false'));
-          chip.setAttribute('aria-pressed', 'true');
-          ACTIVE_FILTER = chip.getAttribute('data-filter');
-          render(ACTIVE_FILTER);
+          applyFilter(chip.getAttribute('data-filter'), { push: true });
         });
       });
 
-      render(ACTIVE_FILTER);
+      // Browser back/forward replays the filter from the URL.
+      window.addEventListener('popstate', () => {
+        applyFilter(filterFromPath(), { push: false });
+      });
+
+      applyFilter(ACTIVE_FILTER, { push: false });
 
       // ── Drawer (routine detail) ────────────────────────────────────
       const drawer = document.getElementById('routineDrawer');
