@@ -75,7 +75,9 @@ export function selectDynamicPrior(input: DynamicPriorInput): DynamicPriorResult
 
   const mult = LIST_MULTIPLIER[input.listPriority];
   prior *= mult;
-  reasoning.push(`List priority ${input.listPriority} multiplier ${mult.toFixed(2)} → ${prior.toFixed(2)}`);
+  reasoning.push(
+    `List priority ${input.listPriority} multiplier ${mult.toFixed(2)} → ${prior.toFixed(2)}`
+  );
 
   if (input.recentAlertCount && input.recentAlertCount > 0) {
     // Each prior alert nudges the base rate up — another alert on the

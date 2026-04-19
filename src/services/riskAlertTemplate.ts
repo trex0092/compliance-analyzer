@@ -769,6 +769,8 @@ export function buildRiskAlertTask(input: RiskAlertInput): RiskAlertTask {
     brainBlocks.push('', renderCounterfactualBlock(input.brain));
     brainBlocks.push('', renderRedTeamBlock(input.brain));
     brainBlocks.push('', renderMetaCognitionBlock(input.brain));
+    brainBlocks.push('', renderCausalInterventionsBlock(input.brain));
+    brainBlocks.push('', renderPeerComparisonBlock(input.brain));
   }
   if (input.forensic) {
     brainBlocks.push('', renderForensicBlock(input.forensic));

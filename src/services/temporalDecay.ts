@@ -78,7 +78,10 @@ export function describeFreshness(multiplier: number): string {
  * Convert an age in days to a floor-safe freshness label — useful for
  * the audit trace when the raw multiplier is already computed.
  */
-export function freshnessForAgeDays(ageDays: number, halfLifeDays = DEFAULT_HALF_LIFE_DAYS): string {
+export function freshnessForAgeDays(
+  ageDays: number,
+  halfLifeDays = DEFAULT_HALF_LIFE_DAYS
+): string {
   const m = Math.max(0.05, Math.pow(2, -Math.max(0, ageDays) / halfLifeDays));
   return describeFreshness(m);
 }

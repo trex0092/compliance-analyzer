@@ -245,7 +245,7 @@ export function calibrateIdentityScore(
 function buildCounterfactuals(
   breakdown: IdentityMatchBreakdown,
   obs: EvidenceObservations,
-  currentLogOdds: number
+  _currentLogOdds: number
 ): IdentityCounterfactual[] {
   const cfs: IdentityCounterfactual[] = [];
   const nameW = IDENTITY_MATCH_WEIGHTS.name;

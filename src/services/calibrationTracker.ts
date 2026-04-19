@@ -156,7 +156,7 @@ export function evaluateCalibration(
   let band: CalibrationReport['band'];
   if (n < 30) band = 'INSUFFICIENT_DATA';
   else if (ece <= 0.05 && brier <= 0.15) band = 'WELL_CALIBRATED';
-  else if (ece <= 0.10 && brier <= 0.22) band = 'ACCEPTABLE';
+  else if (ece <= 0.1 && brier <= 0.22) band = 'ACCEPTABLE';
   else band = 'MISCALIBRATED';
 
   const summary =

@@ -150,7 +150,8 @@ function likelihood(h: Hypothesis, e: EvidenceSummary): number {
     }
     case 'NAME_COINCIDENCE': {
       let l = 0.5;
-      if (e.nameAgree) l *= 1.2; // name does corroborate but doesn't prove H2
+      if (e.nameAgree)
+        l *= 1.2; // name does corroborate but doesn't prove H2
       else if (e.nameWeak) l *= 1.0;
       else l *= 0.3;
       if (e.dobConflict) l *= 2.0; // coincidence LOVES DoB conflict
@@ -162,7 +163,8 @@ function likelihood(h: Hypothesis, e: EvidenceSummary): number {
     }
     case 'FAMILY_RELATIVE': {
       let l = 0.3;
-      if (e.nameAgree) l *= 1.4; // family often shares surname
+      if (e.nameAgree)
+        l *= 1.4; // family often shares surname
       else if (e.nameWeak) l *= 1.2;
       if (e.dobConflict) l *= 2.2; // relatives have different DoB
       if (e.dobAgree) l *= 0.1;
@@ -330,7 +332,9 @@ export function evaluateHypotheses(
 function buildSummary(ranked: readonly HypothesisEvaluation[], decisive: boolean): string {
   const [first, second] = ranked;
   const lead = `${first.hypothesis} (${(first.posterior * 100).toFixed(1)}%)`;
-  const runnerUp = second ? `${second.hypothesis} (${(second.posterior * 100).toFixed(1)}%)` : 'n/a';
+  const runnerUp = second
+    ? `${second.hypothesis} (${(second.posterior * 100).toFixed(1)}%)`
+    : 'n/a';
   const stance = decisive ? 'DECISIVE' : 'AMBIGUOUS';
   return `${stance}: leading hypothesis ${lead}; runner-up ${runnerUp}`;
 }

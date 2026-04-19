@@ -304,10 +304,7 @@ export function runRedTeamBrain(
   obs: EvidenceObservations,
   ctx: RedTeamContext = {}
 ): RedTeamReasoningResult {
-  const scorers: Record<
-    RedTeamScenario,
-    () => { score: number; signals: string[] }
-  > = {
+  const scorers: Record<RedTeamScenario, () => { score: number; signals: string[] }> = {
     COMMON_NAME_COLLISION: () => scoreCommonNameCollision(breakdown, obs, ctx),
     FAMILY_RELATIVE_EDD: () => scoreFamilyRelative(breakdown, obs),
     STOLEN_OR_RECYCLED_ID: () => scoreStolenOrRecycledId(breakdown, obs),
