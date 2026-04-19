@@ -348,6 +348,62 @@
       .reg-text { font-size: 12px; line-height: 1.7; color: var(--ice); opacity: 0.78; }
       .reg-text strong { color: var(--mist); font-weight: 600; }
 
+      /* In-page module viewer — opens the index.html tab inline via iframe
+         so the user stays on workbench.html. */
+      .module-view {
+        display: none;
+        margin-top: 1.5rem;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: rgba(10, 22, 40, 0.6);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        overflow: hidden;
+      }
+      .module-view.is-open { display: block; }
+      .module-view-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(23, 50, 87, 0.5);
+      }
+      .module-view-title {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: 20px;
+        color: var(--mist);
+        margin: 0;
+      }
+      .module-view-close {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--ice);
+        background: transparent;
+        border: 1px solid var(--border-strong);
+        border-radius: 999px;
+        padding: 7px 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .module-view-close:hover {
+        color: var(--mist);
+        border-color: var(--orange-bright);
+        box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.14);
+      }
+      .module-view-frame {
+        width: 100%;
+        height: 78vh;
+        min-height: 640px;
+        border: 0;
+        background: var(--midnight);
+        display: block;
+      }
+
       .footer {
         position: relative; z-index: 1;
         padding: 2rem; border-top: 1px solid var(--border);
@@ -423,7 +479,7 @@
       </div>
 
       <div class="cards">
-        <a class="card" data-tone="orange" href="index.html#asana">
+        <a class="card" data-tone="orange" href="index.html#asana" data-route="asana">
           <div class="card-icon" aria-hidden="true">📋</div>
           <div class="card-meta">
             <span class="dot"></span>
@@ -451,7 +507,7 @@
           </div>
         </a>
 
-        <a class="card" data-tone="yellow" href="index.html#onboarding">
+        <a class="card" data-tone="yellow" href="index.html#onboarding" data-route="onboarding">
           <div class="card-icon" aria-hidden="true">👤</div>
           <div class="card-meta">
             <span class="dot"></span>
@@ -479,7 +535,7 @@
           </div>
         </a>
 
-        <a class="card" data-tone="green" href="index.html#approvals">
+        <a class="card" data-tone="green" href="index.html#approvals" data-route="approvals">
           <div class="card-icon" aria-hidden="true">✅</div>
           <div class="card-meta">
             <span class="dot"></span>
@@ -508,6 +564,27 @@
         </a>
       </div>
 
+      <section
+        class="module-view"
+        id="moduleView"
+        aria-label="Embedded module view"
+        aria-hidden="true"
+      >
+        <div class="module-view-head">
+          <h2 class="module-view-title" id="moduleViewTitle">Module</h2>
+          <button type="button" class="module-view-close" id="moduleViewClose">
+            &larr; Back to surfaces
+          </button>
+        </div>
+        <iframe
+          class="module-view-frame"
+          id="moduleViewFrame"
+          title="Workbench module"
+          loading="lazy"
+          src="about:blank"
+        ></iframe>
+      </section>
+
       <div class="reg-strip" role="note">
         <div class="reg-badge" aria-hidden="true">§</div>
         <div>
@@ -528,5 +605,6 @@
       <span class="footer-text">© 2026 Hawkeye Sterling</span>
       <span class="footer-text">Confidential · Audit-ready</span>
     </footer>
+    <script src="landing-module-viewer.js?v=1"></script>
   </body>
 </html>
