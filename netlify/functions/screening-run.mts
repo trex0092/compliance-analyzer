@@ -89,6 +89,12 @@ import {
   type RiskTier,
 } from '../../src/services/screeningWatchlist';
 import { createAsanaTask } from '../../src/services/asanaClient';
+import { moveTaskToNamedSection } from '../../src/services/asanaSectionByName';
+import {
+  buildLifeStoryMarkdown,
+  type LifeStoryInput,
+  type LifeStoryPerListRow,
+} from '../../src/services/lifeStoryReportBuilder';
 import {
   runDeepBrain,
   type OrchestrationResult,
@@ -1177,8 +1183,29 @@ async function postAsanaTask(params: {
   eventType?: ScreeningEventType;
   integrity?: 'complete' | 'degraded' | 'incomplete';
   integrityReasons?: string[];
-}): Promise<{ ok: boolean; gid?: string; error?: string }> {
-  const projectId = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
+  /** Full life-story deep-dive (first-screen events only). When provided,
+   *  becomes the task body in place of the plain line list and the task
+   *  is moved into the "The Screenings" section on success. */
+  lifeStory?: LifeStoryInput;
+  /** Name of the Asana board section to move the task into after create.
+   *  Resolved case-insensitively at runtime so MLROs can rename the
+   *  section slightly without a code change. */
+  targetSectionName?: string;
+  /** Optional override for ASANA_SCREENINGS_PROJECT_GID. Lets
+   *  continuous-monitor reuse this function with a different project
+   *  if/when we split boards. */
+  projectGidOverride?: string;
+}): Promise<{
+  ok: boolean;
+  gid?: string;
+  error?: string;
+  sectionName?: string;
+  sectionError?: string;
+}> {
+  const projectId =
+    params.projectGidOverride ||
+    process.env.ASANA_SCREENINGS_PROJECT_GID ||
+    '1214124911186857';
   if (!process.env.ASANA_TOKEN && !process.env.ASANA_ACCESS_TOKEN && !process.env.ASANA_API_TOKEN) {
     return { ok: false, error: 'ASANA_TOKEN not configured' };
   }
@@ -1283,13 +1310,45 @@ async function postAsanaTask(params: {
   }
   if (params.eventType) tags.push(`event-${params.eventType}`);
 
+  // Life-story body for first-screen events (new_customer_onboarding /
+  // periodic_review). Replaces the plain line list with the rich
+  // markdown the MLRO actually reads on the Asana board. Falls back
+  // to the plain body when lifeStory is undefined so the contract for
+  // continuous-monitor + ad-hoc screens is unchanged.
+  const body = params.lifeStory ? buildLifeStoryMarkdown(params.lifeStory) : lines.join('\n');
+
   const result = await createAsanaTask({
     name,
-    notes: lines.join('\n'),
+    notes: body,
     projects: [projectId],
     tags,
   });
-  return result;
+
+  // Section write-back — fire-and-log. If it fails, the task still
+  // exists in the project's default column, so the MLRO never loses
+  // evidence. The error is surfaced on the verdict page via
+  // `asana.sectionError` so the integrations status can flag a
+  // misconfigured board.
+  let sectionName: string | undefined;
+  let sectionError: string | undefined;
+  if (result.ok && result.gid && params.targetSectionName) {
+    try {
+      const moved = await moveTaskToNamedSection(
+        projectId,
+        result.gid,
+        params.targetSectionName
+      );
+      if (moved.ok) {
+        sectionName = moved.sectionName;
+      } else {
+        sectionError = moved.error;
+      }
+    } catch (err) {
+      sectionError = err instanceof Error ? err.message : 'section move failed';
+    }
+  }
+
+  return { ...result, sectionName, sectionError };
 }
 
 // ---------------------------------------------------------------------------
@@ -1883,13 +1942,104 @@ export default async (req: Request, context: Context): Promise<Response> => {
   // a clean run. Cabinet Res 134/2025 Art.19: periodic internal review
   // sees every event. Running the two writes in parallel shaves ~1.5s
   // off the tail of the pipeline.
-  const asanaProjectGid = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
+  // Default project GID points at the MLRO board the user designated
+  // ("The Screenings" + "Transaction Monitor" sections live here).
+  // Override via ASANA_SCREENINGS_PROJECT_GID in Netlify env if we ever
+  // split boards per tenant.
+  const asanaProjectGid = process.env.ASANA_SCREENINGS_PROJECT_GID || '1214124911186857';
   const asanaAnomalies = [
     ...anomalousListErrors.map((l) => `${l.list}: ${l.error}`),
     ...(screeningIntegrity !== 'complete'
       ? integrityReasons.map((r) => `integrity-${screeningIntegrity}: ${r}`)
       : []),
   ];
+
+  // First-screen events get the full life-story deep-dive (Sample 1
+  // markdown) and land in "The Screenings" section. Ad-hoc and
+  // transaction-triggered screens keep the compact line-list body
+  // and go to the default section. Configurable via env so the MLRO
+  // can rename the section without a code change (FDL Art.24 audit
+  // trail preserved via Asana's native activity log).
+  const isFirstScreen =
+    input.eventType === 'new_customer_onboarding' ||
+    input.eventType === 'periodic_review';
+  const screeningsSectionName =
+    process.env.ASANA_SECTION_SCREENINGS_NAME || 'The Screenings';
+
+  const lifeStoryInput: LifeStoryInput | undefined = isFirstScreen
+    ? (() => {
+        const nameVariants = searchTerms?.length ? Array.from(searchTerms) : undefined;
+        const lifeStoryPerList: LifeStoryPerListRow[] = perList.map((l) => {
+          const err = l.error ?? '';
+          let status: LifeStoryPerListRow['status'] = 'ok';
+          let note: string | undefined;
+          if (err) {
+            if (/served .* rows from cached ingest-cron snapshot/i.test(err)) {
+              status = 'snapshot';
+              note = err;
+            } else if (/UN fallback/i.test(err) || /hydrated from UN snapshot/i.test(err)) {
+              status = 'fallback';
+              note = err;
+            } else {
+              status = 'error';
+              note = err;
+            }
+          }
+          return {
+            list: l.list,
+            status,
+            topScore: l.topScore,
+            hitCount: l.hitCount,
+            note,
+          };
+        });
+        const amHits = input.runAdverseMedia
+          ? amRes.value.hits.slice(0, 20).map((h) => ({
+              date: h.publishedAt,
+              source: h.source,
+              title: h.title,
+              url: h.url,
+              relevance: (h as { relevance?: number }).relevance,
+            }))
+          : [];
+        const verdictGuess: LifeStoryInput['verdict'] =
+          overallTopClassification === 'confirmed'
+            ? 'freeze'
+            : overallTopClassification === 'potential' ||
+                (typeof explanation.score === 'number' && explanation.score >= 16)
+              ? 'escalate'
+              : typeof explanation.score === 'number' && explanation.score >= 6
+                ? 'monitor'
+                : 'clean';
+        const reviewMonths =
+          verdictGuess === 'escalate' ? 3 : verdictGuess === 'monitor' ? 6 : 12;
+        return {
+          screeningId: subjectId,
+          ranAt,
+          subjectName: input.subjectName,
+          aliases: input.aliases,
+          nameVariants,
+          dob: input.dob,
+          nationality: input.country,
+          entityType: input.entityType,
+          jurisdiction: input.jurisdiction,
+          eventType: input.eventType,
+          integrity: screeningIntegrity,
+          integrityReasons,
+          verdict: verdictGuess,
+          compositeRisk: explanation.score,
+          riskRating: explanation.rating,
+          cddLevel: explanation.cddLevel,
+          reviewCadenceMonths: reviewMonths,
+          perList: lifeStoryPerList,
+          sanctionsTopClassification: overallTopClassification,
+          adverseMediaSinceDate: amSinceDate,
+          adverseMediaProviders: adverseMediaProvidersUsed,
+          adverseMediaHits: amHits,
+          mlroActions: undefined,
+        };
+      })()
+    : undefined;
 
   const [watchlistRes, asanaRes] = await Promise.all([
     input.enrollInWatchlist
@@ -1938,6 +2088,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
             jurisdiction: input.jurisdiction,
             notes: input.notes,
             anomalies: asanaAnomalies,
+            lifeStory: lifeStoryInput,
+            targetSectionName: isFirstScreen ? screeningsSectionName : undefined,
+            projectGidOverride: asanaProjectGid,
             eventType: input.eventType,
             integrity: screeningIntegrity,
             integrityReasons,
@@ -1965,6 +2118,8 @@ export default async (req: Request, context: Context): Promise<Response> => {
     skipped?: boolean;
     projectGid: string;
     projectName: string;
+    sectionName?: string;
+    sectionError?: string;
   } = input.createAsanaTask
     ? {
         ...asanaRes.value,
