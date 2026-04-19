@@ -57,6 +57,7 @@ import {
   multiModalMatch,
   type MultiModalClassification,
 } from '../../src/services/multiModalNameMatcher';
+import { createAsanaTask } from '../../src/services/asanaClient';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -128,6 +129,11 @@ interface MonitorRunSummary {
   listsUsed: string[];
   listErrors: Record<string, string>;
   skippedReason?: string;
+  /**
+   * Asana dispatch log, one entry per subject when
+   * CONTINUOUS_MONITOR_DISPATCH_ASANA is enabled.
+   */
+  asanaDispatch?: Array<{ subjectId: string; ok: boolean; gid?: string; error?: string }>;
 }
 
 // Prior-seen state, keyed by subject id. We persist just the
@@ -309,6 +315,88 @@ async function screenSubject(
 // Main run
 // ---------------------------------------------------------------------------
 
+/**
+ * Post one Asana task per subject summarising today's screening.
+ * Severity tag is chosen from the subject's delta; body carries the
+ * full per-list breakdown so the MLRO has a single-glance audit
+ * entry. Gated by CONTINUOUS_MONITOR_DISPATCH_ASANA so the cron can
+ * be dry-run without emitting Asana traffic.
+ *
+ * Regulatory basis:
+ *   - FDL No.10/2025 Art.20-21   CO situational awareness
+ *   - FDL No.10/2025 Art.24      10yr retention (Asana ↔ audit blob)
+ *   - Cabinet Res 134/2025 Art.19 periodic internal review
+ *   - FDL No.10/2025 Art.29      never surface the audit to the subject
+ */
+async function postDailySubjectUpdate(
+  delta: SubjectDelta,
+  projectGid: string,
+  ranAtIso: string
+): Promise<{ ok: boolean; gid?: string; error?: string }> {
+  if (
+    !process.env.ASANA_TOKEN &&
+    !process.env.ASANA_ACCESS_TOKEN &&
+    !process.env.ASANA_API_TOKEN
+  ) {
+    return { ok: false, error: 'ASANA_TOKEN not configured' };
+  }
+
+  const tag =
+    delta.newHits.length > 0
+      ? '[DAILY NEW HIT]'
+      : delta.resolvedHits.length > 0
+        ? '[DAILY RESOLVED]'
+        : '[DAILY CLEAN]';
+
+  const lines: string[] = [];
+  lines.push(`Subject: ${delta.subjectName}`);
+  lines.push(`Subject ID: ${delta.subjectId}`);
+  lines.push(`Run timestamp: ${ranAtIso}`);
+  lines.push(`Status: ${tag.replace(/[\[\]]/g, '')}`);
+  lines.push('');
+  lines.push(`New hits since last run: ${delta.newHits.length}`);
+  lines.push(`Resolved hits since last run: ${delta.resolvedHits.length}`);
+  lines.push(`Unchanged hits carried forward: ${delta.unchangedCount}`);
+  lines.push(
+    `Top classification today: ${delta.topClassification} (score ${(delta.topScore * 100).toFixed(1)}%)`
+  );
+
+  if (delta.newHits.length > 0) {
+    lines.push('');
+    lines.push('NEW HITS — investigate immediately:');
+    for (const h of delta.newHits) {
+      lines.push(
+        `  - ${h.list}: ${h.matchedName} (entry ${h.entryId}, score ${(h.score * 100).toFixed(1)}%, ${h.classification})`
+      );
+    }
+  }
+  if (delta.resolvedHits.length > 0) {
+    lines.push('');
+    lines.push('RESOLVED FINGERPRINTS (no longer matching):');
+    for (const fp of delta.resolvedHits) lines.push(`  - ${fp}`);
+  }
+
+  lines.push('');
+  lines.push(
+    'Regulatory basis: FDL No.10/2025 Art.20-21, 24; Cabinet Res 134/2025 Art.19; Cabinet Res 74/2020 Art.4-7; FATF Rec 10/20.'
+  );
+  lines.push('');
+  lines.push('Source: continuous-monitor cron (06:00 + 14:00 UTC).');
+  lines.push('Do NOT notify the subject — FDL Art.29 no tipping off.');
+
+  const tags = ['continuous-monitor', `classification-${delta.topClassification}`];
+  if (delta.newHits.length > 0) tags.push('delta-new-hit');
+  else if (delta.resolvedHits.length > 0) tags.push('delta-resolved');
+  else tags.push('daily-clean');
+
+  return await createAsanaTask({
+    name: `${tag} Daily monitor: ${delta.subjectName}`,
+    notes: lines.join('\n'),
+    projects: [projectGid],
+    tags,
+  });
+}
+
 async function runMonitor(): Promise<MonitorRunSummary> {
   const startedAt = new Date();
   const runId = `${startedAt.getTime()}-${Math.floor(Math.random() * 1e6)}`;
@@ -407,6 +495,38 @@ async function runMonitor(): Promise<MonitorRunSummary> {
 
   await saveMonitorState(state);
 
+  // ─── Per-subject daily update to Asana ────────────────────────────
+  // The MLRO has asked for a daily heartbeat per screened subject,
+  // not just a per-run summary. Every subject on the watchlist gets
+  // one Asana task per monitor invocation (06:00 + 14:00 UTC), with
+  // severity tag that reflects today's state:
+  //   [DAILY NEW HIT]  — new sanctions delta since last run
+  //   [DAILY RESOLVED] — previously-seen hits have dropped off
+  //   [DAILY CLEAN]    — still clean, explicit "no change" confirmation
+  // FDL Art.24 retention + Cabinet Res 134/2025 Art.19 internal review
+  // both mandate a per-subject audit record; silent "no news" runs
+  // break the audit trail.
+  const asanaProjectGid =
+    process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
+  const dispatchPerSubject =
+    process.env.CONTINUOUS_MONITOR_DISPATCH_ASANA === '1' ||
+    process.env.CONTINUOUS_MONITOR_DISPATCH_ASANA === 'true';
+  const asanaResults: Array<{ subjectId: string; ok: boolean; gid?: string; error?: string }> = [];
+  if (dispatchPerSubject) {
+    for (const delta of perSubject) {
+      try {
+        const r = await postDailySubjectUpdate(delta, asanaProjectGid, startedAt.toISOString());
+        asanaResults.push({ subjectId: delta.subjectId, ...r });
+      } catch (err) {
+        asanaResults.push({
+          subjectId: delta.subjectId,
+          ok: false,
+          error: err instanceof Error ? err.message : 'asana dispatch failed',
+        });
+      }
+    }
+  }
+
   const summary: MonitorRunSummary = {
     ok: true,
     runId,
@@ -420,6 +540,7 @@ async function runMonitor(): Promise<MonitorRunSummary> {
     perSubject,
     listsUsed,
     listErrors,
+    ...(dispatchPerSubject ? { asanaDispatch: asanaResults } : {}),
   };
   summary.durationMs = Date.now() - startedAt.getTime();
 

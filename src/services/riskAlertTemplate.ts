@@ -526,6 +526,85 @@ function renderTemporalDecayBlock(brain: DeliberativeBrainResult): string {
   return lines.join('\n');
 }
 
+function renderCounterfactualBlock(brain: DeliberativeBrainResult): string {
+  const c = brain.counterfactual;
+  const lines: string[] = ['COUNTERFACTUAL ATTRIBUTION'];
+  lines.push(`  ${c.summary}`);
+  lines.push('  Per-feature contribution (sorted by absolute LLR):');
+  for (const a of c.attributions) {
+    const sign = a.contributionPp >= 0 ? '+' : '';
+    lines.push(
+      `    ${a.feature.padEnd(12)} LLR ${a.llr.toFixed(2).padStart(6)}   dom ${(a.dominance * 100).toFixed(0).padStart(3)}%   Δ ${sign}${a.contributionPp.toFixed(1)}pp`
+    );
+  }
+  return lines.join('\n');
+}
+
+function renderRedTeamBlock(brain: DeliberativeBrainResult): string {
+  const r = brain.redTeam;
+  const lines: string[] = ['RED-TEAM CHALLENGES'];
+  lines.push(`  ${r.summary}`);
+  for (const c of r.challenges) {
+    const flag = c.plausibility >= 0.4 ? '[ELEVATED]' : '[reviewed]';
+    lines.push(`  ${flag} ${c.scenario} @ ${(c.plausibility * 100).toFixed(0)}%`);
+    lines.push(`              ${c.description}`);
+    if (c.supportingSignals.length > 0) {
+      lines.push(`              Signals: ${c.supportingSignals.join('; ')}`);
+    }
+    lines.push(`              Probe: ${c.probe}`);
+    lines.push(`              Regulatory: ${c.regulatoryAnchor}`);
+  }
+  return lines.join('\n');
+}
+
+function renderCausalInterventionsBlock(brain: DeliberativeBrainResult): string {
+  const ci = brain.interventions;
+  const lines: string[] = ['CAUSAL INTERVENTIONS (do-calculus)'];
+  lines.push(`  ${ci.summary}`);
+  if (ci.projections.length === 0) {
+    lines.push('  No informational probe available — all identifiers fully corroborated.');
+  } else {
+    lines.push('  Probe priorities (sorted by informational value):');
+    for (const p of ci.projections) {
+      lines.push(
+        `    ${p.target.padEnd(12)} value ${p.interventionValue.toFixed(1).padStart(5)}pp   uplift +${p.uplift.toFixed(1)}pp / drop -${p.drop.toFixed(1)}pp`
+      );
+      lines.push(`              Action: ${p.action}`);
+      lines.push(`              Regulatory: ${p.regulatoryAnchor}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function renderPeerComparisonBlock(brain: DeliberativeBrainResult): string {
+  if (!brain.peers) return '';
+  const p = brain.peers;
+  const lines: string[] = ['PEER COMPARISON (k-NN reference class)'];
+  lines.push(`  ${p.summary}`);
+  for (const n of p.neighbours) {
+    lines.push(
+      `    ${n.case.caseId.padEnd(16)} verdict=${n.case.verdict.padEnd(9)} distance=${n.distance.toFixed(2)}   sim=${(n.similarity * 100).toFixed(0)}%`
+    );
+    if (n.case.note) lines.push(`              Note: ${n.case.note}`);
+  }
+  return lines.join('\n');
+}
+
+function renderMetaCognitionBlock(brain: DeliberativeBrainResult): string {
+  const m = brain.metaCognition;
+  const lines: string[] = ['METACOGNITION SELF-AUDIT'];
+  lines.push(`  Band: ${m.band}   ${m.summary}`);
+  for (const check of m.checks) {
+    const icon = check.passed ? '✓' : '✗';
+    lines.push(`    ${icon} ${check.dimension.padEnd(22)} ${check.observation}`);
+  }
+  if (m.warnings.length > 0) {
+    lines.push('  MLRO must address before sign-off:');
+    for (const w of m.warnings) lines.push(`    ! ${w}`);
+  }
+  return lines.join('\n');
+}
+
 function renderForensicBlock(f: ForensicInvestigation): string {
   const lines: string[] = ['FORENSIC INVESTIGATION'];
   lines.push(`  Overall severity: ${f.overallSeverity.toUpperCase()}`);
@@ -687,6 +766,9 @@ export function buildRiskAlertTask(input: RiskAlertInput): RiskAlertTask {
     brainBlocks.push('', renderHypothesisBlock(input.brain));
     brainBlocks.push('', renderTemporalDecayBlock(input.brain));
     brainBlocks.push('', renderTriageBlock(input.brain));
+    brainBlocks.push('', renderCounterfactualBlock(input.brain));
+    brainBlocks.push('', renderRedTeamBlock(input.brain));
+    brainBlocks.push('', renderMetaCognitionBlock(input.brain));
   }
   if (input.forensic) {
     brainBlocks.push('', renderForensicBlock(input.forensic));

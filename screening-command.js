@@ -2002,6 +2002,7 @@
           ' lifetime hits</div>'
       );
       html.push('</div>');
+      html.push('<div class="subject-actions">');
       html.push(
         '<span class="classification ' +
           (e.riskTier === 'high' ? 'confirmed' : e.riskTier === 'medium' ? 'potential' : 'none') +
@@ -2016,6 +2017,7 @@
           escapeHTML(e.subjectName) +
           '" title="Delete this watchlist entry (correct a mistaken enrolment)" aria-label="Delete watchlist entry">\u00d7</button>'
       );
+      html.push('</div>');
       html.push('</div>');
     }
     if (sorted.length > 50) {
