@@ -97,6 +97,18 @@
     if (typeof window.__renderPageNav === 'function') window.__renderPageNav();
   }
 
+  // Scope .tab-content queries to direct children of host. Injected
+  // main-app tabs may themselves contain descendant elements marked
+  // .tab-content (nested mini-panels); those must not be hidden by the
+  // module-switch logic below.
+  function directChildrenByClass(parent, cls) {
+    var out = [];
+    for (var i = 0; i < parent.children.length; i++) {
+      if (parent.children[i].classList.contains(cls)) out.push(parent.children[i]);
+    }
+    return out;
+  }
+
   // ---- Native module injection plumbing --------------------------------
 
   var mainAppDocPromise = null;
@@ -116,6 +128,15 @@
   function injectMainAppStyles(doc) {
     if (mainAppStylesInjected) return;
     mainAppStylesInjected = true;
+
+    // Snapshot the landing's :root palette + body background BEFORE
+    // appending the main-app <style>, so computed styles still reflect
+    // the landing's original values. Without this, the main-app block
+    // would redeclare --orange / --border / etc. source-order after the
+    // landing and the landing's own topbar, hero, and cards would pick
+    // up amber/gold on close.
+    var snapshot = snapshotLandingPalette();
+
     var styleNodes = doc.querySelectorAll('head style, body style');
     var chunks = [];
     for (var i = 0; i < styleNodes.length; i++) {
@@ -126,9 +147,58 @@
     injected.textContent = chunks.join('\n');
     document.head.appendChild(injected);
 
-    // Also copy any <link rel="stylesheet"> from the main app (fonts,
-    // CDN sheets) into the landing document so the injected module
-    // content resolves all its references.
+    // Append the restoration block AFTER main-app so it wins source
+    // order and hands the landing chrome back its original colours.
+    applyLandingPaletteRestore(snapshot);
+
+    // Pull in any <link rel="stylesheet"> tags the main app relies on
+    // (Google Fonts, CDN sheets) so the injected module resolves all
+    // its typography and reset references.
+    injectMainAppStylesheetLinks(doc);
+  }
+
+  // Capture every landing-palette custom property currently visible on
+  // :root plus the body background. Returns a plain object snapshot.
+  function snapshotLandingPalette() {
+    var rs = getComputedStyle(document.documentElement);
+    var keys = [
+      '--orange', '--orange-bright', '--orange-dim', '--orange-border',
+      '--yellow', '--yellow-bright', '--yellow-dim', '--yellow-border',
+      '--green', '--green-bright', '--green-dim', '--green-border',
+      '--pink', '--pink-bright',
+      '--red', '--red-bright',
+      '--purple', '--violet',
+      '--azure', '--azure-bright', '--sky', '--ice', '--mist', '--muted',
+      '--midnight', '--navy', '--navy-2',
+      '--surface', '--surface-2', '--steel', '--steel-dim',
+      '--border', '--border-strong',
+      '--royal', '--glow',
+      '--ink'
+    ];
+    var decls = [];
+    for (var i = 0; i < keys.length; i++) {
+      var v = rs.getPropertyValue(keys[i]);
+      if (v && v.trim()) decls.push(keys[i] + ': ' + v.trim() + ';');
+    }
+    var bodyBg = '';
+    try { bodyBg = getComputedStyle(document.body).backgroundColor || ''; } catch (_) {}
+    return { decls: decls, bodyBg: bodyBg };
+  }
+
+  function applyLandingPaletteRestore(snapshot) {
+    if (document.getElementById('__landingPaletteRestore')) return;
+    if (!snapshot || !snapshot.decls) return;
+    var style = document.createElement('style');
+    style.id = '__landingPaletteRestore';
+    var body = snapshot.bodyBg ? 'body{background:' + snapshot.bodyBg + ' !important;}' : '';
+    style.textContent = ':root{' + snapshot.decls.join('') + '}' + body;
+    document.head.appendChild(style);
+  }
+
+  // Copy any <link rel="stylesheet"> from the main app (fonts, CDN
+  // sheets) into the landing document so the injected module content
+  // resolves all its references. Called once, after main-app styles.
+  function injectMainAppStylesheetLinks(doc) {
     var linkNodes = doc.querySelectorAll('link[rel="stylesheet"]');
     for (var j = 0; j < linkNodes.length; j++) {
       var href = linkNodes[j].getAttribute('href');
@@ -207,7 +277,7 @@
 
   function activateInjectedTab(route) {
     // Hide any other injected tab-content siblings; show the one we want.
-    var tabs = host.querySelectorAll('.tab-content');
+    var tabs = directChildrenByClass(host, 'tab-content');
     for (var i = 0; i < tabs.length; i++) {
       tabs[i].classList.remove('active');
       tabs[i].style.display = 'none';
@@ -306,7 +376,7 @@
     applyImperativeHide();
     // Leave the injected tabs in the DOM (display:none) so re-opening is
     // instant, but hide the host itself via the `.is-open` class flip.
-    var tabs = host.querySelectorAll('.tab-content');
+    var tabs = directChildrenByClass(host, 'tab-content');
     for (var i = 0; i < tabs.length; i++) {
       tabs[i].classList.remove('active');
       tabs[i].style.display = 'none';
