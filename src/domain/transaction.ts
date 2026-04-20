@@ -25,10 +25,7 @@
  */
 
 import type { CountryCodeIso2, DateDdMmYyyy, IsoTimestamp } from './customerProfile';
-import {
-  DPMS_CASH_THRESHOLD_AED,
-  CROSS_BORDER_CASH_THRESHOLD_AED,
-} from './constants';
+import { DPMS_CASH_THRESHOLD_AED, CROSS_BORDER_CASH_THRESHOLD_AED } from './constants';
 
 // ---------------------------------------------------------------------------
 // Regulatory thresholds — re-exported from ./constants (single source of truth).

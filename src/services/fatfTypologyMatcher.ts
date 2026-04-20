@@ -392,7 +392,10 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
     name: 'Integration — Gold → Cash',
     description:
       'Gold sale with proceeds taken in cash, converting placed funds back to usable currency.',
-    signals: [sig.required(sig.cashHeavy(0.7)), sig.required(sig.largeTx(ROUND_TRIPPING_THRESHOLD_AED))],
+    signals: [
+      sig.required(sig.cashHeavy(0.7)),
+      sig.required(sig.largeTx(ROUND_TRIPPING_THRESHOLD_AED)),
+    ],
     threshold: 0.4,
     severity: 'high',
     regulatory: 'FATF Three-Stage ML Model; MoE Circular 08/AML/2021',
@@ -437,7 +440,10 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
     name: 'Cross-Border BNI Above AED 60K',
     description:
       'Cross-border bearer negotiable instrument above the AED 60K declaration threshold.',
-    signals: [sig.required(sig.crossBorderHeavy(0.4)), sig.required(sig.largeTx(CROSS_BORDER_CASH_THRESHOLD_AED))],
+    signals: [
+      sig.required(sig.crossBorderHeavy(0.4)),
+      sig.required(sig.largeTx(CROSS_BORDER_CASH_THRESHOLD_AED)),
+    ],
     threshold: 0.3,
     severity: 'high',
     regulatory: 'FDL Art.17',
