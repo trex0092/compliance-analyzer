@@ -441,6 +441,41 @@ input[type="number"] {
   appearance: textfield !important;
 }
 
+/* Surface + sub-module cards — transparency pass so the wallpaper
+   bleeds through. Every module (workbench, compliance-ops, logistics,
+   screening-command, routines) carries its own inline .card rule
+   with opaque 0.7-0.9 fills; we override here to a translucent
+   ~0.18-0.25 so the cards read as glass rather than blocks. Keeps
+   the border + backdrop-blur so the card is still visually defined.
+
+   Scope-limited to module + sub-module cards (a.card, .card, .surface-card)
+   — does not touch compact inner cells like .mv-stat or .mv-badge
+   which get their own rule below. */
+a.card,
+.card,
+.surface-card,
+.module-card,
+.mod-card {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(12, 6, 20, 0.22) 100%
+  ) !important;
+  backdrop-filter: blur(10px) saturate(1.1) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.1) !important;
+}
+a.card:hover,
+.card:hover,
+.surface-card:hover,
+.module-card:hover,
+.mod-card:hover {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(12, 6, 20, 0.28) 100%
+  ) !important;
+}
+
 /* The stat / list / badge tiles are also cells in the MLRO's mental
    model — make their opaque navy fill translucent so the wallpaper
    glows through. Borders stay so the grid remains legible. */
