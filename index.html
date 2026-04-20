@@ -2320,6 +2320,14 @@
             --hi-green-bright: #4ade80;
             --hi-green-dim: rgba(34, 197, 94, 0.14);
             --hi-green-border: rgba(34, 197, 94, 0.4);
+            --hi-orange: #fb923c;
+            --hi-orange-bright: #fdba74;
+            --hi-orange-dim: rgba(251, 146, 60, 0.14);
+            --hi-orange-border: rgba(251, 146, 60, 0.4);
+            --hi-blue: #2f7dff;
+            --hi-blue-bright: #5ea3ff;
+            --hi-blue-dim: rgba(47, 125, 255, 0.14);
+            --hi-blue-border: rgba(47, 125, 255, 0.4);
             --hi-ink: #fef3c7;
             --hi-muted: rgba(254, 243, 199, 0.58);
             --hi-border: rgba(250, 204, 21, 0.18);
@@ -2460,6 +2468,10 @@
           .hi-card[data-tone="yellow"]:hover { box-shadow: 0 20px 50px -22px rgba(250, 204, 21, 0.55); }
           .hi-card[data-tone="green"] { color: var(--hi-green); border-color: var(--hi-green-border); }
           .hi-card[data-tone="green"]:hover  { box-shadow: 0 20px 50px -22px rgba(34, 197, 94, 0.55); }
+          .hi-card[data-tone="orange"] { color: var(--hi-orange); border-color: var(--hi-orange-border); }
+          .hi-card[data-tone="orange"]:hover { box-shadow: 0 20px 50px -22px rgba(251, 146, 60, 0.55); }
+          .hi-card[data-tone="blue"] { color: var(--hi-blue); border-color: var(--hi-blue-border); }
+          .hi-card[data-tone="blue"]:hover { box-shadow: 0 20px 50px -22px rgba(47, 125, 255, 0.55); }
 
           .hi-card-icon {
             width: 52px; height: 52px; border-radius: 14px;
@@ -2572,9 +2584,10 @@
                 Experience the<br /><em>standard.</em>
               </h1>
               <p class="hi-lede">
-                Two surfaces, one bench. Connect your compliance integrations
-                and run precious-metals trading desks from a single operator
-                view — every action logged to the 10-year audit trail.
+                Six surfaces, one bench. Run the MLRO workbench, compliance
+                ops, logistics, and screening command alongside integrations
+                and the trading desk — every action logged to the 10-year
+                audit trail.
               </p>
             </div>
 
@@ -2600,7 +2613,7 @@
 
           <div class="hi-section-head">
             <span class="hi-section-label">Operations Surfaces</span>
-            <span class="hi-section-count">02 / 02</span>
+            <span class="hi-section-count">06 / 06</span>
           </div>
 
           <div class="hi-cards">
@@ -2666,6 +2679,136 @@
                 <div class="hi-stat">
                   <span class="hi-stat-val">LBMA</span>
                   <span class="hi-stat-key">RGG v9</span>
+                </div>
+              </div>
+              <div class="hi-card-cta">
+                <span>Open surface</span>
+                <span class="hi-card-cta-arrow" aria-hidden="true">&rarr;</span>
+              </div>
+            </a>
+
+            <a
+              class="hi-card"
+              data-tone="orange"
+              href="/workbench"
+              aria-label="Open the MLRO Workbench surface"
+            >
+              <div class="hi-card-icon" aria-hidden="true">&#9874;</div>
+              <div class="hi-card-meta">
+                <span class="dot"></span>
+                <span>Surface 03 &middot; Workbench</span>
+              </div>
+              <h2 class="hi-card-title">MLRO Workbench</h2>
+              <p class="hi-card-desc">
+                Compliance tasks, customer onboarding, and four-eyes
+                approvals &mdash; the bench where the MLRO actually works.
+              </p>
+              <div class="hi-card-stats">
+                <div class="hi-stat">
+                  <span class="hi-stat-val">4-eyes</span>
+                  <span class="hi-stat-key">Approvals</span>
+                </div>
+                <div class="hi-stat">
+                  <span class="hi-stat-val">CDD/EDD</span>
+                  <span class="hi-stat-key">Onboarding</span>
+                </div>
+              </div>
+              <div class="hi-card-cta">
+                <span>Open surface</span>
+                <span class="hi-card-cta-arrow" aria-hidden="true">&rarr;</span>
+              </div>
+            </a>
+
+            <a
+              class="hi-card"
+              data-tone="yellow"
+              href="/compliance-ops"
+              aria-label="Open the Compliance Ops surface"
+            >
+              <div class="hi-card-icon" aria-hidden="true">&#9881;</div>
+              <div class="hi-card-meta">
+                <span class="dot"></span>
+                <span>Surface 04 &middot; Compliance Ops</span>
+              </div>
+              <h2 class="hi-card-title">Compliance Ops</h2>
+              <p class="hi-card-desc">
+                Training, employees, incidents, and scheduled reports &mdash;
+                the day-to-day operating surface for the compliance team.
+              </p>
+              <div class="hi-card-stats">
+                <div class="hi-stat">
+                  <span class="hi-stat-val">Training</span>
+                  <span class="hi-stat-key">Records</span>
+                </div>
+                <div class="hi-stat">
+                  <span class="hi-stat-val">Incidents</span>
+                  <span class="hi-stat-key">Response</span>
+                </div>
+              </div>
+              <div class="hi-card-cta">
+                <span>Open surface</span>
+                <span class="hi-card-cta-arrow" aria-hidden="true">&rarr;</span>
+              </div>
+            </a>
+
+            <a
+              class="hi-card"
+              data-tone="blue"
+              href="/logistics"
+              aria-label="Open the Logistics surface"
+            >
+              <div class="hi-card-icon" aria-hidden="true">&#9992;</div>
+              <div class="hi-card-meta">
+                <span class="dot"></span>
+                <span>Surface 05 &middot; Logistics</span>
+              </div>
+              <h2 class="hi-card-title">Logistics</h2>
+              <p class="hi-card-desc">
+                Inbound advice, tracking, approved accounts, and local
+                shipments &mdash; every movement tied to counterparty UBO
+                checks (Cabinet Decision 109/2023).
+              </p>
+              <div class="hi-card-stats">
+                <div class="hi-stat">
+                  <span class="hi-stat-val">Tracking</span>
+                  <span class="hi-stat-key">Shipments</span>
+                </div>
+                <div class="hi-stat">
+                  <span class="hi-stat-val">UBO 25%</span>
+                  <span class="hi-stat-key">Allowlist</span>
+                </div>
+              </div>
+              <div class="hi-card-cta">
+                <span>Open surface</span>
+                <span class="hi-card-cta-arrow" aria-hidden="true">&rarr;</span>
+              </div>
+            </a>
+
+            <a
+              class="hi-card"
+              data-tone="pink"
+              href="/screening-command"
+              aria-label="Open the Screening Command surface"
+            >
+              <div class="hi-card-icon" aria-hidden="true">&#9673;</div>
+              <div class="hi-card-meta">
+                <span class="dot"></span>
+                <span>Surface 06 &middot; Screening Command</span>
+              </div>
+              <h2 class="hi-card-title">Screening Command</h2>
+              <p class="hi-card-desc">
+                Subject screening, transaction monitor, STR cases, and the
+                watchlist &mdash; all six sanctions lists (UN, OFAC, EU, UK,
+                UAE, EOCN) wired into one command surface.
+              </p>
+              <div class="hi-card-stats">
+                <div class="hi-stat">
+                  <span class="hi-stat-val">6 / 6</span>
+                  <span class="hi-stat-key">Sanctions lists</span>
+                </div>
+                <div class="hi-stat">
+                  <span class="hi-stat-val">24h</span>
+                  <span class="hi-stat-key">EOCN freeze</span>
                 </div>
               </div>
               <div class="hi-card-cta">
