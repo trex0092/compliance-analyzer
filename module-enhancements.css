@@ -334,40 +334,87 @@ html::after {
   -webkit-backdrop-filter: blur(2px);
 }
 
-/* Native dropdown option list — the open popup is rendered by the
-   platform, but `color-scheme: dark` on the parent forces Chromium,
-   Firefox, and Safari to draw the popup using the page's dark palette
-   instead of the OS default light/grey chrome. Combined with a
-   transparent `option` fill this makes the open menu see-through to
-   the page wallpaper on every module (workbench, compliance-ops,
-   logistics, screening-command, routines). */
+/* Native dropdown option list — Chromium / Firefox / Safari each
+   render the open <select> popup as a platform-owned widget. A
+   `background: transparent` on <option> is overridden by the OS
+   compositor, which is why the popup kept showing as OS-default
+   grey even after the earlier transparent rules.
+   The fix is twofold:
+     (a) set `color-scheme: dark` so every browser draws the popup
+         using DARK chrome instead of light grey
+     (b) set an EXPLICIT dark-purple background that matches the
+         module wallpaper, so the open popup reads as "part of the
+         module" rather than an OS-chrome rectangle.
+   We also opt into the new `appearance: base-select` where supported
+   (Chromium 120+) — that path lets CSS fully own the popup and can
+   render it genuinely transparent to the page below via
+   `::picker(select)`.
+   Scope covers every module (workbench, compliance-ops, logistics,
+   screening-command, routines) AND the root SPA forms. */
 html {
   color-scheme: dark;
 }
+select,
 #moduleViewContent select,
 .mv-form select,
 #routineDrawer select,
 .routines-page select {
   color-scheme: dark !important;
 }
+
+/* Opt-in modern picker styling. Safe: browsers that do not recognise
+   `appearance: base-select` simply ignore the rule and fall back to
+   the OS popup styled by the option rules below. */
+@supports (appearance: base-select) {
+  select {
+    appearance: base-select !important;
+  }
+  select::picker(select) {
+    appearance: base-select !important;
+    background: rgba(26, 15, 46, 0.96) !important;
+    border: 1px solid rgba(168, 85, 247, 0.45) !important;
+    border-radius: 10px !important;
+    padding: 6px !important;
+    backdrop-filter: blur(10px) saturate(1.2);
+    -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  }
+  select::picker(select) option {
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+  }
+}
+
+/* Fallback — the OS-drawn popup. Force an opaque dark purple that
+   matches the module wallpaper so the popup reads as on-brand, not
+   as a grey rectangle. This is the best achievable on Chromium
+   pre-120 / Firefox / Safari without replacing the native widget. */
+select option,
+select optgroup,
 #moduleViewContent select option,
 #moduleViewContent select optgroup,
 .mv-form select option,
 .mv-form select optgroup,
 #routineDrawer select option,
-#routineDrawer select optgroup,
-select option,
-select optgroup {
-  background-color: transparent !important;
-  background: transparent !important;
+#routineDrawer select optgroup {
+  background-color: #1a0f2e !important;
   color: #fae8ff !important;
 }
+
+select option:checked,
 #moduleViewContent select option:checked,
 .mv-form select option:checked,
-#routineDrawer select option:checked,
-select option:checked {
-  background-color: rgba(168, 85, 247, 0.35) !important;
+#routineDrawer select option:checked {
+  background: linear-gradient(0deg, rgba(168, 85, 247, 0.45), rgba(168, 85, 247, 0.45)), #1a0f2e !important;
+  background-color: #3b1e66 !important;
   color: #ffffff !important;
+}
+
+select option:hover,
+#moduleViewContent select option:hover,
+.mv-form select option:hover,
+#routineDrawer select option:hover {
+  background-color: #2b1846 !important;
+  color: #fae8ff !important;
 }
 
 #moduleViewContent input:focus,
