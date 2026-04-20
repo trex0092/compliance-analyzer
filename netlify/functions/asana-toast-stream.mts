@@ -27,6 +27,9 @@ import { getStore } from '@netlify/blobs';
 import { checkRateLimit } from './middleware/rate-limit.mts';
 import { authenticate } from './middleware/auth.mts';
 
+// Build marker — force Netlify function-pack rebuild after PR #409 auth
+// hardening failed to deploy on the prior commit. Safe to remove on the
+// next unrelated edit. FDL No.(10)/2025 Art.20-21.
 const TOAST_STREAM_STORE = 'asana-toast-stream';
 
 interface PendingToast {
