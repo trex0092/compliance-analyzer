@@ -39,32 +39,117 @@
   }
 
   var SANCTIONS_LISTS = [
-    { id: 'uae_eocn', label: 'UAE Local Terrorist List (EOCN / Executive Office)' },
-    { id: 'un_unsc',  label: 'UN Consolidated Sanctions List (UNSC)' },
-    { id: 'ofac_sdn', label: 'OFAC Specially Designated Nationals List (SDN)' },
-    { id: 'uk_ofsi',  label: 'UK OFSI Consolidated Financial Sanctions List' },
-    { id: 'eu_csfl',  label: 'EU Consolidated Financial Sanctions List' },
-    { id: 'interpol', label: 'INTERPOL Red Notices (where applicable)' }
+    {
+      id: 'uae_eocn',
+      label: 'UAE Local Terrorist List (EOCN / Executive Office)',
+      citation: 'Cabinet Res 74/2020 Art.4-7 · FDL No.(10)/2025 Art.35 · MANDATORY',
+      detail: 'UAE domestic terror-designation list maintained by the Executive Office for CTFEF. Confirmed match triggers a 24-hour freeze and 5-business-day CNMR.'
+    },
+    {
+      id: 'un_unsc',
+      label: 'UN Consolidated Sanctions List (UNSC)',
+      citation: 'UNSCR 1267 / 1988 / 2231 · FATF Rec 6-7 · MANDATORY',
+      detail: 'All Security Council sanctions regimes (ISIL-Da\'esh / Al-Qaida, Taliban, DPRK, Iran, Libya, Somalia, Yemen, etc.). Legally mandatory under UN Charter Art.25.'
+    },
+    {
+      id: 'ofac_sdn',
+      label: 'OFAC Specially Designated Nationals List (SDN)',
+      citation: 'US Treasury OFAC · 31 CFR 501 · Secondary-sanctions risk for USD clearing',
+      detail: 'SDN + Consolidated Non-SDN lists (SSI, NS-PLC, FSE, 13599). Key risk for USD-denominated flows and USD correspondent relationships.'
+    },
+    {
+      id: 'uk_ofsi',
+      label: 'UK OFSI Consolidated Financial Sanctions List',
+      citation: 'UK Sanctions and Anti-Money Laundering Act 2018 · SAMLA',
+      detail: 'Post-Brexit UK-autonomous financial sanctions regime. Relevant for GBP-denominated flows and UK-nexus trade.'
+    },
+    {
+      id: 'eu_csfl',
+      label: 'EU Consolidated Financial Sanctions List',
+      citation: 'Council Regulation (EC) No 2580/2001 · EU Restrictive Measures',
+      detail: 'EU autonomous sanctions covering all 27 Member States. Critical for EUR flows, goods transiting EU, and EU-banked counterparties.'
+    },
+    {
+      id: 'interpol',
+      label: 'INTERPOL Red Notices (where applicable)',
+      citation: 'INTERPOL Constitution Art.3 · Rules on the Processing of Data',
+      detail: 'Wanted-persons notices for arrest and extradition. Manual verification — not all Red Notices meet sanctions-equivalent threshold.'
+    }
   ];
 
   var ADVERSE_MEDIA_CATEGORIES = [
-    { id: 'criminal_fraud',     label: 'Criminal / Fraud Allegations' },
-    { id: 'money_laundering',   label: 'Money Laundering' },
-    { id: 'tf_pf_links',        label: 'Terrorist Financing or Proliferation Financing Links' },
-    { id: 'regulatory_action',  label: 'Regulatory Actions, Fines, or Investigations' },
-    { id: 'negative_reputation',label: 'Negative Reputation or Commercial Disputes' },
-    { id: 'political_pep',      label: 'Political Controversy or PEP Connections' },
-    { id: 'human_rights',       label: 'Human Rights, Environmental, or Ethical Violations' }
+    {
+      id: 'criminal_fraud',
+      label: 'Criminal / Fraud Allegations',
+      citation: 'FDL No.(10)/2025 Art.2 · FATF Rec 10-12',
+      detail: 'Indictments, convictions, arrest warrants, organised-crime links, predicate offences (fraud, forgery, bribery, corruption).'
+    },
+    {
+      id: 'money_laundering',
+      label: 'Money Laundering',
+      citation: 'FDL No.(10)/2025 Art.2 + Art.26-27 · FATF Rec 3',
+      detail: 'Layering, structuring, smurfing, trade-based laundering (TBML), shell-company typologies, placement through DPMS or VASP rails.'
+    },
+    {
+      id: 'tf_pf_links',
+      label: 'Terrorist Financing or Proliferation Financing Links',
+      citation: 'Cabinet Res 74/2020 · Cabinet Res 156/2025 · FATF Rec 5-8 · UNSCR 1267 / 1373 / 1540',
+      detail: 'Direct or indirect links to designated terror entities, foreign terrorist fighters, WMD proliferation networks, dual-use procurement.'
+    },
+    {
+      id: 'regulatory_action',
+      label: 'Regulatory Actions, Fines, or Investigations',
+      citation: 'Cabinet Res 71/2024 · MoE supervisory powers · CBUAE / SCA / VARA actions',
+      detail: 'Enforcement orders, administrative penalties (AED 10K–100M range), licence suspension, consent decrees, ongoing investigations.'
+    },
+    {
+      id: 'negative_reputation',
+      label: 'Negative Reputation or Commercial Disputes',
+      citation: 'Cabinet Res 134/2025 Art.14 (EDD triggers) · Reputational-risk doctrine',
+      detail: 'Litigation history, insolvency, chronic non-payment, contract breach, cross-border disputes, sanctions-circumvention allegations.'
+    },
+    {
+      id: 'political_pep',
+      label: 'Political Controversy or PEP Connections',
+      citation: 'FATF Rec 12 · Cabinet Res 134/2025 Art.14 · FDL Art.14',
+      detail: 'Foreign / domestic PEPs, family members, close associates, ministerial positions, state-owned enterprise directorships, graft allegations.'
+    },
+    {
+      id: 'human_rights',
+      label: 'Human Rights, Environmental, or Ethical Violations',
+      citation: 'LBMA RGG v9 · UAE MoE RSG · OECD DD Guidance · UK Modern Slavery Act 2015',
+      detail: 'Conflict minerals, child labour, forced labour, environmental harm in CAHRA, unethical sourcing, ASM non-compliance, community-impact disputes.'
+    }
   ];
 
   // Specialised screening dimensions the MLRO may run alongside sanctions + adverse media.
   // Basis: FDL No.(10)/2025 Art.20-21, Cabinet Res 74/2020, Cabinet Res 156/2025,
   // FATF Rec 7 (PF), FATF Rec 5 (TF), and UAE Strategic Trade Control regime.
   var SPECIAL_SCREENS = [
-    { id: 'tax_evasion',      label: 'Tax evasion', citation: 'FATF Rec 3 · OECD CRS' },
-    { id: 'proliferation',    label: 'Proliferation financing', citation: 'Cabinet Res 156/2025 · FATF Rec 7' },
-    { id: 'terrorism',        label: 'Financing of terrorism', citation: 'Cabinet Res 74/2020 · FATF Rec 5-8' },
-    { id: 'dual_goods',       label: 'Dual-use / strategic goods', citation: 'UAE Strategic Trade Control' }
+    {
+      id: 'tax_evasion',
+      label: 'Tax evasion',
+      citation: 'FATF Rec 3 · OECD CRS · UAE Federal Decree-Law No.(47)/2022 (Corporate Tax)',
+      detail: 'Undeclared income, offshore concealment, CRS non-reporting, VAT evasion, transfer-pricing abuse, shell-company tax layering.'
+    },
+    {
+      id: 'proliferation',
+      label: 'Proliferation financing',
+      citation: 'Cabinet Res 156/2025 · FATF Rec 7 · UNSCR 1540 / 2231',
+      detail: 'Financing WMD programmes, DPRK / Iran procurement networks, front-company intermediaries, sensitive-goods end-users.'
+    },
+    {
+      id: 'terrorism',
+      label: 'Financing of terrorism',
+      citation: 'Cabinet Res 74/2020 · FDL No.(10)/2025 Art.35 · FATF Rec 5-8 · UNSCR 1267 / 1373',
+      detail: 'Designated-entity funding, NPO abuse, foreign-fighter facilitation, informal value-transfer (hawala), charity-sector exploitation.'
+    },
+    {
+      id: 'dual_goods',
+      label: 'Dual-use / strategic goods',
+      citation: 'UAE Strategic Trade Control (Federal Law No.(13)/2007) · Cabinet Res 156/2025 Art.7 · Wassenaar Arrangement',
+      detail: 'Items on the UAE dual-use control list, cryptographic technology, chemical / biological precursors, nuclear-related equipment, end-use diversion risk.'
+    }
   ];
 
   function safeParse(key, fallback) {
@@ -110,21 +195,18 @@
 
     function checkboxGroup(fieldName, items) {
       return items.map(function (it) {
-        return '<label class="mv-check">' +
+        return '<label class="mv-check" style="align-items:flex-start;line-height:1.45">' +
           '<input type="checkbox" name="' + fieldName + '" value="' + esc(it.id) + '" checked>' +
-          '<span>' + esc(it.label) + '</span>' +
+          '<span>' +
+            '<strong>' + esc(it.label) + '</strong>' +
+            (it.citation ? '<br><em style="opacity:.65;font-size:11px;font-style:normal">' + esc(it.citation) + '</em>' : '') +
+            (it.detail ? '<br><span style="opacity:.75;font-size:12px">' + esc(it.detail) + '</span>' : '') +
+          '</span>' +
         '</label>';
       }).join('');
     }
     function specialGroup(items) {
-      return items.map(function (it) {
-        return '<label class="mv-check">' +
-          '<input type="checkbox" name="special_screens" value="' + esc(it.id) + '" checked>' +
-          '<span>' + esc(it.label) +
-            ' <em style="opacity:.6">· ' + esc(it.citation) + '</em>' +
-          '</span>' +
-        '</label>';
-      }).join('');
+      return checkboxGroup('special_screens', items);
     }
 
     host.innerHTML = [
