@@ -42,6 +42,7 @@
     "claude-mem": "12.1.0",
     "eslint": "^8.57.0",
     "genaiscript": "^2.5.1",
+    "netlify-cli": "^25.0.1",
     "prettier": "^3.2.0",
     "tsx": "^4.21.0",
     "typescript": "^5.4.0",
