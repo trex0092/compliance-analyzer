@@ -295,7 +295,34 @@ async function aiProxyCall(provider, path, payload, stream) {
     try { errData = await res.json(); } catch(_) {}
     throw new Error(errData.error || ('AI proxy returned ' + res.status));
   }
-  return res.json();
+  if (!stream) return res.json();
+
+  // SSE stream: accumulate text/event-stream frames and return the last
+  // `data:` payload that is valid JSON. Calling res.json() on a
+  // text/event-stream body hangs until the connection is killed, which
+  // is exactly what surfaces as "Stream idle timeout - partial response
+  // received" on the client.
+  var reader = res.body.getReader();
+  var decoder = new TextDecoder();
+  var buf = '';
+  var last = null;
+  while (true) {
+    var chunk = await reader.read();
+    if (chunk.done) break;
+    buf += decoder.decode(chunk.value, { stream: true });
+    var lines = buf.split('\n');
+    buf = lines.pop();
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (line.startsWith('data: ')) {
+        var raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+        try { last = JSON.parse(raw); } catch (_) {}
+      }
+    }
+  }
+  if (!last) throw new Error('AI proxy stream ended with no data');
+  return last;
 }
 
 // Provider health tracking for mixed mode — skip providers that are failing
@@ -3308,7 +3335,14 @@ function normalizeAnalysisResult(obj) {
 }
 
 async function callAnthropic(body) {
-  const fetchWithTimeout = async (url, options, timeoutMs = 60000) => {
+  // Proxy calls must complete before Netlify's 26s wall-clock kill.
+  // 22s matches NONSTREAM_UPSTREAM_TIMEOUT_MS in ai-proxy.mts so
+  // the server closes cleanly and the browser gets a real error
+  // response instead of a torn TCP socket ("Stream idle timeout").
+  const PROXY_TIMEOUT_MS = 22000;
+  const DIRECT_TIMEOUT_MS = 60000;
+
+  const fetchWithTimeout = async (url, options, timeoutMs) => {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), timeoutMs);
     try {
@@ -3334,7 +3368,7 @@ async function callAnthropic(body) {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify(body)
-    });
+    }, DIRECT_TIMEOUT_MS);
     return r;
   };
 
@@ -3348,7 +3382,7 @@ async function callAnthropic(body) {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify(body)
-      });
+      }, PROXY_TIMEOUT_MS);
     } catch (e) {
       if (!ANTHROPIC_KEY) throw e;
       notifyProxyFallback();
