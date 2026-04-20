@@ -1319,6 +1319,144 @@
               '</div>';
             }
 
+            // Brain Intelligence panel — renders the 19-subsystem
+            // weaponized brain + deep-brain reasoning chain captured
+            // from screening-run.mts. The payload is the same evidence
+            // MoE / LBMA auditors want in the audit pack: what the
+            // engine decided, why, which subsystems answered, which
+            // clamps fired, and what the Opus advisor said when it was
+            // consulted. FDL Art.24 — audit record must be complete.
+            var brainPanel = '';
+            if (r.brain && (r.brain.weaponized || r.brain.deepBrain)) {
+              var wbp = r.brain.weaponized;
+              var dbp = r.brain.deepBrain;
+              var parts = [];
+
+              if (wbp) {
+                var wVerdict = wbp.finalVerdict || wbp.megaVerdict || '—';
+                var wConfPct = typeof wbp.confidence === 'number'
+                  ? Math.round(wbp.confidence * 100) + '%' : '—';
+                var verdictTone =
+                  wVerdict === 'freeze'   ? 'background:#dc2626;color:#fff' :
+                  wVerdict === 'escalate' ? 'background:#ea580c;color:#fff' :
+                  wVerdict === 'review'   ? 'background:#d97706;color:#1a1a1a' :
+                                            'background:#4b5563;color:#fff';
+                parts.push(
+                  '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;' + verdictTone + '">' +
+                      'BRAIN · ' + esc(String(wVerdict).toUpperCase()) +
+                    '</span>' +
+                    '<span class="mv-badge" data-tone="accent" style="font-size:10px">CONFIDENCE ' + esc(wConfPct) + '</span>' +
+                    (wbp.megaVerdict && wbp.megaVerdict !== wbp.finalVerdict
+                      ? '<span class="mv-badge" style="font-size:10px">mega: ' + esc(String(wbp.megaVerdict)) + '</span>' : '') +
+                    (wbp.requiresHumanReview
+                      ? '<span class="mv-badge" data-tone="warn" style="font-size:10px">HUMAN REVIEW REQUIRED</span>' : '') +
+                  '</div>'
+                );
+                if (wbp.auditNarrative) {
+                  parts.push(
+                    '<div style="font-size:12px;line-height:1.55;margin-bottom:6px">' +
+                      '<strong>Audit narrative.</strong> ' + esc(wbp.auditNarrative) +
+                    '</div>'
+                  );
+                }
+                if (Array.isArray(wbp.clampReasons) && wbp.clampReasons.length) {
+                  parts.push(
+                    '<div style="font-size:11px;margin-bottom:4px">' +
+                      '<strong>Clamps fired (' + wbp.clampReasons.length + ').</strong> ' +
+                      '<span style="opacity:.8">' + wbp.clampReasons.map(esc).join(' · ') + '</span>' +
+                    '</div>'
+                  );
+                }
+                if (Array.isArray(wbp.subsystemFailures) && wbp.subsystemFailures.length) {
+                  parts.push(
+                    '<div style="font-size:11px;margin-bottom:4px;opacity:.85">' +
+                      '<strong>Subsystem failures.</strong> ' + wbp.subsystemFailures.map(esc).join(' · ') +
+                    '</div>'
+                  );
+                }
+                if (wbp.advisor && wbp.advisor.text) {
+                  parts.push(
+                    '<details style="margin-top:6px;font-size:11px">' +
+                      '<summary style="cursor:pointer;opacity:.85">' +
+                        '<strong>Opus advisor</strong> · ' + esc(wbp.advisor.modelUsed || 'advisor') +
+                        ' · ' + (wbp.advisor.advisorCallCount || 1) + ' call(s)' +
+                      '</summary>' +
+                      '<div style="margin-top:4px;padding:6px 8px;background:rgba(168,85,247,0.08);border-left:2px solid #a855f7;font-size:11px;line-height:1.5;white-space:pre-wrap">' +
+                        esc(wbp.advisor.text) +
+                      '</div>' +
+                    '</details>'
+                  );
+                }
+                if (wbp.extensions) {
+                  var extBits = [];
+                  if (wbp.extensions.adverseMediaTopCategory) {
+                    extBits.push('Top adverse-media category: <strong>' + esc(String(wbp.extensions.adverseMediaTopCategory)) + '</strong>');
+                  }
+                  if (typeof wbp.extensions.adverseMediaCriticalCount === 'number' && wbp.extensions.adverseMediaCriticalCount > 0) {
+                    extBits.push('Critical hits: <strong>' + wbp.extensions.adverseMediaCriticalCount + '</strong>');
+                  }
+                  if (wbp.extensions.explainableScore) {
+                    var ex = wbp.extensions.explainableScore;
+                    extBits.push('Explainable score: <strong>' + Math.round((ex.score || 0) * 100) + '%</strong> · ' +
+                      esc(String(ex.rating || '')) + ' · CDD ' + esc(String(ex.cddLevel || '')));
+                  }
+                  if (extBits.length) {
+                    parts.push('<div style="font-size:11px;opacity:.85;margin-top:4px">' + extBits.join(' · ') + '</div>');
+                  }
+                }
+              }
+
+              if (dbp) {
+                var dVerdict = dbp.verdict || '—';
+                var dConfPct = typeof dbp.confidence === 'number'
+                  ? Math.round(dbp.confidence * 100) + '%' : '—';
+                var postPct = typeof dbp.posterior === 'number'
+                  ? Math.round(dbp.posterior * 100) + '%' : '—';
+                var coveragePct = typeof dbp.coverage === 'number'
+                  ? Math.round(dbp.coverage * 100) + '%' : '—';
+                parts.push(
+                  '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.12)">' +
+                    '<div style="font-size:11px;letter-spacing:1px;opacity:.7;margin-bottom:4px">DEEP-BRAIN REASONING CHAIN</div>' +
+                    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">' +
+                      '<span class="mv-badge" data-tone="accent" style="font-size:10px">' + esc(String(dVerdict).toUpperCase()) + '</span>' +
+                      '<span class="mv-badge" style="font-size:10px">confidence ' + esc(dConfPct) + '</span>' +
+                      (dbp.topHypothesis
+                        ? '<span class="mv-badge" style="font-size:10px">H: ' + esc(String(dbp.topHypothesis)) + '</span>' : '') +
+                      '<span class="mv-badge" style="font-size:10px">posterior ' + esc(postPct) + '</span>' +
+                      '<span class="mv-badge" style="font-size:10px">coverage ' + esc(coveragePct) + '</span>' +
+                      (dbp.requiresFourEyes
+                        ? '<span class="mv-badge" data-tone="warn" style="font-size:10px">4-EYES</span>' : '') +
+                    '</div>' +
+                    (dbp.narrative
+                      ? '<div style="font-size:12px;line-height:1.55;margin-bottom:4px">' + esc(dbp.narrative) + '</div>' : '') +
+                    (dbp.rationale
+                      ? '<div style="font-size:11px;line-height:1.5;opacity:.85;margin-bottom:4px">' +
+                          '<strong>Top hypothesis rationale.</strong> ' + esc(dbp.rationale) + '</div>' : '') +
+                    (Array.isArray(dbp.lessons) && dbp.lessons.length
+                      ? '<div style="font-size:11px;opacity:.8">' +
+                          '<strong>Lessons logged.</strong> ' +
+                          dbp.lessons.map(function (l) {
+                            return esc(typeof l === 'string' ? l : JSON.stringify(l).slice(0, 160));
+                          }).join(' · ') +
+                        '</div>' : '') +
+                  '</div>'
+                );
+              }
+
+              brainPanel =
+                '<div class="mv-list-meta" style="margin-top:10px;padding:12px;' +
+                  'border-left:3px solid #a855f7;background:rgba(168,85,247,0.06);border-radius:6px">' +
+                  '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;background:#a855f7;color:#fff">' +
+                      'BRAIN INTELLIGENCE' +
+                    '</span>' +
+                    '<strong style="font-size:13px">19-subsystem weaponized brain + deep reasoning chain</strong>' +
+                  '</div>' +
+                  parts.join('') +
+                '</div>';
+            }
+
             var specialHitsLine = Array.isArray(r.special_flags) && r.special_flags.length
               ? '<div class="mv-list-meta" data-tone="warn">Specialised flag: ' + r.special_flags.map(esc).join(', ') + '</div>' : '';
             var integrityLine = r.integrity && r.integrity !== 'complete'
@@ -1367,6 +1505,7 @@
                   adverseItemsLine +
                   knownSourceLine +
                   complianceReportLine +
+                  brainPanel +
                   specialHitsLine +
                   integrityLine +
                   sourceLine +
