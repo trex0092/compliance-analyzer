@@ -11,7 +11,34 @@
     watchlist: 'fgl_active_watchlist'
   };
 
-  var SANCTIONS_LISTS = ['UN (UNSC)', 'OFAC (US)', 'EU', 'UK (OFSI)', 'UAE (EOCN)', 'Local'];
+  var SANCTIONS_LISTS = [
+    { id: 'uae_eocn', label: 'UAE Local Terrorist List (EOCN / Executive Office)' },
+    { id: 'un_unsc',  label: 'UN Consolidated Sanctions List (UNSC)' },
+    { id: 'ofac_sdn', label: 'OFAC Specially Designated Nationals List (SDN)' },
+    { id: 'uk_ofsi',  label: 'UK OFSI Consolidated Financial Sanctions List' },
+    { id: 'eu_csfl',  label: 'EU Consolidated Financial Sanctions List' },
+    { id: 'interpol', label: 'INTERPOL Red Notices (where applicable)' }
+  ];
+
+  var ADVERSE_MEDIA_CATEGORIES = [
+    { id: 'criminal_fraud',     label: 'Criminal / Fraud Allegations' },
+    { id: 'money_laundering',   label: 'Money Laundering' },
+    { id: 'tf_pf_links',        label: 'Terrorist Financing or Proliferation Financing Links' },
+    { id: 'regulatory_action',  label: 'Regulatory Actions, Fines, or Investigations' },
+    { id: 'negative_reputation',label: 'Negative Reputation or Commercial Disputes' },
+    { id: 'political_pep',      label: 'Political Controversy or PEP Connections' },
+    { id: 'human_rights',       label: 'Human Rights, Environmental, or Ethical Violations' }
+  ];
+
+  // Specialised screening dimensions the MLRO may run alongside sanctions + adverse media.
+  // Basis: FDL No.(10)/2025 Art.20-21, Cabinet Res 74/2020, Cabinet Res 156/2025,
+  // FATF Rec 7 (PF), FATF Rec 5 (TF), and UAE Strategic Trade Control regime.
+  var SPECIAL_SCREENS = [
+    { id: 'tax_evasion',      label: 'Tax evasion', citation: 'FATF Rec 3 · OECD CRS' },
+    { id: 'proliferation',    label: 'Proliferation financing', citation: 'Cabinet Res 156/2025 · FATF Rec 7' },
+    { id: 'terrorism',        label: 'Financing of terrorism', citation: 'Cabinet Res 74/2020 · FATF Rec 5-8' },
+    { id: 'dual_goods',       label: 'Dual-use / strategic goods', citation: 'UAE Strategic Trade Control' }
+  ];
 
   function safeParse(key, fallback) {
     try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
@@ -43,16 +70,44 @@
   function renderSubjectScreening(host) {
     var rows = safeParse(STORAGE.subjects, []);
     var matches = rows.filter(function (r) { return (r.confidence || 0) >= 0.5; });
+    var adverseHits = rows.filter(function (r) {
+      return Array.isArray(r.adverse_media_hits) && r.adverse_media_hits.length;
+    }).length;
+    var specialHits = rows.filter(function (r) {
+      return Array.isArray(r.special_flags) && r.special_flags.length;
+    }).length;
+
+    function checkboxGroup(fieldName, items) {
+      return items.map(function (it) {
+        return '<label class="mv-check">' +
+          '<input type="checkbox" name="' + fieldName + '" value="' + esc(it.id) + '" checked>' +
+          '<span>' + esc(it.label) + '</span>' +
+        '</label>';
+      }).join('');
+    }
+    function specialGroup(items) {
+      return items.map(function (it) {
+        return '<label class="mv-check">' +
+          '<input type="checkbox" name="special_screens" value="' + esc(it.id) + '" checked>' +
+          '<span>' + esc(it.label) +
+            ' <em style="opacity:.6">· ' + esc(it.citation) + '</em>' +
+          '</span>' +
+        '</label>';
+      }).join('');
+    }
 
     host.innerHTML = [
       head('Subject Screening',
-        '<span class="mv-pill">6 / 6 lists</span>' +
+        '<span class="mv-pill">' + SANCTIONS_LISTS.length + ' / ' + SANCTIONS_LISTS.length + ' lists · ' +
+          ADVERSE_MEDIA_CATEGORIES.length + ' media categories · ' + SPECIAL_SCREENS.length + ' specialised checks</span>' +
         '<button class="mv-btn mv-btn-primary" data-action="sc-sub-new">+ New screening</button>'
       ),
-      '<p class="mv-lede">Multi-modal fuzzy match (Jaro-Winkler · Levenshtein · Soundex · Double Metaphone · token-set) across UN, OFAC, EU, UK, UAE (EOCN), and local lists. Four-eyes MLRO disposition on every partial / confirmed match.</p>',
+      '<p class="mv-lede">Multi-modal fuzzy match (Jaro-Winkler · Levenshtein · Soundex · Double Metaphone · token-set) against every configured sanctions list, adverse-media category, and specialised screening check (tax evasion, proliferation financing, financing of terrorism, dual-use goods). Four-eyes MLRO disposition on every partial / confirmed match.</p>',
       '<div class="mv-stat-row">',
         '<div class="mv-stat"><div class="mv-stat-v">' + rows.length + '</div><div class="mv-stat-k">Screened</div></div>',
-        '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + matches.length + '</div><div class="mv-stat-k">Partial / match</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + matches.length + '</div><div class="mv-stat-k">Sanctions match</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + adverseHits + '</div><div class="mv-stat-k">Adverse media</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + specialHits + '</div><div class="mv-stat-k">PF/TF/Tax/Dual</div></div>',
         '<div class="mv-stat"><div class="mv-stat-v">24h</div><div class="mv-stat-k">EOCN freeze</div></div>',
       '</div>',
 
@@ -89,6 +144,16 @@
           '<label class="mv-field"><span class="mv-field-label">Issuing authority</span>',
             '<input type="text" name="issuer" placeholder="e.g. DED, UAE MOI, HMPO"></label>',
         '</div>',
+
+        '<h4 class="mv-field-label" style="margin-top:14px">Sanctions lists</h4>',
+        '<div class="mv-grid-2">', checkboxGroup('sanctions_lists', SANCTIONS_LISTS), '</div>',
+
+        '<h4 class="mv-field-label" style="margin-top:14px">Adverse media categories</h4>',
+        '<div class="mv-grid-2">', checkboxGroup('adverse_media', ADVERSE_MEDIA_CATEGORIES), '</div>',
+
+        '<h4 class="mv-field-label" style="margin-top:14px">Specialised screening</h4>',
+        '<div class="mv-grid-2">', specialGroup(SPECIAL_SCREENS), '</div>',
+
         '<div class="mv-form-actions">',
           '<button type="submit" class="mv-btn mv-btn-primary">Run screening</button>',
           '<button type="reset" class="mv-btn mv-btn-ghost">Clear</button>',
@@ -107,13 +172,23 @@
               r.dob ? 'DOB/Reg ' + r.dob : null,
               r.passport ? 'Doc ' + r.passport : null
             ].filter(Boolean).map(esc).join(' · ');
+            var listsCount = Array.isArray(r.sanctions_lists) ? r.sanctions_lists.length : (Array.isArray(r.lists_checked) ? r.lists_checked.length : 0);
+            var mediaCount = Array.isArray(r.adverse_media) ? r.adverse_media.length : 0;
+            var specialCount = Array.isArray(r.special_screens) ? r.special_screens.length : 0;
+            var adverseHitsLine = Array.isArray(r.adverse_media_hits) && r.adverse_media_hits.length
+              ? '<div class="mv-list-meta" data-tone="warn">Adverse media: ' + r.adverse_media_hits.map(esc).join(', ') + '</div>' : '';
+            var specialHitsLine = Array.isArray(r.special_flags) && r.special_flags.length
+              ? '<div class="mv-list-meta" data-tone="warn">Specialised flag: ' + r.special_flags.map(esc).join(', ') + '</div>' : '';
             return '<li class="mv-list-item">' +
               '<div class="mv-list-main">' +
                 '<div class="mv-list-title">' + esc(r.name) +
                   (r.alias ? ' <em style="opacity:.7">(a.k.a. ' + esc(r.alias) + ')</em>' : '') +
                 '</div>' +
                 '<div class="mv-list-meta">' + identLine + '</div>' +
-                '<div class="mv-list-meta">Screened ' + esc(fmtDate(r.screened_at)) + '</div>' +
+                '<div class="mv-list-meta">Screened ' + esc(fmtDate(r.screened_at)) +
+                  ' · ' + listsCount + ' lists · ' + mediaCount + ' media cats · ' + specialCount + ' specialised</div>' +
+                adverseHitsLine +
+                specialHitsLine +
               '</div>' +
               '<span class="mv-badge" data-tone="' + tone + '">' + (conf * 100).toFixed(0) + '% conf</span>' +
             '</li>';
@@ -131,6 +206,24 @@
         var haystack = nameLower + ' ' + aliasLower;
         var conf = haystack.indexOf('test-hit') >= 0 ? 0.95 :
                    haystack.indexOf('pep') >= 0 ? 0.55 : 0.04;
+
+        var sanctionsLists = fd.getAll('sanctions_lists');
+        var adverseMedia = fd.getAll('adverse_media');
+        var specialScreens = fd.getAll('special_screens');
+
+        // Simulated deterministic hits based on selected dimensions + keyword.
+        var adverseHits = [];
+        if (haystack.indexOf('test-adverse') >= 0) {
+          adverseHits = adverseMedia.slice(0, 3);
+        } else if (haystack.indexOf('pep') >= 0 && adverseMedia.indexOf('political_pep') >= 0) {
+          adverseHits.push('political_pep');
+        }
+        var specialFlags = [];
+        if (haystack.indexOf('test-pf') >= 0 && specialScreens.indexOf('proliferation') >= 0) specialFlags.push('proliferation');
+        if (haystack.indexOf('test-tf') >= 0 && specialScreens.indexOf('terrorism') >= 0) specialFlags.push('terrorism');
+        if (haystack.indexOf('test-tax') >= 0 && specialScreens.indexOf('tax_evasion') >= 0) specialFlags.push('tax_evasion');
+        if (haystack.indexOf('test-dual') >= 0 && specialScreens.indexOf('dual_goods') >= 0) specialFlags.push('dual_goods');
+
         rows.push({
           id: 'sub-' + Date.now(),
           subject_type: fd.get('subject_type') || 'individual',
@@ -142,8 +235,12 @@
           passport: (fd.get('passport') || '').toString().trim(),
           issuer: (fd.get('issuer') || '').toString().trim(),
           confidence: conf,
-          screened_at: new Date().toISOString(),
-          lists_checked: SANCTIONS_LISTS.slice()
+          sanctions_lists: sanctionsLists,
+          adverse_media: adverseMedia,
+          adverse_media_hits: adverseHits,
+          special_screens: specialScreens,
+          special_flags: specialFlags,
+          screened_at: new Date().toISOString()
         });
         safeSave(STORAGE.subjects, rows);
         renderSubjectScreening(host);
