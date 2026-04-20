@@ -433,6 +433,20 @@
     });
   }
 
+  // Determine which landing this viewer instance is running on so we
+  // can look up its registered native module renderers.
+  function getCurrentLandingKey() {
+    var segs = (location.pathname || '/').split('/').filter(Boolean);
+    if (!segs.length) return '';
+    return segs[0].replace(/\.html$/, '');
+  }
+
+  function lookupNativeRenderer(route, slug) {
+    var registry = window.__landingModules || {};
+    var bucket = registry[getCurrentLandingKey()] || {};
+    return bucket[slug] || bucket[route] || null;
+  }
+
   function openModule(route, label, slug, pushHistory) {
     titleEl.textContent = label || 'Module';
     view.classList.add('is-open');
@@ -440,15 +454,9 @@
     document.documentElement.classList.add('module-view-active');
     applyImperativeHide();
 
-    // Clear any stale error placeholder from a previous run; keep
-    // cached .tab-content nodes so repeat opens are instant.
-    var stale = host.querySelectorAll('.mv-empty');
-    for (var s = 0; s < stale.length; s++) stale[s].remove();
-
-    var cached = host.querySelector('#tab-' + route);
-    if (!cached) {
-      renderHostSkeleton(label ? 'Loading ' + label + '…' : 'Loading module…');
-    }
+    // Clear any stale error placeholder or cached injected tabs from
+    // previous renders so the host starts from a clean slate per open.
+    host.innerHTML = '';
 
     if (pushHistory !== false && slug) {
       var target = getBasePath() + '/' + slug;
@@ -458,6 +466,30 @@
     }
     refreshPageNav();
 
+    // Prefer a native renderer when one is registered for this
+    // landing+route. Native renderers write straight into the host
+    // using the landing's own components — no main-app chrome, no
+    // iframe, no script graft. Instantaneous render.
+    var nativeRenderer = lookupNativeRenderer(route, slug);
+    if (typeof nativeRenderer === 'function') {
+      try {
+        nativeRenderer(host, { route: route, slug: slug, label: label });
+      } catch (err) {
+        host.innerHTML =
+          '<div class="mv-empty" style="padding:40px;">' +
+          'Module failed to render: ' + (err && err.message ? err.message : String(err)) +
+          '</div>';
+      }
+      requestAnimationFrame(function () {
+        view.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return;
+    }
+
+    // Fallback: legacy fetch+inject of index.html's tab DOM. Kept as a
+    // safety net for any route we haven't migrated to a native module
+    // yet. First click here has the usual multi-second script load.
+    renderHostSkeleton(label ? 'Loading ' + label + '…' : 'Loading module…');
     ensureTabInjected(route).then(function (tabEl) {
       var skels = host.querySelectorAll('.mv-skeleton');
       for (var i = 0; i < skels.length; i++) skels[i].remove();
