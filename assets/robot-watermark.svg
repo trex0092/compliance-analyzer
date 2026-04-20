@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520" fill="none" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+  <!-- Head silhouette (profile, facing left) -->
+  <path d="M 172 70
+           C 120 78 86 132 80 200
+           C 76 256 92 308 116 346
+           L 128 388
+           L 138 442
+           L 180 462
+           L 238 458
+           L 276 432
+           C 300 410 310 378 314 342
+           L 326 292
+           C 338 236 338 176 310 130
+           C 282 86 234 66 196 68
+           C 186 68 178 68 172 70 Z"
+        fill="#000" fill-opacity="0.18"/>
+
+  <!-- Primary outline -->
+  <path d="M 172 70
+           C 120 78 86 132 80 200
+           C 76 256 92 308 116 346
+           L 128 388
+           L 138 442
+           L 180 462
+           L 238 458
+           L 276 432
+           C 300 410 310 378 314 342
+           L 326 292
+           C 338 236 338 176 310 130
+           C 282 86 234 66 196 68"
+        stroke-width="2.6"/>
+
+  <!-- Cranial panel seams -->
+  <path d="M 110 140 C 180 108 248 118 300 160"/>
+  <path d="M 96 184 C 180 158 258 166 320 204"/>
+  <path d="M 90 228 C 180 212 260 220 322 248"/>
+  <path d="M 102 274 C 180 262 258 266 316 290"/>
+  <path d="M 120 320 C 190 312 252 314 302 330"/>
+
+  <!-- Crown seam -->
+  <path d="M 188 72 C 210 98 234 98 256 80"/>
+  <path d="M 150 82 C 168 60 198 58 220 74"/>
+
+  <!-- Side headphone/ear disk -->
+  <circle cx="248" cy="286" r="42"/>
+  <circle cx="248" cy="286" r="27"/>
+  <circle cx="248" cy="286" r="10" fill="#000"/>
+  <path d="M 248 244 C 282 250 286 284 272 312" stroke-width="2.6"/>
+  <path d="M 248 328 C 220 326 210 308 216 290" stroke-width="2"/>
+
+  <!-- Face profile hints (left side) -->
+  <path d="M 78 200 C 70 208 68 220 76 228" stroke-width="2.4"/>
+  <circle cx="104" cy="208" r="3.2" fill="#000"/>
+  <path d="M 88 234 C 78 240 78 252 90 258"/>
+  <path d="M 92 276 C 100 282 118 280 122 272"/>
+  <path d="M 108 298 C 118 308 134 308 144 300"/>
+
+  <!-- Neck + shoulder ridge -->
+  <path d="M 140 450 L 150 500 L 210 512 L 272 498 L 280 446"/>
+  <path d="M 170 464 L 176 506"/>
+  <path d="M 210 472 L 214 514"/>
+  <path d="M 246 466 L 244 504"/>
+
+  <!-- Circuit accents -->
+  <path d="M 160 360 L 198 368 L 204 382 L 238 384"/>
+  <circle cx="238" cy="384" r="3.6" fill="#000"/>
+  <path d="M 120 398 L 156 404"/>
+  <circle cx="156" cy="404" r="2.8" fill="#000"/>
+  <path d="M 284 360 L 314 352"/>
+  <circle cx="314" cy="352" r="2.8" fill="#000"/>
+
+  <!-- Filament / wire strands trailing from crown -->
+  <path d="M 220 72 C 260 40 308 50 332 92" stroke-width="1.6" stroke-dasharray="4 6" opacity="0.7"/>
+  <path d="M 240 78 C 290 58 342 78 358 136" stroke-width="1.6" stroke-dasharray="4 6" opacity="0.7"/>
+  <path d="M 200 66 C 200 36 232 24 260 30" stroke-width="1.6" stroke-dasharray="4 6" opacity="0.7"/>
+  <path d="M 260 92 C 320 92 360 140 368 200" stroke-width="1.6" stroke-dasharray="4 6" opacity="0.7"/>
+  <path d="M 290 150 C 350 170 380 220 370 270" stroke-width="1.6" stroke-dasharray="4 6" opacity="0.6"/>
+
+  <!-- Data nodes -->
+  <circle cx="332" cy="92" r="3" fill="#000"/>
+  <circle cx="358" cy="136" r="3" fill="#000"/>
+  <circle cx="368" cy="200" r="3" fill="#000"/>
+  <circle cx="260" cy="30" r="3" fill="#000"/>
+</svg>
