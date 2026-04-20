@@ -1714,7 +1714,7 @@
       : 'No customer code — rely on name only (FDL Art.24 audit attribution weaker)';
 
     var rows = [
-      assuranceRow('1 · Screening integrity',   integrityState, escHtmlSafe(integrityDetail)),
+      assuranceRow('1 · Screening integrity',   integrityState, esc(integrityDetail)),
       assuranceRow('2 · Mandatory-list coverage', covState,     esc(covDetail)),
       assuranceRow('3 · Algorithm consensus',   acState,        esc(acDetail)),
       assuranceRow('4 · List anomalies',        anomalyState,   esc(anomalyDetail)),
@@ -1750,11 +1750,6 @@
       '</div>' +
     '</div>';
   }
-
-  // Wrapper — esc() returns a string; assuranceRow inlines HTML so
-  // complex details with inline structure need a safe-unchanged path
-  // while bare strings still get escaped.
-  function escHtmlSafe(s) { return esc(s); }
 
   function buildReasoningConsole(r) {
     if (!r || r.source !== 'backend') return '';

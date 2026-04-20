@@ -327,7 +327,8 @@ export default async (req: Request, context: Context): Promise<Response> => {
       workspaceGid,
       dryRun,
       results,
-      ranBy: auth.principal ?? null,
+      ranBy: auth.username ?? auth.userId ?? null,
+      jti: auth.jwt?.jti ?? null,
       at: new Date().toISOString(),
     });
   } catch (_e) {

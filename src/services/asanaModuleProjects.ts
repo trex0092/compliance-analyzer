@@ -411,10 +411,23 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
   },
 ]);
 
+// Browser-safe env reader. This module is imported from both
+// Netlify functions (Node runtime, `process` defined) and from
+// browser-side bundlers that may strip `process` entirely. The
+// guard keeps both paths working without `@types/node` leaking
+// into browser code.
+function readEnv(name: string): string | undefined {
+  if (typeof process !== 'undefined' && process.env?.[name]) {
+    const v = process.env[name];
+    return typeof v === 'string' && v.length > 0 ? v : undefined;
+  }
+  return undefined;
+}
+
 export function getModuleProjectGid(key: ModuleKey): string | undefined {
   const spec = MODULE_PROJECTS.find((p) => p.key === key);
   if (!spec) return undefined;
-  return process.env[spec.envVar] || undefined;
+  return readEnv(spec.envVar);
 }
 
 /**
@@ -431,7 +444,7 @@ export function getModuleProjectGid(key: ModuleKey): string | undefined {
 export function resolveAsanaProjectGid(key: ModuleKey): string {
   return (
     getModuleProjectGid(key) ||
-    process.env.ASANA_SCREENINGS_PROJECT_GID ||
+    readEnv('ASANA_SCREENINGS_PROJECT_GID') ||
     '1213759768596515'
   );
 }
