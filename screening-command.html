@@ -713,28 +713,29 @@
       }
       @media (prefers-reduced-motion: reduce) { .wm { animation: none !important; } }
 
-      /* Cyber-head watermark (violet accent to match screening-command palette) */
+      /* Cyber-head watermark — violet accent on the screening-command palette.
+         Large, centred on the left gutter, clearly visible. */
       .wm-robot {
         position: fixed;
-        left: -4vw;
-        bottom: -3vh;
-        width: min(420px, 32vw);
+        left: 0;
+        top: 50%;
+        width: min(640px, 44vw);
         aspect-ratio: 420 / 520;
         pointer-events: none;
         z-index: 0;
-        opacity: 0.17;
-        mix-blend-mode: screen;
-        background-color: #c084fc;
+        opacity: 0.78;
+        background-color: #e879f9;
         -webkit-mask: url("assets/watermark-screening-command.svg") center / contain no-repeat;
                 mask: url("assets/watermark-screening-command.svg") center / contain no-repeat;
-        filter: drop-shadow(0 0 42px rgba(192, 132, 252, 0.30));
-        animation: wmRobotFloat 9s ease-in-out infinite alternate;
+        filter: drop-shadow(0 0 60px rgba(168, 85, 247, 0.55));
+        transform: translateY(-50%);
+        animation: wmRobotFloat 12s ease-in-out infinite alternate;
       }
       html.module-view-active .wm-robot { display: none; }
       @media (max-width: 960px) { .wm-robot { display: none; } }
       @keyframes wmRobotFloat {
-        from { transform: translateY(0) rotate(0deg); }
-        to   { transform: translateY(-10px) rotate(0.4deg); }
+        from { transform: translateY(calc(-50% - 10px)); }
+        to   { transform: translateY(calc(-50% + 10px)); }
       }
       @media (prefers-reduced-motion: reduce) { .wm-robot { animation: none !important; } }
     </style>

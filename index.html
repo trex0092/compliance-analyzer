@@ -2853,12 +2853,11 @@
             position: fixed;
             top: 50%;
             transform: translateY(-50%);
-            width: min(360px, 22vw);
+            width: min(520px, 32vw);
             aspect-ratio: 420 / 520;
             pointer-events: none;
             z-index: 0;
-            opacity: 0.22;
-            mix-blend-mode: screen;
+            opacity: 0.78;
             -webkit-mask-size: contain;
                     mask-size: contain;
             -webkit-mask-position: center;
@@ -2868,19 +2867,19 @@
             animation: hiSideWmFloat 12s ease-in-out infinite alternate;
           }
           .hi-side-wm.left {
-            left: 0.5vw;
-            background-color: #F472B6;
+            left: 0;
+            background-color: #FB7FCA;
             -webkit-mask-image: url("assets/watermark-compliance-ops.svg");
                     mask-image: url("assets/watermark-compliance-ops.svg");
-            filter: drop-shadow(0 0 40px rgba(244, 114, 182, 0.30));
+            filter: drop-shadow(0 0 60px rgba(244, 114, 182, 0.55));
           }
           .hi-side-wm.right {
-            right: 0.5vw;
+            right: 0;
             background-color: #E8C96A;
             transform: translateY(-50%) scaleX(-1);
             -webkit-mask-image: url("assets/watermark-screening-command.svg");
                     mask-image: url("assets/watermark-screening-command.svg");
-            filter: drop-shadow(0 0 40px rgba(232, 201, 106, 0.28));
+            filter: drop-shadow(0 0 60px rgba(232, 201, 106, 0.55));
             animation-delay: -4s;
           }
           @keyframes hiSideWmFloat {
