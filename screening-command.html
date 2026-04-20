@@ -666,9 +666,35 @@
         to   { transform: translateY(-14px) rotate(-0.5deg); }
       }
       @media (prefers-reduced-motion: reduce) { .wm { animation: none !important; } }
+
+      /* Cyber-head watermark (violet accent to match screening-command palette) */
+      .wm-robot {
+        position: fixed;
+        left: -4vw;
+        bottom: -3vh;
+        width: min(420px, 32vw);
+        aspect-ratio: 420 / 520;
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0.17;
+        mix-blend-mode: screen;
+        background-color: #c084fc;
+        -webkit-mask: url("assets/robot-watermark.svg") center / contain no-repeat;
+                mask: url("assets/robot-watermark.svg") center / contain no-repeat;
+        filter: drop-shadow(0 0 42px rgba(192, 132, 252, 0.30));
+        animation: wmRobotFloat 9s ease-in-out infinite alternate;
+      }
+      html.module-view-active .wm-robot { display: none; }
+      @media (max-width: 960px) { .wm-robot { display: none; } }
+      @keyframes wmRobotFloat {
+        from { transform: translateY(0) rotate(0deg); }
+        to   { transform: translateY(-10px) rotate(0.4deg); }
+      }
+      @media (prefers-reduced-motion: reduce) { .wm-robot { animation: none !important; } }
     </style>
   </head>
   <body>
+    <aside class="wm-robot" aria-hidden="true"></aside>
     <aside class="wm" aria-hidden="true">
       <svg viewBox="0 0 500 700" xmlns="http://www.w3.org/2000/svg">
         <defs>
