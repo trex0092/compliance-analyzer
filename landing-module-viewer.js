@@ -129,12 +129,9 @@
     if (mainAppStylesInjected) return;
     mainAppStylesInjected = true;
 
-    // Snapshot the landing's :root palette + body background BEFORE
-    // appending the main-app <style>, so computed styles still reflect
-    // the landing's original values. Without this, the main-app block
-    // would redeclare --orange / --border / etc. source-order after the
-    // landing and the landing's own topbar, hero, and cards would pick
-    // up amber/gold on close.
+    // Snapshot the landing's :root palette + body/color/font BEFORE
+    // appending any main-app CSS, so the restoration block can hand
+    // the landing chrome back its own look on "Back to surfaces".
     var snapshot = snapshotLandingPalette();
 
     var styleNodes = doc.querySelectorAll('head style, body style');
@@ -142,19 +139,96 @@
     for (var i = 0; i < styleNodes.length; i++) {
       chunks.push(styleNodes[i].textContent || '');
     }
+    var rawCss = chunks.join('\n');
+
+    // Scope every main-app style rule to #moduleViewContent so the
+    // injected tab DOM inherits all main-app chrome styling (.card,
+    // .tab-content, buttons, forms, etc.) but those rules cannot
+    // bleed onto the landing's own .card / .footer / .topbar. Keeps
+    // @keyframes / @font-face / @import / @charset global (they don't
+    // match elements by selector). Keeps html / body / :root
+    // unprefixed so their globals flow and are handled by the palette
+    // restore block below. Falls back to the unscoped CSS if the
+    // CSSOM parser rejects the document (dev / broken browsers).
+    var scoped = scopeCssToHost(rawCss, '#moduleViewContent') || rawCss;
+
     var injected = document.createElement('style');
     injected.id = '__mainAppInjectedStyles';
-    injected.textContent = chunks.join('\n');
+    injected.textContent = scoped;
     document.head.appendChild(injected);
 
     // Append the restoration block AFTER main-app so it wins source
-    // order and hands the landing chrome back its original colours.
+    // order and hands the landing chrome back its original colours,
+    // text colour, and font-family.
     applyLandingPaletteRestore(snapshot);
 
     // Pull in any <link rel="stylesheet"> tags the main app relies on
     // (Google Fonts, CDN sheets) so the injected module resolves all
     // its typography and reset references.
     injectMainAppStylesheetLinks(doc);
+  }
+
+  // Parse rawCss via the browser's CSSOM, rewriting each style-rule
+  // selector so it only matches elements inside `hostSelector`. Media
+  // / supports / layer / keyframes / font-face / import rules are
+  // preserved. :root, html, body, * stay global — the palette-restore
+  // block runs after this and reclaims them for the landing.
+  function scopeCssToHost(rawCss, hostSelector) {
+    try {
+      var tmp = document.createElement('style');
+      tmp.textContent = rawCss;
+      tmp.media = 'not all'; // parse without applying styles
+      document.head.appendChild(tmp);
+      var sheet = tmp.sheet;
+      if (!sheet) {
+        document.head.removeChild(tmp);
+        return null;
+      }
+      var out = [];
+      for (var i = 0; i < sheet.cssRules.length; i++) {
+        out.push(transformCssRule(sheet.cssRules[i], hostSelector));
+      }
+      document.head.removeChild(tmp);
+      return out.filter(Boolean).join('\n');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  var GLOBAL_SELECTORS = { ':root': 1, 'html': 1, 'body': 1, '*': 1 };
+
+  function transformCssRule(rule, host) {
+    if (!rule) return '';
+    // CSSStyleRule -> prefix selectors
+    if (rule.selectorText != null && rule.style) {
+      var parts = rule.selectorText.split(',');
+      var prefixed = [];
+      for (var i = 0; i < parts.length; i++) {
+        var sel = parts[i].trim();
+        if (!sel) continue;
+        if (GLOBAL_SELECTORS[sel] || sel.indexOf(host) === 0) {
+          prefixed.push(sel);
+        } else {
+          prefixed.push(host + ' ' + sel);
+        }
+      }
+      return prefixed.join(', ') + '{' + rule.style.cssText + '}';
+    }
+    // @media / @supports / @layer with nested rules
+    if (rule.cssRules && rule.conditionText != null) {
+      var kind = '@media';
+      if (/CSSSupportsRule/.test(Object.prototype.toString.call(rule)) || rule.constructor.name === 'CSSSupportsRule') {
+        kind = '@supports';
+      }
+      var inner = [];
+      for (var j = 0; j < rule.cssRules.length; j++) {
+        inner.push(transformCssRule(rule.cssRules[j], host));
+      }
+      return kind + ' ' + rule.conditionText + '{' + inner.filter(Boolean).join('\n') + '}';
+    }
+    // @layer with a body (anonymous or named) — preserve as-is
+    // @keyframes / @font-face / @import / @charset / @page — global
+    return rule.cssText || '';
   }
 
   // Capture every landing-palette custom property currently visible on
@@ -180,9 +254,14 @@
       var v = rs.getPropertyValue(keys[i]);
       if (v && v.trim()) decls.push(keys[i] + ': ' + v.trim() + ';');
     }
-    var bodyBg = '';
-    try { bodyBg = getComputedStyle(document.body).backgroundColor || ''; } catch (_) {}
-    return { decls: decls, bodyBg: bodyBg };
+    var bodyBg = '', bodyColor = '', bodyFont = '';
+    try {
+      var bs = getComputedStyle(document.body);
+      bodyBg = bs.backgroundColor || '';
+      bodyColor = bs.color || '';
+      bodyFont = bs.fontFamily || '';
+    } catch (_) {}
+    return { decls: decls, bodyBg: bodyBg, bodyColor: bodyColor, bodyFont: bodyFont };
   }
 
   function applyLandingPaletteRestore(snapshot) {
@@ -190,8 +269,15 @@
     if (!snapshot || !snapshot.decls) return;
     var style = document.createElement('style');
     style.id = '__landingPaletteRestore';
-    var body = snapshot.bodyBg ? 'body{background:' + snapshot.bodyBg + ' !important;}' : '';
-    style.textContent = ':root{' + snapshot.decls.join('') + '}' + body;
+    var bodyRule = '';
+    if (snapshot.bodyBg || snapshot.bodyColor || snapshot.bodyFont) {
+      bodyRule = 'body{' +
+        (snapshot.bodyBg ? 'background:' + snapshot.bodyBg + ' !important;' : '') +
+        (snapshot.bodyColor ? 'color:' + snapshot.bodyColor + ' !important;' : '') +
+        (snapshot.bodyFont ? 'font-family:' + snapshot.bodyFont + ' !important;' : '') +
+        '}';
+    }
+    style.textContent = ':root{' + snapshot.decls.join('') + '}' + bodyRule;
     document.head.appendChild(style);
   }
 
