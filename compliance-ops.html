@@ -473,31 +473,34 @@
       .module-view.is-open { display: block; }
 
       /* Re-skin injected main-app module content to the Compliance Ops
-         pink/red palette. Scoped to #moduleViewContent so the landing
-         chrome is unaffected. */
+         pink/red palette. Hex literals only — the main-app's injected
+         :root redeclares colour vars source-order after the landing,
+         so literals are the only reliable override. */
       #moduleViewContent {
-        --gold: var(--pink);
-        --gold-light: var(--pink-bright);
+        --gold: #ec4899;
+        --gold-light: #f472b6;
         --gold-dim: rgba(236, 72, 153, 0.14);
         --gold-dark: #9d174d;
-        --amber: var(--pink);
+        --amber: #ec4899;
         --amber-dim: rgba(236, 72, 153, 0.14);
-        --orange: var(--pink);
-        --orange-bright: var(--pink-bright);
-        --yellow: var(--red-bright);
-        --yellow-bright: var(--red-bright);
-        --red: var(--red);
+        --orange: #ec4899;
+        --orange-bright: #f472b6;
+        --yellow: #f87171;
+        --yellow-bright: #f87171;
+        --red: #ef4444;
         --red-dim: rgba(239, 68, 68, 0.14);
-        --border: var(--border);
-        --border-strong: var(--border-strong);
+        --green: #10b981;
+        --border: rgba(236, 72, 153, 0.18);
+        --border-strong: rgba(236, 72, 153, 0.4);
         --surface: rgba(236, 72, 153, 0.05);
         --surface2: rgba(236, 72, 153, 0.1);
-        --text: var(--mist);
-        --ivory: var(--mist);
-        --bg: var(--midnight);
-        --bg-primary: var(--midnight);
-        --bg-secondary: var(--navy);
-        --bg-card: var(--surface-2);
+        --text: #fce7f3;
+        --muted: rgba(252, 231, 243, 0.6);
+        --ivory: #fce7f3;
+        --bg: #1a050d;
+        --bg-primary: #1a050d;
+        --bg-secondary: #2a0a18;
+        --bg-card: #3a0f22;
       }
       .module-view-head {
         display: flex;
