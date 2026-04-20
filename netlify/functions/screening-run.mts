@@ -1359,7 +1359,7 @@ async function postAsanaTask(params: {
   const projectId =
     params.projectGidOverride ||
     process.env.ASANA_SCREENINGS_PROJECT_GID ||
-    '1214124911186857';
+    '1213759768596515';
   if (!process.env.ASANA_TOKEN && !process.env.ASANA_ACCESS_TOKEN && !process.env.ASANA_API_TOKEN) {
     return { ok: false, error: 'ASANA_TOKEN not configured' };
   }
@@ -2120,11 +2120,15 @@ export default async (req: Request, context: Context): Promise<Response> => {
   // a clean run. Cabinet Res 134/2025 Art.19: periodic internal review
   // sees every event. Running the two writes in parallel shaves ~1.5s
   // off the tail of the pipeline.
-  // Default project GID points at the MLRO board the user designated
-  // ("The Screenings" + "Transaction Monitor" sections live here).
-  // Override via ASANA_SCREENINGS_PROJECT_GID in Netlify env if we ever
-  // split boards per tenant.
-  const asanaProjectGid = process.env.ASANA_SCREENINGS_PROJECT_GID || '1214124911186857';
+  // Default project GID unified with screening-save.mts, transaction-
+  // monitor.mts, continuous-monitor.mts, immediateRiskAlerts.ts, and
+  // .env.example so the run-task and the saved disposition-task always
+  // land on the same Asana board — previously these defaults diverged
+  // (run → 1214124911186857, save → 1213759768596515) which split the
+  // evidence chain when ASANA_SCREENINGS_PROJECT_GID was not set in
+  // the Netlify env. Override via ASANA_SCREENINGS_PROJECT_GID if we
+  // ever split boards per tenant.
+  const asanaProjectGid = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
   const asanaAnomalies = [
     ...anomalousListErrors.map((l) => `${l.list}: ${l.error}`),
     ...(screeningIntegrity !== 'complete'
