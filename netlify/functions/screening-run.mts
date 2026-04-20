@@ -1624,7 +1624,19 @@ export default async (req: Request, context: Context): Promise<Response> => {
           d.setFullYear(d.getFullYear() - 3);
           return d.toISOString().slice(0, 10);
         })()
-      : undefined;
+      : input.eventType === 'ad_hoc'
+        ? (() => {
+            // Ad-hoc MLRO screens are first-look investigations, not
+            // ongoing-monitoring pulses — widen to 12 months so a
+            // six-month-old arrest on a Turkey gold-refinery raid is
+            // still surfaced (the exact failure mode this window was
+            // sized for). FATF Rec 10 — ongoing CDD applies, but the
+            // first look must actually see the last year of news.
+            const d = new Date();
+            d.setFullYear(d.getFullYear() - 1);
+            return d.toISOString().slice(0, 10);
+          })()
+        : undefined;
   // Adverse media fan-out: one searchAdverseMedia call per term, all
   // racing in parallel. The slowest still caps the stage at
   // ADVERSE_MEDIA_TIMEOUT_MS. Results are merged + de-duplicated by
