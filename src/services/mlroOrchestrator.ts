@@ -313,6 +313,22 @@ async function review(
       additionalSystemPrompt: COMPLIANCE_ADVISOR_SYSTEM_PROMPT,
       userMessage: prompt,
       maxTokens: 1024,
+      // Stream so `/api/ai-proxy` uses its streaming code path with
+      // `: keepalive\n\n` SSE comment injection. Opus advisor
+      // sub-inferences regularly run 20-40s end-to-end during which
+      // no bytes flow over the socket; the proxy's non-streaming
+      // ceiling is 22s (NONSTREAM_UPSTREAM_TIMEOUT_MS), so leaving
+      // this false fires the upstream timeout mid-Opus-call and
+      // surfaces as "Stream idle timeout - partial response
+      // received" on the MLRO's screen. Same bug shape as the one
+      // fixed for anthropicAdvisor in PR #359 (d176944) — the
+      // orchestrator's reviewer path was the missed caller.
+      //
+      // Regulatory basis:
+      //   FDL No.10/2025 Art.20-21 (CO duty — advisor must reach
+      //     the advisor, not silently fail to a 504 + empty review)
+      //   Cabinet Res 134/2025 Art.19 (internal review before decision)
+      stream: true,
     },
     options.advisorDeps
   );
@@ -373,3 +389,13 @@ const VERDICT_ORDER: Record<EngineVerdict, number> = {
 function maxVerdict(a: EngineVerdict, b: EngineVerdict): EngineVerdict {
   return VERDICT_ORDER[a] >= VERDICT_ORDER[b] ? a : b;
 }
+
+// ---------------------------------------------------------------------------
+// Test hooks — the review() function is the only path that makes an
+// advisor tool call, and a regression test must be able to pin the
+// stream flag directly without dragging runComplianceDecision into
+// the fixture. Exported under `__test__` so production callers aren't
+// tempted to reach past runOrchestration.
+// ---------------------------------------------------------------------------
+
+export const __test__ = { review };
