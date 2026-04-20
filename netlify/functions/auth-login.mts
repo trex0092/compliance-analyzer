@@ -146,13 +146,26 @@ export default async (req: Request, context: Context): Promise<Response> => {
 
   // Rate limit BEFORE touching the body — a flood of malformed JSON
   // must still count against the attacker's budget.
-  const rl = await checkRateLimit(req, {
-    max: RL_MAX,
-    windowMs: RL_WINDOW_MS,
-    namespace: 'hawkeye-login',
-    clientIp,
-  });
-  if (rl) return rl;
+  //
+  // MLRO-lockout recovery: the live rate-limit bucket was still
+  // holding residual counts from the 5/15 baseline after the raise
+  // to 100/15, leaving the sole operator stuck at 429 long after
+  // the raise deployed. To drain the bucket cleanly, bypass the
+  // rate limit when HAWKEYE_LOGIN_RATE_LIMIT_DISABLED=1 in the env.
+  // Leave the env var unset in normal operation — the 100/15 cap
+  // still applies. Regulatory basis: FDL No.(10)/2025 Art.20-21
+  // (operator access is a precondition for CO duties; lock-in is
+  // an availability failure).
+  const rateLimitDisabled = process.env.HAWKEYE_LOGIN_RATE_LIMIT_DISABLED === '1';
+  if (!rateLimitDisabled) {
+    const rl = await checkRateLimit(req, {
+      max: RL_MAX,
+      windowMs: RL_WINDOW_MS,
+      namespace: 'hawkeye-login',
+      clientIp,
+    });
+    if (rl) return rl;
+  }
 
   const envelopeRaw = process.env.HAWKEYE_BRAIN_PASSWORD_HASH;
   const jwtSecret = process.env.HAWKEYE_JWT_SECRET;
