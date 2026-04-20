@@ -451,6 +451,33 @@ cust-2,Bob Smith,tenant-a,Robert Smith,1985-04-15,GB,2026-04-10T00:00:00Z</pre>
       <li>Set the CO's email / Slack webhook for alerts (<code>HAWKEYE_ALERT_EMAIL</code> / <code>HAWKEYE_ALERT_SLACK_URL</code> in Netlify env vars)</li>
     </ul>
   </div>
+
+  <!-- STEP 10 — one-click Asana module bootstrap (no terminal required) -->
+  <div class="step">
+    <h2>Step 10 — Bootstrap 16 Asana module projects (one click)</h2>
+    <p class="muted">
+      Creates the full 16-project Asana catalog (Subject Screening, TM, STR Cases, CDD/UBO/PEP,
+      ESG + Supply Chain, Governance, Audit, MLRO Digest, Employees &amp; Training, Onboarding,
+      Compliance Tasks, Four-Eyes Queue, Shipments, Counterparties, Incidents &amp; Whistleblower)
+      with 168 pre-seeded sections. Idempotent — re-running reuses projects that already exist.
+      Requires <code>ASANA_TOKEN</code> and <code>ASANA_WORKSPACE_GID</code> to be set on Netlify.
+    </p>
+    <label>HAWKEYE_BRAIN_TOKEN (stored in this browser only, mirrored from sign-in)</label>
+    <input type="text" id="input-asana-mod-token" placeholder="Paste your HAWKEYE_BRAIN_TOKEN or sign in above to auto-populate"
+           autocomplete="off" style="font-family:monospace">
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="btn-asana-mod-dry">🔍 Dry-run (preview, no writes)</button>
+      <button class="primary" id="btn-asana-mod-run">🚀 Bootstrap now (creates projects)</button>
+      <span id="asana-mod-status"></span>
+    </div>
+    <label style="margin-top:14px">Copy this block into Netlify env vars (Import from .env file):</label>
+    <textarea id="asana-mod-env-snippet" readonly rows="16" placeholder="(run the bootstrap above — the 15 env vars to paste into Netlify appear here)" style="font-family:monospace;width:100%"></textarea>
+    <div class="row" style="margin-top:6px">
+      <button class="copy-btn" id="btn-asana-mod-copy">Copy env snippet</button>
+      <span class="muted">Then: Netlify → Site settings → Environment variables → Import from .env file → Paste → Save → Redeploy.</span>
+    </div>
+    <div class="output" id="asana-mod-output">(waiting)</div>
+  </div>
 </main>
 
 <script src="setup-qrcode.js"></script>
