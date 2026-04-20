@@ -2306,8 +2306,176 @@
   [mk('hspw-scanlines'),mk('hspw-glow'),tex,mk('hspw-robot',SVG),mk('hspw-wordmark','<div class="hspw-wordmark-primary">Hawkeye Sterling</div><div class="hspw-wordmark-sub">Compliance AI · Est. 2025</div>'),mk('hspw-edge-right'),mk('hspw-edge-bottom'),mk('hspw-pip'),d].forEach(function(n){document.body.appendChild(n);});}
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',inject);}else{inject();}})();
   </script>
-</head>
+    <!-- MLRO sign-in overlay styles. Renders when the session is
+         absent or expired. CLAUDE.md Seguridad §5 (secure session). -->
+    <style>
+      html.hawkeye-gated-hide > body > *:not(#hawkeyeLoginOverlay) {
+        display: none !important;
+      }
+      #hawkeyeLoginOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        background: radial-gradient(1200px 800px at 30% 20%, #1a1226, #050812 75%);
+        color: #ece8ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      #hawkeyeLoginOverlay[hidden] { display: none !important; }
+      #hawkeyeLoginOverlay .hs-login-card {
+        width: min(420px, 92vw);
+        padding: 32px;
+        background: linear-gradient(180deg, rgba(30, 18, 50, 0.92), rgba(10, 6, 20, 0.92));
+        border: 1px solid rgba(255, 120, 230, 0.25);
+        border-radius: 18px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(120, 180, 255, 0.08) inset;
+      }
+      #hawkeyeLoginOverlay h1 {
+        margin: 0 0 6px 0;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        background: linear-gradient(90deg, #ffd6a8, #ff8bd1 60%, #88b5ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      #hawkeyeLoginOverlay .hs-login-sub {
+        margin: 0 0 20px 0;
+        font-size: 13px;
+        opacity: 0.75;
+        line-height: 1.45;
+      }
+      #hawkeyeLoginOverlay label {
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        opacity: 0.8;
+        margin: 14px 0 6px 0;
+      }
+      #hawkeyeLoginOverlay input {
+        width: 100%;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 10px;
+        color: inherit;
+        font-size: 14px;
+        outline: none;
+        box-sizing: border-box;
+      }
+      #hawkeyeLoginOverlay input:focus {
+        border-color: rgba(255, 139, 209, 0.6);
+        background: rgba(255, 255, 255, 0.09);
+      }
+      #hawkeyeLoginOverlay button {
+        margin-top: 22px;
+        width: 100%;
+        padding: 13px 18px;
+        background: linear-gradient(90deg, #ff8bd1, #ffd6a8);
+        color: #1a0a20;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+      }
+      #hawkeyeLoginOverlay button:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+      #hawkeyeLoginOverlay .hs-login-err {
+        margin-top: 14px;
+        min-height: 18px;
+        font-size: 13px;
+        color: #ffb0b0;
+      }
+      #hawkeyeLoginOverlay .hs-login-foot {
+        margin-top: 18px;
+        font-size: 11px;
+        opacity: 0.55;
+        text-align: center;
+        line-height: 1.5;
+      }
+    </style>
+    <!-- Hide the SPA until we know the auth state, so signed-out users
+         never see a flash of authenticated content (CLAUDE.md
+         Seguridad §5 + FDL Art.29 no-tipping-off discipline). -->
+    <script>document.documentElement.classList.add('hawkeye-gated-hide');</script>
+    <script src="auth-gate.js?v=1"></script>
+  </head>
   <body>
+    <!-- MLRO sign-in overlay — shown when no valid session in
+         localStorage. FDL No.(10)/2025 Art.20-21 (CO accountability). -->
+    <div id="hawkeyeLoginOverlay" role="dialog" aria-modal="true" aria-label="MLRO sign-in" hidden>
+      <form class="hs-login-card" id="hawkeyeLoginForm" autocomplete="off">
+        <h1>HAWKEYE STERLING V2</h1>
+        <p class="hs-login-sub">MLRO sign-in. One password, one session — every surface unlocks for the length of this login.</p>
+        <label for="hawkeyeMlroName">MLRO name</label>
+        <input type="text" id="hawkeyeMlroName" name="mlroName" autocomplete="username" placeholder="e.g. Luisa Fernanda" required maxlength="120">
+        <label for="hawkeyeMlroPassword">Password</label>
+        <input type="password" id="hawkeyeMlroPassword" name="password" autocomplete="current-password" placeholder="Password" required maxlength="1024">
+        <button type="submit" id="hawkeyeLoginBtn">Sign in</button>
+        <div class="hs-login-err" id="hawkeyeLoginErr" role="status" aria-live="polite"></div>
+        <div class="hs-login-foot">Session stays active for 1 year · FDL Art.24 audit retention · rate-limited 5 attempts / 15 min / IP</div>
+      </form>
+    </div>
+    <script>
+      (function () {
+        var html = document.documentElement;
+        var overlay = document.getElementById('hawkeyeLoginOverlay');
+        var form = document.getElementById('hawkeyeLoginForm');
+        var nameEl = document.getElementById('hawkeyeMlroName');
+        var passEl = document.getElementById('hawkeyeMlroPassword');
+        var btn = document.getElementById('hawkeyeLoginBtn');
+        var err = document.getElementById('hawkeyeLoginErr');
+        var auth = window.__hawkeyeAuth;
+        if (!auth) return;
+
+        function unlock() {
+          html.classList.remove('hawkeye-gated-hide');
+          if (overlay) overlay.hidden = true;
+          var q = new URLSearchParams(location.search);
+          var ret = q.get('return');
+          if (ret && /^\/[^\/]/.test(ret) && !/^\/\//.test(ret) && ret.indexOf('://') === -1) {
+            location.replace(ret);
+          }
+        }
+
+        if (auth.isSignedIn()) {
+          unlock();
+          return;
+        }
+
+        if (overlay) overlay.hidden = false;
+        var savedName = auth.getMlroName();
+        if (savedName && nameEl) nameEl.value = savedName;
+
+        if (form) {
+          form.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            err.textContent = '';
+            btn.disabled = true;
+            btn.textContent = 'Signing in…';
+            auth.login(nameEl.value.trim(), passEl.value).then(function (res) {
+              btn.disabled = false;
+              btn.textContent = 'Sign in';
+              if (res.ok) {
+                passEl.value = '';
+                unlock();
+              } else {
+                err.textContent = res.error || 'Sign-in failed.';
+                passEl.focus();
+              }
+            });
+          });
+        }
+      })();
+    </script>
     <!-- LUXURY PRELOADER — rotating planet + orbits + moon + starfield -->
     <div class="hs-preloader" id="hsPreloader" aria-hidden="true">
       <div class="hs-stars"></div>
