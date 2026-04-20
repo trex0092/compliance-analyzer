@@ -1998,7 +1998,12 @@
         to {
           opacity: 0;
           pointer-events: none;
+          visibility: hidden;
         }
+      }
+      .hs-preloader[style*="animation"],
+      .hs-preloader {
+        animation: hsPreloaderOut 0.9s ease 3.4s forwards !important;
       }
       @keyframes hsFadeScale {
         from {
@@ -2579,7 +2584,7 @@
             margin: 24px 0 32px;
             padding: 0;
             /* Hero background: robot hand holding glowing planet */
-            background: #020B18 url('https://files.manuscdn.com/user_upload_by_module/session_file/310519663429410027/QbCxWBcvbzsShIZv.png') right center / 55% auto no-repeat;
+            background: #020B18 url('assets/hero-robot-planet.png') right center / 55% auto no-repeat;
             border-radius: 20px;
             overflow: hidden;
             min-height: 520px;
