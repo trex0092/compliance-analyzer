@@ -696,7 +696,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const asana = {
     ...asanaRes,
     projectGid: asanaProjectGid,
-    projectName: 'Hawkeye Screenings',
+    projectName: 'Screening Command — Sanctions',
   };
 
   // Auto-enrol in daily monitoring. Product requirement is no opt-out —

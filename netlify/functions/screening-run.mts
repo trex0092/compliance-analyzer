@@ -2302,13 +2302,13 @@ export default async (req: Request, context: Context): Promise<Response> => {
     ? {
         ...asanaRes.value,
         projectGid: asanaProjectGid,
-        projectName: 'Hawkeye Screenings',
+        projectName: 'Screening Command — Sanctions',
       }
     : {
         ok: false,
         skipped: true,
         projectGid: asanaProjectGid,
-        projectName: 'Hawkeye Screenings',
+        projectName: 'Screening Command — Sanctions',
       };
 
   return jsonResponse({

@@ -621,11 +621,20 @@
               ? (dlDays < 0 ? ' <em data-tone="warn">(overdue ' + Math.abs(dlDays) + 'd)</em>'
                  : dlDays <= 3 ? ' <em data-tone="warn">(' + dlDays + 'd left)</em>' : '')
               : '';
+            var asanaBadge = '';
+            if (r.asanaUrl) {
+              asanaBadge = ' <a class="mv-badge" data-tone="ok" href="' + esc(r.asanaUrl) + '" target="_blank" rel="noopener noreferrer">Asana ↗</a>';
+            } else if (r.asanaPending) {
+              asanaBadge = ' <span class="mv-badge" data-tone="accent">syncing…</span>';
+            } else if (r.asanaError) {
+              asanaBadge = ' <span class="mv-badge" data-tone="warn" title="' + esc(r.asanaError) + '">Asana failed</span>';
+            }
             return '<li class="mv-list-item">' +
               '<div class="mv-list-main">' +
                 '<div class="mv-list-title">' + esc(r.title) +
                   (r.str_required ? ' <span class="mv-badge" data-tone="warn">STR</span>' : '') +
                   (r.freeze_required ? ' <span class="mv-badge" data-tone="warn">FREEZE</span>' : '') +
+                  asanaBadge +
                 '</div>' +
                 '<div class="mv-list-meta">' +
                   esc(INC_TYPE_LABELS[r.type] || r.type || 'Other') + ' · ' +
@@ -648,6 +657,7 @@
                   : r.str_generated_at
                     ? '<span class="mv-badge" data-tone="ok">STR drafted ' + esc(fmtDate(r.str_generated_at)) + '</span>'
                     : '') +
+                (!r.asanaUrl ? '<button class="mv-btn mv-btn-sm" data-action="co-inc-flag" data-id="' + esc(r.id) + '">Flag to Asana</button>' : '') +
                 '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="co-inc-del" data-id="' + esc(r.id) + '">×</button>' +
               '</div>' +
             '</li>';
@@ -737,14 +747,90 @@
           freeze_required: fd.get('freeze_required') === 'on',
           no_tip_off: fd.get('no_tip_off') === 'on',
           status: 'open',
+          asanaPending: true,
           created_at: new Date().toISOString()
         };
         if (!row.title) return;
         rows.push(row);
         safeSave(STORAGE.incidents, rows);
         renderIncidents(host);
+        syncIncidentToAsana(row.id);
       };
     }
+
+    function syncIncidentToAsana(id) {
+      var current = safeParse(STORAGE.incidents, []);
+      var idx = -1;
+      for (var i = 0; i < current.length; i++) { if (current[i].id === id) { idx = i; break; } }
+      if (idx < 0) return;
+      var r = current[idx];
+      current[idx].asanaPending = true;
+      safeSave(STORAGE.incidents, current);
+
+      var notesLines = [
+        'Incident: ' + (r.title || '—'),
+        'Type: ' + (INC_TYPE_LABELS[r.type] || r.type || 'other'),
+        'Severity: ' + (r.severity || 'medium'),
+        'Discovered: ' + (r.discovered || '—'),
+        'Deadline: ' + (r.deadline || '—'),
+        'Status: ' + (r.status || 'open'),
+        '',
+        'Description:',
+        r.description || '(none)',
+        '',
+        'Entities involved: ' + (r.entities || '—'),
+        'Reporter: ' + (r.reporter || '—'),
+        'Department: ' + (r.department || '—'),
+        'Root cause: ' + (r.root_cause || '—'),
+        '',
+        'Obligations:',
+        '- STR required: ' + (r.str_required ? 'YES — draft without delay (FDL Art.26-27)' : 'no'),
+        '- Freeze required: ' + (r.freeze_required ? 'YES — execute within 24h, CNMR within 5 business days (Cabinet Res 74/2020 Art.4-7)' : 'no'),
+        '- No-tipping-off: ' + (r.no_tip_off ? 'acknowledged (FDL Art.29)' : 'not acknowledged — review')
+      ];
+
+      var priority = (r.severity === 'critical') ? 'critical'
+        : r.severity === 'high' ? 'high'
+        : r.severity === 'medium' ? 'medium' : 'low';
+
+      window.__hawkeyeAsana.createAsanaTaskRemote('compliance-ops', {
+        name: '[' + (r.severity || 'medium').toUpperCase() + '] ' + r.title,
+        notes: notesLines.join('\n'),
+        category: r.type || 'incident',
+        priority: priority,
+        dueOn: r.deadline || undefined,
+        citation: 'FDL Art.20, Art.24, Art.26-29; Cabinet Res 74/2020 Art.4-7; Cabinet Res 134/2025 Art.19',
+        entity: r.entities || undefined,
+        assignee: r.department || undefined
+      }).then(function (res) {
+        var after = safeParse(STORAGE.incidents, []);
+        var j = -1;
+        for (var k = 0; k < after.length; k++) { if (after[k].id === id) { j = k; break; } }
+        if (j < 0) return;
+        after[j].asanaPending = false;
+        if (res.ok && res.gid) {
+          after[j].asanaGid = res.gid;
+          after[j].asanaUrl = res.url || null;
+          after[j].asanaSyncedAt = new Date().toISOString();
+          delete after[j].asanaError;
+        } else {
+          after[j].asanaError = res.error || 'unknown';
+        }
+        safeSave(STORAGE.incidents, after);
+        rows = after;
+        renderIncidents(host);
+      });
+    }
+
+    // Manual flag button.
+    host.querySelectorAll('[data-action="co-inc-flag"]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-id');
+        btn.disabled = true;
+        btn.textContent = 'Syncing…';
+        syncIncidentToAsana(id);
+      };
+    });
 
     // Status change.
     host.querySelectorAll('[data-action="co-inc-status"]').forEach(function (sel) {

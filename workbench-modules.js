@@ -40,6 +40,13 @@
     try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
   }
 
+  function createAsanaTaskRemote(source, payload) {
+    if (window.__hawkeyeAsana && window.__hawkeyeAsana.createAsanaTaskRemote) {
+      return window.__hawkeyeAsana.createAsanaTaskRemote(source, payload);
+    }
+    return Promise.resolve({ ok: false, error: 'asana-client-bridge.js not loaded' });
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -191,11 +198,20 @@
         var overdueFlag = t.due_on && new Date(t.due_on) < new Date();
         var prio = t.priority || 'medium';
         var prioTone = prio === 'critical' || prio === 'high' ? 'warn' : prio === 'medium' ? 'accent' : 'ok';
+        var syncBadge = '';
+        if (t.sync_status === 'synced' && t.asanaUrl) {
+          syncBadge = ' <a class="mv-badge" data-tone="ok" href="' + esc(t.asanaUrl) + '" target="_blank" rel="noopener noreferrer">Asana ↗</a>';
+        } else if (t.sync_status === 'pending') {
+          syncBadge = ' <span class="mv-badge" data-tone="accent">syncing…</span>';
+        } else if (t.sync_status === 'failed') {
+          syncBadge = ' <span class="mv-badge" data-tone="warn" title="' + esc(t.sync_error || '') + '">Asana failed</span>';
+        }
         html.push(
           '<li class="mv-list-item">' +
             '<div class="mv-list-main">' +
               '<div class="mv-list-title">' + esc(t.name || 'Untitled task') +
                 (catLabel ? ' <span class="mv-badge" data-tone="accent">' + esc(catLabel) + '</span>' : '') +
+                syncBadge +
               '</div>' +
               '<div class="mv-list-meta">Due ' + esc(fmtDate(t.due_on)) +
                 (overdueFlag ? ' <em data-tone="warn">(overdue)</em>' : '') +
@@ -236,8 +252,10 @@
           if (!m) return null;
           return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
         };
-        tasks.push({
-          gid: 'local-' + Date.now(),
+        var localId = 'local-' + Date.now();
+        var newTask = {
+          gid: localId,
+          localId: localId,
           name: (fd.get('name') || '').toString().trim(),
           category: fd.get('category') || 'other',
           priority: fd.get('priority') || 'medium',
@@ -249,10 +267,51 @@
           entity: (fd.get('entity') || '').toString().trim(),
           notes: (fd.get('notes') || '').toString().trim(),
           completed: false,
+          sync_status: 'pending',
           created_at: new Date().toISOString()
-        });
+        };
+        tasks.push(newTask);
         safeSave(STORAGE.asanaTasks, tasks);
         renderComplianceTasks(host);
+
+        // Async best-effort sync to Asana via the unified backend.
+        var notesLines = [
+          newTask.notes || '(no notes)',
+          '',
+          'Entered from /workbench Compliance Tasks surface.',
+          'Due: ' + (newTask.due_on || 'n/a'),
+          'Assignee (display): ' + newTask.assignee
+        ];
+        createAsanaTaskRemote('workbench', {
+          name: newTask.name,
+          notes: notesLines.join('\n'),
+          category: newTask.category,
+          priority: newTask.priority,
+          dueOn: newTask.due_on || undefined,
+          citation: newTask.citation || undefined,
+          entity: newTask.entity || undefined,
+          assignee: newTask.assignee
+        }).then(function (res) {
+          var current = safeParse(STORAGE.asanaTasks, []);
+          var idx = -1;
+          for (var i = 0; i < current.length; i++) {
+            if (current[i].localId === localId) { idx = i; break; }
+          }
+          if (idx < 0) return;
+          if (res.ok && res.gid) {
+            current[idx].gid = res.gid;
+            current[idx].asanaUrl = res.url || null;
+            current[idx].projectGid = res.projectGid || null;
+            current[idx].sync_status = 'synced';
+            current[idx].synced_at = new Date().toISOString();
+          } else {
+            current[idx].sync_status = 'failed';
+            current[idx].sync_error = res.error || 'unknown';
+          }
+          safeSave(STORAGE.asanaTasks, current);
+          tasks = current;
+          renderComplianceTasks(host);
+        });
       };
     }
     host.querySelectorAll('[data-action="wb-task-complete"]').forEach(function (btn) {

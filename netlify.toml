@@ -39,6 +39,25 @@
   status = 200
   force = true
 
+# Unified Asana task-creation endpoint used by /workbench, /logistics,
+# /compliance-ops and /routines to create tasks in their dedicated
+# Asana project. The backend routes by { source } and reads the target
+# project GID from ASANA_{WORKBENCH,LOGISTICS,CENTRAL_MLRO,ROUTINES}_PROJECT_GID.
+# Regulatory basis: FDL No.(10)/2025 Art.20-21, Art.24.
+[[redirects]]
+  from = "/api/asana/task"
+  to = "/.netlify/functions/asana-task-create"
+  status = 200
+  force = true
+
+# Read-only project-GID lookup per MLRO surface, used by pages to render
+# "View in Asana" links without hardcoding GIDs.
+[[redirects]]
+  from = "/api/asana/config"
+  to = "/.netlify/functions/asana-config"
+  status = 200
+  force = true
+
 # Main-page surface deep links. /integrations and /trading serve the
 # root index.html body while keeping the clean URL in the address bar;
 # app-boot.js reads location.pathname on load and activates the matching

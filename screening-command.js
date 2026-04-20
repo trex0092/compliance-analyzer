@@ -1040,7 +1040,7 @@
     const data = res.data || {};
     const asana = data.asana || {};
     const projectGid = asana.projectGid || '1213759768596515';
-    const projectName = asana.projectName || 'Hawkeye Screenings';
+    const projectName = asana.projectName || 'Screening Command — Sanctions';
     const asanaMsg = asana.ok
       ? 'Asana task created (gid ' +
         asana.gid +
@@ -1816,7 +1816,7 @@
     // ambiguity about where the audit trail lives.
     html.push('<div class="asana-destination">');
     html.push('<strong>Destination:</strong> Asana project ');
-    html.push('<em>Hawkeye Screenings</em> (project GID ');
+    html.push('<em>Screening Command — Sanctions</em> (project GID ');
     const projGid = (asana && asana.projectGid) || '1213759768596515';
     html.push(escapeHTML(projGid));
     html.push('). ');
