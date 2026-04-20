@@ -508,6 +508,77 @@
     byId('link-status').textContent = '→ Public status page at ' + base + '/status.html';
   }
 
+  // --- Step 10: one-click Asana module bootstrap ---
+  // Posts to /api/setup/asana-modules and shows the returned
+  // envSnippet ready for the operator to copy-paste into Netlify
+  // env vars. Eliminates the need for a terminal + curl.
+  var asanaModTokenInput = byId('input-asana-mod-token');
+  if (asanaModTokenInput) {
+    try {
+      var saved = localStorage.getItem('hawkeye.watchlist.adminToken') ||
+                  localStorage.getItem('hawkeye.session.jwt') || '';
+      if (saved) asanaModTokenInput.value = saved;
+    } catch (_) {}
+  }
+  async function runAsanaModBootstrap(dryRun) {
+    var tok = (asanaModTokenInput && asanaModTokenInput.value || '').trim();
+    if (!tok) {
+      setStatus('asana-mod-status', 'err', 'Paste your HAWKEYE_BRAIN_TOKEN first');
+      return;
+    }
+    setStatus('asana-mod-status', 'info', dryRun ? 'Dry-run…' : 'Creating projects on Asana…');
+    try {
+      var res = await fetch('/api/setup/asana-modules', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + tok,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dryRun: !!dryRun }),
+      });
+      var txt = await res.text();
+      var out = byId('asana-mod-output');
+      if (out) out.textContent = txt;
+      if (!res.ok) {
+        setStatus('asana-mod-status', 'err', 'HTTP ' + res.status);
+        return;
+      }
+      var json;
+      try { json = JSON.parse(txt); } catch (_) { json = null; }
+      var snippet = (json && json.envSnippet) || '';
+      var ta = byId('asana-mod-env-snippet');
+      if (ta) ta.value = snippet || '(no envSnippet in response — check the output block below)';
+      var created = 0, reused = 0, errored = 0;
+      if (json && Array.isArray(json.projects)) {
+        json.projects.forEach(function (p) {
+          if (p.error) errored++;
+          else if (p.created) created++;
+          else reused++;
+        });
+      }
+      setStatus('asana-mod-status', errored ? 'err' : 'ok',
+        (dryRun ? 'Dry-run complete' : 'Bootstrap complete') +
+        ' · created ' + created + ' · reused ' + reused + ' · errored ' + errored);
+    } catch (err) {
+      setStatus('asana-mod-status', 'err', 'Network error: ' + (err && err.message ? err.message : err));
+    }
+  }
+  var btnModDry = byId('btn-asana-mod-dry');
+  if (btnModDry) btnModDry.addEventListener('click', function () { runAsanaModBootstrap(true); });
+  var btnModRun = byId('btn-asana-mod-run');
+  if (btnModRun) btnModRun.addEventListener('click', function () {
+    if (!confirm('Create 16 projects + 168 sections on your Asana workspace? Safe to re-run (idempotent).')) return;
+    runAsanaModBootstrap(false);
+  });
+  var btnModCopy = byId('btn-asana-mod-copy');
+  if (btnModCopy) btnModCopy.addEventListener('click', function () {
+    var ta = byId('asana-mod-env-snippet');
+    if (!ta || !ta.value) { setStatus('asana-mod-status', 'err', 'Nothing to copy yet — run the bootstrap first'); return; }
+    ta.select();
+    try { navigator.clipboard.writeText(ta.value); setStatus('asana-mod-status', 'ok', 'Copied — paste into Netlify env → Import from .env file'); }
+    catch (_) { setStatus('asana-mod-status', 'ok', 'Selected — press Ctrl/Cmd+C to copy, then paste into Netlify'); }
+  });
+
   // --- Init ---
   // Restore previously generated secrets from localStorage so the
   // operator can refresh the wizard tab without losing the in-memory

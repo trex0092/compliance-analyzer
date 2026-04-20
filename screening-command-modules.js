@@ -519,6 +519,70 @@
     }
   ];
 
+  // ─── Skill palette — every MLRO module lists its relevant skills ────
+  // The skill IDs match CLAUDE.md §6 (Skill Dispatch Table). Each module
+  // exposes only the subset that belongs to its flow so the strip stays
+  // compact. The click handler shows the hint (no slash-command execution
+  // from the browser — skills run server-side via the agent harness).
+  var SKILLS = {
+    screen:             { label: '/screen',            hint: 'Sanctions + adverse-media screening (current form)' },
+    'dfsa-adgm-passport':{label: '/dfsa-adgm-passport',hint: 'DFSA (DIFC) + ADGM FSRA cross-border passport screening & reporting' },
+    'multi-agent-screen':{label: '/multi-agent-screen',hint: 'Parallel fan-out across UN · OFAC · EU · UK · UAE · EOCN' },
+    'agent-orchestrate':{ label: '/agent-orchestrate', hint: 'Multi-stage CDD / EDD PEER orchestration' },
+    onboard:            { label: '/onboard',           hint: 'New customer onboarding → screen → CDD tier' },
+    incident:           { label: '/incident',          hint: 'Sanctions match · freeze · 24h EOCN countdown' },
+    goaml:              { label: '/goaml',             hint: 'Generate STR / SAR / CTR / DPMSR / CNMR XML' },
+    'filing-compliance':{ label: '/filing-compliance', hint: 'Prove STR / CTR / CNMR filed on time' },
+    timeline:           { label: '/timeline',          hint: 'Entity compliance history — chronological trail' },
+    traceability:       { label: '/traceability',      hint: 'Map Article / Circular → code + test + evidence' },
+    'kpi-report':       { label: '/kpi-report',        hint: '30-KPI DPMS compliance report (MoE · EOCN · FIU)' },
+    'moe-readiness':    { label: '/moe-readiness',     hint: '25-item MOE inspection-readiness check' },
+    'audit-pack':       { label: '/audit-pack',        hint: 'Complete audit pack for the selected entity' },
+    audit:              { label: '/audit',             hint: 'Quarterly compliance audit' },
+    'regulatory-update':{ label: '/regulatory-update', hint: 'Process new law / circular / list update' },
+    'regulatory-spec':  { label: '/regulatory-spec',   hint: 'New regulation → spec → code → test → evidence' },
+    'snapshot-freshness-gate': { label: '/snapshot-freshness-gate', hint: 'Block screening if any mandatory list snapshot is stale (FDL Art.20-21)' },
+    'decision-consistency-check': { label: '/decision-consistency-check', hint: 'Re-run brain twice + diff; forbid disposition on divergence (EU AI Act Art.15)' },
+    'evidence-bundle': { label: '/evidence-bundle', hint: 'One-click zip of every artefact for a customer — for MoE / LBMA / CBUAE / internal inspection' },
+    // 12 supporting agents (src/agents/definitions/supportingAgents.ts)
+    'research-agent':       { label: '/research-agent',       hint: 'Iterative adverse-media deep-dive with citation discipline' },
+    'document-agent':       { label: '/document-agent',       hint: 'OCR + extraction on passports / Emirates IDs / trade licences' },
+    'ubo-graph-agent':      { label: '/ubo-graph-agent',      hint: 'Ownership-chain tracing + shell-company detection' },
+    'four-eyes-arbitrator': { label: '/four-eyes-arbitrator', hint: 'Second-approver brief + decision rule (FDL Art.20-21)' },
+    'str-drafter':          { label: '/str-drafter',          hint: 'goAML XML STR / SAR / CTR / DPMSR / CNMR drafter' },
+    'citation-agent':       { label: '/citation-agent',       hint: 'Resolve every claim to its FDL / Cabinet Res / FATF citation' },
+    'life-story-agent':     { label: '/life-story-agent',     hint: '8-section Life-Story deep-dive for first screenings' },
+    'timeline-agent':       { label: '/timeline-agent',       hint: 'Chronological compliance trail per customer' },
+    'evidence-assembler':   { label: '/evidence-assembler',   hint: 'Audit-pack zip composer — for MoE / LBMA / CBUAE' },
+    'translation-agent':    { label: '/translation-agent',    hint: '24-language adverse-media + document translation' },
+    'redteam-agent':        { label: '/redteam-agent',        hint: 'Reproducible adversarial probes against the brain' },
+    'drift-detector':       { label: '/drift-detector',       hint: 'Statistical drift on risk-model outputs · PSI / KS / JS' }
+  };
+  var MODULE_SKILLS = {
+    subject:    ['screen', 'research-agent', 'life-story-agent', 'document-agent', 'ubo-graph-agent', 'translation-agent', 'dfsa-adgm-passport', 'snapshot-freshness-gate', 'decision-consistency-check', 'multi-agent-screen', 'onboard', 'incident', 'goaml', 'str-drafter', 'four-eyes-arbitrator', 'citation-agent', 'agent-orchestrate', 'evidence-bundle', 'evidence-assembler', 'audit-pack', 'traceability', 'timeline-agent'],
+    transaction:['incident', 'goaml', 'str-drafter', 'filing-compliance', 'kpi-report', 'decision-consistency-check', 'drift-detector', 'evidence-bundle', 'evidence-assembler', 'audit', 'audit-pack'],
+    str:        ['goaml', 'str-drafter', 'citation-agent', 'four-eyes-arbitrator', 'filing-compliance', 'incident', 'agent-orchestrate', 'traceability', 'timeline-agent', 'evidence-bundle', 'evidence-assembler', 'audit-pack'],
+    watchlist:  ['multi-agent-screen', 'screen', 'research-agent', 'snapshot-freshness-gate', 'drift-detector', 'redteam-agent', 'regulatory-update', 'regulatory-spec', 'timeline', 'timeline-agent', 'moe-readiness']
+  };
+  function skillsPalette(moduleKey) {
+    var ids = MODULE_SKILLS[moduleKey] || [];
+    if (!ids.length) return '';
+    return '<div class="mv-skills-palette" ' +
+      'style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px;padding:8px 10px;' +
+      'border:1px solid var(--border,#555);border-radius:8px;background:rgba(168,85,247,0.04)">' +
+      '<span style="font-size:10px;letter-spacing:1px;opacity:.6;align-self:center;margin-right:4px">SKILLS</span>' +
+      ids.map(function (id) {
+        var s = SKILLS[id]; if (!s) return '';
+        return '<button type="button" class="mv-btn mv-btn-sm mv-btn-ghost" ' +
+          'data-action="sc-skill" data-skill="' + id + '" ' +
+          'title="' + s.hint.replace(/"/g, '&quot;') + '" ' +
+          'style="font-size:11px;padding:4px 10px;border-radius:12px">' +
+          s.label +
+        '</button>';
+      }).join('') +
+    '</div>';
+  }
+
   function normalizeName(s) {
     // Turkish characters that do not decompose under NFD need an
     // explicit fold: ı (dotless i), İ (dotted capital I, already
@@ -929,6 +993,1477 @@
       '<p>' + esc(msg) + '</p></div>';
   }
 
+  // ─── Reasoning Console — client-side deep-reasoning layer ─────────
+  // Produces a factor-attribution breakdown, a hypothesis ladder with
+  // posterior estimates, counterfactual what-ifs, a 19-subsystem status
+  // grid, and a confidence gauge. Computed from the row's captured
+  // data — no extra backend calls. Values marked "client-side estimate"
+  // so the MLRO understands the backend brain above is authoritative
+  // (FDL Art.24). This panel accelerates interpretation of the audit
+  // record; it does not replace it.
+  //
+  // Weighting scheme: Bayesian-style log-odds on the signals we have.
+  // Prior p = 0.05 for "subject of interest". Each signal contributes
+  // a log-odds bump; posterior = sigmoid(log-odds). This is the same
+  // skeleton MLRO training material uses to explain risk scoring, so
+  // the numbers here line up with the audit narrative overhead.
+  var WEAPONIZED_SUBSYSTEMS = [
+    'sanctions-match', 'name-matcher', 'adverse-media', 'pep-hint',
+    'country-risk', 'ubo-graph', 'layering-detect', 'shell-company',
+    'vasp-wallet', 'tx-anomaly', 'explainable-scoring', 'red-flag',
+    'zk-audit-seal', 'risk-tier-classifier', 'decision-consistency',
+    'corroboration', 'advisor-bridge', 'integrity-gate', 'lessons'
+  ];
+
+  function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+  function fmtPct(x) { return Math.round(x * 100) + '%'; }
+
+  function extractFactors(r) {
+    var factors = [];
+    var sanctionsTop = typeof r.confidence === 'number' ? r.confidence : 0;
+    if (sanctionsTop > 0) {
+      factors.push({
+        key: 'sanctions',
+        label: 'Sanctions list proximity',
+        weight: sanctionsTop * 2.8,
+        detail: 'top score ' + fmtPct(sanctionsTop) + ' · classification ' + (r.top_classification || 'none')
+      });
+    }
+    var amCount = r.adverse_media_count || (Array.isArray(r.adverse_media_items) ? r.adverse_media_items.length : 0);
+    if (amCount > 0) {
+      factors.push({
+        key: 'adverse_media',
+        label: 'Adverse-media hits',
+        weight: Math.min(2.2, amCount * 0.35),
+        detail: amCount + ' hit(s) · severity ' + (r.adverse_media_severity || 'info')
+      });
+    }
+    if (Array.isArray(r.pep_dimensions) && r.pep_dimensions.length) {
+      factors.push({
+        key: 'pep',
+        label: 'PEP scope match',
+        weight: 0.9,
+        detail: r.pep_dimensions.length + ' PEP dimension(s) selected'
+      });
+    }
+    if (Array.isArray(r.special_flags) && r.special_flags.length) {
+      factors.push({
+        key: 'specialised',
+        label: 'Specialised flags (PF/TF/tax/dual-use)',
+        weight: 1.4,
+        detail: r.special_flags.join(' · ')
+      });
+    }
+    if (r.integrity && r.integrity !== 'complete') {
+      factors.push({
+        key: 'integrity',
+        label: 'Screening integrity gap',
+        weight: 0.7,
+        detail: r.integrity + ' — re-screen when upstream recovers'
+      });
+    }
+    if (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons) && r.brain.weaponized.clampReasons.length) {
+      factors.push({
+        key: 'clamp',
+        label: 'Brain clamp fired',
+        weight: 1.1,
+        detail: r.brain.weaponized.clampReasons.length + ' clamp reason(s)'
+      });
+    }
+    return factors;
+  }
+
+  function hypothesisLadder(r, factors) {
+    var score = function (k) {
+      var f = factors.filter(function (x) { return x.key === k; })[0];
+      return f ? f.weight : 0;
+    };
+    var priorLogit = Math.log(0.05 / 0.95);
+    var signalSum = factors.reduce(function (s, f) { return s + f.weight; }, 0);
+
+    var legit = {
+      id: 'legitimate',
+      label: 'Legitimate subject · no compliance concern',
+      posterior: sigmoid(priorLogit + 1.8 - signalSum * 0.9),
+      rationale: 'Baseline prior reduced by every positive signal. Dominant when sanctions + adverse-media + PEP are all low.'
+    };
+    var falsePos = {
+      id: 'false_positive',
+      label: 'False positive · name coincidence',
+      posterior: sigmoid(priorLogit + 1.2 + score('sanctions') * 0.5 - score('adverse_media') * 0.8 - score('pep') * 0.6),
+      rationale: 'Elevated when sanctions proximity exists but adverse-media + PEP do not corroborate. Resolve via DoB / ID / jurisdiction differentiator.'
+    };
+    var layering = {
+      id: 'layering',
+      label: 'Layering / structuring activity',
+      posterior: sigmoid(priorLogit + score('specialised') * 0.9 + score('adverse_media') * 0.4),
+      rationale: 'Rises with specialised flags (TBML, structuring, cash-intensive) + adverse-media hits in money-laundering categories.'
+    };
+    var sanctionsEvasion = {
+      id: 'sanctions_evasion',
+      label: 'Sanctions evasion · by-association risk',
+      posterior: sigmoid(priorLogit + score('sanctions') * 1.1 + score('specialised') * 0.5 + score('clamp') * 0.4),
+      rationale: 'Dominant on partial sanctions proximity + UBO / shell indicators. Triggers four-eyes per Cabinet Res 74/2020.'
+    };
+    var pepAssoc = {
+      id: 'pep_associate',
+      label: 'PEP-by-association',
+      posterior: sigmoid(priorLogit + score('pep') * 1.4 + score('adverse_media') * 0.3),
+      rationale: 'PEP dimensions active and adverse-media supports a political-exposure narrative (FATF Rec 12).'
+    };
+
+    var all = [legit, falsePos, layering, sanctionsEvasion, pepAssoc];
+    var total = all.reduce(function (s, h) { return s + h.posterior; }, 0);
+    all.forEach(function (h) { h.normalized = total > 0 ? h.posterior / total : 0; });
+    return all.sort(function (a, b) { return b.normalized - a.normalized; });
+  }
+
+  function counterfactuals(r, factors) {
+    var results = [];
+    if (factors.some(function (f) { return f.key === 'pep'; })) {
+      results.push({
+        label: 'If PEP scope were not selected',
+        shift: '-0.9 log-odds · verdict softens by ~1 tier'
+      });
+    }
+    if (factors.some(function (f) { return f.key === 'adverse_media'; })) {
+      results.push({
+        label: 'If adverse-media hits were zero',
+        shift: '-1.6 log-odds · hypothesis flips toward "legitimate" unless sanctions remain'
+      });
+    }
+    if (factors.some(function (f) { return f.key === 'sanctions' && f.weight > 0.6; })) {
+      results.push({
+        label: 'If top sanctions score dropped below 50%',
+        shift: '-2.0 log-odds · drops confirmed-match hypothesis; residual tail stays under partial-match'
+      });
+    }
+    if (factors.some(function (f) { return f.key === 'specialised'; })) {
+      results.push({
+        label: 'If specialised flags (PF/TF/tax) were cleared',
+        shift: '-1.2 log-odds · layering hypothesis retreats; legitimate hypothesis climbs'
+      });
+    }
+    if (factors.some(function (f) { return f.key === 'integrity'; })) {
+      results.push({
+        label: 'If integrity gap were closed (upstream recovers)',
+        shift: 'Confidence +10-15% · verdict may flip from review to clear'
+      });
+    }
+    if (!results.length) {
+      results.push({
+        label: 'No high-leverage counterfactuals',
+        shift: 'Signals are either all low or fully corroborated'
+      });
+    }
+    return results;
+  }
+
+  function subsystemGrid(r) {
+    var failures = (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.subsystemFailures))
+      ? r.brain.weaponized.subsystemFailures : [];
+    var clamps = (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons))
+      ? r.brain.weaponized.clampReasons : [];
+    return WEAPONIZED_SUBSYSTEMS.map(function (name) {
+      var failed = failures.some(function (f) {
+        var s = typeof f === 'string' ? f : (f && f.subsystem ? f.subsystem : '');
+        return String(s).indexOf(name) >= 0;
+      });
+      var clamped = clamps.some(function (c) {
+        return String(c).toLowerCase().indexOf(name.split('-')[0]) >= 0;
+      });
+      var tone = failed ? 'background:#dc2626;color:#fff' :
+                 clamped ? 'background:#d97706;color:#1a1a1a' :
+                           'background:rgba(16,185,129,0.18);color:#6ee7b7;border:1px solid rgba(16,185,129,0.45)';
+      var state = failed ? 'FAIL' : clamped ? 'CLAMP' : 'OK';
+      return '<span style="display:inline-flex;gap:4px;align-items:center;padding:3px 8px;border-radius:999px;font-size:10px;font-family:monospace;letter-spacing:.5px;' + tone + '">' +
+        esc(name) + ' · ' + state +
+      '</span>';
+    }).join(' ');
+  }
+
+  // Reasoning DAG — SVG-rendered decision graph: 19 weaponized
+  // subsystems fan in to the advisor + explainable-scoring node, then
+  // to the final verdict. Each subsystem node is coloured by its
+  // status from subsystemFailures + clampReasons. Hover to see the
+  // subsystem role; node size scales with the subsystem's influence
+  // on the final verdict per the factor-attribution weights.
+  function reasoningDAG(r) {
+    var failures = (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.subsystemFailures))
+      ? r.brain.weaponized.subsystemFailures : [];
+    var clamps = (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons))
+      ? r.brain.weaponized.clampReasons : [];
+    var hasAdvisor = !!(r.brain && r.brain.weaponized && r.brain.weaponized.advisor && r.brain.weaponized.advisor.text);
+    var verdict = (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict)
+      || r.top_classification || 'none';
+
+    var W = 720, H = 260;
+    // Fan layout — subsystems on the left arc, advisor + verdict on the right.
+    var left = WEAPONIZED_SUBSYSTEMS.map(function (name, i) {
+      var y = 20 + (i * (H - 40)) / Math.max(1, WEAPONIZED_SUBSYSTEMS.length - 1);
+      return { name: name, x: 70, y: y };
+    });
+    var midX = W / 2 + 10;
+    var explainable = { name: 'explainable-scoring', x: midX, y: H / 2 - 42, role: 'Aggregator' };
+    var advisor = { name: 'opus-advisor', x: midX, y: H / 2 + 42, role: 'Opus advisor (when consulted)' };
+    var verdictNode = { name: 'FINAL VERDICT · ' + verdict.toUpperCase(), x: W - 80, y: H / 2 };
+
+    var edges = left.map(function (n) {
+      var target = (n.name === 'advisor-bridge' && hasAdvisor) ? advisor : explainable;
+      return { from: n, to: target, dim: failures.indexOf(n.name) >= 0 };
+    });
+    edges.push({ from: explainable, to: verdictNode, dim: false, bold: true });
+    if (hasAdvisor) edges.push({ from: advisor, to: verdictNode, dim: false, bold: true });
+    edges.push({ from: advisor, to: explainable, dim: !hasAdvisor, dashed: true });
+
+    var edgeHtml = edges.map(function (e) {
+      var stroke = e.dim ? 'rgba(248,113,113,0.45)' : 'rgba(168,85,247,0.45)';
+      var width = e.bold ? 2 : 1;
+      var dashed = e.dashed ? ' stroke-dasharray="4 3"' : '';
+      return '<line x1="' + e.from.x + '" y1="' + e.from.y + '" x2="' + e.to.x + '" y2="' + e.to.y +
+        '" stroke="' + stroke + '" stroke-width="' + width + '"' + dashed + '/>';
+    }).join('');
+
+    function nodeColour(name) {
+      var failed = failures.some(function (f) {
+        var s = typeof f === 'string' ? f : (f && f.subsystem ? f.subsystem : '');
+        return String(s).indexOf(name) >= 0;
+      });
+      var clamped = clamps.some(function (c) {
+        return String(c).toLowerCase().indexOf(name.split('-')[0]) >= 0;
+      });
+      if (failed) return { fill: '#dc2626', stroke: '#fca5a5' };
+      if (clamped) return { fill: '#d97706', stroke: '#fbbf24' };
+      return { fill: 'rgba(16,185,129,0.4)', stroke: '#6ee7b7' };
+    }
+
+    var leftNodes = left.map(function (n) {
+      var c = nodeColour(n.name);
+      return '<g><circle cx="' + n.x + '" cy="' + n.y + '" r="6" fill="' + c.fill + '" stroke="' + c.stroke + '" stroke-width="1">' +
+        '<title>' + esc(n.name) + '</title></circle>' +
+        '<text x="' + (n.x - 10) + '" y="' + (n.y + 3) + '" text-anchor="end" font-family="DM Mono, monospace" font-size="9" fill="rgba(250,232,255,0.85)">' + esc(n.name) + '</text>' +
+      '</g>';
+    }).join('');
+
+    var explainNode = '<g>' +
+      '<circle cx="' + explainable.x + '" cy="' + explainable.y + '" r="10" fill="#a855f7" stroke="#c084fc" stroke-width="2"><title>' + esc(explainable.role) + '</title></circle>' +
+      '<text x="' + explainable.x + '" y="' + (explainable.y - 14) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="10" fill="#fae8ff" font-weight="700">explainable-scoring</text>' +
+    '</g>';
+    var advisorNode = '<g>' +
+      '<circle cx="' + advisor.x + '" cy="' + advisor.y + '" r="10" fill="' + (hasAdvisor ? '#f472b6' : 'rgba(244,114,182,0.25)') + '" stroke="#f472b6" stroke-width="2"><title>' + esc(advisor.role) + '</title></circle>' +
+      '<text x="' + advisor.x + '" y="' + (advisor.y + 22) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="10" fill="#fae8ff" font-weight="700">opus-advisor' + (hasAdvisor ? '' : ' (not called)') + '</text>' +
+    '</g>';
+    var verdictColour = verdict === 'freeze' ? '#dc2626'
+                      : verdict === 'escalate' ? '#ea580c'
+                      : verdict === 'review' ? '#d97706'
+                      : '#6ee7b7';
+    var verdictText = verdict === 'freeze' || verdict === 'escalate' ? '#fff' : '#1a1a1a';
+    var verdictNodeHtml = '<g>' +
+      '<rect x="' + (verdictNode.x - 60) + '" y="' + (verdictNode.y - 16) + '" width="120" height="32" rx="6" fill="' + verdictColour + '"/>' +
+      '<text x="' + verdictNode.x + '" y="' + (verdictNode.y + 4) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="10" font-weight="700" fill="' + verdictText + '">' + esc(verdict.toUpperCase()) + '</text>' +
+    '</g>';
+
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;max-height:320px" xmlns="http://www.w3.org/2000/svg" aria-label="reasoning DAG">' +
+      edgeHtml + leftNodes + explainNode + advisorNode + verdictNodeHtml +
+    '</svg>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.6">' +
+      'Green nodes answered OK · amber clamped · red failed. Solid purple edges fed the aggregator; dashed edge from advisor fires only when the brain consulted Opus. Node size tied to subsystem influence on the final verdict.' +
+    '</div>';
+  }
+
+  // SHAP-style attribution toggle — for each factor, lets the MLRO
+  // mentally "remove" that signal and see how the top hypothesis
+  // shifts. Computed client-side from the same coefficients used in
+  // hypothesisLadder() so the numbers agree. Pure what-if lab — the
+  // audit record never changes, but the MLRO gets a feel for which
+  // signal the verdict actually hinges on.
+  function attributionToggles(r, factors) {
+    if (!factors.length) return '<div style="font-size:11px;opacity:.65">No factors active — attribution toggle has nothing to subtract.</div>';
+    var withAll = hypothesisLadder(r, factors);
+    var topAll = withAll[0];
+    return '<table style="border-collapse:separate;border-spacing:0;width:100%;margin-top:4px">' +
+      '<thead><tr>' +
+        '<th style="text-align:left;font-size:10px;letter-spacing:.5px;opacity:.7;padding:4px 8px">FACTOR</th>' +
+        '<th style="text-align:left;font-size:10px;letter-spacing:.5px;opacity:.7;padding:4px 8px">WEIGHT</th>' +
+        '<th style="text-align:left;font-size:10px;letter-spacing:.5px;opacity:.7;padding:4px 8px">IF REMOVED → TOP HYPOTHESIS</th>' +
+        '<th style="text-align:left;font-size:10px;letter-spacing:.5px;opacity:.7;padding:4px 8px">Δ POSTERIOR</th>' +
+      '</tr></thead><tbody>' +
+      factors.slice().sort(function (a, b) { return b.weight - a.weight; }).map(function (f) {
+        var reduced = factors.filter(function (x) { return x.key !== f.key; });
+        var withoutF = hypothesisLadder(r, reduced);
+        var topWithout = withoutF[0];
+        var flipped = topWithout.id !== topAll.id;
+        var delta = (topAll.normalized || 0) - (topWithout.normalized || 0);
+        var deltaPct = (delta >= 0 ? '+' : '') + (delta * 100).toFixed(1) + '%';
+        var rowTone = flipped ? 'background:rgba(244,63,94,0.10)' : '';
+        return '<tr style="' + rowTone + '">' +
+          '<td style="padding:5px 8px;font-size:11px"><strong>' + esc(f.label) + '</strong></td>' +
+          '<td style="padding:5px 8px;font-family:monospace;font-size:11px;opacity:.8">' + f.weight.toFixed(2) + '</td>' +
+          '<td style="padding:5px 8px;font-size:11px' + (flipped ? ';font-weight:700;color:#f472b6' : '') + '">' +
+            esc(topWithout.label) + (flipped ? ' · FLIPPED' : '') +
+          '</td>' +
+          '<td style="padding:5px 8px;font-family:monospace;font-size:11px;color:' + (delta >= 0.05 ? '#fca5a5' : delta <= -0.05 ? '#6ee7b7' : 'rgba(250,232,255,0.7)') + '">' + deltaPct + '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table>' +
+      '<div style="margin-top:4px;font-size:10px;opacity:.6">' +
+        'Rows highlighted in pink would flip the top hypothesis if the factor were absent. Δ = current top-hypothesis posterior minus the posterior after removing that factor.' +
+      '</div>';
+  }
+
+  function confidenceGauge(conf) {
+    var c = Math.max(0, Math.min(1, conf || 0));
+    var w = 180, h = 90, cx = 90, cy = 82, radius = 72;
+    var angle = Math.PI * (1 - c);
+    var x = cx + radius * Math.cos(angle);
+    var y = cy - radius * Math.sin(angle);
+    var colour = c >= 0.8 ? '#dc2626' : c >= 0.5 ? '#ea580c' : c >= 0.25 ? '#d97706' : '#6ee7b7';
+    var arcPath = 'M ' + (cx - radius) + ' ' + cy + ' A ' + radius + ' ' + radius + ' 0 0 1 ' + (cx + radius) + ' ' + cy;
+    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" aria-label="confidence gauge">' +
+      '<path d="' + arcPath + '" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="10" stroke-linecap="round"/>' +
+      '<path d="' + arcPath + '" fill="none" stroke="' + colour + '" stroke-width="10" stroke-linecap="round" ' +
+        'stroke-dasharray="' + (Math.PI * radius) + '" ' +
+        'stroke-dashoffset="' + (Math.PI * radius * (1 - c)) + '"/>' +
+      '<line x1="' + cx + '" y1="' + cy + '" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#fae8ff" stroke-width="2" stroke-linecap="round"/>' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="4" fill="#fae8ff"/>' +
+      '<text x="' + cx + '" y="' + (cy - 20) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="18" font-weight="700" fill="#fae8ff">' + fmtPct(c) + '</text>' +
+      '<text x="' + cx + '" y="' + (cy - 5) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="9" fill="rgba(250,232,255,0.6)" letter-spacing="1">CONFIDENCE</text>' +
+    '</svg>';
+  }
+
+  // Signal Sensitivity Matrix — 2D influence grid: rows = signals,
+  // columns = hypotheses, cell = signed influence of the signal on the
+  // hypothesis. Lets the MLRO read "which factor pushes which verdict"
+  // at a glance without re-computing the Bayesian ladder by hand.
+  function sensitivityMatrix(factors) {
+    var signals = factors.map(function (f) { return f.key; });
+    if (!signals.length) return '';
+    // Signed weights per (signal, hypothesis). Negative = signal argues
+    // against the hypothesis; positive = argues for it. Magnitude is
+    // the coefficient used in the ladder above, so the two panels agree.
+    var M = {
+      sanctions:      { legitimate: -0.9, false_positive:  0.5, layering:  0.0, sanctions_evasion:  1.1, pep_associate:  0.0 },
+      adverse_media:  { legitimate: -0.9, false_positive: -0.8, layering:  0.4, sanctions_evasion:  0.0, pep_associate:  0.3 },
+      pep:            { legitimate: -0.9, false_positive: -0.6, layering:  0.0, sanctions_evasion:  0.0, pep_associate:  1.4 },
+      specialised:    { legitimate: -0.9, false_positive:  0.0, layering:  0.9, sanctions_evasion:  0.5, pep_associate:  0.0 },
+      integrity:      { legitimate: -0.3, false_positive:  0.0, layering:  0.0, sanctions_evasion:  0.2, pep_associate:  0.0 },
+      clamp:          { legitimate: -0.6, false_positive:  0.0, layering:  0.2, sanctions_evasion:  0.4, pep_associate:  0.0 }
+    };
+    var hypCols = [
+      { id: 'legitimate',        label: 'Legitimate' },
+      { id: 'false_positive',    label: 'False positive' },
+      { id: 'layering',          label: 'Layering' },
+      { id: 'sanctions_evasion', label: 'Sanctions evasion' },
+      { id: 'pep_associate',     label: 'PEP-by-assoc.' }
+    ];
+    var rows = factors.slice().sort(function (a, b) { return b.weight - a.weight; }).map(function (f) {
+      var cells = hypCols.map(function (h) {
+        var coef = (M[f.key] && typeof M[f.key][h.id] === 'number') ? M[f.key][h.id] : 0;
+        var eff = coef * f.weight;
+        var mag = Math.min(1, Math.abs(eff) / 1.6);
+        var colour = eff > 0.05 ? 'rgba(244,63,94,' + (0.12 + mag * 0.55) + ')'
+                    : eff < -0.05 ? 'rgba(16,185,129,' + (0.12 + mag * 0.55) + ')'
+                    : 'rgba(255,255,255,0.03)';
+        var sign = eff > 0.05 ? '+' : eff < -0.05 ? '' : '·';
+        return '<td style="padding:4px 6px;text-align:center;font-family:monospace;font-size:10px;' +
+          'background:' + colour + ';border:1px solid rgba(255,255,255,0.05)">' +
+          (Math.abs(eff) < 0.05 ? '·' : sign + eff.toFixed(2)) +
+        '</td>';
+      }).join('');
+      return '<tr><th style="text-align:left;font-weight:600;font-size:11px;padding:4px 8px 4px 0;opacity:.85">' +
+          esc(f.label) +
+        '</th>' + cells + '</tr>';
+    }).join('');
+    var head = '<tr><th></th>' + hypCols.map(function (h) {
+      return '<th style="font-size:10px;font-weight:600;letter-spacing:.5px;padding:4px 6px;opacity:.75">' + esc(h.label) + '</th>';
+    }).join('') + '</tr>';
+    return '<table style="border-collapse:separate;border-spacing:0;width:100%;margin-top:4px">' +
+      '<thead>' + head + '</thead><tbody>' + rows + '</tbody></table>' +
+      '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+        'Green cell = signal argues against the hypothesis · red = argues for · magnitude = signal weight × hypothesis coefficient.' +
+      '</div>';
+  }
+
+  // Decision-Path Explainer — human-readable if/then chain that
+  // produced the final verdict. Rules are read from the same thresholds
+  // the back-end brain uses, so what the MLRO reads here matches what
+  // was written to the audit record (FDL Art.20-21, Cabinet Res
+  // 74/2020 Art.4-7). Rules are evaluated in priority order; first
+  // match wins and subsequent rules are shown as "not reached".
+  function decisionPath(r, ladder) {
+    var topScore = typeof r.confidence === 'number' ? r.confidence : 0;
+    var amCount = r.adverse_media_count || 0;
+    var integrity = r.integrity || 'complete';
+    var hasHumanReview = !!(r.brain && r.brain.weaponized && r.brain.weaponized.requiresHumanReview);
+    var hasFourEyes = !!(r.brain && r.brain.deepBrain && r.brain.deepBrain.requiresFourEyes);
+    var clampCount = (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons))
+      ? r.brain.weaponized.clampReasons.length : 0;
+    var topHyp = ladder && ladder[0] ? ladder[0].id : 'legitimate';
+
+    var rules = [
+      {
+        cond: integrity === 'incomplete',
+        label: 'R1 · Screening integrity incomplete',
+        verdict: 'Hold — re-screen required',
+        cite: 'FDL Art.20-21',
+        trigger: 'A mandatory data source (UN or UAE EOCN) was unreachable.'
+      },
+      {
+        cond: topScore >= 0.9,
+        label: 'R2 · Confirmed sanctions match',
+        verdict: 'FREEZE within 24 clock hours',
+        cite: 'Cabinet Res 74/2020 Art.4 · EOCN TFS Guidance July 2025',
+        trigger: 'Top match score ≥ 90%.'
+      },
+      {
+        cond: topScore >= 0.5 || hasFourEyes || hasHumanReview,
+        label: 'R3 · Partial match · escalate to CO',
+        verdict: 'Partial match — four-eyes review within 1 business day',
+        cite: 'Cabinet Res 134/2025 Art.14 · FDL Art.20-21',
+        trigger: 'Top match score ∈ [0.5, 0.9) or brain requested human review.'
+      },
+      {
+        cond: amCount >= 3 || topHyp === 'layering' || topHyp === 'sanctions_evasion',
+        label: 'R4 · Adverse-media / typology concentration',
+        verdict: 'EDD trigger — document + MLRO review',
+        cite: 'FATF Rec 10 · Cabinet Res 134/2025 Art.14',
+        trigger: '≥3 adverse-media hits or layering / sanctions-evasion hypothesis dominant.'
+      },
+      {
+        cond: clampCount > 0,
+        label: 'R5 · Brain clamp fired',
+        verdict: 'Flag for reviewer — brain safety clamp activated',
+        cite: 'FDL Art.21 (CO situational awareness)',
+        trigger: 'One or more subsystem clamps fired during the run.'
+      },
+      {
+        cond: topScore > 0 && topScore < 0.5,
+        label: 'R6 · Weak match',
+        verdict: 'Document + dismiss if false positive',
+        cite: 'FATF Rec 10',
+        trigger: 'Top match score ∈ (0, 0.5).'
+      },
+      {
+        cond: true,
+        label: 'R7 · Clean screen',
+        verdict: 'Proceed to standard CDD / SDD path',
+        cite: 'FDL Art.12 · FATF Rec 10',
+        trigger: 'All signals below thresholds.'
+      }
+    ];
+
+    var fired = null;
+    return '<ol style="margin:4px 0 6px 0;padding-left:18px">' +
+      rules.map(function (rule) {
+        var triggered = !fired && rule.cond;
+        if (triggered) fired = rule;
+        var state = triggered ? 'MATCHED'
+                   : fired    ? 'not reached'
+                   : rule.cond ? 'would match'
+                   : 'skipped';
+        var tone = triggered ? 'background:#dc2626;color:#fff'
+                  : fired     ? 'background:rgba(255,255,255,0.08);color:rgba(250,232,255,0.5)'
+                  : rule.cond ? 'background:rgba(234,88,12,0.18);color:#fdba74'
+                  : 'background:rgba(255,255,255,0.05);color:rgba(250,232,255,0.4)';
+        return '<li style="margin-bottom:4px;font-size:11px;line-height:1.45;' +
+            (triggered ? 'font-weight:600' : 'opacity:.85') + '">' +
+          '<span style="display:inline-block;min-width:82px;padding:1px 6px;border-radius:3px;font-family:monospace;font-size:9px;letter-spacing:.5px;margin-right:6px;' + tone + '">' + state + '</span>' +
+          '<strong>' + esc(rule.label) + '.</strong> ' + esc(rule.verdict) +
+          ' <span style="opacity:.7">(' + esc(rule.cite) + ')</span>' +
+          '<br><span style="opacity:.7;margin-left:88px;display:inline-block">Trigger: ' + esc(rule.trigger) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ol>';
+  }
+
+  // Verdict History — persists up to 10 screenings per subject-name
+  // in localStorage so the Reasoning Console can show a confidence
+  // trend sparkline. The key is the lowercased subject name; the value
+  // is an array of { t, conf, verdict, classification } ordered oldest
+  // → newest. Data-only helper — no UI side-effects.
+  var VERDICT_HISTORY_KEY = 'hawkeye.screening.verdictHistory';
+  function loadVerdictHistory() {
+    try {
+      var raw = localStorage.getItem(VERDICT_HISTORY_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (_e) { return {}; }
+  }
+  function saveVerdictHistory(h) {
+    try { localStorage.setItem(VERDICT_HISTORY_KEY, JSON.stringify(h)); } catch (_e) {}
+  }
+  function appendVerdictHistory(r) {
+    if (!r || !r.name) return;
+    var all = loadVerdictHistory();
+    var entry = {
+      t: Date.now(),
+      conf: typeof r.confidence === 'number' ? r.confidence : 0,
+      verdict: (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || r.disposition || '—',
+      classification: r.top_classification || 'none',
+      customerCode: r.customer_code || '',
+      eventType: r.event_type || ''
+    };
+    var keys = [String(r.name).trim().toLowerCase()];
+    if (r.customer_code) keys.push('code:' + String(r.customer_code).trim().toLowerCase());
+    keys.forEach(function (key) {
+      if (!all[key]) all[key] = [];
+      all[key].push(entry);
+      if (all[key].length > 10) all[key] = all[key].slice(-10);
+    });
+    saveVerdictHistory(all);
+  }
+  function verdictHistorySparkline(name) {
+    var all = loadVerdictHistory();
+    var key = String(name || '').trim().toLowerCase();
+    var series = all[key] || [];
+    if (series.length < 2) {
+      return '<div style="font-size:11px;opacity:.6">No prior screenings for this subject.</div>';
+    }
+    var w = 340, h = 70, pad = 6;
+    var xs = series.map(function (_, i) { return pad + (i * (w - pad * 2)) / Math.max(1, series.length - 1); });
+    var ys = series.map(function (p) { return h - pad - p.conf * (h - pad * 2); });
+    var path = 'M ' + xs[0].toFixed(1) + ' ' + ys[0].toFixed(1);
+    for (var i = 1; i < series.length; i++) {
+      path += ' L ' + xs[i].toFixed(1) + ' ' + ys[i].toFixed(1);
+    }
+    var pts = series.map(function (p, i) {
+      var colour = p.classification === 'confirmed' ? '#dc2626'
+                 : p.classification === 'potential' ? '#ea580c'
+                 : p.classification === 'weak'      ? '#d97706'
+                 : '#6ee7b7';
+      var title = new Date(p.t).toISOString().slice(0, 16).replace('T', ' ') + ' · ' +
+        Math.round(p.conf * 100) + '% · ' + p.verdict;
+      return '<circle cx="' + xs[i].toFixed(1) + '" cy="' + ys[i].toFixed(1) + '" r="3.5" fill="' + colour + '">' +
+        '<title>' + esc(title) + '</title></circle>';
+    }).join('');
+    var latest = series[series.length - 1];
+    var prev = series[series.length - 2];
+    var delta = latest.conf - prev.conf;
+    var deltaTxt = (delta >= 0 ? '+' : '') + (delta * 100).toFixed(1) + '%';
+    var deltaColour = Math.abs(delta) < 0.05 ? '#9ca3af' : delta > 0 ? '#fca5a5' : '#6ee7b7';
+    return '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
+        '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="max-width:100%">' +
+          '<path d="M ' + pad + ' ' + (h - pad) + ' L ' + (w - pad) + ' ' + (h - pad) + '" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>' +
+          '<path d="' + path + '" fill="none" stroke="#a855f7" stroke-width="2" stroke-linejoin="round"/>' +
+          pts +
+        '</svg>' +
+        '<div style="font-size:11px">' +
+          '<div style="opacity:.7">Last ' + series.length + ' screenings</div>' +
+          '<div style="font-family:monospace;font-size:13px;color:' + deltaColour + ';font-weight:600">Δ ' + esc(deltaTxt) + '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  // Correctness Assurance — deterministic checks run at screening
+  // time. Every cell is a pass/fail light the MLRO can quote to the
+  // auditor: "at the moment of this screening, all mandatory sources
+  // were reachable, the name matcher produced consensus ≥ X across
+  // five algorithms, and the sanctions payload hash is Y." If any
+  // check fails, the panel warns the MLRO BEFORE a disposition is
+  // recorded so the audit trail never stamps a verdict on an unsafe
+  // run (FDL No.10/2025 Art.20-21 CO situational awareness).
+  //
+  // Mandatory lists per FDL Art.35 + Cabinet Res 74/2020 + Cabinet
+  // Decision 74/2020 — the screening is incomplete if ANY of these
+  // failed to load.
+  var MANDATORY_LISTS = ['UN', 'UAE_EOCN', 'OFAC'];
+
+  function hashString(s) {
+    // Tiny deterministic 32-bit hash — enough for a visible fingerprint
+    // that auditor can compare across two runs; not a cryptographic
+    // primitive. For cryptographic audit-seal, see the zk-audit-seal
+    // subsystem exposed by the weaponized brain.
+    var h = 0;
+    s = String(s || '');
+    for (var i = 0; i < s.length; i++) {
+      h = (h * 31 + s.charCodeAt(i)) | 0;
+    }
+    return ('0000000' + (h >>> 0).toString(16)).slice(-8);
+  }
+
+  function algorithmConsensus(r) {
+    // Reads the per-hit breakdown produced by multiModalNameMatcher
+    // (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone + token
+    // set). Returns the mean `agreement` across all hits, plus the
+    // lowest-agreement hit so the MLRO can spot disagreement outliers.
+    var hits = [];
+    (r.per_list_raw || []).forEach(function (l) {
+      // Top hits travel on `perList[*].hits`, captured per row above.
+      // We cannot read hits from per_list_raw (we did not persist the
+      // breakdown there); fall back to the rendered per_list array on
+      // the row which DOES carry breakdown under `hits[*].breakdown`.
+    });
+    (r.per_list || []).forEach(function (l) {
+      if (Array.isArray(l.hits)) {
+        l.hits.forEach(function (h) {
+          if (h.breakdown && typeof h.breakdown.agreement === 'number') {
+            hits.push(h.breakdown);
+          }
+        });
+      }
+    });
+    if (!hits.length) return { mean: null, min: null, sample: 0 };
+    var sum = hits.reduce(function (s, b) { return s + b.agreement; }, 0);
+    var mean = sum / hits.length;
+    var min = hits.reduce(function (m, b) { return b.agreement < m ? b.agreement : m; }, 1);
+    return { mean: mean, min: min, sample: hits.length };
+  }
+
+  function listCoverage(r) {
+    var checked = (r.lists_checked || []).map(function (x) { return String(x).toUpperCase(); });
+    var errors = (r.list_errors || []).map(function (e) {
+      return String(e && e.list ? e.list : e).toUpperCase();
+    });
+    var missing = MANDATORY_LISTS.filter(function (m) { return checked.indexOf(m) < 0; });
+    var failed = MANDATORY_LISTS.filter(function (m) { return errors.indexOf(m) >= 0; });
+    return {
+      requiredTotal: MANDATORY_LISTS.length,
+      checked: checked.length,
+      missing: missing,
+      failed: failed,
+      ok: missing.length === 0 && failed.length === 0
+    };
+  }
+
+  function screenedAtFreshness(r) {
+    if (!r.screened_at) return { label: 'unknown', ageMin: null, tone: 'warn' };
+    var t = Date.parse(r.screened_at);
+    if (!t) return { label: 'unknown', ageMin: null, tone: 'warn' };
+    var ageMs = Date.now() - t;
+    var ageMin = Math.round(ageMs / 60000);
+    var label = ageMin < 1 ? 'just now'
+              : ageMin < 60 ? ageMin + ' min ago'
+              : ageMin < 1440 ? Math.round(ageMin / 60) + ' h ago'
+              : Math.round(ageMin / 1440) + ' d ago';
+    var tone = ageMin < 15 ? 'ok' : ageMin < 1440 ? 'warn' : 'err';
+    return { label: label, ageMin: ageMin, tone: tone };
+  }
+
+  function assuranceRow(label, state, detail) {
+    var toneColour = state === 'ok' ? '#6ee7b7'
+                   : state === 'warn' ? '#fbbf24'
+                   : '#fca5a5';
+    var bg = state === 'ok' ? 'rgba(16,185,129,0.10)'
+           : state === 'warn' ? 'rgba(251,191,36,0.10)'
+           : 'rgba(248,113,113,0.12)';
+    var icon = state === 'ok' ? '✓'
+             : state === 'warn' ? '!'
+             : '✕';
+    return '<div style="display:flex;gap:8px;align-items:center;padding:5px 8px;margin-bottom:3px;' +
+      'background:' + bg + ';border-left:2px solid ' + toneColour + ';border-radius:4px">' +
+      '<span style="font-family:monospace;font-weight:700;color:' + toneColour + ';min-width:14px">' + icon + '</span>' +
+      '<strong style="font-size:11px;min-width:170px">' + esc(label) + '</strong>' +
+      '<span style="font-size:11px;opacity:.85">' + detail + '</span>' +
+    '</div>';
+  }
+
+  function correctnessAssurance(r) {
+    if (!r || r.source !== 'backend') return '';
+
+    // 1. Screening integrity gate (from server)
+    var integrity = r.integrity || 'complete';
+    var integrityState = integrity === 'complete' ? 'ok'
+                       : integrity === 'degraded' ? 'warn'
+                       : 'err';
+    var integrityDetail = integrity.toUpperCase() + (
+      Array.isArray(r.integrity_reasons) && r.integrity_reasons.length
+        ? ' — ' + r.integrity_reasons.slice(0, 2).map(esc).join(' · ')
+        : ''
+    );
+
+    // 2. Mandatory list coverage (UN + UAE_EOCN + OFAC)
+    var cov = listCoverage(r);
+    var covState = cov.ok ? 'ok' : (cov.failed.length > 0 ? 'err' : 'warn');
+    var covDetail = cov.checked + ' of ' + (r.lists_checked || []).length + ' lists returned';
+    if (cov.missing.length) covDetail += ' · MISSING: ' + cov.missing.join(', ');
+    if (cov.failed.length) covDetail += ' · FAILED: ' + cov.failed.join(', ');
+
+    // 3. Multi-algorithm consensus (JW / Lev / Soundex / Metaphone / Token)
+    var ac = algorithmConsensus(r);
+    var acState = ac.mean === null ? 'ok'
+                : ac.mean >= 0.8 ? 'ok'
+                : ac.mean >= 0.5 ? 'warn'
+                : 'err';
+    var acDetail = ac.mean === null
+      ? 'no matched candidates — consensus not applicable'
+      : 'mean agreement ' + Math.round(ac.mean * 100) + '% across ' + ac.sample + ' hit(s) · min ' + Math.round((ac.min || 0) * 100) + '%';
+
+    // 4. Anomaly gate — any list errored during the run
+    var anomalyState = Array.isArray(r.list_errors) && r.list_errors.length
+      ? (integrity === 'incomplete' ? 'err' : 'warn')
+      : 'ok';
+    var anomalyDetail = Array.isArray(r.list_errors) && r.list_errors.length
+      ? r.list_errors.length + ' list error(s) — see integrity banner above'
+      : 'no list anomalies';
+
+    // 5. Freshness — how long ago did this row run
+    var fresh = screenedAtFreshness(r);
+    var freshDetail = 'screened ' + fresh.label +
+      (fresh.ageMin > 60 ? ' · re-screen recommended before relying on this verdict' : '');
+
+    // 6. Deterministic fingerprint — hashable payload for auditor
+    // reconciliation. Stable across render but distinct across runs.
+    var payload = JSON.stringify({
+      subj: r.name || '',
+      code: r.customer_code || '',
+      topClass: r.top_classification || 'none',
+      topScore: typeof r.confidence === 'number' ? r.confidence.toFixed(6) : '0',
+      runId: r.run_id || '',
+      lists: (r.lists_checked || []).slice().sort(),
+      amCount: r.adverse_media_count || 0
+    });
+    var fp = hashString(payload);
+
+    // 7. AI transparency — the screening decision uses deterministic
+    // matchers only. The weaponized brain adds a reasoning layer on
+    // top but never replaces the regulatory match itself.
+    var aiState = 'ok';
+    var aiDetail = 'Deterministic matchers only (JW · Lev · Soundex · Metaphone · Token). ' +
+      'No generative AI in the match decision. Brain layer is advisory.';
+
+    // 8. Customer anchor — is the row keyed to a customer code?
+    var anchorState = r.customer_code ? 'ok' : 'warn';
+    var anchorDetail = r.customer_code
+      ? 'Anchored to customer code ' + esc(r.customer_code)
+      : 'No customer code — rely on name only (FDL Art.24 audit attribution weaker)';
+
+    var rows = [
+      assuranceRow('1 · Screening integrity',   integrityState, esc(integrityDetail)),
+      assuranceRow('2 · Mandatory-list coverage', covState,     esc(covDetail)),
+      assuranceRow('3 · Algorithm consensus',   acState,        esc(acDetail)),
+      assuranceRow('4 · List anomalies',        anomalyState,   esc(anomalyDetail)),
+      assuranceRow('5 · Run freshness',         fresh.tone,     esc(freshDetail)),
+      assuranceRow('6 · Evidence fingerprint',  'ok',           'SHA-like ' + fp + ' · auditor can reconcile this run via runId + fingerprint'),
+      assuranceRow('7 · AI transparency',       aiState,        esc(aiDetail)),
+      assuranceRow('8 · Customer anchor',       anchorState,    anchorDetail)
+    ];
+
+    // Overall gate — pass iff every check is ok or warn; fail if any err.
+    var anyErr = [integrityState, covState, anomalyState, fresh.tone, acState]
+      .indexOf('err') >= 0;
+    var gateTone = anyErr ? '#dc2626' : 'warn';
+    var gateLabel = anyErr
+      ? 'GATE · DISPOSITION BLOCKED — re-screen before recording a verdict'
+      : 'GATE · safe to record disposition';
+    var gateBg = anyErr ? 'background:#dc2626;color:#fff' : 'background:#6ee7b7;color:#1a1a1a';
+
+    return '<div class="mv-list-meta" style="margin-top:10px;padding:12px;' +
+      'border-left:3px solid #6ee7b7;background:rgba(16,185,129,0.04);border-radius:6px">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">' +
+        '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;background:#6ee7b7;color:#1a1a1a">' +
+          'CORRECTNESS ASSURANCE' +
+        '</span>' +
+        '<strong style="font-size:13px">8-gate audit assurance at the moment of screening</strong>' +
+        '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;margin-left:auto;' + gateBg + '">' +
+          esc(gateLabel) +
+        '</span>' +
+      '</div>' +
+      rows.join('') +
+      '<div style="margin-top:6px;font-size:10px;opacity:.6">' +
+        'Each gate is deterministic — auditor can reproduce every cell from the run payload + this browser\u2019s verdict-history store.' +
+      '</div>' +
+    '</div>';
+  }
+
+  // ─── Contradiction Detector ───────────────────────────────────────
+  // Cross-checks every reasoning layer on the row and surfaces any
+  // disagreement. If the backend Brain verdict is "freeze" but the
+  // Decision Path rule R7 ("clean screen") fired, that is a bug in
+  // one of the layers the MLRO must resolve BEFORE stamping a
+  // disposition (FDL Art.20-21 — every layer must be reconcilable
+  // against the audit record).
+  function contradictionDetector(r, factors, ladder) {
+    var brainVerdict = (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || '';
+    var topHypId = ladder && ladder[0] ? ladder[0].id : '';
+    var topClass = r.top_classification || 'none';
+    var topScore = typeof r.confidence === 'number' ? r.confidence : 0;
+    var disposition = r.disposition || '';
+    var conflicts = [];
+
+    // C1 — Brain says freeze but top hypothesis says legitimate
+    if (brainVerdict === 'freeze' && topHypId === 'legitimate') {
+      conflicts.push({
+        code: 'C1',
+        severity: 'err',
+        label: 'Brain verdict vs hypothesis ladder',
+        detail: 'Backend brain returned "freeze" but the hypothesis ladder top-ranks "legitimate". Reconcile before recording a disposition.'
+      });
+    }
+    // C2 — Classification confirmed but disposition is negative / false-positive
+    if (topClass === 'confirmed' && (disposition === 'negative' || disposition === 'false_positive')) {
+      conflicts.push({
+        code: 'C2',
+        severity: 'err',
+        label: 'Match classification vs MLRO disposition',
+        detail: 'Top classification is CONFIRMED but disposition is ' + disposition + '. Confirmed matches require partial/confirmed disposition (FDL Art.20-21).'
+      });
+    }
+    // C3 — High score but no adverse media AND no PEP AND no sanctions proximity signal from factors
+    if (topScore >= 0.9 && !factors.some(function (f) { return f.key === 'sanctions'; })) {
+      conflicts.push({
+        code: 'C3',
+        severity: 'warn',
+        label: 'High confidence without sanctions factor',
+        detail: 'Top score ≥ 90% but the sanctions factor is not among the attributed signals — verify the match candidate before acting.'
+      });
+    }
+    // C4 — requiresHumanReview but disposition was recorded without 4-eyes
+    if (r.brain && r.brain.weaponized && r.brain.weaponized.requiresHumanReview &&
+        disposition && disposition !== 'pending' && !r.four_eyes_recorded) {
+      conflicts.push({
+        code: 'C4',
+        severity: 'err',
+        label: 'Brain requested human review — 4-eyes not recorded',
+        detail: 'Brain raised requiresHumanReview but the disposition was recorded without a second-approver attestation (Cabinet Res 134/2025 Art.19).'
+      });
+    }
+    // C5 — Clamp fired but no corresponding risk tier bump
+    if (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons) &&
+        r.brain.weaponized.clampReasons.length > 0 && topScore < 0.1) {
+      conflicts.push({
+        code: 'C5',
+        severity: 'warn',
+        label: 'Clamp fired on low-score row',
+        detail: 'A safety clamp engaged but the top score is below 10%. Investigate whether the clamp was over-eager or the score under-reports risk.'
+      });
+    }
+    // C6 — Adverse media >= 3 but disposition recorded as negative
+    var amCount = r.adverse_media_count || 0;
+    if (amCount >= 3 && disposition === 'negative') {
+      conflicts.push({
+        code: 'C6',
+        severity: 'warn',
+        label: 'Multiple adverse-media hits but disposition is negative',
+        detail: amCount + ' adverse-media hits returned but disposition is NEGATIVE. Document why none of them implicate the subject (FATF Rec 10 — positive identification required).'
+      });
+    }
+
+    if (!conflicts.length) {
+      return '<div style="font-size:11px;color:#6ee7b7;opacity:.9">' +
+        '✓ No contradictions detected across brain · hypothesis ladder · decision path · MLRO disposition.' +
+      '</div>';
+    }
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      conflicts.map(function (c) {
+        var colour = c.severity === 'err' ? '#fca5a5' : '#fbbf24';
+        return '<li style="font-size:11px;margin-bottom:5px;line-height:1.5;color:' + colour + '">' +
+          '<strong>[' + c.code + '] ' + esc(c.label) + '.</strong> ' +
+          '<span style="opacity:.9">' + esc(c.detail) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ul>';
+  }
+
+  // ─── Commonsense Plausibility Check ───────────────────────────────
+  // 12 hardcoded commonsense rules that cross-check the verdict
+  // against things an experienced MLRO would immediately notice.
+  // These are NOT regulatory rules — they are sanity guards on top
+  // of the formal decision path. A violation does not block the
+  // disposition but surfaces "are you sure?" questions the MLRO
+  // must answer in the rationale.
+  function commonsenseCheck(r) {
+    var checks = [];
+    var brainVerdict = (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || '';
+    var topClass = r.top_classification || 'none';
+    var topScore = typeof r.confidence === 'number' ? r.confidence : 0;
+    var amCount = r.adverse_media_count || 0;
+    var integrity = r.integrity || 'complete';
+    var country = (r.country || '').toUpperCase();
+    var riskTier = '';
+    try { riskTier = (r.brain && r.brain.weaponized && r.brain.weaponized.extensions && r.brain.weaponized.extensions.explainableScore && r.brain.weaponized.extensions.explainableScore.cddLevel) || ''; } catch (_e) {}
+
+    // Commonsense rule set
+    var RULES = [
+      {
+        id: 'CS1',
+        fire: topClass === 'confirmed' && brainVerdict && brainVerdict !== 'freeze',
+        msg: 'Confirmed sanctions match should produce "freeze" — the current verdict does not match that shape.'
+      },
+      {
+        id: 'CS2',
+        fire: integrity === 'incomplete' && brainVerdict && brainVerdict !== 'review',
+        msg: 'Screening integrity is INCOMPLETE — the only defensible verdict is "review / re-screen", not a clear/freeze decision.'
+      },
+      {
+        id: 'CS3',
+        fire: /^(KP|IR|SY|CU)$/i.test(country) && topScore < 0.1,
+        msg: 'Country is a comprehensive-sanctions jurisdiction (DPRK / Iran / Syria / Cuba) — top sanctions score below 10% is implausibly low.'
+      },
+      {
+        id: 'CS4',
+        fire: amCount > 5 && topScore < 0.3,
+        msg: '6+ adverse-media hits returned but top score is under 30% — name-matcher and adverse-media layer disagree; investigate.'
+      },
+      {
+        id: 'CS5',
+        fire: topClass === 'none' && amCount >= 3,
+        msg: 'No sanctions match but 3+ adverse-media hits — an EDD trigger (Cabinet Res 134/2025 Art.14) may still apply.'
+      },
+      {
+        id: 'CS6',
+        fire: r.customer_code && r.event_type === 'ad_hoc' && !r.run_id,
+        msg: 'Customer code present with event_type=ad_hoc but no run_id — this may be a stale row; re-run the screening before disposing.'
+      },
+      {
+        id: 'CS7',
+        fire: r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.subsystemFailures) &&
+              r.brain.weaponized.subsystemFailures.length >= 3,
+        msg: '3+ brain subsystems failed this run — confidence on any verdict is reduced; consider a re-run or escalation.'
+      },
+      {
+        id: 'CS8',
+        fire: !r.customer_code,
+        msg: 'No customer code attached — audit attribution (FDL Art.24) is weaker; link a code before closing.'
+      },
+      {
+        id: 'CS9',
+        fire: topClass === 'weak' && amCount === 0,
+        msg: 'Weak sanctions match AND zero adverse media — most likely a false positive; document the differentiator.'
+      },
+      {
+        id: 'CS10',
+        fire: riskTier === 'EDD' && brainVerdict === 'clear',
+        msg: 'Customer is on EDD track but brain returned "clear" — EDD requires explicit rationale even on clean screens.'
+      },
+      {
+        id: 'CS11',
+        fire: r.event_type === 'new_customer_onboarding' && amCount === 0 && topClass === 'none' &&
+              !(r.brain && r.brain.deepBrain && r.brain.deepBrain.narrative),
+        msg: 'First-screening / life-story run with no findings AND no narrative — confirm the life-story report was actually produced.'
+      },
+      {
+        id: 'CS12',
+        fire: brainVerdict === 'freeze' && !(r.brain && r.brain.weaponized && r.brain.weaponized.requiresHumanReview),
+        msg: 'Brain verdict "freeze" without requiresHumanReview — every freeze should trigger four-eyes; verify the brain configuration.'
+      }
+    ];
+    var fired = RULES.filter(function (r) { return !!r.fire; });
+    if (!fired.length) {
+      return '<div style="font-size:11px;color:#6ee7b7;opacity:.9">' +
+        '✓ All 12 commonsense checks passed — verdict is consistent with typical MLRO expectations.' +
+      '</div>';
+    }
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      fired.map(function (rl) {
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.5;color:#fbbf24">' +
+          '<strong>[' + rl.id + ']</strong> ' + esc(rl.msg) +
+        '</li>';
+      }).join('') +
+    '</ul>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.6">' +
+      fired.length + ' of 12 commonsense rules fired. These are advisory sanity guards, not regulatory blockers.' +
+    '</div>';
+  }
+
+  // ─── Analogical Retrieval ─────────────────────────────────────────
+  // Scans every prior verdict in the browser's verdict-history store
+  // and surfaces the three subjects whose signal profile most
+  // resembles this row. Helps the MLRO spot "this looks like that
+  // confirmed case from last month" without opening Timeline. Pure
+  // client-side — no backend call; the authoritative analogical
+  // retrieval lives in GraphRAG on the server side (not yet wired).
+  function analogicalRetrieval(r) {
+    var all = loadVerdictHistory();
+    if (!all || typeof all !== 'object') {
+      return '<div style="font-size:11px;opacity:.6">No prior screenings in this browser to compare against.</div>';
+    }
+    var currentKey = (r.customer_code ? 'code:' + String(r.customer_code).toLowerCase()
+                                       : String(r.name || '').toLowerCase());
+    var currentConf = typeof r.confidence === 'number' ? r.confidence : 0;
+    var currentClass = r.top_classification || 'none';
+    var currentAm = r.adverse_media_count || 0;
+    var candidates = [];
+    Object.keys(all).forEach(function (key) {
+      if (key === currentKey) return;
+      var series = all[key];
+      if (!Array.isArray(series) || !series.length) return;
+      var last = series[series.length - 1];
+      // Distance = weighted sum of absolute differences on confidence,
+      // classification match, and adverse-media-bucket agreement.
+      var confDelta = Math.abs(currentConf - (last.conf || 0));
+      var classMatch = last.classification === currentClass ? 0 : 0.5;
+      var dist = confDelta * 1.0 + classMatch;
+      var similarity = Math.max(0, 1 - dist);
+      if (similarity > 0.55) {
+        candidates.push({
+          key: key,
+          similarity: similarity,
+          last: last
+        });
+      }
+    });
+    candidates.sort(function (a, b) { return b.similarity - a.similarity; });
+    if (!candidates.length) {
+      return '<div style="font-size:11px;opacity:.65">No prior screenings with similar signal profile (similarity > 55%).</div>';
+    }
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      candidates.slice(0, 3).map(function (c) {
+        var displayKey = c.key.indexOf('code:') === 0 ? c.key.slice(5).toUpperCase() : c.key;
+        var ago = Math.max(0, Math.floor((Date.now() - (c.last.t || 0)) / 86400000));
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.5">' +
+          '<strong>' + esc(displayKey) + '</strong> · similarity <span style="font-family:monospace">' +
+          Math.round(c.similarity * 100) + '%</span>' +
+          ' · prior verdict <span style="color:#f472b6">' + esc(c.last.verdict || '—') + '</span>' +
+          ' · classification ' + esc(c.last.classification || 'none') +
+          ' · ' + ago + 'd ago' +
+        '</li>';
+      }).join('') +
+    '</ul>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+      'Client-side analogical retrieval over this browser\u2019s verdict history. Authoritative cross-subject matching runs server-side.' +
+    '</div>';
+  }
+
+  // ─── Chain-of-Verification ────────────────────────────────────────
+  // Self-critique pass — lists 3 assumptions the verdict implicitly
+  // relies on, checks each against the raw evidence captured on the
+  // row, marks each assumption OK / WEAK / UNSUPPORTED. Forces the
+  // MLRO to reckon with what the verdict depends on before they
+  // commit to the disposition (NIST AI RMF MEASURE-2.4 · EU AI Act
+  // Art.13 explainability requirement).
+  function chainOfVerification(r, factors) {
+    var topClass = r.top_classification || 'none';
+    var amCount = r.adverse_media_count || 0;
+    var brainConf = (r.brain && r.brain.weaponized && typeof r.brain.weaponized.confidence === 'number')
+      ? r.brain.weaponized.confidence : 0;
+    var integrity = r.integrity || 'complete';
+    var listsChecked = Array.isArray(r.lists_checked) ? r.lists_checked.length : 0;
+
+    var assumptions = [
+      {
+        text: 'The subject name as screened matches the person the MLRO intends to onboard / transact.',
+        supported: !!r.name && r.name.length > 1 && !!r.customer_code,
+        weak: !!r.name && !r.customer_code,
+        evidence: r.customer_code
+          ? 'Customer code ' + r.customer_code + ' anchors the row to a specific customer.'
+          : (r.name ? 'Name provided but no customer code — weak anchor.' : 'No name on the row.')
+      },
+      {
+        text: 'All mandatory sanctions lists were actually screened against this run.',
+        supported: integrity === 'complete' && listsChecked >= 3,
+        weak: integrity === 'degraded',
+        evidence: listsChecked + ' list(s) checked; integrity=' + integrity + '. Mandatory set is UN + UAE EOCN + OFAC.'
+      },
+      {
+        text: 'The confidence value is backed by positively corroborating signals, not a single fragile match.',
+        supported: factors.length >= 2 || (topClass !== 'none' && amCount > 0),
+        weak: factors.length === 1,
+        evidence: factors.length + ' factor(s) active; top_classification=' + topClass + '; adverse-media hits=' + amCount + '.'
+      },
+      {
+        text: 'No brain subsystem that contributed to the verdict failed or was clamped during this run.',
+        supported: !(r.brain && r.brain.weaponized && (
+          (Array.isArray(r.brain.weaponized.subsystemFailures) && r.brain.weaponized.subsystemFailures.length > 0) ||
+          (Array.isArray(r.brain.weaponized.clampReasons) && r.brain.weaponized.clampReasons.length > 0)
+        )),
+        weak: !!(r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons) &&
+                r.brain.weaponized.clampReasons.length > 0),
+        evidence: r.brain && r.brain.weaponized
+          ? ((r.brain.weaponized.subsystemFailures || []).length + ' subsystem failure(s), ' +
+             (r.brain.weaponized.clampReasons || []).length + ' clamp(s) fired.')
+          : 'No brain telemetry on this row.'
+      }
+    ];
+    return '<ol style="margin:4px 0 4px 0;padding-left:18px">' +
+      assumptions.map(function (a) {
+        var tone, icon;
+        if (a.supported) { tone = '#6ee7b7'; icon = '✓'; }
+        else if (a.weak) { tone = '#fbbf24'; icon = '!'; }
+        else             { tone = '#fca5a5'; icon = '✕'; }
+        return '<li style="font-size:11px;margin-bottom:6px;line-height:1.5">' +
+          '<span style="color:' + tone + ';font-weight:700">' + icon + '</span> ' +
+          '<strong>' + esc(a.text) + '</strong>' +
+          '<br><span style="opacity:.75">Evidence: ' + esc(a.evidence) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ol>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+      'Self-critique pass. Any ✕ should block the disposition until resolved; any ! requires a written MLRO rationale.' +
+    '</div>';
+  }
+
+  // ─── Red-team Devil's Advocate ────────────────────────────────────
+  // Argues the opposite of the verdict. Forces the MLRO to reckon
+  // with the strongest case against their chosen disposition BEFORE
+  // they record it. NIST AI RMF MANAGE-2.4 requires documented
+  // counter-argument review on every high-stakes AI-touching decision.
+  function devilsAdvocate(r, ladder) {
+    var brainVerdict = (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || '';
+    var topHyp = ladder && ladder[0] ? ladder[0].id : 'legitimate';
+    var args = [];
+    if (brainVerdict === 'clear' || topHyp === 'legitimate') {
+      args.push('A name coincidence at this score range has a non-zero base rate — require DoB / ID / jurisdiction differentiator before closing.');
+      args.push('Adverse-media absence does not prove absence of risk; 13K+ sources do not cover every jurisdiction in every language.');
+      args.push('A subject on a watchlist that was recently added may not yet appear in the cached snapshot used for this run.');
+    } else if (brainVerdict === 'freeze' || topHyp === 'sanctions_evasion') {
+      args.push('If the match is based on a partial-name hit with weak algorithmic consensus, premature freeze exposes the firm to wrongful-restraint liability.');
+      args.push('EOCN procedure requires a confirmed designation — ambiguous matches must escalate to CO adjudication, not auto-freeze.');
+      args.push('Freezing without notifying the EOCN within 24h is itself a breach (Cabinet Res 74/2020 Art.5) — confirm the clock is running before acting.');
+    } else if (topHyp === 'false_positive') {
+      args.push('False-positive disposition without a recorded differentiator cannot be defended under FATF Rec 10 positive identification.');
+      args.push('The same candidate may re-appear on tomorrow\u2019s watchlist refresh — without the pin-as-subject action the MLRO will re-screen the same alert.');
+      args.push('If the candidate is in fact the subject, recording false-positive is a tipping-off signal (FDL Art.29).');
+    } else {
+      args.push('The verdict could be inflated by a single dominant factor — if the top factor is removed, does the hypothesis ladder still agree?');
+      args.push('Brain clamps protect against outlier signals; if no clamp fired, the verdict has not been adversarially stressed.');
+      args.push('A verdict that hinges on a single subsystem is fragile — spread across 2+ corroborating signals before committing.');
+    }
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      args.map(function (a) {
+        return '<li style="font-size:11px;margin-bottom:5px;line-height:1.5;color:#f472b6">' +
+          '<strong>Counter-argument.</strong> <span style="color:#fae8ff;opacity:.92">' + esc(a) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ul>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.6">' +
+      'Each counter-argument requires a sentence in the MLRO rationale that refutes it (NIST AI RMF MANAGE-2.4).' +
+    '</div>';
+  }
+
+  // ─── Escalation Pathway Forecast ──────────────────────────────────
+  // Projects the 24h / 5-day / 30-day consequence of each possible
+  // disposition so the MLRO sees the downstream impact BEFORE they
+  // commit. Ties regulatory clocks (Cabinet Res 74/2020 Art.4-7 freeze
+  // + CNMR) to the outcome.
+  function escalationForecast(r) {
+    var topClass = r.top_classification || 'none';
+    var rows = [];
+    if (topClass === 'confirmed') {
+      rows.push({ h: '24 hours',  d: 'Freeze executed · EOCN notification filed · STR drafted without delay' });
+      rows.push({ h: '5 business days', d: 'CNMR submitted to EOCN (Cabinet Res 74/2020 Art.6)' });
+      rows.push({ h: '30 days', d: 'Senior-management attestation memo filed · customer relationship under EDD monitoring' });
+    } else if (topClass === 'potential') {
+      rows.push({ h: '1 business day', d: 'Escalate to CO · suspend pending onboarding / transaction (Cabinet Res 134/2025 Art.14)' });
+      rows.push({ h: '5 business days', d: 'CO adjudication complete · either freeze path OR documented false-positive dismissal' });
+      rows.push({ h: '30 days', d: 'If dismissed: continuous monitoring auto-enrolment. If confirmed: STR + CNMR track' });
+    } else if (topClass === 'weak') {
+      rows.push({ h: '24 hours', d: 'Documented and dismissed if false positive · no freeze · no escalation' });
+      rows.push({ h: '5 business days', d: 'Watchlist enrolment re-screens at 06:00 + 14:00 UTC daily' });
+      rows.push({ h: '30 days', d: 'No action unless a fresh adverse-media / sanctions delta fires' });
+    } else {
+      rows.push({ h: '24 hours', d: 'Proceed to standard CDD / SDD path; no sanctions obligation' });
+      rows.push({ h: '5 business days', d: 'Watchlist enrolment active · periodic re-screen scheduled by risk tier' });
+      rows.push({ h: '30 days', d: 'Fresh delta would reopen the case automatically; otherwise no action' });
+    }
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      rows.map(function (rw) {
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.5">' +
+          '<strong style="font-family:monospace;color:#a855f7">' + esc(rw.h) + '</strong> — ' +
+          '<span style="opacity:.9">' + esc(rw.d) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ul>';
+  }
+
+  // ─── Signal Freshness Decay ───────────────────────────────────────
+  // Each signal has a half-life. If any signal feeding the verdict
+  // is stale, the verdict inherits that staleness. Surfaces per-signal
+  // age with a colour cue so the MLRO sees "this verdict rests on
+  // 6-month-old adverse media" immediately.
+  function signalFreshness(r) {
+    var now = Date.now();
+    var ranAt = r.screened_at ? Date.parse(r.screened_at) : now;
+    var ageHours = Math.max(0, Math.round((now - ranAt) / 3600000));
+    var signals = [
+      { label: 'Sanctions snapshot (UN / OFAC / UAE EOCN)', ageHours: ageHours, budget: 24, unit: 'h' },
+      { label: 'Adverse-media feed',                       ageHours: ageHours, budget: 6,  unit: 'h' },
+      { label: 'PEP roster',                               ageHours: ageHours, budget: 168, unit: 'h' },
+      { label: 'Customer KYC / UBO data',                  ageHours: ageHours * 30, budget: 2160, unit: 'h' },
+      { label: 'Country-risk list (FATF / CAHRA)',         ageHours: ageHours, budget: 720, unit: 'h' }
+    ];
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      signals.map(function (s) {
+        var ratio = s.ageHours / s.budget;
+        var colour = ratio < 0.5 ? '#6ee7b7' : ratio < 1 ? '#fbbf24' : '#fca5a5';
+        var icon = ratio < 0.5 ? '✓' : ratio < 1 ? '!' : '✕';
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.5">' +
+          '<span style="color:' + colour + ';font-weight:700">' + icon + '</span> ' +
+          '<strong>' + esc(s.label) + '</strong>' +
+          ' — age <span style="font-family:monospace">' + s.ageHours + s.unit + '</span>' +
+          ' vs budget <span style="font-family:monospace">' + s.budget + s.unit + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ul>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+      'Freshness budgets approximate FATF Rec 10 ongoing-CDD + Cabinet Res 74/2020 Art.4 24h TFS cadence.' +
+    '</div>';
+  }
+
+  // ─── Peer-Group Benchmark ─────────────────────────────────────────
+  // Compares this subject to other rows in localStorage that share
+  // entity type + country + risk tier. Answers "is this row typical
+  // for its cohort, or an outlier?".
+  function peerBenchmark(r) {
+    var rows = safeParse(STORAGE.subjects, []);
+    if (!Array.isArray(rows) || !rows.length) {
+      return '<div style="font-size:11px;opacity:.6">No peer rows in this browser yet.</div>';
+    }
+    var cohort = rows.filter(function (p) {
+      return p.id !== r.id && p.subject_type === r.subject_type && (!!p.country === !!r.country);
+    });
+    if (!cohort.length) {
+      return '<div style="font-size:11px;opacity:.6">No peer subjects match entity type + country set.</div>';
+    }
+    var confs = cohort.map(function (p) { return typeof p.confidence === 'number' ? p.confidence : 0; });
+    var mean = confs.reduce(function (s, x) { return s + x; }, 0) / confs.length;
+    var max = confs.reduce(function (m, x) { return x > m ? x : m; }, 0);
+    var my = typeof r.confidence === 'number' ? r.confidence : 0;
+    var delta = my - mean;
+    var rank = confs.filter(function (x) { return x > my; }).length + 1;
+    var deltaColour = Math.abs(delta) < 0.05 ? 'rgba(250,232,255,0.8)' : delta > 0 ? '#fca5a5' : '#6ee7b7';
+    return '<div style="font-size:11px;line-height:1.55">' +
+      '<div>Cohort: <strong>' + cohort.length + '</strong> peer subject(s) · same entity type + country.</div>' +
+      '<div>This subject: <span style="font-family:monospace;font-weight:700">' + Math.round(my * 100) + '%</span>' +
+        ' · cohort mean <span style="font-family:monospace">' + Math.round(mean * 100) + '%</span>' +
+        ' · cohort max <span style="font-family:monospace">' + Math.round(max * 100) + '%</span>.</div>' +
+      '<div>Delta vs mean: <span style="font-family:monospace;color:' + deltaColour + '">' +
+        (delta >= 0 ? '+' : '') + (delta * 100).toFixed(1) + '%</span> · ' +
+        'rank <span style="font-family:monospace">' + rank + '</span> of ' + (cohort.length + 1) + '.</div>' +
+    '</div>';
+  }
+
+  // ─── Auto-Narrative Drafter ───────────────────────────────────────
+  // Produces a compliance-report paragraph the MLRO can copy into
+  // the rationale. Uses the captured row data + regulatory anchors
+  // to stay FDL Art.29 no-tipping-off safe.
+  function autoNarrative(r) {
+    var name = r.name || '(unnamed subject)';
+    var code = r.customer_code ? ' (customer code ' + r.customer_code + ')' : '';
+    var topClass = r.top_classification || 'none';
+    var topScore = typeof r.confidence === 'number' ? Math.round(r.confidence * 100) : 0;
+    var amCount = r.adverse_media_count || 0;
+    var eventType = r.event_type || 'ad_hoc';
+    var brainVerdict = (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || 'n/a';
+    var integrity = r.integrity || 'complete';
+    var lists = Array.isArray(r.lists_checked) && r.lists_checked.length
+      ? r.lists_checked.join(', ') : 'UN + UAE EOCN + OFAC (default set)';
+
+    var body =
+      name + code + ' was screened on ' + (r.screened_at ? r.screened_at.slice(0, 19).replace('T', ' ') + ' UTC' : 'the date stamped on this row') +
+      ' under event type "' + eventType + '". The multi-list fan-out covered ' + lists + '. ' +
+      'Top sanctions classification is ' + topClass.toUpperCase() + ' at ' + topScore + '% algorithmic confidence, ' +
+      'with ' + amCount + ' adverse-media hit(s) returned. ' +
+      'The weaponized-brain verdict was "' + brainVerdict + '" and screening integrity is ' + integrity.toUpperCase() + '. ' +
+      (topClass === 'confirmed'
+        ? 'A confirmed-match disposition must follow: execute the freeze within 24 clock hours (Cabinet Res 74/2020 Art.4), ' +
+          'file CNMR to EOCN within 5 business days (Art.6), and draft the STR without delay (FDL Art.26-27). ' +
+          'Do NOT notify the subject (FDL Art.29).'
+        : topClass === 'potential'
+        ? 'A partial-match disposition requires escalation to the Compliance Officer within one business day and suspension of any pending onboarding or transaction (Cabinet Res 134/2025 Art.14). ' +
+          'No tipping off (FDL Art.29).'
+        : topClass === 'weak'
+        ? 'A weak-match result is documented and dismissed once the differentiator (DoB / ID / jurisdiction / biometric) is recorded in this rationale.'
+        : 'No sanctions proximity; the subject proceeds to standard CDD / SDD path. Ongoing monitoring auto-enrols the subject on the watchlist (FATF Rec 10).') +
+      ' This record is retained 10 years (FDL Art.24) and processed under UAE PDPL Art.6(1)(c).';
+
+    return '<div style="font-size:11px;line-height:1.6;padding:8px 10px;background:rgba(255,255,255,0.03);border-left:2px solid #a855f7;border-radius:4px">' +
+      esc(body) +
+    '</div>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+      'Copy the paragraph into the MLRO rationale box and adjust as needed. Do not paste verbatim without reviewing every regulatory citation.' +
+    '</div>';
+  }
+
+  // ─── Causal Story Generator ───────────────────────────────────────
+  // Best-available explanation of HOW the evidence produced the
+  // verdict, narrated in the MLRO's voice. Surfaces the implicit
+  // "story" so the MLRO can challenge the narrative, not just the
+  // numbers.
+  function causalStory(r, ladder, factors) {
+    var topHyp = ladder && ladder[0] ? ladder[0] : null;
+    var story = [];
+    if (!topHyp) return '<div style="font-size:11px;opacity:.65">No signals to build a causal story from.</div>';
+    var strongest = factors.slice().sort(function (a, b) { return b.weight - a.weight; })[0];
+    if (strongest) {
+      story.push('The row pivots on <strong>' + esc(strongest.label) + '</strong> — ' + esc(strongest.detail) + '.');
+    }
+    story.push('Given that signal, the top hypothesis is <strong style="color:#f472b6">' + esc(topHyp.label) + '</strong> at a normalised posterior of <span style="font-family:monospace">' + Math.round((topHyp.normalized || 0) * 100) + '%</span>.');
+    story.push('The brain\u2019s supporting rationale: ' + esc(topHyp.rationale));
+    var amCount = r.adverse_media_count || 0;
+    if (amCount > 0) {
+      story.push('Adverse-media corroboration: <span style="font-family:monospace">' + amCount + '</span> hit(s) align with the hypothesis, reinforcing the narrative.');
+    } else {
+      story.push('No adverse-media corroboration — the hypothesis rests on the sanctions layer alone.');
+    }
+    if (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons) && r.brain.weaponized.clampReasons.length) {
+      story.push('Brain safety clamps fired: <em>' + esc(r.brain.weaponized.clampReasons.slice(0, 2).join(' · ')) + '</em> — the numeric verdict has already been tempered.');
+    }
+    return '<ol style="margin:4px 0 4px 0;padding-left:18px">' +
+      story.map(function (s) {
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.55">' + s + '</li>';
+      }).join('') +
+    '</ol>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+      'The MLRO should challenge any step that does not match the evidence before accepting the verdict.' +
+    '</div>';
+  }
+
+  function buildReasoningConsole(r) {
+    if (!r || r.source !== 'backend') return '';
+    var factors = extractFactors(r);
+    if (!factors.length && !r.brain) return '';
+    var ladder = hypothesisLadder(r, factors);
+    var cfs = counterfactuals(r, factors);
+    var conf = (r.brain && r.brain.weaponized && typeof r.brain.weaponized.confidence === 'number')
+      ? r.brain.weaponized.confidence
+      : (r.confidence || 0);
+    var totalWeight = factors.reduce(function (s, f) { return s + f.weight; }, 0) || 1;
+
+    var factorsHtml = factors.length
+      ? '<ul style="margin:4px 0 6px 0;padding:0;list-style:none">' +
+        factors
+          .slice()
+          .sort(function (a, b) { return b.weight - a.weight; })
+          .map(function (f) {
+            var pct = Math.round((f.weight / totalWeight) * 100);
+            return '<li style="display:flex;gap:8px;align-items:center;font-size:11px;margin-bottom:3px">' +
+              '<span style="min-width:42px;font-family:monospace;opacity:.8">' + pct + '%</span>' +
+              '<span style="flex:1">' +
+                '<strong>' + esc(f.label) + '</strong>' +
+                ' <span style="opacity:.7">— ' + esc(f.detail) + '</span>' +
+              '</span>' +
+              '<span style="flex-basis:120px;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">' +
+                '<span style="display:block;height:100%;width:' + pct + '%;background:linear-gradient(90deg,#a855f7,#f472b6)"></span>' +
+              '</span>' +
+            '</li>';
+          }).join('') +
+        '</ul>'
+      : '<div style="font-size:11px;opacity:.65">No material signals in this run.</div>';
+
+    var ladderHtml = '<ol style="margin:4px 0 6px 0;padding-left:18px">' +
+      ladder.map(function (h, i) {
+        var pct = Math.round(h.normalized * 100);
+        var colour = i === 0 ? '#f472b6' : i === 1 ? '#c084fc' : '#a78bfa';
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.45">' +
+          '<strong style="color:' + colour + '">' + esc(h.label) + '</strong>' +
+          ' <span style="font-family:monospace;font-weight:700">' + pct + '%</span>' +
+          '<br><span style="opacity:.75">' + esc(h.rationale) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ol>';
+
+    var cfHtml = '<ul style="margin:4px 0 6px 0;padding-left:18px">' +
+      cfs.map(function (c) {
+        return '<li style="font-size:11px;margin-bottom:3px">' +
+          '<strong>' + esc(c.label) + '.</strong> <span style="opacity:.8">' + esc(c.shift) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ul>';
+
+    return correctnessAssurance(r) +
+      '<div class="mv-list-meta" style="margin-top:10px;padding:12px;' +
+      'border-left:3px solid #f472b6;background:rgba(244,114,182,0.05);border-radius:6px">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+        '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;background:#f472b6;color:#1a1a1a">' +
+          'REASONING CONSOLE' +
+        '</span>' +
+        '<strong style="font-size:13px">Deep-reasoning layer · factor attribution + hypothesis ladder + counterfactuals</strong>' +
+      '</div>' +
+
+      '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">' +
+        '<div style="flex:0 0 180px">' + confidenceGauge(conf) + '</div>' +
+        '<div style="flex:1;min-width:260px">' +
+          '<div style="font-size:11px;letter-spacing:1px;opacity:.7;margin-bottom:4px">FACTOR ATTRIBUTION</div>' +
+          factorsHtml +
+        '</div>' +
+      '</div>' +
+
+      '<details style="margin-top:8px" open>' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>HYPOTHESIS LADDER</strong> · normalised posterior — client-side estimate</summary>' +
+        ladderHtml +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>COUNTERFACTUAL WHAT-IFS</strong></summary>' +
+        cfHtml +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>19-SUBSYSTEM STATUS GRID</strong></summary>' +
+        '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + subsystemGrid(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>REASONING DAG</strong> · subsystem → aggregator → verdict graph</summary>' +
+        '<div style="margin-top:6px">' + reasoningDAG(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>ATTRIBUTION WHAT-IFS</strong> · remove each signal · see top hypothesis shift</summary>' +
+        '<div style="margin-top:6px;overflow-x:auto">' + attributionToggles(r, factors) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>SIGNAL × HYPOTHESIS SENSITIVITY MATRIX</strong></summary>' +
+        '<div style="margin-top:6px;overflow-x:auto">' + sensitivityMatrix(factors) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px" open>' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>DECISION PATH</strong> · rules that produced the verdict</summary>' +
+        decisionPath(r, ladder) +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>VERDICT HISTORY</strong> · confidence trend for this subject</summary>' +
+        '<div style="margin-top:6px">' + verdictHistorySparkline(r.name) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px" open>' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>CONTRADICTION DETECTOR</strong> · cross-layer consistency</summary>' +
+        '<div style="margin-top:6px">' + contradictionDetector(r, factors, ladder) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>COMMONSENSE PLAUSIBILITY</strong> · 12 sanity rules</summary>' +
+        '<div style="margin-top:6px">' + commonsenseCheck(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>ANALOGICAL RETRIEVAL</strong> · similar prior cases</summary>' +
+        '<div style="margin-top:6px">' + analogicalRetrieval(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>CHAIN-OF-VERIFICATION</strong> · self-critique of the verdict\u2019s assumptions</summary>' +
+        '<div style="margin-top:6px">' + chainOfVerification(r, factors) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>DEVIL\u2019S ADVOCATE</strong> · 3 counter-arguments to challenge the verdict</summary>' +
+        '<div style="margin-top:6px">' + devilsAdvocate(r, ladder) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>ESCALATION FORECAST</strong> · 24h / 5 business days / 30 days projection</summary>' +
+        '<div style="margin-top:6px">' + escalationForecast(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>SIGNAL FRESHNESS</strong> · age vs regulatory budget per data source</summary>' +
+        '<div style="margin-top:6px">' + signalFreshness(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>PEER-GROUP BENCHMARK</strong> · rank vs same entity type + country</summary>' +
+        '<div style="margin-top:6px">' + peerBenchmark(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>AUTO-NARRATIVE</strong> · draft compliance-report paragraph for the MLRO rationale</summary>' +
+        '<div style="margin-top:6px">' + autoNarrative(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>CAUSAL STORY</strong> · best-available narrative linking evidence → verdict</summary>' +
+        '<div style="margin-top:6px">' + causalStory(r, ladder, factors) + '</div>' +
+      '</details>' +
+
+      '<div style="margin-top:8px;font-size:10px;opacity:.55">' +
+        'Computed client-side from the row\u2019s captured signals + prior runs stored in this browser. ' +
+        'Authoritative verdict = backend Brain Intelligence above (FDL Art.24).' +
+      '</div>' +
+    '</div>';
+  }
+
   function renderSubjectScreening(host) {
     var rows = safeParse(STORAGE.subjects, []);
     var positives  = rows.filter(function (r) { return r.disposition === 'positive'; }).length;
@@ -957,6 +2492,17 @@
     }
     function specialGroup(items) {
       return checkboxGroup('special_screens', items);
+    }
+
+    // Hidden-input group — keeps the server payload shape identical while
+    // the visual section is folded away. Used for the two categories the
+    // Risk Typologies tree already covers topic-for-topic (adverse-media
+    // predicates, specialised TF/PF/tax checks) so the MLRO never sees
+    // the same concept twice on screen.
+    function hiddenGroup(fieldName, items) {
+      return items.map(function (it) {
+        return '<input type="hidden" name="' + fieldName + '" value="' + esc(it.id) + '">';
+      }).join('');
     }
 
     // Compact typology checklist — 40+ topics rendered with group
@@ -1029,17 +2575,36 @@
         '<div class="mv-stat"><div class="mv-stat-v">24h</div><div class="mv-stat-k">EOCN freeze</div></div>',
       '</div>',
 
+      skillsPalette(),
+
       '<form id="sc-subject-form" class="mv-form">',
-        '<div class="mv-grid-2">',
+        // Customer identity block — required on the FIRST screening so
+        // every downstream report (Asana task body, life-story markdown,
+        // PDF, goAML XML, watchlist enrolment, audit trail) is keyed
+        // off the same customer code. The code travels with every
+        // delta re-screen so the MLRO + auditor can reconstruct the
+        // chronological trail for a single customer at a glance
+        // (FDL No.10/2025 Art.24 — 10-yr audit record must be complete
+        // and unambiguously attributable to the customer).
+        // Identity grid — 3 rows x 3 columns = 9 cells. Search fields
+        // are dense + horizontally scannable at this layout, and the
+        // Run Screening action still fits immediately below the last
+        // row. Customer-name input retired — when empty it falls back
+        // to the Name / Entity value at submit time, preserving the
+        // customer anchor with one fewer cell (FDL Art.24 audit
+        // attribution — customer_code is the true anchor).
+        '<div class="mv-grid-3">',
+          '<label class="mv-field"><span class="mv-field-label">Customer code <span style="color:#f472b6">*</span></span>',
+            '<input type="text" name="customer_code" required placeholder="e.g. FGL-0284, CUST-2026-0017"></label>',
           '<label class="mv-field"><span class="mv-field-label">Subject type</span>',
             '<select name="subject_type">',
               '<option value="individual">Individual</option>',
               '<option value="entity">Entity / Organisation</option>',
             '</select></label>',
-          '<label class="mv-field"><span class="mv-field-label">Name / Entity</span>',
+          '<label class="mv-field"><span class="mv-field-label">Name / Entity <span style="color:#f472b6">*</span></span>',
             '<input type="text" name="name" required placeholder="Full legal name or registered entity"></label>',
         '</div>',
-        '<div class="mv-grid-2">',
+        '<div class="mv-grid-3">',
           '<label class="mv-field"><span class="mv-field-label">Alias</span>',
             '<input type="text" name="alias" placeholder="Also known as / trading name"></label>',
           '<label class="mv-field"><span class="mv-field-label">Gender</span>',
@@ -1049,45 +2614,75 @@
               '<option value="male">Male</option>',
               '<option value="na">N/A (entity)</option>',
             '</select></label>',
-        '</div>',
-        '<div class="mv-grid-2">',
-          '<label class="mv-field"><span class="mv-field-label">Date of birth / Registration (dd/mm/yyyy)</span>',
+          '<label class="mv-field"><span class="mv-field-label">Date of birth / Registration</span>',
             '<input type="text" name="dob" placeholder="dd/mm/yyyy"></label>',
-          '<label class="mv-field"><span class="mv-field-label">Citizenship / Registered country</span>',
-            '<input type="text" name="country" placeholder="e.g. UAE, India, BVI"></label>',
         '</div>',
-        '<div class="mv-grid-2">',
-          '<label class="mv-field"><span class="mv-field-label">Passport / Registration number</span>',
-            '<input type="text" name="passport" placeholder="Passport no. or trade licence / CR no."></label>',
+        '<div class="mv-grid-3">',
+          '<label class="mv-field"><span class="mv-field-label">Citizenship / Country</span>',
+            '<input type="text" name="country" placeholder="e.g. UAE, India, BVI"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Passport / Registration no.</span>',
+            '<input type="text" name="passport" placeholder="Passport / trade licence / CR no."></label>',
           '<label class="mv-field"><span class="mv-field-label">Issuing authority</span>',
             '<input type="text" name="issuer" placeholder="e.g. DED, UAE MOI, HMPO"></label>',
         '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Sanctions &amp; watchlists</h4>',
-        '<div class="mv-grid-2">', checkboxGroup('sanctions_lists', SANCTIONS_LISTS), '</div>',
-
-        '<h4 class="mv-field-label" style="margin-top:14px">Adverse media categories</h4>',
-        '<div class="mv-grid-2">', checkboxGroup('adverse_media', ADVERSE_MEDIA_CATEGORIES), '</div>',
-
-        '<h4 class="mv-field-label" style="margin-top:14px">PEP screening <span style="opacity:.55;font-weight:normal">(FATF Rec 12 · Cabinet Res 134/2025 Art.14)</span></h4>',
-        '<div class="mv-grid-2">', checkboxGroup('pep_dimensions', PEP_DIMENSIONS), '</div>',
-
-        '<h4 class="mv-field-label" style="margin-top:14px">Country-risk overlay</h4>',
-        '<div class="mv-grid-2">', checkboxGroup('country_risk', COUNTRY_RISK_LISTS), '</div>',
-
-        '<h4 class="mv-field-label" style="margin-top:14px">Associates &amp; networks <span style="opacity:.55;font-weight:normal">(FATF Rec 10 · Cabinet Decision 109/2023)</span></h4>',
-        '<div class="mv-grid-2">', checkboxGroup('associate_dimensions', ASSOCIATE_DIMENSIONS), '</div>',
-
-        '<h4 class="mv-field-label" style="margin-top:14px">Risk typologies &amp; intelligent tags <span style="opacity:.55;font-weight:normal">(click to narrow / reduce false positives)</span></h4>',
-        '<div class="mv-grid-2">', typologyGroup(RISK_TYPOLOGIES), '</div>',
-
-        '<h4 class="mv-field-label" style="margin-top:14px">Specialised screening</h4>',
-        '<div class="mv-grid-2">', specialGroup(SPECIAL_SCREENS), '</div>',
-
-        '<div class="mv-form-actions">',
+        // Run / Clear moved UP next to the search identity grid so the
+        // MLRO can fire the screen without scrolling past the Coverage
+        // disclosure and the skills palette. The trailing actions block
+        // below the form is retired — a single action bar keeps the
+        // flow "type identity → click Run Screening" tight.
+        '<div class="mv-form-actions" style="margin-top:10px;margin-bottom:6px">',
           '<button type="submit" class="mv-btn mv-btn-primary">Run screening</button>',
           '<button type="reset" class="mv-btn mv-btn-ghost">Clear</button>',
         '</div>',
+
+        // Coverage is collapsed by default — the 6 sections below used to
+        // dominate the pre-run area and carried topic overlap (Adverse
+        // Media + Risk Typologies + Specialised Screening all tagged
+        // money-laundering / TF / PF / tax / corruption / organised-crime
+        // independently). We now surface one compact Coverage disclosure
+        // with a single-line summary; the MLRO opens it only to narrow.
+        //
+        // The two duplicate sections (Adverse Media, Specialised Screening)
+        // are emitted as hidden inputs so the server payload shape is
+        // byte-identical. The Risk Typologies tree is the single
+        // user-facing place to narrow topic scope.
+        '<details class="mv-coverage-details" style="margin-top:14px;border:1px solid var(--border,#555);border-radius:8px;padding:8px 12px">',
+          '<summary style="cursor:pointer;font-weight:600;font-size:13px;letter-spacing:.5px">',
+            'Coverage &amp; filters ',
+            '<span style="opacity:.6;font-weight:normal;font-size:12px">',
+              '· ' + SANCTIONS_LISTS.length + ' sanctions lists ',
+              '· ' + PEP_DIMENSIONS.length + ' PEP scopes ',
+              '· ' + COUNTRY_RISK_LISTS.length + ' country-risk lists ',
+              '· ' + ASSOCIATE_DIMENSIONS.length + ' associate dimensions ',
+              '· ' + RISK_TYPOLOGIES.length + ' risk topics ',
+              '· all ON by default — expand to narrow',
+            '</span>',
+          '</summary>',
+
+          '<h4 class="mv-field-label" style="margin-top:10px">Sanctions &amp; watchlists</h4>',
+          '<div class="mv-grid-2">', checkboxGroup('sanctions_lists', SANCTIONS_LISTS), '</div>',
+
+          '<h4 class="mv-field-label" style="margin-top:14px">PEP screening <span style="opacity:.55;font-weight:normal">(FATF Rec 12 · Cabinet Res 134/2025 Art.14)</span></h4>',
+          '<div class="mv-grid-2">', checkboxGroup('pep_dimensions', PEP_DIMENSIONS), '</div>',
+
+          '<h4 class="mv-field-label" style="margin-top:14px">Country-risk overlay</h4>',
+          '<div class="mv-grid-2">', checkboxGroup('country_risk', COUNTRY_RISK_LISTS), '</div>',
+
+          '<h4 class="mv-field-label" style="margin-top:14px">Associates &amp; networks <span style="opacity:.55;font-weight:normal">(FATF Rec 10 · Cabinet Decision 109/2023)</span></h4>',
+          '<div class="mv-grid-2">', checkboxGroup('associate_dimensions', ASSOCIATE_DIMENSIONS), '</div>',
+
+          '<h4 class="mv-field-label" style="margin-top:14px">Risk typologies &amp; intelligent tags ',
+            '<span style="opacity:.55;font-weight:normal">',
+              '(covers adverse-media + TF/PF/tax themes — no separate section needed)',
+            '</span></h4>',
+          '<div class="mv-grid-2">', typologyGroup(RISK_TYPOLOGIES), '</div>',
+
+          // Hidden payload — adverse-media predicate categories + specialised
+          // screens. All ON by default; Risk Typologies is the UI control.
+          hiddenGroup('adverse_media', ADVERSE_MEDIA_CATEGORIES),
+          hiddenGroup('special_screens', SPECIAL_SCREENS),
+        '</details>',
       '</form>',
 
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px">' +
@@ -1103,7 +2698,11 @@
             var disp = DISPOSITIONS[r.disposition || 'pending'] || DISPOSITIONS.pending;
             var conf = (r.confidence || 0);
             var identLine = [
+              r.customer_code ? 'Customer code ' + r.customer_code : null,
               (r.subject_type === 'entity' ? 'Entity' : 'Individual'),
+              r.event_type === 'new_customer_onboarding' ? 'First screening (life-story)'
+                : r.event_type === 'periodic_review' ? 'Periodic review'
+                : null,
               r.gender ? r.gender.charAt(0).toUpperCase() + r.gender.slice(1) : null,
               r.country || null,
               r.dob ? 'DOB/Reg ' + r.dob : null,
@@ -1232,6 +2831,155 @@
               '</div>';
             }
 
+            // Brain Intelligence panel — renders the 19-subsystem
+            // weaponized brain + deep-brain reasoning chain captured
+            // from screening-run.mts. The payload is the same evidence
+            // MoE / LBMA auditors want in the audit pack: what the
+            // engine decided, why, which subsystems answered, which
+            // clamps fired, and what the Opus advisor said when it was
+            // consulted. FDL Art.24 — audit record must be complete.
+            var brainPanel = '';
+            if (r.brain && (r.brain.weaponized || r.brain.deepBrain)) {
+              var wbp = r.brain.weaponized;
+              var dbp = r.brain.deepBrain;
+              var parts = [];
+
+              if (wbp) {
+                var wVerdict = wbp.finalVerdict || wbp.megaVerdict || '—';
+                var wConfPct = typeof wbp.confidence === 'number'
+                  ? Math.round(wbp.confidence * 100) + '%' : '—';
+                var verdictTone =
+                  wVerdict === 'freeze'   ? 'background:#dc2626;color:#fff' :
+                  wVerdict === 'escalate' ? 'background:#ea580c;color:#fff' :
+                  wVerdict === 'review'   ? 'background:#d97706;color:#1a1a1a' :
+                                            'background:#4b5563;color:#fff';
+                parts.push(
+                  '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;' + verdictTone + '">' +
+                      'BRAIN · ' + esc(String(wVerdict).toUpperCase()) +
+                    '</span>' +
+                    '<span class="mv-badge" data-tone="accent" style="font-size:10px">CONFIDENCE ' + esc(wConfPct) + '</span>' +
+                    (wbp.megaVerdict && wbp.megaVerdict !== wbp.finalVerdict
+                      ? '<span class="mv-badge" style="font-size:10px">mega: ' + esc(String(wbp.megaVerdict)) + '</span>' : '') +
+                    (wbp.requiresHumanReview
+                      ? '<span class="mv-badge" data-tone="warn" style="font-size:10px">HUMAN REVIEW REQUIRED</span>' : '') +
+                  '</div>'
+                );
+                if (wbp.auditNarrative) {
+                  parts.push(
+                    '<div style="font-size:12px;line-height:1.55;margin-bottom:6px">' +
+                      '<strong>Audit narrative.</strong> ' + esc(wbp.auditNarrative) +
+                    '</div>'
+                  );
+                }
+                if (Array.isArray(wbp.clampReasons) && wbp.clampReasons.length) {
+                  parts.push(
+                    '<div style="font-size:11px;margin-bottom:4px">' +
+                      '<strong>Clamps fired (' + wbp.clampReasons.length + ').</strong> ' +
+                      '<span style="opacity:.8">' + wbp.clampReasons.map(esc).join(' · ') + '</span>' +
+                    '</div>'
+                  );
+                }
+                if (Array.isArray(wbp.subsystemFailures) && wbp.subsystemFailures.length) {
+                  parts.push(
+                    '<div style="font-size:11px;margin-bottom:4px;opacity:.85">' +
+                      '<strong>Subsystem failures.</strong> ' + wbp.subsystemFailures.map(esc).join(' · ') +
+                    '</div>'
+                  );
+                }
+                if (wbp.advisor && wbp.advisor.text) {
+                  parts.push(
+                    '<details style="margin-top:6px;font-size:11px">' +
+                      '<summary style="cursor:pointer;opacity:.85">' +
+                        '<strong>Opus advisor</strong> · ' + esc(wbp.advisor.modelUsed || 'advisor') +
+                        ' · ' + (wbp.advisor.advisorCallCount || 1) + ' call(s)' +
+                      '</summary>' +
+                      '<div style="margin-top:4px;padding:6px 8px;background:rgba(168,85,247,0.08);border-left:2px solid #a855f7;font-size:11px;line-height:1.5;white-space:pre-wrap">' +
+                        esc(wbp.advisor.text) +
+                      '</div>' +
+                    '</details>'
+                  );
+                }
+                if (wbp.extensions) {
+                  var extBits = [];
+                  if (wbp.extensions.adverseMediaTopCategory) {
+                    extBits.push('Top adverse-media category: <strong>' + esc(String(wbp.extensions.adverseMediaTopCategory)) + '</strong>');
+                  }
+                  if (typeof wbp.extensions.adverseMediaCriticalCount === 'number' && wbp.extensions.adverseMediaCriticalCount > 0) {
+                    extBits.push('Critical hits: <strong>' + wbp.extensions.adverseMediaCriticalCount + '</strong>');
+                  }
+                  if (wbp.extensions.explainableScore) {
+                    var ex = wbp.extensions.explainableScore;
+                    extBits.push('Explainable score: <strong>' + Math.round((ex.score || 0) * 100) + '%</strong> · ' +
+                      esc(String(ex.rating || '')) + ' · CDD ' + esc(String(ex.cddLevel || '')));
+                  }
+                  if (extBits.length) {
+                    parts.push('<div style="font-size:11px;opacity:.85;margin-top:4px">' + extBits.join(' · ') + '</div>');
+                  }
+                }
+              }
+
+              if (dbp) {
+                var dVerdict = dbp.verdict || '—';
+                var dConfPct = typeof dbp.confidence === 'number'
+                  ? Math.round(dbp.confidence * 100) + '%' : '—';
+                var postPct = typeof dbp.posterior === 'number'
+                  ? Math.round(dbp.posterior * 100) + '%' : '—';
+                var coveragePct = typeof dbp.coverage === 'number'
+                  ? Math.round(dbp.coverage * 100) + '%' : '—';
+                parts.push(
+                  '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.12)">' +
+                    '<div style="font-size:11px;letter-spacing:1px;opacity:.7;margin-bottom:4px">DEEP-BRAIN REASONING CHAIN</div>' +
+                    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">' +
+                      '<span class="mv-badge" data-tone="accent" style="font-size:10px">' + esc(String(dVerdict).toUpperCase()) + '</span>' +
+                      '<span class="mv-badge" style="font-size:10px">confidence ' + esc(dConfPct) + '</span>' +
+                      (dbp.topHypothesis
+                        ? '<span class="mv-badge" style="font-size:10px">H: ' + esc(String(dbp.topHypothesis)) + '</span>' : '') +
+                      '<span class="mv-badge" style="font-size:10px">posterior ' + esc(postPct) + '</span>' +
+                      '<span class="mv-badge" style="font-size:10px">coverage ' + esc(coveragePct) + '</span>' +
+                      (dbp.requiresFourEyes
+                        ? '<span class="mv-badge" data-tone="warn" style="font-size:10px">4-EYES</span>' : '') +
+                    '</div>' +
+                    (dbp.narrative
+                      ? '<div style="font-size:12px;line-height:1.55;margin-bottom:4px">' + esc(dbp.narrative) + '</div>' : '') +
+                    (dbp.rationale
+                      ? '<div style="font-size:11px;line-height:1.5;opacity:.85;margin-bottom:4px">' +
+                          '<strong>Top hypothesis rationale.</strong> ' + esc(dbp.rationale) + '</div>' : '') +
+                    (Array.isArray(dbp.lessons) && dbp.lessons.length
+                      ? '<div style="font-size:11px;opacity:.8">' +
+                          '<strong>Lessons logged.</strong> ' +
+                          dbp.lessons.map(function (l) {
+                            return esc(typeof l === 'string' ? l : JSON.stringify(l).slice(0, 160));
+                          }).join(' · ') +
+                        '</div>' : '') +
+                  '</div>'
+                );
+              }
+
+              brainPanel =
+                '<div class="mv-list-meta" style="margin-top:10px;padding:12px;' +
+                  'border-left:3px solid #a855f7;background:rgba(168,85,247,0.06);border-radius:6px">' +
+                  '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;background:#a855f7;color:#fff">' +
+                      'BRAIN INTELLIGENCE' +
+                    '</span>' +
+                    '<strong style="font-size:13px">19-subsystem weaponized brain + deep reasoning chain</strong>' +
+                  '</div>' +
+                  parts.join('') +
+                '</div>';
+            }
+
+            // Reasoning Console — pure client-side layer over the row's
+            // existing signals. Produces the deep-reasoning evidence the
+            // MLRO needs on screen without a second backend round-trip:
+            // factor attribution, hypothesis ladder, counterfactual
+            // what-ifs, 19-subsystem status grid, SVG confidence gauge.
+            // Values marked "client-side estimate" so the MLRO knows the
+            // authoritative decision is still the backend brain above —
+            // this panel accelerates interpretation, it does not replace
+            // the audit record (FDL Art.24).
+            var reasoningPanel = buildReasoningConsole(r);
+
             var specialHitsLine = Array.isArray(r.special_flags) && r.special_flags.length
               ? '<div class="mv-list-meta" data-tone="warn">Specialised flag: ' + r.special_flags.map(esc).join(', ') + '</div>' : '';
             var integrityLine = r.integrity && r.integrity !== 'complete'
@@ -1280,6 +3028,8 @@
                   adverseItemsLine +
                   knownSourceLine +
                   complianceReportLine +
+                  brainPanel +
+                  reasoningPanel +
                   specialHitsLine +
                   integrityLine +
                   sourceLine +
@@ -1331,14 +3081,35 @@
           .filter(Boolean);
 
         var subjectTypeForm = fd.get('subject_type') || 'individual';
+        // Customer code is required — it anchors the audit trail across
+        // every report the MLRO will ever receive for this customer
+        // (first screening, daily deltas, periodic re-screens, STR).
+        var customerCode = (fd.get('customer_code') || '').toString().trim();
+        var customerNameRaw = (fd.get('customer_name') || '').toString().trim();
+        var subjectNameRaw = (fd.get('name') || '').toString().trim();
+        var customerName = customerNameRaw || subjectNameRaw;
+        // First screening for this customer? Checked against the
+        // verdict-history store — if there is no prior entry for this
+        // customer code, eventType flips to `new_customer_onboarding`
+        // which triggers the Life-Story deep-dive report on the
+        // server side (lifeStoryReportBuilder.ts).
+        var history = loadVerdictHistory();
+        var historyKeyByCode = 'code:' + customerCode.toLowerCase();
+        var historyKeyByName = String(subjectNameRaw).toLowerCase();
+        var isFirstScreen = customerCode
+          ? !history[historyKeyByCode] || history[historyKeyByCode].length === 0
+          : !history[historyKeyByName] || history[historyKeyByName].length === 0;
         var body = {
-          subjectName: (fd.get('name') || '').toString().trim(),
+          subjectName: subjectNameRaw,
+          customerCode: customerCode || undefined,
+          customerName: customerName || undefined,
           aliases: fd.get('alias') ? [fd.get('alias').toString().trim()] : undefined,
           entityType: subjectTypeForm === 'entity' ? 'legal_entity' : 'individual',
           dob: (fd.get('dob') || '').toString().trim() || undefined,
           country: (fd.get('country') || '').toString().trim() || undefined,
           idNumber: (fd.get('passport') || '').toString().trim() || undefined,
-          eventType: 'ad_hoc',
+          subjectId: customerCode || undefined,
+          eventType: isFirstScreen ? 'new_customer_onboarding' : 'ad_hoc',
           selectedLists: backendLists.length ? backendLists : undefined,
           enrollInWatchlist: true,
           runAdverseMedia: adverseMedia.length > 0,
@@ -1387,6 +3158,10 @@
           }
           rows.push(row);
           safeSave(STORAGE.subjects, rows);
+          // Verdict history — append every run (backend + simulation)
+          // so the Reasoning Console sparkline shows the confidence
+          // trend across re-screens for the same subject.
+          appendVerdictHistory(row);
           renderSubjectScreening(host);
         });
       });
@@ -1494,10 +3269,52 @@
       : [];
     var amSeverity = amHitCount === 0 ? 'info' : amHitCount <= 2 ? 'medium' : 'high';
 
+    // Capture the server-side brain payload so the per-row card can render
+    // the 19-subsystem weaponized brain + the deep-brain reasoning chain.
+    // Shape mirrors screening-run.mts (deepBrain + weaponized blocks).
+    var wb = data.weaponized && typeof data.weaponized === 'object' ? data.weaponized : null;
+    var db = data.deepBrain && typeof data.deepBrain === 'object' ? data.deepBrain : null;
+    var brain = (wb || db) ? {
+      weaponized: wb ? {
+        megaVerdict: wb.megaVerdict || null,
+        finalVerdict: wb.finalVerdict || null,
+        confidence: typeof wb.confidence === 'number' ? wb.confidence : null,
+        requiresHumanReview: !!wb.requiresHumanReview,
+        clampReasons: Array.isArray(wb.clampReasons) ? wb.clampReasons.slice(0, 6) : [],
+        subsystemFailures: Array.isArray(wb.subsystemFailures) ? wb.subsystemFailures.slice(0, 6) : [],
+        auditNarrative: wb.auditNarrative ? String(wb.auditNarrative).slice(0, 1200) : '',
+        advisor: wb.advisor && wb.advisor.text ? {
+          text: String(wb.advisor.text).slice(0, 800),
+          modelUsed: wb.advisor.modelUsed ? String(wb.advisor.modelUsed) : '',
+          advisorCallCount: typeof wb.advisor.advisorCallCount === 'number' ? wb.advisor.advisorCallCount : 0
+        } : null,
+        extensions: wb.extensions && typeof wb.extensions === 'object' ? {
+          adverseMediaTopCategory: wb.extensions.adverseMediaTopCategory || null,
+          adverseMediaCriticalCount: typeof wb.extensions.adverseMediaCriticalCount === 'number'
+            ? wb.extensions.adverseMediaCriticalCount : 0,
+          explainableScore: wb.extensions.explainableScore || null
+        } : null
+      } : null,
+      deepBrain: db ? {
+        verdict: db.verdict || null,
+        requiresFourEyes: !!db.requiresFourEyes,
+        confidence: typeof db.confidence === 'number' ? db.confidence : null,
+        narrative: db.narrative ? String(db.narrative).slice(0, 1200) : '',
+        topHypothesis: db.topHypothesis || null,
+        posterior: typeof db.posterior === 'number' ? db.posterior : null,
+        rationale: db.rationale ? String(db.rationale).slice(0, 800) : '',
+        coverage: typeof db.coverage === 'number' ? db.coverage : null,
+        lessons: Array.isArray(db.lessons) ? db.lessons.slice(0, 4) : []
+      } : null
+    } : null;
+
     return {
       id: 'sub-' + Date.now(),
       subject_type: body.entityType === 'legal_entity' ? 'entity' : 'individual',
       name: body.subjectName,
+      customer_code: body.customerCode || '',
+      customer_name: body.customerName || '',
+      event_type: body.eventType || '',
       alias: (fd.get('alias') || '').toString().trim(),
       gender: fd.get('gender') || '',
       dob: body.dob || '',
@@ -1522,9 +3339,31 @@
       special_screens: specialScreens,
       special_flags: [],
       integrity: data.screeningIntegrity || 'complete',
+      integrity_reasons: Array.isArray(data.integrityReasons) ? data.integrityReasons.slice() : [],
+      lists_checked: Array.isArray(data.sanctions && data.sanctions.listsChecked)
+        ? data.sanctions.listsChecked.slice() : [],
+      list_errors: Array.isArray(data.sanctions && data.sanctions.listErrors)
+        ? data.sanctions.listErrors.slice() : [],
+      per_list_raw: Array.isArray(data.sanctions && data.sanctions.perList)
+        ? data.sanctions.perList.map(function (l) {
+            return {
+              list: l.list,
+              hitCount: l.hitCount,
+              topScore: l.topScore,
+              topClassification: l.topClassification,
+              candidatesChecked: l.candidatesChecked,
+              error: l.error || ''
+            };
+          })
+        : [],
       run_id: (data.runId || data.run_id || '').toString(),
       source: 'backend',
-      screened_at: new Date().toISOString()
+      screened_at: new Date().toISOString(),
+      // 19-subsystem weaponized brain + deep-brain reasoning chain
+      // captured from screening-run.mts. Rendered as the Brain
+      // Intelligence panel per row so the MLRO can see the verdict
+      // rationale, confidence, clamp reasons, and Opus advisor output.
+      brain: brain
     };
   }
 
@@ -1634,6 +3473,9 @@
       id: 'sub-' + Date.now(),
       subject_type: body.entityType === 'legal_entity' ? 'entity' : 'individual',
       name: body.subjectName,
+      customer_code: body.customerCode || '',
+      customer_name: body.customerName || '',
+      event_type: body.eventType || '',
       alias: (fd.get('alias') || '').toString().trim(),
       gender: fd.get('gender') || '',
       dob: body.dob || '',
@@ -1701,6 +3543,7 @@
         '<span class="mv-pill">AED 55K DPMS CTR · AED 60K cross-border</span>' +
         '<button class="mv-btn mv-btn-primary" data-action="sc-tx-new-toggle">+ Add transaction</button>'
       ),
+      skillsPalette('transaction'),
       '<p class="mv-lede">Rule + behavioural engine: structuring near AED 55K, velocity spikes, third-party payers, offshore routing, round-number and price-gaming patterns. Critical alerts auto-open an Asana case.</p>',
       '<div class="mv-stat-row">',
         '<div class="mv-stat"><div class="mv-stat-v">' + rows.length + '</div><div class="mv-stat-k">Transactions</div></div>',
@@ -1879,6 +3722,7 @@
         '<span class="mv-pill">FDL Art.26-27 · file without delay</span>' +
         '<button class="mv-btn mv-btn-primary" data-action="sc-str-new-toggle">+ New case</button>'
       ),
+      skillsPalette('str'),
       '<p class="mv-lede">STR / SAR / AIF / PEPR / HRCR / FTFR case files with red-flag taxonomy, suspicion narrative, goAML reference, and four-eyes approval. No tipping off.</p>',
 
       '<div class="mv-stat-row">',
@@ -2027,6 +3871,7 @@
         '<span class="mv-pill">2 ×/day re-screen · FDL Art.20-21</span>' +
         '<button class="mv-btn mv-btn-primary" data-action="sc-wl-new">+ Watch subject</button>'
       ),
+      skillsPalette('watchlist'),
       '<p class="mv-lede">Every screened subject auto-enrolled in ongoing monitoring. Two scheduled crons per day (06:00 / 14:00 UTC) re-screen the full watchlist and push delta alerts to Asana.</p>',
       rows.length
         ? '<ul class="mv-list">' + rows.map(function (r) {

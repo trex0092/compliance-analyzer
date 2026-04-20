@@ -317,16 +317,29 @@
         font-weight: 500;
       }
       .card {
+        /* Translucent glass surface so the wallpaper reads through
+           the card — per MLRO request to make every module square
+           clearer. Border + backdrop-blur keep the card visually
+           defined against the background. */
         background: linear-gradient(
           160deg,
-          rgba(59, 130, 246, 0.06) 0%,
-          rgba(2, 11, 24, 0.85) 100%
+          rgba(255, 255, 255, 0.04) 0%,
+          rgba(2, 11, 24, 0.22) 100%
         );
+        backdrop-filter: blur(10px) saturate(1.1);
+        -webkit-backdrop-filter: blur(10px) saturate(1.1);
         border: 1px solid rgba(201, 168, 76, 0.14);
         border-radius: 4px;
         padding: 1.5rem;
         margin-bottom: 1.2rem;
-        transition: border-color 0.3s;
+        transition: border-color 0.3s, background 0.3s;
+      }
+      .card:hover {
+        background: linear-gradient(
+          160deg,
+          rgba(255, 255, 255, 0.07) 0%,
+          rgba(2, 11, 24, 0.28) 100%
+        );
       }
       .lbl {
         font-size: 10px;
@@ -3444,7 +3457,6 @@
                 </button>
                 <button class="btn btn-sm btn-green" data-action="exportShipmentsDOCX">Word</button>
                 <button class="btn btn-sm btn-green" data-action="exportShipmentsPDF">PDF</button>
-                <button class="btn btn-sm btn-green" data-action="exportShipmentsCSV">CSV</button>
                 <button
                   class="btn btn-sm btn-red"
                   data-action="_confirmAndClear"
@@ -4044,7 +4056,6 @@
                 </button>
                 <button class="btn btn-sm btn-green" data-action="exportIARReportPDF">PDF</button>
                 <button class="btn btn-sm btn-green" data-action="exportIARReportDOCX">Word</button>
-                <button class="btn btn-sm btn-green" data-action="exportIARReportCSV">CSV</button>
                 <button
                   class="btn btn-sm btn-red"
                   data-action="_confirmAndClear"
@@ -9297,7 +9308,6 @@
               <span class="sec-title">🌱 ESG Portfolio Scorecard</span>
               <div style="display: flex; gap: 6px">
                 <button class="btn btn-sm btn-blue" onclick="esgRefresh()">🔄 Refresh</button>
-                <button class="btn btn-sm btn-green" onclick="esgExportCsv()">⬇ Export CSV</button>
                 <button class="btn btn-sm btn-gold" onclick="esgOpenForm()">
                   + Score Customer
                 </button>

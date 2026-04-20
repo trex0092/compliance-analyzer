@@ -931,7 +931,6 @@
     host.innerHTML = [
       head('Reports',
         '<span class="mv-pill">FDL Art.20 · Art.24 · Cabinet Res 134/2025 Art.19</span>' +
-        '<button class="mv-btn mv-btn-sm" data-action="co-rep-export-csv">CSV</button>' +
         '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="co-rep-clear">Clear</button>'
       ),
       '<p class="mv-lede">Regulator-ready outputs: goAML STR/SAR/CTR/DPMSR/CNMR XML, quarterly DPMS rollups, audit packs, MLRO digests, annual BRA, UBO snapshot. Every artefact is retained 10 years under FDL Art.24.</p>',
@@ -1151,15 +1150,11 @@
         renderReports(host);
       };
     });
-    host.querySelectorAll('[data-action="co-rep-export-csv"]').forEach(function (btn) {
-      btn.onclick = function () {
-        var lines = [csvRow(['Title','Kind','Format','Period','Preparer','Subject','Citation','Created'])];
-        reports.forEach(function (r) {
-          lines.push(csvRow([r.title, r.kind, r.format, r.period, r.preparer, r.subject, r.citation, r.created_at]));
-        });
-        download('reports-' + new Date().toISOString().slice(0, 10) + '.csv', 'text/csv', lines.join('\n'));
-      };
-    });
+    // CSV export removed — every report artefact now goes to Asana
+    // via the /goaml · /audit-pack · /evidence-bundle skills, so the
+    // MLRO does not need a standalone CSV download. The csvRow +
+    // download helpers are kept because /evidence-bundle composes
+    // multi-format zips that may still include CSV sheets.
     host.querySelectorAll('[data-action="co-rep-clear"]').forEach(function (btn) {
       btn.onclick = function () {
         if (!confirm('Clear artefact register? Retention obligation stays with you.')) return;

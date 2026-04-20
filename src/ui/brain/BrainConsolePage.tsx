@@ -51,8 +51,13 @@ import { isAutoDispatchEnabled, setAutoDispatchEnabled } from '../../services/au
 import { summarizeAuditLog } from '../../services/dispatchAuditLog';
 import { SKILL_CATALOGUE } from '../../services/asanaCommentSkillRouter';
 
+import { resolveAsanaProjectGid } from '../../services/asanaModuleProjects';
+
 const store = new LocalAppStore();
-const DEFAULT_PROJECT_FALLBACK = '1213759768596515';
+// Brain Console verdicts ride the Screening & Watchlist board via
+// the 16-project catalog resolver (fallback chain guarantees a valid
+// GID even before bootstrap).
+const DEFAULT_PROJECT_FALLBACK = resolveAsanaProjectGid('screening_and_watchlist');
 
 function projectGidForCase(caseObj: ComplianceCase): string {
   const customer = caseObj.linkedCustomerId
