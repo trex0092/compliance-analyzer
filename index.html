@@ -2849,6 +2849,8 @@
           .hi-card[data-tone="green"]:hover  { box-shadow: 0 20px 50px -22px rgba(34, 197, 94, 0.55); }
           .hi-card[data-tone="orange"] { color: var(--hi-orange); border-color: var(--hi-orange-border); }
           .hi-card[data-tone="orange"]:hover { box-shadow: 0 20px 50px -22px rgba(251, 146, 60, 0.55); }
+          .hi-card.hi-card--orange-border { border: 2px solid #fb923c; }
+          .hi-card.hi-card--orange-border:hover { border-color: #fdba74; box-shadow: 0 20px 50px -22px rgba(251, 146, 60, 0.65); }
           .hi-card[data-tone="blue"] { color: var(--hi-blue); border-color: var(--hi-blue-border); }
           .hi-card[data-tone="blue"]:hover { box-shadow: 0 20px 50px -22px rgba(47, 125, 255, 0.55); }
           .hi-card[data-tone="purple"] { color: var(--hi-purple); border-color: var(--hi-purple-border); }
@@ -3034,7 +3036,7 @@
             </a>
 
             <a
-              class="hi-card"
+              class="hi-card hi-card--orange-border"
               data-tone="orange"
               href="/workbench"
               aria-label="Open the MLRO Workbench surface"
