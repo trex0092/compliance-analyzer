@@ -512,6 +512,151 @@
         color: #dceaff !important;
         font-family: 'Playfair Display', Georgia, serif !important;
       }
+
+      /* === Native module component kit (mv-*) ===
+         Used by workbench-modules.js / compliance-ops-modules.js /
+         logistics-modules.js / screening-command-modules.js. Shared
+         skeleton with palette tokens each landing overrides above. */
+      .mv-head {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 14px; flex-wrap: wrap; margin-bottom: 18px;
+      }
+      .mv-title {
+        font-family: 'Playfair Display', Georgia, serif; font-weight: 700;
+        font-size: clamp(24px, 2.4vw, 34px); color: var(--mist); margin: 0;
+      }
+      .mv-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+      .mv-pill {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 2px; text-transform: uppercase;
+        padding: 7px 12px; border-radius: 999px;
+        border: 1px solid var(--orange-border); color: var(--orange-bright);
+        background: var(--orange-dim);
+      }
+      .mv-lede {
+        color: var(--ice); font-size: 14px; line-height: 1.6; opacity: 0.85;
+        max-width: 900px; margin: 0 0 22px;
+      }
+      .mv-subhead {
+        font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 3px;
+        text-transform: uppercase; color: var(--orange-bright);
+        margin: 28px 0 12px;
+      }
+      .mv-stat-row {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px; margin-bottom: 22px;
+      }
+      .mv-stat {
+        padding: 14px 16px; border: 1px solid var(--border);
+        border-radius: 12px; background: rgba(14, 31, 56, 0.55);
+      }
+      .mv-stat-v {
+        font-family: 'Playfair Display', Georgia, serif; font-weight: 700;
+        font-size: 28px; color: var(--mist); line-height: 1;
+      }
+      .mv-stat-v[data-tone="warn"] { color: #fca5a5; }
+      .mv-stat-v[data-tone="accent"] { color: var(--orange-bright); }
+      .mv-stat-v[data-tone="ok"] { color: var(--green-bright); }
+      .mv-stat-k {
+        font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px;
+        text-transform: uppercase; color: var(--muted); margin-top: 6px;
+      }
+      .mv-list {
+        list-style: none; padding: 0; margin: 0;
+        display: flex; flex-direction: column; gap: 10px;
+      }
+      .mv-list-item {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 14px; padding: 14px 16px; border: 1px solid var(--border);
+        border-radius: 12px; background: rgba(14, 31, 56, 0.55);
+        transition: border-color 0.2s ease;
+      }
+      .mv-list-item:hover { border-color: var(--orange-border); }
+      .mv-list-main { flex: 1; min-width: 0; }
+      .mv-list-title {
+        font-family: 'Inter', system-ui, sans-serif; font-weight: 600;
+        color: var(--mist); font-size: 14px; margin-bottom: 4px;
+      }
+      .mv-list-meta {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        color: var(--muted); letter-spacing: 0.5px;
+      }
+      .mv-list-aside { display: flex; gap: 8px; flex-shrink: 0; }
+      .mv-badge {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 1.5px; text-transform: uppercase;
+        padding: 5px 10px; border-radius: 999px;
+        background: rgba(10, 22, 40, 0.65); color: var(--ice);
+        border: 1px solid var(--border);
+      }
+      .mv-badge[data-tone="ok"] {
+        color: var(--green-bright); border-color: var(--green-border);
+        background: var(--green-dim);
+      }
+      .mv-badge[data-tone="warn"] {
+        color: #fca5a5; border-color: rgba(239, 68, 68, 0.4);
+        background: rgba(239, 68, 68, 0.12);
+      }
+      .mv-badge[data-tone="accent"] {
+        color: var(--orange-bright); border-color: var(--orange-border);
+        background: var(--orange-dim);
+      }
+      .mv-btn {
+        font-family: 'DM Mono', monospace; font-size: 11px;
+        letter-spacing: 1.5px; text-transform: uppercase;
+        padding: 9px 16px; border-radius: 10px;
+        border: 1px solid var(--border-strong);
+        background: transparent; color: var(--ice); cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .mv-btn:hover { border-color: var(--orange-border); color: var(--orange-bright); }
+      .mv-btn.mv-btn-primary {
+        background: var(--orange-dim); border-color: var(--orange-border);
+        color: var(--orange-bright);
+      }
+      .mv-btn.mv-btn-primary:hover {
+        background: var(--orange);
+        color: #050b18;
+      }
+      .mv-btn.mv-btn-ok { color: var(--green-bright); border-color: var(--green-border); background: var(--green-dim); }
+      .mv-btn.mv-btn-ghost { opacity: 0.75; }
+      .mv-btn.mv-btn-sm { padding: 6px 12px; font-size: 10px; }
+      .mv-form {
+        display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px;
+      }
+      .mv-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+      .mv-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+      .mv-field { display: flex; flex-direction: column; gap: 6px; }
+      .mv-field-label {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 2px; text-transform: uppercase; color: var(--orange-bright);
+      }
+      .mv-field input,
+      .mv-field select,
+      .mv-field textarea {
+        background: rgba(10, 22, 40, 0.7); border: 1px solid var(--border);
+        color: var(--mist); border-radius: 8px; padding: 10px 12px;
+        font-family: 'Inter', system-ui, sans-serif; font-size: 13px;
+      }
+      .mv-field input:focus,
+      .mv-field select:focus,
+      .mv-field textarea:focus {
+        border-color: var(--orange-bright); outline: none;
+        box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.15);
+      }
+      .mv-check {
+        display: flex; align-items: center; gap: 10px;
+        color: var(--ice); font-size: 13px;
+      }
+      .mv-check input[type="checkbox"] { accent-color: var(--orange-bright); width: 16px; height: 16px; }
+      .mv-form-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+      .mv-empty-state {
+        padding: 36px 24px; text-align: center;
+        border: 1px dashed var(--border); border-radius: 14px;
+        color: var(--muted); background: rgba(14, 31, 56, 0.35);
+      }
+      .mv-empty-icon { font-size: 40px; margin-bottom: 8px; color: var(--orange-bright); }
+      .mv-empty-state p { margin: 0 0 12px; font-size: 14px; }
       .module-view.is-open { display: block; }
       .module-view-head {
         display: flex;
@@ -826,6 +971,7 @@
       <span class="footer-text">Confidential · Audit-ready</span>
     </footer>
     <script src="page-nav.js?v=1"></script>
-    <script src="landing-module-viewer.js?v=14"></script>
+    <script src="workbench-modules.js?v=1"></script>
+    <script src="landing-module-viewer.js?v=15"></script>
   </body>
 </html>
