@@ -748,28 +748,30 @@
         .wm { animation: none !important; }
       }
 
-      /* Cyber-head watermark (azure accent to match workbench palette) */
+      /* Cyber-head watermark — azure accent on the workbench palette.
+         Large, centred on the left gutter, clearly visible (no screen
+         blend-mode so it reads on dark navy). */
       .wm-robot {
         position: fixed;
-        left: -4vw;
-        bottom: -3vh;
-        width: min(420px, 32vw);
+        left: 0;
+        top: 50%;
+        width: min(640px, 44vw);
         aspect-ratio: 420 / 520;
         pointer-events: none;
         z-index: 0;
-        opacity: 0.16;
-        mix-blend-mode: screen;
-        background-color: #5ea3ff;
+        opacity: 0.78;
+        background-color: #7fc1ff;
         -webkit-mask: url("assets/watermark-workbench.svg") center / contain no-repeat;
                 mask: url("assets/watermark-workbench.svg") center / contain no-repeat;
-        filter: drop-shadow(0 0 40px rgba(94, 163, 255, 0.25));
-        animation: wmRobotFloat 9s ease-in-out infinite alternate;
+        filter: drop-shadow(0 0 60px rgba(47, 125, 255, 0.55));
+        transform: translateY(-50%);
+        animation: wmRobotFloat 12s ease-in-out infinite alternate;
       }
       html.module-view-active .wm-robot { display: none; }
       @media (max-width: 960px) { .wm-robot { display: none; } }
       @keyframes wmRobotFloat {
-        from { transform: translateY(0) rotate(0deg); }
-        to   { transform: translateY(-10px) rotate(0.4deg); }
+        from { transform: translateY(calc(-50% - 10px)); }
+        to   { transform: translateY(calc(-50% + 10px)); }
       }
       @media (prefers-reduced-motion: reduce) {
         .wm-robot { animation: none !important; }
