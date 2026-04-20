@@ -1783,8 +1783,9 @@
         inset: 0;
         z-index: 99999;
         background:
-          radial-gradient(ellipse 60% 45% at 50% 45%, rgba(212, 175, 55, 0.08), transparent 70%),
-          radial-gradient(ellipse 80% 60% at 50% 50%, #0a0805 0%, #000 75%);
+          radial-gradient(ellipse 60% 45% at 50% 45%, rgba(59, 130, 246, 0.12), transparent 70%),
+          radial-gradient(ellipse 40% 40% at 50% 50%, rgba(201, 168, 76, 0.06), transparent 60%),
+          radial-gradient(ellipse 80% 60% at 50% 50%, #020B18 0%, #000 75%);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1812,16 +1813,16 @@
         content: '';
         background-repeat: repeat;
         background-image:
-          radial-gradient(1px 1px at 12% 18%, rgba(255, 236, 179, 0.9), transparent 60%),
-          radial-gradient(1px 1px at 27% 72%, rgba(255, 236, 179, 0.7), transparent 60%),
-          radial-gradient(1.5px 1.5px at 38% 34%, rgba(255, 236, 179, 0.85), transparent 60%),
-          radial-gradient(1px 1px at 52% 84%, rgba(255, 236, 179, 0.6), transparent 60%),
-          radial-gradient(1px 1px at 66% 22%, rgba(255, 236, 179, 0.9), transparent 60%),
-          radial-gradient(1.5px 1.5px at 74% 62%, rgba(255, 236, 179, 0.75), transparent 60%),
-          radial-gradient(1px 1px at 83% 44%, rgba(255, 236, 179, 0.85), transparent 60%),
-          radial-gradient(1px 1px at 91% 78%, rgba(255, 236, 179, 0.6), transparent 60%),
-          radial-gradient(1px 1px at 6% 56%, rgba(255, 236, 179, 0.7), transparent 60%),
-          radial-gradient(1.2px 1.2px at 45% 12%, rgba(212, 175, 55, 0.9), transparent 60%);
+          radial-gradient(1px 1px at 12% 18%, rgba(147, 197, 253, 0.9), transparent 60%),
+          radial-gradient(1px 1px at 27% 72%, rgba(201, 168, 76, 0.8), transparent 60%),
+          radial-gradient(1.5px 1.5px at 38% 34%, rgba(147, 197, 253, 0.85), transparent 60%),
+          radial-gradient(1px 1px at 52% 84%, rgba(244, 114, 182, 0.7), transparent 60%),
+          radial-gradient(1px 1px at 66% 22%, rgba(147, 197, 253, 0.9), transparent 60%),
+          radial-gradient(1.5px 1.5px at 74% 62%, rgba(52, 211, 153, 0.75), transparent 60%),
+          radial-gradient(1px 1px at 83% 44%, rgba(201, 168, 76, 0.85), transparent 60%),
+          radial-gradient(1px 1px at 91% 78%, rgba(147, 197, 253, 0.6), transparent 60%),
+          radial-gradient(1px 1px at 6% 56%, rgba(244, 114, 182, 0.7), transparent 60%),
+          radial-gradient(1.2px 1.2px at 45% 12%, rgba(52, 211, 153, 0.9), transparent 60%);
         background-size: 100% 100%;
         animation: hsTwinkle 4.6s ease-in-out infinite;
       }
@@ -1849,39 +1850,40 @@
         top: 50%;
         left: 50%;
         border-radius: 50%;
-        border: 1px dashed rgba(212, 175, 55, 0.18);
+        border: 1px dashed rgba(59, 130, 246, 0.25);
         transform: translate(-50%, -50%) rotateX(72deg);
         pointer-events: none;
       }
       .hs-orbit-outer {
         width: 250px;
         height: 250px;
-        border-color: rgba(212, 175, 55, 0.14);
+        border-color: rgba(59, 130, 246, 0.18);
         animation: hsOrbitSpin 22s linear infinite;
       }
       .hs-orbit-mid {
         width: 200px;
         height: 200px;
         border-style: solid;
-        border-color: rgba(212, 175, 55, 0.22);
+        border-color: rgba(201, 168, 76, 0.28);
         transform: translate(-50%, -50%) rotateX(72deg) rotateZ(18deg);
         animation: hsOrbitSpinReverse 18s linear infinite;
       }
 
-      /* The planet itself — glowing gold sphere with a ring */
+      /* The planet — glowing blue Earth with gold ring, Digital Global Network */
       .hs-planet {
         position: relative;
-        width: 120px;
-        height: 120px;
+        width: 140px;
+        height: 140px;
         border-radius: 50%;
         background:
-          radial-gradient(circle at 32% 30%, rgba(255, 236, 179, 0.95) 0%, #f59e0b 22%, #b45309 58%, #3b1e05 100%);
+          radial-gradient(circle at 32% 30%, rgba(147, 210, 255, 0.95) 0%, #1d6fa4 22%, #0a3d6b 55%, #020B18 100%);
         box-shadow:
-          0 0 0 1px rgba(212, 175, 55, 0.6),
-          0 0 40px rgba(245, 158, 11, 0.45),
-          0 0 90px rgba(245, 158, 11, 0.25),
-          inset -16px -22px 44px rgba(20, 10, 2, 0.7),
-          inset 10px 12px 30px rgba(255, 236, 179, 0.22);
+          0 0 0 1px rgba(59, 130, 246, 0.7),
+          0 0 40px rgba(59, 130, 246, 0.5),
+          0 0 90px rgba(59, 130, 246, 0.25),
+          0 0 140px rgba(16, 185, 129, 0.12),
+          inset -16px -22px 44px rgba(2, 11, 24, 0.7),
+          inset 10px 12px 30px rgba(147, 210, 255, 0.18);
         animation: hsPlanetSpin 14s linear infinite, hsPlanetPulse 3.8s ease-in-out infinite;
       }
       .hs-planet::before {
@@ -1903,24 +1905,24 @@
         right: -10%;
         bottom: -6%;
         border-radius: 50%;
-        background: radial-gradient(ellipse 60% 40% at 50% 50%, rgba(245, 158, 11, 0.35), transparent 70%);
+        background: radial-gradient(ellipse 60% 40% at 50% 50%, rgba(59, 130, 246, 0.35), transparent 70%);
         filter: blur(6px);
         pointer-events: none;
         z-index: -1;
       }
 
-      /* Saturn-style ring around the planet */
+      /* Saturn-style ring — gold prestige */
       .hs-planet-ring {
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 210px;
-        height: 210px;
+        width: 230px;
+        height: 230px;
         border-radius: 50%;
-        border: 1px solid rgba(212, 175, 55, 0.55);
+        border: 1.5px solid rgba(201, 168, 76, 0.65);
         box-shadow:
-          0 0 0 1px rgba(212, 175, 55, 0.15),
-          0 0 20px rgba(245, 158, 11, 0.18);
+          0 0 0 1px rgba(201, 168, 76, 0.18),
+          0 0 20px rgba(201, 168, 76, 0.22);
         transform: translate(-50%, -50%) rotateX(74deg) rotateZ(-16deg);
         pointer-events: none;
         animation: hsRingTilt 9s ease-in-out infinite;
@@ -1930,7 +1932,7 @@
         position: absolute;
         inset: 8px;
         border-radius: 50%;
-        border: 1px solid rgba(212, 175, 55, 0.28);
+        border: 1px solid rgba(201, 168, 76, 0.32);
       }
 
       /* Moon — small satellite orbiting the planet */
@@ -1953,10 +1955,10 @@
         height: 8px;
         margin-left: -4px;
         border-radius: 50%;
-        background: radial-gradient(circle at 35% 35%, #fff6d6, #d4af37 55%, #7a5a12 100%);
+        background: radial-gradient(circle at 35% 35%, #e0f0ff, #3b82f6 55%, #1e3a8a 100%);
         box-shadow:
-          0 0 12px rgba(245, 158, 11, 0.85),
-          0 0 24px rgba(245, 158, 11, 0.4);
+          0 0 12px rgba(59, 130, 246, 0.85),
+          0 0 24px rgba(59, 130, 246, 0.4);
       }
 
       .hs-preloader-icon {
@@ -1980,7 +1982,7 @@
         font-size: 9px;
         letter-spacing: 6px;
         text-transform: uppercase;
-        color: rgba(212, 175, 55, 0.6);
+        color: rgba(201, 168, 76, 0.6);
         margin-top: -18px;
         opacity: 0;
         animation: hsFadeUp 1s ease 1.5s forwards;
