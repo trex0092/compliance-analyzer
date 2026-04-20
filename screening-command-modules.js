@@ -977,4 +977,352 @@
     'str-cases': renderSTRCases,
     watchlist: renderWatchlist
   };
+
+  // ─── Intelligence Drawer wiring ─────────────────────────────────────────
+  //
+  // Registers the screening-command landing with the shared Intelligence
+  // drawer (PR #372 — intelligence-drawer.js). The drawer pushes the
+  // landing's own localStorage snapshot through the weaponized brain
+  // (brain-boot.js) for on-device typology pre-scan plus server-side
+  // MegaBrain deep analysis when an auth token is present.
+  //
+  // Regulatory basis:
+  //   FDL No.(10)/2025 Art.20-21 (CO duties), Art.26-27 (STR filing),
+  //   Art.29 (no tipping off — redactions applied before API call),
+  //   Cabinet Res 134/2025 Art.19 (internal review),
+  //   Cabinet Res 74/2020 Art.4-7 (24h freeze),
+  //   FATF Rec 10, 12, 15, 20, 22 · NIST AI RMF 1.0.
+  function mountIntelligenceDrawer() {
+    if (!window.__intelligenceDrawer) return;
+
+    // Map a subject row (as stored by renderSubjectScreening / buildRow*)
+    // onto the entity shape that brain-boot.js typology rules consume.
+    function topScore(r) {
+      if (!r) return 0;
+      if (typeof r.confidence === 'number') return r.confidence;
+      if (Array.isArray(r.per_list_breakdown)) {
+        var m = 0;
+        r.per_list_breakdown.forEach(function (pl) {
+          var s = (pl && pl.score) || 0;
+          if (s > m) m = s;
+        });
+        return m;
+      }
+      return 0;
+    }
+    function pickHighestRisk(subjects) {
+      if (!Array.isArray(subjects) || !subjects.length) return null;
+      var ranked = subjects.slice().sort(function (a, b) {
+        var dispRank = { positive: 4, partial: 3, escalated: 3, pending: 2, false_positive: 1, negative: 0 };
+        var da = dispRank[a.disposition] || 0;
+        var db = dispRank[b.disposition] || 0;
+        if (db !== da) return db - da;
+        return topScore(b) - topScore(a);
+      });
+      return ranked[0];
+    }
+    function toBrainEntity(snap) {
+      var subjects = snap.keys.subjects || [];
+      var txs = snap.keys.transactions || [];
+      var strs = snap.keys.strCases || [];
+      var pick = pickHighestRisk(subjects) || {};
+      var adverseBucket = (pick.adverse_media_hits || []).length;
+      var specialBucket = (pick.special_flags || []);
+      var adverseScore = Math.min(1, adverseBucket / 5);
+      var sanctionsScore = topScore(pick);
+      var pepMatch = specialBucket.indexOf('pep_screening') >= 0 || specialBucket.indexOf('pep') >= 0 || !!pick.pep;
+      var sofVerified = pick.source_of_funds_verified !== false;
+      var uboVerified = pick.ubo_verified !== false;
+      return {
+        id: pick.id || ('screening-command-' + (subjects.length || 0)),
+        subjectName: pick.name || pick.subject_name || '',
+        subjectType: pick.subject_type || 'individual',
+        riskRating: pick.risk_rating || (sanctionsScore >= 0.85 ? 'HIGH' : sanctionsScore >= 0.5 ? 'MEDIUM' : 'LOW'),
+        sanctionsMatchScore: sanctionsScore,
+        adverseMediaScore: adverseScore,
+        pepScreenResult: pepMatch ? 'MATCH' : 'CLEAR',
+        pepDisclosed: !!pick.pep_disclosed,
+        isPep: pepMatch,
+        sofVerified: sofVerified,
+        uboVerified: uboVerified,
+        uboDepth: pick.ubo_depth || 0,
+        cddExpiryDate: pick.cdd_expiry || null,
+        strCasesOpen: strs.filter(function (s) { return s.status !== 'submitted' && s.status !== 'acknowledged' && s.status !== 'closed'; }).length,
+        strCasesOverdue: strs.filter(function (s) {
+          if (!s.deadline) return false;
+          if (s.status === 'submitted' || s.status === 'acknowledged' || s.status === 'closed') return false;
+          return new Date(s.deadline) < new Date();
+        }).length,
+        txCount: txs.length,
+        lastActivityDate: txs.length ? txs[txs.length - 1].occurred_on : null,
+        screeningListCoverage: Array.isArray(pick.sanctions_lists) ? pick.sanctions_lists.length : 0
+      };
+    }
+
+    // Map the transaction-monitor rows into the shape brain-boot typology
+    // rules expect (amount, date, counterpartyCountry, method, channel, …).
+    function toBrainTxs(snap) {
+      var txs = snap.keys.transactions || [];
+      return txs.map(function (t) {
+        var channel = (t.channel || '').toString().toUpperCase();
+        var method = (t.method || t.channel || '').toString().toUpperCase();
+        return {
+          id: t.id,
+          amount: t.amount || 0,
+          currency: t.currency || 'AED',
+          date: t.occurred_on || t.created_at || new Date().toISOString(),
+          counterpartyCountry: (t.cp_country || '').toString().toUpperCase(),
+          method: method,
+          channel: channel,
+          type: (t.direction || 'inbound').toUpperCase(),
+          crossBorder: !!t.cross_border,
+          thirdPartyPayer: !!t.third_party_payer,
+          offshoreRouting: !!t.offshore_routing,
+          pepLinked: !!t.pep_linked,
+          priceGaming: !!t.price_gaming
+        };
+      });
+    }
+
+    // Preset 1 — rank subjects by sanctions proximity.
+    function presetSanctionsRank(ctx) {
+      var subjects = (ctx.snap.keys.subjects) || [];
+      if (!subjects.length) return { verdict: 'clear', summary: 'No subjects loaded.', citations: [] };
+      var ranked = subjects.slice().sort(function (a, b) { return topScore(b) - topScore(a); });
+      var lines = ranked.slice(0, 10).map(function (s, i) {
+        var disp = (DISPOSITIONS[s.disposition] || {}).label || 'PENDING';
+        return (i + 1) + '. ' + (s.name || '—') + ' — score ' + (topScore(s) * 100).toFixed(1) + '% · ' + disp;
+      });
+      var top = ranked[0];
+      var verdict = topScore(top) >= 0.85 ? 'freeze' : topScore(top) >= 0.5 ? 'review' : 'monitor';
+      return {
+        verdict: verdict,
+        confidence: topScore(top),
+        summary: 'Top sanctions-proximity ranking:\n\n' + lines.join('\n'),
+        citations: ['FDL No.(10)/2025 Art.35', 'Cabinet Res 74/2020 Art.4-7', 'UNSCR 1267 / 1373']
+      };
+    }
+
+    // Preset 2 — detect structuring across transactions (amounts just
+    // below the AED 55K DPMS CTR threshold and the AED 60K cross-border).
+    function presetStructuring(ctx) {
+      var txs = ctx.txs || [];
+      if (!txs.length) return { verdict: 'clear', summary: 'No transactions loaded.', citations: [] };
+      var nearDpms = txs.filter(function (t) { return t.amount >= 45000 && t.amount < 55000; });
+      var nearCross = txs.filter(function (t) { return t.crossBorder && t.amount >= 50000 && t.amount < 60000; });
+      var byDay = {};
+      txs.forEach(function (t) {
+        var d = (t.date || '').slice(0, 10);
+        byDay[d] = (byDay[d] || 0) + (t.amount || 0);
+      });
+      var burstDays = Object.keys(byDay).filter(function (d) { return byDay[d] > 150000; }).length;
+      var hit = nearDpms.length >= 3 || nearCross.length >= 2 || burstDays >= 1;
+      return {
+        verdict: hit ? 'file_str' : 'monitor',
+        confidence: hit ? 0.78 : 0.3,
+        summary: [
+          'Near-DPMS-threshold transactions (AED 45K–55K): ' + nearDpms.length,
+          'Near-cross-border-threshold transactions (AED 50K–60K, crossBorder=true): ' + nearCross.length,
+          'Same-day aggregated bursts (> AED 150K): ' + burstDays,
+          '',
+          hit ? 'Structuring pattern detected. Draft STR (FDL Art.26-27) and do NOT tip off (Art.29).'
+              : 'No structuring pattern detected in the current window.'
+        ].join('\n'),
+        citations: ['FDL No.(10)/2025 Art.26-27', 'MoE Circular 08/AML/2021', 'Cabinet Res 134/2025 Art.16', 'FATF Rec 20']
+      };
+    }
+
+    // Preset 3 — Benford's-law first-digit audit on transaction amounts.
+    function presetBenford(ctx) {
+      var txs = ctx.txs || [];
+      var amounts = txs.map(function (t) { return Math.abs(t.amount || 0); }).filter(function (a) { return a > 0; });
+      if (amounts.length < 10) {
+        return { verdict: 'monitor', confidence: 0.2,
+          summary: "Need at least 10 non-zero amounts to run Benford's law (have " + amounts.length + ').',
+          citations: ['FDL No.(10)/2025 Art.19', 'FATF Rec 10'] };
+      }
+      var counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      amounts.forEach(function (a) {
+        var s = String(a).replace(/\D/g, '');
+        var d = parseInt(s.charAt(0), 10);
+        if (d >= 1 && d <= 9) counts[d]++;
+      });
+      var expected = [0, 0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046];
+      var chi2 = 0;
+      var lines = [];
+      for (var d = 1; d <= 9; d++) {
+        var observed = counts[d] / amounts.length;
+        chi2 += Math.pow(observed - expected[d], 2) / expected[d];
+        lines.push('  digit ' + d + ': observed ' + (observed * 100).toFixed(1) + '% vs expected ' + (expected[d] * 100).toFixed(1) + '%');
+      }
+      var anomaly = chi2 > 15.5;
+      return {
+        verdict: anomaly ? 'review' : 'monitor',
+        confidence: anomaly ? Math.min(0.95, 0.5 + chi2 / 40) : 0.35,
+        summary: "Benford's law first-digit audit (n=" + amounts.length + ', chi² = ' + chi2.toFixed(2) + '):\n' + lines.join('\n') + '\n\n' +
+          (anomaly ? "Distribution deviates from Benford. Manual review of invoice/transaction set recommended."
+                   : "Distribution is within Benford tolerance (chi² ≤ 15.5)."),
+        citations: ['FDL No.(10)/2025 Art.19', 'FATF Rec 10', 'MoE Circular 08/AML/2021']
+      };
+    }
+
+    // Preset 4 — transaction velocity z-score vs a simple moving baseline.
+    function presetVelocity(ctx) {
+      var txs = ctx.txs || [];
+      if (txs.length < 5) return { verdict: 'monitor', confidence: 0.2,
+        summary: 'Need at least 5 transactions for a velocity z-score (have ' + txs.length + ').',
+        citations: ['FDL No.(10)/2025 Art.16', 'FATF Rec 10'] };
+      var amts = txs.map(function (t) { return t.amount || 0; });
+      var mean = amts.reduce(function (s, x) { return s + x; }, 0) / amts.length;
+      var variance = amts.reduce(function (s, x) { return s + Math.pow(x - mean, 2); }, 0) / amts.length;
+      var sd = Math.sqrt(variance);
+      var outliers = amts.map(function (a, i) { return { idx: i, z: sd ? (a - mean) / sd : 0, amount: a }; })
+        .filter(function (x) { return Math.abs(x.z) >= 2.5; });
+      var hit = outliers.length >= 1;
+      return {
+        verdict: hit ? 'review' : 'monitor',
+        confidence: hit ? 0.7 : 0.3,
+        summary: 'Velocity baseline: mean AED ' + mean.toFixed(0) + ', sd AED ' + sd.toFixed(0) + '.\n' +
+          'Outliers (|z| ≥ 2.5): ' + outliers.length + '.\n' +
+          outliers.slice(0, 5).map(function (o) { return '  tx#' + o.idx + ' — AED ' + o.amount.toFixed(0) + ' (z=' + o.z.toFixed(2) + ')'; }).join('\n'),
+        citations: ['FDL No.(10)/2025 Art.16', 'FATF Rec 10', 'Cabinet Res 134/2025 Art.19']
+      };
+    }
+
+    // Preset 5 — multi-jurisdiction layering detector.
+    function presetLayering(ctx) {
+      var txs = ctx.txs || [];
+      var countries = {};
+      txs.forEach(function (t) { if (t.counterpartyCountry) countries[t.counterpartyCountry] = (countries[t.counterpartyCountry] || 0) + 1; });
+      var unique = Object.keys(countries);
+      var highRisk = ['IR', 'KP', 'MM', 'RU', 'SY', 'BY', 'CU', 'VE', 'YE', 'LY', 'SO', 'SD'];
+      var exposed = unique.filter(function (c) { return highRisk.indexOf(c) !== -1; });
+      var hit = unique.length >= 5 || exposed.length >= 1;
+      return {
+        verdict: hit ? 'review' : 'monitor',
+        confidence: hit ? 0.72 : 0.3,
+        summary: 'Unique counterparty jurisdictions: ' + unique.length + '.\n' +
+          'High-risk exposure: ' + (exposed.length ? exposed.join(', ') : 'none') + '.\n' +
+          unique.map(function (c) { return '  ' + c + ' × ' + countries[c]; }).join('\n') + '\n\n' +
+          (hit ? 'Multi-jurisdiction layering signal — run EDD per Cabinet Res 134/2025 Art.14.'
+               : 'Jurisdictional footprint within normal bounds.'),
+        citations: ['FDL No.(10)/2025 Art.26', 'Cabinet Res 134/2025 Art.5', 'Cabinet Res 134/2025 Art.14', 'FATF Rec 20']
+      };
+    }
+
+    // Preset 6 — draft an STR narrative (no-tip-off safe).
+    function presetStrNarrative(ctx) {
+      var entity = ctx.entity || {};
+      var typ = (window.__brainTypology && window.__brainTypology.scan(entity, ctx.txs)) || [];
+      var crit = typ.filter(function (h) { return h.severity === 'critical'; });
+      var high = typ.filter(function (h) { return h.severity === 'high'; });
+      var txs = ctx.txs || [];
+      var totalAed = txs.filter(function (t) { return (t.currency || 'AED') === 'AED'; })
+        .reduce(function (s, t) { return s + (t.amount || 0); }, 0);
+      var lines = [
+        'DRAFT STR NARRATIVE — MLRO review required before filing.',
+        '',
+        'Subject: ' + (entity.subjectName || '[unnamed]') + ' (' + (entity.subjectType || 'individual') + ')',
+        'Risk rating: ' + (entity.riskRating || '—'),
+        'Sanctions match score: ' + ((entity.sanctionsMatchScore || 0) * 100).toFixed(1) + '%',
+        'Adverse media score: ' + ((entity.adverseMediaScore || 0) * 100).toFixed(1) + '%',
+        'PEP screen: ' + (entity.pepScreenResult || '—') + (entity.pepDisclosed ? ' (disclosed)' : ''),
+        '',
+        'Transactional footprint: ' + txs.length + ' transactions, total AED ' + totalAed.toFixed(0) + '.',
+        'Typology matches: ' + typ.length + ' (' + crit.length + ' critical, ' + high.length + ' high).',
+        '',
+        'Indicators observed:',
+      ].concat(typ.slice(0, 8).map(function (h) {
+        return '  • [' + h.severity.toUpperCase() + '] ' + h.name + ' — ' + h.typologyId + ', FATF ' + h.fatfRef + ', ' + h.uaeRef;
+      })).concat([
+        '',
+        'Suspicion grounds: the combination of the above indicators exceeds the MLRO reporting threshold.',
+        'Regulatory basis: FDL No.(10)/2025 Art.26-27 (STR filing without delay), Art.29 (no tipping off to the subject).',
+        '',
+        'NOTE: this draft is for internal MLRO use only. Do not disclose, discuss, or otherwise tip off',
+        'the subject (Art.29). Final narrative must be reviewed by the Compliance Officer before submission',
+        'via the goAML portal.'
+      ]);
+      return {
+        verdict: crit.length ? 'file_str' : high.length ? 'review' : 'monitor',
+        confidence: crit.length ? 0.85 : high.length ? 0.6 : 0.35,
+        summary: lines.join('\n'),
+        citations: ['FDL No.(10)/2025 Art.26-27', 'FDL No.(10)/2025 Art.29', 'Cabinet Res 134/2025 Art.19', 'FATF Rec 20']
+      };
+    }
+
+    // Preset 7 — cross-module correlation across the four storage keys.
+    function presetCrossModule(ctx) {
+      var subjects = ctx.snap.keys.subjects || [];
+      var txs = ctx.snap.keys.transactions || [];
+      var strs = ctx.snap.keys.strCases || [];
+      var watch = ctx.snap.keys.watchlist || [];
+      var hits = [];
+      var watchedNames = new Set(watch.map(function (w) { return (w.name || '').toString().toLowerCase().trim(); }));
+      subjects.forEach(function (s) {
+        var n = (s.name || '').toString().toLowerCase().trim();
+        if (n && watchedNames.has(n)) hits.push('Subject "' + (s.name || n) + '" is already on the active watchlist.');
+      });
+      var txCps = new Set(txs.map(function (t) { return (t.counterparty || '').toString().toLowerCase().trim(); }).filter(Boolean));
+      subjects.forEach(function (s) {
+        var n = (s.name || '').toString().toLowerCase().trim();
+        if (n && txCps.has(n)) hits.push('Subject "' + (s.name || n) + '" appears as a transaction counterparty.');
+      });
+      strs.forEach(function (s) {
+        var n = (s.subject || s.subject_name || '').toString().toLowerCase().trim();
+        if (n && watchedNames.has(n)) hits.push('STR case subject "' + n + '" is also on the active watchlist.');
+      });
+      var verdict = hits.length ? 'review' : 'clear';
+      return {
+        verdict: verdict,
+        confidence: hits.length ? 0.7 : 0.4,
+        summary: hits.length
+          ? 'Cross-module correlation hits (' + hits.length + '):\n' + hits.map(function (h) { return '  • ' + h; }).join('\n')
+          : 'No cross-module correlations between subjects, transactions, STR cases and the watchlist in the current snapshot.',
+        citations: ['FDL No.(10)/2025 Art.20-21', 'Cabinet Res 134/2025 Art.19', 'FATF Rec 20']
+      };
+    }
+
+    window.__intelligenceDrawer.mount('screening-command', {
+      launcherLabel: 'Intelligence',
+      topic: 'screening_command_intelligence',
+      storageKeys: {
+        subjects: STORAGE.subjects,
+        transactions: STORAGE.transactions,
+        strCases: STORAGE.strCases,
+        watchlist: STORAGE.watchlist
+      },
+      entityBuilder: toBrainEntity,
+      txBuilder: toBrainTxs,
+      presets: [
+        { id: 'sanctions_rank', label: 'Rank subjects by sanctions proximity',
+          note: 'Sorts the subject screening list by the highest classification score.',
+          fn: presetSanctionsRank },
+        { id: 'structuring', label: 'Detect structuring across transactions',
+          note: 'Flags amounts near AED 55K / 60K and same-day bursts.',
+          fn: presetStructuring },
+        { id: 'benford', label: "Benford's law first-digit audit",
+          note: 'Chi-squared test on transaction first digits; flags invoice manipulation.',
+          fn: presetBenford },
+        { id: 'velocity', label: 'Transaction velocity z-score',
+          note: 'Flags amounts outside ±2.5 standard deviations of the subject baseline.',
+          fn: presetVelocity },
+        { id: 'layering', label: 'Multi-jurisdiction layering detector',
+          note: 'Counts unique counterparty jurisdictions and high-risk exposure.',
+          fn: presetLayering },
+        { id: 'str_draft', label: 'Draft STR narrative (no-tip-off safe)',
+          note: 'Assembles an MLRO-review-ready narrative from typology hits. Art.29 compliant.',
+          fn: presetStrNarrative },
+        { id: 'cross_module', label: 'Cross-module correlation sweep',
+          note: 'Checks subject / transaction / STR / watchlist intersections.',
+          fn: presetCrossModule }
+      ]
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mountIntelligenceDrawer);
+  } else {
+    mountIntelligenceDrawer();
+  }
 })();
