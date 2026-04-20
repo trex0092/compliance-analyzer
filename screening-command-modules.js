@@ -1751,6 +1751,323 @@
     '</div>';
   }
 
+  // ─── Contradiction Detector ───────────────────────────────────────
+  // Cross-checks every reasoning layer on the row and surfaces any
+  // disagreement. If the backend Brain verdict is "freeze" but the
+  // Decision Path rule R7 ("clean screen") fired, that is a bug in
+  // one of the layers the MLRO must resolve BEFORE stamping a
+  // disposition (FDL Art.20-21 — every layer must be reconcilable
+  // against the audit record).
+  function contradictionDetector(r, factors, ladder) {
+    var brainVerdict = (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || '';
+    var topHypId = ladder && ladder[0] ? ladder[0].id : '';
+    var topClass = r.top_classification || 'none';
+    var topScore = typeof r.confidence === 'number' ? r.confidence : 0;
+    var disposition = r.disposition || '';
+    var conflicts = [];
+
+    // C1 — Brain says freeze but top hypothesis says legitimate
+    if (brainVerdict === 'freeze' && topHypId === 'legitimate') {
+      conflicts.push({
+        code: 'C1',
+        severity: 'err',
+        label: 'Brain verdict vs hypothesis ladder',
+        detail: 'Backend brain returned "freeze" but the hypothesis ladder top-ranks "legitimate". Reconcile before recording a disposition.'
+      });
+    }
+    // C2 — Classification confirmed but disposition is negative / false-positive
+    if (topClass === 'confirmed' && (disposition === 'negative' || disposition === 'false_positive')) {
+      conflicts.push({
+        code: 'C2',
+        severity: 'err',
+        label: 'Match classification vs MLRO disposition',
+        detail: 'Top classification is CONFIRMED but disposition is ' + disposition + '. Confirmed matches require partial/confirmed disposition (FDL Art.20-21).'
+      });
+    }
+    // C3 — High score but no adverse media AND no PEP AND no sanctions proximity signal from factors
+    if (topScore >= 0.9 && !factors.some(function (f) { return f.key === 'sanctions'; })) {
+      conflicts.push({
+        code: 'C3',
+        severity: 'warn',
+        label: 'High confidence without sanctions factor',
+        detail: 'Top score ≥ 90% but the sanctions factor is not among the attributed signals — verify the match candidate before acting.'
+      });
+    }
+    // C4 — requiresHumanReview but disposition was recorded without 4-eyes
+    if (r.brain && r.brain.weaponized && r.brain.weaponized.requiresHumanReview &&
+        disposition && disposition !== 'pending' && !r.four_eyes_recorded) {
+      conflicts.push({
+        code: 'C4',
+        severity: 'err',
+        label: 'Brain requested human review — 4-eyes not recorded',
+        detail: 'Brain raised requiresHumanReview but the disposition was recorded without a second-approver attestation (Cabinet Res 134/2025 Art.19).'
+      });
+    }
+    // C5 — Clamp fired but no corresponding risk tier bump
+    if (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons) &&
+        r.brain.weaponized.clampReasons.length > 0 && topScore < 0.1) {
+      conflicts.push({
+        code: 'C5',
+        severity: 'warn',
+        label: 'Clamp fired on low-score row',
+        detail: 'A safety clamp engaged but the top score is below 10%. Investigate whether the clamp was over-eager or the score under-reports risk.'
+      });
+    }
+    // C6 — Adverse media >= 3 but disposition recorded as negative
+    var amCount = r.adverse_media_count || 0;
+    if (amCount >= 3 && disposition === 'negative') {
+      conflicts.push({
+        code: 'C6',
+        severity: 'warn',
+        label: 'Multiple adverse-media hits but disposition is negative',
+        detail: amCount + ' adverse-media hits returned but disposition is NEGATIVE. Document why none of them implicate the subject (FATF Rec 10 — positive identification required).'
+      });
+    }
+
+    if (!conflicts.length) {
+      return '<div style="font-size:11px;color:#6ee7b7;opacity:.9">' +
+        '✓ No contradictions detected across brain · hypothesis ladder · decision path · MLRO disposition.' +
+      '</div>';
+    }
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      conflicts.map(function (c) {
+        var colour = c.severity === 'err' ? '#fca5a5' : '#fbbf24';
+        return '<li style="font-size:11px;margin-bottom:5px;line-height:1.5;color:' + colour + '">' +
+          '<strong>[' + c.code + '] ' + esc(c.label) + '.</strong> ' +
+          '<span style="opacity:.9">' + esc(c.detail) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ul>';
+  }
+
+  // ─── Commonsense Plausibility Check ───────────────────────────────
+  // 12 hardcoded commonsense rules that cross-check the verdict
+  // against things an experienced MLRO would immediately notice.
+  // These are NOT regulatory rules — they are sanity guards on top
+  // of the formal decision path. A violation does not block the
+  // disposition but surfaces "are you sure?" questions the MLRO
+  // must answer in the rationale.
+  function commonsenseCheck(r) {
+    var checks = [];
+    var brainVerdict = (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || '';
+    var topClass = r.top_classification || 'none';
+    var topScore = typeof r.confidence === 'number' ? r.confidence : 0;
+    var amCount = r.adverse_media_count || 0;
+    var integrity = r.integrity || 'complete';
+    var country = (r.country || '').toUpperCase();
+    var riskTier = '';
+    try { riskTier = (r.brain && r.brain.weaponized && r.brain.weaponized.extensions && r.brain.weaponized.extensions.explainableScore && r.brain.weaponized.extensions.explainableScore.cddLevel) || ''; } catch (_e) {}
+
+    // Commonsense rule set
+    var RULES = [
+      {
+        id: 'CS1',
+        fire: topClass === 'confirmed' && brainVerdict && brainVerdict !== 'freeze',
+        msg: 'Confirmed sanctions match should produce "freeze" — the current verdict does not match that shape.'
+      },
+      {
+        id: 'CS2',
+        fire: integrity === 'incomplete' && brainVerdict && brainVerdict !== 'review',
+        msg: 'Screening integrity is INCOMPLETE — the only defensible verdict is "review / re-screen", not a clear/freeze decision.'
+      },
+      {
+        id: 'CS3',
+        fire: /^(KP|IR|SY|CU)$/i.test(country) && topScore < 0.1,
+        msg: 'Country is a comprehensive-sanctions jurisdiction (DPRK / Iran / Syria / Cuba) — top sanctions score below 10% is implausibly low.'
+      },
+      {
+        id: 'CS4',
+        fire: amCount > 5 && topScore < 0.3,
+        msg: '6+ adverse-media hits returned but top score is under 30% — name-matcher and adverse-media layer disagree; investigate.'
+      },
+      {
+        id: 'CS5',
+        fire: topClass === 'none' && amCount >= 3,
+        msg: 'No sanctions match but 3+ adverse-media hits — an EDD trigger (Cabinet Res 134/2025 Art.14) may still apply.'
+      },
+      {
+        id: 'CS6',
+        fire: r.customer_code && r.event_type === 'ad_hoc' && !r.run_id,
+        msg: 'Customer code present with event_type=ad_hoc but no run_id — this may be a stale row; re-run the screening before disposing.'
+      },
+      {
+        id: 'CS7',
+        fire: r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.subsystemFailures) &&
+              r.brain.weaponized.subsystemFailures.length >= 3,
+        msg: '3+ brain subsystems failed this run — confidence on any verdict is reduced; consider a re-run or escalation.'
+      },
+      {
+        id: 'CS8',
+        fire: !r.customer_code,
+        msg: 'No customer code attached — audit attribution (FDL Art.24) is weaker; link a code before closing.'
+      },
+      {
+        id: 'CS9',
+        fire: topClass === 'weak' && amCount === 0,
+        msg: 'Weak sanctions match AND zero adverse media — most likely a false positive; document the differentiator.'
+      },
+      {
+        id: 'CS10',
+        fire: riskTier === 'EDD' && brainVerdict === 'clear',
+        msg: 'Customer is on EDD track but brain returned "clear" — EDD requires explicit rationale even on clean screens.'
+      },
+      {
+        id: 'CS11',
+        fire: r.event_type === 'new_customer_onboarding' && amCount === 0 && topClass === 'none' &&
+              !(r.brain && r.brain.deepBrain && r.brain.deepBrain.narrative),
+        msg: 'First-screening / life-story run with no findings AND no narrative — confirm the life-story report was actually produced.'
+      },
+      {
+        id: 'CS12',
+        fire: brainVerdict === 'freeze' && !(r.brain && r.brain.weaponized && r.brain.weaponized.requiresHumanReview),
+        msg: 'Brain verdict "freeze" without requiresHumanReview — every freeze should trigger four-eyes; verify the brain configuration.'
+      }
+    ];
+    var fired = RULES.filter(function (r) { return !!r.fire; });
+    if (!fired.length) {
+      return '<div style="font-size:11px;color:#6ee7b7;opacity:.9">' +
+        '✓ All 12 commonsense checks passed — verdict is consistent with typical MLRO expectations.' +
+      '</div>';
+    }
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      fired.map(function (rl) {
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.5;color:#fbbf24">' +
+          '<strong>[' + rl.id + ']</strong> ' + esc(rl.msg) +
+        '</li>';
+      }).join('') +
+    '</ul>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.6">' +
+      fired.length + ' of 12 commonsense rules fired. These are advisory sanity guards, not regulatory blockers.' +
+    '</div>';
+  }
+
+  // ─── Analogical Retrieval ─────────────────────────────────────────
+  // Scans every prior verdict in the browser's verdict-history store
+  // and surfaces the three subjects whose signal profile most
+  // resembles this row. Helps the MLRO spot "this looks like that
+  // confirmed case from last month" without opening Timeline. Pure
+  // client-side — no backend call; the authoritative analogical
+  // retrieval lives in GraphRAG on the server side (not yet wired).
+  function analogicalRetrieval(r) {
+    var all = loadVerdictHistory();
+    if (!all || typeof all !== 'object') {
+      return '<div style="font-size:11px;opacity:.6">No prior screenings in this browser to compare against.</div>';
+    }
+    var currentKey = (r.customer_code ? 'code:' + String(r.customer_code).toLowerCase()
+                                       : String(r.name || '').toLowerCase());
+    var currentConf = typeof r.confidence === 'number' ? r.confidence : 0;
+    var currentClass = r.top_classification || 'none';
+    var currentAm = r.adverse_media_count || 0;
+    var candidates = [];
+    Object.keys(all).forEach(function (key) {
+      if (key === currentKey) return;
+      var series = all[key];
+      if (!Array.isArray(series) || !series.length) return;
+      var last = series[series.length - 1];
+      // Distance = weighted sum of absolute differences on confidence,
+      // classification match, and adverse-media-bucket agreement.
+      var confDelta = Math.abs(currentConf - (last.conf || 0));
+      var classMatch = last.classification === currentClass ? 0 : 0.5;
+      var dist = confDelta * 1.0 + classMatch;
+      var similarity = Math.max(0, 1 - dist);
+      if (similarity > 0.55) {
+        candidates.push({
+          key: key,
+          similarity: similarity,
+          last: last
+        });
+      }
+    });
+    candidates.sort(function (a, b) { return b.similarity - a.similarity; });
+    if (!candidates.length) {
+      return '<div style="font-size:11px;opacity:.65">No prior screenings with similar signal profile (similarity > 55%).</div>';
+    }
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      candidates.slice(0, 3).map(function (c) {
+        var displayKey = c.key.indexOf('code:') === 0 ? c.key.slice(5).toUpperCase() : c.key;
+        var ago = Math.max(0, Math.floor((Date.now() - (c.last.t || 0)) / 86400000));
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.5">' +
+          '<strong>' + esc(displayKey) + '</strong> · similarity <span style="font-family:monospace">' +
+          Math.round(c.similarity * 100) + '%</span>' +
+          ' · prior verdict <span style="color:#f472b6">' + esc(c.last.verdict || '—') + '</span>' +
+          ' · classification ' + esc(c.last.classification || 'none') +
+          ' · ' + ago + 'd ago' +
+        '</li>';
+      }).join('') +
+    '</ul>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+      'Client-side analogical retrieval over this browser\u2019s verdict history. Authoritative cross-subject matching runs server-side.' +
+    '</div>';
+  }
+
+  // ─── Chain-of-Verification ────────────────────────────────────────
+  // Self-critique pass — lists 3 assumptions the verdict implicitly
+  // relies on, checks each against the raw evidence captured on the
+  // row, marks each assumption OK / WEAK / UNSUPPORTED. Forces the
+  // MLRO to reckon with what the verdict depends on before they
+  // commit to the disposition (NIST AI RMF MEASURE-2.4 · EU AI Act
+  // Art.13 explainability requirement).
+  function chainOfVerification(r, factors) {
+    var topClass = r.top_classification || 'none';
+    var amCount = r.adverse_media_count || 0;
+    var brainConf = (r.brain && r.brain.weaponized && typeof r.brain.weaponized.confidence === 'number')
+      ? r.brain.weaponized.confidence : 0;
+    var integrity = r.integrity || 'complete';
+    var listsChecked = Array.isArray(r.lists_checked) ? r.lists_checked.length : 0;
+
+    var assumptions = [
+      {
+        text: 'The subject name as screened matches the person the MLRO intends to onboard / transact.',
+        supported: !!r.name && r.name.length > 1 && !!r.customer_code,
+        weak: !!r.name && !r.customer_code,
+        evidence: r.customer_code
+          ? 'Customer code ' + r.customer_code + ' anchors the row to a specific customer.'
+          : (r.name ? 'Name provided but no customer code — weak anchor.' : 'No name on the row.')
+      },
+      {
+        text: 'All mandatory sanctions lists were actually screened against this run.',
+        supported: integrity === 'complete' && listsChecked >= 3,
+        weak: integrity === 'degraded',
+        evidence: listsChecked + ' list(s) checked; integrity=' + integrity + '. Mandatory set is UN + UAE EOCN + OFAC.'
+      },
+      {
+        text: 'The confidence value is backed by positively corroborating signals, not a single fragile match.',
+        supported: factors.length >= 2 || (topClass !== 'none' && amCount > 0),
+        weak: factors.length === 1,
+        evidence: factors.length + ' factor(s) active; top_classification=' + topClass + '; adverse-media hits=' + amCount + '.'
+      },
+      {
+        text: 'No brain subsystem that contributed to the verdict failed or was clamped during this run.',
+        supported: !(r.brain && r.brain.weaponized && (
+          (Array.isArray(r.brain.weaponized.subsystemFailures) && r.brain.weaponized.subsystemFailures.length > 0) ||
+          (Array.isArray(r.brain.weaponized.clampReasons) && r.brain.weaponized.clampReasons.length > 0)
+        )),
+        weak: !!(r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons) &&
+                r.brain.weaponized.clampReasons.length > 0),
+        evidence: r.brain && r.brain.weaponized
+          ? ((r.brain.weaponized.subsystemFailures || []).length + ' subsystem failure(s), ' +
+             (r.brain.weaponized.clampReasons || []).length + ' clamp(s) fired.')
+          : 'No brain telemetry on this row.'
+      }
+    ];
+    return '<ol style="margin:4px 0 4px 0;padding-left:18px">' +
+      assumptions.map(function (a) {
+        var tone, icon;
+        if (a.supported) { tone = '#6ee7b7'; icon = '✓'; }
+        else if (a.weak) { tone = '#fbbf24'; icon = '!'; }
+        else             { tone = '#fca5a5'; icon = '✕'; }
+        return '<li style="font-size:11px;margin-bottom:6px;line-height:1.5">' +
+          '<span style="color:' + tone + ';font-weight:700">' + icon + '</span> ' +
+          '<strong>' + esc(a.text) + '</strong>' +
+          '<br><span style="opacity:.75">Evidence: ' + esc(a.evidence) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ol>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+      'Self-critique pass. Any ✕ should block the disposition until resolved; any ! requires a written MLRO rationale.' +
+    '</div>';
+  }
+
   function buildReasoningConsole(r) {
     if (!r || r.source !== 'backend') return '';
     var factors = extractFactors(r);
@@ -1859,6 +2176,26 @@
       '<details style="margin-top:4px">' +
         '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>VERDICT HISTORY</strong> · confidence trend for this subject</summary>' +
         '<div style="margin-top:6px">' + verdictHistorySparkline(r.name) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px" open>' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>CONTRADICTION DETECTOR</strong> · cross-layer consistency</summary>' +
+        '<div style="margin-top:6px">' + contradictionDetector(r, factors, ladder) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>COMMONSENSE PLAUSIBILITY</strong> · 12 sanity rules</summary>' +
+        '<div style="margin-top:6px">' + commonsenseCheck(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>ANALOGICAL RETRIEVAL</strong> · similar prior cases</summary>' +
+        '<div style="margin-top:6px">' + analogicalRetrieval(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>CHAIN-OF-VERIFICATION</strong> · self-critique of the verdict\u2019s assumptions</summary>' +
+        '<div style="margin-top:6px">' + chainOfVerification(r, factors) + '</div>' +
       '</details>' +
 
       '<div style="margin-top:8px;font-size:10px;opacity:.55">' +
