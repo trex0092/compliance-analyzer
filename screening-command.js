@@ -374,14 +374,25 @@
 
   // ─── Shared fetch helper ─────────────────────────────────────────
   //
-  // The server enforces an internal 6.5s deadline on the screening
-  // pipeline (netlify/functions/screening-run.mts). Client-side we cap
-  // at 12s so that a Netlify edge hang never leaves the MLRO staring
-  // at a spinner — a clear "timed out, re-screen" message is better
-  // than an indefinite wait under FDL No.10/2025 Art.20 (no delay in
-  // screening action). If the server responds earlier (normal case),
-  // the AbortController is a no-op.
-  const API_TIMEOUT_MS = 12_000;
+  // Server-side budget for /api/screening-run (worst case):
+  //   SANCTIONS_FETCH_TIMEOUT_MS = 6_500ms (5 lists, race + blob fallback)
+  //   ADVERSE_MEDIA_TIMEOUT_MS   = 3_000ms
+  //   WATCHLIST_TIMEOUT_MS       = 1_200ms
+  //   ASANA_TIMEOUT_MS           = 1_500ms
+  //   + 5 subsystems × ~1s each for anomaly / scoring / corroboration
+  //   ≈ 18–22s upper bound under load.
+  //
+  // Netlify sync functions hard-cap at 26s. The client cap must sit
+  // safely above the server's realistic upper bound AND below Netlify's
+  // death limit. 25s covers the full worst-case pipeline while still
+  // firing on genuinely stuck connections — the 12s cap used in #348
+  // was too tight and was triggering 499 client-aborts on normal slow-
+  // path screenings (see Netlify observability 08:10 cluster).
+  //
+  // Regulatory: FDL Art.20-21 — no delay in screening action. A clear
+  // "timed out, re-screen" after 25s is still actionable; a premature
+  // 12s abort on an in-progress screen is not.
+  const API_TIMEOUT_MS = 25_000;
 
   async function apiPost(endpoint, body) {
     saveToken();
