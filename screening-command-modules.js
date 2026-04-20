@@ -228,41 +228,346 @@
       .trim();
   }
 
-  // Token-set name match. Both subject and candidate are tokenised and
-  // we consider a match when every candidate token appears in the
-  // subject (or vice-versa for short names). This is deliberately
-  // conservative — we want to catch "ozcan halac" / "Özcan Halaç" /
-  // "Halac, Ozcan" but not random substring collisions.
-  function nameMatches(subject, candidate) {
-    var a = normalizeName(subject);
-    var b = normalizeName(candidate);
-    if (!a || !b) return false;
-    if (a === b) return true;
-    var aTok = a.split(' ').filter(Boolean);
-    var bTok = b.split(' ').filter(Boolean);
-    if (!aTok.length || !bTok.length) return false;
-    var setA = {};
-    aTok.forEach(function (t) { setA[t] = true; });
-    var overlap = 0;
-    bTok.forEach(function (t) { if (setA[t]) overlap += 1; });
-    // Require every candidate token to appear in the subject when the
-    // candidate is short (two-token names). For longer candidates, a
-    // majority overlap is enough.
-    if (bTok.length <= 2) return overlap === bTok.length;
-    return overlap >= Math.ceil(bTok.length * 0.75);
+  // ─── Multi-modal fuzzy name matcher ─────────────────────────────────
+  // Combines four signals the UI already advertises: Jaro-Winkler,
+  // Levenshtein (approximated via Jaro), Soundex, Double Metaphone
+  // (simplified), plus exact token-set overlap. Each method covers a
+  // different failure mode:
+  //   - token-set  : order-insensitive match ("Halac, Ozcan" == "Ozcan Halac")
+  //   - Jaro-Winkler : typos and short edits ("Ozcam Halac" == "Ozcan Halac")
+  //   - Soundex    : gross phonetic equivalence ("Halaj" ≈ "Halac")
+  //   - Metaphone  : richer phonetic equivalence ("Özcan" ≈ "Ozjan")
+  //
+  // Tuned for AML name-matching: FATF Rec 10 ongoing DD requires we
+  // catch transliteration variants, but false positives cost MLRO time
+  // and tip-off risk if the wrong subject is flagged to a reviewer's
+  // workbench (FDL Art.29). Thresholds in matchQuality() are the
+  // defensive floor — DO NOT lower without re-testing against the
+  // control set in the session notes.
+
+  // Jaro similarity ∈ [0,1]. Number of matching chars within a sliding
+  // window divided by the mean length, adjusted for transpositions.
+  function jaroSimilarity(a, b) {
+    if (a === b) return 1;
+    var la = a.length, lb = b.length;
+    if (!la || !lb) return 0;
+    var win = Math.max(0, Math.floor(Math.max(la, lb) / 2) - 1);
+    var ma = new Array(la), mb = new Array(lb);
+    var matches = 0;
+    for (var i = 0; i < la; i++) {
+      var start = Math.max(0, i - win);
+      var end = Math.min(i + win + 1, lb);
+      for (var j = start; j < end; j++) {
+        if (mb[j] || a.charAt(i) !== b.charAt(j)) continue;
+        ma[i] = mb[j] = true; matches++; break;
+      }
+    }
+    if (!matches) return 0;
+    var trans = 0, k = 0;
+    for (var ii = 0; ii < la; ii++) {
+      if (!ma[ii]) continue;
+      while (!mb[k]) k++;
+      if (a.charAt(ii) !== b.charAt(k)) trans++;
+      k++;
+    }
+    trans = trans / 2;
+    return (matches / la + matches / lb + (matches - trans) / matches) / 3;
   }
 
+  // Jaro-Winkler — Jaro boosted for common prefix (up to 4 chars, factor 0.1).
+  function jaroWinkler(a, b) {
+    var j = jaroSimilarity(a, b);
+    if (j < 0.7) return j;
+    var prefix = 0;
+    var max = Math.min(4, a.length, b.length);
+    for (var i = 0; i < max; i++) {
+      if (a.charAt(i) === b.charAt(i)) prefix++;
+      else break;
+    }
+    return j + prefix * 0.1 * (1 - j);
+  }
+
+  // Classic Soundex — first letter + 3 digits encoding consonant class.
+  function soundex(s) {
+    var str = String(s || '').toUpperCase().replace(/[^A-Z]/g, '');
+    if (!str) return '';
+    var map = { B:'1',F:'1',P:'1',V:'1',
+                C:'2',G:'2',J:'2',K:'2',Q:'2',S:'2',X:'2',Z:'2',
+                D:'3',T:'3', L:'4', M:'5',N:'5', R:'6' };
+    var code = str.charAt(0);
+    var prev = map[str.charAt(0)] || '';
+    for (var i = 1; i < str.length && code.length < 4; i++) {
+      var c = map[str.charAt(i)] || '';
+      if (c && c !== prev) code += c;
+      prev = c;
+    }
+    return (code + '000').slice(0, 4);
+  }
+
+  // Simplified Metaphone — folds common phonetic equivalents, strips
+  // interior vowels, collapses doubles. A full Double Metaphone is ~300
+  // lines; this approximation keeps the hot-path short while catching
+  // the cases AML cares about (transliteration, soft-C/G, PH/F, TH/T).
+  function simpleMetaphone(s) {
+    var t = String(s || '').toUpperCase().replace(/[^A-Z]/g, '');
+    if (!t) return '';
+    t = t.replace(/^WH/, 'W').replace(/^KN/, 'N').replace(/^WR/, 'R').replace(/^GN/, 'N');
+    t = t.replace(/PH/g, 'F').replace(/TH/g, 'T').replace(/SH/g, 'X').replace(/CH/g, 'X');
+    t = t.replace(/CK/g, 'K').replace(/GH/g, 'H').replace(/QU?/g, 'K').replace(/X/g, 'KS');
+    t = t.replace(/C([EIY])/g, 'S$1').replace(/C/g, 'K');
+    t = t.replace(/G([EIY])/g, 'J$1').replace(/G/g, 'K');
+    t = t.replace(/Z/g, 'S').replace(/V/g, 'F').replace(/D/g, 'T');
+    var first = t.charAt(0);
+    var rest = t.slice(1).replace(/[AEIOUY]/g, '');
+    var out = first;
+    for (var i = 0; i < rest.length; i++) {
+      if (rest.charAt(i) !== out.charAt(out.length - 1)) out += rest.charAt(i);
+    }
+    return out.slice(0, 6);
+  }
+
+  // Generic tokens = legal form suffixes + pure connectives. These
+  // carry NO identifying signal and are stripped before the distinctive-
+  // token agreement test. Sector words (gold, refinery, bank, trading)
+  // are DELIBERATELY NOT listed here — "Istanbul Bank" and "Istanbul
+  // Gold Refinery" are different entities, and the sector word is the
+  // distinguishing signal. Source: FATF Rec 10 name-matching guidance;
+  // OECD CRS entity-matching rules treat legal form as the only
+  // universal strip-token.
+  var GENERIC_TOKENS = {
+    // English corporate suffixes
+    ltd: 1, llc: 1, inc: 1, corp: 1, corporation: 1, co: 1, company: 1,
+    group: 1, holdings: 1, holding: 1, limited: 1, plc: 1, llp: 1, lp: 1,
+    // European / international corporate suffixes
+    sa: 1, as: 1, ag: 1, ab: 1, gmbh: 1, bv: 1, nv: 1, sarl: 1, srl: 1,
+    kg: 1, oy: 1, oyj: 1, aps: 1, spa: 1, spol: 1, sro: 1,
+    // Asian / Middle Eastern corporate suffixes
+    pvt: 1, pte: 1, sdn: 1, bhd: 1, jsc: 1, pjsc: 1, fzc: 1, fze: 1,
+    dmcc: 1, llp_uae: 1,
+    // Turkish corporate suffixes (Anonim Şirketi = Inc.)
+    anonim: 1, sirketi: 1, sti: 1, tas: 1,
+    // International / global descriptors
+    international: 1, intl: 1, worldwide: 1, global: 1,
+    // Determiners / connectives (language-neutral list)
+    the: 1, and: 1, of: 1, for: 1, al: 1, el: 1, la: 1, le: 1, du: 1, de: 1
+  };
+
+  function distinctiveTokens(tokens) {
+    return tokens.filter(function (t) { return !GENERIC_TOKENS[t]; });
+  }
+
+  // Levenshtein edit distance. Used alongside JW to reject single-char
+  // INSERTIONS/DELETIONS on short tokens — those change the name
+  // ("Ozan" vs "Ozcan" are different Turkish names, not typo variants).
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a) return b.length;
+    if (!b) return a.length;
+    var m = a.length, n = b.length;
+    var prev = new Array(n + 1);
+    for (var j = 0; j <= n; j++) prev[j] = j;
+    for (var i = 1; i <= m; i++) {
+      var curr = [i];
+      for (var jj = 1; jj <= n; jj++) {
+        var cost = a.charAt(i - 1) === b.charAt(jj - 1) ? 0 : 1;
+        curr.push(Math.min(curr[jj - 1] + 1, prev[jj] + 1, prev[jj - 1] + cost));
+      }
+      prev = curr;
+    }
+    return prev[n];
+  }
+
+  // Does every distinctive token on BOTH sides have a match partner?
+  // Tight rule set, tuned for "very very precise" AML name matching.
+  //
+  // For SHORT tokens (<=6 chars — typical first/last names):
+  //   - Exact match, OR
+  //   - Equal length AND Levenshtein <=1 (one typo — "Ozcam" ≈ "Ozcan"), OR
+  //   - Length differs by ≤1 AND Levenshtein <=1 AND Soundex+Metaphone
+  //     both agree ("Hallac" ≈ "Halac"). Lev<=1 rejects the multi-edit
+  //     cases where phonetic codes collapse to the same bucket by
+  //     accident ("Halick", "Halacki" → HLK; different surnames, not
+  //     typos).
+  //
+  // For LONGER tokens (>6 chars — surnames, place names):
+  //   - Jaro-Winkler >= 0.90, OR
+  //   - Soundex AND Metaphone both agree AND Levenshtein / max(len) < 0.25
+  //
+  // Bidirectional — neither side may carry an orphan token. Legal-form
+  // generics (ltd/inc/as/anonim/sirketi) are stripped BEFORE this test.
+  function allDistinctivePair(aDist, bDist) {
+    function hasPartner(t, pool) {
+      for (var i = 0; i < pool.length; i++) {
+        var p = pool[i];
+        if (t === p) return true;
+        var phoneticAgree =
+          soundex(t) === soundex(p) && simpleMetaphone(t) === simpleMetaphone(p);
+        var shorter = Math.min(t.length, p.length);
+        var lev = levenshtein(t, p);
+        if (shorter <= 6) {
+          if (t.length === p.length && lev <= 1) {
+            if (lev === 0) return true;
+            // Reject vowel↔consonant substitutions — those change the
+            // name semantically ("Halac" → "Halaa" replaces c with a,
+            // a different Turkish surname). Consonant↔consonant or
+            // vowel↔vowel typos still match ("Ozcam" → "Ozcan").
+            var diffOk = true;
+            for (var kk = 0; kk < t.length; kk++) {
+              if (t.charAt(kk) !== p.charAt(kk)) {
+                var tv = /[aeiou]/.test(t.charAt(kk));
+                var pv = /[aeiou]/.test(p.charAt(kk));
+                if (tv !== pv) diffOk = false;
+                break;
+              }
+            }
+            if (diffOk) return true;
+          }
+          if (Math.abs(t.length - p.length) === 1 && lev <= 1 && phoneticAgree) return true;
+        } else {
+          if (jaroWinkler(t, p) >= 0.90) return true;
+          if (phoneticAgree && lev / Math.max(t.length, p.length) < 0.25) return true;
+        }
+      }
+      return false;
+    }
+    for (var i = 0; i < aDist.length; i++) {
+      if (!hasPartner(aDist[i], bDist)) return false;
+    }
+    for (var j = 0; j < bDist.length; j++) {
+      if (!hasPartner(bDist[j], aDist)) return false;
+    }
+    return true;
+  }
+
+  // Multi-modal match quality ∈ [0,1]. Returns the best score across
+  // the four modes plus the list of modes that contributed meaningful
+  // signal. An exact normalized match short-circuits to 1.0.
+  function matchQuality(subject, candidate) {
+    var a = normalizeName(subject);
+    var b = normalizeName(candidate);
+    if (!a || !b) return { score: 0, methods: [] };
+    if (a === b) return { score: 1, methods: ['exact'] };
+
+    var aTok = a.split(' ').filter(Boolean);
+    var bTok = b.split(' ').filter(Boolean);
+    if (!aTok.length || !bTok.length) return { score: 0, methods: [] };
+
+    // 1. Token-set overlap — order-insensitive.
+    var setA = {}; aTok.forEach(function (t) { setA[t] = true; });
+    var overlap = 0;
+    bTok.forEach(function (t) { if (setA[t]) overlap += 1; });
+    var maxTok = Math.max(aTok.length, bTok.length);
+    var tokenScore = overlap / maxTok;
+
+    // 2. Jaro-Winkler on the full string AND on token-pairwise best.
+    //    Pairwise catches "Ozcam Halac" (typo in first token) cleanly.
+    var jwFull = jaroWinkler(a, b);
+    var jwPairMax = 0;
+    var jwPairCount = 0;
+    for (var i = 0; i < aTok.length; i++) {
+      var best = 0;
+      for (var j = 0; j < bTok.length; j++) {
+        var s = jaroWinkler(aTok[i], bTok[j]);
+        if (s > best) best = s;
+      }
+      if (best >= 0.88) jwPairCount += 1;
+      if (best > jwPairMax) jwPairMax = best;
+    }
+    var jwPairScore = jwPairCount / maxTok;
+    var jwScore = Math.max(jwFull, jwPairScore);
+
+    // 3. Phonetic: per-token Soundex + Metaphone agreement.
+    var phoneticOverlap = 0;
+    for (var ii = 0; ii < aTok.length; ii++) {
+      for (var jj = 0; jj < bTok.length; jj++) {
+        if (
+          soundex(aTok[ii]) === soundex(bTok[jj]) &&
+          simpleMetaphone(aTok[ii]) === simpleMetaphone(bTok[jj])
+        ) {
+          phoneticOverlap += 1;
+          break;
+        }
+      }
+    }
+    var phoneticScore = phoneticOverlap / maxTok;
+
+    var methods = [];
+    if (tokenScore >= 0.5) methods.push('token-set');
+    if (jwScore >= 0.85) methods.push('jaro-winkler');
+    if (phoneticScore >= 0.5) methods.push('phonetic');
+
+    // Composite score: take the max so a single strong signal carries,
+    // but clip JW and phonetic so they alone can't reach 1.0 (preserves
+    // the exact-match short-circuit above as the only path to perfect).
+    var score = Math.max(tokenScore, jwScore * 0.97, phoneticScore * 0.90);
+
+    // FP guard 1 — single-token subject vs multi-token candidate.
+    // A single first-name ("Ozcan") or last-name ("Halac") must never
+    // auto-confirm against a multi-token entry. Force score below the
+    // 0.80 register threshold. The only way a single-token query can
+    // match a register entry is if the register also has a single-token
+    // alias (e.g. "IAR") — that case is symmetric and unaffected here.
+    if (aTok.length === 1 && bTok.length > 1) {
+      score = Math.min(score, 0.70);
+      methods = methods.filter(function (m) { return m !== 'jaro-winkler'; });
+    }
+
+    // FP guard 2 — bidirectional distinctive-token agreement.
+    // Every distinctive token on BOTH sides must find a match partner
+    // (JW>=0.85 OR Soundex+Metaphone agree). This catches all of:
+    //   "Istanbul Bank"     vs "Istanbul Gold Refinery"  (bank orphan)
+    //   "Mumbai Gold Refinery" vs "Istanbul Gold Refinery"  (mumbai orphan)
+    //   "Ozcan Yilmaz"      vs "Ozcan Halac"              (yilmaz orphan)
+    //   "Okan Halaf"        vs "Ozcan Halac"              (okan orphan)
+    // Legal-form tokens (Ltd/Inc/A.S./Anonim Şirketi) are stripped
+    // before this test, so "Ozcan Halac International Ltd" still
+    // matches "Ozcan Halac".
+    var aDist = distinctiveTokens(aTok);
+    var bDist = distinctiveTokens(bTok);
+    if (aDist.length && bDist.length) {
+      if (!allDistinctivePair(aDist, bDist)) {
+        score = Math.min(score, 0.70);
+      }
+    }
+
+    return { score: score, methods: methods };
+  }
+
+  // Scoring envelope for the register lookup: iterate all aliases for
+  // every entry, keep the best match and the methods that produced it.
+  // Returns { entry, score, methods, matchedAlias } or null.
   function findKnownAdverseMedia(subjectName, aliases) {
-    var candidates = [subjectName].concat(Array.isArray(aliases) ? aliases : []);
+    var candidates = [subjectName].concat(Array.isArray(aliases) ? aliases : []).filter(Boolean);
+    // Threshold: 0.80 is the floor at which we are confident enough to
+    // raise a PENDING REVIEW on a named public-source case. Below this,
+    // the simulation falls through to the generic keyword heuristic.
+    var MATCH_THRESHOLD = 0.80;
+    var best = null;
     for (var i = 0; i < KNOWN_ADVERSE_MEDIA.length; i++) {
       var entry = KNOWN_ADVERSE_MEDIA[i];
       for (var j = 0; j < entry.names.length; j++) {
         for (var k = 0; k < candidates.length; k++) {
-          if (candidates[k] && nameMatches(candidates[k], entry.names[j])) return entry;
+          var q = matchQuality(candidates[k], entry.names[j]);
+          if (q.score >= MATCH_THRESHOLD) {
+            if (!best || q.score > best.score) {
+              best = {
+                entry: entry,
+                score: q.score,
+                methods: q.methods,
+                matchedAlias: entry.names[j],
+                matchedOn: candidates[k]
+              };
+            }
+          }
         }
       }
     }
-    return null;
+    return best;
+  }
+
+  // Kept for API compatibility with any existing callers.
+  function nameMatches(subject, candidate) {
+    return matchQuality(subject, candidate).score >= 0.80;
   }
 
   function safeParse(key, fallback) {
@@ -448,6 +753,34 @@
 
             var adverseHitsLine = Array.isArray(r.adverse_media_hits) && r.adverse_media_hits.length
               ? '<div class="mv-list-meta" data-tone="warn">Adverse media: ' + r.adverse_media_hits.map(esc).join(', ') + '</div>' : '';
+
+            // Live-backend adverse-media hit list — title, source, date,
+            // clickable URL. Only populated when the backend returned
+            // data.adverseMedia.top (FATF Rec 10 — ongoing CDD must
+            // surface the actual signal, not just a count).
+            var adverseItemsLine = '';
+            if (Array.isArray(r.adverse_media_items) && r.adverse_media_items.length) {
+              var severityLabel = r.adverse_media_severity === 'high' ? 'HIGH' : r.adverse_media_severity === 'medium' ? 'MEDIUM' : 'INFO';
+              var providerLabel = r.adverse_media_provider ? ' via ' + esc(r.adverse_media_provider) : '';
+              adverseItemsLine = '<div class="mv-list-meta" data-tone="warn" style="margin-top:4px">' +
+                '<strong>Adverse-media hits (' + (r.adverse_media_count || r.adverse_media_items.length) + ') · severity ' + severityLabel + '</strong>' + providerLabel +
+                '<ul style="margin:4px 0 0 18px;padding:0">' +
+                  r.adverse_media_items.slice(0, 5).map(function (h) {
+                    var title = h.title || h.url || '(untitled)';
+                    var meta = [h.source, h.publishedAt ? fmtDate(h.publishedAt) : ''].filter(Boolean).map(esc).join(' · ');
+                    return '<li style="margin-bottom:2px">' +
+                      (h.url
+                        ? '<a href="' + esc(h.url) + '" target="_blank" rel="noopener noreferrer">' + esc(title) + '</a>'
+                        : esc(title)) +
+                      (meta ? ' — <span style="opacity:.75">' + meta + '</span>' : '') +
+                    '</li>';
+                  }).join('') +
+                '</ul>' +
+              '</div>';
+            } else if (r.source === 'backend' && r.adverse_media_error) {
+              adverseItemsLine = '<div class="mv-list-meta" data-tone="warn">Adverse-media fetch error: ' + esc(r.adverse_media_error) + '</div>';
+            }
+
             var knownSourceLine = r.known_adverse_source && r.known_adverse_source.url
               ? '<div class="mv-list-meta" data-tone="warn">' +
                   'Public source: <a href="' + esc(r.known_adverse_source.url) + '" target="_blank" rel="noopener noreferrer">' +
@@ -455,6 +788,15 @@
                   '</a>' +
                   (r.known_adverse_source.summary
                     ? '<br><span style="opacity:.85">' + esc(r.known_adverse_source.summary) + '</span>'
+                    : '') +
+                  (Array.isArray(r.known_adverse_source.match_methods) && r.known_adverse_source.match_methods.length
+                    ? '<br><span style="opacity:.6;font-size:11px">Matched via ' +
+                        esc(r.known_adverse_source.match_methods.join(' + ')) +
+                        ' @ ' + Math.round((r.known_adverse_source.match_score || 0) * 100) + '%' +
+                        (r.known_adverse_source.matched_alias && normalizeName(r.known_adverse_source.matched_alias) !== normalizeName(r.name)
+                          ? ' (alias: ' + esc(r.known_adverse_source.matched_alias) + ')'
+                          : '') +
+                      '</span>'
                     : '') +
                 '</div>'
               : '';
@@ -503,6 +845,7 @@
                   perListHtml +
                   hitDetailHtml +
                   adverseHitsLine +
+                  adverseItemsLine +
                   knownSourceLine +
                   specialHitsLine +
                   integrityLine +
@@ -670,10 +1013,39 @@
     var disposition = dispositionFromClassification(topClass);
     if (disposition === 'positive' || disposition === 'partial') disposition = 'pending';
 
+    // Capture the authoritative backend shape (screening-run.mts):
+    //   data.adverseMedia = {
+    //     hits: <count:number>,
+    //     provider: <label:string>,     // comma-sep providers used
+    //     providersUsed: <string[]>,    // ['brave','google_news_rss']
+    //     top: [{title,url,source}],    // top 5 hits (see
+    //                                     amRes.value.hits.slice(0,5) upstream)
+    //     error: <string|undefined>
+    //   }
+    // Previously this block used Array.isArray(data.adverseMedia.hits)
+    // which always returned false (hits is a number); the category chips
+    // derived from adverseMedia were never populated. We now:
+    //   - derive the chip list from the MLRO's selected categories when
+    //     the backend confirms >=1 hit (keeps the top-level summary),
+    //   - additionally store the actual top-hits array so the card can
+    //     render clickable titles, sources, and dates.
+    var am = data.adverseMedia || {};
+    var amHitCount = typeof am.hits === 'number' ? am.hits : 0;
     var adverseHits = [];
-    if (data.adverseMedia && Array.isArray(data.adverseMedia.hits) && data.adverseMedia.hits.length) {
-      adverseHits = adverseMedia.slice(0, Math.min(adverseMedia.length, data.adverseMedia.hits.length));
+    if (amHitCount > 0) {
+      adverseHits = adverseMedia.slice(0, Math.min(adverseMedia.length, Math.max(1, amHitCount)));
     }
+    var adverseItems = Array.isArray(am.top)
+      ? am.top.map(function (h) {
+          return {
+            title: h && h.title ? String(h.title) : '',
+            url: h && h.url ? String(h.url) : '',
+            source: h && h.source ? String(h.source) : '',
+            publishedAt: h && h.publishedAt ? String(h.publishedAt) : ''
+          };
+        }).filter(function (h) { return h.title || h.url; })
+      : [];
+    var amSeverity = amHitCount === 0 ? 'info' : amHitCount <= 2 ? 'medium' : 'high';
 
     return {
       id: 'sub-' + Date.now(),
@@ -692,6 +1064,12 @@
       sanctions_lists: sanctionsLists,
       adverse_media: adverseMedia,
       adverse_media_hits: adverseHits,
+      adverse_media_count: amHitCount,
+      adverse_media_items: adverseItems,
+      adverse_media_provider: am.provider ? String(am.provider) : '',
+      adverse_media_providers_used: Array.isArray(am.providersUsed) ? am.providersUsed.slice() : [],
+      adverse_media_severity: amSeverity,
+      adverse_media_error: am.error ? String(am.error) : '',
       special_screens: specialScreens,
       special_flags: [],
       integrity: data.screeningIntegrity || 'complete',
@@ -709,14 +1087,18 @@
     var haystack = nameLower + ' ' + aliasLower;
 
     // First: screen against the seeded known public adverse-media
-    // register. This catches high-profile Reuters / state-media cases
-    // (e.g. Istanbul gold-refinery probe, Oct 2025) that the MLRO would
-    // be negligent to pass as NEGATIVE even in the pre-auth flow.
+    // register using the multi-modal matcher (Jaro-Winkler + Soundex +
+    // Metaphone + token-set). This catches high-profile Reuters /
+    // state-media cases and their transliteration + typo variants.
     var knownHit = findKnownAdverseMedia(body.subjectName, body.aliases);
 
     var conf, cls;
     if (knownHit) {
-      conf = knownHit.confidence;
+      // Final confidence = register's cited confidence × match quality.
+      // An exact name hit preserves the register's stated confidence
+      // (match quality 1.0); a fuzzy hit scales it proportionally so
+      // the MLRO sees lower conviction on a transliteration match.
+      conf = knownHit.entry.confidence * knownHit.score;
       cls = conf >= 0.85 ? 'confirmed' : conf >= 0.5 ? 'potential' : 'weak';
     } else {
       conf = haystack.indexOf('test-hit') >= 0 ? 0.95
@@ -753,10 +1135,10 @@
       // screen for. If the MLRO disabled every category the known-hit
       // covers, fall back to the full known-hit category list so the
       // adverse-media signal is never silently dropped.
-      var intersection = knownHit.categories.filter(function (c) {
+      var intersection = knownHit.entry.categories.filter(function (c) {
         return adverseMedia.indexOf(c) >= 0;
       });
-      adverseHits = intersection.length ? intersection : knownHit.categories.slice();
+      adverseHits = intersection.length ? intersection : knownHit.entry.categories.slice();
     } else if (haystack.indexOf('test-adverse') >= 0) {
       adverseHits = adverseMedia.slice(0, 3);
     } else if (haystack.indexOf('pep') >= 0 && adverseMedia.indexOf('political_pep') >= 0) {
@@ -787,9 +1169,12 @@
       adverse_media: adverseMedia,
       adverse_media_hits: adverseHits,
       known_adverse_source: knownHit ? {
-        source: knownHit.source,
-        url: knownHit.url,
-        summary: knownHit.summary
+        source: knownHit.entry.source,
+        url: knownHit.entry.url,
+        summary: knownHit.entry.summary,
+        match_score: knownHit.score,
+        match_methods: knownHit.methods,
+        matched_alias: knownHit.matchedAlias
       } : null,
       special_screens: specialScreens,
       special_flags: specialFlags,
