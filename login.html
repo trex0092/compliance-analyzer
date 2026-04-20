@@ -146,18 +146,33 @@
           btn.disabled = true;
           btn.textContent = 'Signing in…';
 
+          // Read as text first so we can surface the real HTTP status +
+          // a body snippet when the server returns HTML (e.g. a Netlify
+          // 404 or generic error page) instead of JSON. The previous
+          // `res.json()` path swallowed the status and printed the
+          // opaque "Sign-in response could not be parsed." — useless for
+          // diagnosing a routing / env / timeout failure on mobile
+          // where no devtools are available (FDL No.(10)/2025 Art.20-21).
           fetch('/api/hawkeye-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password: pEl.value })
           }).then(function (res) {
-            return res.json().then(function (json) {
+            return res.text().then(function (text) {
+              var json = null;
+              try { json = text ? JSON.parse(text) : null; } catch (_) {}
               if (!res.ok) {
-                var msg = (json && json.error) || ('Sign-in failed (HTTP ' + res.status + ').');
+                var msg = (json && json.error)
+                  || ('Sign-in failed (HTTP ' + res.status + ')'
+                      + (text ? ' — ' + text.slice(0, 160) : ''));
                 return { ok: false, error: msg };
               }
               if (!json || !json.token || !json.expiresAt) {
-                return { ok: false, error: 'Sign-in response malformed.' };
+                return {
+                  ok: false,
+                  error: 'Sign-in response malformed (HTTP ' + res.status + ')'
+                    + (text ? ' — ' + text.slice(0, 160) : '')
+                };
               }
               set(JWT_KEY, json.token);
               set(EXP_KEY, String(json.expiresAt));
@@ -165,8 +180,6 @@
               set(NAME_KEY, uEl.value.trim() || 'MLRO');
               set(LEGACY_KEY, json.token);
               return { ok: true };
-            }).catch(function () {
-              return { ok: false, error: 'Sign-in response could not be parsed.' };
             });
           }).catch(function (e) {
             return { ok: false, error: (e && e.message) || 'Network error.' };
