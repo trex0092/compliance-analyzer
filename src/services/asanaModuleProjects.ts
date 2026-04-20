@@ -1,25 +1,28 @@
 /**
- * Asana Module Project Catalog — one project per subject/module so no
- * compliance artefact is missed and the MLRO has a dedicated board
- * for every flow.
+ * Asana Module Project Catalog — 16 per-domain boards approved by the
+ * MLRO. One project per compliance domain so no artefact is orphaned
+ * and the MLRO has a dedicated kanban + sections + custom fields per
+ * flow.
  *
- * Today every screening / TM / STR / disposition task lands on a
- * single unified board (ASANA_SCREENINGS_PROJECT_GID). That works but
- * makes filtering noisy: a CAHRA supplier review sits next to an STR
- * deadline countdown sits next to a structuring alert. Splitting by
- * subject gives each MLRO workflow its own kanban with its own
- * sections + custom fields, AND keeps the evidence chain contiguous
- * (every module still writes through the same asanaClient, and every
- * delta cron still dispatches into the correct board).
+ * The catalog started at 23 (one project per sub-module). The MLRO
+ * merged related domains into 5 consolidated boards so the active
+ * count is 16:
+ *
+ *   Subject Screening + Watchlist           -> 1 board
+ *   CDD/EDD/SDD + UBO + PEP                  -> 1 board
+ *   ESG + Supply Chain + LBMA RGG            -> 1 board
+ *   Regulatory Updates + AI Governance +
+ *     Records Retention                     -> 1 board
+ *   Employees & Access + Training            -> 1 board
  *
  * Each project entry carries:
- *   - `key`           — module identifier used in code and env vars
- *   - `envVar`        — env var name for the Asana project GID
- *   - `name`          — Asana project name (exact)
- *   - `description`   — first line rendered on the Asana project page
- *   - `sections`      — canonical section names created on bootstrap
+ *   - `key`            — module identifier used in code and env vars
+ *   - `envVar`         — env var name for the Asana project GID
+ *   - `name`           — exact Asana project name as provisioned
+ *   - `description`    — first line rendered on the Asana project page
+ *   - `sections`       — canonical section names created on bootstrap
  *   - `regulatoryBasis` — citation block the MLRO can quote to audit
- *   - `owner`         — MLRO role expected to triage
+ *   - `owner`          — MLRO role expected to triage
  *
  * Usage:
  *   import { MODULE_PROJECTS, getModuleProjectGid } from
@@ -46,29 +49,30 @@ export interface ModuleProjectSpec {
 }
 
 export type ModuleKey =
-  | 'subject_screening'
+  | 'screening_and_watchlist'
   | 'transaction_monitoring'
   | 'str_cases'
-  | 'watchlist'
-  | 'cdd_lifecycle'
-  | 'ubo_register'
-  | 'pep_program'
-  | 'records_retention'
-  | 'esg_supply_chain'
-  | 'lbma_rgg'
+  | 'cdd_ubo_pep'
+  | 'esg_supply_lbma'
   | 'dual_use_export_control'
-  | 'regulatory_updates'
-  | 'ai_governance'
+  | 'governance_and_retention'
   | 'audit_inspection'
-  | 'mlro_digest';
+  | 'mlro_digest'
+  | 'employees_and_training'
+  | 'onboarding_workbench'
+  | 'compliance_tasks'
+  | 'four_eyes_queue'
+  | 'shipments_logistics'
+  | 'counterparties_accounts'
+  | 'incidents_whistleblower';
 
 export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
   {
-    key: 'subject_screening',
+    key: 'screening_and_watchlist',
     envVar: 'ASANA_SCREENINGS_PROJECT_GID',
-    name: 'Subject Screening',
+    name: 'Subject Screening & Watchlist',
     description:
-      'Sanctions + adverse-media + PEP screening — run tasks, disposition tasks, watchlist deltas, life-story reports.',
+      'Sanctions + adverse-media + PEP screening AND ongoing-monitoring deltas. Run tasks, disposition tasks, life-story reports, watchlist enrolment, daily re-screens.',
     sections: [
       'Inbox',
       'The Screenings',
@@ -77,9 +81,14 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'False Positive — Dismissed',
       'Negative — No Match',
       'Re-screen Required',
+      'Enrolled — Monitoring',
+      'Delta — New Hit',
+      'Delta — Score Changed',
+      'Periodic Review Due',
+      'De-enrolled',
     ],
     regulatoryBasis:
-      'FDL No.10/2025 Art.20-22 · Cabinet Res 74/2020 Art.4-7 · Cabinet Res 134/2025 Art.14 · FATF Rec 6-7, 10',
+      'FDL No.10/2025 Art.20-22 · Cabinet Res 74/2020 Art.4-7 · Cabinet Res 134/2025 Art.14, 19 · FATF Rec 6-7, 10',
     owner: 'MLRO',
   },
   {
@@ -123,29 +132,11 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
     owner: 'MLRO',
   },
   {
-    key: 'watchlist',
-    envVar: 'ASANA_WATCHLIST_PROJECT_GID',
-    name: 'Active Watchlist & Ongoing Monitoring',
-    description:
-      'Every enrolled subject + delta alerts from the 06:00 / 14:00 UTC re-screens and every 4h sanctions-delta cron.',
-    sections: [
-      'Enrolled — Active',
-      'Delta — New Hit',
-      'Delta — Score Changed',
-      'Periodic Review Due',
-      'Pending Resolution',
-      'De-enrolled',
-    ],
-    regulatoryBasis:
-      'FATF Rec 10 · FDL No.10/2025 Art.20-21 · Cabinet Res 134/2025 Art.14, 19',
-    owner: 'MLRO',
-  },
-  {
-    key: 'cdd_lifecycle',
+    key: 'cdd_ubo_pep',
     envVar: 'ASANA_CDD_PROJECT_GID',
-    name: 'CDD / EDD / SDD Lifecycle',
+    name: 'Customer Due Diligence — UBO & PEP',
     description:
-      'Onboarding pipeline, tier-based re-review, source-of-wealth refresh, dormant-account sweep.',
+      'CDD / EDD / SDD lifecycle, UBO register + ownership chain + shell-company indicators, PEP program (self / family / associate / former / SOE).',
     sections: [
       'Onboarding — New',
       'Standard CDD',
@@ -153,73 +144,33 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'Simplified Due Diligence (SDD)',
       'Periodic Review — Due',
       'Senior Management Approval',
+      'PEP Identified',
+      'Former PEP — Risk-based Continuation',
+      'UBO Verified',
+      'UBO Re-verify — T-15 Working Days',
+      'Ownership Change Detected',
+      'Shell / Front Company Flag',
+      'Inconsistency Escalation',
       'Offboarded',
     ],
     regulatoryBasis:
-      'Cabinet Res 134/2025 Art.7-10, Art.14 · FDL No.10/2025 Art.12-14 · FATF Rec 10, 12',
+      'Cabinet Res 134/2025 Art.7-10, 14 · Cabinet Decision 109/2023 · FDL No.10/2025 Art.12-14 · FATF Rec 10, 12, 24-25 · Wolfsberg PEP FAQs',
     owner: 'Compliance Officer',
   },
   {
-    key: 'ubo_register',
-    envVar: 'ASANA_UBO_PROJECT_GID',
-    name: 'UBO Register & Ownership Chain',
+    key: 'esg_supply_lbma',
+    envVar: 'ASANA_ESG_LBMA_PROJECT_GID',
+    name: 'ESG, Supply Chain & LBMA RGG',
     description:
-      'Beneficial ownership >25%, re-verification on ownership change, layering chain + shell-company indicators.',
+      'CAHRA supplier reviews, modern slavery, ASM compliance, mercury / Minamata, child labour, water stewardship, grievance mechanism. Plus LBMA RGG Step 3-5 chain-of-custody, assay drift, refiner accreditation, recycled-vs-mined origin, annual audit countdown.',
     sections: [
-      'Verified — Active',
-      'Re-verify — T-15 Working Days',
-      'Ownership Change Detected',
-      'Chain Under Investigation',
-      'Shell / Front Company Flag',
-      'Inconsistency Escalation',
-    ],
-    regulatoryBasis:
-      'Cabinet Decision 109/2023 · FATF Rec 24-25 · FDL No.10/2025 Art.14',
-    owner: 'Compliance Officer',
-  },
-  {
-    key: 'pep_program',
-    envVar: 'ASANA_PEP_PROJECT_GID',
-    name: 'PEP Program',
-    description:
-      'PEP (self / family / associate / former / SOE), tier-based re-screen, senior-management approval gate.',
-    sections: [
-      'PEP Identified',
-      'Senior Management Approval — Required',
-      'Approved — Active EDD',
-      'Periodic Re-screen Due',
-      'Former PEP — Under Risk-based Continuation',
-      'Dismissed',
-    ],
-    regulatoryBasis:
-      'FATF Rec 12 · Cabinet Res 134/2025 Art.14 · Wolfsberg PEP FAQs',
-    owner: 'Compliance Officer',
-  },
-  {
-    key: 'records_retention',
-    envVar: 'ASANA_RETENTION_PROJECT_GID',
-    name: 'Records Retention & Evidence',
-    description:
-      '10-year retention integrity, expiring records, evidence-bundle exports, inspection readiness.',
-    sections: [
-      'Active — Retention Clock Running',
-      'Expiring — T-90 Days',
-      'Expiring — T-30 Days',
-      'Evidence Bundle Requested',
-      'Archived — Retention Met',
-      'Integrity Anomaly',
-    ],
-    regulatoryBasis:
-      'FDL No.10/2025 Art.24 · Cabinet Res 71/2024 · LBMA RGG v9 Step 5',
-    owner: 'MLRO',
-  },
-  {
-    key: 'esg_supply_chain',
-    envVar: 'ASANA_ESG_PROJECT_GID',
-    name: 'ESG & Supply Chain',
-    description:
-      'CAHRA reviews, modern-slavery indicators, ASM compliance, mercury/Minamata, child-labour, water, grievance mechanism.',
-    sections: [
+      'Step 3 — Chain of Custody',
+      'Step 4 — Risk Management',
+      'Step 5 — Annual Audit',
+      'Refiner Accreditation',
+      'Assay Drift Alert',
+      'Origin Classification Audit',
+      'DGD Reaccreditation',
       'CAHRA Review',
       'Modern Slavery Risk',
       'ASM Supplier Audit',
@@ -230,26 +181,7 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'Remediated',
     ],
     regulatoryBasis:
-      'LBMA RGG v9 Step 2-4 · UAE MoE RSG · OECD DD Annex II · UNGPs · ILO C-182 · Minamata Convention',
-    owner: 'Compliance Officer',
-  },
-  {
-    key: 'lbma_rgg',
-    envVar: 'ASANA_LBMA_PROJECT_GID',
-    name: 'LBMA RGG & Gold Supply Chain',
-    description:
-      'LBMA RGG Step 3-5: chain-of-custody, assay drift, refiner accreditation, recycled-vs-mined classification, annual audit countdown.',
-    sections: [
-      'Step 3 — Chain of Custody',
-      'Step 4 — Risk Management',
-      'Step 5 — Annual Audit',
-      'Refiner Accreditation',
-      'Assay Drift Alert',
-      'Origin Classification Audit',
-      'DGD Reaccreditation',
-    ],
-    regulatoryBasis:
-      'LBMA RGG v9 Step 3-5 · DGD Standard · UAE MoE RSG Framework · OFAC Russia gold sanctions',
+      'LBMA RGG v9 Step 2-5 · DGD Standard · UAE MoE RSG Framework · OECD DD Annex II · UNGPs · ILO C-182 · Minamata Convention · OFAC Russia gold sanctions',
     owner: 'Compliance Officer',
   },
   {
@@ -257,7 +189,7 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
     envVar: 'ASANA_EXPORT_CONTROL_PROJECT_GID',
     name: 'Dual-Use & Export Control',
     description:
-      'Cabinet Res 156/2025 + Wassenaar + UAE Strategic Trade Control; dual-use tariff flags + sensitive end-use signals + proliferation-financing review.',
+      'Cabinet Res 156/2025 + Wassenaar + UAE Strategic Trade Control. Dual-use tariff flags, sensitive end-use signals, proliferation-financing review.',
     sections: [
       'Dual-Use Flag — Investigate',
       'Strategic Goods — HS Match',
@@ -271,41 +203,33 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
     owner: 'Compliance Officer',
   },
   {
-    key: 'regulatory_updates',
-    envVar: 'ASANA_REGULATORY_PROJECT_GID',
-    name: 'Regulatory Updates & Horizon',
+    key: 'governance_and_retention',
+    envVar: 'ASANA_GOVERNANCE_PROJECT_GID',
+    name: 'Governance, Regulatory Updates & Records Retention',
     description:
-      'MoE / CBUAE / EOCN / VARA / FATF / LBMA circular tracking, drift detection, policy-refresh tasks, constants bumps.',
+      'MoE / CBUAE / EOCN / VARA / FATF / LBMA circular tracking, policy gap detection, constants bumps. AI governance self-audit (EU AI Act + NIST AI RMF + ISO/IEC 42001), red-team, drift, explainability, consistency failures, advisor-budget tracking. 10-yr records retention integrity + evidence bundles.',
     sections: [
       'New Circular — To Review',
       'Policy Gap Detected',
       'Constants Bump Pending',
       'MLRO Memo Drafted',
       'Board Memo Pending',
-      'Actioned',
       'Horizon — Not Yet Effective',
-    ],
-    regulatoryBasis:
-      'FDL No.10/2025 Art.20 · Cabinet Res 134/2025 Art.18-19 · FATF Rec 34',
-    owner: 'MLRO',
-  },
-  {
-    key: 'ai_governance',
-    envVar: 'ASANA_AI_GOVERNANCE_PROJECT_GID',
-    name: 'AI Governance & Assurance',
-    description:
-      'Self-audit (EU AI Act + NIST AI RMF + ISO/IEC 42001 + UAE AI), red-team probes, drift detection, explainability audits, advisor-budget tracking.',
-    sections: [
-      'Self-Audit — Periodic',
-      'Red-Team Finding',
-      'Drift Detected',
+      'AI Self-Audit',
+      'AI Red-Team Finding',
+      'AI Drift Detected',
       'Explainability Issue',
       'Consistency Failure',
       'Advisor Budget Breach',
-      'Resolved',
+      'Records Expiring — T-90 Days',
+      'Records Expiring — T-30 Days',
+      'Evidence Bundle Requested',
+      'Records Archived — Retention Met',
+      'Integrity Anomaly',
+      'Actioned / Resolved',
     ],
     regulatoryBasis:
-      'EU AI Act Art.9, 13, 15 · NIST AI RMF · ISO/IEC 42001 · UAE AI ethical framework',
+      'FDL No.10/2025 Art.20, 24 · Cabinet Res 71/2024 · Cabinet Res 134/2025 Art.18-19 · FATF Rec 34 · EU AI Act Art.9, 13, 15 · NIST AI RMF · ISO/IEC 42001 · LBMA RGG v9 Step 5',
     owner: 'MLRO',
   },
   {
@@ -343,6 +267,146 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
     ],
     regulatoryBasis:
       'Cabinet Res 134/2025 Art.19 · FDL No.10/2025 Art.20-21',
+    owner: 'MLRO',
+  },
+  {
+    key: 'employees_and_training',
+    envVar: 'ASANA_EMPLOYEES_TRAINING_PROJECT_GID',
+    name: 'Employees, Access & Training',
+    description:
+      'MLRO + Deputy appointment audit, role changes, RACI updates, access-rights matrix, DOJ / board notifications. Annual AML/CFT/CPF training per employee, role-specific training, quiz completion, refresher cycle, external regulatory webinar attendance.',
+    sections: [
+      'MLRO + Deputy Appointments',
+      'Role Changes',
+      'RACI Updates',
+      'Access Rights Matrix',
+      'DOJ / Board Notifications',
+      'Annual AML/CFT/CPF Training',
+      'Role-specific Training',
+      'Quiz Completion',
+      'Refresher Cycle',
+      'External Webinar Attendance',
+    ],
+    regulatoryBasis:
+      'Cabinet Res 134/2025 Art.11, 18 · FDL No.10/2025 Art.20-22 · FATF Rec 18',
+    owner: 'MLRO',
+  },
+  {
+    key: 'onboarding_workbench',
+    envVar: 'ASANA_ONBOARDING_PROJECT_GID',
+    name: 'Onboarding Workbench',
+    description:
+      'New customer wizard state, document collection status, KYC pack assembly, first-screening life-story handoff.',
+    sections: [
+      'Wizard — In Progress',
+      'Documents — Pending',
+      'KYC Pack — Assembling',
+      'First-Screening Handoff',
+      'Awaiting Senior Management Approval',
+      'Approved — Live',
+      'Rejected',
+    ],
+    regulatoryBasis:
+      'Cabinet Res 134/2025 Art.7-10 · FDL No.10/2025 Art.12-14 · FATF Rec 10',
+    owner: 'Compliance Officer',
+  },
+  {
+    key: 'compliance_tasks',
+    envVar: 'ASANA_COMPLIANCE_TASKS_PROJECT_GID',
+    name: 'Compliance Tasks — Master Queue',
+    description:
+      'The canonical MLRO single to-do list — every open task across every module, sorted by priority + deadline.',
+    sections: [
+      'Today',
+      'This Week',
+      'Next 30 Days',
+      'Blocked',
+      'In Review',
+      'Done',
+    ],
+    regulatoryBasis:
+      'FDL No.10/2025 Art.20-21 · Cabinet Res 134/2025 Art.19',
+    owner: 'MLRO',
+  },
+  {
+    key: 'four_eyes_queue',
+    envVar: 'ASANA_FOUR_EYES_PROJECT_GID',
+    name: 'Four-Eyes Approvals Queue',
+    description:
+      'Every partial / confirmed screening match, every STR disposition, every high-risk CDD decision waiting on the second approver.',
+    sections: [
+      'Awaiting Second Approver',
+      'In Review',
+      'Approved',
+      'Rejected',
+      'Escalated to Senior Management',
+      'Consistency Waiver Signed',
+    ],
+    regulatoryBasis:
+      'FDL No.10/2025 Art.20-21 · Cabinet Res 134/2025 Art.19 · EU AI Act Art.14 (human oversight)',
+    owner: 'Compliance Officer',
+  },
+  {
+    key: 'shipments_logistics',
+    envVar: 'ASANA_SHIPMENTS_PROJECT_GID',
+    name: 'Shipments & Trade Logistics',
+    description:
+      'Bullion inbound / outbound, carrier + route + insurance, customs declarations, DGD / LBMA good-delivery tracking, Inbound Advice workflow, local UAE vault-to-vault movements.',
+    sections: [
+      'Inbound Advice',
+      'Inbound — In Transit',
+      'Inbound — Received',
+      'Outbound — Scheduled',
+      'Outbound — In Transit',
+      'Outbound — Delivered',
+      'Local Shipments',
+      'Customs Held',
+      'Assay / Quality Flag',
+      'Closed',
+    ],
+    regulatoryBasis:
+      'UAE Customs Law · LBMA Good Delivery · DGD Standard · Cabinet Res 134/2025 Art.16',
+    owner: 'Compliance Officer',
+  },
+  {
+    key: 'counterparties_accounts',
+    envVar: 'ASANA_COUNTERPARTIES_PROJECT_GID',
+    name: 'Counterparties & Approved Accounts',
+    description:
+      'Master counterparty register, bank correspondents, suppliers, authorised signatories. Adverse-media deltas on approved accounts. Sanctions / PEP re-screen events on counterparties.',
+    sections: [
+      'Approved — Active',
+      'Pending Approval',
+      'Correspondent Banks',
+      'Suppliers',
+      'Authorised Signatories',
+      'Adverse-Media Delta',
+      'Sanctions / PEP Delta',
+      'Suspended',
+      'De-listed',
+    ],
+    regulatoryBasis:
+      'FATF Rec 10, 13 · CBUAE Correspondent Banking Standard · Cabinet Res 134/2025 Art.14',
+    owner: 'Compliance Officer',
+  },
+  {
+    key: 'incidents_whistleblower',
+    envVar: 'ASANA_INCIDENTS_PROJECT_GID',
+    name: 'Incidents & Whistleblower',
+    description:
+      'AML breaches, cybersecurity events, physical-security incidents, PDPL data breaches, anonymous + named whistleblower channel, root-cause + remediation tracking.',
+    sections: [
+      'New Incident — Triage',
+      'Active Investigation',
+      'Whistleblower — Anonymous',
+      'Whistleblower — Named',
+      'Root-Cause Analysis',
+      'Remediation In Progress',
+      'Regulator Notification Filed',
+      'Closed — With Lessons',
+    ],
+    regulatoryBasis:
+      'FDL No.10/2025 Art.21, 29 · Cabinet Res 71/2024 · UAE PDPL Art.25 · ISO/IEC 27001 Annex A.16 · UAE Whistleblower Protection frameworks',
     owner: 'MLRO',
   },
 ]);
