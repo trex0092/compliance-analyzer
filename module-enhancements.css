@@ -379,6 +379,21 @@ select option:checked {
   background-color: rgba(255, 255, 255, 0.06) !important;
 }
 
+/* Hide native number-input spinner across every module — the up/down
+   spinners are visual noise in a compliance UI and do not add value
+   over keyboard / manual entry. WebKit/Blink + Firefox. Scope covers
+   every module surface and the root SPA. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+}
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
 /* The stat / list / badge tiles are also cells in the MLRO's mental
    model — make their opaque navy fill translucent so the wallpaper
    glows through. Borders stay so the grid remains legible. */

@@ -543,13 +543,26 @@
     'regulatory-spec':  { label: '/regulatory-spec',   hint: 'New regulation → spec → code → test → evidence' },
     'snapshot-freshness-gate': { label: '/snapshot-freshness-gate', hint: 'Block screening if any mandatory list snapshot is stale (FDL Art.20-21)' },
     'decision-consistency-check': { label: '/decision-consistency-check', hint: 'Re-run brain twice + diff; forbid disposition on divergence (EU AI Act Art.15)' },
-    'evidence-bundle': { label: '/evidence-bundle', hint: 'One-click zip of every artefact for a customer — for MoE / LBMA / CBUAE / internal inspection' }
+    'evidence-bundle': { label: '/evidence-bundle', hint: 'One-click zip of every artefact for a customer — for MoE / LBMA / CBUAE / internal inspection' },
+    // 12 supporting agents (src/agents/definitions/supportingAgents.ts)
+    'research-agent':       { label: '/research-agent',       hint: 'Iterative adverse-media deep-dive with citation discipline' },
+    'document-agent':       { label: '/document-agent',       hint: 'OCR + extraction on passports / Emirates IDs / trade licences' },
+    'ubo-graph-agent':      { label: '/ubo-graph-agent',      hint: 'Ownership-chain tracing + shell-company detection' },
+    'four-eyes-arbitrator': { label: '/four-eyes-arbitrator', hint: 'Second-approver brief + decision rule (FDL Art.20-21)' },
+    'str-drafter':          { label: '/str-drafter',          hint: 'goAML XML STR / SAR / CTR / DPMSR / CNMR drafter' },
+    'citation-agent':       { label: '/citation-agent',       hint: 'Resolve every claim to its FDL / Cabinet Res / FATF citation' },
+    'life-story-agent':     { label: '/life-story-agent',     hint: '8-section Life-Story deep-dive for first screenings' },
+    'timeline-agent':       { label: '/timeline-agent',       hint: 'Chronological compliance trail per customer' },
+    'evidence-assembler':   { label: '/evidence-assembler',   hint: 'Audit-pack zip composer — for MoE / LBMA / CBUAE' },
+    'translation-agent':    { label: '/translation-agent',    hint: '24-language adverse-media + document translation' },
+    'redteam-agent':        { label: '/redteam-agent',        hint: 'Reproducible adversarial probes against the brain' },
+    'drift-detector':       { label: '/drift-detector',       hint: 'Statistical drift on risk-model outputs · PSI / KS / JS' }
   };
   var MODULE_SKILLS = {
-    subject:    ['screen', 'dfsa-adgm-passport', 'snapshot-freshness-gate', 'decision-consistency-check', 'multi-agent-screen', 'onboard', 'incident', 'goaml', 'agent-orchestrate', 'evidence-bundle', 'audit-pack', 'traceability'],
-    transaction:['incident', 'goaml', 'filing-compliance', 'kpi-report', 'decision-consistency-check', 'evidence-bundle', 'audit', 'audit-pack'],
-    str:        ['goaml', 'filing-compliance', 'incident', 'agent-orchestrate', 'traceability', 'evidence-bundle', 'audit-pack'],
-    watchlist:  ['multi-agent-screen', 'screen', 'snapshot-freshness-gate', 'regulatory-update', 'regulatory-spec', 'timeline', 'moe-readiness']
+    subject:    ['screen', 'research-agent', 'life-story-agent', 'document-agent', 'ubo-graph-agent', 'translation-agent', 'dfsa-adgm-passport', 'snapshot-freshness-gate', 'decision-consistency-check', 'multi-agent-screen', 'onboard', 'incident', 'goaml', 'str-drafter', 'four-eyes-arbitrator', 'citation-agent', 'agent-orchestrate', 'evidence-bundle', 'evidence-assembler', 'audit-pack', 'traceability', 'timeline-agent'],
+    transaction:['incident', 'goaml', 'str-drafter', 'filing-compliance', 'kpi-report', 'decision-consistency-check', 'drift-detector', 'evidence-bundle', 'evidence-assembler', 'audit', 'audit-pack'],
+    str:        ['goaml', 'str-drafter', 'citation-agent', 'four-eyes-arbitrator', 'filing-compliance', 'incident', 'agent-orchestrate', 'traceability', 'timeline-agent', 'evidence-bundle', 'evidence-assembler', 'audit-pack'],
+    watchlist:  ['multi-agent-screen', 'screen', 'research-agent', 'snapshot-freshness-gate', 'drift-detector', 'redteam-agent', 'regulatory-update', 'regulatory-spec', 'timeline', 'timeline-agent', 'moe-readiness']
   };
   function skillsPalette(moduleKey) {
     var ids = MODULE_SKILLS[moduleKey] || [];
@@ -2573,13 +2586,16 @@
         // chronological trail for a single customer at a glance
         // (FDL No.10/2025 Art.24 — 10-yr audit record must be complete
         // and unambiguously attributable to the customer).
-        '<div class="mv-grid-2">',
+        // Identity grid — 3 rows x 3 columns = 9 cells. Search fields
+        // are dense + horizontally scannable at this layout, and the
+        // Run Screening action still fits immediately below the last
+        // row. Customer-name input retired — when empty it falls back
+        // to the Name / Entity value at submit time, preserving the
+        // customer anchor with one fewer cell (FDL Art.24 audit
+        // attribution — customer_code is the true anchor).
+        '<div class="mv-grid-3">',
           '<label class="mv-field"><span class="mv-field-label">Customer code <span style="color:#f472b6">*</span></span>',
-            '<input type="text" name="customer_code" required placeholder="Internal customer number (e.g. FGL-0284, CUST-2026-0017)"></label>',
-          '<label class="mv-field"><span class="mv-field-label">Customer name <span style="opacity:.55;font-weight:normal">(as in your book)</span></span>',
-            '<input type="text" name="customer_name" placeholder="Customer display name — defaults to the Name / Entity below if empty"></label>',
-        '</div>',
-        '<div class="mv-grid-2">',
+            '<input type="text" name="customer_code" required placeholder="e.g. FGL-0284, CUST-2026-0017"></label>',
           '<label class="mv-field"><span class="mv-field-label">Subject type</span>',
             '<select name="subject_type">',
               '<option value="individual">Individual</option>',
@@ -2588,7 +2604,7 @@
           '<label class="mv-field"><span class="mv-field-label">Name / Entity <span style="color:#f472b6">*</span></span>',
             '<input type="text" name="name" required placeholder="Full legal name or registered entity"></label>',
         '</div>',
-        '<div class="mv-grid-2">',
+        '<div class="mv-grid-3">',
           '<label class="mv-field"><span class="mv-field-label">Alias</span>',
             '<input type="text" name="alias" placeholder="Also known as / trading name"></label>',
           '<label class="mv-field"><span class="mv-field-label">Gender</span>',
@@ -2598,18 +2614,26 @@
               '<option value="male">Male</option>',
               '<option value="na">N/A (entity)</option>',
             '</select></label>',
-        '</div>',
-        '<div class="mv-grid-2">',
-          '<label class="mv-field"><span class="mv-field-label">Date of birth / Registration (dd/mm/yyyy)</span>',
+          '<label class="mv-field"><span class="mv-field-label">Date of birth / Registration</span>',
             '<input type="text" name="dob" placeholder="dd/mm/yyyy"></label>',
-          '<label class="mv-field"><span class="mv-field-label">Citizenship / Registered country</span>',
-            '<input type="text" name="country" placeholder="e.g. UAE, India, BVI"></label>',
         '</div>',
-        '<div class="mv-grid-2">',
-          '<label class="mv-field"><span class="mv-field-label">Passport / Registration number</span>',
-            '<input type="text" name="passport" placeholder="Passport no. or trade licence / CR no."></label>',
+        '<div class="mv-grid-3">',
+          '<label class="mv-field"><span class="mv-field-label">Citizenship / Country</span>',
+            '<input type="text" name="country" placeholder="e.g. UAE, India, BVI"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Passport / Registration no.</span>',
+            '<input type="text" name="passport" placeholder="Passport / trade licence / CR no."></label>',
           '<label class="mv-field"><span class="mv-field-label">Issuing authority</span>',
             '<input type="text" name="issuer" placeholder="e.g. DED, UAE MOI, HMPO"></label>',
+        '</div>',
+
+        // Run / Clear moved UP next to the search identity grid so the
+        // MLRO can fire the screen without scrolling past the Coverage
+        // disclosure and the skills palette. The trailing actions block
+        // below the form is retired — a single action bar keeps the
+        // flow "type identity → click Run Screening" tight.
+        '<div class="mv-form-actions" style="margin-top:10px;margin-bottom:6px">',
+          '<button type="submit" class="mv-btn mv-btn-primary">Run screening</button>',
+          '<button type="reset" class="mv-btn mv-btn-ghost">Clear</button>',
         '</div>',
 
         // Coverage is collapsed by default — the 6 sections below used to
@@ -2659,11 +2683,6 @@
           hiddenGroup('adverse_media', ADVERSE_MEDIA_CATEGORIES),
           hiddenGroup('special_screens', SPECIAL_SCREENS),
         '</details>',
-
-        '<div class="mv-form-actions">',
-          '<button type="submit" class="mv-btn mv-btn-primary">Run screening</button>',
-          '<button type="reset" class="mv-btn mv-btn-ghost">Clear</button>',
-        '</div>',
       '</form>',
 
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px">' +
