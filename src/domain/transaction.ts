@@ -17,15 +17,19 @@
  * Regulatory basis:
  *   FDL No.10/2025 Art.15     (suspicious transaction monitoring)
  *   FDL No.10/2025 Art.16     (cross-border cash AED 60K threshold)
- *   FDL No.10/2025 Art.26-27  (STR filing within 10 business days
- *                               of suspicion)
+ *   FDL No.10/2025 Art.26-27  (STR filing without delay upon
+ *                               suspicion confirmation)
  *   Cabinet Res 134/2025 Art.14 (ongoing monitoring of EDD customers)
  *   MoE Circular 08/AML/2021  (DPMS AED 55K CTR threshold via goAML)
  *   FATF Rec 10, 11, 20, 21   (ongoing CDD + record keeping + STR)
  */
 
 import type { CountryCodeIso2, DateDdMmYyyy, IsoTimestamp } from './customerProfile';
-import { DPMS_CASH_THRESHOLD_AED, CROSS_BORDER_CASH_THRESHOLD_AED } from './constants';
+import {
+  DPMS_CASH_THRESHOLD_AED,
+  CROSS_BORDER_CASH_THRESHOLD_AED,
+  STR_FILING_DEADLINE_BUSINESS_DAYS,
+} from './constants';
 
 // ---------------------------------------------------------------------------
 // Regulatory thresholds — re-exported from ./constants (single source of truth).
@@ -69,9 +73,18 @@ export const VELOCITY_24H_COUNT_THRESHOLD = 5;
 
 /**
  * STR / SAR filing deadline in business days from the day the
- * suspicion is raised. Per FDL Art.26-27.
+ * suspicion is confirmed. Per FDL Art.26-27 — UAE FIU interprets
+ * "without delay" as absolute immediacy (value 0: file the moment
+ * suspicion is solidified).
+ *
+ * Re-export of `STR_FILING_DEADLINE_BUSINESS_DAYS` from ./constants
+ * (the single source of truth). Previous drift literal (10) is
+ * retired — the 10-business-day reading was inconsistent with the
+ * statute-citing comment in ./constants and with the 8+ other call
+ * sites already using the authoritative value. See txMonitoringBrain,
+ * strNarrativePreDraft for the aligned consumers.
  */
-export const STR_FILING_BUSINESS_DAYS = 10;
+export const STR_FILING_BUSINESS_DAYS = STR_FILING_DEADLINE_BUSINESS_DAYS;
 
 // ---------------------------------------------------------------------------
 // Transaction types

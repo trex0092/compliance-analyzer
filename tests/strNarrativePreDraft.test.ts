@@ -81,7 +81,7 @@ describe('buildStrNarrativeDraft', () => {
     expect(a.factList).toEqual(b.factList);
   });
 
-  it('cites the FIU filing deadlines (10 business days STR, 5 business days CNMR)', () => {
+  it('cites the FIU filing deadlines (STR file without delay per FDL Art.26-27, 5 business days CNMR)', () => {
     const d = buildStrNarrativeDraft({
       subject: SUBJECT,
       match: MATCH,
@@ -91,7 +91,11 @@ describe('buildStrNarrativeDraft', () => {
       generatedAtIso: '2026-04-19T09:00:00.000Z',
       runId: 'run-1',
     });
-    expect(d.filingDeadline.strBusinessDays).toBe(10);
+    // STR = 0: FDL Art.26-27 "without delay" — not a grace period. Aligned
+    // with src/domain/constants.ts (the single source of truth); the
+    // prior 10-business-day drift lived only in two call sites and is
+    // retired in the same commit as this test update.
+    expect(d.filingDeadline.strBusinessDays).toBe(0);
     expect(d.filingDeadline.cnmrBusinessDays).toBe(5);
   });
 

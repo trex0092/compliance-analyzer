@@ -228,7 +228,7 @@ Match confidence >= 0.9 (confirmed)?
 ### When creating/modifying a filing deadline:
 ```
 Use src/utils/businessDays.ts — NEVER calculate with calendar days.
-├── STR/SAR → checkDeadline(event, 10)  [10 business days]
+├── STR/SAR → checkDeadline(event, 0)  [file without delay — FDL Art.26-27; the 0 is the outer regulatory backstop, NOT a grace period to wait before filing. Matches STR_FILING_DEADLINE_BUSINESS_DAYS in src/domain/constants.ts.]
 ├── CTR/DPMSR → checkDeadline(event, 15)  [15 business days]
 ├── CNMR → checkDeadline(event, 5)  [5 business days]
 └── EOCN freeze → checkEOCNDeadline()  [24 clock hours, NOT business days]

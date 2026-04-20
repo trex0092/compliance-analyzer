@@ -661,8 +661,12 @@ function renderStrDraftBlock(
     lines.push(`  • ${fact}`);
   }
   lines.push('');
+  const strDeadlineText =
+    draft.filingDeadline.strBusinessDays === 0
+      ? 'file without delay (FDL Art.26-27)'
+      : `${draft.filingDeadline.strBusinessDays} business days (FDL Art.27)`;
   lines.push(
-    `FILING DEADLINES: STR ${draft.filingDeadline.strBusinessDays} business days (FDL Art.27) · CNMR ${draft.filingDeadline.cnmrBusinessDays} business days (Cabinet Res 74/2020 Art.6).`
+    `FILING DEADLINES: STR ${strDeadlineText} · CNMR ${draft.filingDeadline.cnmrBusinessDays} business days (Cabinet Res 74/2020 Art.6).`
   );
   return lines.join('\n');
 }
