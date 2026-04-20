@@ -175,7 +175,14 @@ export const REPORTING_DEADLINES: ReportingDeadline[] = [
   {
     reportType: 'STR',
     description: 'Suspicious Transaction Report — file when suspicion of ML/TF identified',
-    deadline: 'Without delay; maximum 10 business days from date of suspicion',
+    // FDL No.10/2025 Art.26-27 requires filing WITHOUT DELAY (0 business
+    // days from suspicion formation). The previous text "maximum 10
+    // business days" was dangerous misinformation — an MLRO reading
+    // this deadline string would think they had a 10-day window when
+    // the statute grants none. The "10" appeared to have been carried
+    // over from a draft of a different jurisdiction's regime. Aligned
+    // with STR_FILING_DEADLINE_BUSINESS_DAYS = 0 in src/domain/constants.ts.
+    deadline: 'Without delay (0 business days from suspicion formation)',
     reportTo: 'FIU via goAML portal',
     regulatoryRef: 'FDL No.10/2025 Art.26, MoE Circular 08/AML/2021',
     penaltyForBreach: 'Administrative fine AED 50,000–5,000,000 and/or criminal penalty',
@@ -184,7 +191,9 @@ export const REPORTING_DEADLINES: ReportingDeadline[] = [
     reportType: 'SAR',
     description:
       'Suspicious Activity Report — file when suspicious behavior (non-transaction) identified',
-    deadline: 'Without delay; maximum 10 business days',
+    // Same statutory basis as STR — FDL Art.26 "without delay", not
+    // "maximum 10 business days".
+    deadline: 'Without delay (0 business days from suspicion formation)',
     reportTo: 'FIU via goAML portal',
     regulatoryRef: 'FDL No.10/2025 Art.26',
     penaltyForBreach: 'Administrative fine AED 50,000–5,000,000 and/or criminal penalty',

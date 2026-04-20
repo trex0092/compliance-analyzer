@@ -104,7 +104,19 @@ async function defaultLoadWatchlist(): Promise<WatchlistEntry[]> {
     const raw = (await store.get(WATCHLIST_KEY, { type: 'json' })) as unknown;
     const wl = deserialiseWatchlist(raw);
     return listAllEntries(wl);
-  } catch {
+  } catch (err) {
+    // CRITICAL operability signal: a silent [] here means the sanctions
+    // ingest cron will screen every delta against an empty watchlist —
+    // every customer match is then invisibly missed. Surface the error
+    // so ops can detect Blobs outages that would otherwise produce
+    // false "all clear" runs. Return [] preserved for dev/local
+    // (Blobs unavailable) and to avoid crashing the cron, but the
+    // caller MUST treat repeated empty-on-error signals as a reason
+    // to abort dispatch. FDL No.10/2025 Art.20-21.
+    console.error(
+      '[immediateRiskAlerts] defaultLoadWatchlist failed — screening may run against empty watchlist',
+      err
+    );
     return [];
   }
 }
@@ -116,7 +128,13 @@ async function defaultLoadDispatchFingerprints(): Promise<Set<string>> {
     const raw = (await store.get(key, { type: 'json' })) as unknown;
     if (!Array.isArray(raw)) return new Set();
     return new Set(raw.filter((v): v is string => typeof v === 'string'));
-  } catch {
+  } catch (err) {
+    // Empty dedup set is safe (strictly worse mode is duplicate alerts,
+    // not missed alerts) but the error still needs ops visibility.
+    console.warn(
+      '[immediateRiskAlerts] defaultLoadDispatchFingerprints failed — duplicates may fire',
+      err
+    );
     return new Set();
   }
 }

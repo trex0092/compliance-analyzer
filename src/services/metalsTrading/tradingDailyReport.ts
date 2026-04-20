@@ -24,6 +24,7 @@
 
 import type { MetalsTradingBrain } from './metalsTradingBrain';
 import type { Metal, FusedDecision, MarketRegime } from './types';
+import { DPMS_CASH_THRESHOLD_AED } from '../../domain/constants';
 
 // ─── Report Structure ───────────────────────────────────────────────────────
 
@@ -251,7 +252,14 @@ export function generateDailyReport(brain: MetalsTradingBrain): TradingDailyRepo
 
   // Compliance flags
   const thresholdAlerts: string[] = [];
-  const aedThreshold = 55_000 * 3.6725; // AED 55K in USD ~$14,976
+  // DPMS cash transaction reporting threshold (MoE Circular 08/AML/2021)
+  // imported from constants.ts — never hardcode regulatory values.
+  // The 3.6725 factor is the AED→USD peg (CBUAE official peg to USD
+  // since 1997). Inline FX conversion is acceptable here because the
+  // report is an internal diagnostic and the peg has been stable for
+  // 27 years; if the peg is ever revised this line must be updated
+  // via a regulatory-update PR.
+  const aedThreshold = DPMS_CASH_THRESHOLD_AED * 3.6725;
   for (const trade of trades) {
     const tradeValue = trade.quantity * trade.entryPrice;
     if (tradeValue >= aedThreshold) {
