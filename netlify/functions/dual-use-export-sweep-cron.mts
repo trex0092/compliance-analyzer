@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/dual-use-export-sweep',
   schedule: '30 5 * * *',
 };

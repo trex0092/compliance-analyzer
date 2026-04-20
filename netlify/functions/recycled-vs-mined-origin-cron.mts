@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/recycled-vs-mined-origin',
   schedule: '0 5 * * 4',
 };

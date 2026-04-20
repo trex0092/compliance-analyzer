@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/advisor-budget-tracker',
   schedule: '0 2 * * *',
 };

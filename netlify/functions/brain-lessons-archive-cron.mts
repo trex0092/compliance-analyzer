@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/brain-lessons-archive',
   schedule: '0 2 * * *',
 };

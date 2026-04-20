@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/pep-rescreen-by-tier',
   schedule: '30 3 * * *',
 };

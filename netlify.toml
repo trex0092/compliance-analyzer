@@ -39,6 +39,20 @@
   status = 200
   force = true
 
+# Scheduled routine functions — Netlify forbids combining config.path
+# with config.schedule (ntl.fyi/custom-path-scheduled-functions). All
+# 33 `*-cron.mts` functions under netlify/functions therefore drop
+# their `path:` declaration and live at their default URL. This glob
+# preserves the stable `/api/routines/<slug>` surface used by
+# routines.html dry-run buttons and CI smoke tests by rewriting to
+# the default function URL (`<slug>-cron`). Regulatory basis: FDL
+# No.(10)/2025 Art.20-21 (CO visibility), Art.24 (10-year audit).
+[[redirects]]
+  from = "/api/routines/*"
+  to = "/.netlify/functions/:splat-cron"
+  status = 200
+  force = true
+
 # Unified Asana task-creation endpoint used by /workbench, /logistics,
 # /compliance-ops and /routines to create tasks in their dedicated
 # Asana project. The backend routes by { source } and reads the target

@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/cross-border-aed60k-xcheck',
   schedule: '0 7 * * *',
 };

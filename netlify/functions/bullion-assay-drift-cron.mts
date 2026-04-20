@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/bullion-assay-drift',
   schedule: '30 8 * * *',
 };

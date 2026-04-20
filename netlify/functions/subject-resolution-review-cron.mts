@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/subject-resolution-review',
   schedule: '30 5 * * *',
 };

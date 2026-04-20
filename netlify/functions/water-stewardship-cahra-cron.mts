@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/water-stewardship-cahra',
   schedule: '30 4 * * 5',
 };

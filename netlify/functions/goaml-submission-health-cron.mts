@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/goaml-submission-health',
   schedule: '*/30 * * * *',
 };
