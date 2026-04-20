@@ -114,31 +114,20 @@
   }
 
   async function validateToken() {
-    const token = tokenInput.value.trim();
+    var sessionJwt = window.__hawkeyeAuth ? window.__hawkeyeAuth.getJwt() : null;
+    const token = (sessionJwt || tokenInput.value || '').trim();
     if (!token) {
       updateTokenStatus('pending', '');
       return false;
     }
-    // Client-side format check (matches the server's auth middleware)
-    if (token.length < TOKEN_MIN) {
+    // Accept either the MLRO JWT (ey....) issued by /api/hawkeye-login,
+    // or the legacy hex brain token (backend-to-backend scripts).
+    var isJwt = /^ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token);
+    var isHex = token.length >= TOKEN_MIN && TOKEN_HEX_RE.test(token);
+    if (!isJwt && !isHex) {
       updateTokenStatus(
         'error',
-        'Token too short (' + token.length + ' chars; server requires at least ' + TOKEN_MIN + '). Did you truncate it when copying?'
-      );
-      return false;
-    }
-    if (!TOKEN_HEX_RE.test(token)) {
-      const badChars = [];
-      for (let i = 0; i < token.length; i++) {
-        if (!/[a-f0-9]/i.test(token.charAt(i))) {
-          badChars.push(token.charAt(i));
-        }
-      }
-      updateTokenStatus(
-        'error',
-        'Token has non-hex characters. The server only accepts 0-9 and a-f. ' +
-          'You may have pasted the wrong token (e.g. the Asana token, which has other characters). ' +
-          (badChars.length > 0 && badChars.length <= 10 ? 'Bad chars: ' + badChars.join(' ') : '')
+        'Session token not recognised — sign out and sign in again at /.'
       );
       return false;
     }
@@ -204,21 +193,21 @@
   // ─── API client ───────────────────────────────────────────────────
 
   async function apiCall(method, body) {
-    const token = tokenInput.value.trim();
+    // Token is sourced from the MLRO session established on /. The
+    // hidden #token input is populated at page-load by the gate.
+    var sessionJwt = window.__hawkeyeAuth ? window.__hawkeyeAuth.getJwt() : null;
+    const token = (sessionJwt || tokenInput.value || '').trim();
     if (!token) {
-      return { ok: false, error: 'Token required — paste it in the Authentication box above.' };
+      return { ok: false, error: 'Session expired — sign in again at /.' };
     }
-    // Client-side format check first (fail fast without a network call)
-    if (token.length < TOKEN_MIN) {
+    // Shape gate: accept either the MLRO JWT (ey...) or the legacy
+    // hex brain token (used only by backend-to-backend scripts).
+    var isJwt = /^ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token);
+    var isHex = token.length >= TOKEN_MIN && TOKEN_HEX_RE.test(token);
+    if (!isJwt && !isHex) {
       return {
         ok: false,
-        error: 'Token too short (' + token.length + ' chars). The server requires at least ' + TOKEN_MIN + ' hex characters. Double-check you copied the full HAWKEYE_BRAIN_TOKEN value.',
-      };
-    }
-    if (!TOKEN_HEX_RE.test(token)) {
-      return {
-        ok: false,
-        error: 'Token has non-hex characters. The server only accepts 0-9 and a-f. You may have pasted the wrong token — check that you copied HAWKEYE_BRAIN_TOKEN (not ASANA_TOKEN or ANTHROPIC_API_KEY).',
+        error: 'Session token is not recognised — sign out and sign in again at /.',
       };
     }
     try {

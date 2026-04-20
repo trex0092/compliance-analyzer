@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <title>Watchlist Admin — Hawkeye Sterling</title>
+  <script src="auth-gate.js?v=1" data-auth-gate="protect"></script>
   <link rel="icon" type="image/svg+xml" href="assets/logos/hawkeye-icon.svg">
   <style>
     /* Self-contained dark-luxury theme matching the main tool. CSP allows
@@ -244,13 +245,23 @@
   <h1>Watchlist Admin <span class="badge">v1</span></h1>
   <p class="intro">Add people or entities to ongoing compliance monitoring. They will be screened automatically twice daily (06:00 and 14:00 UTC). New adverse media hits will appear as Asana tasks in the SCREENINGS project, assigned to Luisa Fernanda.</p>
 
-  <!-- Authentication ────────────────────────────────────────────── -->
-  <div class="card">
-    <h2>Authentication</h2>
-    <label for="token">Hawkeye brain token</label>
-    <input type="password" id="token" placeholder="Paste your HAWKEYE_BRAIN_TOKEN" autocomplete="off" spellcheck="false">
-    <span class="token-hint">Saved locally in this browser only. Never sent anywhere except to your own compliance API.</span>
-  </div>
+  <!-- Authentication — driven by the single MLRO sign-in on /.
+       The token input is kept as a hidden field so the legacy
+       watchlist-admin.js `tokenInput.value` reads still work;
+       auth-gate.js mirrors the JWT into hawkeye.watchlist.adminToken
+       for backwards compatibility and this script copies it into the
+       hidden input on page load.
+       FDL No.(10)/2025 Art.20-21, CLAUDE.md Seguridad §5. -->
+  <input type="hidden" id="token" value="" autocomplete="off">
+  <script>
+    (function () {
+      var el = document.getElementById('token');
+      var auth = window.__hawkeyeAuth;
+      if (!el) return;
+      var jwt = auth ? auth.getJwt() : null;
+      if (jwt) el.value = jwt;
+    })();
+  </script>
 
   <!-- Add subject ────────────────────────────────────────────── -->
   <div class="card">
