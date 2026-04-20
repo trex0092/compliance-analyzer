@@ -158,6 +158,72 @@
     clearSession: clearSession
   };
 
+  // Cross-tab session sync — when the MLRO logs in on one tab, the
+  // localStorage `storage` event fires in every other tab on the same
+  // origin. Protected pages that were waiting on the gate recover
+  // immediately without a manual refresh. If a logout fires elsewhere
+  // (clearSession() deletes the JWT_KEY), every other open tab redirects
+  // to login so the auth state is consistent across the whole browser.
+  // FDL Art.20-21 — CO accountability: one principal, one session.
+  try {
+    window.addEventListener('storage', function (e) {
+      if (!e || !e.key) return;
+      if (e.key === JWT_KEY) {
+        if (e.newValue && !e.oldValue) {
+          // Another tab signed in — reload this page so the gate
+          // re-runs and any page-specific init can read the session.
+          location.reload();
+        } else if (!e.newValue && e.oldValue) {
+          // Another tab signed out — redirect every open tab so the
+          // MLRO never keeps working on a signed-out session.
+          var back = location.pathname + location.search + location.hash;
+          location.replace('/login.html?return=' + encodeURIComponent(back));
+        }
+      }
+    });
+  } catch (_e) { /* addEventListener may fail in very old browsers */ }
+
+  // Silent session watchdog — every 60s, check if the JWT has less
+  // than 5 minutes of life left. Redirect to /login.html with the
+  // current return path BEFORE the token expires so the MLRO never
+  // hits a 401 mid-action. Keeps "login anywhere, stay signed in"
+  // guarantee on long MLRO sessions (review + STR drafting often
+  // exceeds the raw token lifetime).
+  try {
+    setInterval(function () {
+      var exp = parseInt(safeGet(EXP_KEY) || '0', 10);
+      if (!exp) return;
+      var secondsLeft = exp - now();
+      if (secondsLeft > 0 && secondsLeft <= 300) {
+        // Only warn; do not auto-redirect mid-form. Expose a marker
+        // element any page can observe.
+        var marker = document.getElementById('__hawkeyeSessionWarning');
+        if (!marker) {
+          marker = document.createElement('div');
+          marker.id = '__hawkeyeSessionWarning';
+          marker.style.cssText =
+            'position:fixed;top:10px;right:10px;z-index:99999;' +
+            'padding:8px 14px;border-radius:6px;' +
+            'background:rgba(234,88,12,0.92);color:#fff;' +
+            'font-family:"DM Mono",monospace;font-size:12px;' +
+            'box-shadow:0 4px 16px rgba(0,0,0,0.4);cursor:pointer';
+          marker.textContent = 'Session expires in ' + Math.ceil(secondsLeft / 60) + ' min — click to re-auth';
+          marker.addEventListener('click', function () {
+            var back = location.pathname + location.search + location.hash;
+            location.href = '/login.html?return=' + encodeURIComponent(back);
+          });
+          document.body && document.body.appendChild(marker);
+        } else {
+          marker.textContent = 'Session expires in ' + Math.ceil(secondsLeft / 60) + ' min — click to re-auth';
+        }
+      } else if (secondsLeft <= 0) {
+        clearSession();
+        var back = location.pathname + location.search + location.hash;
+        location.replace('/login.html?return=' + encodeURIComponent(back));
+      }
+    }, 60 * 1000);
+  } catch (_e) { /* ignore */ }
+
   // Run the gate immediately on load so protected pages never flash
   // their contents before the redirect fires.
   runGate();

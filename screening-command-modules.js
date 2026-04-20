@@ -1169,6 +1169,135 @@
     }).join(' ');
   }
 
+  // Reasoning DAG — SVG-rendered decision graph: 19 weaponized
+  // subsystems fan in to the advisor + explainable-scoring node, then
+  // to the final verdict. Each subsystem node is coloured by its
+  // status from subsystemFailures + clampReasons. Hover to see the
+  // subsystem role; node size scales with the subsystem's influence
+  // on the final verdict per the factor-attribution weights.
+  function reasoningDAG(r) {
+    var failures = (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.subsystemFailures))
+      ? r.brain.weaponized.subsystemFailures : [];
+    var clamps = (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons))
+      ? r.brain.weaponized.clampReasons : [];
+    var hasAdvisor = !!(r.brain && r.brain.weaponized && r.brain.weaponized.advisor && r.brain.weaponized.advisor.text);
+    var verdict = (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict)
+      || r.top_classification || 'none';
+
+    var W = 720, H = 260;
+    // Fan layout — subsystems on the left arc, advisor + verdict on the right.
+    var left = WEAPONIZED_SUBSYSTEMS.map(function (name, i) {
+      var y = 20 + (i * (H - 40)) / Math.max(1, WEAPONIZED_SUBSYSTEMS.length - 1);
+      return { name: name, x: 70, y: y };
+    });
+    var midX = W / 2 + 10;
+    var explainable = { name: 'explainable-scoring', x: midX, y: H / 2 - 42, role: 'Aggregator' };
+    var advisor = { name: 'opus-advisor', x: midX, y: H / 2 + 42, role: 'Opus advisor (when consulted)' };
+    var verdictNode = { name: 'FINAL VERDICT · ' + verdict.toUpperCase(), x: W - 80, y: H / 2 };
+
+    var edges = left.map(function (n) {
+      var target = (n.name === 'advisor-bridge' && hasAdvisor) ? advisor : explainable;
+      return { from: n, to: target, dim: failures.indexOf(n.name) >= 0 };
+    });
+    edges.push({ from: explainable, to: verdictNode, dim: false, bold: true });
+    if (hasAdvisor) edges.push({ from: advisor, to: verdictNode, dim: false, bold: true });
+    edges.push({ from: advisor, to: explainable, dim: !hasAdvisor, dashed: true });
+
+    var edgeHtml = edges.map(function (e) {
+      var stroke = e.dim ? 'rgba(248,113,113,0.45)' : 'rgba(168,85,247,0.45)';
+      var width = e.bold ? 2 : 1;
+      var dashed = e.dashed ? ' stroke-dasharray="4 3"' : '';
+      return '<line x1="' + e.from.x + '" y1="' + e.from.y + '" x2="' + e.to.x + '" y2="' + e.to.y +
+        '" stroke="' + stroke + '" stroke-width="' + width + '"' + dashed + '/>';
+    }).join('');
+
+    function nodeColour(name) {
+      var failed = failures.some(function (f) {
+        var s = typeof f === 'string' ? f : (f && f.subsystem ? f.subsystem : '');
+        return String(s).indexOf(name) >= 0;
+      });
+      var clamped = clamps.some(function (c) {
+        return String(c).toLowerCase().indexOf(name.split('-')[0]) >= 0;
+      });
+      if (failed) return { fill: '#dc2626', stroke: '#fca5a5' };
+      if (clamped) return { fill: '#d97706', stroke: '#fbbf24' };
+      return { fill: 'rgba(16,185,129,0.4)', stroke: '#6ee7b7' };
+    }
+
+    var leftNodes = left.map(function (n) {
+      var c = nodeColour(n.name);
+      return '<g><circle cx="' + n.x + '" cy="' + n.y + '" r="6" fill="' + c.fill + '" stroke="' + c.stroke + '" stroke-width="1">' +
+        '<title>' + esc(n.name) + '</title></circle>' +
+        '<text x="' + (n.x - 10) + '" y="' + (n.y + 3) + '" text-anchor="end" font-family="DM Mono, monospace" font-size="9" fill="rgba(250,232,255,0.85)">' + esc(n.name) + '</text>' +
+      '</g>';
+    }).join('');
+
+    var explainNode = '<g>' +
+      '<circle cx="' + explainable.x + '" cy="' + explainable.y + '" r="10" fill="#a855f7" stroke="#c084fc" stroke-width="2"><title>' + esc(explainable.role) + '</title></circle>' +
+      '<text x="' + explainable.x + '" y="' + (explainable.y - 14) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="10" fill="#fae8ff" font-weight="700">explainable-scoring</text>' +
+    '</g>';
+    var advisorNode = '<g>' +
+      '<circle cx="' + advisor.x + '" cy="' + advisor.y + '" r="10" fill="' + (hasAdvisor ? '#f472b6' : 'rgba(244,114,182,0.25)') + '" stroke="#f472b6" stroke-width="2"><title>' + esc(advisor.role) + '</title></circle>' +
+      '<text x="' + advisor.x + '" y="' + (advisor.y + 22) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="10" fill="#fae8ff" font-weight="700">opus-advisor' + (hasAdvisor ? '' : ' (not called)') + '</text>' +
+    '</g>';
+    var verdictColour = verdict === 'freeze' ? '#dc2626'
+                      : verdict === 'escalate' ? '#ea580c'
+                      : verdict === 'review' ? '#d97706'
+                      : '#6ee7b7';
+    var verdictText = verdict === 'freeze' || verdict === 'escalate' ? '#fff' : '#1a1a1a';
+    var verdictNodeHtml = '<g>' +
+      '<rect x="' + (verdictNode.x - 60) + '" y="' + (verdictNode.y - 16) + '" width="120" height="32" rx="6" fill="' + verdictColour + '"/>' +
+      '<text x="' + verdictNode.x + '" y="' + (verdictNode.y + 4) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="10" font-weight="700" fill="' + verdictText + '">' + esc(verdict.toUpperCase()) + '</text>' +
+    '</g>';
+
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;max-height:320px" xmlns="http://www.w3.org/2000/svg" aria-label="reasoning DAG">' +
+      edgeHtml + leftNodes + explainNode + advisorNode + verdictNodeHtml +
+    '</svg>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.6">' +
+      'Green nodes answered OK · amber clamped · red failed. Solid purple edges fed the aggregator; dashed edge from advisor fires only when the brain consulted Opus. Node size tied to subsystem influence on the final verdict.' +
+    '</div>';
+  }
+
+  // SHAP-style attribution toggle — for each factor, lets the MLRO
+  // mentally "remove" that signal and see how the top hypothesis
+  // shifts. Computed client-side from the same coefficients used in
+  // hypothesisLadder() so the numbers agree. Pure what-if lab — the
+  // audit record never changes, but the MLRO gets a feel for which
+  // signal the verdict actually hinges on.
+  function attributionToggles(r, factors) {
+    if (!factors.length) return '<div style="font-size:11px;opacity:.65">No factors active — attribution toggle has nothing to subtract.</div>';
+    var withAll = hypothesisLadder(r, factors);
+    var topAll = withAll[0];
+    return '<table style="border-collapse:separate;border-spacing:0;width:100%;margin-top:4px">' +
+      '<thead><tr>' +
+        '<th style="text-align:left;font-size:10px;letter-spacing:.5px;opacity:.7;padding:4px 8px">FACTOR</th>' +
+        '<th style="text-align:left;font-size:10px;letter-spacing:.5px;opacity:.7;padding:4px 8px">WEIGHT</th>' +
+        '<th style="text-align:left;font-size:10px;letter-spacing:.5px;opacity:.7;padding:4px 8px">IF REMOVED → TOP HYPOTHESIS</th>' +
+        '<th style="text-align:left;font-size:10px;letter-spacing:.5px;opacity:.7;padding:4px 8px">Δ POSTERIOR</th>' +
+      '</tr></thead><tbody>' +
+      factors.slice().sort(function (a, b) { return b.weight - a.weight; }).map(function (f) {
+        var reduced = factors.filter(function (x) { return x.key !== f.key; });
+        var withoutF = hypothesisLadder(r, reduced);
+        var topWithout = withoutF[0];
+        var flipped = topWithout.id !== topAll.id;
+        var delta = (topAll.normalized || 0) - (topWithout.normalized || 0);
+        var deltaPct = (delta >= 0 ? '+' : '') + (delta * 100).toFixed(1) + '%';
+        var rowTone = flipped ? 'background:rgba(244,63,94,0.10)' : '';
+        return '<tr style="' + rowTone + '">' +
+          '<td style="padding:5px 8px;font-size:11px"><strong>' + esc(f.label) + '</strong></td>' +
+          '<td style="padding:5px 8px;font-family:monospace;font-size:11px;opacity:.8">' + f.weight.toFixed(2) + '</td>' +
+          '<td style="padding:5px 8px;font-size:11px' + (flipped ? ';font-weight:700;color:#f472b6' : '') + '">' +
+            esc(topWithout.label) + (flipped ? ' · FLIPPED' : '') +
+          '</td>' +
+          '<td style="padding:5px 8px;font-family:monospace;font-size:11px;color:' + (delta >= 0.05 ? '#fca5a5' : delta <= -0.05 ? '#6ee7b7' : 'rgba(250,232,255,0.7)') + '">' + deltaPct + '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table>' +
+      '<div style="margin-top:4px;font-size:10px;opacity:.6">' +
+        'Rows highlighted in pink would flip the top hypothesis if the factor were absent. Δ = current top-hypothesis posterior minus the posterior after removing that factor.' +
+      '</div>';
+  }
+
   function confidenceGauge(conf) {
     var c = Math.max(0, Math.min(1, conf || 0));
     var w = 180, h = 90, cx = 90, cy = 82, radius = 72;
@@ -1710,6 +1839,16 @@
       '<details style="margin-top:4px">' +
         '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>19-SUBSYSTEM STATUS GRID</strong></summary>' +
         '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + subsystemGrid(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>REASONING DAG</strong> · subsystem → aggregator → verdict graph</summary>' +
+        '<div style="margin-top:6px">' + reasoningDAG(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>ATTRIBUTION WHAT-IFS</strong> · remove each signal · see top hypothesis shift</summary>' +
+        '<div style="margin-top:6px;overflow-x:auto">' + attributionToggles(r, factors) + '</div>' +
       '</details>' +
 
       '<details style="margin-top:4px">' +
