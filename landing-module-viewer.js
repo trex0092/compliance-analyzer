@@ -1,13 +1,31 @@
 (function () {
-  // iOS Safari / Firefox bfcache: when the landing page is restored
-  // from the back/forward cache (e.g. after merging a fix + returning
-  // via Safari's back button), the page state is revived WITHOUT
-  // re-requesting the HTML — so a stale-build topbar/page-nav can
-  // keep rendering even after a deploy. Force a hard reload on bfcache
-  // restore so every post-deploy visit sees the current HTML.
-  window.addEventListener('pageshow', function (e) {
-    if (e && e.persisted) window.location.reload();
-  });
+  // bfcache handling — when a page is restored from the back/forward
+  // cache its DOM + classlist come back unchanged, which can leave
+  // `html.module-view-active` set on a page that is now showing the
+  // landing root. Rather than force a reload (which on iOS Safari
+  // can mis-fire with `event.persisted === true` on non-bfcache
+  // loads and cause a blank-page render loop — see the live-site
+  // incident at 08:05 where all four landing roots went empty after
+  // PR #350 deployed a `window.location.reload()` on pageshow), we
+  // instead re-compute whether the current URL is a sub-route and
+  // sync the class accordingly. Idempotent and loop-safe.
+  function syncModuleViewActiveClass() {
+    var LANDINGS = ['logistics', 'workbench', 'compliance-ops', 'routines', 'screening-command'];
+    var segs = (location.pathname || '/').split('/').filter(Boolean);
+    var first = segs.length ? segs[0].replace(/\.html$/, '') : '';
+    var isSubRoute = segs.length >= 2 && LANDINGS.indexOf(first) !== -1;
+    if (isSubRoute) document.documentElement.classList.add('module-view-active');
+    else document.documentElement.classList.remove('module-view-active');
+    // Also sync the `hidden` attribute on .topbar / .page-nav / #pageNav
+    // in case the CSS rule is cached from a pre-#349 build and does not
+    // yet include those selectors in the module-view-active hide list.
+    var els = document.querySelectorAll('.topbar, .page-nav, #pageNav');
+    for (var i = 0; i < els.length; i++) {
+      if (isSubRoute) els[i].setAttribute('hidden', '');
+      else els[i].removeAttribute('hidden');
+    }
+  }
+  window.addEventListener('pageshow', syncModuleViewActiveClass);
 
   var view = document.getElementById('moduleView');
   var frame = document.getElementById('moduleViewFrame');
