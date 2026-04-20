@@ -103,12 +103,16 @@
       .shell {
         position: relative;
         z-index: 1;
-        max-width: 1440px;
+        max-width: 1800px;
         margin: 0 auto;
         padding: 1.5rem 2.25rem 3rem;
         width: 100%;
         flex: 1;
       }
+      /* Screening Command module uses the full viewport for its dense
+         form + recent-subjects table; other sections keep the narrower
+         hero max-width via their own containers. */
+      html.module-view-active .shell { max-width: min(1800px, 100%); padding-left: 2rem; padding-right: 2rem; }
 
       .topbar {
         display: flex;
@@ -891,7 +895,7 @@
     </footer>
     <script src="brain-boot.js?v=3"></script>
     <script src="intelligence-drawer.js?v=1"></script>
-    <script src="screening-command-modules.js?v=5"></script>
+    <script src="screening-command-modules.js?v=6"></script>
     <script src="landing-module-viewer.js?v=15"></script>
     <script src="module-enhancements.js?v=1"></script>
   </body>
