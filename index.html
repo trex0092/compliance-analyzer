@@ -2462,25 +2462,31 @@
   </head>
   <body>
     <!-- MLRO sign-in overlay — shown when no valid session in
-         localStorage. FDL No.(10)/2025 Art.20-21 (CO accountability). -->
+         localStorage. FDL No.(10)/2025 Art.20-21 (CO accountability).
+         SECURITY: container is a <div>, not a <form>, and the submit
+         button is type="button". Mirrors the defense-in-depth pattern
+         applied to /login.html in PR #397 — a <form> without
+         method+action default-submits via GET when the JS handler
+         fails to attach, which would serialize the MLRO password
+         into location.search. FDL Art.24 (no credential in logs);
+         CLAUDE.md Seguridad §5 (no plaintext password on the wire). -->
     <div id="hawkeyeLoginOverlay" role="dialog" aria-modal="true" aria-label="MLRO sign-in" hidden>
-      <form class="hs-login-card" id="hawkeyeLoginForm" autocomplete="off">
+      <div class="hs-login-card" id="hawkeyeLoginForm" role="form">
         <h1>HAWKEYE STERLING V2</h1>
         <p class="hs-login-sub">MLRO sign-in. One password, one session — every surface unlocks for the length of this login.</p>
         <label for="hawkeyeMlroName">MLRO name</label>
-        <input type="text" id="hawkeyeMlroName" name="mlroName" autocomplete="username" placeholder="e.g. Luisa Fernanda" required maxlength="120">
+        <input type="text" id="hawkeyeMlroName" autocomplete="username" placeholder="e.g. Luisa Fernanda" required maxlength="120">
         <label for="hawkeyeMlroPassword">Password</label>
-        <input type="password" id="hawkeyeMlroPassword" name="password" autocomplete="current-password" placeholder="Password" required maxlength="1024">
-        <button type="submit" id="hawkeyeLoginBtn">Sign in</button>
+        <input type="password" id="hawkeyeMlroPassword" autocomplete="current-password" placeholder="Password" required maxlength="1024">
+        <button type="button" id="hawkeyeLoginBtn">Sign in</button>
         <div class="hs-login-err" id="hawkeyeLoginErr" role="status" aria-live="polite"></div>
-        <div class="hs-login-foot">Session stays active for 1 year · FDL Art.24 audit retention · rate-limited 5 attempts / 15 min / IP</div>
-      </form>
+        <div class="hs-login-foot">Session stays active for 1 year · FDL Art.24 audit retention</div>
+      </div>
     </div>
     <script>
       (function () {
         var html = document.documentElement;
         var overlay = document.getElementById('hawkeyeLoginOverlay');
-        var form = document.getElementById('hawkeyeLoginForm');
         var nameEl = document.getElementById('hawkeyeMlroName');
         var passEl = document.getElementById('hawkeyeMlroPassword');
         var btn = document.getElementById('hawkeyeLoginBtn');
@@ -2507,25 +2513,36 @@
         var savedName = auth.getMlroName();
         if (savedName && nameEl) nameEl.value = savedName;
 
-        if (form) {
-          form.addEventListener('submit', function (ev) {
-            ev.preventDefault();
-            err.textContent = '';
-            btn.disabled = true;
-            btn.textContent = 'Signing in…';
-            auth.login(nameEl.value.trim(), passEl.value).then(function (res) {
-              btn.disabled = false;
-              btn.textContent = 'Sign in';
-              if (res.ok) {
-                passEl.value = '';
-                unlock();
-              } else {
-                err.textContent = res.error || 'Sign-in failed.';
-                passEl.focus();
-              }
-            });
+        function doSignIn() {
+          err.textContent = '';
+          btn.disabled = true;
+          btn.textContent = 'Signing in…';
+          auth.login(nameEl.value.trim(), passEl.value).then(function (res) {
+            btn.disabled = false;
+            btn.textContent = 'Sign in';
+            if (res.ok) {
+              passEl.value = '';
+              unlock();
+            } else {
+              err.textContent = res.error || 'Sign-in failed.';
+              passEl.focus();
+            }
           });
         }
+
+        // Click handler on the button, Enter-key handler on each input.
+        // No <form> submit event — the container is a <div> so the
+        // browser cannot fall back to a default GET submission that
+        // would serialize the password into location.search.
+        if (btn) btn.addEventListener('click', doSignIn);
+        function onKey(ev) {
+          if (ev.key === 'Enter' || ev.keyCode === 13) {
+            ev.preventDefault();
+            doSignIn();
+          }
+        }
+        if (nameEl) nameEl.addEventListener('keydown', onKey);
+        if (passEl) passEl.addEventListener('keydown', onKey);
       })();
     </script>
     <!-- LUXURY PRELOADER — rotating planet + orbits + moon + starfield -->
