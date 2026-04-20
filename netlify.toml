@@ -71,6 +71,19 @@
   status = 200
   force = true
 
+# Deep Reasoning — advisor-assisted MLRO analysis. Browser-facing
+# entrypoint to the Worker+Advisor pattern documented in CLAUDE.md §1.
+# The function authenticates (JWT or hex bearer), rate-limits 10/min
+# per IP, and forwards the question through buildAdvisorRequest +
+# parseAdvisorResponse from src/services/advisorStrategy.
+# Regulatory basis: FDL No.(10)/2025 Art.20-21 (CO reasoning trail),
+# Art.24 (10-year audit retention).
+[[redirects]]
+  from = "/api/brain-reason"
+  to = "/.netlify/functions/brain-reason"
+  status = 200
+  force = true
+
 # Main-page surface deep links. /integrations and /trading serve the
 # root index.html body while keeping the clean URL in the address bar;
 # app-boot.js reads location.pathname on load and activates the matching
