@@ -30,6 +30,23 @@
  *   clampReasons, narrative). The Art.29 tipping-off linter runs
  *   on the response text before it is returned.
  *
+ * Transport discipline (stream idle timeout fix):
+ *   This module used to hand-roll a non-streaming POST whose body
+ *   shape also did not match what `/api/ai-proxy` destructures
+ *   (`{ body: {...} }` vs the proxy's `{ payload: {...} }`). That
+ *   bug had two consequences in production:
+ *     1. The proxy forwarded `undefined` as the request body, so
+ *        Anthropic rejected every call and the MLRO silently saw
+ *        deterministic-fallback advice on every escalation.
+ *     2. On the paths where it did reach upstream, the non-stream
+ *        proxy timeout (22s) fired mid-Opus-call (Opus advisor
+ *        sub-inferences routinely run 20-40s) and the caller saw
+ *        "Stream idle timeout - partial response received".
+ *   We now route through `callAdvisorAssisted`, which builds the
+ *   correct `payload` shape, uses the official advisor tool type,
+ *   and enables SSE streaming so the proxy's `: keepalive` comment
+ *   frames hold the socket open during quiet thinking windows.
+ *
  * Regulatory basis:
  *   FDL No.10/2025 Art.20-21 (CO duty — advisor escalation)
  *   FDL No.10/2025 Art.29    (no tipping off — linter on response)
@@ -46,8 +63,8 @@ import { deterministicAdvisor } from './brainSuperRunner';
 import {
   EXECUTOR_SONNET,
   ADVISOR_OPUS,
-  ADVISOR_BETA_HEADER,
-  COMPLIANCE_ADVISOR_SYSTEM_PROMPT,
+  callAdvisorAssisted,
+  type FetchLike,
 } from './advisorStrategy';
 import { lintForTippingOff } from './tippingOffLinter';
 
@@ -63,17 +80,16 @@ export interface AnthropicAdvisorOptions {
   /** Advisor model. Default: claude-opus-4-6. */
   advisor?: string;
   /**
-   * Request timeout ms. Default: 60000.
+   * Wall-clock cap on a single advisor call, in ms. Default: 120_000.
    *
-   * Why 60s and not the old 15s: Opus advisor calls under load
-   * regularly run 20-40s end-to-end. A 15s AbortController fires
-   * mid-stream, which the browser surfaces as
-   * "Stream idle timeout - partial response received" — even though
-   * the upstream is still working fine. 60s is short enough to fail
-   * fast on a dead proxy, long enough to wait out a normal Opus call.
-   * Callers that need a tighter bound (e.g. synchronous UI paths)
-   * can still pass a smaller timeoutMs; the fallback to the
-   * deterministic advisor is what keeps the decision path unblocked.
+   * This is deliberately larger than the proxy's own streaming
+   * wall-clock (STREAM_WALL_CLOCK_MS = 24s) and the inter-byte
+   * watchdog (STREAM_IDLE_READ_TIMEOUT_MS = 30s) so that the
+   * tighter server-side limits fire first and surface structured
+   * errors. The client-side timer exists only as a backstop for
+   * a genuinely wedged network. Callers that need a tighter bound
+   * (e.g. synchronous UI paths) can still pass a smaller value;
+   * the deterministic fallback keeps the decision path unblocked.
    */
   timeoutMs?: number;
   /** HAWKEYE bearer token for the proxy. Default: from window or env. */
@@ -127,50 +143,6 @@ interface AnthropicResponseShape {
   usage?: { input_tokens?: number; output_tokens?: number };
 }
 
-async function callProxy(
-  proxyUrl: string,
-  bearer: string | undefined,
-  body: Record<string, unknown>,
-  timeoutMs: number,
-  fetchImpl: typeof fetch
-): Promise<AdvisorEscalationResult> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (bearer) headers['Authorization'] = `Bearer ${bearer}`;
-
-  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timer = controller !== null ? setTimeout(() => controller.abort(), timeoutMs) : null;
-
-  try {
-    const res = await fetchImpl(proxyUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      signal: controller?.signal,
-    });
-    if (!res.ok) {
-      throw new Error(`ai-proxy returned ${res.status}`);
-    }
-    const payload = (await res.json()) as AnthropicResponseShape;
-    const text = extractText(payload);
-    const lint = lintForTippingOff(text);
-    if (!lint.clean && (lint.topSeverity === 'critical' || lint.topSeverity === 'high')) {
-      throw new Error(
-        `advisor response blocked by FDL Art.29 linter: ` +
-          lint.findings.map((f) => f.patternId).join(',')
-      );
-    }
-    return {
-      text: text.slice(0, 1000), // hard cap just in case the model ignores <100 words
-      advisorCallCount: 1,
-      modelUsed: payload.model ?? 'claude-opus-4-6',
-    };
-  } finally {
-    if (timer !== null) clearTimeout(timer);
-  }
-}
-
 function extractText(payload: AnthropicResponseShape): string {
   if (!payload || !Array.isArray(payload.content)) return '';
   const parts = payload.content
@@ -189,7 +161,7 @@ export function createAnthropicAdvisor(opts: AnthropicAdvisorOptions = {}): Advi
   const proxyUrl = opts.proxyUrl ?? '/api/ai-proxy';
   const executor = opts.executor ?? EXECUTOR_SONNET;
   const advisor = opts.advisor ?? ADVISOR_OPUS;
-  const timeoutMs = opts.timeoutMs ?? 60_000;
+  const timeoutMs = opts.timeoutMs ?? 120_000;
   const warnOnFallback = opts.warnOnFallback ?? true;
   const fetchImpl =
     opts.fetchImpl ??
@@ -202,31 +174,67 @@ export function createAnthropicAdvisor(opts: AnthropicAdvisorOptions = {}): Advi
   }
 
   return async (input: AdvisorEscalationInput): Promise<AdvisorEscalationResult> => {
-    const body = {
-      provider: 'anthropic',
-      path: '/v1/messages',
-      betas: [ADVISOR_BETA_HEADER],
-      body: {
-        model: executor,
-        max_tokens: 512,
-        system: COMPLIANCE_ADVISOR_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: buildUserMessage(input),
-          },
-        ],
-        metadata: {
-          user_id: input.entityId,
-        },
-        // Advisor pairing declaration — the executor model above
-        // uses this advisor as its back-channel reviewer.
-        advisor: { model: advisor },
-      },
-    };
+    // Wall-clock backstop. The proxy's own stream wall-clock (24s)
+    // and inter-byte watchdog (30s) fire first in normal operation;
+    // this exists only to rescue the fallback path when the network
+    // itself is wedged and the server-side timers can't reach us.
+    const wallClock =
+      typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const wallClockTimer =
+      wallClock !== null ? setTimeout(() => wallClock.abort(), timeoutMs) : null;
+
+    const abortableFetch: FetchLike = (async (url, init) => {
+      const res = await fetchImpl(url, {
+        method: init.method,
+        headers: init.headers,
+        body: init.body,
+        signal: wallClock?.signal,
+      });
+      return {
+        ok: res.ok,
+        status: res.status,
+        json: () => res.json(),
+        body: res.body,
+      };
+    }) as FetchLike;
 
     try {
-      return await callProxy(proxyUrl, opts.bearerToken, body, timeoutMs, fetchImpl);
+      const result = await callAdvisorAssisted(
+        {
+          userMessage: buildUserMessage(input),
+          executor,
+          advisor,
+          maxAdvisorUses: 1,
+          maxTokens: 512,
+          // Stream so `/api/ai-proxy` injects `: keepalive\n\n` SSE
+          // comments during Opus thinking windows. Without this the
+          // caller sees "Stream idle timeout - partial response
+          // received" whenever the advisor pauses mid-flight.
+          stream: true,
+        },
+        {
+          endpoint: proxyUrl,
+          authToken: opts.bearerToken,
+          fetch: abortableFetch,
+        }
+      );
+
+      const text = extractText({
+        content: [{ type: 'text', text: result.text }],
+      });
+      const lint = lintForTippingOff(text);
+      if (!lint.clean && (lint.topSeverity === 'critical' || lint.topSeverity === 'high')) {
+        throw new Error(
+          `advisor response blocked by FDL Art.29 linter: ` +
+            lint.findings.map((f) => f.patternId).join(',')
+        );
+      }
+
+      return {
+        text: text.slice(0, 1000),
+        advisorCallCount: result.advisorCallCount > 0 ? result.advisorCallCount : 1,
+        modelUsed: advisor,
+      };
     } catch (err) {
       if (warnOnFallback) {
         console.warn(
@@ -235,6 +243,8 @@ export function createAnthropicAdvisor(opts: AnthropicAdvisorOptions = {}): Advi
         );
       }
       return deterministicAdvisor(input);
+    } finally {
+      if (wallClockTimer !== null) clearTimeout(wallClockTimer);
     }
   };
 }
