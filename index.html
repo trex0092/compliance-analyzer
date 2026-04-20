@@ -2406,6 +2406,16 @@
          expired. Inlined at the top of <head> so the redirect fires
          before any other script or resource runs — signed-out viewers
          never see a flash of authenticated SPA (FDL Art.29). -->
+    <style>
+      /* Belt-and-braces: whenever a valid JWT is in localStorage
+         (class set below), force #mainApp visible. Overrides any
+         later app-core.js that tries to hide it — the server-side
+         JWT is the canonical authorisation (FDL Art.20-21). */
+      html.hawkeye-jwt-present #mainApp { display: block !important; }
+      html.hawkeye-jwt-present #loginOverlay,
+      html.hawkeye-jwt-present #loginBox,
+      html.hawkeye-jwt-present #setupWizard { display: none !important; }
+    </style>
     <script>
       (function () {
         try {
@@ -2416,14 +2426,12 @@
             location.replace('/login.html');
             return;
           }
+          // Mark the html element so the CSS above keeps #mainApp
+          // visible regardless of what app-core.js does next.
+          document.documentElement.classList.add('hawkeye-jwt-present');
           // Seed the legacy client-side auth (app-core.js uses
           // fgl_users + fgl_session) so its initial session check
-          // finds a valid "admin" user and leaves #mainApp visible.
-          // Without this, the MLRO is signed in via JWT but the
-          // SPA stays hidden behind app-core's own session gate.
-          // FDL Art.20-21: the server-side JWT is the canonical
-          // authorisation; the client-side store is only a local
-          // UX marker so the legacy overlay manager stays quiet.
+          // finds a valid "admin" user and calls showMainApp().
           var name = localStorage.getItem('hawkeye.session.mlroName') || 'MLRO';
           var legacyUsers = localStorage.getItem('fgl_users');
           if (!legacyUsers || legacyUsers === '[]') {
@@ -2436,8 +2444,6 @@
               id: id, username: 'mlro', displayName: name, role: 'admin'
             }));
           } else {
-            // Users exist — make sure the active session is populated
-            // so app-core.js doesn't bounce the MLRO to its own login.
             if (!localStorage.getItem('fgl_session')) {
               try {
                 var arr = JSON.parse(legacyUsers);
@@ -2452,7 +2458,7 @@
         } catch (_) { /* private mode — fall through to SPA */ }
       })();
     </script>
-    <script src="auth-gate.js?v=2"></script>
+    <script src="auth-gate.js?v=3"></script>
   </head>
   <body>
     <!-- MLRO sign-in overlay — shown when no valid session in
