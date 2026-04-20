@@ -64,7 +64,20 @@
       .then(function (arr) {
         if (!Array.isArray(arr)) throw new Error('metals.live shape');
         var merged = {};
-        arr.forEach(function (o) { if (o && typeof o === 'object') Object.assign(merged, o); });
+        // Prototype-pollution guard: copy only plain own-data keys and
+        // skip __proto__/constructor/prototype so a compromised or
+        // MITM'd metals.live response cannot alter Object.prototype
+        // (which would contaminate every subsequent numeric comparison
+        // in the trading brain). Defense-in-depth for an external API.
+        arr.forEach(function (o) {
+          if (o && typeof o === 'object') {
+            Object.keys(o).forEach(function (k) {
+              if (k !== '__proto__' && k !== 'constructor' && k !== 'prototype') {
+                merged[k] = o[k];
+              }
+            });
+          }
+        });
         var out = {
           XAU: Number(merged.gold),
           XAG: Number(merged.silver),

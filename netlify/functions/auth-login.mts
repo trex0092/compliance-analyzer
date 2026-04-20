@@ -179,6 +179,17 @@ export default async (req: Request, context: Context): Promise<Response> => {
 
   let body: unknown;
   try {
+    // Cap the request body size before parsing. Login bodies should be
+    // JSON with a single `password` field; 4 KB is far more than
+    // needed and blocks the OOM-via-giant-JSON class of DoS even if
+    // the attacker is inside the per-IP rate-limit budget (the
+    // rate limit counts requests, not bytes). Netlify's platform cap
+    // is 6 MB per body; enforcing a tighter cap here keeps serverless
+    // memory bounded on the sign-in surface.
+    const declared = Number.parseInt(req.headers.get('content-length') || '0', 10);
+    if (Number.isFinite(declared) && declared > 4096) {
+      return Response.json({ error: 'Request body too large.' }, { status: 413 });
+    }
     body = await req.json();
   } catch {
     return Response.json({ error: 'Invalid JSON body.' }, { status: 400 });

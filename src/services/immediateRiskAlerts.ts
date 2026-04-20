@@ -104,7 +104,19 @@ async function defaultLoadWatchlist(): Promise<WatchlistEntry[]> {
     const raw = (await store.get(WATCHLIST_KEY, { type: 'json' })) as unknown;
     const wl = deserialiseWatchlist(raw);
     return listAllEntries(wl);
-  } catch {
+  } catch (err) {
+    // CRITICAL operability signal: a silent [] here means the sanctions
+    // ingest cron will screen every delta against an empty watchlist —
+    // every customer match is then invisibly missed. Surface the error
+    // so ops can detect Blobs outages that would otherwise produce
+    // false "all clear" runs. Return [] preserved for dev/local
+    // (Blobs unavailable) and to avoid crashing the cron, but the
+    // caller MUST treat repeated empty-on-error signals as a reason
+    // to abort dispatch. FDL No.10/2025 Art.20-21.
+    console.error(
+      '[immediateRiskAlerts] defaultLoadWatchlist failed — screening may run against empty watchlist',
+      err
+    );
     return [];
   }
 }
@@ -116,20 +128,100 @@ async function defaultLoadDispatchFingerprints(): Promise<Set<string>> {
     const raw = (await store.get(key, { type: 'json' })) as unknown;
     if (!Array.isArray(raw)) return new Set();
     return new Set(raw.filter((v): v is string => typeof v === 'string'));
-  } catch {
+  } catch (err) {
+    // Empty dedup set is safe (strictly worse mode is duplicate alerts,
+    // not missed alerts) but the error still needs ops visibility.
+    console.warn(
+      '[immediateRiskAlerts] defaultLoadDispatchFingerprints failed — duplicates may fire',
+      err
+    );
     return new Set();
   }
 }
 
 async function defaultSaveDispatchFingerprints(fps: Set<string>): Promise<void> {
+  // CAS-with-union. Two concurrent sanctions-ingest-cron instances
+  // (Netlify scheduled functions do not guarantee single-writer
+  // semantics — if a run overruns its interval, the next tick starts
+  // while the previous is still writing) both loaded the same
+  // fingerprint set at T0, each appended their own newly-seen
+  // fingerprints, and then each called setJSON without onlyIfMatch.
+  // The second writer silently clobbered the first writer's
+  // fingerprints, collapsing the per-day dedup window mid-run and
+  // producing duplicate Asana alert tasks for the same subject.
+  //
+  // Fix: read-with-etag → union with our in-memory set → write with
+  // onlyIfMatch. On CAS mismatch, re-read and re-union — never lose a
+  // fingerprint. If CAS retries are exhausted, fall through to a
+  // plain setJSON so dedup failures remain non-fatal (duplicate
+  // alerts are strictly better than dropped alerts, per the original
+  // comment). CLAUDE.md mandates CAS for all read-modify-write blob
+  // mutations. Regulatory basis: FDL No.(10)/2025 Art.24 (audit-trail
+  // integrity — duplicate-alert records confuse the 10yr audit).
+  const store = getStore(DEDUP_STORE);
+  const key = dedupKeyForDay(new Date().toISOString());
+  const MAX_ATTEMPTS = 5;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    let etag: string | null = null;
+    let current: Set<string>;
+    try {
+      const withMeta = await (
+        store as unknown as {
+          getWithMetadata?: (
+            k: string,
+            opts?: { type: 'json' }
+          ) => Promise<{ data: unknown; etag?: string | null } | null>;
+        }
+      ).getWithMetadata?.(key, { type: 'json' });
+      if (withMeta?.data && Array.isArray(withMeta.data)) {
+        current = new Set(
+          (withMeta.data as unknown[]).filter((v): v is string => typeof v === 'string')
+        );
+      } else {
+        current = new Set();
+      }
+      etag = withMeta?.etag ?? null;
+    } catch {
+      current = new Set();
+      etag = null;
+    }
+
+    // Union — preserve every fingerprint from both the on-disk set and
+    // our in-memory set. Never drop.
+    for (const fp of fps) current.add(fp);
+
+    try {
+      const opts: { onlyIfMatch?: string; onlyIfNew?: boolean } = etag
+        ? { onlyIfMatch: etag }
+        : { onlyIfNew: true };
+      const res = await (
+        store as unknown as {
+          setJSON?: (
+            k: string,
+            v: unknown,
+            opts?: { onlyIfMatch?: string; onlyIfNew?: boolean }
+          ) => Promise<{ modified?: boolean } | void>;
+        }
+      ).setJSON?.(key, Array.from(current), opts);
+      const landed = !res || (res as { modified?: boolean }).modified !== false;
+      if (landed) return;
+      // CAS mismatch — another writer beat us. Loop to re-read + re-union.
+    } catch {
+      // Network / transport error on write — fall through to retry.
+    }
+  }
+
+  // CAS exhausted. Fall back to best-effort plain write so dedup
+  // never blocks the dispatch path. Duplicate alerts remain a
+  // strictly better failure mode than dropped alerts.
   try {
-    const store = getStore(DEDUP_STORE);
-    const key = dedupKeyForDay(new Date().toISOString());
     await store.setJSON(key, Array.from(fps));
-  } catch {
-    // Dedup failures are never fatal; the dispatch has already happened
-    // and duplicates within the same day are a strictly better failure
-    // mode than dropped alerts.
+  } catch (err) {
+    console.warn(
+      '[immediateRiskAlerts] defaultSaveDispatchFingerprints CAS exhausted + fallback failed',
+      err
+    );
   }
 }
 

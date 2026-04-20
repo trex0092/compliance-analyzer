@@ -420,11 +420,20 @@
         /* not JSON */
       }
       if (!res.ok) {
-        if (res.status === 401)
+        if (res.status === 401) {
+          // Clear the stale JWT before returning. Without this, every
+          // subsequent fetch on this page keeps sending the rejected
+          // token and the MLRO stays trapped in a broken-state loop —
+          // the inline gate on /index.html won't re-redirect because
+          // the local exp is still in the future. Clearing here forces
+          // auth-gate's runGate() to send them back to /login.html on
+          // the next page load. FDL No.(10)/2025 Art.20-21.
+          try { if (window.__hawkeyeAuth) window.__hawkeyeAuth.clearSession(); } catch (_) {}
           return {
             ok: false,
             error: 'Session rejected (401). Sign in again with your password.',
           };
+        }
         if (res.status === 503)
           return { ok: false, error: 'HAWKEYE_BRAIN_TOKEN not configured on the server.' };
         if (res.status === 429)
@@ -468,8 +477,10 @@
         /* not JSON */
       }
       if (!res.ok) {
-        if (res.status === 401)
+        if (res.status === 401) {
+          try { if (window.__hawkeyeAuth) window.__hawkeyeAuth.clearSession(); } catch (_) {}
           return { ok: false, error: 'Session rejected (401). Sign in again.' };
+        }
         if (res.status === 503) return { ok: false, error: 'Server misconfigured.' };
         if (res.status === 429) return { ok: false, error: 'Rate limited.' };
         return { ok: false, error: (json && json.error) || 'HTTP ' + res.status };
@@ -502,8 +513,10 @@
         /* not JSON */
       }
       if (!res.ok) {
-        if (res.status === 401)
+        if (res.status === 401) {
+          try { if (window.__hawkeyeAuth) window.__hawkeyeAuth.clearSession(); } catch (_) {}
           return { ok: false, error: 'Session rejected (401). Sign in again.' };
+        }
         if (res.status === 404) return { ok: false, error: 'Entry not found (already removed?).' };
         if (res.status === 429) return { ok: false, error: 'Rate limited.' };
         if (res.status === 503)
@@ -546,8 +559,10 @@
         /* not JSON */
       }
       if (!res.ok) {
-        if (res.status === 401)
+        if (res.status === 401) {
+          try { if (window.__hawkeyeAuth) window.__hawkeyeAuth.clearSession(); } catch (_) {}
           return { ok: false, error: 'Session rejected (401). Sign in again.' };
+        }
         if (res.status === 404) return { ok: false, error: 'Watchlist entry not found.' };
         if (res.status === 429) return { ok: false, error: 'Rate limited.' };
         if (res.status === 503)

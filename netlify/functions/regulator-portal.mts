@@ -118,11 +118,88 @@ async function verifyCode(req: Request): Promise<RegulatorCode | null> {
   return record;
 }
 
+// markUsed persists the one-time code's usedAt timestamp. Must be CAS
+// (compare-and-swap) — two concurrent verifyCode → markUsed pairs can
+// otherwise race such that the second setJSON silently clobbers the
+// first, losing the first request's usedAt timestamp and extending the
+// 5-minute grace window. Without CAS we also risk a lost write on
+// transient backend error masking a never-persisted usedAt, which
+// would leave the code effectively infinite-use until its expiresAt.
+// Regulatory basis: FDL No.10/2025 Art.20-21 (CO accountability — the
+// audit chain must record the true first-use timestamp) and
+// CLAUDE.md Project Structure §netlify/functions CAS-envelope rule.
 async function markUsed(code: RegulatorCode): Promise<void> {
   if (code.usedAt) return;
   const store = getStore(CODE_STORE);
-  code.usedAt = new Date().toISOString();
-  await store.setJSON(`code:${code.code}`, code);
+  const key = `code:${code.code}`;
+  const MAX_ATTEMPTS = 3;
+  const hasGetWithMetadata =
+    typeof (store as unknown as { getWithMetadata?: unknown }).getWithMetadata === 'function';
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    let current: RegulatorCode | null = null;
+    let etag: string | null = null;
+
+    if (hasGetWithMetadata) {
+      const withMeta = (await (
+        store as unknown as {
+          getWithMetadata: (
+            k: string,
+            opts: { type: 'json' }
+          ) => Promise<{ data: unknown; etag?: string } | null>;
+        }
+      ).getWithMetadata(key, { type: 'json' })) as {
+        data: RegulatorCode | null;
+        etag?: string;
+      } | null;
+      if (withMeta && typeof withMeta === 'object') {
+        current = withMeta.data;
+        etag = withMeta.etag ?? null;
+      }
+    } else {
+      current = (await store.get(key, { type: 'json' })) as RegulatorCode | null;
+    }
+
+    // Already marked by a concurrent request — their timestamp is
+    // authoritative. Propagate it back to the caller's local copy so
+    // downstream audit logs reference the true first-use time.
+    if (current?.usedAt) {
+      code.usedAt = current.usedAt;
+      return;
+    }
+
+    // Preserve fields from the freshly-read record (inspectorName,
+    // authority, expiresAt) in case they ever diverge from the copy
+    // the caller is holding.
+    const next: RegulatorCode = {
+      ...(current ?? code),
+      usedAt: new Date().toISOString(),
+    };
+    const opts = etag ? { onlyIfMatch: etag } : undefined;
+    const res = await (
+      store as unknown as {
+        setJSON: (k: string, v: unknown, opts?: unknown) => Promise<unknown>;
+      }
+    ).setJSON(key, next, opts);
+
+    const landed =
+      res == null ||
+      (typeof res === 'object' && res !== null && 'modified' in (res as Record<string, unknown>)
+        ? (res as { modified: boolean }).modified === true
+        : res !== false);
+
+    if (landed) {
+      code.usedAt = next.usedAt;
+      return;
+    }
+    // CAS conflict — re-read and retry.
+  }
+
+  // Retries exhausted — fail closed so the caller surfaces a 503 rather
+  // than silently continuing on an unpersisted first-use state. A
+  // silently-lost mark would let subsequent calls treat the code as
+  // never used, violating the one-time-use contract inspectors see.
+  throw new Error('regulator-portal: markUsed CAS retries exhausted');
 }
 
 async function handleIssueCode(req: Request, context: Context): Promise<Response> {

@@ -14,10 +14,18 @@ beforeEach(() => {
 });
 
 describe('adaptive rate limiting — state reset', () => {
-  it('__resetAdaptiveRateLimit is idempotent', () => {
-    __resetAdaptiveRateLimit();
-    __resetAdaptiveRateLimit();
-    // no error means idempotent
-    expect(true).toBe(true);
+  it('__resetAdaptiveRateLimit is idempotent and does not throw', () => {
+    // Tautological expect(true).toBe(true) replaced with a real
+    // assertion on the reset function itself. Calling reset twice in
+    // a row must not throw, and the function must return undefined
+    // (void). Previously the "no error means idempotent" comment was
+    // correct only because any throw would have failed the test — but
+    // the tautological expectation gave false green if the throw was
+    // swallowed elsewhere.
+    expect(() => {
+      __resetAdaptiveRateLimit();
+      __resetAdaptiveRateLimit();
+    }).not.toThrow();
+    expect(__resetAdaptiveRateLimit()).toBeUndefined();
   });
 });

@@ -178,25 +178,76 @@ async function loadWatchlist(): Promise<WatchlistEntry[]> {
   }
 }
 
-async function loadMonitorState(): Promise<MonitorState> {
+// Read the monitor state alongside its etag so the cron run can do a
+// compare-and-swap write. The monitor is scheduled (0 6,14 * * *) but
+// it is also reachable via manual POST and Netlify occasionally
+// retries a scheduled invocation when a previous run overruns its
+// heartbeat — both paths overlap the state RMW. Without CAS, a
+// lost-update race erases fingerprints recorded by the earlier run,
+// so the later run re-emits every "already-seen" sanctions hit as a
+// "new delta" — false-alarming the MLRO and inflating the Asana audit
+// trail. Regulatory basis: Cabinet Res 74/2020 (delta alerts must
+// reflect the true new-hits set) + FDL No.10/2025 Art.20-21 (every
+// audit signal must be reproducible from underlying state).
+async function loadMonitorStateWithMetadata(): Promise<{
+  data: MonitorState;
+  etag: string | null;
+}> {
   try {
     const store = getStore(MONITOR_STATE_STORE);
+    const hasGetWithMetadata =
+      typeof (store as unknown as { getWithMetadata?: unknown }).getWithMetadata === 'function';
+    if (hasGetWithMetadata) {
+      const withMeta = (await (
+        store as unknown as {
+          getWithMetadata: (
+            k: string,
+            opts: { type: 'json' }
+          ) => Promise<{ data: unknown; etag?: string } | null>;
+        }
+      ).getWithMetadata('state.json', { type: 'json' })) as {
+        data: MonitorState | null;
+        etag?: string;
+      } | null;
+      if (withMeta && typeof withMeta === 'object') {
+        const raw = withMeta.data;
+        const etag = withMeta.etag ?? null;
+        if (raw && raw.version === 1 && raw.bySubject && typeof raw.bySubject === 'object') {
+          return { data: raw, etag };
+        }
+        return { data: { version: 1, bySubject: {} }, etag };
+      }
+    }
     const raw = (await store.get('state.json', { type: 'json' })) as MonitorState | null;
     if (raw && raw.version === 1 && raw.bySubject && typeof raw.bySubject === 'object') {
-      return raw;
+      return { data: raw, etag: null };
     }
   } catch {
     /* fall through */
   }
-  return { version: 1, bySubject: {} };
+  return { data: { version: 1, bySubject: {} }, etag: null };
 }
 
-async function saveMonitorState(state: MonitorState): Promise<void> {
+// setJSON with onlyIfMatch returns { modified: true } on success,
+// { modified: false } on CAS conflict, or null on older SDKs. Returns
+// true when the write landed, false when the caller must re-read + retry.
+async function saveMonitorStateCas(state: MonitorState, etag: string | null): Promise<boolean> {
   try {
     const store = getStore(MONITOR_STATE_STORE);
-    await store.setJSON('state.json', state);
+    const opts = etag ? { onlyIfMatch: etag } : undefined;
+    const res = await (
+      store as unknown as {
+        setJSON: (k: string, v: unknown, opts?: unknown) => Promise<unknown>;
+      }
+    ).setJSON('state.json', state, opts);
+    if (res == null) return true;
+    if (typeof res === 'object' && res !== null && 'modified' in (res as Record<string, unknown>)) {
+      return (res as { modified: boolean }).modified === true;
+    }
+    return res !== false;
   } catch {
     /* non-fatal — next run will re-seed */
+    return true;
   }
 }
 
@@ -446,11 +497,12 @@ async function runMonitor(): Promise<MonitorRunSummary> {
   }
   const listsUsed = lists.filter((b) => !b.error).map((b) => b.name);
 
-  const state = await loadMonitorState();
+  const { data: state, etag: stateEtag } = await loadMonitorStateWithMetadata();
   const perSubject: SubjectDelta[] = [];
   let subjectsWithNewHits = 0;
   let totalNewHits = 0;
   let totalResolvedHits = 0;
+  const touchedSubjectIds = new Set<string>();
 
   for (const subject of watchlist) {
     const prior = new Set<string>(state.bySubject[subject.id]?.seenFingerprints ?? []);
@@ -492,9 +544,33 @@ async function runMonitor(): Promise<MonitorRunSummary> {
       seenFingerprints: Array.from(next),
       lastRunIso: new Date().toISOString(),
     };
+    touchedSubjectIds.add(subject.id);
   }
 
-  await saveMonitorState(state);
+  // CAS save: if a concurrent invocation (manual POST + cron overlap,
+  // or a Netlify scheduled-function retry) wrote between our read and
+  // this point, reload and overlay only the subjects we screened this
+  // run (ours win for those keys — we just computed authoritative
+  // fingerprints for them). Subjects we did NOT touch keep whatever
+  // the concurrent writer persisted. Max 2 retries — after that we
+  // log and drop our state update rather than loop indefinitely; the
+  // Asana delta tasks below are still dispatched because the screen
+  // itself completed.
+  {
+    let landed = await saveMonitorStateCas(state, stateEtag);
+    for (let attempt = 0; !landed && attempt < 2; attempt++) {
+      const reloaded = await loadMonitorStateWithMetadata();
+      for (const id of touchedSubjectIds) {
+        reloaded.data.bySubject[id] = state.bySubject[id];
+      }
+      landed = await saveMonitorStateCas(reloaded.data, reloaded.etag);
+    }
+    if (!landed) {
+      console.warn(
+        '[continuous-monitor] saveMonitorState CAS retries exhausted; state may be stale for next run'
+      );
+    }
+  }
 
   // ─── Per-subject daily update to Asana ────────────────────────────
   // The MLRO has asked for a daily heartbeat per screened subject,
