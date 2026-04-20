@@ -2414,6 +2414,40 @@
           var exp = parseInt(localStorage.getItem('hawkeye.session.expiresAt') || '0', 10);
           if (!jwt || !exp || exp <= now) {
             location.replace('/login.html');
+            return;
+          }
+          // Seed the legacy client-side auth (app-core.js uses
+          // fgl_users + fgl_session) so its initial session check
+          // finds a valid "admin" user and leaves #mainApp visible.
+          // Without this, the MLRO is signed in via JWT but the
+          // SPA stays hidden behind app-core's own session gate.
+          // FDL Art.20-21: the server-side JWT is the canonical
+          // authorisation; the client-side store is only a local
+          // UX marker so the legacy overlay manager stays quiet.
+          var name = localStorage.getItem('hawkeye.session.mlroName') || 'MLRO';
+          var legacyUsers = localStorage.getItem('fgl_users');
+          if (!legacyUsers || legacyUsers === '[]') {
+            var id = 'mlro-' + Date.now();
+            localStorage.setItem('fgl_users', JSON.stringify([{
+              id: id, username: 'mlro', displayName: name,
+              role: 'admin', active: true, createdAt: new Date().toISOString()
+            }]));
+            localStorage.setItem('fgl_session', JSON.stringify({
+              id: id, username: 'mlro', displayName: name, role: 'admin'
+            }));
+          } else {
+            // Users exist — make sure the active session is populated
+            // so app-core.js doesn't bounce the MLRO to its own login.
+            if (!localStorage.getItem('fgl_session')) {
+              try {
+                var arr = JSON.parse(legacyUsers);
+                var u = Array.isArray(arr) && arr[0];
+                if (u) localStorage.setItem('fgl_session', JSON.stringify({
+                  id: u.id, username: u.username, displayName: u.displayName || name,
+                  role: u.role || 'admin'
+                }));
+              } catch (_) {}
+            }
           }
         } catch (_) { /* private mode — fall through to SPA */ }
       })();
