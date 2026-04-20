@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Sterling V2" />
-    <meta name="theme-color" content="#0A0A0A" />
+    <meta name="theme-color" content="#020B18" />
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" type="image/svg+xml" href="assets/logos/hawkeye-icon.svg" />
     <link rel="apple-touch-icon" href="assets/logos/hawkeye-icon.svg" />
@@ -109,64 +109,63 @@
         padding: 0;
       }
       :root {
-        /* Yellow + orange system (warm, vibrant). --gold tokens are now
-           aliased to yellow/amber/orange for a Hawkeye Sterling "desert
-           dawn" palette. Kept the `--gold*` names so the 400+ references
-           across index.html and compliance-suite.js keep working. */
-        --gold: #f59e0b;            /* amber-500 */
-        --gold-light: #fcd34d;      /* amber-300 */
-        --gold-dim: rgba(245, 158, 11, 0.15);
-        --gold-dark: #c2410c;       /* orange-700 */
-        --orange: #f97316;          /* orange-500 */
-        --orange-bright: #fb923c;   /* orange-400 */
-        --yellow: #eab308;          /* yellow-500 */
-        --yellow-bright: #fde047;   /* yellow-300 */
-        --red: #d94f4f;
-        --red-dim: rgba(217, 79, 79, 0.12);
-        --green: #3da876;
-        --green-dim: rgba(61, 168, 118, 0.12);
-        --amber: #f97316;           /* now orange-500 */
-        --amber-dim: rgba(249, 115, 22, 0.14);
-        --blue: #4a8fc1;
-        --blue-dim: rgba(74, 143, 193, 0.12);
-        --bg: #0a0a0a;
-        --surface: rgba(245, 158, 11, 0.04);
-        --surface2: rgba(245, 158, 11, 0.08);
-        --border: rgba(245, 158, 11, 0.16);
-        --border-strong: rgba(245, 158, 11, 0.32);
-        --text: #fef3c7;            /* amber-50, warm ivory */
-        --muted: rgba(254, 243, 199, 0.5);
-        --ivory: #fef3c7;
-        --ivory-dim: #fcd9a3;
-        --black: #0a0706;
-        --black-soft: #120d08;
-        --charcoal: #1c150d;
+        /* ═══════════════════════════════════════════════════════════════
+           LUXURY DIGITAL GLOBAL NETWORK THEME — Hawkeye Sterling V2
+           Deep space navy · Prestige gold · Electric blue/green/pink
+           ═══════════════════════════════════════════════════════════════ */
+        --gold: #C9A84C;
+        --gold-light: #E8C96A;
+        --gold-dim: rgba(201, 168, 76, 0.15);
+        --gold-dark: #9A7A2E;
+        --orange: #C9A84C;
+        --orange-bright: #E8C96A;
+        --yellow: #C9A84C;
+        --yellow-bright: #E8C96A;
+        --red: #F472B6;             /* neon pink */
+        --red-dim: rgba(244, 114, 182, 0.12);
+        --green: #10B981;           /* electric emerald */
+        --green-dim: rgba(16, 185, 129, 0.12);
+        --amber: #3B82F6;           /* electric blue */
+        --amber-dim: rgba(59, 130, 246, 0.14);
+        --blue: #3B82F6;
+        --blue-dim: rgba(59, 130, 246, 0.12);
+        --bg: #020B18;
+        --surface: rgba(59, 130, 246, 0.04);
+        --surface2: rgba(201, 168, 76, 0.06);
+        --border: rgba(201, 168, 76, 0.18);
+        --border-strong: rgba(201, 168, 76, 0.35);
+        --text: #E8F0FE;
+        --muted: rgba(232, 240, 254, 0.5);
+        --ivory: #E8F0FE;
+        --ivory-dim: #B8C8E8;
+        --black: #020B18;
+        --black-soft: #041020;
+        --charcoal: #071830;
 
-        /* Theme variables - dark luxury (default) */
-        --bg-primary: #0a0706;
-        --bg-secondary: #120d08;
-        --bg-card: #1c150d;
-        --text-primary: #fef3c7;
-        --text-secondary: #fcd9a3;
-        --border-color: rgba(245, 158, 11, 0.16);
-        --shadow-color: rgba(0, 0, 0, 0.4);
-      }
-      /* Dark theme overrides - luxury dark is default, this is deeper dark */
-      [data-theme='dark'] {
-        --bg-primary: #080504;
-        --bg-secondary: #0f0a06;
-        --bg-card: #17110b;
-        --text-primary: #fef3c7;
-        --text-secondary: #fcd9a3;
-        --border-color: rgba(245, 158, 11, 0.2);
+        /* Theme variables */
+        --bg-primary: #020B18;
+        --bg-secondary: #041020;
+        --bg-card: #071830;
+        --text-primary: #E8F0FE;
+        --text-secondary: #B8C8E8;
+        --border-color: rgba(201, 168, 76, 0.18);
         --shadow-color: rgba(0, 0, 0, 0.5);
-
-        --bg: #080504;
-        --surface: rgba(245, 158, 11, 0.05);
-        --surface2: rgba(245, 158, 11, 0.09);
-        --border: rgba(245, 158, 11, 0.2);
-        --text: #fef3c7;
-        --muted: rgba(254, 243, 199, 0.55);
+      }
+      /* Dark theme overrides */
+      [data-theme='dark'] {
+        --bg-primary: #010810;
+        --bg-secondary: #020F1E;
+        --bg-card: #051525;
+        --text-primary: #E8F0FE;
+        --text-secondary: #B8C8E8;
+        --border-color: rgba(201, 168, 76, 0.22);
+        --shadow-color: rgba(0, 0, 0, 0.6);
+        --bg: #010810;
+        --surface: rgba(59, 130, 246, 0.05);
+        --surface2: rgba(201, 168, 76, 0.07);
+        --border: rgba(201, 168, 76, 0.22);
+        --text: #E8F0FE;
+        --muted: rgba(232, 240, 254, 0.55);
       }
       /* Smooth theme transition — scoped to theme toggle only */
       body.theme-transitioning,
@@ -218,8 +217,8 @@
         align-items: center;
         justify-content: center;
         box-shadow:
-          0 0 0 1px rgba(245, 158, 11, 0.4),
-          0 8px 24px rgba(245, 158, 11, 0.3),
+          0 0 0 1px rgba(201, 168, 76, 0.5),
+          0 8px 24px rgba(59, 130, 246, 0.35),
           inset 0 1px 0 rgba(255, 255, 255, 0.18);
         transition: all 0.3s;
       }
@@ -236,6 +235,7 @@
         background-clip: text;
         color: transparent;
         -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 12px rgba(201, 168, 76, 0.4));
         transition: color 0.3s;
       }
       .subtitle {
@@ -250,10 +250,10 @@
       .card {
         background: linear-gradient(
           160deg,
-          rgba(245, 158, 11, 0.04) 0%,
-          rgba(10, 10, 10, 0.8) 100%
+          rgba(59, 130, 246, 0.06) 0%,
+          rgba(2, 11, 24, 0.85) 100%
         );
-        border: 1px solid rgba(245, 158, 11, 0.1);
+        border: 1px solid rgba(201, 168, 76, 0.14);
         border-radius: 4px;
         padding: 1.5rem;
         margin-bottom: 1.2rem;
@@ -2544,44 +2544,60 @@
              it is the first thing every visitor sees when the SPA loads. -->
         <style>
           .hi-landing {
-            --hi-pink: #ec4899;
-            --hi-pink-bright: #f472b6;
-            --hi-pink-dim: rgba(236, 72, 153, 0.14);
-            --hi-pink-border: rgba(236, 72, 153, 0.4);
-            --hi-yellow: #facc15;
-            --hi-yellow-bright: #fde047;
-            --hi-yellow-dim: rgba(250, 204, 21, 0.14);
-            --hi-yellow-border: rgba(250, 204, 21, 0.4);
-            --hi-green: #22c55e;
-            --hi-green-bright: #4ade80;
-            --hi-green-dim: rgba(34, 197, 94, 0.14);
-            --hi-green-border: rgba(34, 197, 94, 0.4);
-            --hi-orange: #fb923c;
-            --hi-orange-bright: #fdba74;
-            --hi-orange-dim: rgba(251, 146, 60, 0.14);
-            --hi-orange-border: rgba(251, 146, 60, 0.4);
-            --hi-blue: #2f7dff;
-            --hi-blue-bright: #5ea3ff;
-            --hi-blue-dim: rgba(47, 125, 255, 0.14);
-            --hi-blue-border: rgba(47, 125, 255, 0.4);
-            --hi-purple: #a855f7;
-            --hi-purple-bright: #c084fc;
-            --hi-purple-dim: rgba(168, 85, 247, 0.14);
-            --hi-purple-border: rgba(168, 85, 247, 0.4);
-            --hi-ink: #fef3c7;
-            --hi-muted: rgba(254, 243, 199, 0.58);
-            --hi-border: rgba(250, 204, 21, 0.18);
-            --hi-border-strong: rgba(250, 204, 21, 0.38);
+            /* Luxury Digital Global Network palette */
+            --hi-pink: #F472B6;
+            --hi-pink-bright: #FB7FCA;
+            --hi-pink-dim: rgba(244, 114, 182, 0.14);
+            --hi-pink-border: rgba(244, 114, 182, 0.4);
+            --hi-yellow: #C9A84C;
+            --hi-yellow-bright: #E8C96A;
+            --hi-yellow-dim: rgba(201, 168, 76, 0.14);
+            --hi-yellow-border: rgba(201, 168, 76, 0.4);
+            --hi-green: #10B981;
+            --hi-green-bright: #34D399;
+            --hi-green-dim: rgba(16, 185, 129, 0.14);
+            --hi-green-border: rgba(16, 185, 129, 0.4);
+            --hi-orange: #C9A84C;
+            --hi-orange-bright: #E8C96A;
+            --hi-orange-dim: rgba(201, 168, 76, 0.14);
+            --hi-orange-border: rgba(201, 168, 76, 0.4);
+            --hi-blue: #3B82F6;
+            --hi-blue-bright: #60A5FA;
+            --hi-blue-dim: rgba(59, 130, 246, 0.14);
+            --hi-blue-border: rgba(59, 130, 246, 0.4);
+            --hi-purple: #818CF8;
+            --hi-purple-bright: #A5B4FC;
+            --hi-purple-dim: rgba(129, 140, 248, 0.14);
+            --hi-purple-border: rgba(129, 140, 248, 0.4);
+            --hi-ink: #E8F0FE;
+            --hi-muted: rgba(232, 240, 254, 0.58);
+            --hi-border: rgba(201, 168, 76, 0.18);
+            --hi-border-strong: rgba(201, 168, 76, 0.38);
             position: relative;
             margin: 24px 0 32px;
             padding: 0;
+            /* Hero background: robot hand holding glowing planet */
+            background: #020B18 url('https://files.manuscdn.com/user_upload_by_module/session_file/310519663429410027/QbCxWBcvbzsShIZv.png') right center / 55% auto no-repeat;
+            border-radius: 20px;
+            overflow: hidden;
+            min-height: 520px;
           }
+          .hi-landing::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(100deg, #020B18 0%, #020B18 30%, rgba(2,11,24,0.82) 50%, rgba(2,11,24,0.3) 70%, transparent 90%);
+            z-index: 1;
+            pointer-events: none;
+          }
+          .hi-landing > * { position: relative; z-index: 2; }
           .hi-hero {
             display: grid;
             grid-template-columns: 1.3fr 1fr;
             gap: 48px;
             align-items: start;
             margin-bottom: 2.25rem;
+            padding: 3rem 3rem 2.5rem;
           }
           .hi-eyebrow {
             display: inline-flex; align-items: center; gap: 10px;
@@ -2605,7 +2621,7 @@
             letter-spacing: -0.02em;
             margin: 0 0 1.1rem;
             padding-bottom: 0.12em;
-            background: linear-gradient(180deg, #ffffff 0%, var(--hi-yellow-bright) 40%, var(--hi-pink-bright) 75%, var(--hi-green-bright) 100%);
+            background: linear-gradient(180deg, #ffffff 0%, var(--hi-blue-bright) 30%, var(--hi-yellow-bright) 60%, var(--hi-pink-bright) 85%, var(--hi-green-bright) 100%);
             -webkit-background-clip: text; background-clip: text;
             color: transparent; -webkit-text-fill-color: transparent;
           }
@@ -2619,7 +2635,7 @@
             max-width: 560px; margin: 0; opacity: 0.82;
           }
           .hi-summary {
-            background: linear-gradient(160deg, rgba(250, 204, 21, 0.06) 0%, rgba(10, 7, 5, 0.9) 100%);
+            background: linear-gradient(160deg, rgba(59, 130, 246, 0.08) 0%, rgba(2, 11, 24, 0.92) 100%);
             border: 1px solid var(--hi-border); border-radius: 18px;
             padding: 1.5rem;
             display: grid; grid-template-columns: 1fr 1fr;
@@ -2635,7 +2651,8 @@
             padding: 12px 14px;
             border: 1px solid var(--hi-border);
             border-radius: 12px;
-            background: rgba(10, 7, 5, 0.55);
+            background: rgba(2, 11, 24, 0.72);
+            backdrop-filter: blur(8px);
           }
           .hi-cell .k {
             font-family: 'DM Mono', monospace; font-size: 9px;
@@ -2677,7 +2694,8 @@
             position: relative;
             display: flex; flex-direction: column; gap: 14px;
             padding: 1.75rem 1.75rem 1.5rem;
-            background: linear-gradient(180deg, rgba(24, 16, 10, 0.9) 0%, rgba(10, 7, 5, 0.96) 100%);
+            background: linear-gradient(180deg, rgba(7, 24, 48, 0.92) 0%, rgba(2, 11, 24, 0.97) 100%);
+            backdrop-filter: blur(12px);
             border: 1px solid var(--hi-border);
             border-radius: 18px;
             text-decoration: none; color: inherit;
@@ -2719,7 +2737,7 @@
             width: 52px; height: 52px; border-radius: 14px;
             display: flex; align-items: center; justify-content: center;
             font-size: 24px;
-            background: rgba(10, 7, 5, 0.65);
+            background: rgba(2, 11, 24, 0.7);
             border: 1px solid currentColor;
             box-shadow: 0 8px 24px -12px currentColor;
           }
@@ -2750,7 +2768,7 @@
             padding: 10px 12px;
             border: 1px solid var(--hi-border);
             border-radius: 10px;
-            background: rgba(10, 7, 5, 0.6);
+            background: rgba(2, 11, 24, 0.65);
           }
           .hi-stat-val {
             display: block;
@@ -2778,7 +2796,7 @@
           .hi-reg-strip {
             margin-top: 2.25rem;
             padding: 1.5rem 1.75rem;
-            background: linear-gradient(180deg, rgba(24, 16, 10, 0.6) 0%, rgba(10, 7, 5, 0.4) 100%);
+            background: linear-gradient(180deg, rgba(7, 24, 48, 0.6) 0%, rgba(2, 11, 24, 0.4) 100%);
             border: 1px solid var(--hi-border);
             border-radius: 16px;
             display: grid; grid-template-columns: auto 1fr;
