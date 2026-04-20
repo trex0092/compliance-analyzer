@@ -22,7 +22,7 @@
     var isSubRoute = segs.length >= 2 && LANDING_SLUGS.indexOf(first) !== -1;
     if (isSubRoute) document.documentElement.classList.add('module-view-active');
     else document.documentElement.classList.remove('module-view-active');
-    var els = document.querySelectorAll('.topbar, .page-nav, #pageNav');
+    var els = document.querySelectorAll('.topbar');
     for (var i = 0; i < els.length; i++) {
       if (isSubRoute) els[i].setAttribute('hidden', '');
       else els[i].removeAttribute('hidden');
@@ -38,7 +38,7 @@
 
   function applyImperativeHide() {
     var onSubRoute = document.documentElement.classList.contains('module-view-active');
-    var els = document.querySelectorAll('.topbar, .page-nav, #pageNav');
+    var els = document.querySelectorAll('.topbar');
     for (var i = 0; i < els.length; i++) {
       if (onSubRoute) els[i].setAttribute('hidden', '');
       else els[i].removeAttribute('hidden');
@@ -55,7 +55,6 @@
     // user hit — every other rule is landing-chrome housekeeping.
     style.textContent = [
       'html.module-view-active .topbar,',
-      'html.module-view-active .page-nav,',
       'html.module-view-active .hero,',
       'html.module-view-active .summary,',
       'html.module-view-active .hero-summary,',
@@ -105,10 +104,6 @@
 
   function slugForCard(card) {
     return card.getAttribute('data-slug') || card.getAttribute('data-route');
-  }
-
-  function refreshPageNav() {
-    if (typeof window.__renderPageNav === 'function') window.__renderPageNav();
   }
 
   // Scope .tab-content queries to direct children of host. Injected
@@ -463,7 +458,6 @@
         history.pushState({ slug: slug, route: route, label: label }, '', target);
       }
     }
-    refreshPageNav();
 
     // Prefer a native renderer when one is registered for this
     // landing+route. Native renderers write straight into the host
@@ -519,7 +513,6 @@
         history.pushState({}, '', base);
       }
     }
-    refreshPageNav();
   }
 
   function openSlug(slug, pushHistory) {

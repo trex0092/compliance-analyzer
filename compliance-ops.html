@@ -9,7 +9,6 @@
     <script>(function(){var s=(location.pathname||'/').split('/').filter(Boolean);var L=['logistics','workbench','compliance-ops','routines','screening-command'];if(s.length>=2&&L.indexOf(s[0].replace(/\.html$/,''))!==-1){document.documentElement.classList.add('module-view-active');}})();</script>
     <style id="moduleViewActiveStylesInline">
       html.module-view-active .topbar,
-      html.module-view-active .page-nav,
       html.module-view-active .hero,
       html.module-view-active .summary,
       html.module-view-active .hero-summary,
@@ -99,9 +98,10 @@
       .shell {
         position: relative;
         z-index: 1;
-        max-width: 1680px;
+        max-width: 1440px;
         margin: 0 auto;
         padding: 1.5rem 2.25rem 3rem;
+        width: 100%;
         flex: 1;
       }
 
@@ -156,41 +156,6 @@
         color: var(--mist);
         border-color: var(--pink-bright);
         box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.12);
-      }
-
-      /* Page-specific navigation — rendered dynamically by page-nav.js */
-      .page-nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin: 0 0 1.75rem;
-        padding: 0;
-      }
-      .page-nav[hidden] { display: none; }
-      .page-nav-link {
-        font-family: 'DM Mono', monospace;
-        font-size: 10px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        padding: 8px 14px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: rgba(58, 13, 34, 0.45);
-        color: var(--ice);
-        text-decoration: none;
-        backdrop-filter: blur(10px);
-        transition: all 0.2s ease;
-      }
-      .page-nav-link:hover {
-        color: var(--mist);
-        border-color: var(--pink-bright);
-        background: rgba(236, 72, 153, 0.12);
-      }
-      .page-nav-link.is-active {
-        color: var(--pink-bright);
-        border-color: var(--border-strong);
-        background: rgba(236, 72, 153, 0.18);
-        box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.12);
       }
 
       /* Hero — 2-column grid: copy left, 2×2 status-tile aside right */
@@ -749,8 +714,6 @@
         <a href="index.html" class="back-link">&larr; Main app</a>
       </header>
 
-      <nav id="pageNav" class="page-nav" aria-label="Compliance operations sections"></nav>
-
       <section class="hero">
         <div>
           <div class="hero-eyebrow">Compliance Operations</div>
@@ -938,7 +901,6 @@
       <span>© 2026 Hawkeye Sterling</span>
       <span>Confidential &middot; Audit-ready</span>
     </footer>
-    <script src="page-nav.js?v=1"></script>
     <script src="compliance-ops-modules.js?v=1"></script>
     <script src="landing-module-viewer.js?v=15"></script>
     <script src="module-enhancements.js?v=1"></script>
