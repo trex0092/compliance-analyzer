@@ -191,6 +191,12 @@
     '#tab-esg': 'esg',
     '#redflags': 'redflags',
     '#tab-redflags': 'redflags',
+    '#aigovern': 'aigovern',
+    '#tab-aigovern': 'aigovern',
+    '#ai-govern': 'aigovern',
+    '#approvedaccounts': 'approvedaccounts',
+    '#tab-approvedaccounts': 'approvedaccounts',
+    '#approved-accounts': 'approvedaccounts',
     // Screening-command landing slugs. Cards on screening-command.html
     // open the embedded iframe with these hashes; without these entries
     // the matching index.html tab never activates and the iframe shows
