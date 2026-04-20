@@ -247,8 +247,7 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'Finding — Remediated',
       'Closed',
     ],
-    regulatoryBasis:
-      'Cabinet Res 71/2024 · FDL No.10/2025 Art.21, 24 · LBMA RGG v9 Step 5',
+    regulatoryBasis: 'Cabinet Res 71/2024 · FDL No.10/2025 Art.21, 24 · LBMA RGG v9 Step 5',
     owner: 'MLRO',
   },
   {
@@ -265,8 +264,7 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'KPI Report',
       'Archived',
     ],
-    regulatoryBasis:
-      'Cabinet Res 134/2025 Art.19 · FDL No.10/2025 Art.20-21',
+    regulatoryBasis: 'Cabinet Res 134/2025 Art.19 · FDL No.10/2025 Art.20-21',
     owner: 'MLRO',
   },
   {
@@ -287,8 +285,7 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'Refresher Cycle',
       'External Webinar Attendance',
     ],
-    regulatoryBasis:
-      'Cabinet Res 134/2025 Art.11, 18 · FDL No.10/2025 Art.20-22 · FATF Rec 18',
+    regulatoryBasis: 'Cabinet Res 134/2025 Art.11, 18 · FDL No.10/2025 Art.20-22 · FATF Rec 18',
     owner: 'MLRO',
   },
   {
@@ -306,8 +303,7 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'Approved — Live',
       'Rejected',
     ],
-    regulatoryBasis:
-      'Cabinet Res 134/2025 Art.7-10 · FDL No.10/2025 Art.12-14 · FATF Rec 10',
+    regulatoryBasis: 'Cabinet Res 134/2025 Art.7-10 · FDL No.10/2025 Art.12-14 · FATF Rec 10',
     owner: 'Compliance Officer',
   },
   {
@@ -316,16 +312,8 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
     name: 'Compliance Tasks — Master Queue',
     description:
       'The canonical MLRO single to-do list — every open task across every module, sorted by priority + deadline.',
-    sections: [
-      'Today',
-      'This Week',
-      'Next 30 Days',
-      'Blocked',
-      'In Review',
-      'Done',
-    ],
-    regulatoryBasis:
-      'FDL No.10/2025 Art.20-21 · Cabinet Res 134/2025 Art.19',
+    sections: ['Today', 'This Week', 'Next 30 Days', 'Blocked', 'In Review', 'Done'],
+    regulatoryBasis: 'FDL No.10/2025 Art.20-21 · Cabinet Res 134/2025 Art.19',
     owner: 'MLRO',
   },
   {
@@ -442,11 +430,7 @@ export function getModuleProjectGid(key: ModuleKey): string | undefined {
  * ROUTINES were never populated.
  */
 export function resolveAsanaProjectGid(key: ModuleKey): string {
-  return (
-    getModuleProjectGid(key) ||
-    readEnv('ASANA_SCREENINGS_PROJECT_GID') ||
-    '1213759768596515'
-  );
+  return getModuleProjectGid(key) || readEnv('ASANA_SCREENINGS_PROJECT_GID') || '1213759768596515';
 }
 
 export function getAllModuleEnvVars(): readonly string[] {
@@ -457,6 +441,4 @@ export function moduleProjectByKey(key: ModuleKey): ModuleProjectSpec | undefine
   return MODULE_PROJECTS.find((p) => p.key === key);
 }
 
-export const MODULE_KEYS_IN_CATALOG: readonly ModuleKey[] = MODULE_PROJECTS.map(
-  (p) => p.key,
-);
+export const MODULE_KEYS_IN_CATALOG: readonly ModuleKey[] = MODULE_PROJECTS.map((p) => p.key);

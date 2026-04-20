@@ -60,14 +60,16 @@ function readToken(): string {
   // approverPool.ts, asanaCentralMlroMirror.ts) so TS treats `process`
   // as potentially-defined rather than always-undefined.
   if (typeof process !== 'undefined' && process.env?.ASANA_TOKEN) return process.env.ASANA_TOKEN;
-  if (typeof process !== 'undefined' && process.env?.ASANA_ACCESS_TOKEN) return process.env.ASANA_ACCESS_TOKEN;
-  if (typeof process !== 'undefined' && process.env?.ASANA_API_TOKEN) return process.env.ASANA_API_TOKEN;
+  if (typeof process !== 'undefined' && process.env?.ASANA_ACCESS_TOKEN)
+    return process.env.ASANA_ACCESS_TOKEN;
+  if (typeof process !== 'undefined' && process.env?.ASANA_API_TOKEN)
+    return process.env.ASANA_API_TOKEN;
   return '';
 }
 
 async function writeRoutineAudit(
   storeName: string,
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown>
 ): Promise<boolean> {
   try {
     const store = getStore({ name: storeName, consistency: 'strong' });
@@ -85,7 +87,7 @@ async function writeRoutineAudit(
 async function postHeartbeatTask(
   projectGid: string,
   spec: RoutineSpec,
-  note: string,
+  note: string
 ): Promise<{ gid?: string; error?: string }> {
   const token = readToken();
   if (!token) return { error: 'ASANA_TOKEN not configured' };
@@ -134,7 +136,7 @@ async function postHeartbeatTask(
  */
 export async function runRoutine(
   spec: RoutineSpec,
-  opts: RoutineRunOptions = {},
+  opts: RoutineRunOptions = {}
 ): Promise<RoutineRunResult> {
   const ranAt = new Date().toISOString();
   const dispatch = opts.dispatch !== false;
@@ -190,6 +192,8 @@ export async function runRoutine(
     asanaError: posted.error,
     auditWritten,
     dryRun,
-    message: posted.error ? `Asana dispatch failed: ${posted.error}` : `Posted to Asana (${posted.gid}).`,
+    message: posted.error
+      ? `Asana dispatch failed: ${posted.error}`
+      : `Posted to Asana (${posted.gid}).`,
   };
 }
