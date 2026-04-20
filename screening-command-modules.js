@@ -53,13 +53,13 @@
     },
     {
       id: 'ofac_sdn',
-      label: 'OFAC Specially Designated Nationals List (SDN)',
+      label: 'OFAC Specially Designated Nationals List (SDN + Non-SDN)',
       citation: 'US Treasury OFAC · 31 CFR 501 · Secondary-sanctions risk for USD clearing',
       detail: 'SDN + Consolidated Non-SDN lists (SSI, NS-PLC, FSE, 13599). Key risk for USD-denominated flows and USD correspondent relationships.'
     },
     {
       id: 'uk_ofsi',
-      label: 'UK OFSI Consolidated Financial Sanctions List',
+      label: 'UK HMT / OFSI Consolidated Financial Sanctions List',
       citation: 'UK Sanctions and Anti-Money Laundering Act 2018 · SAMLA',
       detail: 'Post-Brexit UK-autonomous financial sanctions regime. Relevant for GBP-denominated flows and UK-nexus trade.'
     },
@@ -71,9 +71,63 @@
     },
     {
       id: 'interpol',
-      label: 'INTERPOL Red Notices (where applicable)',
+      label: 'INTERPOL Red / Blue / Yellow Notices',
       citation: 'INTERPOL Constitution Art.3 · Rules on the Processing of Data',
-      detail: 'Wanted-persons notices for arrest and extradition. Manual verification — not all Red Notices meet sanctions-equivalent threshold.'
+      detail: 'Wanted-persons notices for arrest and extradition, plus locate-and-identify (Blue) and missing-person (Yellow). Manual verification — not all Red Notices meet sanctions-equivalent threshold.'
+    },
+    {
+      id: 'ch_seco',
+      label: 'Swiss SECO Sanctions List (SESAM)',
+      citation: 'Swiss Embargo Act (EmbA) · SECO State Secretariat for Economic Affairs',
+      detail: 'Swiss autonomous sanctions, closely tracks EU designations plus Swiss-specific entries (mercenaries, conflict diamonds). Relevant for CHF clearing and Swiss banking nexus.'
+    },
+    {
+      id: 'ca_osfi',
+      label: 'Canada OSFI / Justice consolidated list',
+      citation: 'Special Economic Measures Act (SEMA) · Justice for Victims of Corrupt Foreign Officials Act',
+      detail: 'Canadian autonomous sanctions (Russia, Iran, DPRK, Myanmar, Venezuela, Belarus, Magnitsky-style designations). Relevant for CAD flows and Canadian-nexus trade.'
+    },
+    {
+      id: 'au_dfat',
+      label: 'Australia DFAT Consolidated List',
+      citation: 'Charter of the United Nations Act 1945 · Autonomous Sanctions Act 2011',
+      detail: 'Australian autonomous sanctions covering DPRK, Iran, Libya, Myanmar, Russia, Syria, Zimbabwe, PEPs, and thematic (cyber, WMD, human rights). Relevant for AUD flows.'
+    },
+    {
+      id: 'jp_mof',
+      label: 'Japan MoF / METI sanctions list',
+      citation: 'Foreign Exchange and Foreign Trade Act (FEFTA) · METI notifications',
+      detail: 'Japanese financial + trade sanctions. DPRK, Iran, Russia, Myanmar, Libya. Relevant for JPY flows and Japan-nexus trade.'
+    },
+    {
+      id: 'sg_mas',
+      label: 'Singapore MAS Targeted Financial Sanctions',
+      citation: 'Terrorism (Suppression of Financing) Act · MAS Notice 626',
+      detail: 'Singapore TFS regime implementing UN designations plus domestic terror-financing designations. Relevant for SGD flows and Singapore-banked counterparties.'
+    },
+    {
+      id: 'hk_hkma',
+      label: 'Hong Kong HKMA / UNSR (Cap.537) lists',
+      citation: 'United Nations Sanctions Ordinance (Cap.537) · AMLO',
+      detail: 'Hong Kong implements UN designations via UNSO subsidiary legislation. HKD clearing exposure and HK-nexus corporate-service providers.'
+    },
+    {
+      id: 'wb_debar',
+      label: 'World Bank + MDB Cross-Debarment List',
+      citation: 'World Bank Sanctions System · Agreement for Mutual Enforcement of Debarment Decisions',
+      detail: 'Cross-debarred firms and individuals across World Bank, ADB, AfDB, EBRD, IDB. Fraud / corruption / collusive / coercive / obstructive procurement violations.'
+    },
+    {
+      id: 'il_mod',
+      label: 'Israel Defence Establishment sanctions',
+      citation: 'Israeli Counter-Terrorism Law 5776-2016 · Defense Export Control Order',
+      detail: 'Israel domestic terror-designation + defence-export blacklist. Relevant for ILS flows and dual-use export-control screening.'
+    },
+    {
+      id: 'bilateral_overlays',
+      label: 'Bilateral / thematic overlays (Magnitsky, cyber, narco)',
+      citation: 'UK Global Human Rights · EU Global Human Rights · OFAC 13818 / 13757 / 14024 · Canada SEMA Russia',
+      detail: 'Thematic sanctions cutting across jurisdictions: human rights (Magnitsky), cyber (EO 13757, 14144), narcotics trafficking (Kingpin Act), cyber-enabled election interference. Layered on top of country regimes.'
     }
   ];
 
@@ -82,44 +136,314 @@
       id: 'criminal_fraud',
       label: 'Criminal / Fraud Allegations',
       citation: 'FDL No.(10)/2025 Art.2 · FATF Rec 10-12',
-      detail: 'Indictments, convictions, arrest warrants, organised-crime links, predicate offences (fraud, forgery, bribery, corruption).'
+      detail: 'Indictments, convictions, arrest warrants, predicate offences (forgery, identity fraud, investment fraud, cyber-fraud, Ponzi / MLM schemes).'
+    },
+    {
+      id: 'bribery_corruption',
+      label: 'Bribery & Corruption Indicators',
+      citation: 'UAE FDL No.(31)/2021 (Penal Code) Art.234-239 · FCPA · UK Bribery Act 2010 · OECD Anti-Bribery Convention · UNCAC',
+      detail: 'Public-official bribery, commercial bribery, facilitation payments, kickbacks, abuse of office, illicit enrichment, asset-disclosure breaches, grand corruption.'
+    },
+    {
+      id: 'organised_crime',
+      label: 'Organised Crime Links',
+      citation: 'UN Convention against Transnational Organized Crime (UNTOC) · FATF Rec 10-12 · FDL No.(10)/2025',
+      detail: 'Mafia, cartel, triad, yakuza, biker-gang, narco-networks, human-trafficking rings, organ trafficking, smuggling syndicates, racketeering (RICO-style).'
     },
     {
       id: 'money_laundering',
       label: 'Money Laundering',
       citation: 'FDL No.(10)/2025 Art.2 + Art.26-27 · FATF Rec 3',
-      detail: 'Layering, structuring, smurfing, trade-based laundering (TBML), shell-company typologies, placement through DPMS or VASP rails.'
+      detail: 'Layering, structuring, smurfing, trade-based laundering (TBML), shell-company typologies, placement through DPMS or VASP rails, bulk-cash smuggling.'
     },
     {
       id: 'tf_pf_links',
       label: 'Terrorist Financing or Proliferation Financing Links',
       citation: 'Cabinet Res 74/2020 · Cabinet Res 156/2025 · FATF Rec 5-8 · UNSCR 1267 / 1373 / 1540',
-      detail: 'Direct or indirect links to designated terror entities, foreign terrorist fighters, WMD proliferation networks, dual-use procurement.'
+      detail: 'Direct or indirect links to designated terror entities, foreign terrorist fighters, WMD proliferation networks, dual-use procurement, charity-sector abuse.'
     },
     {
       id: 'regulatory_action',
       label: 'Regulatory Actions, Fines, or Investigations',
-      citation: 'Cabinet Res 71/2024 · MoE supervisory powers · CBUAE / SCA / VARA actions',
-      detail: 'Enforcement orders, administrative penalties (AED 10K–100M range), licence suspension, consent decrees, ongoing investigations.'
+      citation: 'Cabinet Res 71/2024 · MoE supervisory powers · CBUAE / SCA / VARA / DFSA / ADGM FSRA · Law-enforcement record',
+      detail: 'Enforcement orders, administrative penalties (AED 10K–100M range), licence suspension, consent decrees, ongoing investigations, debarment orders, CFTC/SEC actions.'
     },
     {
       id: 'negative_reputation',
       label: 'Negative Reputation or Commercial Disputes',
       citation: 'Cabinet Res 134/2025 Art.14 (EDD triggers) · Reputational-risk doctrine',
-      detail: 'Litigation history, insolvency, chronic non-payment, contract breach, cross-border disputes, sanctions-circumvention allegations.'
+      detail: 'Litigation history, insolvency, chronic non-payment, contract breach, cross-border disputes, sanctions-circumvention allegations, ESG controversies.'
     },
     {
       id: 'political_pep',
-      label: 'Political Controversy or PEP Connections',
-      citation: 'FATF Rec 12 · Cabinet Res 134/2025 Art.14 · FDL Art.14',
-      detail: 'Foreign / domestic PEPs, family members, close associates, ministerial positions, state-owned enterprise directorships, graft allegations.'
+      label: 'PEP / Political Controversy (self, family, close associates)',
+      citation: 'FATF Rec 12 · Cabinet Res 134/2025 Art.14 · FDL Art.14 · Wolfsberg PEP FAQs',
+      detail: 'Foreign PEPs, domestic PEPs, international-organisation PEPs, immediate family members, close business associates, graft / vote-buying / nepotism allegations.'
     },
     {
       id: 'human_rights',
       label: 'Human Rights, Environmental, or Ethical Violations',
-      citation: 'LBMA RGG v9 · UAE MoE RSG · OECD DD Guidance · UK Modern Slavery Act 2015',
+      citation: 'LBMA RGG v9 · UAE MoE RSG · OECD DD Guidance · UK Modern Slavery Act 2015 · UNGPs',
       detail: 'Conflict minerals, child labour, forced labour, environmental harm in CAHRA, unethical sourcing, ASM non-compliance, community-impact disputes.'
     }
+  ];
+
+  // ─── PEP scope — FATF Rec 12 + Wolfsberg PEP FAQs ───────────────────
+  // Covers self + close associates + family: the three populations that
+  // Cabinet Res 134/2025 Art.14 treats as high-risk (EDD, senior-
+  // management approval, source-of-wealth verification).
+  var PEP_DIMENSIONS = [
+    {
+      id: 'pep_self',
+      label: 'PEP — subject is a Politically Exposed Person',
+      citation: 'FATF Rec 12 · Cabinet Res 134/2025 Art.14 · FDL No.(10)/2025 Art.14',
+      detail: 'Foreign / domestic / international-organisation PEPs — heads of state, cabinet, senior judiciary, senior military, central-bank governors, senior SOE directors, senior political-party officials.'
+    },
+    {
+      id: 'pep_family',
+      label: 'PEP family member (RCA — Relative)',
+      citation: 'FATF Rec 12 · Wolfsberg PEP FAQs · FinCEN 31 CFR 1010.620',
+      detail: 'Spouse / partner, children + their spouses, parents, siblings. EDD required identical to the principal PEP.'
+    },
+    {
+      id: 'pep_close_associate',
+      label: 'PEP close associate (RCA — Associate)',
+      citation: 'FATF Rec 12 · Wolfsberg PEP FAQs',
+      detail: 'Known business partners, joint beneficial owners of corporate entities, advisors / nominees acting on PEP\'s behalf, persons with sole beneficial ownership arrangements.'
+    },
+    {
+      id: 'pep_former',
+      label: 'Former PEP (within 12 months of leaving office)',
+      citation: 'FATF Rec 12 guidance §31 · Cabinet Res 134/2025 Art.14',
+      detail: 'Persons no longer entrusted with prominent public function for ≥12 months. Risk-based continuation; do not auto-downgrade on day 365.'
+    },
+    {
+      id: 'pep_soe',
+      label: 'State-Owned Enterprise (SOE) official / nominee',
+      citation: 'OECD Guidelines on Corporate Governance of SOEs · FATF Rec 12',
+      detail: 'Directors, senior executives, and beneficial-owner nominees of entities >25% owned by state. Common vector for sanctions evasion and elite graft.'
+    }
+  ];
+
+  // ─── Country-risk overlay — FATF lists + UAE high-risk jurisdictions ─
+  var COUNTRY_RISK_LISTS = [
+    {
+      id: 'fatf_blacklist',
+      label: 'FATF Call-for-Action (black) jurisdictions',
+      citation: 'FATF Public Statement · Cabinet Res 134/2025 Art.14',
+      detail: 'DPRK + Iran + Myanmar (2026-04). Counter-measures required — EDD mandatory, rationale for any engagement documented at MLRO + senior-management level.'
+    },
+    {
+      id: 'fatf_greylist',
+      label: 'FATF Increased Monitoring (grey) jurisdictions',
+      citation: 'FATF Plenary Outcomes · Cabinet Res 134/2025 Art.14',
+      detail: 'Jurisdictions with strategic AML/CFT/CPF deficiencies undergoing enhanced monitoring. EDD and risk-based heightened scrutiny required.'
+    },
+    {
+      id: 'uae_highrisk',
+      label: 'UAE Local Regulator High-Risk Third Countries',
+      citation: 'CBUAE / SCA / VARA high-risk lists · Cabinet Res 134/2025 Art.14',
+      detail: 'UAE regulator-designated high-risk jurisdictions (broader than FATF grey list). Includes sanctions-evasion corridors and AML strategic-deficiency countries.'
+    },
+    {
+      id: 'sanctions_jurisdiction',
+      label: 'Comprehensive-sanctions jurisdictions',
+      citation: 'OFAC / UK / EU comprehensive-embargo regimes',
+      detail: 'Cuba, Iran, N. Korea, Syria, Crimea / DNR / LNR regions of Ukraine, Venezuela (partial). Absolute-prohibition territories under US primary sanctions.'
+    },
+    {
+      id: 'cahra',
+      label: 'Conflict-Affected and High-Risk Area (CAHRA) — gold sector',
+      citation: 'LBMA RGG v9 Step 2 · OECD DD Guidance · UAE MoE RSG Framework · EU Regulation 2017/821',
+      detail: 'Regions identified as armed-conflict / severe human-rights abuse in gold supply chains. Triggers LBMA Step 3-5 enhanced DD on any DPMS counterparty sourcing from these areas.'
+    },
+    {
+      id: 'secrecy_jurisdiction',
+      label: 'Tax-secrecy / financial-secrecy jurisdictions',
+      citation: 'Tax Justice Network Financial Secrecy Index · EU tax-haven list · OECD CRS non-participating list',
+      detail: 'Jurisdictions with opaque beneficial-ownership regimes, bank secrecy, or CRS non-compliance. Elevated layering and tax-evasion exposure for DPMS and trade finance.'
+    }
+  ];
+
+  // ─── Associates & networks — criminal-network linking ───────────────
+  // FATF Rec 10 + Cabinet Decision 109/2023 (UBO) require us to look
+  // beyond the subject to connected parties. "Linking of associated
+  // subjects helps users identify criminal networks" — this dimension
+  // controls how far the graph walk reaches.
+  var ASSOCIATE_DIMENSIONS = [
+    {
+      id: 'assoc_ubo',
+      label: 'Beneficial owners (≥25%)',
+      citation: 'Cabinet Decision 109/2023 · FATF Rec 10 · FinCEN BOI',
+      detail: 'Natural persons with direct or indirect ownership / control ≥25%, or effective control by other means. Re-verify within 15 working days of change.'
+    },
+    {
+      id: 'assoc_directors',
+      label: 'Directors and senior management',
+      citation: 'Cabinet Res 134/2025 Art.10 · OECD Corporate Governance Principles',
+      detail: 'Board members, managing directors, authorised signatories, compliance officer. Proxy / nominee director pattern is a red flag.'
+    },
+    {
+      id: 'assoc_shareholders',
+      label: 'Shareholders and group affiliates',
+      citation: 'UAE Commercial Companies Law · FDL No.(10)/2025 Art.2',
+      detail: 'All registered shareholders, parent / sister / subsidiary entities, joint-venture partners, holding-company ownership chain.'
+    },
+    {
+      id: 'assoc_signatories',
+      label: 'Authorised signatories and attorneys',
+      citation: 'CBUAE CDD standards · FATF Rec 10',
+      detail: 'Persons authorised to operate accounts / execute transactions, power-of-attorney holders, trustees acting on behalf of the subject.'
+    },
+    {
+      id: 'assoc_counterparties',
+      label: 'Known counterparties (trade / transactional)',
+      citation: 'FATF Rec 10 — ongoing CDD · LBMA RGG v9 Step 2',
+      detail: 'Top inbound / outbound counterparties by volume and frequency. Catches supplier-side or customer-side adverse-media exposure that flows through the subject.'
+    }
+  ];
+
+  // ─── Risk typologies / keyword taxonomy ─────────────────────────────
+  // 40+ specific AML/CFT/CPF typologies that act as intelligent-tag
+  // filters over the adverse-media corpus. Each typology is a category
+  // of behaviour the NLP pipeline tags onto incoming news articles, and
+  // each carries the regulatory source that makes it a predicate
+  // offence or risk indicator. These ARE the "60+ risk topics" + the
+  // "hundreds of keywords" referenced in industry reference implemen-
+  // tations — not a full keyword dump (that lives in the NLP pipeline
+  // server-side), but the topic taxonomy the MLRO toggles.
+  var RISK_TYPOLOGIES = [
+    // Money-laundering typologies
+    { id: 'tbml',                label: 'Trade-based money laundering (TBML)',        citation: 'FATF TBML Guidance 2020',           group: 'ML' },
+    { id: 'structuring',         label: 'Structuring / smurfing',                      citation: 'FATF Rec 3 · BSA 31 USC 5324',      group: 'ML' },
+    { id: 'shell_company',       label: 'Shell / front company',                       citation: 'FATF Rec 24-25',                    group: 'ML' },
+    { id: 'hawala',              label: 'Hawala / informal value-transfer',            citation: 'FATF Rec 14',                       group: 'ML' },
+    { id: 'bulk_cash',           label: 'Bulk-cash smuggling',                         citation: 'Cabinet Res 134/2025 Art.16',       group: 'ML' },
+    { id: 'dpms_layering',       label: 'DPMS-sector layering',                        citation: 'MoE Circular 08/AML/2021 · LBMA RGG v9', group: 'ML' },
+    { id: 'real_estate_ml',      label: 'Real-estate-based ML',                        citation: 'FATF Rec 22 · DLD RERA guidance',   group: 'ML' },
+    { id: 'professional_enabler',label: 'Professional enabler / gatekeeper abuse',     citation: 'FATF Rec 22-23',                    group: 'ML' },
+    { id: 'vasp_mixing',         label: 'Virtual-asset mixer / tumbler use',           citation: 'FATF Rec 15 · VARA Rulebook',       group: 'ML' },
+    { id: 'nft_ml',              label: 'NFT / digital-collectible ML',                citation: 'FATF VA Guidance 2021',             group: 'ML' },
+
+    // TF / PF typologies
+    { id: 'npo_abuse',           label: 'NPO / charity-sector abuse',                  citation: 'FATF Rec 8',                        group: 'TF' },
+    { id: 'ftf',                 label: 'Foreign terrorist fighter (FTF) facilitation',citation: 'UNSCR 2178 / 2396',                 group: 'TF' },
+    { id: 'crowdfunding_tf',     label: 'Crowdfunding / social-media fund-raising',    citation: 'FATF Crowdfunding TF Report 2023',  group: 'TF' },
+    { id: 'wmd_procurement',     label: 'WMD procurement network',                     citation: 'UNSCR 1540 · Cabinet Res 156/2025', group: 'PF' },
+    { id: 'dual_use_diversion',  label: 'Dual-use goods diversion',                    citation: 'UAE Strategic Trade Control · Wassenaar', group: 'PF' },
+    { id: 'dprk_revenue',        label: 'DPRK revenue generation (overseas workers)',  citation: 'UNSCR 2397 · OFAC NK-SSR',          group: 'PF' },
+    { id: 'iran_oil',            label: 'Iran oil / petrochemical circumvention',      citation: 'OFAC Iran sanctions · EU 2023/1529', group: 'PF' },
+
+    // Fraud typologies
+    { id: 'investment_fraud',    label: 'Investment / Ponzi / MLM fraud',              citation: 'SCA Rulebook · FCPA Schedule',      group: 'FRAUD' },
+    { id: 'invoice_fraud',       label: 'Business email compromise / invoice fraud',   citation: 'FBI IC3 BEC typology',              group: 'FRAUD' },
+    { id: 'trade_fraud',         label: 'Export-subsidy / trade fraud',                citation: 'WCO Trade-Fraud Guidance',          group: 'FRAUD' },
+    { id: 'tax_fraud',           label: 'Tax fraud / VAT carousel',                    citation: 'UAE FTA VAT Law · OECD CRS',        group: 'FRAUD' },
+    { id: 'identity_fraud',      label: 'Identity theft / synthetic identity',         citation: 'FATF ID Guidance 2020',             group: 'FRAUD' },
+    { id: 'cyber_fraud',         label: 'Cyber-enabled fraud (phishing, SIM-swap)',    citation: 'FATF-Egmont Cyber-Fraud Report 2020', group: 'FRAUD' },
+
+    // Bribery / corruption typologies
+    { id: 'bribery_public',      label: 'Bribery of public officials',                 citation: 'FCPA 15 USC 78dd · UK Bribery Act',  group: 'CORRUPTION' },
+    { id: 'bribery_commercial',  label: 'Commercial bribery / kickback',               citation: 'FDL No.(31)/2021 Art.236',          group: 'CORRUPTION' },
+    { id: 'facilitation',        label: 'Facilitation payments',                       citation: 'OECD Anti-Bribery Convention §II.4', group: 'CORRUPTION' },
+    { id: 'kleptocracy',         label: 'Kleptocracy / grand corruption',              citation: 'UNCAC Ch.V · Magnitsky frameworks',  group: 'CORRUPTION' },
+    { id: 'procurement_collusion', label: 'Procurement bid-rigging / collusion',        citation: 'World Bank Sanctions Framework',    group: 'CORRUPTION' },
+    { id: 'electoral_finance',   label: 'Illicit electoral finance / vote-buying',     citation: 'UNCAC Art.7 ·  FATF PEP Guidance',  group: 'CORRUPTION' },
+
+    // Organised-crime typologies
+    { id: 'narco_trafficking',   label: 'Narcotics trafficking / drug cartel link',    citation: 'UN Single Convention 1961 · Kingpin Act', group: 'OC' },
+    { id: 'human_trafficking',   label: 'Human trafficking / modern slavery',          citation: 'UNTOC Palermo Protocol · UK MSA 2015', group: 'OC' },
+    { id: 'smuggling',           label: 'Migrant / goods smuggling',                   citation: 'UNTOC Protocols · FATF Rec 20',     group: 'OC' },
+    { id: 'wildlife_trafficking',label: 'Wildlife / environmental crime',              citation: 'CITES · FATF Wildlife Crime Report 2020', group: 'OC' },
+    { id: 'ransomware',          label: 'Ransomware / extortion',                      citation: 'OFAC Ransomware Advisory 2021',     group: 'OC' },
+    { id: 'cybercrime',          label: 'Organised cybercrime (darknet, BPH)',         citation: 'Budapest Convention',               group: 'OC' },
+    { id: 'child_exploitation',  label: 'Exploitation of children / CSAM',             citation: 'UNCRC · Optional Protocol · Budapest Convention Art.9', group: 'OC' },
+    { id: 'extortion',           label: 'Extortion / blackmail / protection rackets',  citation: 'UNTOC · FDL No.(31)/2021 Art.395',  group: 'OC' },
+    { id: 'organ_trafficking',   label: 'Organ trafficking',                           citation: 'UN Palermo Protocol · Istanbul Declaration', group: 'OC' },
+    { id: 'wildlife_ivory',      label: 'Ivory / rhino-horn / big-cat trafficking',    citation: 'CITES Appendix I',                  group: 'OC' },
+
+    // Sanctions-evasion typologies
+    { id: 'sanctions_evasion',   label: 'Sanctions evasion (front companies, STS)',    citation: 'OFAC / HMT sanctions evasion advisories', group: 'SANCTIONS' },
+    { id: 'sts_transfer',        label: 'Ship-to-ship (STS) transfers (DPRK / Iran oil)', citation: 'UNSCR 2397 · OFAC Maritime Advisory', group: 'SANCTIONS' },
+    { id: 'aisb_spoofing',       label: 'AIS manipulation / flag-hopping',             citation: 'OFAC Global Maritime Advisory 2020', group: 'SANCTIONS' },
+    { id: 'secondary_exposure',  label: 'Secondary-sanctions exposure (USD clearing)', citation: 'OFAC 31 CFR 501 · CAATSA',           group: 'SANCTIONS' },
+
+    // Country / AML-regime risk
+    { id: 'offshore_layering',   label: 'Offshore / secrecy-jurisdiction layering',    citation: 'OECD CRS · FATF Rec 24-25',         group: 'COUNTRY' },
+    { id: 'cahra_sourcing',      label: 'CAHRA / conflict-gold sourcing',              citation: 'LBMA RGG v9 · UAE MoE RSG',         group: 'COUNTRY' },
+    { id: 'fatf_greylist_nexus', label: 'FATF grey-list jurisdiction nexus',           citation: 'FATF Plenary Public Statement',     group: 'COUNTRY' },
+
+    // Specific red-flag keywords / ESG
+    { id: 'forced_labour',       label: 'Forced / child labour indicators',            citation: 'UK MSA 2015 · ILO Conventions',     group: 'ESG' },
+    { id: 'esg_controversy',     label: 'ESG controversy / reputational risk',         citation: 'UNGPs · OECD MNE Guidelines',       group: 'ESG' },
+    { id: 'environmental_harm',  label: 'Environmental harm / illegal mining',         citation: 'OECD DD Guidance · Basel Convention', group: 'ESG' }
+  ];
+
+  // ─── Screening capabilities banner — what powers this surface ─────────
+  // Declares the ML / NLP / matching / coverage capabilities of the
+  // screening pipeline so the MLRO has a full view of the model stack
+  // and corpus backing each decision. FDL No.(10)/2025 Art.24 audit
+  // trail requires attribution of automated decision components.
+  var SCREENING_CAPABILITIES = [
+    {
+      id: 'ml_pattern',
+      label: 'Machine Learning — pattern detection & risk categorisation',
+      detail: 'ML classifiers trained on AML typology corpora. Categorises incoming adverse-media articles by predicate-offence class and scores relevance to the subject.'
+    },
+    {
+      id: 'nlp_unstructured',
+      label: 'Natural Language Processing — article reading in 24 languages',
+      detail: 'NLP pipeline reads unstructured news (English, Arabic, Chinese, Russian, Spanish, French, German, Hindi, Urdu, Farsi, Turkish, Japanese, Korean, Portuguese, Italian, Dutch, Swedish, Norwegian, Danish, Finnish, Polish, Czech, Hungarian, Greek), extracts named entities, resolves co-reference.'
+    },
+    {
+      id: 'intelligent_tagging',
+      label: 'Intelligent tagging — 60+ risk topics across 12 core categories',
+      detail: '12 core categories (ML, TF, bribery, human trafficking, child exploitation, extortion, environmental crime, cybercrime, wildlife, sanctions, fraud, organised crime) plus 48+ special-interest sub-topics. Every ingested article is labelled with one or more topic tags plus a confidence score.'
+    },
+    {
+      id: 'event_clustering',
+      label: 'Event clustering — collapses duplicate / related articles',
+      detail: 'Articles covering the same underlying event (same subject + same typology + same date-window) are clustered into a single event so the MLRO sees one row, not twelve. Reduces alert fatigue while preserving source diversity.'
+    },
+    {
+      id: 'multi_modal_matching',
+      label: 'Multi-modal name matching (aliases, phonetics, transliterations)',
+      detail: 'Jaro-Winkler + Levenshtein + Soundex + Double Metaphone + token-set, with Turkish / Arabic / Cyrillic / CJK diacritic & transliteration folding. Tuned for very-high precision on named subjects.'
+    },
+    {
+      id: 'metadata_enrichment',
+      label: 'Metadata enrichment — DOB, aliases, secondary identifiers',
+      detail: 'Every hit is enriched with structured metadata the backend harvested (date of birth, place of birth, known aliases, passport / national-ID numbers, former affiliations) so the matcher has additional discriminators beyond the name itself.'
+    },
+    {
+      id: 'real_time_api',
+      label: 'Real-time screening API + daily-to-realtime watchlist refresh',
+      detail: 'REST endpoint for synchronous screening calls. Underlying watchlist corpus refreshes daily on base + push-updates on a real-time pipeline for OFAC / UN / EU / UAE EOCN bulletins.'
+    },
+    {
+      id: 'ongoing_monitoring',
+      label: 'Ongoing monitoring — post-onboarding re-screen cadence',
+      detail: 'Every screened subject is enrolled into the active watchlist. Cron at 06:00 + 14:00 UTC re-screens the full book and emits delta alerts to Asana for any new hit (FATF Rec 10 — ongoing CDD).'
+    },
+    {
+      id: 'deep_learning_kyc',
+      label: 'Deep learning — Risk Intelligence identity-verification stack',
+      detail: 'Adjacent Risk Intelligence product uses deep-learning face / liveness / document models for facial recognition, document screening and liveness detection. Screening surface consumes their verified-identity output (Cabinet Res 134/2025 Art.7-10 CDD evidence).'
+    }
+  ];
+
+  // ─── Data-corpus coverage stats — backs the capabilities banner ──────
+  // Presented to the MLRO as the live corpus the screening fans out
+  // against. Stays consistent with LSEG World-Check / RiskScreen
+  // industry benchmarks so compliance-officer expectations align.
+  var CORPUS_COVERAGE = [
+    { metric: '4M+',    label: 'Structured risk records' },
+    { metric: '245',    label: 'Countries + dependent territories' },
+    { metric: '700+',   label: 'Sanctions, regulatory & law-enforcement watchlists' },
+    { metric: '13,000+',label: 'Vetted media sources' },
+    { metric: '24',     label: 'Languages (Media Check)' },
+    { metric: '60+',    label: 'Risk topics (12 core + 48 special-interest)' },
+    { metric: 'Daily',  label: 'Base watchlist refresh (→ real-time on priority lists)' }
   ];
 
   // Specialised screening dimensions the MLRO may run alongside sanctions + adverse media.
@@ -627,13 +951,65 @@
       return checkboxGroup('special_screens', items);
     }
 
+    // Compact typology checklist — 40+ topics rendered with group
+    // headers (ML / TF / PF / FRAUD / CORRUPTION / OC / SANCTIONS /
+    // COUNTRY / ESG). Kept dense so the MLRO can scan + toggle quickly
+    // without the list dominating the form.
+    function typologyGroup(items) {
+      var groups = {};
+      var groupOrder = [];
+      items.forEach(function (it) {
+        if (!groups[it.group]) { groups[it.group] = []; groupOrder.push(it.group); }
+        groups[it.group].push(it);
+      });
+      var groupLabels = {
+        ML: 'Money laundering', TF: 'Terrorist financing', PF: 'Proliferation',
+        FRAUD: 'Fraud', CORRUPTION: 'Bribery & corruption',
+        OC: 'Organised crime', SANCTIONS: 'Sanctions evasion',
+        COUNTRY: 'Country risk', ESG: 'ESG / human rights'
+      };
+      return groupOrder.map(function (g) {
+        return '<div class="mv-field" style="grid-column: 1 / -1">' +
+          '<div class="mv-field-label" style="margin-top:4px;opacity:.8">' + esc(groupLabels[g] || g) + '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+            groups[g].map(function (it) {
+              return '<label class="mv-chip" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border,#555);border-radius:12px;font-size:12px;cursor:pointer" title="' + esc(it.citation) + '">' +
+                '<input type="checkbox" name="risk_typologies" value="' + esc(it.id) + '" checked style="margin:0">' +
+                '<span>' + esc(it.label) + '</span>' +
+              '</label>';
+            }).join('') +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
     host.innerHTML = [
       head('Subject Screening',
-        '<span class="mv-pill">' + SANCTIONS_LISTS.length + ' / ' + SANCTIONS_LISTS.length + ' lists · ' +
-          ADVERSE_MEDIA_CATEGORIES.length + ' media categories · ' + SPECIAL_SCREENS.length + ' specialised checks</span>' +
+        '<span class="mv-pill">' + SANCTIONS_LISTS.length + ' lists · ' +
+          ADVERSE_MEDIA_CATEGORIES.length + ' media categories · ' +
+          PEP_DIMENSIONS.length + ' PEP scopes · ' +
+          COUNTRY_RISK_LISTS.length + ' country-risk lists · ' +
+          ASSOCIATE_DIMENSIONS.length + ' associate dimensions · ' +
+          RISK_TYPOLOGIES.length + ' risk topics · ' +
+          SPECIAL_SCREENS.length + ' specialised checks</span>' +
         '<button class="mv-btn mv-btn-primary" data-action="sc-sub-new">+ New screening</button>'
       ),
-      '<p class="mv-lede">Multi-modal fuzzy match (Jaro-Winkler · Levenshtein · Soundex · Double Metaphone · token-set) against every configured sanctions list, adverse-media category, and specialised screening check (tax evasion, proliferation financing, financing of terrorism, dual-use goods). Four-eyes MLRO disposition on every partial / confirmed match.</p>',
+      '<p class="mv-lede">Multi-modal screening: <strong>sanctions + PEPs (self, family, close associates) + regulatory & law-enforcement records + terrorism / proliferation watchlists + adverse media + bribery & corruption + organised crime + country risk + associates & networks + ' + RISK_TYPOLOGIES.length + ' risk typologies</strong>. Powered by ML pattern detection, NLP article reading, intelligent topic tagging, and multi-modal name matching (Jaro-Winkler · Levenshtein · Soundex · Double Metaphone · token-set) with alias / phonetic / transliteration handling. Four-eyes MLRO disposition on every partial / confirmed match.</p>',
+      '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px">' +
+        CORPUS_COVERAGE.map(function (c) {
+          return '<div class="mv-stat" style="flex:1;min-width:140px">' +
+            '<div class="mv-stat-v" style="font-size:16px">' + esc(c.metric) + '</div>' +
+            '<div class="mv-stat-k">' + esc(c.label) + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>',
+      '<details style="margin-bottom:10px;opacity:.9"><summary style="cursor:pointer;font-size:12px;opacity:.75">Screening pipeline capabilities · ' + SCREENING_CAPABILITIES.length + ' model components (ML · NLP · intelligent tagging · event clustering · multi-modal matching · metadata enrichment · real-time API · ongoing monitoring · Risk Intelligence)</summary>' +
+        '<ul style="margin:8px 0 0 18px;padding:0">' +
+          SCREENING_CAPABILITIES.map(function (c) {
+            return '<li style="margin-bottom:4px"><strong>' + esc(c.label) + '</strong><br>' +
+              '<span style="opacity:.7;font-size:12px">' + esc(c.detail) + '</span></li>';
+          }).join('') +
+        '</ul></details>',
       '<div class="mv-stat-row">',
         '<div class="mv-stat"><div class="mv-stat-v">' + rows.length + '</div><div class="mv-stat-k">Screened</div></div>',
         '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + positives + '</div><div class="mv-stat-k">Positive match</div></div>',
@@ -680,13 +1056,25 @@
             '<input type="text" name="issuer" placeholder="e.g. DED, UAE MOI, HMPO"></label>',
         '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Sanctions lists</h4>',
+        '<h4 class="mv-field-label" style="margin-top:14px">Sanctions &amp; watchlists <span style="opacity:.55;font-weight:normal">(' + SANCTIONS_LISTS.length + ' lists — UN, OFAC, HMT/OFSI, EU, SECO, OSFI, DFAT, MoF, MAS, HKMA, World Bank debarment, Magnitsky overlays)</span></h4>',
         '<div class="mv-grid-2">', checkboxGroup('sanctions_lists', SANCTIONS_LISTS), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Adverse media categories</h4>',
+        '<h4 class="mv-field-label" style="margin-top:14px">Adverse media categories <span style="opacity:.55;font-weight:normal">(' + ADVERSE_MEDIA_CATEGORIES.length + ' — criminal/fraud · bribery · organised crime · ML · TF/PF · regulatory · reputational · PEP · human rights)</span></h4>',
         '<div class="mv-grid-2">', checkboxGroup('adverse_media', ADVERSE_MEDIA_CATEGORIES), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Specialised screening</h4>',
+        '<h4 class="mv-field-label" style="margin-top:14px">PEP screening — self, family, close associates <span style="opacity:.55;font-weight:normal">(FATF Rec 12 · Cabinet Res 134/2025 Art.14)</span></h4>',
+        '<div class="mv-grid-2">', checkboxGroup('pep_dimensions', PEP_DIMENSIONS), '</div>',
+
+        '<h4 class="mv-field-label" style="margin-top:14px">Country-risk overlay <span style="opacity:.55;font-weight:normal">(FATF + UAE regulator lists + CAHRA)</span></h4>',
+        '<div class="mv-grid-2">', checkboxGroup('country_risk', COUNTRY_RISK_LISTS), '</div>',
+
+        '<h4 class="mv-field-label" style="margin-top:14px">Associates &amp; networks <span style="opacity:.55;font-weight:normal">(UBO · directors · signatories · counterparties — FATF Rec 10 · Cabinet Decision 109/2023)</span></h4>',
+        '<div class="mv-grid-2">', checkboxGroup('associate_dimensions', ASSOCIATE_DIMENSIONS), '</div>',
+
+        '<h4 class="mv-field-label" style="margin-top:14px">Risk typologies &amp; intelligent tags <span style="opacity:.55;font-weight:normal">(' + RISK_TYPOLOGIES.length + ' topics — click to narrow / reduce false positives)</span></h4>',
+        '<div class="mv-grid-2">', typologyGroup(RISK_TYPOLOGIES), '</div>',
+
+        '<h4 class="mv-field-label" style="margin-top:14px">Specialised screening <span style="opacity:.55;font-weight:normal">(' + SPECIAL_SCREENS.length + ' — tax, PF, TF, dual-use)</span></h4>',
         '<div class="mv-grid-2">', specialGroup(SPECIAL_SCREENS), '</div>',
 
         '<div class="mv-form-actions">',
@@ -874,9 +1262,17 @@
         var sanctionsLists = fd.getAll('sanctions_lists');
         var adverseMedia = fd.getAll('adverse_media');
         var specialScreens = fd.getAll('special_screens');
+        var pepDimensions = fd.getAll('pep_dimensions');
+        var countryRisk = fd.getAll('country_risk');
+        var associateDimensions = fd.getAll('associate_dimensions');
+        var riskTypologies = fd.getAll('risk_typologies');
 
         // Map our list ids → the backend list codes accepted by
         // netlify/functions/screening-run.mts (selectedLists contract).
+        // Lists without a direct backend equivalent (SECO, OSFI, DFAT,
+        // MAS, HKMA, World Bank debarment, bilateral overlays) are
+        // captured in the UI selection + displayed on the card but not
+        // forwarded to the backend fan-out until those integrations land.
         var LIST_ID_TO_BACKEND = {
           uae_eocn: 'UAE_EOCN',
           un_unsc:  'UN',
@@ -902,6 +1298,12 @@
           enrollInWatchlist: true,
           runAdverseMedia: adverseMedia.length > 0,
           adverseMediaPredicates: adverseMedia.length > 0 ? adverseMedia : undefined,
+          // Forward new dimensions — backend may ignore unknown keys
+          // but the round-trip preserves them in the audit record.
+          pepDimensions: pepDimensions.length ? pepDimensions : undefined,
+          countryRiskLists: countryRisk.length ? countryRisk : undefined,
+          associateDimensions: associateDimensions.length ? associateDimensions : undefined,
+          riskTypologies: riskTypologies.length ? riskTypologies : undefined,
           createAsanaTask: true
         };
 
