@@ -977,4 +977,413 @@
     'str-cases': renderSTRCases,
     watchlist: renderWatchlist
   };
+
+  // ─── Weaponized intelligence drawer mount ─────────────────────────
+  // Pulls the full screening snapshot into a shared super-brain UI
+  // (brain-boot.js + intelligence-drawer.js). Runs 47 FATF/UAE
+  // typology rules client-side on every open (zero API cost), offers
+  // 8 preset analyses, and escalates to the full MegaBrain pipeline
+  // with advisor-tool beta (Sonnet → Opus) when auth is present.
+  //
+  // Regulatory: FDL No.(10)/2025 Art.20-21 (CO duties), Art.26-27
+  // (STR filing), Art.29 (no tipping off). Cabinet Res 134/2025
+  // Art.19 (internal review). Cabinet Res 74/2020 Art.4-7 (24h
+  // freeze). FATF Rec 10, 12, 15, 20, 22. NIST AI RMF 1.0.
+  function mountIntelligenceDrawer() {
+    if (!window.__intelligenceDrawer) return;
+
+    var CRITICAL_COUNTRIES = ['IR','KP','MM','RU','SY','BY','CU','VE','YE','LY','SO','SD','AF'];
+
+    // Build a synthetic "entity" the brain can reason over from the
+    // full screening snapshot. This feeds __brainTypology.scan and
+    // __brainAnalyze — same contract used across the codebase.
+    function buildEntity(snap) {
+      var subjects = snap.keys.subjects || [];
+      var txs      = snap.keys.transactions || [];
+      var watch    = snap.keys.watchlist || [];
+      var str      = snap.keys.strCases || [];
+
+      var confirmed = subjects.filter(function (s) { return s.disposition === 'positive'; }).length;
+      var partial   = subjects.filter(function (s) { return s.disposition === 'partial'; }).length;
+      var pepHits   = subjects.filter(function (s) {
+        return (s.adverse_media_hits || []).indexOf('political_pep') !== -1;
+      }).length;
+      var adverseHits = subjects.filter(function (s) {
+        return Array.isArray(s.adverse_media_hits) && s.adverse_media_hits.length > 0;
+      }).length;
+      var specialHits = subjects.filter(function (s) {
+        return Array.isArray(s.special_flags) && s.special_flags.length > 0;
+      }).length;
+      var topScore = subjects.reduce(function (m, s) {
+        return Math.max(m, s.confidence || 0);
+      }, 0);
+
+      return {
+        id: 'screening-command-landing',
+        kind: 'screening_command_snapshot',
+        subjectCount: subjects.length,
+        transactionCount: txs.length,
+        watchlistCount: watch.length,
+        strCaseCount: str.length,
+        confirmedMatches: confirmed,
+        partialMatches: partial,
+        sanctionsMatchScore: topScore,
+        pepScreenResult: pepHits > 0 ? 'MATCH' : 'CLEAR',
+        pepDisclosed: pepHits === 0,
+        adverseMediaScore: subjects.length ? adverseHits / subjects.length : 0,
+        pfScreenResult: specialHits > 0 ? 'MATCH' : 'CLEAR',
+        features: {
+          subjectCount: subjects.length,
+          confirmedMatches: confirmed,
+          topSanctionsScore: topScore,
+          adverseHitRatio: subjects.length ? adverseHits / subjects.length : 0,
+          cahraExposure: txs.some(function (t) {
+            return CRITICAL_COUNTRIES.indexOf(t.counterpartyCountry || '') !== -1;
+          }) ? 1 : 0
+        }
+      };
+    }
+
+    // Project transactions into the shape __brainTypology expects.
+    function buildTxs(snap) {
+      return (snap.keys.transactions || []).map(function (t) {
+        var when = t.occurred_on || t.date || t.timestamp || null;
+        return {
+          date: when ? (new Date(when).toISOString()) : new Date().toISOString(),
+          amount: Number(t.amount || 0),
+          method: (t.channel || '').toUpperCase() === 'CASH' ? 'CASH' : (t.channel || 'BANK').toUpperCase(),
+          channel: (t.channel || 'BANK').toUpperCase(),
+          counterpartyCountry: t.country || t.counterpartyCountry || null,
+          type: t.type || 'PAYMENT',
+          commodity: t.commodity || null
+        };
+      });
+    }
+
+    // ─── Pure-math helpers used by multiple presets ───────────────
+    function mean(xs) {
+      if (!xs.length) return 0;
+      return xs.reduce(function (s, v) { return s + v; }, 0) / xs.length;
+    }
+    function stddev(xs) {
+      if (xs.length < 2) return 0;
+      var m = mean(xs);
+      var v = xs.reduce(function (s, x) { return s + (x - m) * (x - m); }, 0) / (xs.length - 1);
+      return Math.sqrt(v);
+    }
+
+    // ─── Preset analyses (client-side, zero API cost) ─────────────
+    var presets = [
+
+      // 1 — Sanctions proximity ranker (Bayesian-ish combiner).
+      {
+        id: 'sanctions_rank',
+        label: 'Rank subjects by sanctions proximity',
+        note: 'Bayesian combiner on confidence × list-coverage × PEP × adverse media.',
+        fn: function (ctx) {
+          var subjects = ctx.snap.keys.subjects || [];
+          if (!subjects.length) {
+            return { summary: 'No subjects in the register yet — run a screening first.', citations: ['FDL Art.20-21'] };
+          }
+          // Prior: 1% base rate of a true positive. Likelihood ratios
+          // are deliberately conservative per FDL Art.29 tip-off risk.
+          var PRIOR = 0.01;
+          function posterior(s) {
+            var conf = s.confidence || 0;
+            var lists = Array.isArray(s.per_list) ? s.per_list.filter(function (p) { return p.hit_count > 0; }).length : 0;
+            var adv = (s.adverse_media_hits || []).length;
+            var spec = (s.special_flags || []).length;
+            var lr = 1 + (conf * 6) + (lists * 0.8) + (adv * 0.6) + (spec * 0.9);
+            var odds = (PRIOR / (1 - PRIOR)) * lr;
+            return odds / (1 + odds);
+          }
+          var ranked = subjects.map(function (s) {
+            return { name: s.name, country: s.country, disp: s.disposition || 'pending',
+              score: posterior(s), topScore: s.confidence || 0 };
+          }).sort(function (a, b) { return b.score - a.score; });
+          var top = ranked.slice(0, 8);
+          var verdict = top.length && top[0].score >= 0.6 ? 'escalate' : top.length && top[0].score >= 0.3 ? 'review' : 'monitor';
+          var lines = ['Bayesian posterior P(true-positive | evidence), ordered descending:', ''];
+          top.forEach(function (r, i) {
+            lines.push('  ' + (i + 1) + '. ' + r.name + ' — ' + (r.score * 100).toFixed(1) + '%  ' +
+              '(raw conf ' + (r.topScore * 100).toFixed(0) + '%, disp ' + r.disp + ', ' + (r.country || '—') + ')');
+          });
+          return {
+            verdict: verdict,
+            confidence: top.length ? top[0].score : 0,
+            summary: lines.join('\n'),
+            citations: ['FDL Art.20-21', 'Cabinet Res 74/2020 Art.4-7', 'FATF Rec 6-7']
+          };
+        }
+      },
+
+      // 2 — Structuring / smurfing detector (T01).
+      {
+        id: 'structuring',
+        label: 'Detect structuring near AED 55K DPMS threshold',
+        note: 'Counts transactions in the 45K–55K band, cross-checked against same-counterparty day-bucket.',
+        fn: function (ctx) {
+          var txs = ctx.snap.keys.transactions || [];
+          var near = txs.filter(function (t) { var a = Number(t.amount || 0); return a > 45000 && a < 55000; });
+          var byCp = {};
+          near.forEach(function (t) {
+            var k = (t.counterparty || 'unknown') + '|' + String(t.occurred_on || '').slice(0, 10);
+            byCp[k] = (byCp[k] || 0) + 1;
+          });
+          var clusters = Object.keys(byCp).filter(function (k) { return byCp[k] >= 2; }).length;
+          var verdict = near.length >= 3 ? 'escalate' : near.length >= 1 ? 'review' : 'monitor';
+          return {
+            verdict: verdict,
+            confidence: Math.min(0.95, 0.2 + near.length * 0.08 + clusters * 0.15),
+            summary: [
+              'Near-threshold transactions (45K < amount < 55K): ' + near.length,
+              'Same-counterparty day-buckets with ≥2 near-threshold hits: ' + clusters,
+              '',
+              near.length ? 'Offenders (top 5):' : 'No structuring signal detected.',
+              near.slice(0, 5).map(function (t) {
+                return '  • AED ' + (t.amount || 0).toLocaleString() + ' — ' + (t.counterparty || '—') + ' (' + (t.occurred_on || '') + ')';
+              }).join('\n')
+            ].join('\n'),
+            citations: ['MoE Circular 08/AML/2021', 'FDL Art.16', 'FATF Rec 20']
+          };
+        }
+      },
+
+      // 3 — Velocity z-score anomaly.
+      {
+        id: 'velocity',
+        label: 'Velocity z-score anomaly scan',
+        note: 'Flags transactions > 3σ above the 30-day rolling mean.',
+        fn: function (ctx) {
+          var txs = (ctx.snap.keys.transactions || []).slice().sort(function (a, b) {
+            return new Date(a.occurred_on || 0) - new Date(b.occurred_on || 0);
+          });
+          if (txs.length < 5) {
+            return { verdict: 'monitor', confidence: 0.1, summary: 'Need ≥5 transactions for a meaningful z-score.', citations: ['FDL Art.16'] };
+          }
+          var amounts = txs.map(function (t) { return Number(t.amount || 0); });
+          var m = mean(amounts);
+          var sd = stddev(amounts);
+          if (!sd) {
+            return { verdict: 'monitor', confidence: 0.1, summary: 'Zero variance — all amounts identical.', citations: ['FDL Art.16'] };
+          }
+          var outliers = amounts.map(function (a, i) { return { t: txs[i], z: (a - m) / sd }; })
+            .filter(function (x) { return Math.abs(x.z) > 3; });
+          var verdict = outliers.length ? 'review' : 'monitor';
+          return {
+            verdict: verdict,
+            confidence: outliers.length ? Math.min(0.9, 0.3 + outliers.length * 0.15) : 0.15,
+            summary: [
+              'μ = AED ' + m.toFixed(0) + '  σ = AED ' + sd.toFixed(0) + '  n = ' + amounts.length,
+              'Outliers |z| > 3: ' + outliers.length,
+              outliers.slice(0, 5).map(function (x) {
+                return '  • z=' + x.z.toFixed(2) + '  AED ' + (x.t.amount || 0).toLocaleString() + ' — ' + (x.t.counterparty || '—');
+              }).join('\n')
+            ].join('\n'),
+            citations: ['FDL Art.16', 'FATF Rec 10']
+          };
+        }
+      },
+
+      // 4 — Benford's Law digit-frequency audit.
+      {
+        id: 'benford',
+        label: "Benford's Law first-digit audit",
+        note: 'χ² test against expected log-distribution of leading digits.',
+        fn: function (ctx) {
+          var txs = ctx.snap.keys.transactions || [];
+          var amounts = txs.map(function (t) { return Math.abs(Number(t.amount || 0)); }).filter(function (a) { return a > 0; });
+          if (amounts.length < 10) {
+            return { verdict: 'monitor', confidence: 0.1, summary: 'Need ≥10 non-zero transactions for Benford.', citations: ['FDL Art.19'] };
+          }
+          var counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+          amounts.forEach(function (a) {
+            var d = parseInt(String(a).replace('.', '').replace(/^0+/, '')[0], 10);
+            if (d >= 1 && d <= 9) counts[d]++;
+          });
+          var expected = [0, 0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046];
+          var n = amounts.length;
+          var chi2 = 0;
+          var rows = [];
+          for (var d = 1; d <= 9; d++) {
+            var obs = counts[d] / n;
+            var exp = expected[d];
+            chi2 += Math.pow(obs - exp, 2) / exp;
+            rows.push('  digit ' + d + ': observed ' + (obs * 100).toFixed(1) + '%  (expected ' + (exp * 100).toFixed(1) + '%)');
+          }
+          var suspicious = chi2 > 15.5;
+          return {
+            verdict: suspicious ? 'review' : 'monitor',
+            confidence: suspicious ? Math.min(0.85, 0.3 + chi2 / 60) : 0.15,
+            summary: [
+              'χ² = ' + chi2.toFixed(2) + '  (threshold 15.51 at p=0.05, 8df)',
+              'n = ' + n + ' transactions',
+              suspicious ? '⚠  Distribution diverges from Benford — investigate for fabrication.' : '✓  Distribution consistent with Benford.',
+              '',
+              'Digit frequencies:',
+              rows.join('\n')
+            ].join('\n'),
+            citations: ['FDL Art.19', 'FATF Rec 10']
+          };
+        }
+      },
+
+      // 5 — Multi-jurisdiction layering (T18).
+      {
+        id: 'layering',
+        label: 'Multi-jurisdiction layering scan',
+        note: 'Flags when counterparties span ≥5 countries with CAHRA hits weighted heavier.',
+        fn: function (ctx) {
+          var txs = ctx.snap.keys.transactions || [];
+          var countries = {};
+          var cahraHits = 0;
+          txs.forEach(function (t) {
+            var c = t.country || t.counterpartyCountry;
+            if (c) {
+              countries[c] = (countries[c] || 0) + 1;
+              if (CRITICAL_COUNTRIES.indexOf(c) !== -1) cahraHits++;
+            }
+          });
+          var uniq = Object.keys(countries);
+          var verdict = (uniq.length >= 5 || cahraHits > 0) ? (cahraHits > 0 ? 'escalate' : 'review') : 'monitor';
+          return {
+            verdict: verdict,
+            confidence: Math.min(0.9, 0.2 + uniq.length * 0.08 + cahraHits * 0.2),
+            summary: [
+              'Distinct counterparty countries: ' + uniq.length,
+              'CAHRA / high-risk jurisdiction hits: ' + cahraHits,
+              '',
+              'Distribution:',
+              uniq.map(function (c) {
+                var flag = CRITICAL_COUNTRIES.indexOf(c) !== -1 ? '  ⚠ CAHRA' : '';
+                return '  ' + c + ': ' + countries[c] + flag;
+              }).join('\n')
+            ].join('\n'),
+            citations: ['Cabinet Res 134/2025 Art.5', 'FATF Rec 20', 'LBMA RGG v9']
+          };
+        }
+      },
+
+      // 6 — PEP + adverse media correlation.
+      {
+        id: 'pep_correlation',
+        label: 'PEP × adverse-media correlation',
+        note: 'Cross-joins subjects with PEP flag and adverse-media categories per FATF Rec 12.',
+        fn: function (ctx) {
+          var subjects = ctx.snap.keys.subjects || [];
+          var peps = subjects.filter(function (s) {
+            return (s.adverse_media_hits || []).indexOf('political_pep') !== -1;
+          });
+          var withOther = peps.filter(function (s) {
+            return (s.adverse_media_hits || []).some(function (h) {
+              return h !== 'political_pep' && h !== 'negative_reputation';
+            });
+          });
+          var verdict = withOther.length ? 'escalate' : peps.length ? 'review' : 'monitor';
+          return {
+            verdict: verdict,
+            confidence: withOther.length ? Math.min(0.9, 0.4 + withOther.length * 0.15) : (peps.length ? 0.45 : 0.1),
+            summary: [
+              'PEP-flagged subjects: ' + peps.length,
+              'PEP + other adverse-media: ' + withOther.length,
+              '',
+              withOther.length ? 'PEP + escalation-worthy combinations:' : (peps.length ? 'PEP-only subjects:' : ''),
+              (withOther.length ? withOther : peps).slice(0, 6).map(function (s) {
+                return '  • ' + s.name + ' — ' + (s.country || '—') + ' — hits: ' + (s.adverse_media_hits || []).join(', ');
+              }).join('\n')
+            ].join('\n'),
+            citations: ['FATF Rec 12', 'FDL Art.14', 'Cabinet Res 134/2025 Art.14']
+          };
+        }
+      },
+
+      // 7 — Filing SLA watchdog on STR cases.
+      {
+        id: 'str_sla',
+        label: 'STR / SAR filing SLA watchdog',
+        note: 'Flags open cases still unfiled after >5 days. FDL Art.26-27: file without delay.',
+        fn: function (ctx) {
+          var cases = ctx.snap.keys.strCases || [];
+          var now = Date.now();
+          var overdue = cases.filter(function (c) {
+            if (c.filed_on || c.status === 'filed') return false;
+            var opened = c.opened_on ? new Date(c.opened_on).getTime() : now;
+            return (now - opened) / 86400000 > 5;
+          });
+          return {
+            verdict: overdue.length ? 'escalate' : 'monitor',
+            confidence: overdue.length ? Math.min(0.95, 0.5 + overdue.length * 0.1) : 0.15,
+            summary: [
+              'Open STR / SAR cases: ' + cases.filter(function (c) { return !c.filed_on && c.status !== 'filed'; }).length,
+              'Overdue (> 5 days unfiled): ' + overdue.length,
+              '',
+              overdue.length ? 'Overdue cases:' : 'No overdue filings — keep it that way.',
+              overdue.slice(0, 6).map(function (c) {
+                var opened = c.opened_on ? new Date(c.opened_on).getTime() : now;
+                var age = Math.round((now - opened) / 86400000);
+                return '  • ' + (c.subject || '—') + ' (' + (c.kind || 'STR') + ') — ' + age + ' days open';
+              }).join('\n')
+            ].join('\n'),
+            citations: ['FDL Art.26-27', 'FDL Art.29 (no tip-off)']
+          };
+        }
+      },
+
+      // 8 — Watchlist drift detector.
+      {
+        id: 'watchlist_drift',
+        label: 'Watchlist drift audit',
+        note: 'Subjects on the watchlist whose screening score or disposition has worsened since enrolment.',
+        fn: function (ctx) {
+          var watch = ctx.snap.keys.watchlist || [];
+          var subjects = ctx.snap.keys.subjects || [];
+          var byName = {};
+          subjects.forEach(function (s) { byName[(s.name || '').toLowerCase()] = s; });
+          var drifted = watch.map(function (w) {
+            var s = byName[(w.name || '').toLowerCase()];
+            return s ? { w: w, s: s } : null;
+          }).filter(function (x) {
+            return x && (x.s.disposition === 'positive' || x.s.disposition === 'partial' || (x.s.confidence || 0) >= 0.5);
+          });
+          return {
+            verdict: drifted.length ? 'review' : 'monitor',
+            confidence: drifted.length ? Math.min(0.85, 0.35 + drifted.length * 0.1) : 0.1,
+            summary: [
+              'Watchlist subjects: ' + watch.length,
+              'Drifted into partial/positive territory: ' + drifted.length,
+              '',
+              drifted.slice(0, 8).map(function (x) {
+                return '  • ' + x.w.name + ' — last scan ' + (x.w.last_scan || '—') + ' — now ' + (x.s.disposition || 'pending') +
+                  ' @ ' + ((x.s.confidence || 0) * 100).toFixed(0) + '%';
+              }).join('\n')
+            ].join('\n'),
+            citations: ['FDL Art.20-21', 'Cabinet Res 134/2025 Art.19']
+          };
+        }
+      }
+    ];
+
+    window.__intelligenceDrawer.mount('screening-command', {
+      storageKeys: {
+        subjects: STORAGE.subjects,
+        transactions: STORAGE.transactions,
+        strCases: STORAGE.strCases,
+        watchlist: STORAGE.watchlist
+      },
+      topic: 'screening_command_intelligence',
+      launcherLabel: 'Intelligence',
+      entityBuilder: buildEntity,
+      txBuilder: buildTxs,
+      presets: presets
+    });
+  }
+
+  // Mount after a tick so brain-boot.js + intelligence-drawer.js
+  // (whose script tags appear before this one) have finished
+  // installing their globals.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mountIntelligenceDrawer);
+  } else {
+    mountIntelligenceDrawer();
+  }
 })();
