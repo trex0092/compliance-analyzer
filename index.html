@@ -2564,6 +2564,10 @@
             --hi-blue-bright: #5ea3ff;
             --hi-blue-dim: rgba(47, 125, 255, 0.14);
             --hi-blue-border: rgba(47, 125, 255, 0.4);
+            --hi-purple: #a855f7;
+            --hi-purple-bright: #c084fc;
+            --hi-purple-dim: rgba(168, 85, 247, 0.14);
+            --hi-purple-border: rgba(168, 85, 247, 0.4);
             --hi-ink: #fef3c7;
             --hi-muted: rgba(254, 243, 199, 0.58);
             --hi-border: rgba(250, 204, 21, 0.18);
@@ -2708,6 +2712,8 @@
           .hi-card[data-tone="orange"]:hover { box-shadow: 0 20px 50px -22px rgba(251, 146, 60, 0.55); }
           .hi-card[data-tone="blue"] { color: var(--hi-blue); border-color: var(--hi-blue-border); }
           .hi-card[data-tone="blue"]:hover { box-shadow: 0 20px 50px -22px rgba(47, 125, 255, 0.55); }
+          .hi-card[data-tone="purple"] { color: var(--hi-purple); border-color: var(--hi-purple-border); }
+          .hi-card[data-tone="purple"]:hover { box-shadow: 0 20px 50px -22px rgba(168, 85, 247, 0.55); }
 
           .hi-card-icon {
             width: 52px; height: 52px; border-radius: 14px;
@@ -2848,7 +2854,7 @@
 
           <div class="hi-section-head">
             <span class="hi-section-label">Operations Surfaces</span>
-            <span class="hi-section-count">05 / 05</span>
+            <span class="hi-section-count">06 / 06</span>
           </div>
 
           <div class="hi-cards">
@@ -3009,6 +3015,39 @@
                 <div class="hi-stat">
                   <span class="hi-stat-val">24h</span>
                   <span class="hi-stat-key">EOCN freeze</span>
+                </div>
+              </div>
+              <div class="hi-card-cta">
+                <span>Open surface</span>
+                <span class="hi-card-cta-arrow" aria-hidden="true">&rarr;</span>
+              </div>
+            </a>
+
+            <a
+              class="hi-card"
+              data-tone="purple"
+              href="/routines"
+              aria-label="Open the Routines registry surface"
+            >
+              <div class="hi-card-icon" aria-hidden="true">&#9696;</div>
+              <div class="hi-card-meta">
+                <span class="dot"></span>
+                <span>Surface 06 &middot; Routines</span>
+              </div>
+              <h2 class="hi-card-title">Routines Registry</h2>
+              <p class="hi-card-desc">
+                Every scheduled compliance workflow in one place &mdash;
+                sanctions ingestion, CDD rollups, regulatory drift, KPI
+                digests. See what runs, when, and under which article.
+              </p>
+              <div class="hi-card-stats">
+                <div class="hi-stat">
+                  <span class="hi-stat-val">20</span>
+                  <span class="hi-stat-key">Routines</span>
+                </div>
+                <div class="hi-stat">
+                  <span class="hi-stat-val">10yr</span>
+                  <span class="hi-stat-key">Audit trail</span>
                 </div>
               </div>
               <div class="hi-card-cta">
