@@ -235,15 +235,10 @@ html.module-view-active .activity-pulse { display: none !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Shared hero-robot-planet wallpaper — matches the landing page.
-   Painted on html::before so each page's own body::before (module-
-   palette glows) keeps working unchanged on top of it.
-
-   Trick: each page sets body { background: var(--midnight) } inline,
-   which would occlude an html-level pseudo-element. We move the solid
-   midnight fill up onto html (using the page's own --midnight token
-   so per-module tints are preserved) and force body transparent with
-   !important so html::before shines through.
+   Shared wallpaper — the `hero-robot-planet.png` watermark was
+   removed (the MLRO flagged it as noise — it is not a compliance
+   signal and occludes the dense module tables). We keep only the
+   soft pink + blue radial glow so the midnight fill still has depth.
    ═══════════════════════════════════════════════════════════════════ */
 html {
   background: var(--midnight, #020B18);
@@ -269,11 +264,9 @@ html::before {
       rgba(59, 130, 246, 0.45) 0%,
       rgba(59, 130, 246, 0.12) 45%,
       transparent 72%
-    ),
-    url('assets/hero-robot-planet.png?v=2') center center / cover no-repeat;
+    );
   opacity: 0.5;
   filter: saturate(1.18) contrast(1.04);
-  animation: me-wallpaper-drift 48s ease-in-out infinite alternate;
   will-change: transform;
 }
 html::after {
@@ -297,13 +290,78 @@ html::after {
       rgba(2, 11, 24, 0.40) 100%
     );
 }
-@keyframes me-wallpaper-drift {
-  from { transform: scale(1.04) translate3d(-0.4%, -0.4%, 0); }
-  to   { transform: scale(1.08) translate3d(0.4%, 0.4%, 0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  html::before { animation: none !important; }
-}
 @media (max-width: 768px) {
   html::before { opacity: 0.34; }
+}
+
+/* ------------------------------------------------------------------
+   Transparent form cells — shared across every module (workbench,
+   compliance-ops, logistics, screening-command, routines).
+
+   Each module HTML ships its own inline override of
+   `#moduleViewContent input, select, textarea` that paints an opaque
+   navy / midnight fill. The MLRO asked for the surface glow behind
+   every field to come through, so we force a glass-style transparent
+   fill on top of those inline styles. Uses `!important` because the
+   per-surface styles in each .html also carry `!important`.
+
+   Scope-limited to the module view (`#moduleViewContent` and the
+   native-module form classes `.mv-form`) so it does not touch the
+   root SPA forms on the landing pages themselves.
+   ------------------------------------------------------------------ */
+#moduleViewContent input[type="text"],
+#moduleViewContent input[type="password"],
+#moduleViewContent input[type="email"],
+#moduleViewContent input[type="number"],
+#moduleViewContent input[type="date"],
+#moduleViewContent input[type="search"],
+#moduleViewContent input[type="tel"],
+#moduleViewContent input[type="url"],
+#moduleViewContent select,
+#moduleViewContent textarea,
+.mv-form input[type="text"],
+.mv-form input[type="password"],
+.mv-form input[type="email"],
+.mv-form input[type="number"],
+.mv-form input[type="date"],
+.mv-form input[type="search"],
+.mv-form input[type="tel"],
+.mv-form input[type="url"],
+.mv-form select,
+.mv-form textarea {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+/* Native dropdown option list — each browser renders this as a
+   platform widget, but `background-color` on the `<option>` element
+   is honoured on Chromium + Firefox + Safari. Use the same translucent
+   wash so the purple wallpaper bleeds through the open menu instead
+   of the default opaque grey. */
+#moduleViewContent select option,
+#moduleViewContent select optgroup,
+.mv-form select option,
+.mv-form select optgroup {
+  background-color: rgba(26, 15, 46, 0.92) !important;
+  color: #fae8ff !important;
+}
+
+#moduleViewContent input:focus,
+#moduleViewContent select:focus,
+#moduleViewContent textarea:focus,
+.mv-form input:focus,
+.mv-form select:focus,
+.mv-form textarea:focus {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* The stat / list / badge tiles are also cells in the MLRO's mental
+   model — make their opaque navy fill translucent so the wallpaper
+   glows through. Borders stay so the grid remains legible. */
+.mv-form .mv-field,
+#moduleViewContent .mv-stat,
+#moduleViewContent .mv-list-item,
+#moduleViewContent .mv-badge {
+  background-color: rgba(255, 255, 255, 0.03) !important;
 }

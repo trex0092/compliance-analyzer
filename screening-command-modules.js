@@ -519,6 +519,53 @@
     }
   ];
 
+  // ─── Skill palette — every MLRO module lists its relevant skills ────
+  // The skill IDs match CLAUDE.md §6 (Skill Dispatch Table). Each module
+  // exposes only the subset that belongs to its flow so the strip stays
+  // compact. The click handler shows the hint (no slash-command execution
+  // from the browser — skills run server-side via the agent harness).
+  var SKILLS = {
+    screen:             { label: '/screen',            hint: 'Sanctions + adverse-media screening (current form)' },
+    'multi-agent-screen':{label: '/multi-agent-screen',hint: 'Parallel fan-out across UN · OFAC · EU · UK · UAE · EOCN' },
+    'agent-orchestrate':{ label: '/agent-orchestrate', hint: 'Multi-stage CDD / EDD PEER orchestration' },
+    onboard:            { label: '/onboard',           hint: 'New customer onboarding → screen → CDD tier' },
+    incident:           { label: '/incident',          hint: 'Sanctions match · freeze · 24h EOCN countdown' },
+    goaml:              { label: '/goaml',             hint: 'Generate STR / SAR / CTR / DPMSR / CNMR XML' },
+    'filing-compliance':{ label: '/filing-compliance', hint: 'Prove STR / CTR / CNMR filed on time' },
+    timeline:           { label: '/timeline',          hint: 'Entity compliance history — chronological trail' },
+    traceability:       { label: '/traceability',      hint: 'Map Article / Circular → code + test + evidence' },
+    'kpi-report':       { label: '/kpi-report',        hint: '30-KPI DPMS compliance report (MoE · EOCN · FIU)' },
+    'moe-readiness':    { label: '/moe-readiness',     hint: '25-item MOE inspection-readiness check' },
+    'audit-pack':       { label: '/audit-pack',        hint: 'Complete audit pack for the selected entity' },
+    audit:              { label: '/audit',             hint: 'Quarterly compliance audit' },
+    'regulatory-update':{ label: '/regulatory-update', hint: 'Process new law / circular / list update' },
+    'regulatory-spec':  { label: '/regulatory-spec',   hint: 'New regulation → spec → code → test → evidence' }
+  };
+  var MODULE_SKILLS = {
+    subject:    ['screen', 'multi-agent-screen', 'onboard', 'incident', 'goaml', 'agent-orchestrate', 'audit-pack', 'traceability'],
+    transaction:['incident', 'goaml', 'filing-compliance', 'kpi-report', 'audit', 'audit-pack'],
+    str:        ['goaml', 'filing-compliance', 'incident', 'agent-orchestrate', 'traceability', 'audit-pack'],
+    watchlist:  ['multi-agent-screen', 'screen', 'regulatory-update', 'regulatory-spec', 'timeline', 'moe-readiness']
+  };
+  function skillsPalette(moduleKey) {
+    var ids = MODULE_SKILLS[moduleKey] || [];
+    if (!ids.length) return '';
+    return '<div class="mv-skills-palette" ' +
+      'style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px;padding:8px 10px;' +
+      'border:1px solid var(--border,#555);border-radius:8px;background:rgba(168,85,247,0.04)">' +
+      '<span style="font-size:10px;letter-spacing:1px;opacity:.6;align-self:center;margin-right:4px">SKILLS</span>' +
+      ids.map(function (id) {
+        var s = SKILLS[id]; if (!s) return '';
+        return '<button type="button" class="mv-btn mv-btn-sm mv-btn-ghost" ' +
+          'data-action="sc-skill" data-skill="' + id + '" ' +
+          'title="' + s.hint.replace(/"/g, '&quot;') + '" ' +
+          'style="font-size:11px;padding:4px 10px;border-radius:12px">' +
+          s.label +
+        '</button>';
+      }).join('') +
+    '</div>';
+  }
+
   function normalizeName(s) {
     // Turkish characters that do not decompose under NFD need an
     // explicit fold: ı (dotless i), İ (dotted capital I, already
@@ -959,6 +1006,17 @@
       return checkboxGroup('special_screens', items);
     }
 
+    // Hidden-input group — keeps the server payload shape identical while
+    // the visual section is folded away. Used for the two categories the
+    // Risk Typologies tree already covers topic-for-topic (adverse-media
+    // predicates, specialised TF/PF/tax checks) so the MLRO never sees
+    // the same concept twice on screen.
+    function hiddenGroup(fieldName, items) {
+      return items.map(function (it) {
+        return '<input type="hidden" name="' + fieldName + '" value="' + esc(it.id) + '">';
+      }).join('');
+    }
+
     // Compact typology checklist — 40+ topics rendered with group
     // headers (ML / TF / PF / FRAUD / CORRUPTION / OC / SANCTIONS /
     // COUNTRY / ESG). Kept dense so the MLRO can scan + toggle quickly
@@ -1029,6 +1087,8 @@
         '<div class="mv-stat"><div class="mv-stat-v">24h</div><div class="mv-stat-k">EOCN freeze</div></div>',
       '</div>',
 
+      skillsPalette(),
+
       '<form id="sc-subject-form" class="mv-form">',
         '<div class="mv-grid-2">',
           '<label class="mv-field"><span class="mv-field-label">Subject type</span>',
@@ -1063,26 +1123,53 @@
             '<input type="text" name="issuer" placeholder="e.g. DED, UAE MOI, HMPO"></label>',
         '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Sanctions &amp; watchlists</h4>',
-        '<div class="mv-grid-2">', checkboxGroup('sanctions_lists', SANCTIONS_LISTS), '</div>',
+        // Coverage is collapsed by default — the 6 sections below used to
+        // dominate the pre-run area and carried topic overlap (Adverse
+        // Media + Risk Typologies + Specialised Screening all tagged
+        // money-laundering / TF / PF / tax / corruption / organised-crime
+        // independently). We now surface one compact Coverage disclosure
+        // with a single-line summary; the MLRO opens it only to narrow.
+        //
+        // The two duplicate sections (Adverse Media, Specialised Screening)
+        // are emitted as hidden inputs so the server payload shape is
+        // byte-identical. The Risk Typologies tree is the single
+        // user-facing place to narrow topic scope.
+        '<details class="mv-coverage-details" style="margin-top:14px;border:1px solid var(--border,#555);border-radius:8px;padding:8px 12px">',
+          '<summary style="cursor:pointer;font-weight:600;font-size:13px;letter-spacing:.5px">',
+            'Coverage &amp; filters ',
+            '<span style="opacity:.6;font-weight:normal;font-size:12px">',
+              '· ' + SANCTIONS_LISTS.length + ' sanctions lists ',
+              '· ' + PEP_DIMENSIONS.length + ' PEP scopes ',
+              '· ' + COUNTRY_RISK_LISTS.length + ' country-risk lists ',
+              '· ' + ASSOCIATE_DIMENSIONS.length + ' associate dimensions ',
+              '· ' + RISK_TYPOLOGIES.length + ' risk topics ',
+              '· all ON by default — expand to narrow',
+            '</span>',
+          '</summary>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Adverse media categories</h4>',
-        '<div class="mv-grid-2">', checkboxGroup('adverse_media', ADVERSE_MEDIA_CATEGORIES), '</div>',
+          '<h4 class="mv-field-label" style="margin-top:10px">Sanctions &amp; watchlists</h4>',
+          '<div class="mv-grid-2">', checkboxGroup('sanctions_lists', SANCTIONS_LISTS), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">PEP screening <span style="opacity:.55;font-weight:normal">(FATF Rec 12 · Cabinet Res 134/2025 Art.14)</span></h4>',
-        '<div class="mv-grid-2">', checkboxGroup('pep_dimensions', PEP_DIMENSIONS), '</div>',
+          '<h4 class="mv-field-label" style="margin-top:14px">PEP screening <span style="opacity:.55;font-weight:normal">(FATF Rec 12 · Cabinet Res 134/2025 Art.14)</span></h4>',
+          '<div class="mv-grid-2">', checkboxGroup('pep_dimensions', PEP_DIMENSIONS), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Country-risk overlay</h4>',
-        '<div class="mv-grid-2">', checkboxGroup('country_risk', COUNTRY_RISK_LISTS), '</div>',
+          '<h4 class="mv-field-label" style="margin-top:14px">Country-risk overlay</h4>',
+          '<div class="mv-grid-2">', checkboxGroup('country_risk', COUNTRY_RISK_LISTS), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Associates &amp; networks <span style="opacity:.55;font-weight:normal">(FATF Rec 10 · Cabinet Decision 109/2023)</span></h4>',
-        '<div class="mv-grid-2">', checkboxGroup('associate_dimensions', ASSOCIATE_DIMENSIONS), '</div>',
+          '<h4 class="mv-field-label" style="margin-top:14px">Associates &amp; networks <span style="opacity:.55;font-weight:normal">(FATF Rec 10 · Cabinet Decision 109/2023)</span></h4>',
+          '<div class="mv-grid-2">', checkboxGroup('associate_dimensions', ASSOCIATE_DIMENSIONS), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Risk typologies &amp; intelligent tags <span style="opacity:.55;font-weight:normal">(click to narrow / reduce false positives)</span></h4>',
-        '<div class="mv-grid-2">', typologyGroup(RISK_TYPOLOGIES), '</div>',
+          '<h4 class="mv-field-label" style="margin-top:14px">Risk typologies &amp; intelligent tags ',
+            '<span style="opacity:.55;font-weight:normal">',
+              '(covers adverse-media + TF/PF/tax themes — no separate section needed)',
+            '</span></h4>',
+          '<div class="mv-grid-2">', typologyGroup(RISK_TYPOLOGIES), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Specialised screening</h4>',
-        '<div class="mv-grid-2">', specialGroup(SPECIAL_SCREENS), '</div>',
+          // Hidden payload — adverse-media predicate categories + specialised
+          // screens. All ON by default; Risk Typologies is the UI control.
+          hiddenGroup('adverse_media', ADVERSE_MEDIA_CATEGORIES),
+          hiddenGroup('special_screens', SPECIAL_SCREENS),
+        '</details>',
 
         '<div class="mv-form-actions">',
           '<button type="submit" class="mv-btn mv-btn-primary">Run screening</button>',
@@ -1494,6 +1581,45 @@
       : [];
     var amSeverity = amHitCount === 0 ? 'info' : amHitCount <= 2 ? 'medium' : 'high';
 
+    // Capture the server-side brain payload so the per-row card can render
+    // the 19-subsystem weaponized brain + the deep-brain reasoning chain.
+    // Shape mirrors screening-run.mts (deepBrain + weaponized blocks).
+    var wb = data.weaponized && typeof data.weaponized === 'object' ? data.weaponized : null;
+    var db = data.deepBrain && typeof data.deepBrain === 'object' ? data.deepBrain : null;
+    var brain = (wb || db) ? {
+      weaponized: wb ? {
+        megaVerdict: wb.megaVerdict || null,
+        finalVerdict: wb.finalVerdict || null,
+        confidence: typeof wb.confidence === 'number' ? wb.confidence : null,
+        requiresHumanReview: !!wb.requiresHumanReview,
+        clampReasons: Array.isArray(wb.clampReasons) ? wb.clampReasons.slice(0, 6) : [],
+        subsystemFailures: Array.isArray(wb.subsystemFailures) ? wb.subsystemFailures.slice(0, 6) : [],
+        auditNarrative: wb.auditNarrative ? String(wb.auditNarrative).slice(0, 1200) : '',
+        advisor: wb.advisor && wb.advisor.text ? {
+          text: String(wb.advisor.text).slice(0, 800),
+          modelUsed: wb.advisor.modelUsed ? String(wb.advisor.modelUsed) : '',
+          advisorCallCount: typeof wb.advisor.advisorCallCount === 'number' ? wb.advisor.advisorCallCount : 0
+        } : null,
+        extensions: wb.extensions && typeof wb.extensions === 'object' ? {
+          adverseMediaTopCategory: wb.extensions.adverseMediaTopCategory || null,
+          adverseMediaCriticalCount: typeof wb.extensions.adverseMediaCriticalCount === 'number'
+            ? wb.extensions.adverseMediaCriticalCount : 0,
+          explainableScore: wb.extensions.explainableScore || null
+        } : null
+      } : null,
+      deepBrain: db ? {
+        verdict: db.verdict || null,
+        requiresFourEyes: !!db.requiresFourEyes,
+        confidence: typeof db.confidence === 'number' ? db.confidence : null,
+        narrative: db.narrative ? String(db.narrative).slice(0, 1200) : '',
+        topHypothesis: db.topHypothesis || null,
+        posterior: typeof db.posterior === 'number' ? db.posterior : null,
+        rationale: db.rationale ? String(db.rationale).slice(0, 800) : '',
+        coverage: typeof db.coverage === 'number' ? db.coverage : null,
+        lessons: Array.isArray(db.lessons) ? db.lessons.slice(0, 4) : []
+      } : null
+    } : null;
+
     return {
       id: 'sub-' + Date.now(),
       subject_type: body.entityType === 'legal_entity' ? 'entity' : 'individual',
@@ -1524,7 +1650,12 @@
       integrity: data.screeningIntegrity || 'complete',
       run_id: (data.runId || data.run_id || '').toString(),
       source: 'backend',
-      screened_at: new Date().toISOString()
+      screened_at: new Date().toISOString(),
+      // 19-subsystem weaponized brain + deep-brain reasoning chain
+      // captured from screening-run.mts. Rendered as the Brain
+      // Intelligence panel per row so the MLRO can see the verdict
+      // rationale, confidence, clamp reasons, and Opus advisor output.
+      brain: brain
     };
   }
 
@@ -1701,6 +1832,7 @@
         '<span class="mv-pill">AED 55K DPMS CTR · AED 60K cross-border</span>' +
         '<button class="mv-btn mv-btn-primary" data-action="sc-tx-new-toggle">+ Add transaction</button>'
       ),
+      skillsPalette('transaction'),
       '<p class="mv-lede">Rule + behavioural engine: structuring near AED 55K, velocity spikes, third-party payers, offshore routing, round-number and price-gaming patterns. Critical alerts auto-open an Asana case.</p>',
       '<div class="mv-stat-row">',
         '<div class="mv-stat"><div class="mv-stat-v">' + rows.length + '</div><div class="mv-stat-k">Transactions</div></div>',
@@ -1879,6 +2011,7 @@
         '<span class="mv-pill">FDL Art.26-27 · file without delay</span>' +
         '<button class="mv-btn mv-btn-primary" data-action="sc-str-new-toggle">+ New case</button>'
       ),
+      skillsPalette('str'),
       '<p class="mv-lede">STR / SAR / AIF / PEPR / HRCR / FTFR case files with red-flag taxonomy, suspicion narrative, goAML reference, and four-eyes approval. No tipping off.</p>',
 
       '<div class="mv-stat-row">',
@@ -2027,6 +2160,7 @@
         '<span class="mv-pill">2 ×/day re-screen · FDL Art.20-21</span>' +
         '<button class="mv-btn mv-btn-primary" data-action="sc-wl-new">+ Watch subject</button>'
       ),
+      skillsPalette('watchlist'),
       '<p class="mv-lede">Every screened subject auto-enrolled in ongoing monitoring. Two scheduled crons per day (06:00 / 14:00 UTC) re-screen the full watchlist and push delta alerts to Asana.</p>',
       rows.length
         ? '<ul class="mv-list">' + rows.map(function (r) {
