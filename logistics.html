@@ -715,6 +715,72 @@
         --bg-card: #062821;
       }
 
+      /* Re-skin injected main-app components to the Logistics green palette. */
+      #moduleViewContent .card {
+        background: linear-gradient(180deg, rgba(6, 28, 23, 0.85) 0%, rgba(2, 13, 10, 0.95) 100%) !important;
+        border: 1px solid rgba(34, 197, 94, 0.2) !important;
+        border-radius: 16px !important;
+        padding: 1.5rem !important;
+        color: #dcfce7 !important;
+      }
+      #moduleViewContent .sec-title {
+        font-family: 'Playfair Display', Georgia, serif !important;
+        color: #dcfce7 !important;
+        border-bottom-color: rgba(34, 197, 94, 0.25) !important;
+      }
+      #moduleViewContent .lbl {
+        font-family: 'DM Mono', monospace !important;
+        color: #4ade80 !important;
+        letter-spacing: 2px !important;
+      }
+      #moduleViewContent .btn,
+      #moduleViewContent button.btn {
+        border-radius: 10px !important;
+        font-family: 'DM Mono', monospace !important;
+        letter-spacing: 1.5px !important;
+        text-transform: uppercase !important;
+        font-size: 11px !important;
+      }
+      #moduleViewContent .btn-blue,
+      #moduleViewContent .btn-primary {
+        background: rgba(34, 197, 94, 0.18) !important;
+        color: #4ade80 !important;
+        border: 1px solid rgba(34, 197, 94, 0.5) !important;
+      }
+      #moduleViewContent .btn-green {
+        background: rgba(134, 239, 172, 0.18) !important;
+        color: #86efac !important;
+        border: 1px solid rgba(134, 239, 172, 0.45) !important;
+      }
+      #moduleViewContent input[type="text"],
+      #moduleViewContent input[type="password"],
+      #moduleViewContent input[type="email"],
+      #moduleViewContent input[type="number"],
+      #moduleViewContent input[type="date"],
+      #moduleViewContent select,
+      #moduleViewContent textarea {
+        background: rgba(2, 13, 10, 0.7) !important;
+        border: 1px solid rgba(34, 197, 94, 0.22) !important;
+        color: #dcfce7 !important;
+        border-radius: 8px !important;
+        padding: 10px 12px !important;
+        font-family: 'Inter', system-ui, sans-serif !important;
+      }
+      #moduleViewContent input:focus,
+      #moduleViewContent select:focus,
+      #moduleViewContent textarea:focus {
+        border-color: #4ade80 !important;
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18) !important;
+        outline: none !important;
+      }
+      #moduleViewContent .top-bar,
+      #moduleViewContent h1,
+      #moduleViewContent h2,
+      #moduleViewContent h3 {
+        color: #dcfce7 !important;
+        font-family: 'Playfair Display', Georgia, serif !important;
+      }
+
       .module-view-head {
         display: flex;
         align-items: center;
@@ -1127,6 +1193,6 @@
       })();
     </script>
     <script src="page-nav.js?v=1"></script>
-    <script src="landing-module-viewer.js?v=13"></script>
+    <script src="landing-module-viewer.js?v=14"></script>
   </body>
 </html>

@@ -443,6 +443,75 @@
         --bg-secondary: #0a1628;
         --bg-card: #173257;
       }
+
+      /* Re-skin injected main-app components inside the module host so
+         the module feels like part of the workbench layout rather than
+         the main app. Targets the .card / .btn / input / label family
+         the main app uses across every tab. */
+      #moduleViewContent .card {
+        background: linear-gradient(180deg, rgba(14, 31, 56, 0.85) 0%, rgba(10, 22, 40, 0.95) 100%) !important;
+        border: 1px solid rgba(127, 193, 255, 0.16) !important;
+        border-radius: 16px !important;
+        padding: 1.5rem !important;
+        color: #dceaff !important;
+      }
+      #moduleViewContent .sec-title {
+        font-family: 'Playfair Display', Georgia, serif !important;
+        color: #dceaff !important;
+        border-bottom-color: rgba(127, 193, 255, 0.18) !important;
+      }
+      #moduleViewContent .lbl {
+        font-family: 'DM Mono', monospace !important;
+        color: #fdba74 !important;
+        letter-spacing: 2px !important;
+      }
+      #moduleViewContent .btn,
+      #moduleViewContent button.btn {
+        border-radius: 10px !important;
+        font-family: 'DM Mono', monospace !important;
+        letter-spacing: 1.5px !important;
+        text-transform: uppercase !important;
+        font-size: 11px !important;
+      }
+      #moduleViewContent .btn-blue,
+      #moduleViewContent .btn-primary {
+        background: rgba(47, 125, 255, 0.18) !important;
+        color: #7fc1ff !important;
+        border: 1px solid rgba(47, 125, 255, 0.45) !important;
+      }
+      #moduleViewContent .btn-green {
+        background: rgba(34, 197, 94, 0.18) !important;
+        color: #86efac !important;
+        border: 1px solid rgba(34, 197, 94, 0.45) !important;
+      }
+      #moduleViewContent input[type="text"],
+      #moduleViewContent input[type="password"],
+      #moduleViewContent input[type="email"],
+      #moduleViewContent input[type="number"],
+      #moduleViewContent input[type="date"],
+      #moduleViewContent select,
+      #moduleViewContent textarea {
+        background: rgba(10, 22, 40, 0.7) !important;
+        border: 1px solid rgba(127, 193, 255, 0.2) !important;
+        color: #dceaff !important;
+        border-radius: 8px !important;
+        padding: 10px 12px !important;
+        font-family: 'Inter', system-ui, sans-serif !important;
+      }
+      #moduleViewContent input:focus,
+      #moduleViewContent select:focus,
+      #moduleViewContent textarea:focus {
+        border-color: #fdba74 !important;
+        box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.15) !important;
+        outline: none !important;
+      }
+      #moduleViewContent .top-bar,
+      #moduleViewContent h1,
+      #moduleViewContent h2,
+      #moduleViewContent h3 {
+        color: #dceaff !important;
+        font-family: 'Playfair Display', Georgia, serif !important;
+      }
       .module-view.is-open { display: block; }
       .module-view-head {
         display: flex;
@@ -757,6 +826,6 @@
       <span class="footer-text">Confidential · Audit-ready</span>
     </footer>
     <script src="page-nav.js?v=1"></script>
-    <script src="landing-module-viewer.js?v=13"></script>
+    <script src="landing-module-viewer.js?v=14"></script>
   </body>
 </html>
