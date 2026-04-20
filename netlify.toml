@@ -50,6 +50,19 @@
   status = 200
   force = true
 
+# MLRO sign-in JWT endpoint. The function itself declares
+# `config.path = "/api/hawkeye-login"` in auth-login.mts, but on some
+# Netlify deploys the config.path registration does not surface the
+# route (observed 404 from prod on 2026-04-20). This explicit redirect
+# is the belt-and-braces that guarantees /api/hawkeye-login reaches
+# the handler regardless of the config.path wiring.
+# Regulatory basis: FDL No.(10)/2025 Art.20-21, Art.24.
+[[redirects]]
+  from = "/api/hawkeye-login"
+  to = "/.netlify/functions/auth-login"
+  status = 200
+  force = true
+
 # Read-only project-GID lookup per MLRO surface, used by pages to render
 # "View in Asana" links without hardcoding GIDs.
 [[redirects]]
