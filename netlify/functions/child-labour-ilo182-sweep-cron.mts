@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/child-labour-ilo182-sweep',
   schedule: '30 4 * * 2',
 };

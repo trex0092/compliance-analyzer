@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/supplier-saq-rollover',
   schedule: '0 7 * * 1',
 };

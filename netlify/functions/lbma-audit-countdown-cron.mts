@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/lbma-audit-countdown',
   schedule: '0 9 * * *',
 };

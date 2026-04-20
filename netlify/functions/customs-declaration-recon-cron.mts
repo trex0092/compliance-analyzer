@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/customs-declaration-recon',
   schedule: '30 7 * * *',
 };

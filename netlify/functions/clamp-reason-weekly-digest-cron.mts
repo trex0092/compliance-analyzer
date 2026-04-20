@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/clamp-reason-weekly-digest',
   schedule: '0 6 * * 1',
 };

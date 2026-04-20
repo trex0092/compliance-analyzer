@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/chain-of-custody-verify',
   schedule: '0 8 * * *',
 };

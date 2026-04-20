@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/grievance-mechanism-monitor',
   schedule: '45 5 * * *',
 };

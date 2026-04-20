@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/policy-refresh-after-circular',
   schedule: '0 3 * * 3',
 };

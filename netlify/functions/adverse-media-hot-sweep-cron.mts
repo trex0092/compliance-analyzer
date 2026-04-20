@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/adverse-media-hot-sweep',
   schedule: '0 */6 * * *',
 };

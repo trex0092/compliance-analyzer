@@ -29,6 +29,5 @@ export default async (): Promise<Response> => {
 };
 
 export const config: Config = {
-  path: '/api/routines/cahra-supplier-review',
   schedule: '0 4 * * 2',
 };
