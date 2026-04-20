@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * SUPER ULTRA BRAIN — compliance-analyzer orchestrator
  *

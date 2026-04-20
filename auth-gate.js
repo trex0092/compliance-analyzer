@@ -96,23 +96,37 @@
     if (!password) {
       return Promise.resolve({ ok: false, error: 'Password is required.' });
     }
+    // Read as text first so we can surface the real HTTP status and a
+    // body snippet when the server returns HTML (e.g. a Netlify 404 or
+    // generic error page) instead of JSON. The previous res.json()
+    // path swallowed the status and printed the opaque "Login response
+    // could not be parsed." — useless for diagnosing a routing / env /
+    // timeout failure on mobile where no devtools are available.
+    // Mirrors the fix applied to /login.html in PR #404.
+    // FDL No.(10)/2025 Art.20-21 (operator access diagnosability).
     return fetch('/api/hawkeye-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: password })
     }).then(function (res) {
-      return res.json().then(function (json) {
+      return res.text().then(function (text) {
+        var json = null;
+        try { json = text ? JSON.parse(text) : null; } catch (_) {}
         if (!res.ok) {
-          var msg = (json && json.error) || ('Login failed (HTTP ' + res.status + ').');
+          var msg = (json && json.error)
+            || ('Login failed (HTTP ' + res.status + ')'
+                + (text ? ' — ' + text.slice(0, 160) : ''));
           return { ok: false, error: msg };
         }
         if (!json || !json.token || !json.expiresAt) {
-          return { ok: false, error: 'Login response malformed.' };
+          return {
+            ok: false,
+            error: 'Login response malformed (HTTP ' + res.status + ')'
+              + (text ? ' — ' + text.slice(0, 160) : '')
+          };
         }
         storeSession(json.token, json.expiresAt, json.jti, mlroName || 'MLRO');
         return { ok: true };
-      }).catch(function () {
-        return { ok: false, error: 'Login response could not be parsed.' };
       });
     }).catch(function (err) {
       return { ok: false, error: (err && err.message) || 'Network error.' };
