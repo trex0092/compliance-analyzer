@@ -2584,16 +2584,19 @@
             margin: 24px 0 32px;
             padding: 0;
             /* Hero background: robot hand holding glowing planet */
-            background: #020B18 url('assets/hero-robot-planet.png') right center / 55% auto no-repeat;
+            background: #020B18;
             border-radius: 20px;
             overflow: hidden;
             min-height: 520px;
+            position: relative;
           }
           .hi-landing::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(100deg, #020B18 0%, #020B18 30%, rgba(2,11,24,0.82) 50%, rgba(2,11,24,0.3) 70%, transparent 90%);
+            background:
+              linear-gradient(100deg, #020B18 0%, #020B18 28%, rgba(2,11,24,0.75) 48%, rgba(2,11,24,0.15) 68%, transparent 85%),
+              url('assets/hero-robot-planet.png') right -40px center / 58% auto no-repeat;
             z-index: 1;
             pointer-events: none;
           }
