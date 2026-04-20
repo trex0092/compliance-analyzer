@@ -417,6 +417,25 @@ export function getModuleProjectGid(key: ModuleKey): string | undefined {
   return process.env[spec.envVar] || undefined;
 }
 
+/**
+ * Resolve the Asana project GID for a given module with a safe
+ * fallback to ASANA_SCREENINGS_PROJECT_GID. Every Netlify function
+ * that writes to Asana should call this so the 16-project catalog
+ * is the single source of truth and the screening board absorbs
+ * anything that lands before the MLRO bootstraps the new boards.
+ *
+ * This avoids the "project GID not found" class of errors the old
+ * layout produced when ASANA_WORKBENCH_PROJECT_GID / LOGISTICS /
+ * ROUTINES were never populated.
+ */
+export function resolveAsanaProjectGid(key: ModuleKey): string {
+  return (
+    getModuleProjectGid(key) ||
+    process.env.ASANA_SCREENINGS_PROJECT_GID ||
+    '1213759768596515'
+  );
+}
+
 export function getAllModuleEnvVars(): readonly string[] {
   return MODULE_PROJECTS.map((p) => p.envVar);
 }
