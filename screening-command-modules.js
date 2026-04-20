@@ -915,6 +915,19 @@
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+  // Allow-list URL sanitiser for href attributes. esc() covers HTML
+  // escaping but does NOT filter javascript:, data:, vbscript: and other
+  // script-bearing protocols. Only permit http(s), mailto, and relative
+  // URLs; anything else returns '#' so a malicious register-entry URL
+  // or tampered backend hit cannot execute on click.
+  function safeUrl(u) {
+    var s = String(u == null ? '' : u).trim();
+    if (!s) return '#';
+    if (/^\/\//.test(s)) return s;
+    if (/^[\/#?]/.test(s)) return s;
+    if (/^https?:\/\//i.test(s) || /^mailto:/i.test(s)) return s;
+    return '#';
+  }
   function fmtDate(iso) {
     if (!iso) return '—';
     try {
@@ -1169,7 +1182,7 @@
                     var meta = [h.source, h.publishedAt ? fmtDate(h.publishedAt) : ''].filter(Boolean).map(esc).join(' · ');
                     return '<li style="margin-bottom:2px">' +
                       (h.url
-                        ? '<a href="' + esc(h.url) + '" target="_blank" rel="noopener noreferrer">' + esc(title) + '</a>'
+                        ? '<a href="' + esc(safeUrl(h.url)) + '" target="_blank" rel="noopener noreferrer">' + esc(title) + '</a>'
                         : esc(title)) +
                       (meta ? ' — <span style="opacity:.75">' + meta + '</span>' : '') +
                     '</li>';
@@ -1182,7 +1195,7 @@
 
             var knownSourceLine = r.known_adverse_source && r.known_adverse_source.url
               ? '<div class="mv-list-meta" data-tone="warn">' +
-                  'Public source: <a href="' + esc(r.known_adverse_source.url) + '" target="_blank" rel="noopener noreferrer">' +
+                  'Public source: <a href="' + esc(safeUrl(r.known_adverse_source.url)) + '" target="_blank" rel="noopener noreferrer">' +
                     esc(r.known_adverse_source.source) +
                   '</a>' +
                   (r.known_adverse_source.summary
