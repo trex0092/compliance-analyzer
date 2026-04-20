@@ -1546,7 +1546,7 @@
                 </div>
                 <div style="font-size:11px;color:var(--muted);margin-bottom:4px">
                   <strong>Trigger:</strong> ${triggerLabel}
-                  ${rule.condition?.field ? ` | <strong>When:</strong> ${rule.condition.field} ${rule.condition.op} ${Array.isArray(rule.condition.value) ? rule.condition.value.join(', ') : rule.condition.value}` : ''}
+                  ${rule.condition?.field ? ` | <strong>When:</strong> ${escHtml(rule.condition.field)} ${escHtml(rule.condition.op)} ${Array.isArray(rule.condition.value) ? rule.condition.value.map(escHtml).join(', ') : escHtml(String(rule.condition.value))}` : ''}
                 </div>
                 <div style="font-size:11px;color:var(--gold)">
                   <strong>Actions:</strong> ${actionLabels}
