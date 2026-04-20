@@ -233,3 +233,77 @@ html.module-view-active .activity-pulse { display: none !important; }
   }
   .activity-pulse .activity-stream { transition: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Shared hero-robot-planet wallpaper — matches the landing page.
+   Painted on html::before so each page's own body::before (module-
+   palette glows) keeps working unchanged on top of it.
+
+   Trick: each page sets body { background: var(--midnight) } inline,
+   which would occlude an html-level pseudo-element. We move the solid
+   midnight fill up onto html (using the page's own --midnight token
+   so per-module tints are preserved) and force body transparent with
+   !important so html::before shines through.
+   ═══════════════════════════════════════════════════════════════════ */
+html {
+  background: var(--midnight, #020B18);
+}
+body {
+  background: transparent !important;
+}
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 55% 70% at 22% 48%,
+      rgba(244, 114, 182, 0.38) 0%,
+      rgba(244, 114, 182, 0.10) 45%,
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 55% 70% at 78% 52%,
+      rgba(59, 130, 246, 0.45) 0%,
+      rgba(59, 130, 246, 0.12) 45%,
+      transparent 72%
+    ),
+    url('assets/hero-robot-planet.png?v=2') center center / cover no-repeat;
+  opacity: 0.5;
+  filter: saturate(1.18) contrast(1.04);
+  animation: me-wallpaper-drift 48s ease-in-out infinite alternate;
+  will-change: transform;
+}
+html::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 90% 80% at 50% 50%,
+      transparent 0%,
+      rgba(2, 11, 24, 0.20) 55%,
+      rgba(2, 11, 24, 0.58) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(2, 11, 24, 0.25) 0%,
+      transparent 30%,
+      transparent 65%,
+      rgba(2, 11, 24, 0.40) 100%
+    );
+}
+@keyframes me-wallpaper-drift {
+  from { transform: scale(1.04) translate3d(-0.4%, -0.4%, 0); }
+  to   { transform: scale(1.08) translate3d(0.4%, 0.4%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html::before { animation: none !important; }
+}
+@media (max-width: 768px) {
+  html::before { opacity: 0.34; }
+}
