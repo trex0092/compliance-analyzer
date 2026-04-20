@@ -175,12 +175,6 @@
       detail: 'Litigation history, insolvency, chronic non-payment, contract breach, cross-border disputes, sanctions-circumvention allegations, ESG controversies.'
     },
     {
-      id: 'political_pep',
-      label: 'PEP / Political Controversy (self, family, close associates)',
-      citation: 'FATF Rec 12 · Cabinet Res 134/2025 Art.14 · FDL Art.14 · Wolfsberg PEP FAQs',
-      detail: 'Foreign PEPs, domestic PEPs, international-organisation PEPs, immediate family members, close business associates, graft / vote-buying / nepotism allegations.'
-    },
-    {
       id: 'human_rights',
       label: 'Human Rights, Environmental, or Ethical Violations',
       citation: 'LBMA RGG v9 · UAE MoE RSG · OECD DD Guidance · UK Modern Slavery Act 2015 · UNGPs',
@@ -368,11 +362,6 @@
     { id: 'aisb_spoofing',       label: 'AIS manipulation / flag-hopping',             citation: 'OFAC Global Maritime Advisory 2020', group: 'SANCTIONS' },
     { id: 'secondary_exposure',  label: 'Secondary-sanctions exposure (USD clearing)', citation: 'OFAC 31 CFR 501 · CAATSA',           group: 'SANCTIONS' },
 
-    // Country / AML-regime risk
-    { id: 'offshore_layering',   label: 'Offshore / secrecy-jurisdiction layering',    citation: 'OECD CRS · FATF Rec 24-25',         group: 'COUNTRY' },
-    { id: 'cahra_sourcing',      label: 'CAHRA / conflict-gold sourcing',              citation: 'LBMA RGG v9 · UAE MoE RSG',         group: 'COUNTRY' },
-    { id: 'fatf_greylist_nexus', label: 'FATF grey-list jurisdiction nexus',           citation: 'FATF Plenary Public Statement',     group: 'COUNTRY' },
-
     // Specific red-flag keywords / ESG
     { id: 'forced_labour',       label: 'Forced / child labour indicators',            citation: 'UK MSA 2015 · ILO Conventions',     group: 'ESG' },
     { id: 'esg_controversy',     label: 'ESG controversy / reputational risk',         citation: 'UNGPs · OECD MNE Guidelines',       group: 'ESG' },
@@ -467,12 +456,6 @@
       label: 'Financing of terrorism',
       citation: 'Cabinet Res 74/2020 · FDL No.(10)/2025 Art.35 · FATF Rec 5-8 · UNSCR 1267 / 1373',
       detail: 'Designated-entity funding, NPO abuse, foreign-fighter facilitation, informal value-transfer (hawala), charity-sector exploitation.'
-    },
-    {
-      id: 'dual_goods',
-      label: 'Dual-use / strategic goods',
-      citation: 'UAE Strategic Trade Control (Federal Law No.(13)/2007) · Cabinet Res 156/2025 Art.7 · Wassenaar Arrangement',
-      detail: 'Items on the UAE dual-use control list, cryptographic technology, chemical / biological precursors, nuclear-related equipment, end-use diversion risk.'
     }
   ];
 
@@ -991,7 +974,7 @@
         ML: 'Money laundering', TF: 'Terrorist financing', PF: 'Proliferation',
         FRAUD: 'Fraud', CORRUPTION: 'Bribery & corruption',
         OC: 'Organised crime', SANCTIONS: 'Sanctions evasion',
-        COUNTRY: 'Country risk', ESG: 'ESG / human rights'
+        ESG: 'ESG / human rights'
       };
       return groupOrder.map(function (g) {
         return '<div class="mv-field" style="grid-column: 1 / -1">' +
@@ -1398,9 +1381,9 @@
         }).then(function (data) {
           var row;
           if (data && data.sanctions) {
-            row = buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens);
+            row = buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens, pepDimensions);
           } else {
-            row = buildRowFromSimulation(body, fd, sanctionsLists, adverseMedia, specialScreens);
+            row = buildRowFromSimulation(body, fd, sanctionsLists, adverseMedia, specialScreens, pepDimensions);
           }
           rows.push(row);
           safeSave(STORAGE.subjects, rows);
@@ -1454,7 +1437,7 @@
   }
 
   // ─── Screening row builders ─────────────────────────────────────────
-  function buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens) {
+  function buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens, pepDimensions) {
     var perList = [];
     var topScore = 0;
     if (data.sanctions && Array.isArray(data.sanctions.perList)) {
@@ -1528,6 +1511,8 @@
       sanctions_lists: sanctionsLists,
       adverse_media: adverseMedia,
       adverse_media_hits: adverseHits,
+      pep_dimensions: Array.isArray(pepDimensions) ? pepDimensions.slice() : [],
+      pep_flags: [],
       adverse_media_count: amHitCount,
       adverse_media_items: adverseItems,
       adverse_media_provider: am.provider ? String(am.provider) : '',
@@ -1543,7 +1528,7 @@
     };
   }
 
-  function buildRowFromSimulation(body, fd, sanctionsLists, adverseMedia, specialScreens) {
+  function buildRowFromSimulation(body, fd, sanctionsLists, adverseMedia, specialScreens, pepDimensions) {
     // Deterministic keyword-based simulation so the form is still useful
     // when the MLRO hasn't signed in yet (no token = no live screening).
     var nameLower = (body.subjectName || '').toLowerCase();
@@ -1632,15 +1617,18 @@
       adverseHits = intersection.length ? intersection : knownHit.entry.categories.slice();
     } else if (haystack.indexOf('test-adverse') >= 0) {
       adverseHits = adverseMedia.slice(0, 3);
-    } else if (haystack.indexOf('pep') >= 0 && adverseMedia.indexOf('political_pep') >= 0) {
-      adverseHits.push('political_pep');
     }
+
+    // PEP flags come exclusively from the dedicated PEP Screening section
+    // (FATF Rec 12 scopes) — not from the adverse-media categories. Test
+    // subjects with "pep" in their name surface as PEP hits when the MLRO
+    // ticked at least one PEP scope on the form.
+    var pepFlags = (haystack.indexOf('pep') >= 0 && pepDimensions.length) ? pepDimensions.slice() : [];
 
     var specialFlags = [];
     if (haystack.indexOf('test-pf') >= 0 && specialScreens.indexOf('proliferation') >= 0) specialFlags.push('proliferation');
     if (haystack.indexOf('test-tf') >= 0 && specialScreens.indexOf('terrorism') >= 0) specialFlags.push('terrorism');
     if (haystack.indexOf('test-tax') >= 0 && specialScreens.indexOf('tax_evasion') >= 0) specialFlags.push('tax_evasion');
-    if (haystack.indexOf('test-dual') >= 0 && specialScreens.indexOf('dual_goods') >= 0) specialFlags.push('dual_goods');
 
     return {
       id: 'sub-' + Date.now(),
@@ -1659,6 +1647,8 @@
       sanctions_lists: sanctionsLists,
       adverse_media: adverseMedia,
       adverse_media_hits: adverseHits,
+      pep_dimensions: Array.isArray(pepDimensions) ? pepDimensions.slice() : [],
+      pep_flags: pepFlags,
       known_adverse_source: knownHit ? {
         source: knownHit.entry.source,
         url: knownHit.entry.url,
@@ -2104,7 +2094,8 @@
       var confirmed = subjects.filter(function (s) { return s.disposition === 'positive'; }).length;
       var partial   = subjects.filter(function (s) { return s.disposition === 'partial'; }).length;
       var pepHits   = subjects.filter(function (s) {
-        return (s.adverse_media_hits || []).indexOf('political_pep') !== -1;
+        return (Array.isArray(s.pep_flags) && s.pep_flags.length > 0) ||
+               (Array.isArray(s.pep_dimensions) && s.pep_dimensions.length > 0);
       }).length;
       var adverseHits = subjects.filter(function (s) {
         return Array.isArray(s.adverse_media_hits) && s.adverse_media_hits.length > 0;
@@ -2366,15 +2357,17 @@
       {
         id: 'pep_correlation',
         label: 'PEP × adverse-media correlation',
-        note: 'Cross-joins subjects with PEP flag and adverse-media categories per FATF Rec 12.',
+        note: 'Cross-joins subjects with PEP scope (FATF Rec 12) and adverse-media categories.',
         fn: function (ctx) {
           var subjects = ctx.snap.keys.subjects || [];
-          var peps = subjects.filter(function (s) {
-            return (s.adverse_media_hits || []).indexOf('political_pep') !== -1;
-          });
+          function hasPep(s) {
+            return (Array.isArray(s.pep_flags) && s.pep_flags.length > 0) ||
+                   (Array.isArray(s.pep_dimensions) && s.pep_dimensions.length > 0);
+          }
+          var peps = subjects.filter(hasPep);
           var withOther = peps.filter(function (s) {
             return (s.adverse_media_hits || []).some(function (h) {
-              return h !== 'political_pep' && h !== 'negative_reputation';
+              return h !== 'negative_reputation';
             });
           });
           var verdict = withOther.length ? 'escalate' : peps.length ? 'review' : 'monitor';
@@ -2387,7 +2380,8 @@
               '',
               withOther.length ? 'PEP + escalation-worthy combinations:' : (peps.length ? 'PEP-only subjects:' : ''),
               (withOther.length ? withOther : peps).slice(0, 6).map(function (s) {
-                return '  • ' + s.name + ' — ' + (s.country || '—') + ' — hits: ' + (s.adverse_media_hits || []).join(', ');
+                var pepLabels = (s.pep_flags && s.pep_flags.length ? s.pep_flags : (s.pep_dimensions || [])).join(', ') || '—';
+                return '  • ' + s.name + ' — ' + (s.country || '—') + ' — PEP scope: ' + pepLabels;
               }).join('\n')
             ].join('\n'),
             citations: ['FATF Rec 12', 'FDL Art.14', 'Cabinet Res 134/2025 Art.14']
