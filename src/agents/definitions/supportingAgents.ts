@@ -45,7 +45,11 @@ export const SUPPORTING_AGENTS: readonly SupportingAgentSpec[] = Object.freeze([
       'Iterative adverse-media deep-dive. Search → reason → extract → cite → loop. Produces a curated evidence dossier with full source preservation.',
     owner: 'MLRO',
     inputs: ['subjectName', 'customerCode', 'aliases', 'context'],
-    outputs: ['dossier (markdown)', 'citations (RFC7231 URLs + timestamps)', 'confidence per claim'],
+    outputs: [
+      'dossier (markdown)',
+      'citations (RFC7231 URLs + timestamps)',
+      'confidence per claim',
+    ],
     regulatoryBasis:
       'FATF Rec 10 (ongoing CDD) · FDL Art.29 (no tipping off on the queries themselves) · Cabinet Res 134/2025 Art.14',
     asanaProject: 'screening_and_watchlist',
@@ -82,8 +86,7 @@ export const SUPPORTING_AGENTS: readonly SupportingAgentSpec[] = Object.freeze([
     owner: 'Compliance Officer',
     inputs: ['legalEntityId', 'depth (default 5)', 'jurisdictionBlacklist'],
     outputs: ['ownershipGraph (nodes + edges)', 'shellCompanyFlags', 'layeringIndicators'],
-    regulatoryBasis:
-      'Cabinet Decision 109/2023 (UBO register) · FATF Rec 24-25 · FDL Art.14',
+    regulatoryBasis: 'Cabinet Decision 109/2023 (UBO register) · FATF Rec 24-25 · FDL Art.14',
     asanaProject: 'cdd_ubo_pep',
     guards: [
       'Cross-jurisdiction queries require MLRO explicit approval if any hop sits in a secrecy jurisdiction',
@@ -153,8 +156,7 @@ export const SUPPORTING_AGENTS: readonly SupportingAgentSpec[] = Object.freeze([
     owner: 'MLRO',
     inputs: ['subjectCode', 'runId', 'depth (surface|deep)'],
     outputs: ['lifeStoryMarkdown', 'regulatoryChecklist'],
-    regulatoryBasis:
-      'Cabinet Res 134/2025 Art.7-10 (CDD depth) · FATF Rec 10 · FDL Art.24',
+    regulatoryBasis: 'Cabinet Res 134/2025 Art.7-10 (CDD depth) · FATF Rec 10 · FDL Art.24',
     asanaProject: 'screening_and_watchlist',
     guards: [
       'Report flagged as CONFIDENTIAL (FDL Art.29)',
@@ -171,8 +173,7 @@ export const SUPPORTING_AGENTS: readonly SupportingAgentSpec[] = Object.freeze([
     owner: 'MLRO',
     inputs: ['subjectCode', 'windowDays (default 365)'],
     outputs: ['timelineEvents', 'gapReport', 'anomalyMarkers'],
-    regulatoryBasis:
-      'FDL Art.24 (audit record must be contiguous) · Cabinet Res 134/2025 Art.19',
+    regulatoryBasis: 'FDL Art.24 (audit record must be contiguous) · Cabinet Res 134/2025 Art.19',
     asanaProject: 'audit_inspection',
     guards: [
       'Cross-tenant data access forbidden',
@@ -243,8 +244,7 @@ export const SUPPORTING_AGENTS: readonly SupportingAgentSpec[] = Object.freeze([
     owner: 'MLRO',
     inputs: ['modelId', 'baselineWindowDays', 'currentWindowDays'],
     outputs: ['driftMetric', 'topShiftedFactors', 'recommendation'],
-    regulatoryBasis:
-      'EU AI Act Art.15 · NIST AI RMF MEASURE-2.4 · ISO/IEC 42001 §8.2',
+    regulatoryBasis: 'EU AI Act Art.15 · NIST AI RMF MEASURE-2.4 · ISO/IEC 42001 §8.2',
     asanaProject: 'governance_and_retention',
     guards: [
       'Drift alerts paginated to avoid alert storms',
@@ -262,6 +262,4 @@ export function agentsByModule(key: ModuleKey): readonly SupportingAgentSpec[] {
   return SUPPORTING_AGENTS.filter((a) => a.asanaProject === key);
 }
 
-export const SUPPORTING_AGENT_IDS: readonly string[] = SUPPORTING_AGENTS.map(
-  (a) => a.id,
-);
+export const SUPPORTING_AGENT_IDS: readonly string[] = SUPPORTING_AGENTS.map((a) => a.id);
