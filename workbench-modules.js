@@ -78,9 +78,38 @@
   }
 
   // ─── Module 01 · Compliance Tasks ────────────────────────────────
+  var TASK_CATEGORIES = [
+    ['cdd_review',      'CDD / EDD Review'],
+    ['sanctions_screen','Sanctions Screening'],
+    ['pep_refresh',     'PEP Refresh'],
+    ['str_drafting',    'STR / SAR Drafting'],
+    ['goaml_filing',    'goAML Filing'],
+    ['training',        'Staff Training'],
+    ['audit_prep',      'Audit / Inspection Prep'],
+    ['ubo_verify',      'UBO Re-verification'],
+    ['policy_update',   'Policy Update'],
+    ['risk_assessment', 'Risk Assessment (EWRA / CRA)'],
+    ['tfs_check',       'TFS Freeze Confirmation'],
+    ['monthly_attest',  'Monthly Attestation'],
+    ['quarterly_kpi',   'Quarterly KPI Report'],
+    ['annual_report',   'Annual Compliance Report'],
+    ['ctr_filing',      'CTR Filing (AED 55K)'],
+    ['cnmr_filing',     'CNMR Filing (5 bd)'],
+    ['record_retention','Records Retention Check'],
+    ['lbma_audit',      'LBMA RGG Annual Audit'],
+    ['other',           'Other']
+  ];
+  var TASK_STATUSES = [
+    ['open',        'Open'],
+    ['in_progress', 'In progress'],
+    ['blocked',     'Blocked'],
+    ['review',      'In review'],
+    ['completed',   'Completed']
+  ];
+
   function renderComplianceTasks(host) {
     var tasks = safeParse(STORAGE.asanaTasks, []);
-    var openTasks = tasks.filter(function (t) { return !t.completed; });
+    var openTasks = tasks.filter(function (t) { return !t.completed && t.status !== 'completed'; });
     var overdue = openTasks.filter(function (t) {
       if (!t.due_on) return false;
       return new Date(t.due_on) < new Date();
@@ -91,34 +120,95 @@
       var now = Date.now();
       return due >= now && due <= now + 7 * 86400000;
     });
+    var highPriority = openTasks.filter(function (t) { return t.priority === 'high' || t.priority === 'critical'; });
 
     var html = [
       head('Compliance Tasks',
-        '<button class="mv-btn mv-btn-primary" data-action="wb-task-refresh">Refresh</button>' +
-        '<button class="mv-btn" data-action="wb-task-new">+ New Task</button>'
+        '<span class="mv-pill">FDL Art.24 · audit-logged</span>' +
+        '<button class="mv-btn mv-btn-primary" data-action="wb-task-new-toggle">+ New Task</button>'
       ),
       '<p class="mv-lede">MLRO task register synced with Asana. Every status change is audit-logged under <strong>FDL Art.24</strong>.</p>',
       '<div class="mv-stat-row">',
         '<div class="mv-stat"><div class="mv-stat-v">' + openTasks.length + '</div><div class="mv-stat-k">Open</div></div>',
         '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + overdue.length + '</div><div class="mv-stat-k">Overdue</div></div>',
         '<div class="mv-stat"><div class="mv-stat-v" data-tone="accent">' + dueThisWeek.length + '</div><div class="mv-stat-k">Due this week</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + highPriority.length + '</div><div class="mv-stat-k">High priority</div></div>',
         '<div class="mv-stat"><div class="mv-stat-v">' + tasks.length + '</div><div class="mv-stat-k">Total</div></div>',
-      '</div>'
+      '</div>',
+
+      '<form id="wb-task-form" class="mv-form" style="display:none">',
+        '<div class="mv-grid-2">',
+          '<label class="mv-field"><span class="mv-field-label">Task name</span>',
+            '<input type="text" name="name" required placeholder="Short descriptive title"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Category</span>',
+            '<select name="category">',
+              TASK_CATEGORIES.map(function (p) {
+                return '<option value="' + esc(p[0]) + '">' + esc(p[1]) + '</option>';
+              }).join(''),
+            '</select></label>',
+        '</div>',
+        '<div class="mv-grid-3">',
+          '<label class="mv-field"><span class="mv-field-label">Priority</span>',
+            '<select name="priority">',
+              '<option value="low">Low</option>',
+              '<option value="medium" selected>Medium</option>',
+              '<option value="high">High</option>',
+              '<option value="critical">Critical</option>',
+            '</select></label>',
+          '<label class="mv-field"><span class="mv-field-label">Due date (dd/mm/yyyy)</span>',
+            '<input type="text" name="due_on" placeholder="dd/mm/yyyy"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Status</span>',
+            '<select name="status">',
+              TASK_STATUSES.map(function (p) {
+                return '<option value="' + esc(p[0]) + '">' + esc(p[1]) + '</option>';
+              }).join(''),
+            '</select></label>',
+        '</div>',
+        '<div class="mv-grid-3">',
+          '<label class="mv-field"><span class="mv-field-label">Assignee</span>',
+            '<input type="text" name="assignee" placeholder="MLRO / CO / staff name"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Regulatory basis</span>',
+            '<input type="text" name="citation" placeholder="e.g. FDL Art.20, Cab.Res 134/2025 Art.19"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Linked entity (optional)</span>',
+            '<input type="text" name="entity" placeholder="Customer / counterparty / list"></label>',
+        '</div>',
+        '<label class="mv-field"><span class="mv-field-label">Notes</span>',
+          '<textarea name="notes" rows="2" placeholder="Context, acceptance criteria, links"></textarea></label>',
+        '<div class="mv-form-actions">',
+          '<button type="submit" class="mv-btn mv-btn-primary">Save task</button>',
+          '<button type="button" class="mv-btn mv-btn-ghost" data-action="wb-task-new-toggle">Cancel</button>',
+        '</div>',
+      '</form>'
     ];
 
     if (!openTasks.length) {
-      html.push(emptyState('&#9997;', 'No open compliance tasks. Create one or sync from Asana.',
-        '<button class="mv-btn mv-btn-primary" data-action="wb-task-new">+ New Task</button>'));
+      html.push(emptyState('&#9997;', 'No open compliance tasks. Create one or sync from Asana.'));
     } else {
       html.push('<ul class="mv-list">');
-      openTasks.slice(0, 20).forEach(function (t) {
+      openTasks.slice(0, 25).forEach(function (t, i) {
+        var catLabel = (TASK_CATEGORIES.filter(function (p) { return p[0] === t.category; })[0] || [null, t.category || ''])[1];
+        var statusLabel = (TASK_STATUSES.filter(function (p) { return p[0] === t.status; })[0] || [null, t.status || 'open'])[1];
+        var overdueFlag = t.due_on && new Date(t.due_on) < new Date();
+        var prio = t.priority || 'medium';
+        var prioTone = prio === 'critical' || prio === 'high' ? 'warn' : prio === 'medium' ? 'accent' : 'ok';
         html.push(
           '<li class="mv-list-item">' +
             '<div class="mv-list-main">' +
-              '<div class="mv-list-title">' + esc(t.name || 'Untitled task') + '</div>' +
-              '<div class="mv-list-meta">Due ' + esc(fmtDate(t.due_on)) + ' · ' + esc(t.assignee_name || 'Unassigned') + '</div>' +
+              '<div class="mv-list-title">' + esc(t.name || 'Untitled task') +
+                (catLabel ? ' <span class="mv-badge" data-tone="accent">' + esc(catLabel) + '</span>' : '') +
+              '</div>' +
+              '<div class="mv-list-meta">Due ' + esc(fmtDate(t.due_on)) +
+                (overdueFlag ? ' <em data-tone="warn">(overdue)</em>' : '') +
+                ' · ' + esc(t.assignee || t.assignee_name || 'Unassigned') +
+                (t.citation ? ' · ' + esc(t.citation) : '') +
+              '</div>' +
+              (t.notes ? '<div class="mv-list-meta" style="opacity:.75">' + esc(t.notes) + '</div>' : '') +
             '</div>' +
-            '<span class="mv-badge">' + esc(t.status || 'open') + '</span>' +
+            '<div class="mv-list-aside">' +
+              '<span class="mv-badge" data-tone="' + prioTone + '">' + esc(prio) + '</span>' +
+              '<span class="mv-badge">' + esc(statusLabel) + '</span>' +
+              '<button class="mv-btn mv-btn-sm mv-btn-ok" data-action="wb-task-complete" data-idx="' + i + '">Done</button>' +
+            '</div>' +
           '</li>'
         );
       });
@@ -127,26 +217,58 @@
 
     host.innerHTML = html.join('');
 
-    host.querySelectorAll('[data-action="wb-task-new"]').forEach(function (btn) {
+    host.querySelectorAll('[data-action="wb-task-new-toggle"]').forEach(function (btn) {
       btn.onclick = function () {
-        var name = prompt('Task name?');
-        if (!name) return;
-        var due = prompt('Due date (YYYY-MM-DD)? Leave blank for none');
+        var form = host.querySelector('#wb-task-form');
+        if (!form) return;
+        form.style.display = form.style.display === 'none' ? '' : 'none';
+        if (form.style.display !== 'none') form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+    });
+    var form = host.querySelector('#wb-task-form');
+    if (form) {
+      form.onsubmit = function (ev) {
+        ev.preventDefault();
+        var fd = new FormData(form);
+        var toIso = function (dmy) {
+          var s = (dmy || '').toString().trim();
+          var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+          if (!m) return null;
+          return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+        };
         tasks.push({
           gid: 'local-' + Date.now(),
-          name: name.trim(),
-          due_on: due || null,
-          assignee_name: 'MLRO',
-          status: 'open',
+          name: (fd.get('name') || '').toString().trim(),
+          category: fd.get('category') || 'other',
+          priority: fd.get('priority') || 'medium',
+          due_on: toIso(fd.get('due_on')),
+          status: fd.get('status') || 'open',
+          assignee: (fd.get('assignee') || '').toString().trim() || 'MLRO',
+          assignee_name: (fd.get('assignee') || '').toString().trim() || 'MLRO',
+          citation: (fd.get('citation') || '').toString().trim(),
+          entity: (fd.get('entity') || '').toString().trim(),
+          notes: (fd.get('notes') || '').toString().trim(),
           completed: false,
           created_at: new Date().toISOString()
         });
         safeSave(STORAGE.asanaTasks, tasks);
         renderComplianceTasks(host);
       };
-    });
-    host.querySelectorAll('[data-action="wb-task-refresh"]').forEach(function (btn) {
-      btn.onclick = function () { renderComplianceTasks(host); };
+    }
+    host.querySelectorAll('[data-action="wb-task-complete"]').forEach(function (btn) {
+      btn.onclick = function () {
+        var idx = parseInt(btn.getAttribute('data-idx'), 10);
+        var target = openTasks[idx];
+        if (!target) return;
+        var global = tasks.indexOf(target);
+        if (global >= 0) {
+          tasks[global].completed = true;
+          tasks[global].status = 'completed';
+          tasks[global].completed_at = new Date().toISOString();
+          safeSave(STORAGE.asanaTasks, tasks);
+          renderComplianceTasks(host);
+        }
+      };
     });
   }
 
@@ -246,30 +368,107 @@
   }
 
   // ─── Module 03 · Approvals ────────────────────────────────────────
+  var APPROVAL_KINDS = [
+    ['edd_upgrade',      'EDD Upgrade (SDD/CDD → EDD)'],
+    ['freeze_confirm',   'Asset Freeze Confirmation (24h EOCN)'],
+    ['freeze_release',   'Asset Freeze Release'],
+    ['str_filing',       'STR / SAR Filing'],
+    ['ctr_filing',       'CTR Filing (AED 55K+)'],
+    ['cnmr_filing',      'CNMR Filing (5 bd)'],
+    ['sanction_override','Sanctions False-Positive Dismiss'],
+    ['pep_onboard',      'PEP Onboarding'],
+    ['high_risk_onboard','High-Risk Customer Onboarding'],
+    ['counterparty_add', 'Counterparty Allowlist Addition'],
+    ['policy_change',    'Policy / Procedure Change'],
+    ['threshold_override','Threshold Override'],
+    ['ubo_disclose',     'UBO Disclosure Waiver'],
+    ['cash_over_55k',    'Cash Transaction ≥ AED 55K'],
+    ['vasp_onboard',     'VASP / Virtual Asset Onboarding'],
+    ['other',            'Other']
+  ];
+
   function renderApprovals(host) {
     var approvals = safeParse(STORAGE.approvals, []);
     var pending = approvals.filter(function (a) { return a.status === 'pending'; });
     var approved = approvals.filter(function (a) { return a.status === 'approved'; });
+    var rejected = approvals.filter(function (a) { return a.status === 'rejected'; });
+    var urgent = pending.filter(function (a) { return a.priority === 'critical' || a.priority === 'high'; });
 
     host.innerHTML = [
       head('Four-Eyes Approvals',
         '<span class="mv-pill">Cabinet Res 134/2025 Art.19 · SoD</span>' +
-        '<button class="mv-btn mv-btn-primary" data-action="wb-appr-new">+ New approval</button>'
+        '<button class="mv-btn mv-btn-primary" data-action="wb-appr-new-toggle">+ New approval</button>'
       ),
       '<p class="mv-lede">High-risk decisions — EDD upgrades, freeze confirmations, STR filings — require two independent approvers. Every action is written to the 10-year audit trail.</p>',
 
       '<div class="mv-stat-row">',
         '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + pending.length + '</div><div class="mv-stat-k">Pending</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + urgent.length + '</div><div class="mv-stat-k">Urgent</div></div>',
         '<div class="mv-stat"><div class="mv-stat-v" data-tone="ok">' + approved.length + '</div><div class="mv-stat-k">Approved</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v">' + rejected.length + '</div><div class="mv-stat-k">Rejected</div></div>',
         '<div class="mv-stat"><div class="mv-stat-v">' + approvals.length + '</div><div class="mv-stat-k">Total</div></div>',
       '</div>',
 
+      '<form id="wb-appr-form" class="mv-form" style="display:none">',
+        '<div class="mv-grid-2">',
+          '<label class="mv-field"><span class="mv-field-label">Approval title</span>',
+            '<input type="text" name="title" required placeholder="What needs approval?"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Kind</span>',
+            '<select name="kind">',
+              APPROVAL_KINDS.map(function (p) {
+                return '<option value="' + esc(p[0]) + '">' + esc(p[1]) + '</option>';
+              }).join(''),
+            '</select></label>',
+        '</div>',
+        '<div class="mv-grid-3">',
+          '<label class="mv-field"><span class="mv-field-label">Subject / counterparty</span>',
+            '<input type="text" name="subject" placeholder="Customer / entity"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Amount (AED, if any)</span>',
+            '<input type="number" name="amount" min="0" step="0.01" placeholder="0.00"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Priority</span>',
+            '<select name="priority">',
+              '<option value="low">Low</option>',
+              '<option value="medium" selected>Medium</option>',
+              '<option value="high">High</option>',
+              '<option value="critical">Critical</option>',
+            '</select></label>',
+        '</div>',
+        '<div class="mv-grid-3">',
+          '<label class="mv-field"><span class="mv-field-label">Initiator (MLRO)</span>',
+            '<input type="text" name="initiator" placeholder="Name" value="MLRO"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Deadline (dd/mm/yyyy)</span>',
+            '<input type="text" name="deadline" placeholder="dd/mm/yyyy"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Regulatory citation</span>',
+            '<input type="text" name="citation" placeholder="e.g. Cab.Res 134/2025 Art.19"></label>',
+        '</div>',
+        '<label class="mv-field"><span class="mv-field-label">Justification</span>',
+          '<textarea name="justification" rows="3" placeholder="Why this requires four-eyes — risk, threshold, regulatory driver"></textarea></label>',
+        '<div class="mv-form-actions">',
+          '<button type="submit" class="mv-btn mv-btn-primary">Queue approval</button>',
+          '<button type="button" class="mv-btn mv-btn-ghost" data-action="wb-appr-new-toggle">Cancel</button>',
+        '</div>',
+      '</form>',
+
       pending.length
         ? '<ul class="mv-list">' + pending.map(function (a, i) {
+            var kindLabel = (APPROVAL_KINDS.filter(function (p) { return p[0] === a.kind; })[0] || [null, a.kind || 'Other'])[1];
+            var prio = a.priority || 'medium';
+            var prioTone = prio === 'critical' || prio === 'high' ? 'warn' : prio === 'medium' ? 'accent' : 'ok';
             return '<li class="mv-list-item">' +
               '<div class="mv-list-main">' +
-                '<div class="mv-list-title">' + esc(a.title) + '</div>' +
-                '<div class="mv-list-meta">' + esc(a.kind) + ' · initiated by ' + esc(a.initiator || 'unknown') + ' · ' + esc(fmtDate(a.created_at)) + '</div>' +
+                '<div class="mv-list-title">' + esc(a.title) +
+                  ' <span class="mv-badge" data-tone="accent">' + esc(kindLabel) + '</span>' +
+                  ' <span class="mv-badge" data-tone="' + prioTone + '">' + esc(prio) + '</span>' +
+                '</div>' +
+                '<div class="mv-list-meta">' +
+                  (a.subject ? 'Subject: ' + esc(a.subject) + ' · ' : '') +
+                  (a.amount ? 'AED ' + esc(Number(a.amount).toLocaleString()) + ' · ' : '') +
+                  'initiated by ' + esc(a.initiator || 'unknown') +
+                  ' · ' + esc(fmtDate(a.created_at)) +
+                  (a.deadline ? ' · deadline ' + esc(fmtDate(a.deadline)) : '') +
+                '</div>' +
+                (a.justification ? '<div class="mv-list-meta" style="opacity:.75">' + esc(a.justification.slice(0, 200)) + (a.justification.length > 200 ? '…' : '') + '</div>' : '') +
+                (a.citation ? '<div class="mv-list-meta">Citation: ' + esc(a.citation) + '</div>' : '') +
               '</div>' +
               '<div class="mv-list-aside">' +
                 '<button class="mv-btn mv-btn-sm mv-btn-ok" data-action="wb-appr-approve" data-idx="' + i + '">Approve</button>' +
@@ -280,23 +479,43 @@
         : emptyState('&#9989;', 'No approvals waiting. All decisions are up to date.')
     ].join('');
 
-    host.querySelectorAll('[data-action="wb-appr-new"]').forEach(function (btn) {
+    host.querySelectorAll('[data-action="wb-appr-new-toggle"]').forEach(function (btn) {
       btn.onclick = function () {
-        var title = prompt('What needs approval?');
-        if (!title) return;
-        var kind = prompt('Kind (EDD / Freeze / STR / Other)?') || 'Other';
+        var form = host.querySelector('#wb-appr-form');
+        if (!form) return;
+        form.style.display = form.style.display === 'none' ? '' : 'none';
+        if (form.style.display !== 'none') form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+    });
+    var form = host.querySelector('#wb-appr-form');
+    if (form) {
+      form.onsubmit = function (ev) {
+        ev.preventDefault();
+        var fd = new FormData(form);
+        var toIso = function (dmy) {
+          var s = (dmy || '').toString().trim();
+          var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+          if (!m) return null;
+          return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+        };
         approvals.push({
           id: 'appr-' + Date.now(),
-          title: title.trim(),
-          kind: kind,
-          initiator: 'MLRO',
+          title: (fd.get('title') || '').toString().trim(),
+          kind: fd.get('kind') || 'other',
+          subject: (fd.get('subject') || '').toString().trim(),
+          amount: parseFloat(fd.get('amount')) || 0,
+          priority: fd.get('priority') || 'medium',
+          initiator: (fd.get('initiator') || 'MLRO').toString().trim(),
+          deadline: toIso(fd.get('deadline')),
+          citation: (fd.get('citation') || '').toString().trim(),
+          justification: (fd.get('justification') || '').toString().trim(),
           status: 'pending',
           created_at: new Date().toISOString()
         });
         safeSave(STORAGE.approvals, approvals);
         renderApprovals(host);
       };
-    });
+    }
     host.querySelectorAll('[data-action="wb-appr-approve"]').forEach(function (btn) {
       btn.onclick = function () {
         var idx = parseInt(btn.getAttribute('data-idx'), 10);

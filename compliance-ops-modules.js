@@ -91,7 +91,7 @@
   // ─── Training ─────────────────────────────────────────────────────
   // Source of truth: index.html #tab-training.
   // Fields: employee, department, totalTrainings, subject, provider,
-  //         duration, completed, completed_on, expires_on.
+  //         duration, completed, completed_on.
   // Regulatory basis: MoE Circular 08/AML/2021 §9; FDL Art.24 retention.
   var TRAINING_SUBJECTS = [
     'AML/CFT Foundations',
@@ -107,7 +107,37 @@
     'LBMA Responsible Sourcing',
     'Data Protection & Privacy',
     'Whistleblower & Tip-Off Protections',
-    'Fraud & Internal Controls'
+    'Fraud & Internal Controls',
+    'Transaction Monitoring',
+    'Trade-Based Money Laundering (TBML)',
+    'Enterprise-Wide Risk Assessment (EWRA)',
+    'Customer Risk Rating',
+    'Cross-Border Cash & BNI Declarations (AED 60K)',
+    'DPMS Cash Threshold Reporting (AED 55K)',
+    'Asset Freeze & TFS (Cabinet Res 74/2020)',
+    'High-Risk Jurisdictions / CAHRA',
+    'LBMA RGG 5-Step Framework',
+    'Dubai Good Delivery (DGD) Standards',
+    'Responsible Sourcing of Gold (UAE MoE RSG)',
+    'Virtual Assets & VASP Risks',
+    'Proliferation Financing (Cabinet Res 156/2025)',
+    'Source of Funds / Source of Wealth',
+    'Beneficial Ownership Register (Cabinet Decision 109/2023)',
+    'FATF Rec 16 — Wire Transfers',
+    'FATF Rec 22/23 — DNFBP Obligations',
+    'MoE Inspection Readiness',
+    'Internal Audit of AML Programme',
+    'New Technology Risk Assessment',
+    'NPO & Charity Sector Risks',
+    'Correspondent Relationships & Due Diligence',
+    'Board & Senior Management AML Duties',
+    'Four-Eyes Approval & Segregation of Duties',
+    'No Tipping-Off (FDL Art.29)',
+    'Gold-Specific Red Flags & Typologies',
+    'Cybersecurity & AML Intersection',
+    'Adverse Media & Open-Source Intelligence',
+    'MLRO Role & Responsibilities',
+    'UAE Penalties & Enforcement (Cabinet Res 71/2024)'
   ];
 
   function renderTraining(host) {
@@ -124,10 +154,7 @@
 
     host.innerHTML = [
       head('Training Register',
-        '<span class="mv-pill">MoE Circular 08/AML/2021 §9</span>' +
-        '<button class="mv-btn mv-btn-sm" data-action="co-train-export-csv">CSV</button>' +
-        '<button class="mv-btn mv-btn-sm" data-action="co-train-export-json">JSON</button>' +
-        '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="co-train-clear">Clear</button>'
+        '<span class="mv-pill">MoE Circular 08/AML/2021 §9</span>'
       ),
       '<p class="mv-lede">AML/CFT, sanctions, and PEP-screening curricula per employee. Coverage logged against the 100% annual target. Retained 10 years under FDL Art.24.</p>',
 
@@ -157,18 +184,14 @@
           '<label class="mv-field"><span class="mv-field-label">Provider</span>',
             '<input type="text" name="provider" placeholder="ACAMS, in-house, etc."></label>',
         '</div>',
-        '<div class="mv-grid-3">',
+        '<div class="mv-grid-2">',
           '<label class="mv-field"><span class="mv-field-label">Duration (hrs)</span>',
             '<input type="number" name="duration" min="0" step="0.5" placeholder="0"></label>',
           '<label class="mv-field"><span class="mv-field-label">Completed on (dd/mm/yyyy)</span>',
             '<input type="text" name="completed_on" placeholder="dd/mm/yyyy"></label>',
-          '<label class="mv-field"><span class="mv-field-label">Expires on (dd/mm/yyyy)</span>',
-            '<input type="text" name="expires_on" placeholder="dd/mm/yyyy"></label>',
         '</div>',
         '<div class="mv-grid-3">',
           '<label class="mv-check"><input type="checkbox" name="completed" checked><span>Completed</span></label>',
-          '<label class="mv-check"><input type="checkbox" name="certificate"><span>Certificate on file</span></label>',
-          '<label class="mv-check"><input type="checkbox" name="mandatory" checked><span>Mandatory curriculum</span></label>',
         '</div>',
         '<div class="mv-form-actions">',
           '<button type="submit" class="mv-btn mv-btn-primary">Add Employee Training</button>',
@@ -214,10 +237,7 @@
           provider: (fd.get('provider') || '').toString().trim(),
           duration: parseFloat(fd.get('duration')) || 0,
           completed: fd.get('completed') === 'on',
-          certificate: fd.get('certificate') === 'on',
-          mandatory: fd.get('mandatory') === 'on',
           completed_on: toIsoFromDMY(fd.get('completed_on')) || new Date().toISOString().slice(0, 10),
-          expires_on: toIsoFromDMY(fd.get('expires_on')) || '',
           created_at: new Date().toISOString()
         };
         if (!row.employee) return;
@@ -231,27 +251,6 @@
         var id = btn.getAttribute('data-id');
         var next = rows.filter(function (r) { return r.id !== id; });
         safeSave(STORAGE.training, next);
-        renderTraining(host);
-      };
-    });
-    host.querySelectorAll('[data-action="co-train-export-csv"]').forEach(function (btn) {
-      btn.onclick = function () {
-        var lines = [csvRow(['Employee','Department','Subject','Provider','Duration(h)','Completed','CompletedOn','ExpiresOn','Mandatory','Certificate'])];
-        rows.forEach(function (r) {
-          lines.push(csvRow([r.employee, r.department, r.subject, r.provider, r.duration, r.completed ? 'YES' : 'NO', r.completed_on, r.expires_on, r.mandatory ? 'YES' : 'NO', r.certificate ? 'YES' : 'NO']));
-        });
-        download('training-register-' + new Date().toISOString().slice(0, 10) + '.csv', 'text/csv', lines.join('\n'));
-      };
-    });
-    host.querySelectorAll('[data-action="co-train-export-json"]').forEach(function (btn) {
-      btn.onclick = function () {
-        download('training-register-' + new Date().toISOString().slice(0, 10) + '.json', 'application/json', JSON.stringify(rows, null, 2));
-      };
-    });
-    host.querySelectorAll('[data-action="co-train-clear"]').forEach(function (btn) {
-      btn.onclick = function () {
-        if (!confirm('Clear all training records? This cannot be undone.')) return;
-        safeSave(STORAGE.training, []);
         renderTraining(host);
       };
     });
@@ -289,8 +288,6 @@
     host.innerHTML = [
       head('Employee Directory',
         '<span class="mv-pill">Cabinet Res 134/2025 Art.19 · SoD</span>' +
-        '<button class="mv-btn mv-btn-sm" data-action="co-emp-export-csv">CSV</button>' +
-        '<button class="mv-btn mv-btn-sm" data-action="co-emp-export-json">JSON</button>' +
         '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="co-emp-reset">New Employee</button>'
       ),
       '<p class="mv-lede">Staff registry with role, MLRO flag, four-eyes eligibility, KYC status, Emirates ID and passport expiry watch.</p>',
@@ -341,8 +338,6 @@
             '</select></label>',
         '</div>',
         '<div class="mv-grid-3">',
-          '<label class="mv-check"><input type="checkbox" name="mlro"><span>Is MLRO</span></label>',
-          '<label class="mv-check"><input type="checkbox" name="four_eyes"><span>Four-eyes approver</span></label>',
           '<label class="mv-check"><input type="checkbox" name="kyc_ok" checked><span>KYC verified</span></label>',
         '</div>',
         '<div class="mv-form-actions">',
@@ -408,8 +403,6 @@
           designation: (fd.get('designation') || '').toString().trim(),
           join_date: toIsoFromDMY(fd.get('join_date')) || '',
           business_unit: fd.get('business_unit') || '',
-          mlro: fd.get('mlro') === 'on',
-          four_eyes: fd.get('four_eyes') === 'on',
           kyc_ok: fd.get('kyc_ok') === 'on',
           created_at: new Date().toISOString()
         };
@@ -443,20 +436,6 @@
       btn.onclick = function () {
         var f = host.querySelector('#co-emp-form');
         if (f) f.reset();
-      };
-    });
-    host.querySelectorAll('[data-action="co-emp-export-csv"]').forEach(function (btn) {
-      btn.onclick = function () {
-        var lines = [csvRow(['Name','DOB','Nationality','Email','EID','EIDExpiry','Passport','PassportExpiry','Designation','JoinDate','BusinessUnit','MLRO','FourEyes','KYC'])];
-        rows.forEach(function (r) {
-          lines.push(csvRow([r.name, r.dob, r.nationality, r.email, r.eid, r.eid_expiry, r.passport, r.passport_expiry, r.designation, r.join_date, r.business_unit, r.mlro ? 'YES' : 'NO', r.four_eyes ? 'YES' : 'NO', r.kyc_ok ? 'YES' : 'NO']));
-        });
-        download('employees-' + new Date().toISOString().slice(0, 10) + '.csv', 'text/csv', lines.join('\n'));
-      };
-    });
-    host.querySelectorAll('[data-action="co-emp-export-json"]').forEach(function (btn) {
-      btn.onclick = function () {
-        download('employees-' + new Date().toISOString().slice(0, 10) + '.json', 'application/json', JSON.stringify(rows, null, 2));
       };
     });
   }
@@ -550,7 +529,6 @@
     host.innerHTML = [
       head('Incident Register',
         '<span class="mv-pill">Cabinet Res 74/2020 Art.4-7 · FDL Art.26-29</span>' +
-        '<button class="mv-btn mv-btn-sm" data-action="co-inc-export-csv">CSV</button>' +
         '<button class="mv-btn mv-btn-primary" data-action="co-inc-new-toggle">+ New incident</button>'
       ),
       '<p class="mv-lede">Sanctions matches, suspected tipping-off, breaches, whistleblower reports. Every record feeds the STR/SAR pipeline and the 24h EOCN + 5-business-day CNMR countdowns. No-tip-off protections apply (FDL Art.29).</p>',
@@ -833,16 +811,6 @@
       };
     }
 
-    // CSV export.
-    host.querySelectorAll('[data-action="co-inc-export-csv"]').forEach(function (btn) {
-      btn.onclick = function () {
-        var lines = [csvRow(['Title','Type','Severity','Status','Discovered','Deadline','Department','Entities','Reporter','RootCause','STRRequired','FreezeRequired','Created'])];
-        rows.forEach(function (r) {
-          lines.push(csvRow([r.title, INC_TYPE_LABELS[r.type] || r.type, r.severity, r.status, r.discovered, r.deadline, r.department, r.entities, r.reporter, r.root_cause, r.str_required ? 'YES' : 'NO', r.freeze_required ? 'YES' : 'NO', r.created_at]));
-        });
-        download('incidents-' + new Date().toISOString().slice(0, 10) + '.csv', 'text/csv', lines.join('\n'));
-      };
-    });
   }
   // ─── Reports ──────────────────────────────────────────────────────
   // Source of truth: index.html reports panels + MLRO quarterly minutes.
