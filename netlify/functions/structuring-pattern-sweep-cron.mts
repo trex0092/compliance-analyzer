@@ -1,7 +1,7 @@
 /**
  * Structuring Pattern Sweep cron — generated from routines.html catalog.
  *
- * Schedule: `*/30 * * * *` (every 30 min)
+ * Schedule: every 30 min (see `schedule` below)
  * Module: transaction_monitoring (Asana board resolved via the 16-project catalog)
  * Audit store: structuring-audit
  * Regulatory basis: MoE Circular 08/AML/2021
