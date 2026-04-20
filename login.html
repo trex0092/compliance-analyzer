@@ -178,6 +178,12 @@
               set(EXP_KEY, String(json.expiresAt));
               if (json.jti) set(JTI_KEY, json.jti);
               set(NAME_KEY, uEl.value.trim() || 'MLRO');
+              // Legacy bridge for asana-client-bridge.js and any page
+              // that still reads hawkeye.watchlist.adminToken. Do NOT
+              // remove without auditing every legacy reader — auth-gate.js
+              // only re-mirrors on subsequent protected-page loads, so
+              // dropping this write starves the bridge on the FIRST
+              // post-login navigation. FDL No.10/2025 Art.20-21.
               set(LEGACY_KEY, json.token);
               return { ok: true };
             });

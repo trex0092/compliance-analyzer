@@ -18,6 +18,7 @@
  */
 
 import type { ToolResult as _ToolResult } from '../mcp-server';
+import { DPMS_CASH_THRESHOLD_AED } from '../../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -483,9 +484,15 @@ export class ComplianceKnowledgeGraph {
       {
         id: 'REQ-REPORT-02',
         regulationId: 'FDL-ART15',
-        description: 'File CTR for cash transactions >= AED 55,000',
+        // Use 'en-US' explicitly so the description renders identically
+        // ("AED 55,000") regardless of the Netlify runtime locale; an
+        // auditor-facing string must not drift with server locale.
+        description: `File CTR for cash transactions >= AED ${DPMS_CASH_THRESHOLD_AED.toLocaleString('en-US')}`,
         mandatory: true,
-        thresholdValue: 55000,
+        // Single source of truth per CLAUDE.md Constants Architecture —
+        // never hardcode a regulatory threshold outside constants.ts.
+        // MoE Circular 08/AML/2021 / FDL No.10/2025 Art.15-16.
+        thresholdValue: DPMS_CASH_THRESHOLD_AED,
         thresholdUnit: 'AED',
       },
       {

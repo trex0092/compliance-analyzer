@@ -819,11 +819,24 @@ window.csFormatDateInput = function (el) {
     // Country table
     html += '<div style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:3px">';
     html += '<div style="display:grid;grid-template-columns:1fr 140px 60px;padding:6px 10px;background:rgba(180,151,90,0.1);font-size:10px;font-weight:600;color:var(--gold);font-family:\'Montserrat\',sans-serif;border-bottom:1px solid var(--border)"><span>COUNTRY</span><span>CLASSIFICATION</span><span></span></div>';
+    // XSS fix: the country name e[0] is user-supplied (line 842 input)
+    // and persisted in localStorage. Without HTML escape, a payload
+    // like <img src=x onerror=...> stored once fires every time the
+    // modal renders. The former inline onclick also permitted
+    // JS-context injection (backslash-before-quote broke the replace-
+    // based escape), so route the click through the established
+    // data-action dispatcher (app-events.js line 23) with esc()'d
+    // data-arg. Regulatory basis: CLAUDE.md Seguridad §3 (escape
+    // every DOM output) and Cabinet Res 134/2025 Art.14 (EDD record
+    // integrity — attacker-controlled subject names must not persist
+    // executable payloads into the compliance UI).
     entries.forEach(function(e) {
+      var nameSafe = esc(e[0]);
+      var levelSafe = esc(e[1]);
       html += '<div style="display:grid;grid-template-columns:1fr 140px 60px;padding:4px 10px;border-bottom:1px solid var(--border);font-size:11px;align-items:center">';
-      html += '<span>' + e[0] + '</span>';
-      html += '<span style="color:' + colorFor(e[1]) + ';font-weight:600;font-size:10px">' + e[1] + '</span>';
-      html += '<button class="btn btn-sm btn-red" onclick="suiteRemoveCountryRisk(\'' + e[0].replace(/'/g,"\\'") + '\')" style="padding:1px 6px;font-size:9px">✕</button>';
+      html += '<span>' + nameSafe + '</span>';
+      html += '<span style="color:' + colorFor(e[1]) + ';font-weight:600;font-size:10px">' + levelSafe + '</span>';
+      html += '<button class="btn btn-sm btn-red" data-action="suiteRemoveCountryRisk" data-arg="' + nameSafe + '" style="padding:1px 6px;font-size:9px">✕</button>';
       html += '</div>';
     });
     html += '</div>';
