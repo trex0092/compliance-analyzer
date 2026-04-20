@@ -97,6 +97,18 @@
     if (typeof window.__renderPageNav === 'function') window.__renderPageNav();
   }
 
+  // Scope .tab-content queries to direct children of host. Injected
+  // main-app tabs may themselves contain descendant elements marked
+  // .tab-content (nested mini-panels); those must not be hidden by the
+  // module-switch logic below.
+  function directChildrenByClass(parent, cls) {
+    var out = [];
+    for (var i = 0; i < parent.children.length; i++) {
+      if (parent.children[i].classList.contains(cls)) out.push(parent.children[i]);
+    }
+    return out;
+  }
+
   // ---- Native module injection plumbing --------------------------------
 
   var mainAppDocPromise = null;
@@ -207,7 +219,7 @@
 
   function activateInjectedTab(route) {
     // Hide any other injected tab-content siblings; show the one we want.
-    var tabs = host.querySelectorAll('.tab-content');
+    var tabs = directChildrenByClass(host, 'tab-content');
     for (var i = 0; i < tabs.length; i++) {
       tabs[i].classList.remove('active');
       tabs[i].style.display = 'none';
@@ -306,7 +318,7 @@
     applyImperativeHide();
     // Leave the injected tabs in the DOM (display:none) so re-opening is
     // instant, but hide the host itself via the `.is-open` class flip.
-    var tabs = host.querySelectorAll('.tab-content');
+    var tabs = directChildrenByClass(host, 'tab-content');
     for (var i = 0; i < tabs.length; i++) {
       tabs[i].classList.remove('active');
       tabs[i].style.display = 'none';
