@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Sign in — Hawkeye Sterling V2</title>
+    <link rel="icon" type="image/svg+xml" href="assets/logos/hawkeye-icon.svg" />
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { height: 100%; }
+      body {
+        background: radial-gradient(1200px 800px at 30% 20%, #1a1226, #050812 75%);
+        color: #ece8ff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+      }
+      .card {
+        width: min(420px, 92vw);
+        padding: 32px;
+        background: linear-gradient(180deg, rgba(30, 18, 50, 0.92), rgba(10, 6, 20, 0.92));
+        border: 1px solid rgba(255, 120, 230, 0.25);
+        border-radius: 18px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+      }
+      h1 {
+        margin: 0 0 6px 0;
+        font-size: 22px; font-weight: 700; letter-spacing: 0.02em;
+        background: linear-gradient(90deg, #ffd6a8, #ff8bd1 60%, #88b5ff);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .sub {
+        margin: 0 0 20px 0;
+        font-size: 13px; opacity: 0.75; line-height: 1.45;
+      }
+      label {
+        display: block;
+        font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+        opacity: 0.8; margin: 14px 0 6px 0;
+      }
+      input {
+        width: 100%; padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 10px;
+        color: inherit; font-size: 14px; outline: none;
+      }
+      input:focus {
+        border-color: rgba(255, 139, 209, 0.6);
+        background: rgba(255, 255, 255, 0.09);
+      }
+      button {
+        margin-top: 22px; width: 100%;
+        padding: 13px 18px;
+        background: linear-gradient(90deg, #ff8bd1, #ffd6a8);
+        color: #1a0a20;
+        border: none; border-radius: 10px;
+        font-weight: 700; font-size: 14px; cursor: pointer;
+      }
+      button:disabled { opacity: 0.55; cursor: wait; }
+      .err {
+        margin-top: 14px; min-height: 18px;
+        font-size: 13px; color: #ffb0b0;
+      }
+      .foot {
+        margin-top: 18px;
+        font-size: 11px; opacity: 0.55;
+        text-align: center; line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <form class="card" id="loginForm" autocomplete="off">
+      <h1>HAWKEYE STERLING V2</h1>
+      <p class="sub">MLRO sign-in — one password, every surface unlocks for the session.</p>
+      <label for="u">Name</label>
+      <input type="text" id="u" name="name" autocomplete="username" placeholder="Name" required maxlength="120" />
+      <label for="p">Password</label>
+      <input type="password" id="p" name="password" autocomplete="current-password" placeholder="Password" required maxlength="1024" />
+      <button type="submit" id="btn">Sign in</button>
+      <div class="err" id="err" role="status" aria-live="polite"></div>
+      <div class="foot">1-year session · FDL Art.24 audit retention · 5 attempts / 15 min / IP</div>
+    </form>
+    <script>
+      (function () {
+        var JWT_KEY = 'hawkeye.session.jwt';
+        var EXP_KEY = 'hawkeye.session.expiresAt';
+        var JTI_KEY = 'hawkeye.session.jti';
+        var NAME_KEY = 'hawkeye.session.mlroName';
+        var LEGACY_KEY = 'hawkeye.watchlist.adminToken';
+
+        function now() { return Math.floor(Date.now() / 1000); }
+        function get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }
+        function set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
+
+        function safeReturn() {
+          var ret = new URLSearchParams(location.search).get('return');
+          if (!ret) return '/';
+          // Only allow same-origin absolute paths, no //, no protocol
+          if (/^\/[a-zA-Z0-9_\-]/.test(ret) && ret.indexOf('://') === -1 && ret.indexOf('//') !== 0) {
+            return ret;
+          }
+          return '/';
+        }
+
+        // Already signed in → skip login, go to the app (or return path).
+        var jwt = get(JWT_KEY);
+        var exp = parseInt(get(EXP_KEY) || '0', 10);
+        if (jwt && exp > now()) {
+          location.replace(safeReturn());
+          return;
+        }
+
+        var form = document.getElementById('loginForm');
+        var uEl = document.getElementById('u');
+        var pEl = document.getElementById('p');
+        var btn = document.getElementById('btn');
+        var err = document.getElementById('err');
+
+        var savedName = get(NAME_KEY);
+        if (savedName) uEl.value = savedName;
+
+        form.addEventListener('submit', function (ev) {
+          ev.preventDefault();
+          err.textContent = '';
+          btn.disabled = true;
+          btn.textContent = 'Signing in…';
+
+          fetch('/api/hawkeye-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: pEl.value })
+          }).then(function (res) {
+            return res.json().then(function (json) {
+              if (!res.ok) {
+                var msg = (json && json.error) || ('Sign-in failed (HTTP ' + res.status + ').');
+                return { ok: false, error: msg };
+              }
+              if (!json || !json.token || !json.expiresAt) {
+                return { ok: false, error: 'Sign-in response malformed.' };
+              }
+              set(JWT_KEY, json.token);
+              set(EXP_KEY, String(json.expiresAt));
+              if (json.jti) set(JTI_KEY, json.jti);
+              set(NAME_KEY, uEl.value.trim() || 'MLRO');
+              set(LEGACY_KEY, json.token);
+              return { ok: true };
+            }).catch(function () {
+              return { ok: false, error: 'Sign-in response could not be parsed.' };
+            });
+          }).catch(function (e) {
+            return { ok: false, error: (e && e.message) || 'Network error.' };
+          }).then(function (r) {
+            btn.disabled = false;
+            btn.textContent = 'Sign in';
+            if (r.ok) {
+              pEl.value = '';
+              location.replace(safeReturn());
+            } else {
+              err.textContent = r.error || 'Sign-in failed.';
+              pEl.focus();
+            }
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

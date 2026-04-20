@@ -2402,11 +2402,23 @@
         line-height: 1.5;
       }
     </style>
-    <!-- Hide the SPA until we know the auth state, so signed-out users
-         never see a flash of authenticated content (CLAUDE.md
-         Seguridad §5 + FDL Art.29 no-tipping-off discipline). -->
-    <script>document.documentElement.classList.add('hawkeye-gated-hide');</script>
-    <script src="auth-gate.js?v=1"></script>
+    <!-- Gate / to /login.html when the MLRO session is absent or
+         expired. Inlined at the top of <head> so the redirect fires
+         before any other script or resource runs — signed-out viewers
+         never see a flash of authenticated SPA (FDL Art.29). -->
+    <script>
+      (function () {
+        try {
+          var now = Math.floor(Date.now() / 1000);
+          var jwt = localStorage.getItem('hawkeye.session.jwt');
+          var exp = parseInt(localStorage.getItem('hawkeye.session.expiresAt') || '0', 10);
+          if (!jwt || !exp || exp <= now) {
+            location.replace('/login.html');
+          }
+        } catch (_) { /* private mode — fall through to SPA */ }
+      })();
+    </script>
+    <script src="auth-gate.js?v=2"></script>
   </head>
   <body>
     <!-- MLRO sign-in overlay — shown when no valid session in
@@ -2897,6 +2909,24 @@
           .hi-card[data-tone="orange"]:hover { box-shadow: 0 20px 50px -22px rgba(251, 146, 60, 0.55); }
           .hi-card.hi-card--orange-border { border: 2px solid #fb923c; }
           .hi-card.hi-card--orange-border:hover { border-color: #fdba74; box-shadow: 0 20px 50px -22px rgba(251, 146, 60, 0.65); }
+          /* MLRO request 2026-04-20: all Operations Surface cards
+             share a single pink-lilac border. Overrides the per-tone
+             borders below. (CLAUDE.md Seguridad §H-visual consistency) */
+          .hi-card,
+          .hi-card[data-tone="pink"],
+          .hi-card[data-tone="yellow"],
+          .hi-card[data-tone="green"],
+          .hi-card[data-tone="orange"],
+          .hi-card[data-tone="blue"],
+          .hi-card[data-tone="purple"],
+          .hi-card.hi-card--orange-border {
+            border: 1px solid rgba(215, 125, 230, 0.55) !important;
+          }
+          .hi-card:hover,
+          .hi-card.hi-card--orange-border:hover {
+            border-color: rgba(235, 150, 245, 0.9) !important;
+            box-shadow: 0 20px 50px -22px rgba(215, 125, 230, 0.6) !important;
+          }
           .hi-card[data-tone="blue"] { color: var(--hi-blue); border-color: var(--hi-blue-border); }
           .hi-card[data-tone="blue"]:hover { box-shadow: 0 20px 50px -22px rgba(47, 125, 255, 0.55); }
           .hi-card[data-tone="purple"] { color: var(--hi-purple); border-color: var(--hi-purple-border); }
@@ -3046,40 +3076,6 @@
           </div>
 
           <div class="hi-cards">
-            <a
-              class="hi-card"
-              data-tone="green"
-              href="/trading"
-              data-route="metalstrading"
-              data-slug="trading"
-              aria-label="Open the Trading surface"
-            >
-              <div class="hi-card-icon" aria-hidden="true">&#9670;</div>
-              <div class="hi-card-meta">
-                <span class="dot"></span>
-                <span>Surface 01 &middot; Trading</span>
-              </div>
-              <h2 class="hi-card-title">Trading</h2>
-              <p class="hi-card-desc">
-                Precious-metals trading desk &mdash; bullion orders, LBMA
-                responsible-sourcing checks and the AED 55K DPMS threshold
-                monitor, all wired to live sanctions screening.
-              </p>
-              <div class="hi-card-stats">
-                <div class="hi-stat">
-                  <span class="hi-stat-val">AED 55K</span>
-                  <span class="hi-stat-key">DPMS CTR</span>
-                </div>
-                <div class="hi-stat">
-                  <span class="hi-stat-val">LBMA</span>
-                  <span class="hi-stat-key">RGG v9</span>
-                </div>
-              </div>
-              <div class="hi-card-cta">
-                <span>Open surface</span>
-                <span class="hi-card-cta-arrow" aria-hidden="true">&rarr;</span>
-              </div>
-            </a>
 
             <a
               class="hi-card hi-card--orange-border"

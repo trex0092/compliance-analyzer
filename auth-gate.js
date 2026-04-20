@@ -143,7 +143,7 @@
     if (mode !== 'protect') return;
     if (isSignedIn()) return;
     var back = location.pathname + location.search + location.hash;
-    var url = '/?return=' + encodeURIComponent(back);
+    var url = '/login.html?return=' + encodeURIComponent(back);
     // Replace so the back button doesn't trap the user on a gated page.
     try { location.replace(url); } catch (_) { location.href = url; }
   }
