@@ -501,7 +501,15 @@
       confidence: 0.82,
       source: 'Reuters · 6 Oct 2025',
       url: 'https://www.reuters.com/world/middle-east/turkey-orders-23-arrests-istanbul-gold-refinery-probe-state-media-says-2025-10-06/',
-      summary: 'Turkey ordered 23 arrests in an Istanbul gold-refinery probe (Oct 2025); named individual in state-media reporting on the export-subsidy fraud scheme (~$12M). Corroborated by Turkish Minute (6 Oct 2025) and Hurriyet Daily News. DPMS-sector adverse media — relevant to MoE Circular 08/AML/2021 and LBMA RGG v9 supply-chain due diligence.'
+      summary: 'Turkey ordered 23 arrests in an Istanbul gold-refinery probe (Oct 2025); named individual in state-media reporting on the export-subsidy fraud scheme (~$12M). Corroborated by Turkish Minute (6 Oct 2025) and Hurriyet Daily News. DPMS-sector adverse media — relevant to MoE Circular 08/AML/2021 and LBMA RGG v9 supply-chain due diligence.',
+      // Sanctions status — NO sanctions hit; the only finding is
+      // adverse-media. This must NOT be rendered as a sanctions match
+      // on any of the 15 watchlists.
+      sanctions_hits: [],
+      // Compliance-report block — specific, cited, forceful.
+      risk_level: 'high',
+      recommendation: 'ENHANCED DUE DILIGENCE required. Subject is NOT on any sanctions list but is the named individual in a pending Turkish criminal investigation (Oct 2025, Istanbul gold-refinery export-subsidy fraud probe, ~$12M). Action: (1) suspend any pending onboarding or transaction; (2) request and verify current detention / legal-proceedings status via independent Turkish court records; (3) collect and verify source-of-wealth and source-of-funds documentation covering the last 10 years; (4) obtain the full list of co-detainees and re-screen all of them as connected parties; (5) review any business relationship, trade flow, or transaction history with Istanbul Gold Refinery (IAR) and affiliated entities; (6) if a UAE-nexus relationship exists, block pending transactions and escalate to senior management with written MLRO reasoning; (7) do not tip off the subject (FDL Art.29). File internal EDD memo before any re-engagement decision.',
+      regulatory_basis: ['FDL No.(10)/2025 Art.14 (EDD)', 'FDL No.(10)/2025 Art.20-21 (CO situational awareness)', 'FDL No.(10)/2025 Art.29 (no tipping off)', 'FATF Rec 10 (ongoing CDD)', 'Cabinet Res 134/2025 Art.14 (EDD triggers)', 'MoE Circular 08/AML/2021 §9 (DPMS sector)', 'LBMA RGG v9 Step 3 (enhanced DD on high-risk suppliers)']
     },
     {
       names: [
@@ -520,7 +528,11 @@
       confidence: 0.93,
       source: 'Reuters · Turkish Minute · Hurriyet Daily News · 6 Oct 2025',
       url: 'https://www.turkishminute.com/2025/10/06/turkey-detains-21-in-probe-into-istanbul-gold-refinery-over-export-subsidy-fraud/',
-      summary: 'Istanbul Gold Refinery (IAR) and affiliated companies implicated in a coordinated export-subsidy fraud scheme (Oct 2025). Turkish authorities detained 21-22 individuals and issued 23 detention warrants; alleged state defrauded of ~$12-12.5M via fake gold exports to obtain subsidies. DPMS-sector — direct exposure for UAE gold refiners and counterparties under MoE Circular 08/AML/2021 and LBMA RGG v9.'
+      summary: 'Istanbul Gold Refinery (IAR) and affiliated companies implicated in a coordinated export-subsidy fraud scheme (Oct 2025). Turkish authorities detained 21-22 individuals and issued 23 detention warrants; alleged state defrauded of ~$12-12.5M via fake gold exports to obtain subsidies. DPMS-sector — direct exposure for UAE gold refiners and counterparties under MoE Circular 08/AML/2021 and LBMA RGG v9.',
+      sanctions_hits: [],
+      risk_level: 'critical',
+      recommendation: 'CRITICAL — CONFIRMED ADVERSE MEDIA. Entity is NOT on any sanctions list but is the direct subject of an ongoing Turkish criminal investigation for coordinated export-subsidy fraud (Oct 2025, ~$12-12.5M state fraud via fake gold exports). Immediate actions: (1) SUSPEND all business with Istanbul Gold Refinery (IAR), its affiliated companies, and any counterparty sourcing from them; (2) IDENTIFY and re-screen every UAE-side counterparty that has transacted with IAR in the last 24 months; (3) TRIGGER LBMA RGG v9 Step 3-5 enhanced supply-chain DD if any gold has entered the UAE DPMS market from this source; (4) PREPARE STR/SAR filing if any UAE-nexus transaction is identified — file without delay (FDL Art.26-27); (5) DOCUMENT the freeze decision with full MLRO + senior-management sign-off; (6) MONITOR Turkish prosecution outcomes for further designations; (7) DO NOT tip off the entity or any related party (FDL Art.29).',
+      regulatory_basis: ['FDL No.(10)/2025 Art.14 (EDD)', 'FDL No.(10)/2025 Art.20-21 (CO situational awareness)', 'FDL No.(10)/2025 Art.24 (10-year retention)', 'FDL No.(10)/2025 Art.26-27 (STR filing)', 'FDL No.(10)/2025 Art.29 (no tipping off)', 'FATF Rec 10', 'Cabinet Res 134/2025 Art.14', 'MoE Circular 08/AML/2021', 'LBMA RGG v9 Steps 3-5', 'UAE MoE RSG Framework']
     }
   ];
 
@@ -994,7 +1006,6 @@
           SPECIAL_SCREENS.length + ' specialised checks</span>' +
         '<button class="mv-btn mv-btn-primary" data-action="sc-sub-new">+ New screening</button>'
       ),
-      '<p class="mv-lede">Multi-modal screening: <strong>sanctions + PEPs (self, family, close associates) + regulatory & law-enforcement records + terrorism / proliferation watchlists + adverse media + bribery & corruption + organised crime + country risk + associates & networks + ' + RISK_TYPOLOGIES.length + ' risk typologies</strong>. Powered by ML pattern detection, NLP article reading, intelligent topic tagging, and multi-modal name matching (Jaro-Winkler · Levenshtein · Soundex · Double Metaphone · token-set) with alias / phonetic / transliteration handling. Four-eyes MLRO disposition on every partial / confirmed match.</p>',
       '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px">' +
         CORPUS_COVERAGE.map(function (c) {
           return '<div class="mv-stat" style="flex:1;min-width:140px">' +
@@ -1056,25 +1067,25 @@
             '<input type="text" name="issuer" placeholder="e.g. DED, UAE MOI, HMPO"></label>',
         '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Sanctions &amp; watchlists <span style="opacity:.55;font-weight:normal">(' + SANCTIONS_LISTS.length + ' lists — UN, OFAC, HMT/OFSI, EU, SECO, OSFI, DFAT, MoF, MAS, HKMA, World Bank debarment, Magnitsky overlays)</span></h4>',
+        '<h4 class="mv-field-label" style="margin-top:14px">Sanctions &amp; watchlists</h4>',
         '<div class="mv-grid-2">', checkboxGroup('sanctions_lists', SANCTIONS_LISTS), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Adverse media categories <span style="opacity:.55;font-weight:normal">(' + ADVERSE_MEDIA_CATEGORIES.length + ' — criminal/fraud · bribery · organised crime · ML · TF/PF · regulatory · reputational · PEP · human rights)</span></h4>',
+        '<h4 class="mv-field-label" style="margin-top:14px">Adverse media categories</h4>',
         '<div class="mv-grid-2">', checkboxGroup('adverse_media', ADVERSE_MEDIA_CATEGORIES), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">PEP screening — self, family, close associates <span style="opacity:.55;font-weight:normal">(FATF Rec 12 · Cabinet Res 134/2025 Art.14)</span></h4>',
+        '<h4 class="mv-field-label" style="margin-top:14px">PEP screening <span style="opacity:.55;font-weight:normal">(FATF Rec 12 · Cabinet Res 134/2025 Art.14)</span></h4>',
         '<div class="mv-grid-2">', checkboxGroup('pep_dimensions', PEP_DIMENSIONS), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Country-risk overlay <span style="opacity:.55;font-weight:normal">(FATF + UAE regulator lists + CAHRA)</span></h4>',
+        '<h4 class="mv-field-label" style="margin-top:14px">Country-risk overlay</h4>',
         '<div class="mv-grid-2">', checkboxGroup('country_risk', COUNTRY_RISK_LISTS), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Associates &amp; networks <span style="opacity:.55;font-weight:normal">(UBO · directors · signatories · counterparties — FATF Rec 10 · Cabinet Decision 109/2023)</span></h4>',
+        '<h4 class="mv-field-label" style="margin-top:14px">Associates &amp; networks <span style="opacity:.55;font-weight:normal">(FATF Rec 10 · Cabinet Decision 109/2023)</span></h4>',
         '<div class="mv-grid-2">', checkboxGroup('associate_dimensions', ASSOCIATE_DIMENSIONS), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Risk typologies &amp; intelligent tags <span style="opacity:.55;font-weight:normal">(' + RISK_TYPOLOGIES.length + ' topics — click to narrow / reduce false positives)</span></h4>',
+        '<h4 class="mv-field-label" style="margin-top:14px">Risk typologies &amp; intelligent tags <span style="opacity:.55;font-weight:normal">(click to narrow / reduce false positives)</span></h4>',
         '<div class="mv-grid-2">', typologyGroup(RISK_TYPOLOGIES), '</div>',
 
-        '<h4 class="mv-field-label" style="margin-top:14px">Specialised screening <span style="opacity:.55;font-weight:normal">(' + SPECIAL_SCREENS.length + ' — tax, PF, TF, dual-use)</span></h4>',
+        '<h4 class="mv-field-label" style="margin-top:14px">Specialised screening</h4>',
         '<div class="mv-grid-2">', specialGroup(SPECIAL_SCREENS), '</div>',
 
         '<div class="mv-form-actions">',
@@ -1188,6 +1199,43 @@
                     : '') +
                 '</div>'
               : '';
+            // Compliance Report — specific, cited, forceful. Only rendered
+            // when a register hit is present. Surfaces the exact finding
+            // (adverse-media only vs sanctions-only vs both), the risk
+            // level, the MLRO action list, and the regulatory basis.
+            // Anti-hallucination rule: the report states what ACTUALLY
+            // matched — if sanctions were clean, it says so in plain text.
+            var complianceReportLine = '';
+            if (r.compliance_report) {
+              var cr = r.compliance_report;
+              var riskBadgeColor =
+                cr.risk_level === 'critical' ? 'background:#dc2626;color:#fff' :
+                cr.risk_level === 'high'     ? 'background:#ea580c;color:#fff' :
+                cr.risk_level === 'medium'   ? 'background:#d97706;color:#1a1a1a' :
+                                               'background:#4b5563;color:#fff';
+              var findingHeadline =
+                'ADVERSE MEDIA — ' + cr.adverse_media_classification.toUpperCase() +
+                ' (' + Math.round((cr.adverse_media_confidence || 0) * 100) + '%). ' +
+                'SANCTIONS & WATCHLISTS — ' + esc(cr.sanctions_status) + '.';
+              complianceReportLine = '<div class="mv-list-meta" style="margin-top:10px;padding:12px;border-left:3px solid #ea580c;background:rgba(234,88,12,0.06);border-radius:6px">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+                  '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;' + riskBadgeColor + '">' +
+                    'RISK · ' + esc(String(cr.risk_level).toUpperCase()) +
+                  '</span>' +
+                  '<strong style="font-size:13px">Compliance Report</strong>' +
+                '</div>' +
+                '<div style="margin-bottom:6px;font-size:12px"><strong>Finding.</strong> ' + findingHeadline + '</div>' +
+                (cr.recommendation
+                  ? '<div style="margin-bottom:6px;font-size:12px;line-height:1.55"><strong>Recommendation.</strong> ' + esc(cr.recommendation) + '</div>'
+                  : '') +
+                (Array.isArray(cr.regulatory_basis) && cr.regulatory_basis.length
+                  ? '<div style="font-size:11px;opacity:.8"><strong>Regulatory basis.</strong> ' +
+                      cr.regulatory_basis.map(esc).join(' · ') +
+                    '</div>'
+                  : '') +
+              '</div>';
+            }
+
             var specialHitsLine = Array.isArray(r.special_flags) && r.special_flags.length
               ? '<div class="mv-list-meta" data-tone="warn">Specialised flag: ' + r.special_flags.map(esc).join(', ') + '</div>' : '';
             var integrityLine = r.integrity && r.integrity !== 'complete'
@@ -1235,6 +1283,7 @@
                   adverseHitsLine +
                   adverseItemsLine +
                   knownSourceLine +
+                  complianceReportLine +
                   specialHitsLine +
                   integrityLine +
                   sourceLine +
@@ -1494,42 +1543,69 @@
     // state-media cases and their transliteration + typo variants.
     var knownHit = findKnownAdverseMedia(body.subjectName, body.aliases);
 
-    var conf, cls;
+    // Adverse-media classification = register hit confidence, OR a
+    // keyword heuristic, OR 'weak' (no signal).
+    var amConf, amCls;
     if (knownHit) {
-      // Final confidence = register's cited confidence × match quality.
-      // An exact name hit preserves the register's stated confidence
-      // (match quality 1.0); a fuzzy hit scales it proportionally so
-      // the MLRO sees lower conviction on a transliteration match.
-      conf = knownHit.entry.confidence * knownHit.score;
-      cls = conf >= 0.85 ? 'confirmed' : conf >= 0.5 ? 'potential' : 'weak';
+      amConf = knownHit.entry.confidence * knownHit.score;
+      amCls = amConf >= 0.85 ? 'confirmed' : amConf >= 0.5 ? 'potential' : 'weak';
     } else {
-      conf = haystack.indexOf('test-hit') >= 0 ? 0.95
+      amConf = haystack.indexOf('test-hit') >= 0 ? 0.95
         : haystack.indexOf('pep') >= 0 ? 0.55
         : 0.04;
-      cls = conf >= 0.85 ? 'confirmed' : conf >= 0.5 ? 'potential' : 'weak';
+      amCls = amConf >= 0.85 ? 'confirmed' : amConf >= 0.5 ? 'potential' : 'weak';
+    }
+
+    // Sanctions classification is SEPARATE from adverse-media.
+    // A known-adverse-media hit does NOT imply a sanctions hit — the
+    // register declares explicit sanctions_hits[] (a list of list-IDs
+    // the subject is actually on). Default: empty ⇒ all sanctions
+    // rows render NEGATIVE. This is the anti-hallucination rule.
+    var explicitSanctionsHits = knownHit && Array.isArray(knownHit.entry.sanctions_hits)
+      ? knownHit.entry.sanctions_hits
+      : [];
+
+    var sanctionsTopCls = 'none';
+    var sanctionsTopScore = 0;
+    var perList = sanctionsLists.map(function (listId) {
+      var item = SANCTIONS_LISTS.filter(function (l) { return l.id === listId; })[0];
+      var onThisList = explicitSanctionsHits.indexOf(listId) >= 0;
+      var listCls = onThisList ? amCls : 'none';
+      var listScore = onThisList ? amConf : 0;
+      if (onThisList && amConf > sanctionsTopScore) {
+        sanctionsTopScore = amConf;
+        sanctionsTopCls = amCls;
+      }
+      return {
+        list: item ? item.label : listId,
+        disposition: dispositionFromClassification(listCls),
+        hit_count: onThisList && amCls !== 'weak' ? 1 : 0,
+        classification: listCls,
+        hits: onThisList && amCls !== 'weak' ? [{
+          candidate: body.subjectName + ' (simulated)',
+          classification: amCls,
+          breakdown: { score: listScore, jaroWinkler: listScore, tokenSet: listScore * 0.9 }
+        }] : []
+      };
+    });
+
+    // Top-level row classification: take the STRONGER of the sanctions
+    // verdict and the adverse-media verdict, but keep them as two
+    // separate fields so the card can render correctly. `cls` is the
+    // overall top signal the badge shows; `conf` is its confidence.
+    var cls, conf;
+    if (sanctionsTopCls !== 'none' && sanctionsTopScore >= amConf) {
+      cls = sanctionsTopCls;
+      conf = sanctionsTopScore;
+    } else {
+      cls = amCls;
+      conf = amConf;
     }
     var disposition = dispositionFromClassification(cls);
     if (disposition === 'positive' || disposition === 'partial') disposition = 'pending';
-    // Integrity gate (FDL No.(10)/2025 Art.20-21, FATF Rec 10): a
-    // simulated screen MUST NOT produce a clean NEGATIVE disposition.
-    // Force PENDING REVIEW so the MLRO re-runs on the live backend
-    // before closing the file.
+    // Integrity gate (FDL Art.20-21, FATF Rec 10): simulated screens
+    // MUST NOT close as clean NEGATIVE.
     if (disposition === 'negative') disposition = 'pending';
-
-    var perList = sanctionsLists.map(function (listId) {
-      var item = SANCTIONS_LISTS.filter(function (l) { return l.id === listId; })[0];
-      return {
-        list: item ? item.label : listId,
-        disposition: dispositionFromClassification(cls),
-        hit_count: cls === 'weak' ? 0 : 1,
-        classification: cls,
-        hits: cls === 'weak' ? [] : [{
-          candidate: body.subjectName + ' (simulated)',
-          classification: cls,
-          breakdown: { score: conf, jaroWinkler: conf, tokenSet: conf * 0.9 }
-        }]
-      };
-    });
 
     var adverseHits = [];
     if (knownHit) {
@@ -1577,6 +1653,16 @@
         match_score: knownHit.score,
         match_methods: knownHit.methods,
         matched_alias: knownHit.matchedAlias
+      } : null,
+      compliance_report: knownHit ? {
+        adverse_media_classification: amCls,
+        adverse_media_confidence: amConf,
+        sanctions_status: explicitSanctionsHits.length === 0
+          ? 'NEGATIVE across all ' + sanctionsLists.length + ' selected sanctions / watchlists'
+          : 'HIT on ' + explicitSanctionsHits.length + ' sanctions list(s): ' + explicitSanctionsHits.join(', '),
+        risk_level: knownHit.entry.risk_level || 'high',
+        recommendation: knownHit.entry.recommendation || '',
+        regulatory_basis: Array.isArray(knownHit.entry.regulatory_basis) ? knownHit.entry.regulatory_basis.slice() : []
       } : null,
       special_screens: specialScreens,
       special_flags: specialFlags,
