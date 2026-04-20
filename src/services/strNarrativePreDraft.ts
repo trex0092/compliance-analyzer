@@ -28,6 +28,10 @@ import type { WatchlistEntry } from './screeningWatchlist';
 import type { RiskAlertMatch, RiskAlertScore } from './riskAlertTemplate';
 import type { CalibratedIdentityScore } from './identityScoreBayesian';
 import type { SubjectCorroboration } from './multiListCorroboration';
+import {
+  STR_FILING_DEADLINE_BUSINESS_DAYS,
+  CNMR_FILING_DEADLINE_BUSINESS_DAYS,
+} from '../domain/constants';
 
 export interface StrNarrativeInput {
   subject: WatchlistEntry;
@@ -115,8 +119,8 @@ export function buildStrNarrativeDraft(input: StrNarrativeInput): StrNarrativeDr
     paragraph,
     factList,
     filingDeadline: {
-      strBusinessDays: 10,
-      cnmrBusinessDays: 5,
+      strBusinessDays: STR_FILING_DEADLINE_BUSINESS_DAYS,
+      cnmrBusinessDays: CNMR_FILING_DEADLINE_BUSINESS_DAYS,
     },
   };
 }

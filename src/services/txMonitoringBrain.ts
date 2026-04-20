@@ -25,13 +25,13 @@
  */
 
 import {
-  STR_FILING_BUSINESS_DAYS,
   rollUpVerdict,
   topSeverityOf,
   type TmFinding,
   type TmVerdictRecord,
   type Transaction,
 } from '../domain/transaction';
+import { STR_FILING_DEADLINE_BUSINESS_DAYS } from '../domain/constants';
 import { runRuleEngine, type RuleEngineOptions } from './txMonitoringRuleEngine';
 import { runStatisticalLayer, type StatisticalLayerOptions } from './txStatisticalLayer';
 import { runTypologyMatcher, type TypologyOptions } from './txTypologyMatcher';
@@ -143,7 +143,7 @@ export function runTmBrain(
 
   const strDeadline =
     verdict === 'auto-str'
-      ? formatDdMmYyyy(addBusinessDaysUae(asOf, STR_FILING_BUSINESS_DAYS))
+      ? formatDdMmYyyy(addBusinessDaysUae(asOf, STR_FILING_DEADLINE_BUSINESS_DAYS))
       : undefined;
 
   const summary =
@@ -151,7 +151,7 @@ export function runTmBrain(
       ? `PASS: ${transactions.length} transaction(s) scanned, no TM findings.`
       : `${verdict.toUpperCase()}: ${allFindings.length} finding(s) across ${transactions.length} transaction(s), top severity=${top}. ${
           verdict === 'auto-str'
-            ? `STR filing deadline: ${strDeadline} (FDL Art.26-27, 10 business days).`
+            ? `STR filing deadline: ${strDeadline} — file without delay (FDL Art.26-27).`
             : ''
         }`.trim();
 
