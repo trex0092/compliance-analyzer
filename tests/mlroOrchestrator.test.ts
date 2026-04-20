@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { plan, evaluate } from '@/services/mlroOrchestrator';
+import { describe, expect, it, vi } from 'vitest';
+import { plan, evaluate, __test__ } from '@/services/mlroOrchestrator';
 import type { ComplianceCaseInput, ComplianceDecision } from '@/services/complianceDecisionEngine';
 import type { StrFeatures } from '@/services/predictiveStr';
 
@@ -159,5 +159,116 @@ describe('evaluate()', () => {
     const evl = evaluate(decision, minimalCase());
     expect(evl.shouldConsultAdvisor).toBe(true);
     expect(evl.concerns.some((c) => c.includes('vaspWalletScoring'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// review() — advisor-tool call path.
+//
+// Regression coverage for the "Stream idle timeout - partial response
+// received" failure mode: the orchestrator's reviewer must route the
+// Opus advisor sub-inference through the SSE streaming code path of
+// `/api/ai-proxy`, otherwise the proxy's 22s non-streaming ceiling
+// fires mid-Opus-call (Opus advisor sub-inferences routinely run
+// 20-40s) and the MLRO sees a truncated-socket error instead of an
+// advisor rationale. Same bug shape as the one fixed for
+// anthropicAdvisor in PR #359 (d176944); this pins the matching
+// contract for the orchestrator reviewer.
+//
+// Regulatory basis: FDL No.10/2025 Art.20-21 (CO duty — advisor
+// escalation must actually reach the advisor), Cabinet Res 134/2025
+// Art.19 (internal review before decision).
+// ---------------------------------------------------------------------------
+
+function sseResponseBody(): ReadableStream<Uint8Array> {
+  // Minimum SSE transcript the advisor parser will accept: a proxy
+  // ready frame, message_start (with input token usage), one text
+  // block, message_delta (with output tokens), message_stop.
+  const enc = new TextEncoder();
+  const frames = [
+    `event: proxy_ready\ndata: ${JSON.stringify({ serverTime: new Date().toISOString() })}\n\n`,
+    `event: message_start\ndata: ${JSON.stringify({
+      type: 'message_start',
+      message: { usage: { input_tokens: 10, output_tokens: 0 } },
+    })}\n\n`,
+    `event: content_block_start\ndata: ${JSON.stringify({
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'text', text: '' },
+    })}\n\n`,
+    `event: content_block_delta\ndata: ${JSON.stringify({
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'text_delta', text: '1. Cite Art.20. 2. File STR. 3. Apply four-eyes.' },
+    })}\n\n`,
+    `event: content_block_stop\ndata: ${JSON.stringify({
+      type: 'content_block_stop',
+      index: 0,
+    })}\n\n`,
+    `event: message_delta\ndata: ${JSON.stringify({
+      type: 'message_delta',
+      usage: { input_tokens: 10, output_tokens: 20 },
+    })}\n\n`,
+    `event: message_stop\ndata: ${JSON.stringify({ type: 'message_stop' })}\n\n`,
+  ];
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const f of frames) controller.enqueue(enc.encode(f));
+      controller.close();
+    },
+  });
+}
+
+describe('review() — advisor streaming contract', () => {
+  it('posts stream:true at both the proxy envelope and the Anthropic payload when consulted', async () => {
+    let capturedBody: string | null = null;
+    const fakeFetch = vi.fn(async (_url: string, init: { body: string }) => {
+      capturedBody = init.body;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+        body: sseResponseBody(),
+      };
+    });
+
+    const decision = minimalDecision({ verdict: 'freeze' }); // triggers advisor
+    const evaluation = evaluate(decision, minimalCase());
+    expect(evaluation.shouldConsultAdvisor).toBe(true);
+
+    const report = await __test__.review(decision, evaluation, {
+      advisorDeps: { fetch: fakeFetch, authToken: 'test-token' },
+    });
+
+    expect(report.consulted).toBe(true);
+    expect(capturedBody).not.toBeNull();
+    const parsed = JSON.parse(capturedBody!);
+
+    // Proxy envelope — the /api/ai-proxy streaming code path only
+    // activates when it sees this flag at the top level.
+    expect(parsed.stream).toBe(true);
+    // Anthropic payload — /v1/messages only emits SSE when its own
+    // payload requests streaming. Both must match; one without the
+    // other leaves the proxy holding a silent socket.
+    expect(parsed.payload.stream).toBe(true);
+
+    // Sanity: it's the advisor tool, not some other call.
+    expect(parsed.provider).toBe('anthropic');
+    expect(parsed.path).toBe('/v1/messages');
+    expect(parsed.betas).toContain('advisor-tool-2026-03-01');
+    expect(
+      parsed.payload.tools.some(
+        (t: { type?: string; name?: string }) =>
+          t.type === 'advisor_20260301' && t.name === 'advisor'
+      )
+    ).toBe(true);
+  });
+
+  it('skips the advisor call without error when advisorDeps is omitted', async () => {
+    const decision = minimalDecision({ verdict: 'freeze' });
+    const evaluation = evaluate(decision, minimalCase());
+    const report = await __test__.review(decision, evaluation, {});
+    expect(report.consulted).toBe(false);
+    expect(report.skipReason).toMatch(/advisorDeps not provided/);
   });
 });
