@@ -651,31 +651,9 @@
         color: var(--muted);
       }
 
-      /* === ROBOT WATERMARK === Subtle bottom-right professional silhouette. */
-      .wm-robot {
-        position: fixed;
-        right: -2vw;
-        bottom: 0;
-        width: min(520px, 34vw);
-        height: min(680px, 70vh);
-        pointer-events: none;
-        z-index: 0;
-        opacity: 0.14;
-        background-color: #e879f9;
-        background-image: url("assets/robot-screening-command.png");
-        background-repeat: no-repeat;
-        background-position: right bottom;
-        background-size: contain;
-        -webkit-mask: url("assets/watermark-screening-command.svg") right bottom / contain no-repeat;
-                mask: url("assets/watermark-screening-command.svg") right bottom / contain no-repeat;
-        filter: drop-shadow(0 0 40px rgba(168, 85, 247, 0.35));
-      }
-      html.module-view-active .wm-robot { display: none; }
-      @media (max-width: 960px) { .wm-robot { display: none; } }
     </style>
   </head>
   <body>
-    <aside class="wm-robot" aria-hidden="true"></aside>
     <div class="shell">
       <header class="topbar">
         <div class="title-group">
@@ -885,6 +863,5 @@
     <script src="screening-command-modules.js?v=1"></script>
     <script src="landing-module-viewer.js?v=15"></script>
     <script src="module-enhancements.js?v=1"></script>
-    <script src="watermark.js?v=1"></script>
   </body>
 </html>

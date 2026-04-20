@@ -902,31 +902,9 @@
         }
       }
 
-      /* === ROBOT WATERMARK === Subtle bottom-right professional silhouette. */
-      .wm-robot {
-        position: fixed;
-        right: -2vw;
-        bottom: 0;
-        width: min(520px, 34vw);
-        height: min(680px, 70vh);
-        pointer-events: none;
-        z-index: 0;
-        opacity: 0.14;
-        background-color: #86efac;
-        background-image: url("assets/robot-logistics.png");
-        background-repeat: no-repeat;
-        background-position: right bottom;
-        background-size: contain;
-        -webkit-mask: url("assets/watermark-logistics.svg") right bottom / contain no-repeat;
-                mask: url("assets/watermark-logistics.svg") right bottom / contain no-repeat;
-        filter: drop-shadow(0 0 40px rgba(34, 197, 94, 0.35));
-      }
-      html.module-view-active .wm-robot { display: none; }
-      @media (max-width: 960px) { .wm-robot { display: none; } }
     </style>
   </head>
   <body>
-    <aside class="wm-robot" aria-hidden="true"></aside>
     <main class="shell">
       <header class="topbar">
         <div class="title-group">
@@ -1166,6 +1144,5 @@
     <script src="logistics-modules.js?v=1"></script>
     <script src="landing-module-viewer.js?v=15"></script>
     <script src="module-enhancements.js?v=1"></script>
-    <script src="watermark.js?v=1"></script>
   </body>
 </html>

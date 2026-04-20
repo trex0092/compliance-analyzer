@@ -11,33 +11,145 @@
     watchlist: 'fgl_active_watchlist'
   };
 
+  // Matches the key used by screening-command.js so the MLRO only signs in
+  // once. When this is empty we degrade to on-device simulation.
+  var TOKEN_KEY = 'hawkeye.watchlist.adminToken';
+  var SCREENING_ENDPOINT = '/api/screening/run';
+  var API_TIMEOUT_MS = 25000;
+
+  // Four-eyes MLRO disposition states. Every subject row carries a
+  // disposition so the audit chain (FDL Art.24) can reconstruct the
+  // decision even after the event is closed.
+  var DISPOSITIONS = {
+    positive:       { tone: 'warn',   label: 'POSITIVE MATCH' },
+    partial:        { tone: 'accent', label: 'PARTIAL MATCH' },
+    negative:       { tone: 'ok',     label: 'NEGATIVE' },
+    false_positive: { tone: 'ok',     label: 'FALSE POSITIVE' },
+    pending:        { tone: 'accent', label: 'PENDING REVIEW' },
+    escalated:      { tone: 'warn',   label: 'ESCALATED' }
+  };
+
+  // Maps the backend classification coming back from
+  // multiModalNameMatcher → our MLRO-facing disposition.
+  function dispositionFromClassification(cls) {
+    if (cls === 'confirmed') return 'positive';
+    if (cls === 'potential') return 'partial';
+    if (cls === 'weak') return 'negative';
+    return 'negative';
+  }
+
   var SANCTIONS_LISTS = [
-    { id: 'uae_eocn', label: 'UAE Local Terrorist List (EOCN / Executive Office)' },
-    { id: 'un_unsc',  label: 'UN Consolidated Sanctions List (UNSC)' },
-    { id: 'ofac_sdn', label: 'OFAC Specially Designated Nationals List (SDN)' },
-    { id: 'uk_ofsi',  label: 'UK OFSI Consolidated Financial Sanctions List' },
-    { id: 'eu_csfl',  label: 'EU Consolidated Financial Sanctions List' },
-    { id: 'interpol', label: 'INTERPOL Red Notices (where applicable)' }
+    {
+      id: 'uae_eocn',
+      label: 'UAE Local Terrorist List (EOCN / Executive Office)',
+      citation: 'Cabinet Res 74/2020 Art.4-7 · FDL No.(10)/2025 Art.35 · MANDATORY',
+      detail: 'UAE domestic terror-designation list maintained by the Executive Office for CTFEF. Confirmed match triggers a 24-hour freeze and 5-business-day CNMR.'
+    },
+    {
+      id: 'un_unsc',
+      label: 'UN Consolidated Sanctions List (UNSC)',
+      citation: 'UNSCR 1267 / 1988 / 2231 · FATF Rec 6-7 · MANDATORY',
+      detail: 'All Security Council sanctions regimes (ISIL-Da\'esh / Al-Qaida, Taliban, DPRK, Iran, Libya, Somalia, Yemen, etc.). Legally mandatory under UN Charter Art.25.'
+    },
+    {
+      id: 'ofac_sdn',
+      label: 'OFAC Specially Designated Nationals List (SDN)',
+      citation: 'US Treasury OFAC · 31 CFR 501 · Secondary-sanctions risk for USD clearing',
+      detail: 'SDN + Consolidated Non-SDN lists (SSI, NS-PLC, FSE, 13599). Key risk for USD-denominated flows and USD correspondent relationships.'
+    },
+    {
+      id: 'uk_ofsi',
+      label: 'UK OFSI Consolidated Financial Sanctions List',
+      citation: 'UK Sanctions and Anti-Money Laundering Act 2018 · SAMLA',
+      detail: 'Post-Brexit UK-autonomous financial sanctions regime. Relevant for GBP-denominated flows and UK-nexus trade.'
+    },
+    {
+      id: 'eu_csfl',
+      label: 'EU Consolidated Financial Sanctions List',
+      citation: 'Council Regulation (EC) No 2580/2001 · EU Restrictive Measures',
+      detail: 'EU autonomous sanctions covering all 27 Member States. Critical for EUR flows, goods transiting EU, and EU-banked counterparties.'
+    },
+    {
+      id: 'interpol',
+      label: 'INTERPOL Red Notices (where applicable)',
+      citation: 'INTERPOL Constitution Art.3 · Rules on the Processing of Data',
+      detail: 'Wanted-persons notices for arrest and extradition. Manual verification — not all Red Notices meet sanctions-equivalent threshold.'
+    }
   ];
 
   var ADVERSE_MEDIA_CATEGORIES = [
-    { id: 'criminal_fraud',     label: 'Criminal / Fraud Allegations' },
-    { id: 'money_laundering',   label: 'Money Laundering' },
-    { id: 'tf_pf_links',        label: 'Terrorist Financing or Proliferation Financing Links' },
-    { id: 'regulatory_action',  label: 'Regulatory Actions, Fines, or Investigations' },
-    { id: 'negative_reputation',label: 'Negative Reputation or Commercial Disputes' },
-    { id: 'political_pep',      label: 'Political Controversy or PEP Connections' },
-    { id: 'human_rights',       label: 'Human Rights, Environmental, or Ethical Violations' }
+    {
+      id: 'criminal_fraud',
+      label: 'Criminal / Fraud Allegations',
+      citation: 'FDL No.(10)/2025 Art.2 · FATF Rec 10-12',
+      detail: 'Indictments, convictions, arrest warrants, organised-crime links, predicate offences (fraud, forgery, bribery, corruption).'
+    },
+    {
+      id: 'money_laundering',
+      label: 'Money Laundering',
+      citation: 'FDL No.(10)/2025 Art.2 + Art.26-27 · FATF Rec 3',
+      detail: 'Layering, structuring, smurfing, trade-based laundering (TBML), shell-company typologies, placement through DPMS or VASP rails.'
+    },
+    {
+      id: 'tf_pf_links',
+      label: 'Terrorist Financing or Proliferation Financing Links',
+      citation: 'Cabinet Res 74/2020 · Cabinet Res 156/2025 · FATF Rec 5-8 · UNSCR 1267 / 1373 / 1540',
+      detail: 'Direct or indirect links to designated terror entities, foreign terrorist fighters, WMD proliferation networks, dual-use procurement.'
+    },
+    {
+      id: 'regulatory_action',
+      label: 'Regulatory Actions, Fines, or Investigations',
+      citation: 'Cabinet Res 71/2024 · MoE supervisory powers · CBUAE / SCA / VARA actions',
+      detail: 'Enforcement orders, administrative penalties (AED 10K–100M range), licence suspension, consent decrees, ongoing investigations.'
+    },
+    {
+      id: 'negative_reputation',
+      label: 'Negative Reputation or Commercial Disputes',
+      citation: 'Cabinet Res 134/2025 Art.14 (EDD triggers) · Reputational-risk doctrine',
+      detail: 'Litigation history, insolvency, chronic non-payment, contract breach, cross-border disputes, sanctions-circumvention allegations.'
+    },
+    {
+      id: 'political_pep',
+      label: 'Political Controversy or PEP Connections',
+      citation: 'FATF Rec 12 · Cabinet Res 134/2025 Art.14 · FDL Art.14',
+      detail: 'Foreign / domestic PEPs, family members, close associates, ministerial positions, state-owned enterprise directorships, graft allegations.'
+    },
+    {
+      id: 'human_rights',
+      label: 'Human Rights, Environmental, or Ethical Violations',
+      citation: 'LBMA RGG v9 · UAE MoE RSG · OECD DD Guidance · UK Modern Slavery Act 2015',
+      detail: 'Conflict minerals, child labour, forced labour, environmental harm in CAHRA, unethical sourcing, ASM non-compliance, community-impact disputes.'
+    }
   ];
 
   // Specialised screening dimensions the MLRO may run alongside sanctions + adverse media.
   // Basis: FDL No.(10)/2025 Art.20-21, Cabinet Res 74/2020, Cabinet Res 156/2025,
   // FATF Rec 7 (PF), FATF Rec 5 (TF), and UAE Strategic Trade Control regime.
   var SPECIAL_SCREENS = [
-    { id: 'tax_evasion',      label: 'Tax evasion', citation: 'FATF Rec 3 · OECD CRS' },
-    { id: 'proliferation',    label: 'Proliferation financing', citation: 'Cabinet Res 156/2025 · FATF Rec 7' },
-    { id: 'terrorism',        label: 'Financing of terrorism', citation: 'Cabinet Res 74/2020 · FATF Rec 5-8' },
-    { id: 'dual_goods',       label: 'Dual-use / strategic goods', citation: 'UAE Strategic Trade Control' }
+    {
+      id: 'tax_evasion',
+      label: 'Tax evasion',
+      citation: 'FATF Rec 3 · OECD CRS · UAE Federal Decree-Law No.(47)/2022 (Corporate Tax)',
+      detail: 'Undeclared income, offshore concealment, CRS non-reporting, VAT evasion, transfer-pricing abuse, shell-company tax layering.'
+    },
+    {
+      id: 'proliferation',
+      label: 'Proliferation financing',
+      citation: 'Cabinet Res 156/2025 · FATF Rec 7 · UNSCR 1540 / 2231',
+      detail: 'Financing WMD programmes, DPRK / Iran procurement networks, front-company intermediaries, sensitive-goods end-users.'
+    },
+    {
+      id: 'terrorism',
+      label: 'Financing of terrorism',
+      citation: 'Cabinet Res 74/2020 · FDL No.(10)/2025 Art.35 · FATF Rec 5-8 · UNSCR 1267 / 1373',
+      detail: 'Designated-entity funding, NPO abuse, foreign-fighter facilitation, informal value-transfer (hawala), charity-sector exploitation.'
+    },
+    {
+      id: 'dual_goods',
+      label: 'Dual-use / strategic goods',
+      citation: 'UAE Strategic Trade Control (Federal Law No.(13)/2007) · Cabinet Res 156/2025 Art.7 · Wassenaar Arrangement',
+      detail: 'Items on the UAE dual-use control list, cryptographic technology, chemical / biological precursors, nuclear-related equipment, end-use diversion risk.'
+    }
   ];
 
   function safeParse(key, fallback) {
@@ -69,7 +181,11 @@
 
   function renderSubjectScreening(host) {
     var rows = safeParse(STORAGE.subjects, []);
-    var matches = rows.filter(function (r) { return (r.confidence || 0) >= 0.5; });
+    var positives  = rows.filter(function (r) { return r.disposition === 'positive'; }).length;
+    var partials   = rows.filter(function (r) { return r.disposition === 'partial'; }).length;
+    var falsePos   = rows.filter(function (r) { return r.disposition === 'false_positive'; }).length;
+    var negatives  = rows.filter(function (r) { return r.disposition === 'negative'; }).length;
+    var pending    = rows.filter(function (r) { return !r.disposition || r.disposition === 'pending'; }).length;
     var adverseHits = rows.filter(function (r) {
       return Array.isArray(r.adverse_media_hits) && r.adverse_media_hits.length;
     }).length;
@@ -79,21 +195,18 @@
 
     function checkboxGroup(fieldName, items) {
       return items.map(function (it) {
-        return '<label class="mv-check">' +
+        return '<label class="mv-check" style="align-items:flex-start;line-height:1.45">' +
           '<input type="checkbox" name="' + fieldName + '" value="' + esc(it.id) + '" checked>' +
-          '<span>' + esc(it.label) + '</span>' +
+          '<span>' +
+            '<strong>' + esc(it.label) + '</strong>' +
+            (it.citation ? '<br><em style="opacity:.65;font-size:11px;font-style:normal">' + esc(it.citation) + '</em>' : '') +
+            (it.detail ? '<br><span style="opacity:.75;font-size:12px">' + esc(it.detail) + '</span>' : '') +
+          '</span>' +
         '</label>';
       }).join('');
     }
     function specialGroup(items) {
-      return items.map(function (it) {
-        return '<label class="mv-check">' +
-          '<input type="checkbox" name="special_screens" value="' + esc(it.id) + '" checked>' +
-          '<span>' + esc(it.label) +
-            ' <em style="opacity:.6">· ' + esc(it.citation) + '</em>' +
-          '</span>' +
-        '</label>';
-      }).join('');
+      return checkboxGroup('special_screens', items);
     }
 
     host.innerHTML = [
@@ -105,7 +218,11 @@
       '<p class="mv-lede">Multi-modal fuzzy match (Jaro-Winkler · Levenshtein · Soundex · Double Metaphone · token-set) against every configured sanctions list, adverse-media category, and specialised screening check (tax evasion, proliferation financing, financing of terrorism, dual-use goods). Four-eyes MLRO disposition on every partial / confirmed match.</p>',
       '<div class="mv-stat-row">',
         '<div class="mv-stat"><div class="mv-stat-v">' + rows.length + '</div><div class="mv-stat-k">Screened</div></div>',
-        '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + matches.length + '</div><div class="mv-stat-k">Sanctions match</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + positives + '</div><div class="mv-stat-k">Positive match</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="accent">' + partials + '</div><div class="mv-stat-k">Partial match</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="ok">' + negatives + '</div><div class="mv-stat-k">Negative</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="ok">' + falsePos + '</div><div class="mv-stat-k">False positive</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="accent">' + pending + '</div><div class="mv-stat-k">Pending review</div></div>',
         '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + adverseHits + '</div><div class="mv-stat-k">Adverse media</div></div>',
         '<div class="mv-stat"><div class="mv-stat-v" data-tone="warn">' + specialHits + '</div><div class="mv-stat-k">PF/TF/Tax/Dual</div></div>',
         '<div class="mv-stat"><div class="mv-stat-v">24h</div><div class="mv-stat-k">EOCN freeze</div></div>',
@@ -162,9 +279,9 @@
 
       '<h3 class="mv-subhead">Recent subjects</h3>',
       rows.length
-        ? '<ul class="mv-list">' + rows.slice(-10).reverse().map(function (r) {
+        ? '<ul class="mv-list">' + rows.slice(-10).reverse().map(function (r, idx) {
+            var disp = DISPOSITIONS[r.disposition || 'pending'] || DISPOSITIONS.pending;
             var conf = (r.confidence || 0);
-            var tone = conf >= 0.9 ? 'warn' : conf >= 0.5 ? 'accent' : 'ok';
             var identLine = [
               (r.subject_type === 'entity' ? 'Entity' : 'Individual'),
               r.gender ? r.gender.charAt(0).toUpperCase() + r.gender.slice(1) : null,
@@ -172,25 +289,83 @@
               r.dob ? 'DOB/Reg ' + r.dob : null,
               r.passport ? 'Doc ' + r.passport : null
             ].filter(Boolean).map(esc).join(' · ');
-            var listsCount = Array.isArray(r.sanctions_lists) ? r.sanctions_lists.length : (Array.isArray(r.lists_checked) ? r.lists_checked.length : 0);
-            var mediaCount = Array.isArray(r.adverse_media) ? r.adverse_media.length : 0;
-            var specialCount = Array.isArray(r.special_screens) ? r.special_screens.length : 0;
+
+            // Per-list disposition chips (POSITIVE / PARTIAL / NEGATIVE per list)
+            var perListHtml = '';
+            if (Array.isArray(r.per_list) && r.per_list.length) {
+              perListHtml = '<div class="mv-list-meta" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">' +
+                r.per_list.map(function (pl) {
+                  var plDisp = DISPOSITIONS[pl.disposition] || DISPOSITIONS.negative;
+                  var countSuffix = pl.hit_count > 0 ? ' · ' + pl.hit_count + ' hit' + (pl.hit_count === 1 ? '' : 's') : '';
+                  return '<span class="mv-badge" data-tone="' + plDisp.tone + '">' +
+                    esc(pl.list) + ': ' + plDisp.label + countSuffix + '</span>';
+                }).join('') +
+              '</div>';
+            }
+
+            // Hit detail (top 3 candidates per list with breakdown percentages)
+            var hitDetailHtml = '';
+            if (Array.isArray(r.per_list)) {
+              var allHits = [];
+              r.per_list.forEach(function (pl) {
+                if (Array.isArray(pl.hits)) {
+                  pl.hits.forEach(function (h) { allHits.push({ list: pl.list, h: h }); });
+                }
+              });
+              if (allHits.length) {
+                hitDetailHtml = '<div class="mv-list-meta" style="margin-top:4px;opacity:.85">' +
+                  allHits.slice(0, 3).map(function (x) {
+                    var b = x.h.breakdown || {};
+                    return '<strong>' + esc(x.list) + '</strong> → ' + esc(x.h.candidate) +
+                      ' (' + Math.round(((b.score || 0) * 100)) + '%' +
+                      (b.jaroWinkler ? ', JW ' + Math.round(b.jaroWinkler * 100) + '%' : '') +
+                      (b.tokenSet ? ', Tok ' + Math.round(b.tokenSet * 100) + '%' : '') +
+                      ')';
+                  }).join('<br>') +
+                '</div>';
+              }
+            }
+
             var adverseHitsLine = Array.isArray(r.adverse_media_hits) && r.adverse_media_hits.length
               ? '<div class="mv-list-meta" data-tone="warn">Adverse media: ' + r.adverse_media_hits.map(esc).join(', ') + '</div>' : '';
             var specialHitsLine = Array.isArray(r.special_flags) && r.special_flags.length
               ? '<div class="mv-list-meta" data-tone="warn">Specialised flag: ' + r.special_flags.map(esc).join(', ') + '</div>' : '';
-            return '<li class="mv-list-item">' +
-              '<div class="mv-list-main">' +
-                '<div class="mv-list-title">' + esc(r.name) +
-                  (r.alias ? ' <em style="opacity:.7">(a.k.a. ' + esc(r.alias) + ')</em>' : '') +
+            var integrityLine = r.integrity && r.integrity !== 'complete'
+              ? '<div class="mv-list-meta" data-tone="warn">Screening integrity: ' + esc(r.integrity) + ' — re-screen when upstream recovers (FDL Art.20-21)</div>' : '';
+            var sourceLine = r.source === 'backend'
+              ? '<div class="mv-list-meta" style="opacity:.55">Source: live backend · ' + esc(r.run_id || 'run') + '</div>'
+              : '<div class="mv-list-meta" style="opacity:.55">Source: local simulation (sign in for live screening)</div>';
+
+            // MLRO disposition action row. Hidden for already-closed dispositions.
+            var canAct = r.disposition === 'pending' || r.disposition === 'positive' || r.disposition === 'partial';
+            var actionHtml = canAct
+              ? '<div class="mv-form-actions" style="margin-top:8px;gap:6px;flex-wrap:wrap">' +
+                  '<button class="mv-btn mv-btn-sm mv-btn-ok" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="positive">Confirm match</button>' +
+                  '<button class="mv-btn mv-btn-sm" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="partial">Partial — investigate</button>' +
+                  '<button class="mv-btn mv-btn-sm" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="false_positive">False positive</button>' +
+                  '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="escalated">Escalate</button>' +
+                '</div>'
+              : '';
+
+            return '<li class="mv-list-item" style="flex-direction:column;align-items:stretch">' +
+              '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
+                '<div class="mv-list-main">' +
+                  '<div class="mv-list-title">' + esc(r.name) +
+                    (r.alias ? ' <em style="opacity:.7">(a.k.a. ' + esc(r.alias) + ')</em>' : '') +
+                  '</div>' +
+                  '<div class="mv-list-meta">' + identLine + '</div>' +
+                  '<div class="mv-list-meta">Screened ' + esc(fmtDate(r.screened_at)) +
+                    ' · top score ' + (conf * 100).toFixed(0) + '%</div>' +
+                  perListHtml +
+                  hitDetailHtml +
+                  adverseHitsLine +
+                  specialHitsLine +
+                  integrityLine +
+                  sourceLine +
                 '</div>' +
-                '<div class="mv-list-meta">' + identLine + '</div>' +
-                '<div class="mv-list-meta">Screened ' + esc(fmtDate(r.screened_at)) +
-                  ' · ' + listsCount + ' lists · ' + mediaCount + ' media cats · ' + specialCount + ' specialised</div>' +
-                adverseHitsLine +
-                specialHitsLine +
+                '<span class="mv-badge" data-tone="' + disp.tone + '">' + disp.label + '</span>' +
               '</div>' +
-              '<span class="mv-badge" data-tone="' + tone + '">' + (conf * 100).toFixed(0) + '% conf</span>' +
+              actionHtml +
             '</li>';
           }).join('') + '</ul>'
         : emptyState('&#128269;', 'No subjects screened yet. Run a screening above.')
@@ -200,52 +375,216 @@
     if (form) {
       form.addEventListener('submit', function (ev) {
         ev.preventDefault();
-        var fd = new FormData(form);
-        var nameLower = String(fd.get('name') || '').toLowerCase();
-        var aliasLower = String(fd.get('alias') || '').toLowerCase();
-        var haystack = nameLower + ' ' + aliasLower;
-        var conf = haystack.indexOf('test-hit') >= 0 ? 0.95 :
-                   haystack.indexOf('pep') >= 0 ? 0.55 : 0.04;
 
+        var submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn && submitBtn.disabled) return;
+
+        var fd = new FormData(form);
         var sanctionsLists = fd.getAll('sanctions_lists');
         var adverseMedia = fd.getAll('adverse_media');
         var specialScreens = fd.getAll('special_screens');
 
-        // Simulated deterministic hits based on selected dimensions + keyword.
-        var adverseHits = [];
-        if (haystack.indexOf('test-adverse') >= 0) {
-          adverseHits = adverseMedia.slice(0, 3);
-        } else if (haystack.indexOf('pep') >= 0 && adverseMedia.indexOf('political_pep') >= 0) {
-          adverseHits.push('political_pep');
-        }
-        var specialFlags = [];
-        if (haystack.indexOf('test-pf') >= 0 && specialScreens.indexOf('proliferation') >= 0) specialFlags.push('proliferation');
-        if (haystack.indexOf('test-tf') >= 0 && specialScreens.indexOf('terrorism') >= 0) specialFlags.push('terrorism');
-        if (haystack.indexOf('test-tax') >= 0 && specialScreens.indexOf('tax_evasion') >= 0) specialFlags.push('tax_evasion');
-        if (haystack.indexOf('test-dual') >= 0 && specialScreens.indexOf('dual_goods') >= 0) specialFlags.push('dual_goods');
+        // Map our list ids → the backend list codes accepted by
+        // netlify/functions/screening-run.mts (selectedLists contract).
+        var LIST_ID_TO_BACKEND = {
+          uae_eocn: 'UAE_EOCN',
+          un_unsc:  'UN',
+          ofac_sdn: 'OFAC',
+          uk_ofsi:  'UK_OFSI',
+          eu_csfl:  'EU',
+          interpol: 'INTERPOL'
+        };
+        var backendLists = sanctionsLists
+          .map(function (id) { return LIST_ID_TO_BACKEND[id]; })
+          .filter(Boolean);
 
-        rows.push({
-          id: 'sub-' + Date.now(),
-          subject_type: fd.get('subject_type') || 'individual',
-          name: (fd.get('name') || '').toString().trim(),
-          alias: (fd.get('alias') || '').toString().trim(),
-          gender: fd.get('gender') || '',
-          dob: (fd.get('dob') || '').toString().trim(),
-          country: (fd.get('country') || '').toString().trim(),
-          passport: (fd.get('passport') || '').toString().trim(),
-          issuer: (fd.get('issuer') || '').toString().trim(),
-          confidence: conf,
-          sanctions_lists: sanctionsLists,
-          adverse_media: adverseMedia,
-          adverse_media_hits: adverseHits,
-          special_screens: specialScreens,
-          special_flags: specialFlags,
-          screened_at: new Date().toISOString()
+        var subjectTypeForm = fd.get('subject_type') || 'individual';
+        var body = {
+          subjectName: (fd.get('name') || '').toString().trim(),
+          aliases: fd.get('alias') ? [fd.get('alias').toString().trim()] : undefined,
+          entityType: subjectTypeForm === 'entity' ? 'legal_entity' : 'individual',
+          dob: (fd.get('dob') || '').toString().trim() || undefined,
+          country: (fd.get('country') || '').toString().trim() || undefined,
+          idNumber: (fd.get('passport') || '').toString().trim() || undefined,
+          eventType: 'ad_hoc',
+          selectedLists: backendLists.length ? backendLists : undefined,
+          enrollInWatchlist: true,
+          runAdverseMedia: adverseMedia.length > 0,
+          adverseMediaPredicates: adverseMedia.length > 0 ? adverseMedia : undefined,
+          createAsanaTask: true
+        };
+
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = 'Screening…'; }
+
+        Promise.resolve().then(function () {
+          var token = '';
+          try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch (_) {}
+          if (!token) return null; // force fallback
+
+          var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+          var timer = controller ? setTimeout(function () { controller.abort(); }, API_TIMEOUT_MS) : null;
+
+          return fetch(SCREENING_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + token,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body),
+            signal: controller ? controller.signal : undefined
+          }).then(function (res) {
+            if (timer) clearTimeout(timer);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          }).catch(function () {
+            if (timer) clearTimeout(timer);
+            return null;
+          });
+        }).then(function (data) {
+          var row;
+          if (data && data.sanctions) {
+            row = buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens);
+          } else {
+            row = buildRowFromSimulation(body, fd, sanctionsLists, adverseMedia, specialScreens);
+          }
+          rows.push(row);
+          safeSave(STORAGE.subjects, rows);
+          renderSubjectScreening(host);
         });
-        safeSave(STORAGE.subjects, rows);
-        renderSubjectScreening(host);
       });
     }
+
+    host.querySelectorAll('[data-action="sc-sub-dispose"]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-id');
+        var d = btn.getAttribute('data-d');
+        var idx = -1;
+        for (var i = 0; i < rows.length; i++) { if (rows[i].id === id) { idx = i; break; } }
+        if (idx < 0) return;
+        rows[idx].disposition = d;
+        rows[idx].disposed_at = new Date().toISOString();
+        safeSave(STORAGE.subjects, rows);
+        renderSubjectScreening(host);
+      };
+    });
+  }
+
+  // ─── Screening row builders ─────────────────────────────────────────
+  function buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens) {
+    var perList = [];
+    var topScore = 0;
+    if (data.sanctions && Array.isArray(data.sanctions.perList)) {
+      data.sanctions.perList.forEach(function (l) {
+        var hitCount = Array.isArray(l.hits) ? l.hits.length : 0;
+        var topHit = hitCount ? l.hits[0] : null;
+        var cls = (topHit && topHit.classification) || l.topClassification || 'none';
+        var score = topHit && topHit.breakdown && topHit.breakdown.score ? topHit.breakdown.score : 0;
+        if (score > topScore) topScore = score;
+        perList.push({
+          list: l.list,
+          disposition: dispositionFromClassification(cls),
+          hit_count: hitCount,
+          classification: cls,
+          hits: (l.hits || []).slice(0, 5)
+        });
+      });
+    }
+    var topClass = (data.sanctions && data.sanctions.topClassification) || 'none';
+    var disposition = dispositionFromClassification(topClass);
+    if (disposition === 'positive' || disposition === 'partial') disposition = 'pending';
+
+    var adverseHits = [];
+    if (data.adverseMedia && Array.isArray(data.adverseMedia.hits) && data.adverseMedia.hits.length) {
+      adverseHits = adverseMedia.slice(0, Math.min(adverseMedia.length, data.adverseMedia.hits.length));
+    }
+
+    return {
+      id: 'sub-' + Date.now(),
+      subject_type: body.entityType === 'legal_entity' ? 'entity' : 'individual',
+      name: body.subjectName,
+      alias: (fd.get('alias') || '').toString().trim(),
+      gender: fd.get('gender') || '',
+      dob: body.dob || '',
+      country: body.country || '',
+      passport: body.idNumber || '',
+      issuer: (fd.get('issuer') || '').toString().trim(),
+      confidence: topScore,
+      top_classification: topClass,
+      disposition: disposition,
+      per_list: perList,
+      sanctions_lists: sanctionsLists,
+      adverse_media: adverseMedia,
+      adverse_media_hits: adverseHits,
+      special_screens: specialScreens,
+      special_flags: [],
+      integrity: data.screeningIntegrity || 'complete',
+      run_id: (data.runId || data.run_id || '').toString(),
+      source: 'backend',
+      screened_at: new Date().toISOString()
+    };
+  }
+
+  function buildRowFromSimulation(body, fd, sanctionsLists, adverseMedia, specialScreens) {
+    // Deterministic keyword-based simulation so the form is still useful
+    // when the MLRO hasn't signed in yet (no token = no live screening).
+    var nameLower = (body.subjectName || '').toLowerCase();
+    var aliasLower = ((body.aliases || [])[0] || '').toLowerCase();
+    var haystack = nameLower + ' ' + aliasLower;
+    var conf = haystack.indexOf('test-hit') >= 0 ? 0.95
+      : haystack.indexOf('pep') >= 0 ? 0.55
+      : 0.04;
+    var cls = conf >= 0.85 ? 'confirmed' : conf >= 0.5 ? 'potential' : 'weak';
+    var disposition = dispositionFromClassification(cls);
+    if (disposition === 'positive' || disposition === 'partial') disposition = 'pending';
+
+    var perList = sanctionsLists.map(function (listId) {
+      var item = SANCTIONS_LISTS.filter(function (l) { return l.id === listId; })[0];
+      return {
+        list: item ? item.label : listId,
+        disposition: dispositionFromClassification(cls),
+        hit_count: cls === 'weak' ? 0 : 1,
+        classification: cls,
+        hits: cls === 'weak' ? [] : [{
+          candidate: body.subjectName + ' (simulated)',
+          classification: cls,
+          breakdown: { score: conf, jaroWinkler: conf, tokenSet: conf * 0.9 }
+        }]
+      };
+    });
+
+    var adverseHits = [];
+    if (haystack.indexOf('test-adverse') >= 0) adverseHits = adverseMedia.slice(0, 3);
+    else if (haystack.indexOf('pep') >= 0 && adverseMedia.indexOf('political_pep') >= 0) adverseHits.push('political_pep');
+
+    var specialFlags = [];
+    if (haystack.indexOf('test-pf') >= 0 && specialScreens.indexOf('proliferation') >= 0) specialFlags.push('proliferation');
+    if (haystack.indexOf('test-tf') >= 0 && specialScreens.indexOf('terrorism') >= 0) specialFlags.push('terrorism');
+    if (haystack.indexOf('test-tax') >= 0 && specialScreens.indexOf('tax_evasion') >= 0) specialFlags.push('tax_evasion');
+    if (haystack.indexOf('test-dual') >= 0 && specialScreens.indexOf('dual_goods') >= 0) specialFlags.push('dual_goods');
+
+    return {
+      id: 'sub-' + Date.now(),
+      subject_type: body.entityType === 'legal_entity' ? 'entity' : 'individual',
+      name: body.subjectName,
+      alias: (fd.get('alias') || '').toString().trim(),
+      gender: fd.get('gender') || '',
+      dob: body.dob || '',
+      country: body.country || '',
+      passport: body.idNumber || '',
+      issuer: (fd.get('issuer') || '').toString().trim(),
+      confidence: conf,
+      top_classification: cls,
+      disposition: disposition,
+      per_list: perList,
+      sanctions_lists: sanctionsLists,
+      adverse_media: adverseMedia,
+      adverse_media_hits: adverseHits,
+      special_screens: specialScreens,
+      special_flags: specialFlags,
+      integrity: 'simulated',
+      source: 'simulation',
+      screened_at: new Date().toISOString()
+    };
   }
 
   function classifyTxAlert(row) {

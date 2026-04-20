@@ -2593,9 +2593,6 @@
             position: relative;
             margin: 24px 0 32px;
             padding: 0;
-            /* Transparent so the fixed lateral cyber-head watermarks
-               (.hi-side-wm) that sit below on the z-stack remain
-               visible through the landing. */
             background: transparent;
             border-radius: 20px;
             overflow: visible;
@@ -2859,54 +2856,7 @@
             }
           }
 
-          /* Lateral cyber-head watermarks — fill the empty viewport gutters
-             on either side of the .hi-landing container. Tinted to the
-             landing palette (pink on the left, gold on the right). */
-          .hi-side-wm {
-            position: fixed;
-            top: 50%;
-            transform: translateY(-50%);
-            width: min(780px, 44vw);
-            aspect-ratio: 420 / 520;
-            pointer-events: none;
-            z-index: 0;
-            opacity: 0.78;
-            -webkit-mask-size: contain;
-                    mask-size: contain;
-            -webkit-mask-position: center;
-                    mask-position: center;
-            -webkit-mask-repeat: no-repeat;
-                    mask-repeat: no-repeat;
-            animation: hiSideWmFloat 12s ease-in-out infinite alternate;
-          }
-          .hi-side-wm.left {
-            left: 0;
-            background-color: #FB7FCA;
-            -webkit-mask-image: url("assets/watermark-compliance-ops.svg");
-                    mask-image: url("assets/watermark-compliance-ops.svg");
-            filter: drop-shadow(0 0 60px rgba(244, 114, 182, 0.55));
-          }
-          .hi-side-wm.right {
-            right: 0;
-            background-color: #E8C96A;
-            transform: translateY(-50%) scaleX(-1);
-            -webkit-mask-image: url("assets/watermark-screening-command.svg");
-                    mask-image: url("assets/watermark-screening-command.svg");
-            filter: drop-shadow(0 0 60px rgba(232, 201, 106, 0.55));
-            animation-delay: -4s;
-          }
-          @keyframes hiSideWmFloat {
-            from { translate: 0 -12px; }
-            to   { translate: 0  12px; }
-          }
-          @media (max-width: 1280px) { .hi-side-wm { display: none; } }
-          html.embedded .hi-side-wm { display: none; }
-          @media (prefers-reduced-motion: reduce) {
-            .hi-side-wm { animation: none !important; }
-          }
         </style>
-        <div class="hi-side-wm left" aria-hidden="true"></div>
-        <div class="hi-side-wm right" aria-hidden="true"></div>
         <section
           id="heroIntro"
           class="hi-landing hawkeye-intro"
@@ -9574,6 +9524,5 @@
     <script src="mlro-insights-client.js?v=20260413"></script>
     <script src="global-status-bar.js?v=20260413"></script>
     <script src="app-boot.js?v=20260419hash"></script>
-    <script src="watermark.js?v=1"></script>
   </body>
 </html>
