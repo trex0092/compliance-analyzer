@@ -142,12 +142,19 @@
       '</form>',
 
       rows.length
-        ? '<ul class="mv-list">' + rows.slice(-20).reverse().map(function (r) {
+        ? '<ul class="mv-list">' + rows.slice(-20).reverse().map(function (r, i) {
             var matLabel = (INBOUND_MATERIALS.filter(function (p) { return p[0] === r.material; })[0] || [null, r.material || ''])[1];
-            return '<li class="mv-list-item">' +
+            var flagBadge = '';
+            if (r.asanaUrl) {
+              flagBadge = ' <a class="mv-badge" data-tone="ok" href="' + esc(r.asanaUrl) + '" target="_blank" rel="noopener noreferrer">Asana ↗</a>';
+            } else if (r.asanaPending) {
+              flagBadge = ' <span class="mv-badge" data-tone="accent">syncing…</span>';
+            }
+            return '<li class="mv-list-item" data-shipment-id="' + esc(r.id) + '">' +
               '<div class="mv-list-main">' +
                 '<div class="mv-list-title">' + esc(r.supplier) + ' — ' + esc(r.kg || '0') + ' kg' +
                   (matLabel ? ' <span class="mv-badge" data-tone="accent">' + esc(matLabel) + '</span>' : '') +
+                  flagBadge +
                 '</div>' +
                 '<div class="mv-list-meta">' +
                   'Arrived ' + esc(fmtDate(r.arrived_on)) +
@@ -165,6 +172,7 @@
                 (r.cahra ? '<span class="mv-badge" data-tone="warn">CAHRA</span>' : '') +
                 '<span class="mv-badge" data-tone="' + (r.assay_ok ? 'ok' : 'warn') + '">' +
                   (r.assay_ok ? 'Cleared' : 'Pending assay') + '</span>' +
+                (!r.asanaUrl ? '<button class="mv-btn mv-btn-sm" data-action="lg-in-flag" data-shipment-id="' + esc(r.id) + '">Flag to Asana</button>' : '') +
               '</div>' +
             '</li>';
           }).join('') + '</ul>'
@@ -209,6 +217,67 @@
         renderInbound(host);
       };
     }
+
+    host.querySelectorAll('[data-action="lg-in-flag"]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-shipment-id');
+        var current = safeParse(STORAGE.inbound, []);
+        var idx = -1;
+        for (var i = 0; i < current.length; i++) { if (current[i].id === id) { idx = i; break; } }
+        if (idx < 0) return;
+        var r = current[idx];
+        current[idx].asanaPending = true;
+        safeSave(STORAGE.inbound, current);
+        btn.disabled = true;
+        btn.textContent = 'Syncing…';
+
+        var lines = [
+          'Supplier: ' + (r.supplier || '—'),
+          'Material: ' + (r.material || '—') + ' · ' + (r.kg || '0') + ' kg · ' + (r.fineness || '—') + '‰',
+          'Origin: ' + (r.origin_country || '—'),
+          'Invoice: ' + (r.invoice || '—') + (r.awb ? ' · AWB ' + r.awb : ''),
+          'Customs ref: ' + (r.customs_ref || '—'),
+          'Carrier: ' + (r.carrier || '—'),
+          'Assay: ' + (r.assay_ok ? 'cleared' : 'PENDING'),
+          'Sanctions: ' + (r.sanctions_clear ? 'clear' : 'NOT CLEARED'),
+          'CAHRA: ' + (r.cahra ? 'YES — enhanced DD required' : 'no'),
+          'Value (AED): ' + (r.value_aed || 0),
+          '',
+          'Review reason: ' + (r.cahra ? 'CAHRA origin flag' : '') +
+            (!r.assay_ok ? (r.cahra ? ' + ' : '') + 'assay pending' : '') +
+            (!r.sanctions_clear ? ' + sanctions not cleared' : ''),
+          '',
+          'Notes: ' + (r.notes || '(none)')
+        ];
+
+        var priority = (r.cahra || !r.sanctions_clear) ? 'high' : 'medium';
+
+        window.__hawkeyeAsana.createAsanaTaskRemote('logistics', {
+          name: 'Inbound shipment review — ' + (r.supplier || 'unknown') + ' (' + (r.invoice || r.id) + ')',
+          notes: lines.join('\n'),
+          category: 'logistics_shipment',
+          priority: priority,
+          citation: 'LBMA RGG v9 · UAE MoE RSG Framework · FDL Art.20',
+          entity: r.supplier || undefined
+        }).then(function (res) {
+          var after = safeParse(STORAGE.inbound, []);
+          var j = -1;
+          for (var k = 0; k < after.length; k++) { if (after[k].id === id) { j = k; break; } }
+          if (j < 0) return;
+          after[j].asanaPending = false;
+          if (res.ok && res.gid) {
+            after[j].asanaGid = res.gid;
+            after[j].asanaUrl = res.url || null;
+            after[j].asanaSyncedAt = new Date().toISOString();
+          } else {
+            after[j].asanaError = res.error || 'unknown';
+          }
+          safeSave(STORAGE.inbound, after);
+          rows = after;
+          renderInbound(host);
+        });
+      };
+    });
   }
 
   var TRACK_STATUSES = [

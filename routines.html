@@ -576,6 +576,10 @@
             <div class="k">Weekly</div>
             <div class="v" id="weeklyCount">3</div>
           </div>
+          <div class="summary-cell">
+            <div class="k">Asana project</div>
+            <div class="v"><a id="routinesAsanaLink" href="#" target="_blank" rel="noopener noreferrer" style="font-size:13px;text-decoration:underline" hidden>Open in Asana ↗</a><span id="routinesAsanaLinkPending" style="font-size:13px;opacity:.6">…</span></div>
+          </div>
         </aside>
       </section>
 
@@ -1034,7 +1038,30 @@
       fetchLiveStatus();
       // Refresh every 90 seconds while the tab is open.
       setInterval(() => { if (!document.hidden) fetchLiveStatus(); }, 90_000);
+
+      // "Open in Asana" header link — resolved via /api/asana/config on
+      // first sign-in. Needs the HAWKEYE_BRAIN_TOKEN stored in
+      // localStorage by the Screening Command sign-in flow. If no token
+      // or the env var is unset, the link stays hidden.
+      (function wireAsanaLink() {
+        const linkEl = document.getElementById('routinesAsanaLink');
+        const pendingEl = document.getElementById('routinesAsanaLinkPending');
+        if (!linkEl || !window.__hawkeyeAsana) {
+          if (pendingEl) pendingEl.textContent = 'sign in required';
+          return;
+        }
+        window.__hawkeyeAsana.getProjectUrl('routines').then(function (url) {
+          if (url) {
+            linkEl.setAttribute('href', url);
+            linkEl.hidden = false;
+            if (pendingEl) pendingEl.hidden = true;
+          } else if (pendingEl) {
+            pendingEl.textContent = 'not configured';
+          }
+        });
+      })();
     </script>
+    <script src="asana-client-bridge.js?v=1"></script>
     <script src="module-enhancements.js?v=1"></script>
   </body>
 </html>
