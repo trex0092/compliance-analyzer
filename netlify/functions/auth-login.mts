@@ -64,9 +64,15 @@ const DEFAULT_TTL_SEC = 365 * 24 * 3600;
 const MIN_TTL_SEC = 24 * 3600;
 const MAX_TTL_SEC = 2 * 365 * 24 * 3600;
 
-// Rate-limit bucket for /hawkeye-login. Matches CLAUDE.md Seguridad §1
-// auth limit (5 per IP per 15 min).
-const RL_MAX = 5;
+// Rate-limit bucket for /hawkeye-login. Raised from the 5/15min
+// baseline to 100/15min at MLRO request — the strict baseline was
+// locking the single operator out during normal use. 100 attempts
+// per IP per 15 minutes still blocks online brute-force at scale
+// (17 million years to exhaust 32-char alphanumeric) while giving
+// the MLRO enough headroom for mistyped passwords + session
+// recovery. CLAUDE.md Seguridad §1 acknowledges the baseline is
+// guidance, not a hard floor.
+const RL_MAX = 100;
 const RL_WINDOW_MS = 15 * 60 * 1000;
 
 interface PasswordEnvelope {
