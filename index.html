@@ -1810,10 +1810,18 @@
       html.embedded .hi-cards,
       html.embedded .hi-reg,
       html.embedded .tabs,
+      html.embedded .hamburger-btn,
+      html.embedded #hamburgerBtn,
+      html.embedded .company-bar,
+      html.embedded #companyBar,
       html.embedded #tabsNav { display: none !important; }
       html.embedded #mainApp,
-      html.embedded .app { padding-top: 0 !important; margin-top: 0 !important; }
-      html.embedded body { padding-top: 0 !important; }
+      html.embedded .app { padding-top: 0 !important; margin-top: 0 !important; background: transparent !important; }
+      html.embedded body { padding-top: 0 !important; background: transparent !important; }
+      html.embedded { background: transparent !important; }
+      html.embedded body::before,
+      html.embedded body::after { display: none !important; }
+      html.embedded #mainPanel { padding: 12px !important; }
       .hs-preloader-icon {
         width: 80px;
         height: 80px;
