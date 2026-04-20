@@ -1572,6 +1572,120 @@
             citations: ['FDL Art.20-21', 'Cabinet Res 134/2025 Art.19']
           };
         }
+      },
+
+      // 9 — STR narrative drafter (Art.29 no-tip-off safe).
+      // Assembles an MLRO-review-ready draft from the highest-risk
+      // subject + typology hits + transaction footprint. Unlike the
+      // SLA watchdog (preset 7) which only flags overdue cases, this
+      // produces the actual narrative text the MLRO edits before
+      // filing via goAML. Every output carries the Art.29 tip-off
+      // notice so no draft can be forwarded to the subject.
+      {
+        id: 'str_draft',
+        label: 'Draft STR narrative (Art.29 tip-off-safe)',
+        note: 'Assembles an MLRO-review-ready narrative from typology hits. Never to be disclosed to the subject.',
+        fn: function (ctx) {
+          var subjects = ctx.snap.keys.subjects || [];
+          var ranked = subjects.slice().sort(function (a, b) {
+            var rank = { positive: 4, partial: 3, escalated: 3, pending: 2, false_positive: 1, negative: 0 };
+            var da = rank[a.disposition] || 0;
+            var db = rank[b.disposition] || 0;
+            if (db !== da) return db - da;
+            return (b.confidence || 0) - (a.confidence || 0);
+          });
+          var pick = ranked[0] || {};
+          var entity = ctx.entity || {};
+          var typ = (window.__brainTypology && window.__brainTypology.scan(entity, ctx.txs)) || [];
+          var crit = typ.filter(function (h) { return h.severity === 'critical'; });
+          var high = typ.filter(function (h) { return h.severity === 'high'; });
+          var txs = ctx.txs || [];
+          var totalAed = txs.filter(function (t) { return (t.currency || 'AED') === 'AED'; })
+            .reduce(function (s, t) { return s + (t.amount || 0); }, 0);
+
+          var lines = [
+            'DRAFT STR NARRATIVE — MLRO review required before filing.',
+            '',
+            'Subject: ' + (pick.name || entity.subjectName || '[unnamed]') +
+              ' (' + (pick.subject_type || entity.subjectType || 'individual') + ')',
+            'Disposition: ' + ((DISPOSITIONS[pick.disposition] || {}).label || 'PENDING REVIEW'),
+            'Sanctions match score: ' + ((pick.confidence || entity.sanctionsMatchScore || 0) * 100).toFixed(1) + '%',
+            'Adverse media hits: ' + (Array.isArray(pick.adverse_media_hits) ? pick.adverse_media_hits.length : 0),
+            'PEP screen: ' + (entity.pepScreenResult || '—'),
+            '',
+            'Transactional footprint: ' + txs.length + ' transactions, total AED ' + totalAed.toFixed(0) + '.',
+            'Typology matches: ' + typ.length + ' (' + crit.length + ' critical, ' + high.length + ' high).',
+            '',
+            'Indicators observed:'
+          ].concat(typ.slice(0, 8).map(function (h) {
+            return '  • [' + (h.severity || '').toUpperCase() + '] ' + h.name +
+              ' — ' + h.typologyId + ', FATF ' + h.fatfRef + ', ' + h.uaeRef;
+          })).concat([
+            '',
+            'Suspicion grounds: the combination of the above indicators exceeds the MLRO reporting threshold.',
+            'Regulatory basis: FDL No.(10)/2025 Art.26-27 (file without delay) · Art.29 (no tipping off the subject).',
+            '',
+            'NOTE: this draft is for internal MLRO use only. Do not disclose, discuss, or otherwise tip off',
+            'the subject (Art.29). Final narrative must be reviewed by the Compliance Officer before submission',
+            'via the goAML portal.'
+          ]);
+          return {
+            verdict: crit.length ? 'file_str' : high.length ? 'review' : 'monitor',
+            confidence: crit.length ? 0.85 : high.length ? 0.6 : 0.35,
+            summary: lines.join('\n'),
+            citations: ['FDL No.(10)/2025 Art.26-27', 'FDL No.(10)/2025 Art.29', 'Cabinet Res 134/2025 Art.19', 'FATF Rec 20']
+          };
+        }
+      },
+
+      // 10 — Cross-module correlation sweep.
+      // Catches the hardest class of miss — a subject, transaction
+      // counterparty, STR case and active watchlist entry all
+      // referring to the same party but sitting in four separate
+      // stores without anything tying them together. The other
+      // presets read single stores; this one intersects them.
+      {
+        id: 'cross_module',
+        label: 'Cross-module correlation sweep',
+        note: 'Intersects subjects × transactions × STR cases × watchlist on normalized name.',
+        fn: function (ctx) {
+          function norm(s) { return String(s == null ? '' : s).toLowerCase().trim().replace(/\s+/g, ' '); }
+          var subjects = ctx.snap.keys.subjects || [];
+          var txs      = ctx.snap.keys.transactions || [];
+          var strs     = ctx.snap.keys.strCases || [];
+          var watch    = ctx.snap.keys.watchlist || [];
+          var hits = [];
+
+          var watched = {};
+          watch.forEach(function (w) { var n = norm(w.name); if (n) watched[n] = w; });
+
+          var txCps = {};
+          txs.forEach(function (t) { var n = norm(t.counterparty); if (n) txCps[n] = (txCps[n] || 0) + 1; });
+
+          subjects.forEach(function (s) {
+            var n = norm(s.name);
+            if (!n) return;
+            if (watched[n]) hits.push('Subject "' + (s.name || n) + '" is on the active watchlist (added ' + (watched[n].added_on || '—') + ').');
+            if (txCps[n]) hits.push('Subject "' + (s.name || n) + '" appears as a transaction counterparty ×' + txCps[n] + '.');
+          });
+          strs.forEach(function (c) {
+            var n = norm(c.subject || c.subject_name);
+            if (!n) return;
+            if (watched[n]) hits.push('STR case subject "' + n + '" is also on the active watchlist — Art.29 tip-off risk on re-screen.');
+            if (txCps[n]) hits.push('STR case subject "' + n + '" also appears as a transaction counterparty ×' + txCps[n] + '.');
+          });
+
+          var verdict = hits.length >= 3 ? 'escalate' : hits.length ? 'review' : 'monitor';
+          return {
+            verdict: verdict,
+            confidence: hits.length ? Math.min(0.9, 0.4 + hits.length * 0.1) : 0.15,
+            summary: hits.length
+              ? 'Cross-module correlation hits (' + hits.length + '):\n' +
+                  hits.slice(0, 12).map(function (h) { return '  • ' + h; }).join('\n')
+              : 'No cross-module correlations between subjects, transactions, STR cases and the watchlist in the current snapshot.',
+            citations: ['FDL No.(10)/2025 Art.20-21', 'FDL No.(10)/2025 Art.29', 'Cabinet Res 134/2025 Art.19', 'FATF Rec 20']
+          };
+        }
       }
     ];
 
