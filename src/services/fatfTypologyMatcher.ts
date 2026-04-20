@@ -36,6 +36,11 @@
  */
 
 import type { StrFeatures } from './predictiveStr';
+import {
+  DPMS_CASH_THRESHOLD_AED,
+  CROSS_BORDER_CASH_THRESHOLD_AED,
+  ROUND_TRIPPING_THRESHOLD_AED,
+} from '../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -210,7 +215,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
     description: 'Customer walks in and buys gold for large cash amounts with minimal KYC history.',
     signals: [
       sig.required(sig.cashHeavy(0.7)),
-      sig.required(sig.largeTx(100_000)),
+      sig.required(sig.largeTx(ROUND_TRIPPING_THRESHOLD_AED)),
       sig.newRelationship(30),
     ],
     threshold: 0.45,
@@ -351,7 +356,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
     id: 'LARGE-CASH-001',
     name: 'Single Large Cash Transaction',
     description: 'Single cash transaction above AED 55K reporting threshold.',
-    signals: [sig.required(sig.cashHeavy(0.5)), sig.required(sig.largeTx(55_000))],
+    signals: [sig.required(sig.cashHeavy(0.5)), sig.required(sig.largeTx(DPMS_CASH_THRESHOLD_AED))],
     threshold: 0.3,
     severity: 'medium',
     regulatory: 'FDL Art.16; MoE Circular 08/AML/2021',
@@ -387,7 +392,10 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
     name: 'Integration — Gold → Cash',
     description:
       'Gold sale with proceeds taken in cash, converting placed funds back to usable currency.',
-    signals: [sig.required(sig.cashHeavy(0.7)), sig.required(sig.largeTx(100_000))],
+    signals: [
+      sig.required(sig.cashHeavy(0.7)),
+      sig.required(sig.largeTx(ROUND_TRIPPING_THRESHOLD_AED)),
+    ],
     threshold: 0.4,
     severity: 'high',
     regulatory: 'FATF Three-Stage ML Model; MoE Circular 08/AML/2021',
@@ -419,7 +427,7 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
     description: 'Cash-intensive customer whose turnover grows beyond declared profile.',
     signals: [
       sig.required(sig.cashHeavy(0.6)),
-      sig.required(sig.largeTx(100_000)),
+      sig.required(sig.largeTx(ROUND_TRIPPING_THRESHOLD_AED)),
       sig.priorAlerts(1),
     ],
     threshold: 0.4,
@@ -432,7 +440,10 @@ export const FATF_TYPOLOGIES: readonly FatfTypology[] = [
     name: 'Cross-Border BNI Above AED 60K',
     description:
       'Cross-border bearer negotiable instrument above the AED 60K declaration threshold.',
-    signals: [sig.required(sig.crossBorderHeavy(0.4)), sig.required(sig.largeTx(60_000))],
+    signals: [
+      sig.required(sig.crossBorderHeavy(0.4)),
+      sig.required(sig.largeTx(CROSS_BORDER_CASH_THRESHOLD_AED)),
+    ],
     threshold: 0.3,
     severity: 'high',
     regulatory: 'FDL Art.17',

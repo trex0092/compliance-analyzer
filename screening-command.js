@@ -373,12 +373,24 @@
   }
 
   // ─── Shared fetch helper ─────────────────────────────────────────
+  //
+  // The server enforces an internal 6.5s deadline on the screening
+  // pipeline (netlify/functions/screening-run.mts). Client-side we cap
+  // at 12s so that a Netlify edge hang never leaves the MLRO staring
+  // at a spinner — a clear "timed out, re-screen" message is better
+  // than an indefinite wait under FDL No.10/2025 Art.20 (no delay in
+  // screening action). If the server responds earlier (normal case),
+  // the AbortController is a no-op.
+  const API_TIMEOUT_MS = 12_000;
+
   async function apiPost(endpoint, body) {
     saveToken();
     const token = tokenInput.value.trim();
     const fmtErr = tokenFormatError(token);
     if (fmtErr) return { ok: false, error: fmtErr };
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -387,6 +399,7 @@
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
       let json = null;
       try {
@@ -410,7 +423,18 @@
       }
       return { ok: true, data: json };
     } catch (err) {
+      if (err && err.name === 'AbortError') {
+        return {
+          ok: false,
+          error:
+            'Request timed out after ' +
+            Math.round(API_TIMEOUT_MS / 1000) +
+            's. Re-screen (FDL Art.20-21) — do not record a disposition yet.',
+        };
+      }
       return { ok: false, error: 'Network error: ' + ((err && err.message) || 'unknown') };
+    } finally {
+      clearTimeout(timer);
     }
   }
 

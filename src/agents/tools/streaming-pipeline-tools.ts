@@ -14,6 +14,7 @@
  */
 
 import type { ToolResult as _ToolResult } from '../mcp-server';
+import { DPMS_CASH_THRESHOLD_AED } from '../../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -361,7 +362,7 @@ export function createComplianceHandlers(): EventHandler[] {
       priority: 1,
       handler: (event) => {
         const amount = (event.data.amount as number) ?? 0;
-        if (amount >= 55_000) {
+        if (amount >= DPMS_CASH_THRESHOLD_AED) {
           console.warn(`[CTR REQUIRED] ${event.entityName} — AED ${amount}`);
         }
       },
