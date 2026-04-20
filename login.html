@@ -108,6 +108,24 @@
         function now() { return Math.floor(Date.now() / 1000); }
         function get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }
         function set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
+        function del(k) { try { localStorage.removeItem(k); } catch (_) {} }
+
+        // Defensive: a JWT must be three dot-separated segments of
+        // base64url characters. A malformed value trapped in
+        // localStorage (partial write, previous-version corruption,
+        // post-deploy signature-invalidation) would otherwise pass the
+        // bare `jwt && exp > now()` check below and redirect us away
+        // from the sign-in screen — the MLRO would then be stuck on a
+        // screen whose API calls all 401. Clearing up front restores
+        // the sign-in path automatically. FDL No.(10)/2025 Art.20-21.
+        function looksLikeJwt(s) {
+          if (typeof s !== 'string' || s.length < 20) return false;
+          var parts = s.split('.');
+          if (parts.length !== 3) return false;
+          return /^[A-Za-z0-9_-]+$/.test(parts[0])
+              && /^[A-Za-z0-9_-]+$/.test(parts[1])
+              && /^[A-Za-z0-9_-]+$/.test(parts[2]);
+        }
 
         function safeReturn() {
           var ret = new URLSearchParams(location.search).get('return');
@@ -120,8 +138,16 @@
         }
 
         // Already signed in → skip login, go to the app (or return path).
+        // Guard against malformed or stale-format JWTs in localStorage:
+        // if the stored value isn't three base64url segments, treat it
+        // as invalid and clear every session key before rendering the
+        // sign-in form so the user is not trapped in a cache-stuck loop.
         var jwt = get(JWT_KEY);
         var exp = parseInt(get(EXP_KEY) || '0', 10);
+        if (jwt && !looksLikeJwt(jwt)) {
+          del(JWT_KEY); del(EXP_KEY); del(JTI_KEY); del(LEGACY_KEY);
+          jwt = null;
+        }
         if (jwt && exp > now()) {
           location.replace(safeReturn());
           return;

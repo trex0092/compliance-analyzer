@@ -2422,6 +2422,31 @@
           var now = Math.floor(Date.now() / 1000);
           var jwt = localStorage.getItem('hawkeye.session.jwt');
           var exp = parseInt(localStorage.getItem('hawkeye.session.expiresAt') || '0', 10);
+          // Format-validate the JWT before trusting the exp check. A
+          // malformed token (partial write, post-deploy invalidation,
+          // localStorage corruption) with a valid exp would otherwise
+          // pass this gate and seed fgl_session with role:'admin', then
+          // every API call would 401 — the MLRO would see a broken
+          // SPA with no recovery path. Clear every session key and
+          // redirect to login so the sign-in flow re-runs cleanly.
+          // FDL No.(10)/2025 Art.20-21.
+          function looksLikeJwt(s) {
+            if (typeof s !== 'string' || s.length < 20) return false;
+            var parts = s.split('.');
+            if (parts.length !== 3) return false;
+            return /^[A-Za-z0-9_-]+$/.test(parts[0])
+                && /^[A-Za-z0-9_-]+$/.test(parts[1])
+                && /^[A-Za-z0-9_-]+$/.test(parts[2]);
+          }
+          if (jwt && !looksLikeJwt(jwt)) {
+            try {
+              localStorage.removeItem('hawkeye.session.jwt');
+              localStorage.removeItem('hawkeye.session.expiresAt');
+              localStorage.removeItem('hawkeye.session.jti');
+              localStorage.removeItem('hawkeye.watchlist.adminToken');
+            } catch (_) {}
+            jwt = null;
+          }
           if (!jwt || !exp || exp <= now) {
             location.replace('/login.html');
             return;
