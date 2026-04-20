@@ -526,6 +526,7 @@
   // from the browser — skills run server-side via the agent harness).
   var SKILLS = {
     screen:             { label: '/screen',            hint: 'Sanctions + adverse-media screening (current form)' },
+    'dfsa-adgm-passport':{label: '/dfsa-adgm-passport',hint: 'DFSA (DIFC) + ADGM FSRA cross-border passport screening & reporting' },
     'multi-agent-screen':{label: '/multi-agent-screen',hint: 'Parallel fan-out across UN · OFAC · EU · UK · UAE · EOCN' },
     'agent-orchestrate':{ label: '/agent-orchestrate', hint: 'Multi-stage CDD / EDD PEER orchestration' },
     onboard:            { label: '/onboard',           hint: 'New customer onboarding → screen → CDD tier' },
@@ -542,7 +543,7 @@
     'regulatory-spec':  { label: '/regulatory-spec',   hint: 'New regulation → spec → code → test → evidence' }
   };
   var MODULE_SKILLS = {
-    subject:    ['screen', 'multi-agent-screen', 'onboard', 'incident', 'goaml', 'agent-orchestrate', 'audit-pack', 'traceability'],
+    subject:    ['screen', 'dfsa-adgm-passport', 'multi-agent-screen', 'onboard', 'incident', 'goaml', 'agent-orchestrate', 'audit-pack', 'traceability'],
     transaction:['incident', 'goaml', 'filing-compliance', 'kpi-report', 'audit', 'audit-pack'],
     str:        ['goaml', 'filing-compliance', 'incident', 'agent-orchestrate', 'traceability', 'audit-pack'],
     watchlist:  ['multi-agent-screen', 'screen', 'regulatory-update', 'regulatory-spec', 'timeline', 'moe-readiness']
@@ -1348,15 +1349,21 @@
   function appendVerdictHistory(r) {
     if (!r || !r.name) return;
     var all = loadVerdictHistory();
-    var key = String(r.name).trim().toLowerCase();
-    if (!all[key]) all[key] = [];
-    all[key].push({
+    var entry = {
       t: Date.now(),
       conf: typeof r.confidence === 'number' ? r.confidence : 0,
       verdict: (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || r.disposition || '—',
-      classification: r.top_classification || 'none'
+      classification: r.top_classification || 'none',
+      customerCode: r.customer_code || '',
+      eventType: r.event_type || ''
+    };
+    var keys = [String(r.name).trim().toLowerCase()];
+    if (r.customer_code) keys.push('code:' + String(r.customer_code).trim().toLowerCase());
+    keys.forEach(function (key) {
+      if (!all[key]) all[key] = [];
+      all[key].push(entry);
+      if (all[key].length > 10) all[key] = all[key].slice(-10);
     });
-    if (all[key].length > 10) all[key] = all[key].slice(-10);
     saveVerdictHistory(all);
   }
   function verdictHistorySparkline(name) {
@@ -1621,13 +1628,27 @@
       skillsPalette(),
 
       '<form id="sc-subject-form" class="mv-form">',
+        // Customer identity block — required on the FIRST screening so
+        // every downstream report (Asana task body, life-story markdown,
+        // PDF, goAML XML, watchlist enrolment, audit trail) is keyed
+        // off the same customer code. The code travels with every
+        // delta re-screen so the MLRO + auditor can reconstruct the
+        // chronological trail for a single customer at a glance
+        // (FDL No.10/2025 Art.24 — 10-yr audit record must be complete
+        // and unambiguously attributable to the customer).
+        '<div class="mv-grid-2">',
+          '<label class="mv-field"><span class="mv-field-label">Customer code <span style="color:#f472b6">*</span></span>',
+            '<input type="text" name="customer_code" required placeholder="Internal customer number (e.g. FGL-0284, CUST-2026-0017)"></label>',
+          '<label class="mv-field"><span class="mv-field-label">Customer name <span style="opacity:.55;font-weight:normal">(as in your book)</span></span>',
+            '<input type="text" name="customer_name" placeholder="Customer display name — defaults to the Name / Entity below if empty"></label>',
+        '</div>',
         '<div class="mv-grid-2">',
           '<label class="mv-field"><span class="mv-field-label">Subject type</span>',
             '<select name="subject_type">',
               '<option value="individual">Individual</option>',
               '<option value="entity">Entity / Organisation</option>',
             '</select></label>',
-          '<label class="mv-field"><span class="mv-field-label">Name / Entity</span>',
+          '<label class="mv-field"><span class="mv-field-label">Name / Entity <span style="color:#f472b6">*</span></span>',
             '<input type="text" name="name" required placeholder="Full legal name or registered entity"></label>',
         '</div>',
         '<div class="mv-grid-2">',
@@ -1721,7 +1742,11 @@
             var disp = DISPOSITIONS[r.disposition || 'pending'] || DISPOSITIONS.pending;
             var conf = (r.confidence || 0);
             var identLine = [
+              r.customer_code ? 'Customer code ' + r.customer_code : null,
               (r.subject_type === 'entity' ? 'Entity' : 'Individual'),
+              r.event_type === 'new_customer_onboarding' ? 'First screening (life-story)'
+                : r.event_type === 'periodic_review' ? 'Periodic review'
+                : null,
               r.gender ? r.gender.charAt(0).toUpperCase() + r.gender.slice(1) : null,
               r.country || null,
               r.dob ? 'DOB/Reg ' + r.dob : null,
@@ -2100,14 +2125,35 @@
           .filter(Boolean);
 
         var subjectTypeForm = fd.get('subject_type') || 'individual';
+        // Customer code is required — it anchors the audit trail across
+        // every report the MLRO will ever receive for this customer
+        // (first screening, daily deltas, periodic re-screens, STR).
+        var customerCode = (fd.get('customer_code') || '').toString().trim();
+        var customerNameRaw = (fd.get('customer_name') || '').toString().trim();
+        var subjectNameRaw = (fd.get('name') || '').toString().trim();
+        var customerName = customerNameRaw || subjectNameRaw;
+        // First screening for this customer? Checked against the
+        // verdict-history store — if there is no prior entry for this
+        // customer code, eventType flips to `new_customer_onboarding`
+        // which triggers the Life-Story deep-dive report on the
+        // server side (lifeStoryReportBuilder.ts).
+        var history = loadVerdictHistory();
+        var historyKeyByCode = 'code:' + customerCode.toLowerCase();
+        var historyKeyByName = String(subjectNameRaw).toLowerCase();
+        var isFirstScreen = customerCode
+          ? !history[historyKeyByCode] || history[historyKeyByCode].length === 0
+          : !history[historyKeyByName] || history[historyKeyByName].length === 0;
         var body = {
-          subjectName: (fd.get('name') || '').toString().trim(),
+          subjectName: subjectNameRaw,
+          customerCode: customerCode || undefined,
+          customerName: customerName || undefined,
           aliases: fd.get('alias') ? [fd.get('alias').toString().trim()] : undefined,
           entityType: subjectTypeForm === 'entity' ? 'legal_entity' : 'individual',
           dob: (fd.get('dob') || '').toString().trim() || undefined,
           country: (fd.get('country') || '').toString().trim() || undefined,
           idNumber: (fd.get('passport') || '').toString().trim() || undefined,
-          eventType: 'ad_hoc',
+          subjectId: customerCode || undefined,
+          eventType: isFirstScreen ? 'new_customer_onboarding' : 'ad_hoc',
           selectedLists: backendLists.length ? backendLists : undefined,
           enrollInWatchlist: true,
           runAdverseMedia: adverseMedia.length > 0,
@@ -2310,6 +2356,9 @@
       id: 'sub-' + Date.now(),
       subject_type: body.entityType === 'legal_entity' ? 'entity' : 'individual',
       name: body.subjectName,
+      customer_code: body.customerCode || '',
+      customer_name: body.customerName || '',
+      event_type: body.eventType || '',
       alias: (fd.get('alias') || '').toString().trim(),
       gender: fd.get('gender') || '',
       dob: body.dob || '',
@@ -2451,6 +2500,9 @@
       id: 'sub-' + Date.now(),
       subject_type: body.entityType === 'legal_entity' ? 'entity' : 'individual',
       name: body.subjectName,
+      customer_code: body.customerCode || '',
+      customer_name: body.customerName || '',
+      event_type: body.eventType || '',
       alias: (fd.get('alias') || '').toString().trim(),
       gender: fd.get('gender') || '',
       dob: body.dob || '',
