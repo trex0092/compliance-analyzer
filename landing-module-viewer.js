@@ -167,12 +167,29 @@
   }
 
   function renderHostSkeleton(message) {
-    host.innerHTML = '<div class="mv-skeleton" aria-busy="true">' +
-      '<div class="mv-skeleton-bar"></div>' +
-      '<div class="mv-skeleton-bar" style="width:62%"></div>' +
-      '<div class="mv-skeleton-bar" style="width:78%"></div>' +
-      '<div class="mv-skeleton-msg">' + (message || 'Loading module…') + '</div>' +
-      '</div>';
+    // Append a skeleton without clobbering previously-cached tab DOM,
+    // so re-opening a module is instant. The skeleton is removed in
+    // openModule() once ensureTabInjected() settles.
+    if (host.querySelector('.mv-skeleton')) return;
+    var skel = document.createElement('div');
+    skel.className = 'mv-skeleton';
+    skel.setAttribute('aria-busy', 'true');
+    var bar1 = document.createElement('div');
+    bar1.className = 'mv-skeleton-bar';
+    var bar2 = document.createElement('div');
+    bar2.className = 'mv-skeleton-bar';
+    bar2.style.width = '62%';
+    var bar3 = document.createElement('div');
+    bar3.className = 'mv-skeleton-bar';
+    bar3.style.width = '78%';
+    var msg = document.createElement('div');
+    msg.className = 'mv-skeleton-msg';
+    msg.textContent = message || 'Loading module…';
+    skel.appendChild(bar1);
+    skel.appendChild(bar2);
+    skel.appendChild(bar3);
+    skel.appendChild(msg);
+    host.appendChild(skel);
   }
 
   function injectSkeletonStyles() {
@@ -195,7 +212,7 @@
       tabs[i].classList.remove('active');
       tabs[i].style.display = 'none';
     }
-    var active = host.querySelector('#tab-' + CSS.escape(route));
+    var active = host.querySelector('#tab-' + route);
     if (active) {
       active.classList.add('active');
       active.style.display = 'block';
@@ -216,14 +233,18 @@
 
   function ensureTabInjected(route) {
     // Re-use an existing injected #tab-<route> if we've loaded it before.
-    var existing = host.querySelector('#tab-' + CSS.escape(route));
+    var existing = host.querySelector('#tab-' + route);
     if (existing) return Promise.resolve(existing);
 
     return loadMainAppDocument().then(function (doc) {
       injectMainAppStyles(doc);
       var src = doc.getElementById('tab-' + route);
       if (!src) {
-        host.innerHTML = '<div class="mv-empty" style="padding:40px;opacity:0.7;font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Module not available: ' + route + '</div>';
+        var empty = document.createElement('div');
+        empty.className = 'mv-empty';
+        empty.style.cssText = 'padding:40px;opacity:0.7;font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;';
+        empty.textContent = 'Module not available: ' + route;
+        host.appendChild(empty);
         return null;
       }
       // Import so scripts running after load can find the element by ID
@@ -231,6 +252,13 @@
       var cloned = document.importNode(src, true);
       host.appendChild(cloned);
       return loadMainAppScripts(doc).then(function () { return cloned; });
+    }, function (err) {
+      var errBox = document.createElement('div');
+      errBox.className = 'mv-empty';
+      errBox.style.cssText = 'padding:40px;opacity:0.7;font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;';
+      errBox.textContent = 'Failed to load module (' + (err && err.message ? err.message : 'network error') + ')';
+      host.appendChild(errBox);
+      return null;
     });
   }
 
@@ -240,7 +268,17 @@
     view.setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('module-view-active');
     applyImperativeHide();
-    renderHostSkeleton(label ? 'Loading ' + label + '…' : 'Loading module…');
+
+    // Clear any stale error placeholder from a previous run; keep
+    // cached .tab-content nodes so repeat opens are instant.
+    var stale = host.querySelectorAll('.mv-empty');
+    for (var s = 0; s < stale.length; s++) stale[s].remove();
+
+    var cached = host.querySelector('#tab-' + route);
+    if (!cached) {
+      renderHostSkeleton(label ? 'Loading ' + label + '…' : 'Loading module…');
+    }
+
     if (pushHistory !== false && slug) {
       var target = getBasePath() + '/' + slug;
       if (location.pathname !== target) {
@@ -248,15 +286,14 @@
       }
     }
     refreshPageNav();
+
     ensureTabInjected(route).then(function (tabEl) {
-      if (!tabEl) return;
-      // Clear the skeleton once the real tab is present. `ensureTabInjected`
-      // already appended the tab into the host, but it may sit beneath the
-      // skeleton — remove any lingering skeleton node.
       var skels = host.querySelectorAll('.mv-skeleton');
       for (var i = 0; i < skels.length; i++) skels[i].remove();
+      if (!tabEl) return;
       activateInjectedTab(route);
     });
+
     requestAnimationFrame(function () {
       view.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
