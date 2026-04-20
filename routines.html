@@ -505,6 +505,45 @@
       .routine-cadence[data-cadence="weekly"] { background: rgba(29, 78, 216, 0.2); color: var(--mist); border-color: rgba(29, 78, 216, 0.5); }
 
       .routine-desc { color: var(--ice); font-size: 12.5px; line-height: 1.55; opacity: 0.72; margin: 0; }
+      .routine-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+      .rc-chip {
+        display: inline-flex; align-items: center;
+        padding: 2px 9px; border-radius: 999px;
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1px; text-transform: uppercase;
+        text-decoration: none; line-height: 1.6;
+      }
+      .rc-domain {
+        background: rgba(168, 85, 247, 0.16);
+        border: 1px solid rgba(168, 85, 247, 0.45);
+        color: #e9d5ff;
+      }
+      .rc-owner {
+        background: rgba(127, 193, 255, 0.1);
+        border: 1px solid rgba(127, 193, 255, 0.35);
+        color: #7fc1ff;
+      }
+      .rc-asana {
+        background: rgba(244, 114, 182, 0.1);
+        border: 1px solid rgba(244, 114, 182, 0.42);
+        color: #fbcfe8;
+      }
+      .rc-asana:hover { background: rgba(244, 114, 182, 0.22); }
+      .rc-next { font-family: 'DM Mono', monospace; color: var(--azure-bright); }
+      .routine-h24 {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 1px; text-transform: uppercase;
+        color: var(--steel); margin-top: 6px;
+      }
+      .routine-skills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+      .rc-skill {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        padding: 1px 7px; border-radius: 8px;
+        background: rgba(127, 193, 255, 0.08);
+        border: 1px solid rgba(127, 193, 255, 0.28);
+        color: var(--azure-bright);
+      }
+      .rc-skill-empty { opacity: 0.35; font-size: 10px; font-family: 'DM Mono', monospace; }
 
       .routine-meta {
         margin-top: auto; padding-top: 12px;
@@ -964,14 +1003,36 @@
           const live = LIVE_STATUS[r.id];
           const state = live ? live.status : 'loading';
           const stateLabel = live ? stateLabelFor(live) : 'Loading';
+          const domain = routineDomain(r.id);
+          const owner = routineOwner(r.id);
+          const moduleLabel = routineModuleLabel(r.id) || 'Subject Screening & Watchlist';
+          const asanaUrl = routineAsanaBoard(r.id);
+          const relSkills = routineRelatedSkills(r.id);
+          const next = nextRunFromCron(r.schedule);
+          const countdown = next ? formatCountdown(next.getTime() - Date.now()) : '—';
+          const h24 = (live && typeof live.last24hCount === 'number') ? live.last24hCount : null;
+          const h24Alerts = (live && typeof live.last24hAlerts === 'number') ? live.last24hAlerts : null;
+          const skillChips = relSkills.length
+            ? relSkills.slice(0, 3).map(s => '<span class="rc-skill">/' + s + '</span>').join(' ')
+            : '<span class="rc-skill-empty">—</span>';
+          const h24Label = h24 === null
+            ? '24h · awaiting telemetry'
+            : '24h · ' + h24 + ' runs' + (h24Alerts !== null ? ' · ' + h24Alerts + ' alert' + (h24Alerts === 1 ? '' : 's') : '');
           return `
           <article class="routine" data-cadence="${r.cadence}" data-routine="${r.id}">
             <div class="routine-head">
               <h3 class="routine-title">${r.title}</h3>
               <span class="routine-cadence" data-cadence="${r.cadence}">${cadenceLabel[r.cadence]}</span>
             </div>
+            <div class="routine-chips">
+              <span class="rc-chip rc-domain">${domain}</span>
+              <span class="rc-chip rc-owner">${owner}</span>
+              <a class="rc-chip rc-asana" href="${asanaUrl}" target="_blank" rel="noopener noreferrer" title="Open board in Asana">→ ${moduleLabel}</a>
+            </div>
             <p class="routine-desc">${r.desc}</p>
-            <div class="routine-schedule">⏱ ${humanSchedule(r.schedule)} · <span class="status-pill" data-state="${state}">${stateLabel}</span></div>
+            <div class="routine-schedule">⏱ ${humanSchedule(r.schedule)} · NEXT <span class="rc-next" data-next="${next ? next.toISOString() : ''}">${countdown}</span> · <span class="status-pill" data-state="${state}">${stateLabel}</span></div>
+            <div class="routine-h24">${h24Label}</div>
+            <div class="routine-skills">${skillChips}</div>
             <div class="routine-meta">
               <div class="meta-cell">
                 <div class="k">Regulation</div>
@@ -1023,6 +1084,7 @@
           c.setAttribute('aria-pressed', c.getAttribute('data-filter') === ACTIVE_FILTER ? 'true' : 'false');
         });
         render(ACTIVE_FILTER);
+        scheduleCardCountdownTick();
         if (pushHistory !== false) {
           const base = '/routines';
           const target = ACTIVE_FILTER === 'all' ? base : base + '/' + ACTIVE_FILTER;
@@ -1259,19 +1321,191 @@
       function routineGithubUrl(path) {
         return 'https://github.com/trex0092/compliance-analyzer/blob/main/' + path.replace(' (planned)', '');
       }
-      function routineAsanaBoard(id) {
-        // Most sanctions / screening / TM / STR routines write to the
-        // unified ASANA_SCREENINGS_PROJECT_GID board. Everything else
-        // writes to its own audit-store blob; the Asana post is
-        // discretionary. Link to the project page when we know the GID.
-        const CORE_PROJECT = '1213759768596515';
-        if (/^sanctions|eocn|pep-rescreen|adverse-media|subject|str-|four-eyes|goaml|structuring|velocity|cross-border|tbml|vasp|tm-scan/.test(id)) {
-          return 'https://app.asana.com/0/' + CORE_PROJECT;
-        }
-        return null;
+      // Maps every routine id to the key of the 16-project Asana
+      // catalog (src/services/asanaModuleProjects.ts). Keeps the
+      // routines page + Netlify functions + module UIs in agreement
+      // on which board each cron writes to — FDL Art.24 audit chain
+      // is only contiguous if every artefact for a domain lands on
+      // the same board.
+      const ROUTINE_TO_MODULE = {
+        // screening_and_watchlist
+        'sanctions-ingest': 'screening_and_watchlist',
+        'sanctions-delta-screen': 'screening_and_watchlist',
+        'sanctions-watch': 'screening_and_watchlist',
+        'eocn-ingest-retry': 'screening_and_watchlist',
+        'pep-rescreen-by-tier': 'screening_and_watchlist',
+        'adverse-media-hot-sweep': 'screening_and_watchlist',
+        'subject-resolution-review': 'screening_and_watchlist',
+
+        // transaction_monitoring
+        'tm-scan': 'transaction_monitoring',
+        'structuring-pattern-sweep': 'transaction_monitoring',
+        'velocity-spike-detector': 'transaction_monitoring',
+        'cross-border-aed60k-xcheck': 'transaction_monitoring',
+        'tbml-indicator-sweep': 'transaction_monitoring',
+        'vasp-wallet-flow-anomaly': 'transaction_monitoring',
+
+        // str_cases
+        'str-deadline-watch': 'str_cases',
+        'goaml-submission-health': 'str_cases',
+
+        // four_eyes_queue
+        'four-eyes-sla-sweep': 'four_eyes_queue',
+
+        // cdd_ubo_pep
+        'cdd-weekly-status': 'cdd_ubo_pep',
+        'expiry-scan': 'cdd_ubo_pep',
+
+        // esg_supply_lbma
+        'cahra-supplier-review': 'esg_supply_lbma',
+        'modern-slavery-indicator-sweep': 'esg_supply_lbma',
+        'asm-compliance-audit': 'esg_supply_lbma',
+        'mercury-minamata-sweep': 'esg_supply_lbma',
+        'child-labour-ilo182-sweep': 'esg_supply_lbma',
+        'carbon-scope-supply-chain': 'esg_supply_lbma',
+        'water-stewardship-cahra': 'esg_supply_lbma',
+        'grievance-mechanism-monitor': 'esg_supply_lbma',
+        'refiner-accreditation-check': 'esg_supply_lbma',
+        'chain-of-custody-verify': 'esg_supply_lbma',
+        'bullion-assay-drift': 'esg_supply_lbma',
+        'customs-declaration-recon': 'esg_supply_lbma',
+        'supplier-saq-rollover': 'esg_supply_lbma',
+        'lbma-audit-countdown': 'esg_supply_lbma',
+        'recycled-vs-mined-origin': 'esg_supply_lbma',
+
+        // dual_use_export_control
+        'dual-use-export-sweep': 'dual_use_export_control',
+
+        // governance_and_retention
+        'ai-governance-self-audit': 'governance_and_retention',
+        'red-team': 'governance_and_retention',
+        'regulatory-drift': 'governance_and_retention',
+        'regulatory-horizon': 'governance_and_retention',
+        'policy-refresh-after-circular': 'governance_and_retention',
+        'records-retention-sweep': 'governance_and_retention',
+        'brain-lessons-archive': 'governance_and_retention',
+        'clamp-reason-weekly-digest': 'governance_and_retention',
+        'advisor-budget-tracker': 'governance_and_retention',
+        'brain-clamp': 'governance_and_retention',
+        'chain-anchor': 'governance_and_retention',
+
+        // mlro_digest
+        'morning-briefing': 'mlro_digest',
+        'asana-weekly-digest': 'mlro_digest',
+        'asana-weekly-customer-status': 'mlro_digest',
+
+        // compliance_tasks (Asana infrastructure crons)
+        'asana-reconcile': 'compliance_tasks',
+        'asana-retry-queue': 'compliance_tasks',
+        'asana-sync': 'compliance_tasks',
+        'asana-super-brain-autopilot': 'compliance_tasks',
+
+        // counterparties_accounts
+        'cbuae-fx': 'counterparties_accounts'
+      };
+      // Friendly labels for the 16-project catalog — matches
+      // src/services/asanaModuleProjects.ts. Used by the card chip
+      // and the drawer Asana link.
+      const MODULE_LABELS = {
+        screening_and_watchlist: 'Subject Screening & Watchlist',
+        transaction_monitoring: 'Transaction Monitoring',
+        str_cases: 'STR Cases',
+        cdd_ubo_pep: 'CDD / UBO / PEP',
+        esg_supply_lbma: 'ESG, Supply Chain & LBMA',
+        dual_use_export_control: 'Dual-Use & Export Control',
+        governance_and_retention: 'Governance & Retention',
+        audit_inspection: 'Audit & Inspection',
+        mlro_digest: 'MLRO Central Digest',
+        employees_and_training: 'Employees & Training',
+        onboarding_workbench: 'Onboarding Workbench',
+        compliance_tasks: 'Compliance Tasks',
+        four_eyes_queue: 'Four-Eyes Queue',
+        shipments_logistics: 'Shipments & Logistics',
+        counterparties_accounts: 'Counterparties',
+        incidents_whistleblower: 'Incidents & Whistleblower'
+      };
+      function routineModuleKey(id) {
+        return ROUTINE_TO_MODULE[id] || null;
+      }
+      function routineModuleLabel(id) {
+        const key = routineModuleKey(id);
+        return key ? MODULE_LABELS[key] : null;
+      }
+      function routineOwner(id) {
+        // Mirrors the owner column of the 16-project catalog so the
+        // MLRO sees who triages each routine without opening the skill.
+        const key = routineModuleKey(id);
+        const OWN = {
+          screening_and_watchlist: 'MLRO',
+          transaction_monitoring: 'MLRO',
+          str_cases: 'MLRO',
+          cdd_ubo_pep: 'Compliance Officer',
+          esg_supply_lbma: 'Compliance Officer',
+          dual_use_export_control: 'Compliance Officer',
+          governance_and_retention: 'MLRO',
+          audit_inspection: 'MLRO',
+          mlro_digest: 'MLRO',
+          employees_and_training: 'MLRO',
+          onboarding_workbench: 'Compliance Officer',
+          compliance_tasks: 'MLRO',
+          four_eyes_queue: 'Compliance Officer',
+          shipments_logistics: 'Compliance Officer',
+          counterparties_accounts: 'Compliance Officer',
+          incidents_whistleblower: 'MLRO'
+        };
+        return key && OWN[key] ? OWN[key] : 'MLRO';
       }
 
+      function routineAsanaBoard(id) {
+        // Reads /api/asana/config live to resolve every routine's
+        // target board via the 16-project catalog. If the catalog
+        // GID is not yet set (the MLRO has not run the bootstrap),
+        // falls back to the unified screening board so nothing drops.
+        const key = routineModuleKey(id);
+        const gid = (window.__asanaProjects && key && window.__asanaProjects[key])
+          || (window.__asanaProjects && window.__asanaProjects.screening_and_watchlist)
+          || '1213759768596515';
+        return 'https://app.asana.com/0/' + gid;
+      }
+      // Pre-populate the catalog-resolved GIDs on load. Silent fail
+      // if the endpoint is unreachable — the drawer still renders
+      // with the fallback board.
+      (function preloadAsanaConfig() {
+        try {
+          const token = getAuthToken && getAuthToken();
+          if (!token) return;
+          fetch('/api/asana/config', {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token }
+          })
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (data) {
+              if (data && data.projects) window.__asanaProjects = data.projects;
+            })
+            .catch(function () { /* silent */ });
+        } catch (_e) { /* ignore */ }
+      })();
+
       let drawerCountdownTimer = null;
+
+      // Card-grid countdown ticker — updates every `.rc-next` span in
+      // the visible grid once per second so the MLRO sees a live "Next
+      // run in Xh Ym" on every routine square, not just inside the
+      // drawer. Safe to re-arm on every render — re-entry-guarded.
+      let gridCountdownTimer = null;
+      function scheduleCardCountdownTick() {
+        if (gridCountdownTimer) return;
+        gridCountdownTimer = setInterval(function () {
+          const nodes = document.querySelectorAll('#routinesGrid .rc-next');
+          if (!nodes.length) return;
+          nodes.forEach(function (el) {
+            const iso = el.getAttribute('data-next');
+            if (!iso) return;
+            const ms = new Date(iso).getTime() - Date.now();
+            el.textContent = formatCountdown(ms);
+          });
+        }, 1000);
+      }
 
       function openDrawer(routineId) {
         const r = ROUTINES.find(x => x.id === routineId);
