@@ -178,8 +178,7 @@ export function createAnthropicAdvisor(opts: AnthropicAdvisorOptions = {}): Advi
     // and inter-byte watchdog (30s) fire first in normal operation;
     // this exists only to rescue the fallback path when the network
     // itself is wedged and the server-side timers can't reach us.
-    const wallClock =
-      typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const wallClock = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const wallClockTimer =
       wallClock !== null ? setTimeout(() => wallClock.abort(), timeoutMs) : null;
 
