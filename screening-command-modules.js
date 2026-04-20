@@ -152,6 +152,119 @@
     }
   ];
 
+  // ─── Known public adverse-media register ────────────────────────────
+  // Seed dataset of subjects with CONFIRMED public-source adverse media
+  // reporting, curated for the UAE DPMS / AML compliance domain. The
+  // simulation path (used when the MLRO is not yet signed in) screens
+  // subject names against this register so high-profile published cases
+  // surface a PENDING REVIEW verdict rather than a misleading NEGATIVE.
+  //
+  // A simulated screen can NEVER produce a definitive clean disposition
+  // (FDL No.(10)/2025 Art.20-21 — CO situational awareness; FATF Rec 10
+  // — ongoing CDD). This register is the minimum floor of integrity for
+  // the pre-auth path; the authenticated backend runs the full fan-out.
+  //
+  // Every entry must cite a named public source. No rumours, no
+  // uncited allegations — FDL Art.29 no-tipping-off still applies and
+  // reputational exposure demands primary-source discipline.
+  var KNOWN_ADVERSE_MEDIA = [
+    {
+      names: ['ozcan halac', 'özcan halaç', 'ozcan halaç', 'özcan halac'],
+      country: 'turkey',
+      entityType: 'individual',
+      categories: ['criminal_fraud', 'money_laundering', 'regulatory_action'],
+      classification: 'potential',
+      confidence: 0.82,
+      source: 'Reuters · 6 Oct 2025',
+      url: 'https://www.reuters.com/world/middle-east/turkey-orders-23-arrests-istanbul-gold-refinery-probe-state-media-says-2025-10-06/',
+      summary: 'Turkey ordered 23 arrests in an Istanbul gold-refinery probe (Oct 2025); named individual in state-media reporting on the export-subsidy fraud scheme (~$12M). Corroborated by Turkish Minute (6 Oct 2025) and Hurriyet Daily News. DPMS-sector adverse media — relevant to MoE Circular 08/AML/2021 and LBMA RGG v9 supply-chain due diligence.'
+    },
+    {
+      names: [
+        'istanbul gold refinery',
+        'istanbul altin rafinerisi',
+        'i̇stanbul altin rafinerisi',
+        'iar',
+        'istanbul gold refinery inc',
+        'istanbul gold refinery a.s.',
+        'istanbul altin rafinerisi as'
+      ],
+      country: 'turkey',
+      entityType: 'legal_entity',
+      categories: ['criminal_fraud', 'money_laundering', 'regulatory_action', 'negative_reputation'],
+      classification: 'confirmed',
+      confidence: 0.93,
+      source: 'Reuters · Turkish Minute · Hurriyet Daily News · 6 Oct 2025',
+      url: 'https://www.turkishminute.com/2025/10/06/turkey-detains-21-in-probe-into-istanbul-gold-refinery-over-export-subsidy-fraud/',
+      summary: 'Istanbul Gold Refinery (IAR) and affiliated companies implicated in a coordinated export-subsidy fraud scheme (Oct 2025). Turkish authorities detained 21-22 individuals and issued 23 detention warrants; alleged state defrauded of ~$12-12.5M via fake gold exports to obtain subsidies. DPMS-sector — direct exposure for UAE gold refiners and counterparties under MoE Circular 08/AML/2021 and LBMA RGG v9.'
+    }
+  ];
+
+  function normalizeName(s) {
+    // Turkish characters that do not decompose under NFD need an
+    // explicit fold: ı (dotless i), İ (dotted capital I, already
+    // handled by toLowerCase but mapped here for safety), plus a
+    // handful of extended Latin pairs used in UAE-relevant
+    // jurisdictions (TR, DE, ES, scandinavian). NFD handles the rest.
+    var folded = String(s == null ? '' : s)
+      .toLowerCase()
+      .replace(/ı/g, 'i')
+      .replace(/İ/g, 'i')
+      .replace(/ş/g, 's')
+      .replace(/ğ/g, 'g')
+      .replace(/ç/g, 'c')
+      .replace(/ü/g, 'u')
+      .replace(/ö/g, 'o')
+      .replace(/ß/g, 'ss')
+      .replace(/æ/g, 'ae')
+      .replace(/ø/g, 'o')
+      .replace(/å/g, 'a')
+      .replace(/ñ/g, 'n');
+    return folded
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')  // strip remaining combining diacritics
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Token-set name match. Both subject and candidate are tokenised and
+  // we consider a match when every candidate token appears in the
+  // subject (or vice-versa for short names). This is deliberately
+  // conservative — we want to catch "ozcan halac" / "Özcan Halaç" /
+  // "Halac, Ozcan" but not random substring collisions.
+  function nameMatches(subject, candidate) {
+    var a = normalizeName(subject);
+    var b = normalizeName(candidate);
+    if (!a || !b) return false;
+    if (a === b) return true;
+    var aTok = a.split(' ').filter(Boolean);
+    var bTok = b.split(' ').filter(Boolean);
+    if (!aTok.length || !bTok.length) return false;
+    var setA = {};
+    aTok.forEach(function (t) { setA[t] = true; });
+    var overlap = 0;
+    bTok.forEach(function (t) { if (setA[t]) overlap += 1; });
+    // Require every candidate token to appear in the subject when the
+    // candidate is short (two-token names). For longer candidates, a
+    // majority overlap is enough.
+    if (bTok.length <= 2) return overlap === bTok.length;
+    return overlap >= Math.ceil(bTok.length * 0.75);
+  }
+
+  function findKnownAdverseMedia(subjectName, aliases) {
+    var candidates = [subjectName].concat(Array.isArray(aliases) ? aliases : []);
+    for (var i = 0; i < KNOWN_ADVERSE_MEDIA.length; i++) {
+      var entry = KNOWN_ADVERSE_MEDIA[i];
+      for (var j = 0; j < entry.names.length; j++) {
+        for (var k = 0; k < candidates.length; k++) {
+          if (candidates[k] && nameMatches(candidates[k], entry.names[j])) return entry;
+        }
+      }
+    }
+    return null;
+  }
+
   function safeParse(key, fallback) {
     try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
     catch (_) { return fallback; }
@@ -328,6 +441,16 @@
 
             var adverseHitsLine = Array.isArray(r.adverse_media_hits) && r.adverse_media_hits.length
               ? '<div class="mv-list-meta" data-tone="warn">Adverse media: ' + r.adverse_media_hits.map(esc).join(', ') + '</div>' : '';
+            var knownSourceLine = r.known_adverse_source && r.known_adverse_source.url
+              ? '<div class="mv-list-meta" data-tone="warn">' +
+                  'Public source: <a href="' + esc(r.known_adverse_source.url) + '" target="_blank" rel="noopener noreferrer">' +
+                    esc(r.known_adverse_source.source) +
+                  '</a>' +
+                  (r.known_adverse_source.summary
+                    ? '<br><span style="opacity:.85">' + esc(r.known_adverse_source.summary) + '</span>'
+                    : '') +
+                '</div>'
+              : '';
             var specialHitsLine = Array.isArray(r.special_flags) && r.special_flags.length
               ? '<div class="mv-list-meta" data-tone="warn">Specialised flag: ' + r.special_flags.map(esc).join(', ') + '</div>' : '';
             var integrityLine = r.integrity && r.integrity !== 'complete'
@@ -359,6 +482,7 @@
                   perListHtml +
                   hitDetailHtml +
                   adverseHitsLine +
+                  knownSourceLine +
                   specialHitsLine +
                   integrityLine +
                   sourceLine +
@@ -530,12 +654,30 @@
     var nameLower = (body.subjectName || '').toLowerCase();
     var aliasLower = ((body.aliases || [])[0] || '').toLowerCase();
     var haystack = nameLower + ' ' + aliasLower;
-    var conf = haystack.indexOf('test-hit') >= 0 ? 0.95
-      : haystack.indexOf('pep') >= 0 ? 0.55
-      : 0.04;
-    var cls = conf >= 0.85 ? 'confirmed' : conf >= 0.5 ? 'potential' : 'weak';
+
+    // First: screen against the seeded known public adverse-media
+    // register. This catches high-profile Reuters / state-media cases
+    // (e.g. Istanbul gold-refinery probe, Oct 2025) that the MLRO would
+    // be negligent to pass as NEGATIVE even in the pre-auth flow.
+    var knownHit = findKnownAdverseMedia(body.subjectName, body.aliases);
+
+    var conf, cls;
+    if (knownHit) {
+      conf = knownHit.confidence;
+      cls = conf >= 0.85 ? 'confirmed' : conf >= 0.5 ? 'potential' : 'weak';
+    } else {
+      conf = haystack.indexOf('test-hit') >= 0 ? 0.95
+        : haystack.indexOf('pep') >= 0 ? 0.55
+        : 0.04;
+      cls = conf >= 0.85 ? 'confirmed' : conf >= 0.5 ? 'potential' : 'weak';
+    }
     var disposition = dispositionFromClassification(cls);
     if (disposition === 'positive' || disposition === 'partial') disposition = 'pending';
+    // Integrity gate (FDL No.(10)/2025 Art.20-21, FATF Rec 10): a
+    // simulated screen MUST NOT produce a clean NEGATIVE disposition.
+    // Force PENDING REVIEW so the MLRO re-runs on the live backend
+    // before closing the file.
+    if (disposition === 'negative') disposition = 'pending';
 
     var perList = sanctionsLists.map(function (listId) {
       var item = SANCTIONS_LISTS.filter(function (l) { return l.id === listId; })[0];
@@ -553,8 +695,20 @@
     });
 
     var adverseHits = [];
-    if (haystack.indexOf('test-adverse') >= 0) adverseHits = adverseMedia.slice(0, 3);
-    else if (haystack.indexOf('pep') >= 0 && adverseMedia.indexOf('political_pep') >= 0) adverseHits.push('political_pep');
+    if (knownHit) {
+      // Intersect the known-hit categories with what the MLRO asked to
+      // screen for. If the MLRO disabled every category the known-hit
+      // covers, fall back to the full known-hit category list so the
+      // adverse-media signal is never silently dropped.
+      var intersection = knownHit.categories.filter(function (c) {
+        return adverseMedia.indexOf(c) >= 0;
+      });
+      adverseHits = intersection.length ? intersection : knownHit.categories.slice();
+    } else if (haystack.indexOf('test-adverse') >= 0) {
+      adverseHits = adverseMedia.slice(0, 3);
+    } else if (haystack.indexOf('pep') >= 0 && adverseMedia.indexOf('political_pep') >= 0) {
+      adverseHits.push('political_pep');
+    }
 
     var specialFlags = [];
     if (haystack.indexOf('test-pf') >= 0 && specialScreens.indexOf('proliferation') >= 0) specialFlags.push('proliferation');
@@ -579,6 +733,11 @@
       sanctions_lists: sanctionsLists,
       adverse_media: adverseMedia,
       adverse_media_hits: adverseHits,
+      known_adverse_source: knownHit ? {
+        source: knownHit.source,
+        url: knownHit.url,
+        summary: knownHit.summary
+      } : null,
       special_screens: specialScreens,
       special_flags: specialFlags,
       integrity: 'simulated',
