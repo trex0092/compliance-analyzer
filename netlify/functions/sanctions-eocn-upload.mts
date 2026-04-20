@@ -35,8 +35,9 @@
  *     domestic source this endpoint feeds)
  */
 
-import type { Config } from '@netlify/functions';
+import type { Config, Context } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
+import { checkRateLimit } from './middleware/rate-limit.mts';
 
 const SNAPSHOT_STORE = 'sanctions-snapshots';
 const INGEST_AUDIT_STORE = 'sanctions-ingest-audit';
@@ -116,8 +117,18 @@ async function writeAudit(payload: Record<string, unknown>): Promise<void> {
   }
 }
 
-export default async (req: Request): Promise<Response> => {
+export default async (req: Request, context: Context): Promise<Response> => {
   const startedAt = new Date().toISOString();
+
+  // Sensitive tier: 10 requests per IP per 15 minutes. This is a write
+  // endpoint that persists MLRO-uploaded UAE_EOCN sanctions snapshots
+  // (Cabinet Res 74/2020 Art.4-7); must not be scrape-friendly.
+  const rateLimited = await checkRateLimit(req, {
+    clientIp: context.ip,
+    namespace: 'sanctions-eocn-upload',
+    max: 10,
+  });
+  if (rateLimited) return rateLimited;
 
   if (!isAuthorised(req)) {
     return Response.json(

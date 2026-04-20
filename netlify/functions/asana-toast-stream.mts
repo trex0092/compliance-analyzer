@@ -22,8 +22,9 @@
  *     pure pass-through)
  */
 
-import type { Config } from '@netlify/functions';
+import type { Config, Context } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
+import { checkRateLimit } from './middleware/rate-limit.mts';
 
 const TOAST_STREAM_STORE = 'asana-toast-stream';
 
@@ -38,7 +39,17 @@ interface PendingToast {
   atIso: string;
 }
 
-export default async (request: Request): Promise<Response> => {
+export default async (request: Request, context: Context): Promise<Response> => {
+  // General-tier rate limit: the SPA polls every ~30s, so 100 req / 15 min
+  // per IP leaves ample headroom for real usage while blocking drain floods
+  // from an attacker that obtained (or guessed) the bearer token.
+  const rateLimited = await checkRateLimit(request, {
+    clientIp: context.ip,
+    namespace: 'asana-toast-stream',
+    max: 100,
+  });
+  if (rateLimited) return rateLimited;
+
   // Basic auth check — require the HAWKEYE_BRAIN_TOKEN bearer
   // so random internet traffic can't drain the stream. The SPA
   // injects this token via the Netlify rewrite + environment.

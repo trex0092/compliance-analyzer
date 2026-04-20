@@ -25,24 +25,36 @@
  */
 
 import type { CountryCodeIso2, DateDdMmYyyy, IsoTimestamp } from './customerProfile';
+import {
+  DPMS_CASH_THRESHOLD_AED,
+  CROSS_BORDER_CASH_THRESHOLD_AED,
+} from './constants';
 
 // ---------------------------------------------------------------------------
-// Regulatory thresholds — single source of truth for TM rules
+// Regulatory thresholds — re-exported from ./constants (single source of truth).
+// Do NOT define regulatory values literally here; update ./constants and
+// REGULATORY_CONSTANTS_VERSION if a regulation changes.
 // ---------------------------------------------------------------------------
 
 /**
  * MoE Circular 08/AML/2021 — DPMS sector cash transaction reporting
  * threshold. Any cash transaction at or above this value triggers a
  * mandatory CTR filing via goAML.
+ *
+ * Re-export of `DPMS_CASH_THRESHOLD_AED` from ./constants. This alias
+ * preserves the local name existing TM rule callers import.
  */
-export const DPMS_CASH_CTR_THRESHOLD_AED = 55_000;
+export const DPMS_CASH_CTR_THRESHOLD_AED = DPMS_CASH_THRESHOLD_AED;
 
 /**
- * FDL Art.16 — cross-border cash/BNI (bearer negotiable instrument)
- * declaration threshold. Any physical cross-border movement at or
- * above this value requires a customs declaration.
+ * FDL Art.16 / Cabinet Res 134/2025 Art.16 — cross-border cash/BNI
+ * (bearer negotiable instrument) declaration threshold. Any physical
+ * cross-border movement at or above this value requires a customs
+ * declaration.
+ *
+ * Re-export of `CROSS_BORDER_CASH_THRESHOLD_AED` from ./constants.
  */
-export const CROSS_BORDER_CASH_DECLARATION_AED = 60_000;
+export const CROSS_BORDER_CASH_DECLARATION_AED = CROSS_BORDER_CASH_THRESHOLD_AED;
 
 /**
  * Structuring detection: any amount that lands within this band

@@ -11,10 +11,18 @@
  *             MoE Circular 08/AML/2021.
  */
 
+import { CROSS_BORDER_CASH_THRESHOLD_AED } from '../domain/constants';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/** AED threshold for mandatory cross-border cash/BNI declaration */
-export const CROSS_BORDER_THRESHOLD_AED = 60_000;
+/**
+ * AED threshold for mandatory cross-border cash/BNI declaration.
+ *
+ * Re-export of `CROSS_BORDER_CASH_THRESHOLD_AED` from
+ * src/domain/constants.ts — the single source of truth. This alias
+ * preserves the local name existing callers import.
+ */
+export const CROSS_BORDER_THRESHOLD_AED = CROSS_BORDER_CASH_THRESHOLD_AED;
 
 /** Structuring detection window: 30-day rolling */
 export const STRUCTURING_WINDOW_DAYS = 30;

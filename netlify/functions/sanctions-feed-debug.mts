@@ -25,8 +25,9 @@
  *     needs a way to verify upstream feed health)
  */
 
-import type { Config } from '@netlify/functions';
+import type { Config, Context } from '@netlify/functions';
 import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
+import { checkRateLimit } from './middleware/rate-limit.mts';
 
 const INGEST_USER_AGENT =
   'Mozilla/5.0 (compatible; HawkeyeSterlingComplianceBot/1.0; +https://github.com/trex0092/compliance-analyzer)';
@@ -61,7 +62,19 @@ function isAuthorised(req: Request): boolean {
   return false;
 }
 
-export default async (req: Request): Promise<Response> => {
+export default async (req: Request, context: Context): Promise<Response> => {
+  // Sensitive-tier rate limit: each call fans out to an upstream sanctions
+  // provider (treasury.gov, ec.europa.eu, ofsistorage...). 10 req / 15 min
+  // per IP protects both this function and the upstream providers from
+  // an accidental or hostile storm — operator diagnostics are intentional
+  // but must not become a scrape vector.
+  const rateLimited = await checkRateLimit(req, {
+    clientIp: context.ip,
+    namespace: 'sanctions-feed-debug',
+    max: 10,
+  });
+  if (rateLimited) return rateLimited;
+
   if (!isAuthorised(req)) {
     return Response.json(
       { ok: false, error: 'unauthorised — set Authorization: Bearer <SANCTIONS_UPLOAD_TOKEN>' },

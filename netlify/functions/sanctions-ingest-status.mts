@@ -30,7 +30,9 @@
  *     coverage gap a MLRO sees)
  */
 
+import type { Context } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
+import { checkRateLimit } from './middleware/rate-limit.mts';
 
 /** Walk every page of a blob-store listing — the SDK paginates by default. */
 async function listAllBlobs(
@@ -76,7 +78,18 @@ interface AuditEntry {
   }>;
 }
 
-export default async (): Promise<Response> => {
+export default async (req: Request, context: Context): Promise<Response> => {
+  // General-tier rate limit: 100 req / 15 min per IP. This endpoint is
+  // read-only and returns audit metadata only (no PII), but still must
+  // not be scrape-friendly — FDL No.10/2025 Art.24 expects the audit
+  // store to be queryable by operators, not exfiltrated in bulk.
+  const rateLimited = await checkRateLimit(req, {
+    clientIp: context.ip,
+    namespace: 'sanctions-ingest-status',
+    max: 100,
+  });
+  if (rateLimited) return rateLimited;
+
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
