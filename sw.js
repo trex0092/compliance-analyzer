@@ -17,10 +17,12 @@ const STATIC_ASSETS = [
 
 function isHtmlDocument(url) {
   // Any request whose path is "/", ends in ".html", or matches one of
-  // the clean-URL redirects declared in netlify.toml is an HTML
-  // document. Never cache these — the CSP / inline-script hashes drift
-  // every deploy and any stale body will break the sign-in surface.
+  // the clean-URL or wildcard redirects declared in netlify.toml is an
+  // HTML document. Never cache these — the CSP / inline-script hashes
+  // drift every deploy and any stale body will break the sign-in
+  // surface or the rewritten module page.
   if (url.pathname === '/' || url.pathname.endsWith('.html')) return true;
+  // Exact clean-URL redirects (netlify.toml [[redirects]] from = "/foo")
   switch (url.pathname) {
     case '/login':
     case '/workbench':
@@ -31,6 +33,18 @@ function isHtmlDocument(url) {
     case '/integrations':
     case '/trading':
       return true;
+  }
+  // Wildcard rewrites: /workbench/*, /logistics/*, /routines/*,
+  // /compliance-ops/*, /screening-command/* all rewrite to HTML.
+  // Deep links like /workbench/alerts must also bypass the cache.
+  if (
+    url.pathname.startsWith('/workbench/') ||
+    url.pathname.startsWith('/logistics/') ||
+    url.pathname.startsWith('/routines/') ||
+    url.pathname.startsWith('/compliance-ops/') ||
+    url.pathname.startsWith('/screening-command/')
+  ) {
+    return true;
   }
   return false;
 }
