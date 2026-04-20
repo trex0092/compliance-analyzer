@@ -23,8 +23,12 @@ import {
 } from '../../services/asanaKanbanView';
 import { COMPANY_REGISTRY } from '../../domain/customers';
 import { isAsanaConfigured } from '../../services/asanaClient';
+import { resolveAsanaProjectGid } from '../../services/asanaModuleProjects';
 
-const DEFAULT_PROJECT_FALLBACK = '1213759768596515';
+// Routed through the 16-project catalog — Kanban default is the
+// Subject Screening & Watchlist board; resolver falls back safely
+// when the env var is unset.
+const DEFAULT_PROJECT_FALLBACK = resolveAsanaProjectGid('screening_and_watchlist');
 
 const COLUMN_ACCENTS: Record<KanbanColumn, string> = {
   todo: '#3B82F6',

@@ -6,6 +6,7 @@ import { createId } from '../../utils/id';
 import { nowIso } from '../../utils/dates';
 import { createStrLifecycleTasks, STR_SUBTASK_STAGES } from '../../services/strSubtaskLifecycle';
 import { isAsanaConfigured } from '../../services/asanaClient';
+import { resolveAsanaProjectGid } from '../../services/asanaModuleProjects';
 import { COMPANY_REGISTRY } from '../../domain/customers';
 import { STR_LIFECYCLE_DEPENDENCIES } from '../../services/asanaWorkflowAutomation';
 import DependencyDag, { type DagNode } from '../reasoning/DependencyDag';
@@ -119,10 +120,14 @@ export default function STRDraftPage() {
     const customer = selected.linkedCustomerId
       ? COMPANY_REGISTRY.find((c) => c.id === selected.linkedCustomerId)
       : undefined;
+    // STR drafts ride the STR / SAR / CTR / DPMSR / CNMR Cases board
+    // via the 16-project catalog. Customer-specific tenant GIDs still
+    // win when present (per-tenant routing stays authoritative); the
+    // catalog resolver provides the safe default.
     const projectGid =
       customer?.asanaComplianceProjectGid ??
       customer?.asanaWorkflowProjectGid ??
-      '1213759768596515';
+      resolveAsanaProjectGid('str_cases');
 
     try {
       const dispatch = await createStrLifecycleTasks({

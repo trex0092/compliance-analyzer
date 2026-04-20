@@ -25,7 +25,11 @@
 import type { Config, Context } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import { checkRateLimit } from './middleware/rate-limit.mts';
+import { authenticate } from './middleware/auth.mts';
 
+// Build marker — force Netlify function-pack rebuild after PR #409 auth
+// hardening failed to deploy on the prior commit. Safe to remove on the
+// next unrelated edit. FDL No.(10)/2025 Art.20-21.
 const TOAST_STREAM_STORE = 'asana-toast-stream';
 
 interface PendingToast {
@@ -50,15 +54,19 @@ export default async (request: Request, context: Context): Promise<Response> => 
   });
   if (rateLimited) return rateLimited;
 
-  // Basic auth check — require the HAWKEYE_BRAIN_TOKEN bearer
-  // so random internet traffic can't drain the stream. The SPA
-  // injects this token via the Netlify rewrite + environment.
-  const authHeader = request.headers.get('authorization') ?? '';
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const expected = process.env.HAWKEYE_BRAIN_TOKEN ?? '';
-  if (!expected || !token || token !== expected) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  // Auth — accept either the MLRO browser JWT (issued by
+  // /api/hawkeye-login) or the shared HAWKEYE_BRAIN_TOKEN hex
+  // bearer. The previous hand-rolled check compared the header
+  // against HAWKEYE_BRAIN_TOKEN only (non-constant-time, no JWT
+  // support), which silently broke the browser polling loop
+  // after the MLRO login migration landed in PR #391 — the SPA
+  // started sending its JWT and got 401 on every poll. The
+  // middleware does a constant-time compare and routes JWT vs
+  // hex on shape, so both callers (SPA + backend) work.
+  // FDL No.(10)/2025 Art.20-21 (operator access) & Art.24 (audit
+  // trail of every authenticated endpoint hit).
+  const auth = authenticate(request);
+  if (!auth.ok) return auth.response!;
 
   try {
     const store = getStore(TOAST_STREAM_STORE);

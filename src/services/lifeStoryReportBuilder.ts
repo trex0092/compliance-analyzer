@@ -7,7 +7,11 @@
  * 3-year historical adverse media, UBO + shell-company indicators,
  * transaction-risk signals, and a regulatory-anchored action
  * checklist. The output below becomes the Asana task description
- * posted to "The Screenings" section (project 1214124911186857).
+ * posted to "The Screenings" section. The target project GID is read
+ * from ASANA_SCREENINGS_PROJECT_GID (Netlify env); the run-time
+ * default is 1213759768596515, unified with screening-save.mts,
+ * transaction-monitor.mts, continuous-monitor.mts, immediateRiskAlerts,
+ * and .env.example so the run + disposition tasks always share a board.
  *
  * Compact markdown layout — no horizontal rules between sections so
  * the task description does not waste vertical space in the Asana

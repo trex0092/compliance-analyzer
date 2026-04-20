@@ -89,8 +89,18 @@ function getConfig(): AsanaConfig {
     (typeof window !== 'undefined' &&
       ((window as unknown as Record<string, unknown>).PROXY_URL as string)) ||
     undefined;
+  // Defensive guard — several sibling tests set globalThis.localStorage
+  // to a partial shim in beforeEach without clearing it in afterEach, so
+  // the stale global can reach this module as an `{}` object that passes
+  // `typeof !== 'undefined'` but has no getItem. Require getItem to be
+  // a callable function before we use it. Server-side callers (Netlify
+  // functions, crons) still fall through to the process.env branch
+  // below because typeof localStorage is strictly 'undefined' there.
   const browserProjectId =
-    (typeof localStorage !== 'undefined' && localStorage.getItem('asanaProjectId')) || undefined;
+    (typeof localStorage !== 'undefined' &&
+      typeof localStorage.getItem === 'function' &&
+      localStorage.getItem('asanaProjectId')) ||
+    undefined;
 
   // Server-side (new — reads from Netlify env vars / Node env).
   // Accept three legacy env var names for the Asana PAT: ASANA_TOKEN

@@ -47,6 +47,7 @@ import {
 } from '../../src/services/transactionMonitoringEngine';
 import type { TransactionInput } from '../../src/risk/transactionMonitoring';
 import { createAsanaTask } from '../../src/services/asanaClient';
+import { resolveAsanaProjectGid } from '../../src/services/asanaModuleProjects';
 
 const MAX_BODY_SIZE = 128 * 1024;
 const MAX_TRANSACTIONS_PER_CALL = 50;
@@ -217,7 +218,7 @@ async function postCriticalAlertAsana(
   alert: EnhancedTMAlert,
   tx: TransactionInput
 ): Promise<{ ok: boolean; gid?: string; error?: string }> {
-  const projectId = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
+  const projectId = resolveAsanaProjectGid('transaction_monitoring');
   if (!process.env.ASANA_TOKEN && !process.env.ASANA_ACCESS_TOKEN && !process.env.ASANA_API_TOKEN) {
     return { ok: false, error: 'ASANA_TOKEN not configured' };
   }

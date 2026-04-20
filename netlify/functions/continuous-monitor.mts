@@ -58,6 +58,7 @@ import {
   type MultiModalClassification,
 } from '../../src/services/multiModalNameMatcher';
 import { createAsanaTask } from '../../src/services/asanaClient';
+import { resolveAsanaProjectGid } from '../../src/services/asanaModuleProjects';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -582,8 +583,7 @@ async function runMonitor(): Promise<MonitorRunSummary> {
   // FDL Art.24 retention + Cabinet Res 134/2025 Art.19 internal review
   // both mandate a per-subject audit record; silent "no news" runs
   // break the audit trail.
-  const asanaProjectGid =
-    process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
+  const asanaProjectGid = resolveAsanaProjectGid('screening_and_watchlist');
   const dispatchPerSubject =
     process.env.CONTINUOUS_MONITOR_DISPATCH_ASANA === '1' ||
     process.env.CONTINUOUS_MONITOR_DISPATCH_ASANA === 'true';

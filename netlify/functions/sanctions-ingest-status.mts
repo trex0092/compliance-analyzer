@@ -33,6 +33,10 @@
 import type { Context } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import { checkRateLimit } from './middleware/rate-limit.mts';
+import { authenticate } from './middleware/auth.mts';
+// Build marker — force Netlify function-pack rebuild after PR #409 auth
+// hardening failed to deploy on the prior commit. Safe to remove on the
+// next unrelated edit. FDL No.(10)/2025 Art.20-21, Art.24.
 
 /** Walk every page of a blob-store listing — the SDK paginates by default. */
 async function listAllBlobs(
@@ -89,6 +93,15 @@ export default async (req: Request, context: Context): Promise<Response> => {
     max: 100,
   });
   if (rateLimited) return rateLimited;
+
+  // Auth — this endpoint exposes the sanctions-ingest audit store
+  // rollup (per-source run counts, last error messages, last fetched
+  // counts). That is operational audit metadata gated behind
+  // FDL No.10/2025 Art.24 — anonymous read access is out of scope.
+  // Accept either the MLRO browser JWT or the shared hex bearer so
+  // both the MLRO console and backend diagnostics can reach it.
+  const auth = authenticate(req);
+  if (!auth.ok) return auth.response!;
 
   const now = new Date();
   const today = now.toISOString().slice(0, 10);

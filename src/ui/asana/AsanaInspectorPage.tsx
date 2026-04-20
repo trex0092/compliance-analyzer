@@ -25,8 +25,12 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { loadKanbanBoard, KANBAN_COLUMNS, type KanbanBoard } from '../../services/asanaKanbanView';
 import { COMPANY_REGISTRY } from '../../domain/customers';
 import { isAsanaConfigured } from '../../services/asanaClient';
+import { resolveAsanaProjectGid } from '../../services/asanaModuleProjects';
 
-const DEFAULT_PROJECT_FALLBACK = '1213759768596515';
+// Routed through the 16-project catalog — Inspector views ride the
+// audit_inspection board; resolver falls back to the Screening board
+// if the MLRO has not yet bootstrapped the module projects.
+const DEFAULT_PROJECT_FALLBACK = resolveAsanaProjectGid('audit_inspection');
 
 interface ProjectOption {
   gid: string;

@@ -71,6 +71,19 @@
   status = 200
   force = true
 
+# Deep Reasoning — advisor-assisted MLRO analysis. Browser-facing
+# entrypoint to the Worker+Advisor pattern documented in CLAUDE.md §1.
+# The function authenticates (JWT or hex bearer), rate-limits 10/min
+# per IP, and forwards the question through buildAdvisorRequest +
+# parseAdvisorResponse from src/services/advisorStrategy.
+# Regulatory basis: FDL No.(10)/2025 Art.20-21 (CO reasoning trail),
+# Art.24 (10-year audit retention).
+[[redirects]]
+  from = "/api/brain-reason"
+  to = "/.netlify/functions/brain-reason"
+  status = 200
+  force = true
+
 # Main-page surface deep links. /integrations and /trading serve the
 # root index.html body while keeping the clean URL in the address bar;
 # app-boot.js reads location.pathname on load and activates the matching
@@ -182,13 +195,33 @@
     #  - 'unsafe-hashes' — wide XSS surface
     #  - https://api.allorigins.win (public CORS proxy, exfiltration vector)
     #  - https://*.netlify.app wildcard from connect-src
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-OSWPuki9+EuOD7XLKGau/7T5AgGcGvMOTEuGZtFdtHk=' 'sha256-dCmTh5g4qHzNrdfIR9qFg3IQkXDbF/PtiQuhOmNl2pw=' 'sha256-ydWyeD/OelaBxTq4zt/zCdPTgkkEEfIE1FYStuldH/8=' 'sha256-IBNXHJGgfMO2NGIuVMxr9klispo6th01CY0GjiGdFJ0=' 'sha256-Lw3Hck/T4BTmfhfWpSdYxj3iqriReUGnY61i/M62imw=' 'sha256-b1tCiWHPyeLQPgI6Nduq7OCNDrYN+ZywVBgqDyXLgLY=' 'sha256-hrVboLa3Hm2HY+WFuED5clonim4uZU2IQsv02Y2vgts=' 'sha256-xH3xtgsCBjv3KRYqcFnPEpKFkl2rAXimLWREYjXNMTI=' 'sha256-Hk8jWk/pAJQwPmgIRyBAnq432tLgoV0B2S/KuTnYnjc=' 'sha256-uiMLoQ3hAM+oZOLo/EAeaqSjiXIncM1dwpgyEGcJwBA=' 'sha256-+AnjUWuu2f0NF2GlKki1TCxgwSp5YeGhmGa3HWEqpYE=' 'sha256-+pk6OfI/XT36Dz4GvPjEds5uQNnZwR6XX3I78smBllQ=' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://app.asana.com https://api.anthropic.com https://api.openai.com https://www.googleapis.com https://accounts.google.com https://generativelanguage.googleapis.com https://api.tavily.com https://api.metals.live https://api.gold-api.com https://api.metalpriceapi.com https://open.er-api.com https://data-asg.goldprice.org https://fonts.googleapis.com https://fonts.gstatic.com https://openrouter.ai https://scsanctions.un.org https://sanctionslistservice.ofac.treas.gov https://webgate.ec.europa.eu https://ofsistorage.blob.core.windows.net; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'self'; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-OSWPuki9+EuOD7XLKGau/7T5AgGcGvMOTEuGZtFdtHk=' 'sha256-dCmTh5g4qHzNrdfIR9qFg3IQkXDbF/PtiQuhOmNl2pw=' 'sha256-ydWyeD/OelaBxTq4zt/zCdPTgkkEEfIE1FYStuldH/8=' 'sha256-IBNXHJGgfMO2NGIuVMxr9klispo6th01CY0GjiGdFJ0=' 'sha256-Lw3Hck/T4BTmfhfWpSdYxj3iqriReUGnY61i/M62imw=' 'sha256-b1tCiWHPyeLQPgI6Nduq7OCNDrYN+ZywVBgqDyXLgLY=' 'sha256-hrVboLa3Hm2HY+WFuED5clonim4uZU2IQsv02Y2vgts=' 'sha256-xH3xtgsCBjv3KRYqcFnPEpKFkl2rAXimLWREYjXNMTI=' 'sha256-Hk8jWk/pAJQwPmgIRyBAnq432tLgoV0B2S/KuTnYnjc=' 'sha256-SdJcKzAZ8D6PVKuy3ZGqgoGMphrrbXMN15/vBymzzME=' 'sha256-BI1lyQZy1TrgaKgNr3quK/N+j4c7oz7jC1qm4ERO51Q=' 'sha256-OdlqztNCoUY6f1NEpsdcechV/AcFVBCyjeg2dHlJCek=' 'sha256-uiMLoQ3hAM+oZOLo/EAeaqSjiXIncM1dwpgyEGcJwBA=' 'sha256-+AnjUWuu2f0NF2GlKki1TCxgwSp5YeGhmGa3HWEqpYE=' 'sha256-+pk6OfI/XT36Dz4GvPjEds5uQNnZwR6XX3I78smBllQ=' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://app.asana.com https://api.anthropic.com https://api.openai.com https://www.googleapis.com https://accounts.google.com https://generativelanguage.googleapis.com https://api.tavily.com https://api.metals.live https://api.gold-api.com https://api.metalpriceapi.com https://open.er-api.com https://data-asg.goldprice.org https://fonts.googleapis.com https://fonts.gstatic.com https://openrouter.ai https://scsanctions.un.org https://sanctionslistservice.ofac.treas.gov https://webgate.ec.europa.eu https://ofsistorage.blob.core.windows.net; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'self'; upgrade-insecure-requests"
 
 [[headers]]
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
     Content-Type = "application/javascript"
+
+# Cache strategy split ----------------------------------------------
+# The /* block above paints everything no-store. That prevents stale
+# HTML but also kills JS/CSS caching, so the browser re-downloads the
+# whole SPA every visit. Below we override for versioned JS/CSS —
+# anything matching *.js / *.css can cache for a year because our
+# `?v=N` query-string changes on every deploy (manual bumps in HTML
+# source).  HTML stays no-store from /* above, so the browser always
+# fetches fresh and picks up whatever `?v=` the server currently
+# serves. This is the standard "cache forever, bust with URL change"
+# pattern and fixes the "old cached JS" class of issues after deploy.
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
   for = "/manifest.json"

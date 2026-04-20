@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <meta name="theme-color" content="#050b18" />
     <title>Hawkeye Sterling V2 — Routines</title>
-    <script src="auth-gate.js?v=1" data-auth-gate="protect"></script>
+    <script src="auth-gate.js?v=3" data-auth-gate="protect"></script>
     <script>(function(){var s=(location.pathname||'/').split('/').filter(Boolean);var L=['logistics','workbench','compliance-ops','routines','screening-command'];if(s.length>=2&&L.indexOf(s[0].replace(/\.html$/,''))!==-1){document.documentElement.classList.add('module-view-active');}})();</script>
     <style id="moduleViewActiveStylesInline">
       html.module-view-active .topbar,
@@ -27,7 +27,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="module-enhancements.css?v=2" />
+    <link rel="stylesheet" href="module-enhancements.css?v=6" />
     <style>
       :root {
         --ink: #030814;
@@ -334,6 +334,45 @@
         color: var(--mist); word-break: break-word;
       }
       .drawer-cell .v.reg { color: var(--azure-bright); }
+      .drawer-cell .v a { color: var(--azure-bright); text-decoration: none; border-bottom: 1px dashed rgba(127, 193, 255, 0.4); }
+      .drawer-cell .v a:hover { border-bottom-color: var(--azure-bright); }
+      .drawer-extras {
+        margin-bottom: 18px; padding: 14px 16px; border-radius: 10px;
+        background: rgba(10, 22, 40, 0.6);
+        border: 1px solid var(--border);
+      }
+      .drawer-extras[hidden] { display: none; }
+      .drawer-extras-head {
+        margin-bottom: 10px;
+      }
+      .drawer-extras-head .k {
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1.8px; text-transform: uppercase; color: var(--steel);
+      }
+      .drawer-extras-row {
+        display: grid; grid-template-columns: 140px 1fr;
+        gap: 12px; padding: 6px 0;
+        border-top: 1px solid rgba(127, 193, 255, 0.08);
+      }
+      .drawer-extras-row:first-child { border-top: 0; }
+      .drawer-extras-row .k {
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1.5px; text-transform: uppercase; color: var(--steel);
+        align-self: center;
+      }
+      .drawer-extras-row .v {
+        font-family: 'DM Mono', monospace; font-size: 11.5px;
+        color: var(--mist); word-break: break-word;
+      }
+      .drawer-extras-row .v a { color: var(--azure-bright); text-decoration: none; }
+      .drawer-extras-row .v a:hover { text-decoration: underline; }
+      .drawer-extras-row .v .chip {
+        display: inline-block; padding: 2px 8px; margin: 2px 4px 2px 0;
+        border-radius: 12px; font-size: 10px; letter-spacing: 1px;
+        background: rgba(47, 125, 255, 0.14);
+        border: 1px solid rgba(47, 125, 255, 0.35);
+        color: var(--azure-bright);
+      }
       /* 30-day run-history heatmap — one cell per day, oldest on the
          left, today on the right. Colour bands surface SLA misses
          (zero-count days with an expected-per-day > 0 are flagged
@@ -466,6 +505,45 @@
       .routine-cadence[data-cadence="weekly"] { background: rgba(29, 78, 216, 0.2); color: var(--mist); border-color: rgba(29, 78, 216, 0.5); }
 
       .routine-desc { color: var(--ice); font-size: 12.5px; line-height: 1.55; opacity: 0.72; margin: 0; }
+      .routine-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+      .rc-chip {
+        display: inline-flex; align-items: center;
+        padding: 2px 9px; border-radius: 999px;
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1px; text-transform: uppercase;
+        text-decoration: none; line-height: 1.6;
+      }
+      .rc-domain {
+        background: rgba(168, 85, 247, 0.16);
+        border: 1px solid rgba(168, 85, 247, 0.45);
+        color: #e9d5ff;
+      }
+      .rc-owner {
+        background: rgba(127, 193, 255, 0.1);
+        border: 1px solid rgba(127, 193, 255, 0.35);
+        color: #7fc1ff;
+      }
+      .rc-asana {
+        background: rgba(244, 114, 182, 0.1);
+        border: 1px solid rgba(244, 114, 182, 0.42);
+        color: #fbcfe8;
+      }
+      .rc-asana:hover { background: rgba(244, 114, 182, 0.22); }
+      .rc-next { font-family: 'DM Mono', monospace; color: var(--azure-bright); }
+      .routine-h24 {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        letter-spacing: 1px; text-transform: uppercase;
+        color: var(--steel); margin-top: 6px;
+      }
+      .routine-skills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+      .rc-skill {
+        font-family: 'DM Mono', monospace; font-size: 10px;
+        padding: 1px 7px; border-radius: 8px;
+        background: rgba(127, 193, 255, 0.08);
+        border: 1px solid rgba(127, 193, 255, 0.28);
+        color: var(--azure-bright);
+      }
+      .rc-skill-empty { opacity: 0.35; font-size: 10px; font-family: 'DM Mono', monospace; }
 
       .routine-meta {
         margin-top: auto; padding-top: 12px;
@@ -711,7 +789,46 @@
             <div class="k">Last seen</div>
             <div class="v" id="drawerLastSeen">—</div>
           </div>
+          <div class="drawer-cell">
+            <div class="k">Next run (UTC)</div>
+            <div class="v" id="drawerNextRun">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Time until next</div>
+            <div class="v" id="drawerCountdown">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Domain</div>
+            <div class="v" id="drawerDomain">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Source function</div>
+            <div class="v" id="drawerSource">—</div>
+          </div>
         </div>
+        <section class="drawer-extras" id="drawerExtras" hidden>
+          <div class="drawer-extras-head">
+            <span class="k">Dependencies &amp; related</span>
+          </div>
+          <div class="drawer-extras-body">
+            <div class="drawer-extras-row">
+              <span class="k">Upstream</span>
+              <span class="v" id="drawerUpstream">—</span>
+            </div>
+            <div class="drawer-extras-row">
+              <span class="k">Downstream</span>
+              <span class="v" id="drawerDownstream">—</span>
+            </div>
+            <div class="drawer-extras-row">
+              <span class="k">Related skills</span>
+              <span class="v" id="drawerRelatedSkills">—</span>
+            </div>
+            <div class="drawer-extras-row">
+              <span class="k">Asana board</span>
+              <span class="v" id="drawerAsanaBoard">—</span>
+            </div>
+          </div>
+        </section>
         <section class="drawer-timeline" id="drawerTimeline" hidden>
           <div class="drawer-timeline-head">
             <span class="k">30-day run history</span>
@@ -775,7 +892,52 @@
         { id: 'morning-briefing', title: 'Morning Briefing', schedule: '0 4 * * 1-5', cadence: 'daily', desc: 'Weekday MLRO briefing digest — overnight alerts, filings due, priority cases.', reg: 'FDL No.10/2025 Art.20', store: 'briefing-audit' },
         { id: 'asana-weekly-customer-status', title: 'Weekly Customer Status', schedule: '0 6 * * 1', cadence: 'weekly', desc: 'Monday weekly rollup of customer lifecycle status to Asana customer-status board.', reg: 'Cabinet Res 134/2025 Art.7', store: 'weekly-cust-audit' },
         { id: 'asana-weekly-digest', title: 'Weekly Compliance Digest', schedule: '0 6 * * 1', cadence: 'weekly', desc: 'Monday 6AM digest for management — open risks, filings, approvals, KPIs.', reg: 'Cabinet Res 134/2025 Art.19', store: 'weekly-digest-audit' },
-        { id: 'cdd-weekly-status', title: 'CDD Weekly Status', schedule: '0 5 * * 1', cadence: 'weekly', desc: 'Monday rollup of CDD review pipeline — pending, overdue, escalated, closed.', reg: 'Cabinet Res 134/2025 Art.7', store: 'cdd-status-audit' }
+        { id: 'cdd-weekly-status', title: 'CDD Weekly Status', schedule: '0 5 * * 1', cadence: 'weekly', desc: 'Monday rollup of CDD review pipeline — pending, overdue, escalated, closed.', reg: 'Cabinet Res 134/2025 Art.7', store: 'cdd-status-audit' },
+
+        // ───────── Brain Intelligence (3) ─────────
+        { id: 'brain-lessons-archive', title: 'Brain Lessons Archive', schedule: '0 2 * * *', cadence: 'daily', desc: 'Daily rollup of deepBrain.lessons across every screening / CDD / STR run in the last 24h; clusters repeat lessons and opens Asana task for any lesson that has fired more than 3x in 30 days.', reg: 'EU AI Act Art.15 · FDL No.10/2025 Art.21', store: 'brain-lessons-audit' },
+        { id: 'clamp-reason-weekly-digest', title: 'Clamp Reason Weekly Digest', schedule: '0 6 * * 1', cadence: 'weekly', desc: 'Monday 06:00 UTC digest of weaponized-brain clampReasons from the prior 7 days; highlights the top 10 most-frequent clamps + subsystem failures so tuning targets are visible (brain-clamp cron sibling).', reg: 'EU AI Act Art.9 · FDL No.10/2025 Art.21', store: 'clamp-digest-audit' },
+        { id: 'advisor-budget-tracker', title: 'Advisor Budget Tracker', schedule: '0 2 * * *', cadence: 'daily', desc: 'Daily Opus advisor call-count + cost tracker. Enforces the 80% Sonnet / 20% Opus rule (CLAUDE.md §1 advisor strategy); raises Asana alert if Opus share exceeds 35% or monthly advisor spend crosses budget.', reg: 'NIST AI RMF MANAGE-2 · ISO/IEC 42001 §8.2', store: 'advisor-budget-audit' },
+
+        // ───────── Compliance (5) ─────────
+        { id: 'str-deadline-watch', title: 'STR Deadline Watch', schedule: '*/15 * * * *', cadence: 'continuous', desc: 'STR/SAR filing countdown — escalates any case that sits unreviewed for 24h without a filing decision (file without delay).', reg: 'FDL No.10/2025 Art.26-27', store: 'str-deadline-audit' },
+        { id: 'four-eyes-sla-sweep', title: 'Four-Eyes SLA Sweep', schedule: '0 * * * *', cadence: 'continuous', desc: 'Detects partial/confirmed matches left un-cosigned for >24 hours; escalates to the Compliance Officer.', reg: 'FDL No.10/2025 Art.20-21', store: 'four-eyes-sla-audit' },
+        { id: 'records-retention-sweep', title: 'Records Retention Sweep', schedule: '30 1 * * *', cadence: 'daily', desc: '10-year retention integrity check + expiring-record digest for KYC, CDD files, STR narratives, screening audits.', reg: 'FDL No.10/2025 Art.24', store: 'retention-sweep-audit' },
+        { id: 'goaml-submission-health', title: 'goAML Submission Health', schedule: '*/30 * * * *', cadence: 'continuous', desc: 'Monitors goAML submission success-rate, rejection queue depth, XML schema drift against the UAE FIU endpoint.', reg: 'FDL No.10/2025 Art.26-27', store: 'goaml-health-audit' },
+        { id: 'policy-refresh-after-circular', title: 'Policy Refresh After Circular', schedule: '0 3 * * 3', cadence: 'weekly', desc: 'Weekly diff of MoE / CBUAE / EOCN / VARA circulars against shipped constants; raises Asana task if policy lag exceeds 30 days.', reg: 'MoE Circular 08/AML/2021', store: 'policy-refresh-audit' },
+
+        // ───────── Transaction Monitoring (5) ─────────
+        { id: 'structuring-pattern-sweep', title: 'Structuring Pattern Sweep', schedule: '*/30 * * * *', cadence: 'continuous', desc: 'Detects smurfing clusters near the AED 55K DPMS CTR threshold; auto-escalates when 3+ sub-threshold cash transactions appear within 7 days on one subject.', reg: 'MoE Circular 08/AML/2021', store: 'structuring-audit' },
+        { id: 'velocity-spike-detector', title: 'Velocity Spike Detector', schedule: '0 * * * *', cadence: 'continuous', desc: 'Hourly z-score anomaly on transaction volume + frequency per customer; flags 2-sigma deviations above the 90-day rolling baseline.', reg: 'FATF Rec 10', store: 'velocity-audit' },
+        { id: 'cross-border-aed60k-xcheck', title: 'Cross-Border AED 60K Cross-Check', schedule: '0 7 * * *', cadence: 'daily', desc: 'Reconciles declared AED 60K cross-border movements against CBUAE / Customs BNI feed; flags undeclared inflows / outflows.', reg: 'Cabinet Res 134/2025 Art.16', store: 'bni-xcheck-audit' },
+        { id: 'tbml-indicator-sweep', title: 'TBML Indicator Sweep', schedule: '30 6 * * *', cadence: 'daily', desc: 'Trade-based money-laundering heuristics — over/under-invoicing, phantom shipments, round-number invoicing, shell-company nexus, commodity mispricing.', reg: 'FATF TBML Guidance 2020', store: 'tbml-audit' },
+        { id: 'vasp-wallet-flow-anomaly', title: 'VASP Wallet Flow Anomaly', schedule: '0 * * * *', cadence: 'continuous', desc: 'Hourly wallet-flow anomaly for VARA-licensed counterparties — mixer exposure, peel-chain depth, sanctioned-cluster proximity.', reg: 'FATF Rec 15 · VARA Rulebook', store: 'vasp-flow-audit' },
+
+        // ───────── Screening (4) ─────────
+        { id: 'eocn-ingest-retry', title: 'EOCN Ingest Retry', schedule: '0 * * * *', cadence: 'continuous', desc: 'Hourly retry of the manual EOCN circular upload queue; closes the operational gap where EOCN does not have a poll-based feed.', reg: 'Cabinet Res 74/2020 Art.35', store: 'eocn-retry-audit' },
+        { id: 'pep-rescreen-by-tier', title: 'PEP Re-screen by Tier', schedule: '30 3 * * *', cadence: 'daily', desc: 'Tiered PEP re-screen cadence — EDD daily, CDD weekly, SDD monthly. Delta alerts to Asana for any new affiliation, role change, or adverse-media hit.', reg: 'Cabinet Res 134/2025 Art.14', store: 'pep-rescreen-audit' },
+        { id: 'adverse-media-hot-sweep', title: 'Adverse Media Hot Sweep', schedule: '0 */6 * * *', cadence: 'continuous', desc: 'Production run of runAdverseMediaHotIngest — four times per day across all 13K+ vetted media sources with FDL Art.29 no-tipping-off guard on every query.', reg: 'FATF Rec 10 · FDL Art.29', store: 'am-hot-audit' },
+        { id: 'subject-resolution-review', title: 'Subject Resolution Review', schedule: '30 5 * * *', cadence: 'daily', desc: 'Daily digest of pending "pin as subject" decisions so the MLRO resolves candidate identity before the next watchlist refresh (FATF Rec 10 positive identification).', reg: 'FATF Rec 10', store: 'subject-resolution-audit' },
+
+        // ───────── ESG (8) ─────────
+        { id: 'cahra-supplier-review', title: 'CAHRA Supplier Review', schedule: '0 4 * * 2', cadence: 'weekly', desc: 'Tuesday LBMA RGG v9 Step 2 CAHRA sweep across all DPMS supplier relationships; triggers Step 3-5 enhanced DD on any supplier sourcing from a conflict-affected region.', reg: 'LBMA RGG v9 Step 2 · UAE MoE RSG', store: 'cahra-audit' },
+        { id: 'modern-slavery-indicator-sweep', title: 'Modern Slavery Indicator Sweep', schedule: '0 4 * * 4', cadence: 'weekly', desc: 'Thursday UK MSA 2015 + UNGPs forced / child-labour indicator sweep across supplier adverse media and supplier SAQ responses.', reg: 'UK Modern Slavery Act 2015 · UNGPs', store: 'modern-slavery-audit' },
+        { id: 'asm-compliance-audit', title: 'ASM Compliance Audit', schedule: '0 4 * * 3', cadence: 'weekly', desc: 'Wednesday Artisanal & Small-scale Mining supplier audit against LBMA RGG Step 4 — legitimate ASM, safe working conditions, no child labour, environmental compliance, formalisation path.', reg: 'LBMA RGG v9 Step 4 · OECD DD Annex II · UAE MoE RSG', store: 'asm-audit' },
+        { id: 'mercury-minamata-sweep', title: 'Mercury / Minamata Sweep', schedule: '0 4 * * 5', cadence: 'weekly', desc: 'Friday Minamata Convention compliance sweep — mercury use in gold processing, amalgamation hotspots, phase-out plan tracking. Flags any supplier in non-compliance with UAE MoE RSG mercury prohibition.', reg: 'Minamata Convention · UAE MoE RSG · UNEP Global Mercury Assessment', store: 'mercury-audit' },
+        { id: 'child-labour-ilo182-sweep', title: 'Child Labour (ILO C-182) Sweep', schedule: '30 4 * * 2', cadence: 'weekly', desc: 'Tuesday ILO Convention 182 worst-forms-of-child-labour indicator sweep — mine-site child labour, hazardous work, trafficking-linked operations. Integrates supplier SAQ responses with public NGO reporting.', reg: 'ILO Convention 182 · UNCRC · UAE MoE RSG Annex B', store: 'child-labour-audit' },
+        { id: 'carbon-scope-supply-chain', title: 'Carbon Scope 1-2-3 Rollup', schedule: '0 4 * * 1', cadence: 'weekly', desc: 'Monday Scope 1 / 2 / 3 emissions rollup across the DPMS supply chain — refining energy, logistics, embedded mine-site emissions. Feeds UAE Net-Zero 2050 reporting and LBMA v4 responsible sourcing update.', reg: 'UAE Net-Zero 2050 · GHG Protocol · LBMA RGG v4 update', store: 'carbon-audit' },
+        { id: 'water-stewardship-cahra', title: 'Water Stewardship (CAHRA)', schedule: '30 4 * * 5', cadence: 'weekly', desc: 'Friday water-risk scan in CAHRA + water-stressed jurisdictions — CDP Water responses, tailings-dam incidents, community water disputes. Triggers Step 3-5 enhanced DD on any supplier with a confirmed water-rights conflict.', reg: 'CDP Water · UNGPs · OECD DD Guidance Annex II', store: 'water-audit' },
+        { id: 'grievance-mechanism-monitor', title: 'Grievance Mechanism Monitor', schedule: '45 5 * * *', cadence: 'daily', desc: 'Daily UNGPs Principle 31 remedy-mechanism effectiveness monitor — grievance-intake latency, resolution time, complainant satisfaction, recurrence. Required for LBMA RGG Step 3 supplier-level due diligence.', reg: 'UNGPs Principle 31 · LBMA RGG v9 Step 3 · OECD DD Annex II', store: 'grievance-audit' },
+
+        // ───────── Supply Chain (8) ─────────
+        { id: 'refiner-accreditation-check', title: 'Refiner Accreditation Check', schedule: '30 4 * * *', cadence: 'daily', desc: 'Daily verification of Dubai Good Delivery (DGD) + LBMA Good Delivery accreditation status for every refiner counterparty; queues Asana review on any delisting or suspension.', reg: 'LBMA RGG v9 · DGD Standard', store: 'refiner-accred-audit' },
+        { id: 'dual-use-export-sweep', title: 'Dual-Use Export Sweep', schedule: '30 5 * * *', cadence: 'daily', desc: 'Cabinet Res 156/2025 + Wassenaar + UAE Strategic Trade Control scan of outbound flows; flags dual-use / strategic-goods tariff codes and sensitive end-use signals.', reg: 'Cabinet Res 156/2025 · UAE STC', store: 'dual-use-audit' },
+        { id: 'chain-of-custody-verify', title: 'Chain-of-Custody Verify', schedule: '0 8 * * *', cadence: 'daily', desc: 'Daily LBMA RGG Step 3 full chain-of-custody verification for every bullion bar inbound — mine → transport → refiner → vault. Flags any bar where the custody trail is broken, backdated, or missing a segment signature.', reg: 'LBMA RGG v9 Step 3 · OECD DD Guidance · UAE MoE RSG', store: 'coc-audit' },
+        { id: 'bullion-assay-drift', title: 'Bullion Assay Drift', schedule: '30 8 * * *', cadence: 'daily', desc: 'Daily assay-fineness drift detection — cross-checks assayed fineness against declared fineness per bar and per shipment. Flags drift >0.5% and triggers re-assay + counterparty notification (no tipping off on sanctions-linked drift).', reg: 'LBMA Good Delivery · DGD Assay Standard · FDL Art.29', store: 'assay-drift-audit' },
+        { id: 'customs-declaration-recon', title: 'Customs Declaration Reconciliation', schedule: '30 7 * * *', cadence: 'daily', desc: 'Daily reconciliation of Emirates Customs declarations against internal trade records, warehouse receipts, and settlement ledgers. Flags declaration-vs-actual mismatch, HS-code anomaly, and under/over-invoicing (TBML precursor).', reg: 'UAE Customs Law · FATF TBML 2020 · Cabinet Res 134/2025 Art.16', store: 'customs-recon-audit' },
+        { id: 'supplier-saq-rollover', title: 'Supplier SAQ Rollover', schedule: '0 7 * * 1', cadence: 'weekly', desc: 'Monday annual Self-Assessment Questionnaire refresh cycle — tracks supplier SAQ expiry, issues renewal requests at T-60 days, escalates at T-14. Mandatory for LBMA RGG Step 3 annual supplier DD refresh.', reg: 'LBMA RGG v9 Step 3 · RJC COP · UAE MoE RSG', store: 'saq-rollover-audit' },
+        { id: 'lbma-audit-countdown', title: 'LBMA Audit Countdown', schedule: '0 9 * * *', cadence: 'daily', desc: 'Daily 12-month LBMA / DGD external audit deadline tracker — counts down days-to-audit, posts readiness dashboard, auto-runs /moe-readiness + /audit-pack at T-30.', reg: 'LBMA RGG v9 Step 5 · DGD Annual Audit', store: 'lbma-audit-countdown' },
+        { id: 'recycled-vs-mined-origin', title: 'Recycled vs Mined Origin Audit', schedule: '0 5 * * 4', cadence: 'weekly', desc: 'Thursday LBMA RGG origin-classification audit — verifies the declared recycled / mined / grandfathered classification per bar against chain-of-custody documents. Flags mis-declared recycled gold (sanctions-evasion red flag).', reg: 'LBMA RGG v9 · UAE MoE RSG Framework · OFAC Russia gold sanctions', store: 'origin-audit' }
       ];
 
       const cadenceLabel = {
@@ -794,17 +956,40 @@
           '* * * * *': 'every minute',
           '*/5 * * * *': 'every 5 min',
           '*/15 * * * *': 'every 15 min',
+          '*/30 * * * *': 'every 30 min',
           '0 * * * *': 'every hour',
           '0 */4 * * *': 'every 4 hours',
+          '0 */6 * * *': 'every 6 hours',
           '0 1 * * *': '01:00 UTC daily',
+          '30 1 * * *': '01:30 UTC daily',
           '0 2 * * *': '02:00 UTC daily',
           '0 3 * * *': '03:00 UTC daily',
+          '30 3 * * *': '03:30 UTC daily',
           '0 4 * * *': '04:00 UTC daily',
+          '30 4 * * *': '04:30 UTC daily',
           '0 5 * * *': '05:00 UTC daily',
+          '30 5 * * *': '05:30 UTC daily',
           '0 6 * * *': '06:00 UTC daily',
+          '30 6 * * *': '06:30 UTC daily',
+          '0 7 * * *': '07:00 UTC daily',
+          '30 7 * * *': '07:30 UTC daily',
+          '0 8 * * *': '08:00 UTC daily',
+          '30 8 * * *': '08:30 UTC daily',
+          '0 9 * * *': '09:00 UTC daily',
+          '45 5 * * *': '05:45 UTC daily',
           '0 4 * * 1-5': '04:00 UTC weekdays',
           '0 5 * * 1': 'Mon 05:00 UTC',
-          '0 6 * * 1': 'Mon 06:00 UTC'
+          '0 6 * * 1': 'Mon 06:00 UTC',
+          '0 7 * * 1': 'Mon 07:00 UTC',
+          '0 3 * * 3': 'Wed 03:00 UTC',
+          '0 4 * * 1': 'Mon 04:00 UTC',
+          '0 4 * * 2': 'Tue 04:00 UTC',
+          '30 4 * * 2': 'Tue 04:30 UTC',
+          '0 4 * * 3': 'Wed 04:00 UTC',
+          '0 4 * * 4': 'Thu 04:00 UTC',
+          '0 4 * * 5': 'Fri 04:00 UTC',
+          '30 4 * * 5': 'Fri 04:30 UTC',
+          '0 5 * * 4': 'Thu 05:00 UTC'
         };
         return map[cron] || cron;
       }
@@ -818,14 +1003,36 @@
           const live = LIVE_STATUS[r.id];
           const state = live ? live.status : 'loading';
           const stateLabel = live ? stateLabelFor(live) : 'Loading';
+          const domain = routineDomain(r.id);
+          const owner = routineOwner(r.id);
+          const moduleLabel = routineModuleLabel(r.id) || 'Subject Screening & Watchlist';
+          const asanaUrl = routineAsanaBoard(r.id);
+          const relSkills = routineRelatedSkills(r.id);
+          const next = nextRunFromCron(r.schedule);
+          const countdown = next ? formatCountdown(next.getTime() - Date.now()) : '—';
+          const h24 = (live && typeof live.last24hCount === 'number') ? live.last24hCount : null;
+          const h24Alerts = (live && typeof live.last24hAlerts === 'number') ? live.last24hAlerts : null;
+          const skillChips = relSkills.length
+            ? relSkills.slice(0, 3).map(s => '<span class="rc-skill">/' + s + '</span>').join(' ')
+            : '<span class="rc-skill-empty">—</span>';
+          const h24Label = h24 === null
+            ? '24h · awaiting telemetry'
+            : '24h · ' + h24 + ' runs' + (h24Alerts !== null ? ' · ' + h24Alerts + ' alert' + (h24Alerts === 1 ? '' : 's') : '');
           return `
           <article class="routine" data-cadence="${r.cadence}" data-routine="${r.id}">
             <div class="routine-head">
               <h3 class="routine-title">${r.title}</h3>
               <span class="routine-cadence" data-cadence="${r.cadence}">${cadenceLabel[r.cadence]}</span>
             </div>
+            <div class="routine-chips">
+              <span class="rc-chip rc-domain">${domain}</span>
+              <span class="rc-chip rc-owner">${owner}</span>
+              <a class="rc-chip rc-asana" href="${asanaUrl}" target="_blank" rel="noopener noreferrer" title="Open board in Asana">→ ${moduleLabel}</a>
+            </div>
             <p class="routine-desc">${r.desc}</p>
-            <div class="routine-schedule">⏱ ${humanSchedule(r.schedule)} · <span class="status-pill" data-state="${state}">${stateLabel}</span></div>
+            <div class="routine-schedule">⏱ ${humanSchedule(r.schedule)} · NEXT <span class="rc-next" data-next="${next ? next.toISOString() : ''}">${countdown}</span> · <span class="status-pill" data-state="${state}">${stateLabel}</span></div>
+            <div class="routine-h24">${h24Label}</div>
+            <div class="routine-skills">${skillChips}</div>
             <div class="routine-meta">
               <div class="meta-cell">
                 <div class="k">Regulation</div>
@@ -877,6 +1084,7 @@
           c.setAttribute('aria-pressed', c.getAttribute('data-filter') === ACTIVE_FILTER ? 'true' : 'false');
         });
         render(ACTIVE_FILTER);
+        scheduleCardCountdownTick();
         if (pushHistory !== false) {
           const base = '/routines';
           const target = ACTIVE_FILTER === 'all' ? base : base + '/' + ACTIVE_FILTER;
@@ -917,6 +1125,388 @@
         if (drawerRunBtn) drawerRunBtn.disabled = !token;
       }
 
+      // ── Next-run calculation from cron ──────────────────────────────
+      // Minimal cron-next that handles the patterns actually used by
+      // this project — */N, 0 * * * *, M H * * *, M H * * D[-D]. Any
+      // unknown pattern falls back to "—" so the UI never shows a
+      // wrong time. Auditor-relevant: this is a client-side preview,
+      // the scheduler of record is Netlify's cron trigger.
+      function nextRunFromCron(cron) {
+        if (!cron || typeof cron !== 'string') return null;
+        const parts = cron.trim().split(/\s+/);
+        if (parts.length !== 5) return null;
+        const [m, h, dom, mon, dow] = parts;
+        const now = new Date();
+        const next = new Date(Date.UTC(
+          now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+          now.getUTCHours(), now.getUTCMinutes() + 1, 0, 0
+        ));
+        // Walk forward up to 14 days looking for the first minute
+        // matching the cron. Safe for every pattern we ship.
+        const limit = 60 * 24 * 14;
+        for (let i = 0; i < limit; i++) {
+          const mm = next.getUTCMinutes();
+          const hh = next.getUTCHours();
+          const dw = next.getUTCDay() || 7; // 1=Mon … 7=Sun
+          const dy = next.getUTCDate();
+          const mo = next.getUTCMonth() + 1;
+          if (cronFieldMatches(m, mm) &&
+              cronFieldMatches(h, hh) &&
+              cronFieldMatches(dom, dy) &&
+              cronFieldMatches(mon, mo) &&
+              cronDowMatches(dow, dw)) {
+            return next;
+          }
+          next.setUTCMinutes(next.getUTCMinutes() + 1);
+        }
+        return null;
+      }
+      function cronFieldMatches(expr, value) {
+        if (expr === '*') return true;
+        if (expr.indexOf('*/') === 0) {
+          const step = parseInt(expr.slice(2), 10);
+          return step > 0 && (value % step === 0);
+        }
+        return expr.split(',').some(part => {
+          if (part.indexOf('-') >= 0) {
+            const [a, b] = part.split('-').map(x => parseInt(x, 10));
+            return value >= a && value <= b;
+          }
+          return parseInt(part, 10) === value;
+        });
+      }
+      function cronDowMatches(expr, dow1to7) {
+        // Treat 0 and 7 as Sunday; internally we use 1-7 with Sun=7.
+        const normal = v => (v === 0 ? 7 : v);
+        if (expr === '*') return true;
+        return expr.split(',').some(part => {
+          if (part.indexOf('-') >= 0) {
+            const [a, b] = part.split('-').map(x => parseInt(x, 10));
+            return dow1to7 >= normal(a) && dow1to7 <= normal(b);
+          }
+          return normal(parseInt(part, 10)) === dow1to7;
+        });
+      }
+      function formatCountdown(ms) {
+        if (ms < 0) return 'overdue';
+        const s = Math.floor(ms / 1000);
+        const d = Math.floor(s / 86400);
+        const h = Math.floor((s % 86400) / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+        if (h > 0) return h + 'h ' + m + 'm ' + sec + 's';
+        if (m > 0) return m + 'm ' + sec + 's';
+        return sec + 's';
+      }
+
+      // ── Domain + source-file + related-skill mapping ────────────────
+      // Static maps derived from the routine ID. Purely presentational
+      // — if a routine has no known source or skill, we fall back to
+      // the audit-store name so the cell never shows "—" without
+      // context. FDL Art.24 — every routine must be attributable.
+      function routineDomain(id) {
+        if (/^sanctions|eocn|pep-rescreen|adverse-media|subject-resolution|snapshot/.test(id)) return 'Screening';
+        if (/^asana|chain-anchor/.test(id)) return 'Asana integration';
+        if (/^brain|advisor|clamp/.test(id)) return 'Brain Intelligence';
+        if (/^ai-governance|red-team|regulatory|policy-refresh/.test(id)) return 'AI Governance';
+        if (/^tm-scan|structuring|velocity|cross-border|tbml|vasp/.test(id)) return 'Transaction Monitoring';
+        if (/^str-|four-eyes|records-retention|goaml|filing/.test(id)) return 'Compliance';
+        if (/^cahra|modern-slavery|asm|mercury|child-labour|carbon|water|grievance/.test(id)) return 'ESG';
+        if (/^refiner|dual-use|chain-of-custody|bullion|customs|supplier-saq|lbma|recycled/.test(id)) return 'Supply Chain';
+        if (/^cbuae|expiry/.test(id)) return 'Regulatory data';
+        if (/briefing|digest|cdd-weekly/.test(id)) return 'MLRO digest';
+        return 'General';
+      }
+      function routineSourceFile(id) {
+        // Best-effort mapping to netlify/functions. Routines added
+        // in this session carry a `-cron.mts` suffix; legacy ones
+        // match their exact file name.
+        const FUNCTIONS = {
+          'sanctions-ingest': 'netlify/functions/sanctions-ingest.mts',
+          'sanctions-delta-screen': 'netlify/functions/sanctions-delta-screen-cron.mts',
+          'sanctions-watch': 'netlify/functions/sanctions-watch.mts',
+          'asana-reconcile': 'netlify/functions/asana-reconcile-cron.mts',
+          'asana-retry-queue': 'netlify/functions/asana-retry-queue-cron.mts',
+          'asana-super-brain-autopilot': 'netlify/functions/asana-super-brain-autopilot-cron.mts',
+          'asana-sync': 'netlify/functions/asana-sync-cron.mts',
+          'asana-weekly-customer-status': 'netlify/functions/asana-weekly-customer-status-cron.mts',
+          'asana-weekly-digest': 'netlify/functions/asana-weekly-digest-cron.mts',
+          'ai-governance-self-audit': 'netlify/functions/ai-governance-self-audit-cron.mts',
+          'cbuae-fx': 'netlify/functions/cbuae-fx-refresh-cron.mts',
+          'expiry-scan': 'netlify/functions/expiry-scan-cron.mts',
+          'red-team': 'netlify/functions/red-team-cron.mts',
+          'regulatory-drift': 'netlify/functions/regulatory-drift-cron.mts',
+          'regulatory-horizon': 'netlify/functions/regulatory-horizon-cron.mts',
+          'tm-scan': 'netlify/functions/tm-scan-cron.mts',
+          'morning-briefing': 'netlify/functions/morning-briefing-cron.mts',
+          'brain-clamp': 'netlify/functions/brain-clamp-cron.mts',
+          'chain-anchor': 'netlify/functions/chain-anchor-cron.mts',
+          'cdd-weekly-status': 'netlify/functions/cdd-weekly-status-cron.mts'
+        };
+        return FUNCTIONS[id] || ('netlify/functions/' + id + '-cron.mts (planned)');
+      }
+      function routineRelatedSkills(id) {
+        const M = {
+          'sanctions-ingest':          ['snapshot-freshness-gate', 'screen'],
+          'sanctions-delta-screen':    ['multi-agent-screen', 'screen', 'decision-consistency-check'],
+          'sanctions-watch':           ['snapshot-freshness-gate'],
+          'eocn-ingest-retry':         ['snapshot-freshness-gate', 'screen'],
+          'pep-rescreen-by-tier':      ['screen', 'onboard'],
+          'adverse-media-hot-sweep':   ['screen', 'multi-agent-screen'],
+          'subject-resolution-review': ['screen'],
+          'str-deadline-watch':        ['goaml', 'filing-compliance', 'incident'],
+          'four-eyes-sla-sweep':       ['incident', 'agent-orchestrate'],
+          'records-retention-sweep':   ['audit-pack', 'evidence-bundle'],
+          'goaml-submission-health':   ['goaml', 'filing-compliance'],
+          'policy-refresh-after-circular': ['regulatory-update', 'regulatory-spec'],
+          'structuring-pattern-sweep': ['incident', 'goaml'],
+          'velocity-spike-detector':   ['incident'],
+          'cross-border-aed60k-xcheck': ['goaml', 'filing-compliance'],
+          'tbml-indicator-sweep':      ['incident', 'goaml'],
+          'vasp-wallet-flow-anomaly':  ['incident', 'goaml'],
+          'cahra-supplier-review':     ['audit-pack', 'traceability'],
+          'modern-slavery-indicator-sweep': ['audit-pack'],
+          'asm-compliance-audit':      ['audit-pack', 'traceability'],
+          'mercury-minamata-sweep':    ['audit-pack'],
+          'child-labour-ilo182-sweep': ['audit-pack'],
+          'carbon-scope-supply-chain': ['kpi-report'],
+          'water-stewardship-cahra':   ['audit-pack'],
+          'grievance-mechanism-monitor': ['audit-pack'],
+          'refiner-accreditation-check': ['audit-pack', 'traceability'],
+          'dual-use-export-sweep':     ['incident'],
+          'chain-of-custody-verify':   ['audit-pack', 'traceability'],
+          'bullion-assay-drift':       ['audit-pack'],
+          'customs-declaration-recon': ['audit-pack'],
+          'supplier-saq-rollover':     ['audit-pack'],
+          'lbma-audit-countdown':      ['moe-readiness', 'audit-pack', 'evidence-bundle'],
+          'recycled-vs-mined-origin':  ['audit-pack', 'traceability'],
+          'brain-lessons-archive':     ['decision-consistency-check'],
+          'clamp-reason-weekly-digest': ['decision-consistency-check'],
+          'advisor-budget-tracker':    ['kpi-report'],
+          'ai-governance-self-audit':  ['decision-consistency-check', 'audit-pack'],
+          'red-team':                  ['decision-consistency-check']
+        };
+        return M[id] || [];
+      }
+      function routineDependencies(id) {
+        // Static upstream / downstream map — mirrors
+        // the acyclic dependency graph the cron scheduler respects.
+        const G = {
+          'sanctions-delta-screen':    { up: ['sanctions-ingest'],      down: ['asana-sync', 'asana-reconcile'] },
+          'sanctions-watch':           { up: ['sanctions-ingest'],      down: [] },
+          'eocn-ingest-retry':         { up: [],                        down: ['sanctions-delta-screen'] },
+          'asana-retry-queue':         { up: ['asana-sync'],            down: [] },
+          'asana-reconcile':           { up: ['asana-sync'],            down: [] },
+          'str-deadline-watch':        { up: ['tm-scan', 'sanctions-delta-screen'], down: ['goaml-submission-health'] },
+          'four-eyes-sla-sweep':       { up: ['sanctions-delta-screen'], down: [] },
+          'goaml-submission-health':   { up: ['str-deadline-watch'],    down: [] },
+          'structuring-pattern-sweep': { up: ['cbuae-fx'],              down: ['str-deadline-watch'] },
+          'velocity-spike-detector':   { up: [],                        down: ['str-deadline-watch'] },
+          'cross-border-aed60k-xcheck':{ up: ['cbuae-fx'],              down: ['str-deadline-watch'] },
+          'tbml-indicator-sweep':      { up: [],                        down: ['str-deadline-watch'] },
+          'vasp-wallet-flow-anomaly':  { up: [],                        down: ['str-deadline-watch'] },
+          'pep-rescreen-by-tier':      { up: ['sanctions-ingest'],      down: ['four-eyes-sla-sweep'] },
+          'adverse-media-hot-sweep':   { up: [],                        down: ['pep-rescreen-by-tier'] },
+          'brain-lessons-archive':     { up: ['brain-clamp'],           down: ['ai-governance-self-audit'] },
+          'clamp-reason-weekly-digest':{ up: ['brain-clamp'],           down: [] },
+          'advisor-budget-tracker':    { up: [],                        down: [] },
+          'cahra-supplier-review':     { up: ['adverse-media-hot-sweep'], down: ['modern-slavery-indicator-sweep'] },
+          'chain-of-custody-verify':   { up: ['refiner-accreditation-check'], down: ['bullion-assay-drift'] },
+          'customs-declaration-recon': { up: ['cbuae-fx'],              down: [] },
+          'lbma-audit-countdown':      { up: [],                        down: ['refiner-accreditation-check', 'chain-of-custody-verify'] }
+        };
+        return G[id] || { up: [], down: [] };
+      }
+      function routineGithubUrl(path) {
+        return 'https://github.com/trex0092/compliance-analyzer/blob/main/' + path.replace(' (planned)', '');
+      }
+      // Maps every routine id to the key of the 16-project Asana
+      // catalog (src/services/asanaModuleProjects.ts). Keeps the
+      // routines page + Netlify functions + module UIs in agreement
+      // on which board each cron writes to — FDL Art.24 audit chain
+      // is only contiguous if every artefact for a domain lands on
+      // the same board.
+      const ROUTINE_TO_MODULE = {
+        // screening_and_watchlist
+        'sanctions-ingest': 'screening_and_watchlist',
+        'sanctions-delta-screen': 'screening_and_watchlist',
+        'sanctions-watch': 'screening_and_watchlist',
+        'eocn-ingest-retry': 'screening_and_watchlist',
+        'pep-rescreen-by-tier': 'screening_and_watchlist',
+        'adverse-media-hot-sweep': 'screening_and_watchlist',
+        'subject-resolution-review': 'screening_and_watchlist',
+
+        // transaction_monitoring
+        'tm-scan': 'transaction_monitoring',
+        'structuring-pattern-sweep': 'transaction_monitoring',
+        'velocity-spike-detector': 'transaction_monitoring',
+        'cross-border-aed60k-xcheck': 'transaction_monitoring',
+        'tbml-indicator-sweep': 'transaction_monitoring',
+        'vasp-wallet-flow-anomaly': 'transaction_monitoring',
+
+        // str_cases
+        'str-deadline-watch': 'str_cases',
+        'goaml-submission-health': 'str_cases',
+
+        // four_eyes_queue
+        'four-eyes-sla-sweep': 'four_eyes_queue',
+
+        // cdd_ubo_pep
+        'cdd-weekly-status': 'cdd_ubo_pep',
+        'expiry-scan': 'cdd_ubo_pep',
+
+        // esg_supply_lbma
+        'cahra-supplier-review': 'esg_supply_lbma',
+        'modern-slavery-indicator-sweep': 'esg_supply_lbma',
+        'asm-compliance-audit': 'esg_supply_lbma',
+        'mercury-minamata-sweep': 'esg_supply_lbma',
+        'child-labour-ilo182-sweep': 'esg_supply_lbma',
+        'carbon-scope-supply-chain': 'esg_supply_lbma',
+        'water-stewardship-cahra': 'esg_supply_lbma',
+        'grievance-mechanism-monitor': 'esg_supply_lbma',
+        'refiner-accreditation-check': 'esg_supply_lbma',
+        'chain-of-custody-verify': 'esg_supply_lbma',
+        'bullion-assay-drift': 'esg_supply_lbma',
+        'customs-declaration-recon': 'esg_supply_lbma',
+        'supplier-saq-rollover': 'esg_supply_lbma',
+        'lbma-audit-countdown': 'esg_supply_lbma',
+        'recycled-vs-mined-origin': 'esg_supply_lbma',
+
+        // dual_use_export_control
+        'dual-use-export-sweep': 'dual_use_export_control',
+
+        // governance_and_retention
+        'ai-governance-self-audit': 'governance_and_retention',
+        'red-team': 'governance_and_retention',
+        'regulatory-drift': 'governance_and_retention',
+        'regulatory-horizon': 'governance_and_retention',
+        'policy-refresh-after-circular': 'governance_and_retention',
+        'records-retention-sweep': 'governance_and_retention',
+        'brain-lessons-archive': 'governance_and_retention',
+        'clamp-reason-weekly-digest': 'governance_and_retention',
+        'advisor-budget-tracker': 'governance_and_retention',
+        'brain-clamp': 'governance_and_retention',
+        'chain-anchor': 'governance_and_retention',
+
+        // mlro_digest
+        'morning-briefing': 'mlro_digest',
+        'asana-weekly-digest': 'mlro_digest',
+        'asana-weekly-customer-status': 'mlro_digest',
+
+        // compliance_tasks (Asana infrastructure crons)
+        'asana-reconcile': 'compliance_tasks',
+        'asana-retry-queue': 'compliance_tasks',
+        'asana-sync': 'compliance_tasks',
+        'asana-super-brain-autopilot': 'compliance_tasks',
+
+        // counterparties_accounts
+        'cbuae-fx': 'counterparties_accounts'
+      };
+      // Friendly labels for the 16-project catalog — matches
+      // src/services/asanaModuleProjects.ts. Used by the card chip
+      // and the drawer Asana link.
+      const MODULE_LABELS = {
+        screening_and_watchlist: 'Subject Screening & Watchlist',
+        transaction_monitoring: 'Transaction Monitoring',
+        str_cases: 'STR Cases',
+        cdd_ubo_pep: 'CDD / UBO / PEP',
+        esg_supply_lbma: 'ESG, Supply Chain & LBMA',
+        dual_use_export_control: 'Dual-Use & Export Control',
+        governance_and_retention: 'Governance & Retention',
+        audit_inspection: 'Audit & Inspection',
+        mlro_digest: 'MLRO Central Digest',
+        employees_and_training: 'Employees & Training',
+        onboarding_workbench: 'Onboarding Workbench',
+        compliance_tasks: 'Compliance Tasks',
+        four_eyes_queue: 'Four-Eyes Queue',
+        shipments_logistics: 'Shipments & Logistics',
+        counterparties_accounts: 'Counterparties',
+        incidents_whistleblower: 'Incidents & Whistleblower'
+      };
+      function routineModuleKey(id) {
+        return ROUTINE_TO_MODULE[id] || null;
+      }
+      function routineModuleLabel(id) {
+        const key = routineModuleKey(id);
+        return key ? MODULE_LABELS[key] : null;
+      }
+      function routineOwner(id) {
+        // Mirrors the owner column of the 16-project catalog so the
+        // MLRO sees who triages each routine without opening the skill.
+        const key = routineModuleKey(id);
+        const OWN = {
+          screening_and_watchlist: 'MLRO',
+          transaction_monitoring: 'MLRO',
+          str_cases: 'MLRO',
+          cdd_ubo_pep: 'Compliance Officer',
+          esg_supply_lbma: 'Compliance Officer',
+          dual_use_export_control: 'Compliance Officer',
+          governance_and_retention: 'MLRO',
+          audit_inspection: 'MLRO',
+          mlro_digest: 'MLRO',
+          employees_and_training: 'MLRO',
+          onboarding_workbench: 'Compliance Officer',
+          compliance_tasks: 'MLRO',
+          four_eyes_queue: 'Compliance Officer',
+          shipments_logistics: 'Compliance Officer',
+          counterparties_accounts: 'Compliance Officer',
+          incidents_whistleblower: 'MLRO'
+        };
+        return key && OWN[key] ? OWN[key] : 'MLRO';
+      }
+
+      function routineAsanaBoard(id) {
+        // Reads /api/asana/config live to resolve every routine's
+        // target board via the 16-project catalog. If the catalog
+        // GID is not yet set (the MLRO has not run the bootstrap),
+        // falls back to the unified screening board so nothing drops.
+        const key = routineModuleKey(id);
+        const gid = (window.__asanaProjects && key && window.__asanaProjects[key])
+          || (window.__asanaProjects && window.__asanaProjects.screening_and_watchlist)
+          || '1213759768596515';
+        return 'https://app.asana.com/0/' + gid;
+      }
+      // Pre-populate the catalog-resolved GIDs on load. Silent fail
+      // if the endpoint is unreachable — the drawer still renders
+      // with the fallback board.
+      (function preloadAsanaConfig() {
+        try {
+          const token = getAuthToken && getAuthToken();
+          if (!token) return;
+          fetch('/api/asana/config', {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token }
+          })
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (data) {
+              if (data && data.projects) window.__asanaProjects = data.projects;
+            })
+            .catch(function () { /* silent */ });
+        } catch (_e) { /* ignore */ }
+      })();
+
+      let drawerCountdownTimer = null;
+
+      // Card-grid countdown ticker — updates every `.rc-next` span in
+      // the visible grid once per second so the MLRO sees a live "Next
+      // run in Xh Ym" on every routine square, not just inside the
+      // drawer. Safe to re-arm on every render — re-entry-guarded.
+      let gridCountdownTimer = null;
+      function scheduleCardCountdownTick() {
+        if (gridCountdownTimer) return;
+        gridCountdownTimer = setInterval(function () {
+          const nodes = document.querySelectorAll('#routinesGrid .rc-next');
+          if (!nodes.length) return;
+          nodes.forEach(function (el) {
+            const iso = el.getAttribute('data-next');
+            if (!iso) return;
+            const ms = new Date(iso).getTime() - Date.now();
+            el.textContent = formatCountdown(ms);
+          });
+        }, 1000);
+      }
+
       function openDrawer(routineId) {
         const r = ROUTINES.find(x => x.id === routineId);
         if (!r) return;
@@ -931,6 +1521,67 @@
         const live = LIVE_STATUS[r.id];
         document.getElementById('drawerStatus').textContent = live ? stateLabelFor(live) : 'Sign in for live status';
         document.getElementById('drawerLastSeen').textContent = live && live.lastRun ? live.lastRun : '—';
+
+        // Next-run + countdown — client-side preview from the cron.
+        const next = nextRunFromCron(r.schedule);
+        const drawerNextRun = document.getElementById('drawerNextRun');
+        const drawerCountdown = document.getElementById('drawerCountdown');
+        if (next) {
+          drawerNextRun.textContent = next.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+          drawerCountdown.textContent = formatCountdown(next.getTime() - Date.now());
+          if (drawerCountdownTimer) clearInterval(drawerCountdownTimer);
+          drawerCountdownTimer = setInterval(function () {
+            const ms = next.getTime() - Date.now();
+            drawerCountdown.textContent = formatCountdown(ms);
+            if (ms < 0 && ms > -60000) {
+              // Grace second tick — recompute the next slot once we pass it.
+              const n2 = nextRunFromCron(r.schedule);
+              if (n2) {
+                drawerNextRun.textContent = n2.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+              }
+            }
+          }, 1000);
+        } else {
+          drawerNextRun.textContent = 'custom cron — parser skipped';
+          drawerCountdown.textContent = '—';
+        }
+
+        // Domain + source function + asana board
+        document.getElementById('drawerDomain').textContent = routineDomain(r.id);
+        const srcPath = routineSourceFile(r.id);
+        const srcEl = document.getElementById('drawerSource');
+        if (srcPath.endsWith('(planned)')) {
+          srcEl.textContent = srcPath;
+        } else {
+          srcEl.innerHTML = '<a href="' + routineGithubUrl(srcPath) + '" target="_blank" rel="noopener noreferrer">' + srcPath + '</a>';
+        }
+
+        // Dependencies + related skills + Asana board link
+        const deps = routineDependencies(r.id);
+        const upEl = document.getElementById('drawerUpstream');
+        const downEl = document.getElementById('drawerDownstream');
+        const skillsEl = document.getElementById('drawerRelatedSkills');
+        const boardEl = document.getElementById('drawerAsanaBoard');
+        const extrasEl = document.getElementById('drawerExtras');
+
+        const chipsFromIds = ids => ids.length
+          ? ids.map(id => '<span class="chip">' + id + '</span>').join(' ')
+          : '—';
+        upEl.innerHTML = chipsFromIds(deps.up);
+        downEl.innerHTML = chipsFromIds(deps.down);
+
+        const relSkills = routineRelatedSkills(r.id);
+        skillsEl.innerHTML = relSkills.length
+          ? relSkills.map(s => '<span class="chip">/' + s + '</span>').join(' ')
+          : '—';
+
+        const boardUrl = routineAsanaBoard(r.id);
+        boardEl.innerHTML = boardUrl
+          ? '<a href="' + boardUrl + '" target="_blank" rel="noopener noreferrer">Screening Command — Sanctions</a>'
+          : '<span style="opacity:.6">writes to blob only (' + r.store + ')</span>';
+
+        extrasEl.hidden = false;
+
         drawerRunMsg.textContent = '';
         if (drawerAuthMsg) drawerAuthMsg.textContent = '';
         // Pre-fill MLRO name from localStorage on reopen (same key that
@@ -1124,6 +1775,7 @@
       function closeDrawer() {
         drawer.classList.remove('open');
         DRAWER_ROUTINE = null;
+        if (drawerCountdownTimer) { clearInterval(drawerCountdownTimer); drawerCountdownTimer = null; }
       }
 
       document.getElementById('routinesGrid').addEventListener('click', (e) => {

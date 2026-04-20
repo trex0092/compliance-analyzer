@@ -69,6 +69,7 @@ import { getStore } from '@netlify/blobs';
 import { authenticate } from './middleware/auth.mts';
 import { checkRateLimit } from './middleware/rate-limit.mts';
 import { createAsanaTask } from '../../src/services/asanaClient';
+import { resolveAsanaProjectGid } from '../../src/services/asanaModuleProjects';
 import {
   addToWatchlist,
   deserialiseWatchlist,
@@ -544,7 +545,7 @@ function outcomeTag(outcome: Outcome): string {
 async function postDispositionAsana(
   event: ScreeningEvent
 ): Promise<{ ok: boolean; gid?: string; error?: string }> {
-  const projectId = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
+  const projectId = resolveAsanaProjectGid('screening_and_watchlist');
   if (!process.env.ASANA_TOKEN && !process.env.ASANA_ACCESS_TOKEN && !process.env.ASANA_API_TOKEN) {
     return { ok: false, error: 'ASANA_TOKEN not configured' };
   }
@@ -690,7 +691,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
     );
   }
 
-  const asanaProjectGid = process.env.ASANA_SCREENINGS_PROJECT_GID || '1213759768596515';
+  const asanaProjectGid = resolveAsanaProjectGid('screening_and_watchlist');
   const asanaRes = await postDispositionAsana(event);
   if (asanaRes.ok && asanaRes.gid) event.asanaGid = asanaRes.gid;
   const asana = {

@@ -1,21 +1,34 @@
 /**
  * Asana Config — read-only endpoint that returns the configured Asana
- * project GIDs per MLRO surface so browser pages can render
- * "View in Asana" links without hardcoding GIDs in client JS.
+ * project GIDs for the 16-project module catalog, so browser pages
+ * can render "View in Asana" links without hardcoding GIDs in client
+ * JS.
  *
  * GET /api/asana/config
- *   → { ok: true, projects: { workbench, logistics, "compliance-ops", routines, screenings } }
+ *   → {
+ *       ok: true,
+ *       workspaceGid,
+ *       projects: { <moduleKey>: <gid|null>, … }   // 16 keys
+ *     }
+ *
+ * The legacy per-page keys (workbench / logistics / routines /
+ * compliance-ops / screenings) that pointed at the pre-catalog layout
+ * have been retired — they were wired to env vars that were never
+ * populated on production and produced null every time. The new shape
+ * reads from src/services/asanaModuleProjects.ts so browsers and
+ * server-side callers see the same 16-project layout with no drift.
  *
  * Auth: Bearer HAWKEYE_BRAIN_TOKEN.
  * Rate limit: 60 req / 15 min per IP.
  *
  * Returns only GIDs + workspace GID. No tokens, no customer data.
- * Regulatory basis: FDL No.(10)/2025 Art.20-21.
+ * Regulatory basis: FDL No.(10)/2025 Art.20-21, Art.24.
  */
 
 import type { Context } from '@netlify/functions';
 import { authenticate } from './middleware/auth.mts';
 import { checkRateLimit } from './middleware/rate-limit.mts';
+import { MODULE_PROJECTS } from '../../src/services/asanaModuleProjects';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':
@@ -50,13 +63,10 @@ export default async (req: Request, context: Context): Promise<Response> => {
   if (!auth.ok) return auth.response!;
 
   const workspaceGid = process.env.ASANA_WORKSPACE_GID ?? null;
-  const projects = {
-    workbench: process.env.ASANA_WORKBENCH_PROJECT_GID ?? null,
-    logistics: process.env.ASANA_LOGISTICS_PROJECT_GID ?? null,
-    'compliance-ops': process.env.ASANA_CENTRAL_MLRO_PROJECT_GID ?? null,
-    routines: process.env.ASANA_ROUTINES_PROJECT_GID ?? null,
-    screenings: process.env.ASANA_SCREENINGS_PROJECT_GID ?? null,
-  };
+  const projects: Record<string, string | null> = {};
+  for (const spec of MODULE_PROJECTS) {
+    projects[spec.key] = process.env[spec.envVar] ?? null;
+  }
 
   return jsonResponse({ ok: true, workspaceGid, projects });
 };
