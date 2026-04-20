@@ -1,7 +1,7 @@
 /**
  * Adverse Media Hot Sweep cron — generated from routines.html catalog.
  *
- * Schedule: `0 */6 * * *` (every 6 hours)
+ * Schedule: every 6 hours (see `schedule` below)
  * Module: screening_and_watchlist (Asana board resolved via the 16-project catalog)
  * Audit store: am-hot-audit
  * Regulatory basis: FATF Rec 10 · FDL Art.29

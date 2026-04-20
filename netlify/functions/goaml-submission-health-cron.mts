@@ -1,7 +1,7 @@
 /**
  * goAML Submission Health cron — generated from routines.html catalog.
  *
- * Schedule: `*/30 * * * *` (every 30 min)
+ * Schedule: every 30 min (see `schedule` below)
  * Module: str_cases (Asana board resolved via the 16-project catalog)
  * Audit store: goaml-health-audit
  * Regulatory basis: FDL No.10/2025 Art.26-27

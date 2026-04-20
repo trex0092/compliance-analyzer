@@ -1,7 +1,7 @@
 /**
  * STR Deadline Watch cron — generated from routines.html catalog.
  *
- * Schedule: `*/15 * * * *` (every 15 min)
+ * Schedule: every 15 min (see `schedule` below)
  * Module: str_cases (Asana board resolved via the 16-project catalog)
  * Audit store: str-deadline-audit
  * Regulatory basis: FDL No.10/2025 Art.26-27
