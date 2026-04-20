@@ -56,13 +56,13 @@ export interface RoutineRunResult {
 }
 
 function readToken(): string {
-  if (typeof process === 'undefined' || !process.env) return '';
-  return (
-    process.env.ASANA_TOKEN ||
-    process.env.ASANA_ACCESS_TOKEN ||
-    process.env.ASANA_API_TOKEN ||
-    ''
-  );
+  // Positive-check pattern used across src/services (asanaClient.ts,
+  // approverPool.ts, asanaCentralMlroMirror.ts) so TS treats `process`
+  // as potentially-defined rather than always-undefined.
+  if (typeof process !== 'undefined' && process.env?.ASANA_TOKEN) return process.env.ASANA_TOKEN;
+  if (typeof process !== 'undefined' && process.env?.ASANA_ACCESS_TOKEN) return process.env.ASANA_ACCESS_TOKEN;
+  if (typeof process !== 'undefined' && process.env?.ASANA_API_TOKEN) return process.env.ASANA_API_TOKEN;
+  return '';
 }
 
 async function writeRoutineAudit(
