@@ -281,6 +281,7 @@
       const pad = payloadSeg.length % 4 === 0 ? '' : '='.repeat(4 - (payloadSeg.length % 4));
       const json = atob(payloadSeg.replace(/-/g, '+').replace(/_/g, '/') + pad);
       const payload = JSON.parse(json);
+      if (!payload || typeof payload !== 'object') return;
       if (typeof payload.exp !== 'number') return;
       const nowSec = Math.floor(Date.now() / 1000);
       if (payload.exp <= nowSec) {
@@ -1596,7 +1597,7 @@
     );
     html.push('</div>');
 
-    if (Array.isArray(data.sanctions && data.sanctions.perList)) {
+    if (data.sanctions && Array.isArray(data.sanctions.perList)) {
       html.push('<div class="list-grid">');
       for (const l of data.sanctions.perList) {
         html.push('<div class="list-item">');

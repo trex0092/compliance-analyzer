@@ -2490,8 +2490,18 @@
                handlers still work from the user-management panel. -->
           <span id="currentUserName" style="display: none"></span>
           <span id="currentUserRole" style="display: none"></span>
+          <span id="gsbHeartbeat" style="font-size:10px;letter-spacing:1px;color:var(--muted);margin-left:8px;font-family:'DM Mono',monospace;" aria-live="polite"></span>
         </div>
       </div>
+
+      <!-- MODULE VIEW — used by module-viewer.js for iframe-based module navigation -->
+      <section id="moduleView" class="module-view" aria-label="Embedded module view" aria-hidden="true" style="display:none">
+        <div class="module-view-head" style="display:flex;align-items:center;gap:12px;padding:10px 16px;">
+          <h2 id="moduleViewTitle" style="margin:0;font-size:14px;"></h2>
+          <button type="button" id="moduleViewClose" style="margin-left:auto;">&larr; Back</button>
+        </div>
+        <iframe id="moduleViewFrame" class="module-view-frame" src="about:blank" title="Module view" style="width:100%;height:78vh;border:0;display:block;background:var(--midnight,#020B18)"></iframe>
+      </section>
 
       <!-- SETUP PANEL -->
       <div id="setupPanel" style="display: none">
@@ -5648,7 +5658,8 @@
                 </button>
               </div>
             </div>
-            <div id="opsStrResult" class="token-note">No STR/SAR draft generated.</div>
+            <div id="opsStrResult" class="token-note">No STR draft generated.</div>
+            <div id="opsSarResult" class="token-note">No SAR draft generated.</div>
           </div>
 
           <div class="card">

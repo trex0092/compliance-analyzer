@@ -40,6 +40,8 @@
 
   function renderInbound(host) {
     var rows = safeParse(STORAGE.inbound, []);
+    var assayCleared = rows.filter(function (r) { return r.assay_ok; }).length;
+    var confidenceScore = rows.length > 0 ? Math.round((assayCleared / rows.length) * 100) : 0;
     host.innerHTML = [
       head('Inbound Advice',
         '<span class="mv-pill">10yr retention · FDL Art.24</span>' +
@@ -48,7 +50,8 @@
       '<p class="mv-lede">Every incoming shipment recorded against supplier, invoice, assay, and Dubai Customs / Brinks paperwork. Primary control for supply-chain traceability.</p>',
       '<div class="mv-stat-row">',
         '<div class="mv-stat"><div class="mv-stat-v">' + rows.length + '</div><div class="mv-stat-k">Records</div></div>',
-        '<div class="mv-stat"><div class="mv-stat-v" data-tone="ok">' + rows.filter(function (r) { return r.assay_ok; }).length + '</div><div class="mv-stat-k">Assay ✓</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="ok">' + assayCleared + '</div><div class="mv-stat-k">Assay ✓</div></div>',
+        '<div class="mv-stat"><div class="mv-stat-v" data-tone="' + (confidenceScore >= 80 ? 'ok' : 'warn') + '">' + confidenceScore + '%</div><div class="mv-stat-k">Confidence</div></div>',
       '</div>',
       rows.length
         ? '<ul class="mv-list">' + rows.slice(-15).reverse().map(function (r) {

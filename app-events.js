@@ -36,11 +36,15 @@
       return;
     }
 
+    // Convert string booleans to actual booleans before dispatch
+    var resolvedArg = arg === 'true' ? true : arg === 'false' ? false : arg;
+    var resolvedArg2 = arg2 === 'true' ? true : arg2 === 'false' ? false : arg2;
+
     // Call with arguments if provided
     if (arg2 !== null) {
-      fn(arg, arg2);
+      fn(resolvedArg, resolvedArg2);
     } else if (arg !== null) {
-      fn(arg);
+      fn(resolvedArg);
     } else {
       fn();
     }
@@ -208,16 +212,6 @@
   window._fixAsanaEntityTasks = function () {
     if (typeof fixAsanaEntityTasks === 'function') fixAsanaEntityTasks();
   };
-
-  // ─── Click Delegation (boolean args) ─────────────────────────────────
-  // Support data-arg="true"/"false" as actual booleans
-  document.addEventListener('click', function (e) {
-    var target = e.target.closest('[data-action][data-arg]');
-    if (!target) return;
-    var arg = target.getAttribute('data-arg');
-    if (arg === 'true') target.setAttribute('data-arg-bool', 'true');
-    else if (arg === 'false') target.setAttribute('data-arg-bool', 'false');
-  }, true); // capture phase, runs before the main click handler
 
   // ─── Change Delegation (with this.value) ───────────────────────────
   // Helper: compound handlers like switchActiveCompany + updateCompanyBar

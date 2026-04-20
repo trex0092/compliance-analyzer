@@ -128,7 +128,7 @@
     host.innerHTML = html.join('');
 
     host.querySelectorAll('[data-action="wb-task-new"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
+      btn.onclick = function () {
         var name = prompt('Task name?');
         if (!name) return;
         var due = prompt('Due date (YYYY-MM-DD)? Leave blank for none');
@@ -143,10 +143,10 @@
         });
         safeSave(STORAGE.asanaTasks, tasks);
         renderComplianceTasks(host);
-      });
+      };
     });
     host.querySelectorAll('[data-action="wb-task-refresh"]').forEach(function (btn) {
-      btn.addEventListener('click', function () { renderComplianceTasks(host); });
+      btn.onclick = function () { renderComplianceTasks(host); };
     });
   }
 
@@ -221,7 +221,7 @@
 
     var form = host.querySelector('#wb-onboarding-form');
     if (form) {
-      form.addEventListener('submit', function (ev) {
+      form.onsubmit = function (ev) {
         ev.preventDefault();
         var fd = new FormData(form);
         var row = {
@@ -241,7 +241,7 @@
         customers.push(row);
         safeSave(STORAGE.customers, customers);
         renderOnboarding(host);
-      });
+      };
     }
   }
 
@@ -281,7 +281,7 @@
     ].join('');
 
     host.querySelectorAll('[data-action="wb-appr-new"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
+      btn.onclick = function () {
         var title = prompt('What needs approval?');
         if (!title) return;
         var kind = prompt('Kind (EDD / Freeze / STR / Other)?') || 'Other';
@@ -295,10 +295,10 @@
         });
         safeSave(STORAGE.approvals, approvals);
         renderApprovals(host);
-      });
+      };
     });
     host.querySelectorAll('[data-action="wb-appr-approve"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
+      btn.onclick = function () {
         var idx = parseInt(btn.getAttribute('data-idx'), 10);
         var target = pending[idx];
         if (!target) return;
@@ -309,10 +309,10 @@
           safeSave(STORAGE.approvals, approvals);
           renderApprovals(host);
         }
-      });
+      };
     });
     host.querySelectorAll('[data-action="wb-appr-reject"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
+      btn.onclick = function () {
         var idx = parseInt(btn.getAttribute('data-idx'), 10);
         var target = pending[idx];
         if (!target) return;
@@ -323,7 +323,7 @@
           safeSave(STORAGE.approvals, approvals);
           renderApprovals(host);
         }
-      });
+      };
     });
   }
 

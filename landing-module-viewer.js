@@ -14,11 +14,12 @@
   // use. When the user clicks "Back to surfaces" the host is emptied
   // and the landing chrome reappears.
 
+  var LANDING_SLUGS = ['logistics', 'workbench', 'compliance-ops', 'routines', 'screening-command'];
+
   function syncModuleViewActiveClass() {
-    var LANDINGS = ['logistics', 'workbench', 'compliance-ops', 'routines', 'screening-command'];
     var segs = (location.pathname || '/').split('/').filter(Boolean);
     var first = segs.length ? segs[0].replace(/\.html$/, '') : '';
-    var isSubRoute = segs.length >= 2 && LANDINGS.indexOf(first) !== -1;
+    var isSubRoute = segs.length >= 2 && LANDING_SLUGS.indexOf(first) !== -1;
     if (isSubRoute) document.documentElement.classList.add('module-view-active');
     else document.documentElement.classList.remove('module-view-active');
     var els = document.querySelectorAll('.topbar, .page-nav, #pageNav');
@@ -80,8 +81,6 @@
     ].join('');
     document.head.appendChild(style);
   })();
-
-  var LANDING_SLUGS = ['logistics', 'workbench', 'compliance-ops', 'routines', 'screening-command'];
 
   function getBasePath() {
     var segs = (location.pathname || '/').split('/').filter(Boolean);

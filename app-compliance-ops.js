@@ -1,6 +1,27 @@
 (function () {
   const STORAGE_KEY = 'fgl_compliance_ops';
 
+  function toast(msg, type, duration) {
+    if (typeof window.toast === 'function' && window.toast !== toast) {
+      window.toast(msg, type, duration);
+      return;
+    }
+    console.info('[ops toast]', type || 'info', msg);
+  }
+
+  function setScopedJson(key, value) {
+    if (typeof window.setScopedJson === 'function' && window.setScopedJson !== setScopedJson) {
+      window.setScopedJson(key, value);
+      return;
+    }
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+  }
+
+  function setVal(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.value = val;
+  }
+
   function getState() {
     if (typeof safeLocalParse === 'function') {
       const s = safeLocalParse(STORAGE_KEY, null);
@@ -403,7 +424,7 @@
     a.download = `ComplianceTasks_SAR_Draft_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
 
-    const el = byId('opsStrResult');
+    const el = byId('opsSarResult') || byId('opsStrResult');
     if (el) el.textContent = `SAR draft generated with ${openCases.length} case(s). File for goAML submission.`;
     addAudit('sar-draft-generated', { caseCount: openCases.length });
     toast('SAR draft exported', 'success');
@@ -425,10 +446,10 @@
     setState(s);
     addAudit('reg-change-added', { source, owner, due });
 
-    byId('opsRegSource').value = '';
-    byId('opsRegOwner').value = '';
-    byId('opsRegDue').value = '';
-    byId('opsRegSummary').value = '';
+    setVal('opsRegSource', '');
+    setVal('opsRegOwner', '');
+    setVal('opsRegDue', '');
+    setVal('opsRegSummary', '');
 
     renderRegulatoryChanges();
     toast('Regulatory change logged', 'success');
@@ -491,18 +512,18 @@
   }
 
   function loadOpsDemoData() {
-    byId('opsEntityName').value = 'Al Noor Bullion Trading LLC';
-    byId('opsEntityCountry').value = 'Iran';
-    byId('opsEntityType').value = 'supplier';
-    byId('opsRiskCountry').value = 25;
-    byId('opsRiskPep').value = 20;
-    byId('opsRiskBehavior').value = 25;
-    byId('opsApprovalType').value = 'high-risk-onboarding';
-    byId('opsApprovalRef').value = 'CUST-DEMO-001';
-    byId('opsRegSource').value = 'MoE Circular';
-    byId('opsRegOwner').value = 'Compliance Officer';
-    byId('opsRegDue').value = new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
-    byId('opsRegSummary').value = 'Update enhanced due diligence steps for high-risk precious metals suppliers and document escalation thresholds.';
+    setVal('opsEntityName', 'Al Noor Bullion Trading LLC');
+    setVal('opsEntityCountry', 'Iran');
+    setVal('opsEntityType', 'supplier');
+    setVal('opsRiskCountry', 25);
+    setVal('opsRiskPep', 20);
+    setVal('opsRiskBehavior', 25);
+    setVal('opsApprovalType', 'high-risk-onboarding');
+    setVal('opsApprovalRef', 'CUST-DEMO-001');
+    setVal('opsRegSource', 'MoE Circular');
+    setVal('opsRegOwner', 'Compliance Officer');
+    setVal('opsRegDue', new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]);
+    setVal('opsRegSummary', 'Update enhanced due diligence steps for high-risk precious metals suppliers and document escalation thresholds.');
 
     const demoTs = new Date().toISOString();
     const demoShipments = [
