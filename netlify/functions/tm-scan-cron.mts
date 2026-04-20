@@ -35,6 +35,7 @@ import { authenticate } from './middleware/auth.mts';
 import type { Transaction, TmVerdictRecord } from '../../src/domain/transaction';
 import { runTmBrainAllCustomers, type TmBrainOptions } from '../../src/services/txMonitoringBrain';
 import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
+import { resolveAsanaProjectGid } from '../../src/services/asanaModuleProjects';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':
@@ -265,7 +266,11 @@ export default async (req: Request, context: Context): Promise<Response> => {
   let dispatchErrors = 0;
   let dispatchNote = '';
 
-  const tmProjectGid = process.env.ASANA_KYC_CDD_TRACKER_PROJECT_GID;
+  // Route through the 16-project catalog: TM alerts belong to the
+  // Transaction Monitoring board. Previously read the non-existent
+  // env var ASANA_KYC_CDD_TRACKER_PROJECT_GID which left every run
+  // silently un-dispatched — migrated to the catalog resolver.
+  const tmProjectGid = resolveAsanaProjectGid('transaction_monitoring');
   const asanaToken = process.env.ASANA_ACCESS_TOKEN;
   const dispatch = v.req.dispatch === true;
 
@@ -370,7 +375,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
       `${skipped} skipped (already exist). ${dispatchErrors} error(s).`;
   } else if (dispatch && !tmProjectGid) {
     dispatchNote =
-      'dispatch=true but ASANA_KYC_CDD_TRACKER_PROJECT_GID is not set. Drafts returned for manual review.';
+      'dispatch=true but transaction_monitoring project GID unresolved. Drafts returned for manual review.';
   } else if (dispatch && (!asanaToken || asanaToken.length < 16)) {
     dispatchNote =
       'dispatch=true but ASANA_ACCESS_TOKEN is missing or too short. Drafts returned for manual review.';

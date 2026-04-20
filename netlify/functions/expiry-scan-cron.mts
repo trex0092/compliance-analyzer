@@ -40,6 +40,7 @@ import { authenticate } from './middleware/auth.mts';
 import type { CustomerProfileV2 } from '../../src/domain/customerProfile';
 import { fetchWithTimeout } from '../../src/utils/fetchWithTimeout';
 import { scanExpiries, type ExpiryReport } from '../../src/services/customerExpiryAlerter';
+import { resolveAsanaProjectGid } from '../../src/services/asanaModuleProjects';
 import {
   buildExpiryEmitReport,
   type ExpiryEmitReport,
@@ -216,7 +217,12 @@ export default async (req: Request, context: Context): Promise<Response> => {
   let dispatchErrors = 0;
   let dispatchNote = '';
 
-  const kycProjectGid = process.env.ASANA_KYC_CDD_TRACKER_PROJECT_GID;
+  // Route through the 16-project catalog: expiring IDs + UBO docs
+  // belong to the CDD / UBO / PEP board (cdd_ubo_pep). Previously
+  // read the non-existent env var ASANA_KYC_CDD_TRACKER_PROJECT_GID
+  // which left every run silently un-dispatched — a real bug the
+  // catalog migration now fixes.
+  const kycProjectGid = resolveAsanaProjectGid('cdd_ubo_pep');
   const asanaToken = process.env.ASANA_ACCESS_TOKEN;
 
   if (dispatch && kycProjectGid && asanaToken && asanaToken.length >= 16) {

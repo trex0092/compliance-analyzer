@@ -14,6 +14,7 @@
 
 import type { Config } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
+import { resolveAsanaProjectGid } from '../../src/services/asanaModuleProjects';
 
 const AUDIT_STORE = 'ai-governance-audit';
 
@@ -32,11 +33,16 @@ async function writeAudit(payload: Record<string, unknown>): Promise<void> {
 
 export default async (): Promise<Response> => {
   const startedAtIso = new Date().toISOString();
-  const projectGid = process.env.ASANA_AI_GOVERNANCE_PROJECT_GID;
+  // Route through the 16-project catalog. Governance tasks land on
+  // the Governance, Regulatory Updates & Records Retention board.
+  // Falls back to ASANA_SCREENINGS_PROJECT_GID via resolver so the
+  // evidence chain never drops even before the MLRO bootstraps the
+  // module boards (asanaModuleProjects.ts).
+  const projectGid = resolveAsanaProjectGid('governance_and_retention');
   if (!projectGid) {
     await writeAudit({
       event: 'ai_gov_cron_skipped',
-      reason: 'ASANA_AI_GOVERNANCE_PROJECT_GID not set',
+      reason: 'governance_and_retention project GID unresolved',
     });
     return Response.json({ ok: true, skipped: 'no project gid' });
   }
