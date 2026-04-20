@@ -390,7 +390,14 @@
         '</div>',
       '</form>',
 
-      '<h3 class="mv-subhead">Recent subjects</h3>',
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px">' +
+        '<h3 class="mv-subhead" style="margin:0">Recent subjects</h3>' +
+        (rows.length
+          ? '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-clear-all" ' +
+              'title="Remove every row from the workbench" ' +
+              'style="opacity:.75">Clear all</button>'
+          : '') +
+      '</div>',
       rows.length
         ? '<ul class="mv-list">' + rows.slice(-10).reverse().map(function (r, idx) {
             var disp = DISPOSITIONS[r.disposition || 'pending'] || DISPOSITIONS.pending;
@@ -470,6 +477,20 @@
                 '</div>'
               : '';
 
+            // Delete button — removes the screening row from localStorage.
+            // Audit-trail note: once a live-backend screening is persisted
+            // server-side (FDL No.(10)/2025 Art.24 — 10yr retention), the
+            // server copy is authoritative; this control only clears the
+            // local MLRO workbench view, not the audit record.
+            var deleteBtnHtml =
+              '<button class="mv-btn mv-btn-sm mv-btn-ghost" ' +
+                'data-action="sc-sub-delete" data-id="' + esc(r.id) + '" ' +
+                'title="Remove from workbench" ' +
+                'aria-label="Remove ' + esc(r.name) + ' from workbench" ' +
+                'style="padding:2px 8px;line-height:1;font-size:16px;font-weight:600;opacity:.7">' +
+                '&times;' +
+              '</button>';
+
             return '<li class="mv-list-item" style="flex-direction:column;align-items:stretch">' +
               '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
                 '<div class="mv-list-main">' +
@@ -487,7 +508,10 @@
                   integrityLine +
                   sourceLine +
                 '</div>' +
-                '<span class="mv-badge" data-tone="' + disp.tone + '">' + disp.label + '</span>' +
+                '<div style="display:flex;align-items:center;gap:8px">' +
+                  '<span class="mv-badge" data-tone="' + disp.tone + '">' + disp.label + '</span>' +
+                  deleteBtnHtml +
+                '</div>' +
               '</div>' +
               actionHtml +
             '</li>';
@@ -577,6 +601,35 @@
         });
       });
     }
+
+    var clearAllBtn = host.querySelector('[data-action="sc-sub-clear-all"]');
+    if (clearAllBtn) {
+      clearAllBtn.onclick = function () {
+        if (!rows.length) return;
+        if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+          if (!window.confirm('Remove all ' + rows.length + ' screening row(s) from the workbench? (Server-side audit record is unaffected.)')) return;
+        }
+        rows.length = 0;
+        safeSave(STORAGE.subjects, rows);
+        renderSubjectScreening(host);
+      };
+    }
+
+    host.querySelectorAll('[data-action="sc-sub-delete"]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-id');
+        var idx = -1;
+        for (var i = 0; i < rows.length; i++) { if (rows[i].id === id) { idx = i; break; } }
+        if (idx < 0) return;
+        var name = rows[idx].name || 'this subject';
+        if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+          if (!window.confirm('Remove ' + name + ' from the workbench? (Server-side audit record is unaffected.)')) return;
+        }
+        rows.splice(idx, 1);
+        safeSave(STORAGE.subjects, rows);
+        renderSubjectScreening(host);
+      };
+    });
 
     host.querySelectorAll('[data-action="sc-sub-dispose"]').forEach(function (btn) {
       btn.onclick = function () {
