@@ -1185,6 +1185,222 @@
     '</svg>';
   }
 
+  // Signal Sensitivity Matrix — 2D influence grid: rows = signals,
+  // columns = hypotheses, cell = signed influence of the signal on the
+  // hypothesis. Lets the MLRO read "which factor pushes which verdict"
+  // at a glance without re-computing the Bayesian ladder by hand.
+  function sensitivityMatrix(factors) {
+    var signals = factors.map(function (f) { return f.key; });
+    if (!signals.length) return '';
+    // Signed weights per (signal, hypothesis). Negative = signal argues
+    // against the hypothesis; positive = argues for it. Magnitude is
+    // the coefficient used in the ladder above, so the two panels agree.
+    var M = {
+      sanctions:      { legitimate: -0.9, false_positive:  0.5, layering:  0.0, sanctions_evasion:  1.1, pep_associate:  0.0 },
+      adverse_media:  { legitimate: -0.9, false_positive: -0.8, layering:  0.4, sanctions_evasion:  0.0, pep_associate:  0.3 },
+      pep:            { legitimate: -0.9, false_positive: -0.6, layering:  0.0, sanctions_evasion:  0.0, pep_associate:  1.4 },
+      specialised:    { legitimate: -0.9, false_positive:  0.0, layering:  0.9, sanctions_evasion:  0.5, pep_associate:  0.0 },
+      integrity:      { legitimate: -0.3, false_positive:  0.0, layering:  0.0, sanctions_evasion:  0.2, pep_associate:  0.0 },
+      clamp:          { legitimate: -0.6, false_positive:  0.0, layering:  0.2, sanctions_evasion:  0.4, pep_associate:  0.0 }
+    };
+    var hypCols = [
+      { id: 'legitimate',        label: 'Legitimate' },
+      { id: 'false_positive',    label: 'False positive' },
+      { id: 'layering',          label: 'Layering' },
+      { id: 'sanctions_evasion', label: 'Sanctions evasion' },
+      { id: 'pep_associate',     label: 'PEP-by-assoc.' }
+    ];
+    var rows = factors.slice().sort(function (a, b) { return b.weight - a.weight; }).map(function (f) {
+      var cells = hypCols.map(function (h) {
+        var coef = (M[f.key] && typeof M[f.key][h.id] === 'number') ? M[f.key][h.id] : 0;
+        var eff = coef * f.weight;
+        var mag = Math.min(1, Math.abs(eff) / 1.6);
+        var colour = eff > 0.05 ? 'rgba(244,63,94,' + (0.12 + mag * 0.55) + ')'
+                    : eff < -0.05 ? 'rgba(16,185,129,' + (0.12 + mag * 0.55) + ')'
+                    : 'rgba(255,255,255,0.03)';
+        var sign = eff > 0.05 ? '+' : eff < -0.05 ? '' : '·';
+        return '<td style="padding:4px 6px;text-align:center;font-family:monospace;font-size:10px;' +
+          'background:' + colour + ';border:1px solid rgba(255,255,255,0.05)">' +
+          (Math.abs(eff) < 0.05 ? '·' : sign + eff.toFixed(2)) +
+        '</td>';
+      }).join('');
+      return '<tr><th style="text-align:left;font-weight:600;font-size:11px;padding:4px 8px 4px 0;opacity:.85">' +
+          esc(f.label) +
+        '</th>' + cells + '</tr>';
+    }).join('');
+    var head = '<tr><th></th>' + hypCols.map(function (h) {
+      return '<th style="font-size:10px;font-weight:600;letter-spacing:.5px;padding:4px 6px;opacity:.75">' + esc(h.label) + '</th>';
+    }).join('') + '</tr>';
+    return '<table style="border-collapse:separate;border-spacing:0;width:100%;margin-top:4px">' +
+      '<thead>' + head + '</thead><tbody>' + rows + '</tbody></table>' +
+      '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+        'Green cell = signal argues against the hypothesis · red = argues for · magnitude = signal weight × hypothesis coefficient.' +
+      '</div>';
+  }
+
+  // Decision-Path Explainer — human-readable if/then chain that
+  // produced the final verdict. Rules are read from the same thresholds
+  // the back-end brain uses, so what the MLRO reads here matches what
+  // was written to the audit record (FDL Art.20-21, Cabinet Res
+  // 74/2020 Art.4-7). Rules are evaluated in priority order; first
+  // match wins and subsequent rules are shown as "not reached".
+  function decisionPath(r, ladder) {
+    var topScore = typeof r.confidence === 'number' ? r.confidence : 0;
+    var amCount = r.adverse_media_count || 0;
+    var integrity = r.integrity || 'complete';
+    var hasHumanReview = !!(r.brain && r.brain.weaponized && r.brain.weaponized.requiresHumanReview);
+    var hasFourEyes = !!(r.brain && r.brain.deepBrain && r.brain.deepBrain.requiresFourEyes);
+    var clampCount = (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons))
+      ? r.brain.weaponized.clampReasons.length : 0;
+    var topHyp = ladder && ladder[0] ? ladder[0].id : 'legitimate';
+
+    var rules = [
+      {
+        cond: integrity === 'incomplete',
+        label: 'R1 · Screening integrity incomplete',
+        verdict: 'Hold — re-screen required',
+        cite: 'FDL Art.20-21',
+        trigger: 'A mandatory data source (UN or UAE EOCN) was unreachable.'
+      },
+      {
+        cond: topScore >= 0.9,
+        label: 'R2 · Confirmed sanctions match',
+        verdict: 'FREEZE within 24 clock hours',
+        cite: 'Cabinet Res 74/2020 Art.4 · EOCN TFS Guidance July 2025',
+        trigger: 'Top match score ≥ 90%.'
+      },
+      {
+        cond: topScore >= 0.5 || hasFourEyes || hasHumanReview,
+        label: 'R3 · Partial match · escalate to CO',
+        verdict: 'Partial match — four-eyes review within 1 business day',
+        cite: 'Cabinet Res 134/2025 Art.14 · FDL Art.20-21',
+        trigger: 'Top match score ∈ [0.5, 0.9) or brain requested human review.'
+      },
+      {
+        cond: amCount >= 3 || topHyp === 'layering' || topHyp === 'sanctions_evasion',
+        label: 'R4 · Adverse-media / typology concentration',
+        verdict: 'EDD trigger — document + MLRO review',
+        cite: 'FATF Rec 10 · Cabinet Res 134/2025 Art.14',
+        trigger: '≥3 adverse-media hits or layering / sanctions-evasion hypothesis dominant.'
+      },
+      {
+        cond: clampCount > 0,
+        label: 'R5 · Brain clamp fired',
+        verdict: 'Flag for reviewer — brain safety clamp activated',
+        cite: 'FDL Art.21 (CO situational awareness)',
+        trigger: 'One or more subsystem clamps fired during the run.'
+      },
+      {
+        cond: topScore > 0 && topScore < 0.5,
+        label: 'R6 · Weak match',
+        verdict: 'Document + dismiss if false positive',
+        cite: 'FATF Rec 10',
+        trigger: 'Top match score ∈ (0, 0.5).'
+      },
+      {
+        cond: true,
+        label: 'R7 · Clean screen',
+        verdict: 'Proceed to standard CDD / SDD path',
+        cite: 'FDL Art.12 · FATF Rec 10',
+        trigger: 'All signals below thresholds.'
+      }
+    ];
+
+    var fired = null;
+    return '<ol style="margin:4px 0 6px 0;padding-left:18px">' +
+      rules.map(function (rule) {
+        var triggered = !fired && rule.cond;
+        if (triggered) fired = rule;
+        var state = triggered ? 'MATCHED'
+                   : fired    ? 'not reached'
+                   : rule.cond ? 'would match'
+                   : 'skipped';
+        var tone = triggered ? 'background:#dc2626;color:#fff'
+                  : fired     ? 'background:rgba(255,255,255,0.08);color:rgba(250,232,255,0.5)'
+                  : rule.cond ? 'background:rgba(234,88,12,0.18);color:#fdba74'
+                  : 'background:rgba(255,255,255,0.05);color:rgba(250,232,255,0.4)';
+        return '<li style="margin-bottom:4px;font-size:11px;line-height:1.45;' +
+            (triggered ? 'font-weight:600' : 'opacity:.85') + '">' +
+          '<span style="display:inline-block;min-width:82px;padding:1px 6px;border-radius:3px;font-family:monospace;font-size:9px;letter-spacing:.5px;margin-right:6px;' + tone + '">' + state + '</span>' +
+          '<strong>' + esc(rule.label) + '.</strong> ' + esc(rule.verdict) +
+          ' <span style="opacity:.7">(' + esc(rule.cite) + ')</span>' +
+          '<br><span style="opacity:.7;margin-left:88px;display:inline-block">Trigger: ' + esc(rule.trigger) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ol>';
+  }
+
+  // Verdict History — persists up to 10 screenings per subject-name
+  // in localStorage so the Reasoning Console can show a confidence
+  // trend sparkline. The key is the lowercased subject name; the value
+  // is an array of { t, conf, verdict, classification } ordered oldest
+  // → newest. Data-only helper — no UI side-effects.
+  var VERDICT_HISTORY_KEY = 'hawkeye.screening.verdictHistory';
+  function loadVerdictHistory() {
+    try {
+      var raw = localStorage.getItem(VERDICT_HISTORY_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (_e) { return {}; }
+  }
+  function saveVerdictHistory(h) {
+    try { localStorage.setItem(VERDICT_HISTORY_KEY, JSON.stringify(h)); } catch (_e) {}
+  }
+  function appendVerdictHistory(r) {
+    if (!r || !r.name) return;
+    var all = loadVerdictHistory();
+    var key = String(r.name).trim().toLowerCase();
+    if (!all[key]) all[key] = [];
+    all[key].push({
+      t: Date.now(),
+      conf: typeof r.confidence === 'number' ? r.confidence : 0,
+      verdict: (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || r.disposition || '—',
+      classification: r.top_classification || 'none'
+    });
+    if (all[key].length > 10) all[key] = all[key].slice(-10);
+    saveVerdictHistory(all);
+  }
+  function verdictHistorySparkline(name) {
+    var all = loadVerdictHistory();
+    var key = String(name || '').trim().toLowerCase();
+    var series = all[key] || [];
+    if (series.length < 2) {
+      return '<div style="font-size:11px;opacity:.6">No prior screenings for this subject.</div>';
+    }
+    var w = 340, h = 70, pad = 6;
+    var xs = series.map(function (_, i) { return pad + (i * (w - pad * 2)) / Math.max(1, series.length - 1); });
+    var ys = series.map(function (p) { return h - pad - p.conf * (h - pad * 2); });
+    var path = 'M ' + xs[0].toFixed(1) + ' ' + ys[0].toFixed(1);
+    for (var i = 1; i < series.length; i++) {
+      path += ' L ' + xs[i].toFixed(1) + ' ' + ys[i].toFixed(1);
+    }
+    var pts = series.map(function (p, i) {
+      var colour = p.classification === 'confirmed' ? '#dc2626'
+                 : p.classification === 'potential' ? '#ea580c'
+                 : p.classification === 'weak'      ? '#d97706'
+                 : '#6ee7b7';
+      var title = new Date(p.t).toISOString().slice(0, 16).replace('T', ' ') + ' · ' +
+        Math.round(p.conf * 100) + '% · ' + p.verdict;
+      return '<circle cx="' + xs[i].toFixed(1) + '" cy="' + ys[i].toFixed(1) + '" r="3.5" fill="' + colour + '">' +
+        '<title>' + esc(title) + '</title></circle>';
+    }).join('');
+    var latest = series[series.length - 1];
+    var prev = series[series.length - 2];
+    var delta = latest.conf - prev.conf;
+    var deltaTxt = (delta >= 0 ? '+' : '') + (delta * 100).toFixed(1) + '%';
+    var deltaColour = Math.abs(delta) < 0.05 ? '#9ca3af' : delta > 0 ? '#fca5a5' : '#6ee7b7';
+    return '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
+        '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="max-width:100%">' +
+          '<path d="M ' + pad + ' ' + (h - pad) + ' L ' + (w - pad) + ' ' + (h - pad) + '" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>' +
+          '<path d="' + path + '" fill="none" stroke="#a855f7" stroke-width="2" stroke-linejoin="round"/>' +
+          pts +
+        '</svg>' +
+        '<div style="font-size:11px">' +
+          '<div style="opacity:.7">Last ' + series.length + ' screenings</div>' +
+          '<div style="font-family:monospace;font-size:13px;color:' + deltaColour + ';font-weight:600">Δ ' + esc(deltaTxt) + '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
   function buildReasoningConsole(r) {
     if (!r || r.source !== 'backend') return '';
     var factors = extractFactors(r);
@@ -1269,8 +1485,24 @@
         '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + subsystemGrid(r) + '</div>' +
       '</details>' +
 
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>SIGNAL × HYPOTHESIS SENSITIVITY MATRIX</strong></summary>' +
+        '<div style="margin-top:6px;overflow-x:auto">' + sensitivityMatrix(factors) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px" open>' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>DECISION PATH</strong> · rules that produced the verdict</summary>' +
+        decisionPath(r, ladder) +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>VERDICT HISTORY</strong> · confidence trend for this subject</summary>' +
+        '<div style="margin-top:6px">' + verdictHistorySparkline(r.name) + '</div>' +
+      '</details>' +
+
       '<div style="margin-top:8px;font-size:10px;opacity:.55">' +
-        'Computed client-side from the row\u2019s captured signals. Authoritative verdict = backend Brain Intelligence above (FDL Art.24).' +
+        'Computed client-side from the row\u2019s captured signals + prior runs stored in this browser. ' +
+        'Authoritative verdict = backend Brain Intelligence above (FDL Art.24).' +
       '</div>' +
     '</div>';
   }
@@ -1924,6 +2156,10 @@
           }
           rows.push(row);
           safeSave(STORAGE.subjects, rows);
+          // Verdict history — append every run (backend + simulation)
+          // so the Reasoning Console sparkline shows the confidence
+          // trend across re-screens for the same subject.
+          appendVerdictHistory(row);
           renderSubjectScreening(host);
         });
       });
