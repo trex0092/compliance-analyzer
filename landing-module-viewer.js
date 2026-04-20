@@ -1,9 +1,32 @@
 (function () {
+  // iOS Safari / Firefox bfcache: when the landing page is restored
+  // from the back/forward cache (e.g. after merging a fix + returning
+  // via Safari's back button), the page state is revived WITHOUT
+  // re-requesting the HTML — so a stale-build topbar/page-nav can
+  // keep rendering even after a deploy. Force a hard reload on bfcache
+  // restore so every post-deploy visit sees the current HTML.
+  window.addEventListener('pageshow', function (e) {
+    if (e && e.persisted) window.location.reload();
+  });
+
   var view = document.getElementById('moduleView');
   var frame = document.getElementById('moduleViewFrame');
   var titleEl = document.getElementById('moduleViewTitle');
   var closeBtn = document.getElementById('moduleViewClose');
   if (!view || !frame || !titleEl || !closeBtn) return;
+
+  // Imperative DOM hide — defense-in-depth for stale-HTML clients
+  // whose cached inline <style> does not yet include .topbar + .page-nav
+  // in the module-view-active hide list. Sets `hidden` attribute directly
+  // on the elements, which is harder for any cached CSS to un-hide.
+  function applyImperativeHide() {
+    var onSubRoute = document.documentElement.classList.contains('module-view-active');
+    var els = document.querySelectorAll('.topbar, .page-nav, #pageNav');
+    for (var i = 0; i < els.length; i++) {
+      if (onSubRoute) els[i].setAttribute('hidden', '');
+      else els[i].removeAttribute('hidden');
+    }
+  }
 
   // Landing chrome (hero, summary, card grid, regulatory strip) must be
   // MUTUALLY EXCLUSIVE with module content: sub-routes like
@@ -95,6 +118,7 @@
     view.classList.add('is-open');
     view.setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('module-view-active');
+    applyImperativeHide();
     if (pushHistory !== false && slug) {
       var target = getBasePath() + '/' + slug;
       if (location.pathname !== target) {
@@ -111,6 +135,7 @@
     view.classList.remove('is-open');
     view.setAttribute('aria-hidden', 'true');
     document.documentElement.classList.remove('module-view-active');
+    applyImperativeHide();
     frame.src = 'about:blank';
     if (pushHistory !== false) {
       var base = getBasePath();
@@ -184,6 +209,13 @@
     if (LANDING_SLUGS.indexOf(first) === -1) return;
     openSlug(segs[1], false);
   })();
+
+  // Run the imperative hide once at script-load in case the inline head
+  // script already set `module-view-active` (the sub-route auto-detect)
+  // but no card/pill click has fired yet. Belt-and-suspenders: even a
+  // stale cached inline <style> block without .topbar/.page-nav in the
+  // hide list gets covered by the `hidden` attribute set here.
+  applyImperativeHide();
 
   // When the embedded app navigates internally (user clicks a nav-bar
   // item inside index.html), mirror the new route into the parent URL
