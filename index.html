@@ -189,20 +189,33 @@
         position: relative;
         isolation: isolate;
       }
-      /* Premium wallpaper — fixed full-viewport cyborg portrait layered
-         behind all content with a radial vignette + linear wash for
-         readability. Coexists with .hi-side-wm silhouettes (z-index: 0)
-         and is auto-hidden when the page is embedded in an iframe via
-         the html.embedded body::before/::after rule further down. */
+      /* Premium wallpaper — fixed full-viewport cyborg portrait with
+         neon pink + neon blue color bleeds to reinforce the luxury
+         theme. Coexists with .hi-side-wm silhouettes (z-index: 0) and
+         the watermark.js overlays (z-index: 1-5), and is auto-hidden
+         when the page is embedded in an iframe via the
+         html.embedded body::before/::after rule further down. */
       body::before {
         content: '';
         position: fixed;
         inset: 0;
         z-index: -2;
         background:
-          url('assets/wallpaper-cyborg.jpg?v=1') center center / cover no-repeat;
-        opacity: 0.32;
-        filter: saturate(1.08) contrast(1.02);
+          radial-gradient(
+            ellipse 55% 70% at 22% 48%,
+            rgba(244, 114, 182, 0.45) 0%,
+            rgba(244, 114, 182, 0.12) 45%,
+            transparent 72%
+          ),
+          radial-gradient(
+            ellipse 55% 70% at 78% 52%,
+            rgba(59, 130, 246, 0.52) 0%,
+            rgba(59, 130, 246, 0.14) 45%,
+            transparent 72%
+          ),
+          url('assets/wallpaper-cyborg.jpg?v=2') center 22% / cover no-repeat;
+        opacity: 0.82;
+        filter: saturate(1.25) contrast(1.08);
         animation: wallpaperDrift 48s ease-in-out infinite alternate;
         pointer-events: none;
         will-change: transform;
@@ -214,16 +227,17 @@
         z-index: -1;
         background:
           radial-gradient(
-            ellipse 85% 75% at 50% 42%,
+            ellipse 90% 80% at 50% 48%,
             transparent 0%,
-            rgba(2, 11, 24, 0.35) 55%,
-            rgba(2, 11, 24, 0.88) 100%
+            rgba(2, 11, 24, 0.22) 55%,
+            rgba(2, 11, 24, 0.72) 100%
           ),
           linear-gradient(
             180deg,
-            rgba(2, 11, 24, 0.45) 0%,
-            rgba(2, 11, 24, 0.18) 45%,
-            rgba(2, 11, 24, 0.65) 100%
+            rgba(2, 11, 24, 0.30) 0%,
+            transparent 30%,
+            transparent 60%,
+            rgba(2, 11, 24, 0.55) 100%
           );
         pointer-events: none;
       }
@@ -235,7 +249,7 @@
         body::before { animation: none !important; }
       }
       @media (max-width: 768px) {
-        body::before { opacity: 0.22; }
+        body::before { opacity: 0.55; }
       }
       .app {
         max-width: 1440px;
