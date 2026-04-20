@@ -228,14 +228,15 @@ export default async (req: Request, context: Context): Promise<Response> => {
   });
 };
 
-// The route `/api/hawkeye-login` is wired via an explicit redirect
-// in netlify.toml (belt-and-braces — some Netlify deploys failed to
-// surface the `config.path` registration, yielding a 404 at the
-// documented URL; see commit 664a180 for the incident). The function
-// intentionally does NOT set `config.path` here: if it did, the
-// default `/.netlify/functions/auth-login` URL would be shadowed and
-// the toml redirect would break. Keeping the method constraint so a
-// stray GET returns 405 at the function layer.
+// Route registration via both `config.path` AND an explicit
+// netlify.toml redirect. Every other .mts function in this repo
+// (screening-run, screening-save, transaction-monitor, asana-*)
+// uses `config.path` successfully on this deploy, so the earlier
+// hypothesis that `config.path` was shadowing the default URL was
+// wrong — restoring it here. The toml redirect stays as a
+// belt-and-braces second path so `/api/hawkeye-login` resolves
+// regardless of which registration Netlify actually honours.
 export const config: Config = {
+  path: '/api/hawkeye-login',
   method: ['POST', 'OPTIONS'],
 };
