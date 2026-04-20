@@ -775,7 +775,35 @@
         { id: 'morning-briefing', title: 'Morning Briefing', schedule: '0 4 * * 1-5', cadence: 'daily', desc: 'Weekday MLRO briefing digest — overnight alerts, filings due, priority cases.', reg: 'FDL No.10/2025 Art.20', store: 'briefing-audit' },
         { id: 'asana-weekly-customer-status', title: 'Weekly Customer Status', schedule: '0 6 * * 1', cadence: 'weekly', desc: 'Monday weekly rollup of customer lifecycle status to Asana customer-status board.', reg: 'Cabinet Res 134/2025 Art.7', store: 'weekly-cust-audit' },
         { id: 'asana-weekly-digest', title: 'Weekly Compliance Digest', schedule: '0 6 * * 1', cadence: 'weekly', desc: 'Monday 6AM digest for management — open risks, filings, approvals, KPIs.', reg: 'Cabinet Res 134/2025 Art.19', store: 'weekly-digest-audit' },
-        { id: 'cdd-weekly-status', title: 'CDD Weekly Status', schedule: '0 5 * * 1', cadence: 'weekly', desc: 'Monday rollup of CDD review pipeline — pending, overdue, escalated, closed.', reg: 'Cabinet Res 134/2025 Art.7', store: 'cdd-status-audit' }
+        { id: 'cdd-weekly-status', title: 'CDD Weekly Status', schedule: '0 5 * * 1', cadence: 'weekly', desc: 'Monday rollup of CDD review pipeline — pending, overdue, escalated, closed.', reg: 'Cabinet Res 134/2025 Art.7', store: 'cdd-status-audit' },
+
+        // ───────── Compliance (5) ─────────
+        { id: 'str-deadline-watch', title: 'STR Deadline Watch', schedule: '*/15 * * * *', cadence: 'continuous', desc: 'STR/SAR filing countdown — escalates any case that sits unreviewed for 24h without a filing decision (file without delay).', reg: 'FDL No.10/2025 Art.26-27', store: 'str-deadline-audit' },
+        { id: 'four-eyes-sla-sweep', title: 'Four-Eyes SLA Sweep', schedule: '0 * * * *', cadence: 'continuous', desc: 'Detects partial/confirmed matches left un-cosigned for >24 hours; escalates to the Compliance Officer.', reg: 'FDL No.10/2025 Art.20-21', store: 'four-eyes-sla-audit' },
+        { id: 'records-retention-sweep', title: 'Records Retention Sweep', schedule: '30 1 * * *', cadence: 'daily', desc: '10-year retention integrity check + expiring-record digest for KYC, CDD files, STR narratives, screening audits.', reg: 'FDL No.10/2025 Art.24', store: 'retention-sweep-audit' },
+        { id: 'goaml-submission-health', title: 'goAML Submission Health', schedule: '*/30 * * * *', cadence: 'continuous', desc: 'Monitors goAML submission success-rate, rejection queue depth, XML schema drift against the UAE FIU endpoint.', reg: 'FDL No.10/2025 Art.26-27', store: 'goaml-health-audit' },
+        { id: 'policy-refresh-after-circular', title: 'Policy Refresh After Circular', schedule: '0 3 * * 3', cadence: 'weekly', desc: 'Weekly diff of MoE / CBUAE / EOCN / VARA circulars against shipped constants; raises Asana task if policy lag exceeds 30 days.', reg: 'MoE Circular 08/AML/2021', store: 'policy-refresh-audit' },
+
+        // ───────── Transaction Monitoring (5) ─────────
+        { id: 'structuring-pattern-sweep', title: 'Structuring Pattern Sweep', schedule: '*/30 * * * *', cadence: 'continuous', desc: 'Detects smurfing clusters near the AED 55K DPMS CTR threshold; auto-escalates when 3+ sub-threshold cash transactions appear within 7 days on one subject.', reg: 'MoE Circular 08/AML/2021', store: 'structuring-audit' },
+        { id: 'velocity-spike-detector', title: 'Velocity Spike Detector', schedule: '0 * * * *', cadence: 'continuous', desc: 'Hourly z-score anomaly on transaction volume + frequency per customer; flags 2-sigma deviations above the 90-day rolling baseline.', reg: 'FATF Rec 10', store: 'velocity-audit' },
+        { id: 'cross-border-aed60k-xcheck', title: 'Cross-Border AED 60K Cross-Check', schedule: '0 7 * * *', cadence: 'daily', desc: 'Reconciles declared AED 60K cross-border movements against CBUAE / Customs BNI feed; flags undeclared inflows / outflows.', reg: 'Cabinet Res 134/2025 Art.16', store: 'bni-xcheck-audit' },
+        { id: 'tbml-indicator-sweep', title: 'TBML Indicator Sweep', schedule: '30 6 * * *', cadence: 'daily', desc: 'Trade-based money-laundering heuristics — over/under-invoicing, phantom shipments, round-number invoicing, shell-company nexus, commodity mispricing.', reg: 'FATF TBML Guidance 2020', store: 'tbml-audit' },
+        { id: 'vasp-wallet-flow-anomaly', title: 'VASP Wallet Flow Anomaly', schedule: '0 * * * *', cadence: 'continuous', desc: 'Hourly wallet-flow anomaly for VARA-licensed counterparties — mixer exposure, peel-chain depth, sanctioned-cluster proximity.', reg: 'FATF Rec 15 · VARA Rulebook', store: 'vasp-flow-audit' },
+
+        // ───────── Screening (4) ─────────
+        { id: 'eocn-ingest-retry', title: 'EOCN Ingest Retry', schedule: '0 * * * *', cadence: 'continuous', desc: 'Hourly retry of the manual EOCN circular upload queue; closes the operational gap where EOCN does not have a poll-based feed.', reg: 'Cabinet Res 74/2020 Art.35', store: 'eocn-retry-audit' },
+        { id: 'pep-rescreen-by-tier', title: 'PEP Re-screen by Tier', schedule: '30 3 * * *', cadence: 'daily', desc: 'Tiered PEP re-screen cadence — EDD daily, CDD weekly, SDD monthly. Delta alerts to Asana for any new affiliation, role change, or adverse-media hit.', reg: 'Cabinet Res 134/2025 Art.14', store: 'pep-rescreen-audit' },
+        { id: 'adverse-media-hot-sweep', title: 'Adverse Media Hot Sweep', schedule: '0 */6 * * *', cadence: 'continuous', desc: 'Production run of runAdverseMediaHotIngest — four times per day across all 13K+ vetted media sources with FDL Art.29 no-tipping-off guard on every query.', reg: 'FATF Rec 10 · FDL Art.29', store: 'am-hot-audit' },
+        { id: 'subject-resolution-review', title: 'Subject Resolution Review', schedule: '30 5 * * *', cadence: 'daily', desc: 'Daily digest of pending "pin as subject" decisions so the MLRO resolves candidate identity before the next watchlist refresh (FATF Rec 10 positive identification).', reg: 'FATF Rec 10', store: 'subject-resolution-audit' },
+
+        // ───────── ESG (2) ─────────
+        { id: 'cahra-supplier-review', title: 'CAHRA Supplier Review', schedule: '0 4 * * 2', cadence: 'weekly', desc: 'Tuesday LBMA RGG v9 Step 2 CAHRA sweep across all DPMS supplier relationships; triggers Step 3-5 enhanced DD on any supplier sourcing from a conflict-affected region.', reg: 'LBMA RGG v9 Step 2 · UAE MoE RSG', store: 'cahra-audit' },
+        { id: 'modern-slavery-indicator-sweep', title: 'Modern Slavery Indicator Sweep', schedule: '0 4 * * 4', cadence: 'weekly', desc: 'Thursday UK MSA 2015 + UNGPs forced / child-labour indicator sweep across supplier adverse media and supplier SAQ responses.', reg: 'UK Modern Slavery Act 2015 · UNGPs', store: 'modern-slavery-audit' },
+
+        // ───────── Supply Chain (2) ─────────
+        { id: 'refiner-accreditation-check', title: 'Refiner Accreditation Check', schedule: '30 4 * * *', cadence: 'daily', desc: 'Daily verification of Dubai Good Delivery (DGD) + LBMA Good Delivery accreditation status for every refiner counterparty; queues Asana review on any delisting or suspension.', reg: 'LBMA RGG v9 · DGD Standard', store: 'refiner-accred-audit' },
+        { id: 'dual-use-export-sweep', title: 'Dual-Use Export Sweep', schedule: '30 5 * * *', cadence: 'daily', desc: 'Cabinet Res 156/2025 + Wassenaar + UAE Strategic Trade Control scan of outbound flows; flags dual-use / strategic-goods tariff codes and sensitive end-use signals.', reg: 'Cabinet Res 156/2025 · UAE STC', store: 'dual-use-audit' }
       ];
 
       const cadenceLabel = {
@@ -794,17 +822,28 @@
           '* * * * *': 'every minute',
           '*/5 * * * *': 'every 5 min',
           '*/15 * * * *': 'every 15 min',
+          '*/30 * * * *': 'every 30 min',
           '0 * * * *': 'every hour',
           '0 */4 * * *': 'every 4 hours',
+          '0 */6 * * *': 'every 6 hours',
           '0 1 * * *': '01:00 UTC daily',
+          '30 1 * * *': '01:30 UTC daily',
           '0 2 * * *': '02:00 UTC daily',
           '0 3 * * *': '03:00 UTC daily',
+          '30 3 * * *': '03:30 UTC daily',
           '0 4 * * *': '04:00 UTC daily',
+          '30 4 * * *': '04:30 UTC daily',
           '0 5 * * *': '05:00 UTC daily',
+          '30 5 * * *': '05:30 UTC daily',
           '0 6 * * *': '06:00 UTC daily',
+          '30 6 * * *': '06:30 UTC daily',
+          '0 7 * * *': '07:00 UTC daily',
           '0 4 * * 1-5': '04:00 UTC weekdays',
           '0 5 * * 1': 'Mon 05:00 UTC',
-          '0 6 * * 1': 'Mon 06:00 UTC'
+          '0 6 * * 1': 'Mon 06:00 UTC',
+          '0 3 * * 3': 'Wed 03:00 UTC',
+          '0 4 * * 2': 'Tue 04:00 UTC',
+          '0 4 * * 4': 'Thu 04:00 UTC'
         };
         return map[cron] || cron;
       }
