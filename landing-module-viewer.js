@@ -23,6 +23,8 @@
     var style = document.createElement('style');
     style.id = 'moduleViewActiveStyles';
     style.textContent =
+      'html.module-view-active .topbar,' +
+      'html.module-view-active .page-nav,' +
       'html.module-view-active .hero,' +
       'html.module-view-active .summary,' +
       'html.module-view-active .hero-summary,' +
