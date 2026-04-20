@@ -1,7 +1,11 @@
-const CACHE_NAME = 'hawkeye-sterling-v2';
+// Bumped to v3 to evict any legacy cache that served the pre-JWT
+// "FIRST-TIME SETUP" wizard. The activate handler deletes every cache
+// whose name does not equal CACHE_NAME, so pinning a new version here
+// is the only guaranteed way to drop stale entries on next activation.
+// Regulatory: FDL No.(10)/2025 Art.20-21 (the MLRO sign-in surface
+// must reflect the current deployed auth flow — no stale surfaces).
+const CACHE_NAME = 'hawkeye-sterling-v3';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
 ];
 
