@@ -334,6 +334,45 @@
         color: var(--mist); word-break: break-word;
       }
       .drawer-cell .v.reg { color: var(--azure-bright); }
+      .drawer-cell .v a { color: var(--azure-bright); text-decoration: none; border-bottom: 1px dashed rgba(127, 193, 255, 0.4); }
+      .drawer-cell .v a:hover { border-bottom-color: var(--azure-bright); }
+      .drawer-extras {
+        margin-bottom: 18px; padding: 14px 16px; border-radius: 10px;
+        background: rgba(10, 22, 40, 0.6);
+        border: 1px solid var(--border);
+      }
+      .drawer-extras[hidden] { display: none; }
+      .drawer-extras-head {
+        margin-bottom: 10px;
+      }
+      .drawer-extras-head .k {
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1.8px; text-transform: uppercase; color: var(--steel);
+      }
+      .drawer-extras-row {
+        display: grid; grid-template-columns: 140px 1fr;
+        gap: 12px; padding: 6px 0;
+        border-top: 1px solid rgba(127, 193, 255, 0.08);
+      }
+      .drawer-extras-row:first-child { border-top: 0; }
+      .drawer-extras-row .k {
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1.5px; text-transform: uppercase; color: var(--steel);
+        align-self: center;
+      }
+      .drawer-extras-row .v {
+        font-family: 'DM Mono', monospace; font-size: 11.5px;
+        color: var(--mist); word-break: break-word;
+      }
+      .drawer-extras-row .v a { color: var(--azure-bright); text-decoration: none; }
+      .drawer-extras-row .v a:hover { text-decoration: underline; }
+      .drawer-extras-row .v .chip {
+        display: inline-block; padding: 2px 8px; margin: 2px 4px 2px 0;
+        border-radius: 12px; font-size: 10px; letter-spacing: 1px;
+        background: rgba(47, 125, 255, 0.14);
+        border: 1px solid rgba(47, 125, 255, 0.35);
+        color: var(--azure-bright);
+      }
       /* 30-day run-history heatmap — one cell per day, oldest on the
          left, today on the right. Colour bands surface SLA misses
          (zero-count days with an expected-per-day > 0 are flagged
@@ -711,7 +750,46 @@
             <div class="k">Last seen</div>
             <div class="v" id="drawerLastSeen">—</div>
           </div>
+          <div class="drawer-cell">
+            <div class="k">Next run (UTC)</div>
+            <div class="v" id="drawerNextRun">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Time until next</div>
+            <div class="v" id="drawerCountdown">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Domain</div>
+            <div class="v" id="drawerDomain">—</div>
+          </div>
+          <div class="drawer-cell">
+            <div class="k">Source function</div>
+            <div class="v" id="drawerSource">—</div>
+          </div>
         </div>
+        <section class="drawer-extras" id="drawerExtras" hidden>
+          <div class="drawer-extras-head">
+            <span class="k">Dependencies &amp; related</span>
+          </div>
+          <div class="drawer-extras-body">
+            <div class="drawer-extras-row">
+              <span class="k">Upstream</span>
+              <span class="v" id="drawerUpstream">—</span>
+            </div>
+            <div class="drawer-extras-row">
+              <span class="k">Downstream</span>
+              <span class="v" id="drawerDownstream">—</span>
+            </div>
+            <div class="drawer-extras-row">
+              <span class="k">Related skills</span>
+              <span class="v" id="drawerRelatedSkills">—</span>
+            </div>
+            <div class="drawer-extras-row">
+              <span class="k">Asana board</span>
+              <span class="v" id="drawerAsanaBoard">—</span>
+            </div>
+          </div>
+        </section>
         <section class="drawer-timeline" id="drawerTimeline" hidden>
           <div class="drawer-timeline-head">
             <span class="k">30-day run history</span>
@@ -985,6 +1063,216 @@
         if (drawerRunBtn) drawerRunBtn.disabled = !token;
       }
 
+      // ── Next-run calculation from cron ──────────────────────────────
+      // Minimal cron-next that handles the patterns actually used by
+      // this project — */N, 0 * * * *, M H * * *, M H * * D[-D]. Any
+      // unknown pattern falls back to "—" so the UI never shows a
+      // wrong time. Auditor-relevant: this is a client-side preview,
+      // the scheduler of record is Netlify's cron trigger.
+      function nextRunFromCron(cron) {
+        if (!cron || typeof cron !== 'string') return null;
+        const parts = cron.trim().split(/\s+/);
+        if (parts.length !== 5) return null;
+        const [m, h, dom, mon, dow] = parts;
+        const now = new Date();
+        const next = new Date(Date.UTC(
+          now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+          now.getUTCHours(), now.getUTCMinutes() + 1, 0, 0
+        ));
+        // Walk forward up to 14 days looking for the first minute
+        // matching the cron. Safe for every pattern we ship.
+        const limit = 60 * 24 * 14;
+        for (let i = 0; i < limit; i++) {
+          const mm = next.getUTCMinutes();
+          const hh = next.getUTCHours();
+          const dw = next.getUTCDay() || 7; // 1=Mon … 7=Sun
+          const dy = next.getUTCDate();
+          const mo = next.getUTCMonth() + 1;
+          if (cronFieldMatches(m, mm) &&
+              cronFieldMatches(h, hh) &&
+              cronFieldMatches(dom, dy) &&
+              cronFieldMatches(mon, mo) &&
+              cronDowMatches(dow, dw)) {
+            return next;
+          }
+          next.setUTCMinutes(next.getUTCMinutes() + 1);
+        }
+        return null;
+      }
+      function cronFieldMatches(expr, value) {
+        if (expr === '*') return true;
+        if (expr.indexOf('*/') === 0) {
+          const step = parseInt(expr.slice(2), 10);
+          return step > 0 && (value % step === 0);
+        }
+        return expr.split(',').some(part => {
+          if (part.indexOf('-') >= 0) {
+            const [a, b] = part.split('-').map(x => parseInt(x, 10));
+            return value >= a && value <= b;
+          }
+          return parseInt(part, 10) === value;
+        });
+      }
+      function cronDowMatches(expr, dow1to7) {
+        // Treat 0 and 7 as Sunday; internally we use 1-7 with Sun=7.
+        const normal = v => (v === 0 ? 7 : v);
+        if (expr === '*') return true;
+        return expr.split(',').some(part => {
+          if (part.indexOf('-') >= 0) {
+            const [a, b] = part.split('-').map(x => parseInt(x, 10));
+            return dow1to7 >= normal(a) && dow1to7 <= normal(b);
+          }
+          return normal(parseInt(part, 10)) === dow1to7;
+        });
+      }
+      function formatCountdown(ms) {
+        if (ms < 0) return 'overdue';
+        const s = Math.floor(ms / 1000);
+        const d = Math.floor(s / 86400);
+        const h = Math.floor((s % 86400) / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+        if (h > 0) return h + 'h ' + m + 'm ' + sec + 's';
+        if (m > 0) return m + 'm ' + sec + 's';
+        return sec + 's';
+      }
+
+      // ── Domain + source-file + related-skill mapping ────────────────
+      // Static maps derived from the routine ID. Purely presentational
+      // — if a routine has no known source or skill, we fall back to
+      // the audit-store name so the cell never shows "—" without
+      // context. FDL Art.24 — every routine must be attributable.
+      function routineDomain(id) {
+        if (/^sanctions|eocn|pep-rescreen|adverse-media|subject-resolution|snapshot/.test(id)) return 'Screening';
+        if (/^asana|chain-anchor/.test(id)) return 'Asana integration';
+        if (/^brain|advisor|clamp/.test(id)) return 'Brain Intelligence';
+        if (/^ai-governance|red-team|regulatory|policy-refresh/.test(id)) return 'AI Governance';
+        if (/^tm-scan|structuring|velocity|cross-border|tbml|vasp/.test(id)) return 'Transaction Monitoring';
+        if (/^str-|four-eyes|records-retention|goaml|filing/.test(id)) return 'Compliance';
+        if (/^cahra|modern-slavery|asm|mercury|child-labour|carbon|water|grievance/.test(id)) return 'ESG';
+        if (/^refiner|dual-use|chain-of-custody|bullion|customs|supplier-saq|lbma|recycled/.test(id)) return 'Supply Chain';
+        if (/^cbuae|expiry/.test(id)) return 'Regulatory data';
+        if (/briefing|digest|cdd-weekly/.test(id)) return 'MLRO digest';
+        return 'General';
+      }
+      function routineSourceFile(id) {
+        // Best-effort mapping to netlify/functions. Routines added
+        // in this session carry a `-cron.mts` suffix; legacy ones
+        // match their exact file name.
+        const FUNCTIONS = {
+          'sanctions-ingest': 'netlify/functions/sanctions-ingest.mts',
+          'sanctions-delta-screen': 'netlify/functions/sanctions-delta-screen-cron.mts',
+          'sanctions-watch': 'netlify/functions/sanctions-watch.mts',
+          'asana-reconcile': 'netlify/functions/asana-reconcile-cron.mts',
+          'asana-retry-queue': 'netlify/functions/asana-retry-queue-cron.mts',
+          'asana-super-brain-autopilot': 'netlify/functions/asana-super-brain-autopilot-cron.mts',
+          'asana-sync': 'netlify/functions/asana-sync-cron.mts',
+          'asana-weekly-customer-status': 'netlify/functions/asana-weekly-customer-status-cron.mts',
+          'asana-weekly-digest': 'netlify/functions/asana-weekly-digest-cron.mts',
+          'ai-governance-self-audit': 'netlify/functions/ai-governance-self-audit-cron.mts',
+          'cbuae-fx': 'netlify/functions/cbuae-fx-refresh-cron.mts',
+          'expiry-scan': 'netlify/functions/expiry-scan-cron.mts',
+          'red-team': 'netlify/functions/red-team-cron.mts',
+          'regulatory-drift': 'netlify/functions/regulatory-drift-cron.mts',
+          'regulatory-horizon': 'netlify/functions/regulatory-horizon-cron.mts',
+          'tm-scan': 'netlify/functions/tm-scan-cron.mts',
+          'morning-briefing': 'netlify/functions/morning-briefing-cron.mts',
+          'brain-clamp': 'netlify/functions/brain-clamp-cron.mts',
+          'chain-anchor': 'netlify/functions/chain-anchor-cron.mts',
+          'cdd-weekly-status': 'netlify/functions/cdd-weekly-status-cron.mts'
+        };
+        return FUNCTIONS[id] || ('netlify/functions/' + id + '-cron.mts (planned)');
+      }
+      function routineRelatedSkills(id) {
+        const M = {
+          'sanctions-ingest':          ['snapshot-freshness-gate', 'screen'],
+          'sanctions-delta-screen':    ['multi-agent-screen', 'screen', 'decision-consistency-check'],
+          'sanctions-watch':           ['snapshot-freshness-gate'],
+          'eocn-ingest-retry':         ['snapshot-freshness-gate', 'screen'],
+          'pep-rescreen-by-tier':      ['screen', 'onboard'],
+          'adverse-media-hot-sweep':   ['screen', 'multi-agent-screen'],
+          'subject-resolution-review': ['screen'],
+          'str-deadline-watch':        ['goaml', 'filing-compliance', 'incident'],
+          'four-eyes-sla-sweep':       ['incident', 'agent-orchestrate'],
+          'records-retention-sweep':   ['audit-pack', 'evidence-bundle'],
+          'goaml-submission-health':   ['goaml', 'filing-compliance'],
+          'policy-refresh-after-circular': ['regulatory-update', 'regulatory-spec'],
+          'structuring-pattern-sweep': ['incident', 'goaml'],
+          'velocity-spike-detector':   ['incident'],
+          'cross-border-aed60k-xcheck': ['goaml', 'filing-compliance'],
+          'tbml-indicator-sweep':      ['incident', 'goaml'],
+          'vasp-wallet-flow-anomaly':  ['incident', 'goaml'],
+          'cahra-supplier-review':     ['audit-pack', 'traceability'],
+          'modern-slavery-indicator-sweep': ['audit-pack'],
+          'asm-compliance-audit':      ['audit-pack', 'traceability'],
+          'mercury-minamata-sweep':    ['audit-pack'],
+          'child-labour-ilo182-sweep': ['audit-pack'],
+          'carbon-scope-supply-chain': ['kpi-report'],
+          'water-stewardship-cahra':   ['audit-pack'],
+          'grievance-mechanism-monitor': ['audit-pack'],
+          'refiner-accreditation-check': ['audit-pack', 'traceability'],
+          'dual-use-export-sweep':     ['incident'],
+          'chain-of-custody-verify':   ['audit-pack', 'traceability'],
+          'bullion-assay-drift':       ['audit-pack'],
+          'customs-declaration-recon': ['audit-pack'],
+          'supplier-saq-rollover':     ['audit-pack'],
+          'lbma-audit-countdown':      ['moe-readiness', 'audit-pack', 'evidence-bundle'],
+          'recycled-vs-mined-origin':  ['audit-pack', 'traceability'],
+          'brain-lessons-archive':     ['decision-consistency-check'],
+          'clamp-reason-weekly-digest': ['decision-consistency-check'],
+          'advisor-budget-tracker':    ['kpi-report'],
+          'ai-governance-self-audit':  ['decision-consistency-check', 'audit-pack'],
+          'red-team':                  ['decision-consistency-check']
+        };
+        return M[id] || [];
+      }
+      function routineDependencies(id) {
+        // Static upstream / downstream map — mirrors
+        // the acyclic dependency graph the cron scheduler respects.
+        const G = {
+          'sanctions-delta-screen':    { up: ['sanctions-ingest'],      down: ['asana-sync', 'asana-reconcile'] },
+          'sanctions-watch':           { up: ['sanctions-ingest'],      down: [] },
+          'eocn-ingest-retry':         { up: [],                        down: ['sanctions-delta-screen'] },
+          'asana-retry-queue':         { up: ['asana-sync'],            down: [] },
+          'asana-reconcile':           { up: ['asana-sync'],            down: [] },
+          'str-deadline-watch':        { up: ['tm-scan', 'sanctions-delta-screen'], down: ['goaml-submission-health'] },
+          'four-eyes-sla-sweep':       { up: ['sanctions-delta-screen'], down: [] },
+          'goaml-submission-health':   { up: ['str-deadline-watch'],    down: [] },
+          'structuring-pattern-sweep': { up: ['cbuae-fx'],              down: ['str-deadline-watch'] },
+          'velocity-spike-detector':   { up: [],                        down: ['str-deadline-watch'] },
+          'cross-border-aed60k-xcheck':{ up: ['cbuae-fx'],              down: ['str-deadline-watch'] },
+          'tbml-indicator-sweep':      { up: [],                        down: ['str-deadline-watch'] },
+          'vasp-wallet-flow-anomaly':  { up: [],                        down: ['str-deadline-watch'] },
+          'pep-rescreen-by-tier':      { up: ['sanctions-ingest'],      down: ['four-eyes-sla-sweep'] },
+          'adverse-media-hot-sweep':   { up: [],                        down: ['pep-rescreen-by-tier'] },
+          'brain-lessons-archive':     { up: ['brain-clamp'],           down: ['ai-governance-self-audit'] },
+          'clamp-reason-weekly-digest':{ up: ['brain-clamp'],           down: [] },
+          'advisor-budget-tracker':    { up: [],                        down: [] },
+          'cahra-supplier-review':     { up: ['adverse-media-hot-sweep'], down: ['modern-slavery-indicator-sweep'] },
+          'chain-of-custody-verify':   { up: ['refiner-accreditation-check'], down: ['bullion-assay-drift'] },
+          'customs-declaration-recon': { up: ['cbuae-fx'],              down: [] },
+          'lbma-audit-countdown':      { up: [],                        down: ['refiner-accreditation-check', 'chain-of-custody-verify'] }
+        };
+        return G[id] || { up: [], down: [] };
+      }
+      function routineGithubUrl(path) {
+        return 'https://github.com/trex0092/compliance-analyzer/blob/main/' + path.replace(' (planned)', '');
+      }
+      function routineAsanaBoard(id) {
+        // Most sanctions / screening / TM / STR routines write to the
+        // unified ASANA_SCREENINGS_PROJECT_GID board. Everything else
+        // writes to its own audit-store blob; the Asana post is
+        // discretionary. Link to the project page when we know the GID.
+        const CORE_PROJECT = '1213759768596515';
+        if (/^sanctions|eocn|pep-rescreen|adverse-media|subject|str-|four-eyes|goaml|structuring|velocity|cross-border|tbml|vasp|tm-scan/.test(id)) {
+          return 'https://app.asana.com/0/' + CORE_PROJECT;
+        }
+        return null;
+      }
+
+      let drawerCountdownTimer = null;
+
       function openDrawer(routineId) {
         const r = ROUTINES.find(x => x.id === routineId);
         if (!r) return;
@@ -999,6 +1287,67 @@
         const live = LIVE_STATUS[r.id];
         document.getElementById('drawerStatus').textContent = live ? stateLabelFor(live) : 'Sign in for live status';
         document.getElementById('drawerLastSeen').textContent = live && live.lastRun ? live.lastRun : '—';
+
+        // Next-run + countdown — client-side preview from the cron.
+        const next = nextRunFromCron(r.schedule);
+        const drawerNextRun = document.getElementById('drawerNextRun');
+        const drawerCountdown = document.getElementById('drawerCountdown');
+        if (next) {
+          drawerNextRun.textContent = next.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+          drawerCountdown.textContent = formatCountdown(next.getTime() - Date.now());
+          if (drawerCountdownTimer) clearInterval(drawerCountdownTimer);
+          drawerCountdownTimer = setInterval(function () {
+            const ms = next.getTime() - Date.now();
+            drawerCountdown.textContent = formatCountdown(ms);
+            if (ms < 0 && ms > -60000) {
+              // Grace second tick — recompute the next slot once we pass it.
+              const n2 = nextRunFromCron(r.schedule);
+              if (n2) {
+                drawerNextRun.textContent = n2.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+              }
+            }
+          }, 1000);
+        } else {
+          drawerNextRun.textContent = 'custom cron — parser skipped';
+          drawerCountdown.textContent = '—';
+        }
+
+        // Domain + source function + asana board
+        document.getElementById('drawerDomain').textContent = routineDomain(r.id);
+        const srcPath = routineSourceFile(r.id);
+        const srcEl = document.getElementById('drawerSource');
+        if (srcPath.endsWith('(planned)')) {
+          srcEl.textContent = srcPath;
+        } else {
+          srcEl.innerHTML = '<a href="' + routineGithubUrl(srcPath) + '" target="_blank" rel="noopener noreferrer">' + srcPath + '</a>';
+        }
+
+        // Dependencies + related skills + Asana board link
+        const deps = routineDependencies(r.id);
+        const upEl = document.getElementById('drawerUpstream');
+        const downEl = document.getElementById('drawerDownstream');
+        const skillsEl = document.getElementById('drawerRelatedSkills');
+        const boardEl = document.getElementById('drawerAsanaBoard');
+        const extrasEl = document.getElementById('drawerExtras');
+
+        const chipsFromIds = ids => ids.length
+          ? ids.map(id => '<span class="chip">' + id + '</span>').join(' ')
+          : '—';
+        upEl.innerHTML = chipsFromIds(deps.up);
+        downEl.innerHTML = chipsFromIds(deps.down);
+
+        const relSkills = routineRelatedSkills(r.id);
+        skillsEl.innerHTML = relSkills.length
+          ? relSkills.map(s => '<span class="chip">/' + s + '</span>').join(' ')
+          : '—';
+
+        const boardUrl = routineAsanaBoard(r.id);
+        boardEl.innerHTML = boardUrl
+          ? '<a href="' + boardUrl + '" target="_blank" rel="noopener noreferrer">Screening Command — Sanctions</a>'
+          : '<span style="opacity:.6">writes to blob only (' + r.store + ')</span>';
+
+        extrasEl.hidden = false;
+
         drawerRunMsg.textContent = '';
         if (drawerAuthMsg) drawerAuthMsg.textContent = '';
         // Pre-fill MLRO name from localStorage on reopen (same key that
@@ -1192,6 +1541,7 @@
       function closeDrawer() {
         drawer.classList.remove('open');
         DRAWER_ROUTINE = null;
+        if (drawerCountdownTimer) { clearInterval(drawerCountdownTimer); drawerCountdownTimer = null; }
       }
 
       document.getElementById('routinesGrid').addEventListener('click', (e) => {

@@ -334,17 +334,40 @@ html::after {
   -webkit-backdrop-filter: blur(2px);
 }
 
-/* Native dropdown option list — each browser renders this as a
-   platform widget, but `background-color` on the `<option>` element
-   is honoured on Chromium + Firefox + Safari. Use the same translucent
-   wash so the purple wallpaper bleeds through the open menu instead
-   of the default opaque grey. */
+/* Native dropdown option list — the open popup is rendered by the
+   platform, but `color-scheme: dark` on the parent forces Chromium,
+   Firefox, and Safari to draw the popup using the page's dark palette
+   instead of the OS default light/grey chrome. Combined with a
+   transparent `option` fill this makes the open menu see-through to
+   the page wallpaper on every module (workbench, compliance-ops,
+   logistics, screening-command, routines). */
+html {
+  color-scheme: dark;
+}
+#moduleViewContent select,
+.mv-form select,
+#routineDrawer select,
+.routines-page select {
+  color-scheme: dark !important;
+}
 #moduleViewContent select option,
 #moduleViewContent select optgroup,
 .mv-form select option,
-.mv-form select optgroup {
-  background-color: rgba(26, 15, 46, 0.92) !important;
+.mv-form select optgroup,
+#routineDrawer select option,
+#routineDrawer select optgroup,
+select option,
+select optgroup {
+  background-color: transparent !important;
+  background: transparent !important;
   color: #fae8ff !important;
+}
+#moduleViewContent select option:checked,
+.mv-form select option:checked,
+#routineDrawer select option:checked,
+select option:checked {
+  background-color: rgba(168, 85, 247, 0.35) !important;
+  color: #ffffff !important;
 }
 
 #moduleViewContent input:focus,
