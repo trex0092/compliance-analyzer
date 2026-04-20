@@ -190,6 +190,26 @@
     Cache-Control = "no-cache, no-store, must-revalidate"
     Content-Type = "application/javascript"
 
+# Cache strategy split ----------------------------------------------
+# The /* block above paints everything no-store. That prevents stale
+# HTML but also kills JS/CSS caching, so the browser re-downloads the
+# whole SPA every visit. Below we override for versioned JS/CSS —
+# anything matching *.js / *.css can cache for a year because our
+# `?v=N` query-string changes on every deploy (manual bumps in HTML
+# source).  HTML stays no-store from /* above, so the browser always
+# fetches fresh and picks up whatever `?v=` the server currently
+# serves. This is the standard "cache forever, bust with URL change"
+# pattern and fixes the "old cached JS" class of issues after deploy.
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 [[headers]]
   for = "/manifest.json"
   [headers.values]

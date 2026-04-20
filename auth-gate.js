@@ -158,6 +158,92 @@
     clearSession: clearSession
   };
 
+  // Session chip — tiny status pill injected into the top-right of
+  // every module's .topbar + the SPA hero. Shows principal name + an
+  // expiry countdown (h + m only, lowercase) so the MLRO always sees
+  // session state. Small by design per MLRO request: 10px monospace
+  // letters, single line, no decoration beyond a status dot.
+  function fmtRemaining(ms) {
+    if (ms <= 0) return 'expired';
+    var s = Math.floor(ms / 1000);
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    if (h > 0) return h + 'h ' + m + 'm';
+    if (m > 0) return m + 'm';
+    return '<1m';
+  }
+  function ensureSessionChip() {
+    var host = document.querySelector('.topbar') || document.body;
+    if (!host) return null;
+    var chip = document.getElementById('__hawkeyeSessionChip');
+    if (chip) return chip;
+    chip = document.createElement('div');
+    chip.id = '__hawkeyeSessionChip';
+    chip.style.cssText =
+      'position:' + (host.classList.contains('topbar') ? 'relative' : 'fixed') + ';' +
+      (host.classList.contains('topbar') ? 'margin-left:auto;' : 'top:8px;right:8px;z-index:99998;') +
+      'display:inline-flex;align-items:center;gap:6px;' +
+      'padding:3px 10px;border-radius:999px;' +
+      'font-family:"DM Mono",monospace;font-size:10px;letter-spacing:.5px;' +
+      'background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.4);' +
+      'color:#6ee7b7;cursor:pointer;user-select:none;line-height:1.4;text-transform:lowercase;';
+    chip.title = 'click to re-auth or log out';
+    chip.addEventListener('click', function () {
+      var back = location.pathname + location.search + location.hash;
+      if (confirm('Log out of Hawkeye Sterling? You will return to login for ' + back)) {
+        clearSession();
+        location.replace('/login.html?return=' + encodeURIComponent(back));
+      }
+    });
+    if (host.classList.contains('topbar')) {
+      host.appendChild(chip);
+      host.style.display = host.style.display || 'flex';
+      host.style.alignItems = host.style.alignItems || 'center';
+    } else {
+      document.body.appendChild(chip);
+    }
+    return chip;
+  }
+  function refreshSessionChip() {
+    var jwt = safeGet(JWT_KEY);
+    var exp = parseInt(safeGet(EXP_KEY) || '0', 10);
+    var chip = document.getElementById('__hawkeyeSessionChip');
+    if (!jwt || !exp) {
+      if (chip) chip.remove();
+      return;
+    }
+    chip = chip || ensureSessionChip();
+    if (!chip) return;
+    var remainingMs = (exp * 1000) - Date.now();
+    var remaining = fmtRemaining(remainingMs);
+    var name = (safeGet(NAME_KEY) || 'mlro').toLowerCase();
+    var dot, bg, border, col;
+    if (remainingMs <= 0) {
+      dot = '●'; bg = 'rgba(248,113,113,0.14)'; border = 'rgba(248,113,113,0.55)'; col = '#fca5a5';
+    } else if (remainingMs < 30 * 60 * 1000) {
+      dot = '●'; bg = 'rgba(251,191,36,0.12)'; border = 'rgba(251,191,36,0.5)'; col = '#fbbf24';
+    } else {
+      dot = '●'; bg = 'rgba(16,185,129,0.10)'; border = 'rgba(16,185,129,0.4)'; col = '#6ee7b7';
+    }
+    chip.style.background = bg;
+    chip.style.borderColor = border;
+    chip.style.color = col;
+    chip.innerHTML =
+      '<span style="font-size:9px">' + dot + '</span>' +
+      '<span>' + name + '</span>' +
+      '<span style="opacity:.65">· ' + remaining + '</span>';
+  }
+  // Mount + refresh every 15s. Lightweight; no re-layout thrash.
+  if (typeof document !== 'undefined') {
+    var mount = function () { try { refreshSessionChip(); } catch (_e) {} };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', mount);
+    } else {
+      setTimeout(mount, 0);
+    }
+    try { setInterval(refreshSessionChip, 15 * 1000); } catch (_e) { /* ignore */ }
+  }
+
   // Cross-tab session sync — when the MLRO logs in on one tab, the
   // localStorage `storage` event fires in every other tab on the same
   // origin. Protected pages that were waiting on the gate recover
