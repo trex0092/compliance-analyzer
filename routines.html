@@ -334,6 +334,59 @@
         color: var(--mist); word-break: break-word;
       }
       .drawer-cell .v.reg { color: var(--azure-bright); }
+      /* 30-day run-history heatmap — one cell per day, oldest on the
+         left, today on the right. Colour bands surface SLA misses
+         (zero-count days with an expected-per-day > 0 are flagged
+         in accent-magenta to match the drawer sign-in block). */
+      .drawer-timeline {
+        margin-bottom: 18px; padding: 14px 16px; border-radius: 10px;
+        background: rgba(10, 22, 40, 0.6);
+        border: 1px solid var(--border);
+      }
+      .drawer-timeline[hidden] { display: none; }
+      .drawer-timeline-head {
+        display: flex; justify-content: space-between; align-items: baseline;
+        margin-bottom: 10px; gap: 10px; flex-wrap: wrap;
+      }
+      .drawer-timeline-head .k {
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1.8px; text-transform: uppercase; color: var(--steel);
+      }
+      .drawer-timeline-head .v {
+        font-family: 'DM Mono', monospace; font-size: 10.5px;
+        color: var(--mist); letter-spacing: 1px;
+      }
+      .timeline-row {
+        display: grid;
+        grid-template-columns: repeat(30, 1fr);
+        gap: 2px; height: 28px;
+      }
+      .timeline-cell {
+        border-radius: 2px;
+        background: rgba(47, 125, 255, 0.07);
+        border: 1px solid transparent;
+        transition: transform 0.12s ease;
+      }
+      .timeline-cell:hover { transform: scaleY(1.18); }
+      .timeline-cell[data-state="low"]  { background: rgba(47, 125, 255, 0.32); }
+      .timeline-cell[data-state="ok"]   { background: rgba(47, 125, 255, 0.65); }
+      .timeline-cell[data-state="high"] { background: rgba(127, 193, 255, 0.9); }
+      .timeline-cell[data-state="miss"] {
+        background: rgba(236, 72, 153, 0.08);
+        border-color: rgba(236, 72, 153, 0.55);
+      }
+      .timeline-foot {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 10px; gap: 10px; flex-wrap: wrap;
+        font-family: 'DM Mono', monospace; font-size: 9.5px;
+        letter-spacing: 1.2px; color: var(--steel);
+      }
+      .timeline-legend { display: flex; gap: 12px; align-items: center; }
+      .timeline-legend .sw {
+        display: inline-block; width: 10px; height: 10px;
+        border-radius: 2px; margin-right: 4px; vertical-align: middle;
+        border: 1px solid transparent;
+      }
       .drawer-actions {
         display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px;
       }
@@ -659,6 +712,23 @@
             <div class="v" id="drawerLastSeen">—</div>
           </div>
         </div>
+        <section class="drawer-timeline" id="drawerTimeline" hidden>
+          <div class="drawer-timeline-head">
+            <span class="k">30-day run history</span>
+            <span class="v" id="drawerTimelineSummary">—</span>
+          </div>
+          <div class="timeline-row" id="drawerTimelineRow" role="img" aria-label="30-day run history heatmap"></div>
+          <div class="timeline-foot">
+            <span id="drawerTimelineStart">—</span>
+            <div class="timeline-legend" aria-hidden="true">
+              <span><span class="sw" style="background: rgba(47, 125, 255, 0.32)"></span>Low</span>
+              <span><span class="sw" style="background: rgba(47, 125, 255, 0.65)"></span>OK</span>
+              <span><span class="sw" style="background: rgba(127, 193, 255, 0.9)"></span>High</span>
+              <span><span class="sw" style="background: rgba(236, 72, 153, 0.08); border-color: rgba(236, 72, 153, 0.55)"></span>Miss</span>
+            </div>
+            <span id="drawerTimelineEnd">—</span>
+          </div>
+        </section>
         <div class="drawer-auth" id="drawerAuth" hidden>
           <div class="drawer-auth-head">
             MLRO Sign-in <span class="tag">Required</span>
@@ -872,6 +942,123 @@
         } catch (_e) { /* ignore */ }
         refreshAuthBlock();
         drawer.classList.add('open');
+        // Kick off the 30-day history fetch. Requires auth — if there
+        // is no token yet, the section stays hidden until sign-in.
+        loadRoutineTimeline(r.id);
+      }
+
+      // ── 30-day run-history timeline ────────────────────────────────
+      // Surfaces SLA misses and flappy routines at a glance. Powered by
+      // /api/routine-history, which walks audit-blob YYYY-MM-DD/ prefixes
+      // for the requested routine. Supports MoE inspection evidence
+      // under FDL No.10/2025 Art.24.
+      async function loadRoutineTimeline(routineId) {
+        const section = document.getElementById('drawerTimeline');
+        if (!section) return;
+        const token = getAuthToken();
+        if (!token) { section.hidden = true; return; }
+        // Paint a loading state immediately so the drawer does not
+        // shift when the fetch resolves.
+        renderTimelineLoading();
+        try {
+          const res = await fetch(
+            '/api/routine-history?id=' + encodeURIComponent(routineId) + '&days=30',
+            { method: 'GET', headers: { 'Authorization': 'Bearer ' + token } }
+          );
+          if (!DRAWER_ROUTINE || DRAWER_ROUTINE.id !== routineId) return; // drawer closed / switched
+          if (!res.ok) { renderTimelineMessage('History unavailable (HTTP ' + res.status + ')'); return; }
+          const data = await res.json();
+          renderTimeline(data);
+        } catch (_err) {
+          if (!DRAWER_ROUTINE || DRAWER_ROUTINE.id !== routineId) return;
+          renderTimelineMessage('Network error loading history');
+        }
+      }
+
+      function renderTimelineLoading() {
+        const section = document.getElementById('drawerTimeline');
+        const row = document.getElementById('drawerTimelineRow');
+        const summary = document.getElementById('drawerTimelineSummary');
+        const startEl = document.getElementById('drawerTimelineStart');
+        const endEl = document.getElementById('drawerTimelineEnd');
+        if (!section || !row) return;
+        row.innerHTML = Array.from({ length: 30 })
+          .map(() => '<div class="timeline-cell" aria-hidden="true"></div>')
+          .join('');
+        if (summary) summary.textContent = 'Loading…';
+        if (startEl) startEl.textContent = '';
+        if (endEl) endEl.textContent = '';
+        section.hidden = false;
+      }
+
+      function renderTimelineMessage(msg) {
+        const section = document.getElementById('drawerTimeline');
+        const row = document.getElementById('drawerTimelineRow');
+        const summary = document.getElementById('drawerTimelineSummary');
+        const startEl = document.getElementById('drawerTimelineStart');
+        const endEl = document.getElementById('drawerTimelineEnd');
+        if (!section || !row) return;
+        row.innerHTML = '';
+        if (summary) summary.textContent = msg;
+        if (startEl) startEl.textContent = '';
+        if (endEl) endEl.textContent = '';
+        section.hidden = false;
+      }
+
+      function renderTimeline(data) {
+        const section = document.getElementById('drawerTimeline');
+        const row = document.getElementById('drawerTimelineRow');
+        const summary = document.getElementById('drawerTimelineSummary');
+        const startEl = document.getElementById('drawerTimelineStart');
+        const endEl = document.getElementById('drawerTimelineEnd');
+        if (!section || !row) return;
+        if (!data || !Array.isArray(data.days) || data.days.length === 0) {
+          renderTimelineMessage('No history available');
+          return;
+        }
+        const expected = typeof data.expectedPerDay === 'number' && data.expectedPerDay > 0
+          ? data.expectedPerDay : null;
+        const cells = data.days.map(slot => {
+          const count = typeof slot.count === 'number' ? slot.count : 0;
+          let state;
+          if (count === 0) {
+            state = expected ? 'miss' : 'empty';
+          } else if (expected) {
+            const ratio = count / expected;
+            if (ratio < 0.5) state = 'low';
+            else if (ratio > 1.5) state = 'high';
+            else state = 'ok';
+          } else {
+            state = 'ok';
+          }
+          const label = slot.dateIso + ' · ' + count + ' run' + (count === 1 ? '' : 's');
+          const attrs = state === 'empty' ? '' : ' data-state="' + state + '"';
+          return '<div class="timeline-cell"' + attrs
+            + ' data-date="' + slot.dateIso + '"'
+            + ' data-count="' + count + '"'
+            + ' title="' + label + '"'
+            + ' aria-label="' + label + '"></div>';
+        }).join('');
+        row.innerHTML = cells;
+        startEl.textContent = data.days[0].dateIso;
+        endEl.textContent = data.days[data.days.length - 1].dateIso;
+
+        const totalRuns = typeof data.totalRuns === 'number' ? data.totalRuns : 0;
+        const activeDays = typeof data.activeDays === 'number' ? data.activeDays : 0;
+        const parts = [
+          totalRuns + ' run' + (totalRuns === 1 ? '' : 's'),
+          activeDays + '/' + data.days.length + ' days'
+        ];
+        if (expected) {
+          const expectedTotal = expected * data.days.length;
+          const pct = expectedTotal > 0
+            ? Math.round((totalRuns / expectedTotal) * 100) : 0;
+          const misses = data.days.filter(d => d.count === 0).length;
+          parts.push(pct + '% of SLA');
+          if (misses > 0) parts.push(misses + ' miss' + (misses === 1 ? '' : 'es'));
+        }
+        summary.textContent = parts.join(' · ');
+        section.hidden = false;
       }
 
       // Inline MLRO sign-in. Same contract as screening-command.js →
@@ -919,6 +1106,7 @@
           if (drawerAuthMsg) drawerAuthMsg.textContent = 'Signed in.';
           refreshAuthBlock();
           fetchLiveStatus();
+          if (DRAWER_ROUTINE) loadRoutineTimeline(DRAWER_ROUTINE.id);
         } catch (err) {
           if (drawerAuthMsg) drawerAuthMsg.textContent = 'Network error signing in.';
         } finally {
@@ -973,6 +1161,10 @@
           if (res.ok) {
             drawerRunMsg.textContent = 'Triggered. Refreshing status…';
             setTimeout(fetchLiveStatus, 1500);
+            if (DRAWER_ROUTINE) {
+              const id = DRAWER_ROUTINE.id;
+              setTimeout(() => loadRoutineTimeline(id), 1500);
+            }
           } else if (res.status === 404) {
             drawerRunMsg.textContent = 'Routine endpoint not deployed (' + DRAWER_ROUTINE.id + '-cron).';
           } else if (res.status === 401 || res.status === 403) {
