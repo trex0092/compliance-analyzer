@@ -485,6 +485,72 @@
         --bg-card: #241538;
       }
 
+      /* Re-skin injected main-app components to the Screening Command purple palette. */
+      #moduleViewContent .card {
+        background: linear-gradient(180deg, rgba(36, 21, 56, 0.85) 0%, rgba(18, 10, 32, 0.95) 100%) !important;
+        border: 1px solid rgba(168, 85, 247, 0.22) !important;
+        border-radius: 16px !important;
+        padding: 1.5rem !important;
+        color: #fae8ff !important;
+      }
+      #moduleViewContent .sec-title {
+        font-family: 'Playfair Display', Georgia, serif !important;
+        color: #fae8ff !important;
+        border-bottom-color: rgba(168, 85, 247, 0.28) !important;
+      }
+      #moduleViewContent .lbl {
+        font-family: 'DM Mono', monospace !important;
+        color: #c084fc !important;
+        letter-spacing: 2px !important;
+      }
+      #moduleViewContent .btn,
+      #moduleViewContent button.btn {
+        border-radius: 10px !important;
+        font-family: 'DM Mono', monospace !important;
+        letter-spacing: 1.5px !important;
+        text-transform: uppercase !important;
+        font-size: 11px !important;
+      }
+      #moduleViewContent .btn-blue,
+      #moduleViewContent .btn-primary {
+        background: rgba(168, 85, 247, 0.2) !important;
+        color: #c084fc !important;
+        border: 1px solid rgba(168, 85, 247, 0.5) !important;
+      }
+      #moduleViewContent .btn-green {
+        background: rgba(16, 185, 129, 0.18) !important;
+        color: #6ee7b7 !important;
+        border: 1px solid rgba(16, 185, 129, 0.45) !important;
+      }
+      #moduleViewContent input[type="text"],
+      #moduleViewContent input[type="password"],
+      #moduleViewContent input[type="email"],
+      #moduleViewContent input[type="number"],
+      #moduleViewContent input[type="date"],
+      #moduleViewContent select,
+      #moduleViewContent textarea {
+        background: rgba(18, 10, 32, 0.7) !important;
+        border: 1px solid rgba(168, 85, 247, 0.25) !important;
+        color: #fae8ff !important;
+        border-radius: 8px !important;
+        padding: 10px 12px !important;
+        font-family: 'Inter', system-ui, sans-serif !important;
+      }
+      #moduleViewContent input:focus,
+      #moduleViewContent select:focus,
+      #moduleViewContent textarea:focus {
+        border-color: #c084fc !important;
+        box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2) !important;
+        outline: none !important;
+      }
+      #moduleViewContent .top-bar,
+      #moduleViewContent h1,
+      #moduleViewContent h2,
+      #moduleViewContent h3 {
+        color: #fae8ff !important;
+        font-family: 'Playfair Display', Georgia, serif !important;
+      }
+
       .module-view {
         display: none;
         margin-top: 1.5rem;
@@ -850,6 +916,6 @@
       <span>Confidential &middot; Audit-ready</span>
     </footer>
     <script src="page-nav.js?v=1"></script>
-    <script src="landing-module-viewer.js?v=13"></script>
+    <script src="landing-module-viewer.js?v=14"></script>
   </body>
 </html>

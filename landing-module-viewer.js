@@ -48,21 +48,36 @@
     if (document.getElementById('moduleViewActiveStyles')) return;
     var style = document.createElement('style');
     style.id = 'moduleViewActiveStyles';
-    style.textContent =
-      'html.module-view-active .topbar,' +
-      'html.module-view-active .page-nav,' +
-      'html.module-view-active .hero,' +
-      'html.module-view-active .summary,' +
-      'html.module-view-active .hero-summary,' +
-      'html.module-view-active .section-head,' +
-      'html.module-view-active .cards,' +
-      'html.module-view-active .grid,' +
-      'html.module-view-active .reg-strip,' +
-      'html.module-view-active .reg-basis' +
-      '{display:none !important;}' +
-      'html.module-view-active .module-view{margin-top:0;}' +
-      '.module-view-content{min-height:calc(100vh - 200px);}' +
-      '.module-view-content .tab-content{display:block !important;}';
+    // Use a single template string so we can keep the defensive
+    // display rules readable. Only the :not(.active) / .active pair
+    // at the end is load-bearing for the tab-switch regression the
+    // user hit — every other rule is landing-chrome housekeeping.
+    style.textContent = [
+      'html.module-view-active .topbar,',
+      'html.module-view-active .page-nav,',
+      'html.module-view-active .hero,',
+      'html.module-view-active .summary,',
+      'html.module-view-active .hero-summary,',
+      'html.module-view-active .section-head,',
+      'html.module-view-active .cards,',
+      'html.module-view-active .grid,',
+      'html.module-view-active .reg-strip,',
+      'html.module-view-active .reg-basis',
+      '{display:none !important;}',
+      'html.module-view-active .module-view{margin-top:0;}',
+      '.module-view-content{min-height:calc(100vh - 200px);}',
+      /* Single-tab-visible guarantee. The main-app CSS relies on
+         .tab-content / .tab-content.active, but after CSSOM scoping
+         a subtle specificity flip was leaving multiple injected tabs
+         display:block at once (user reported Asana + Onboarding
+         stacked on every workbench sub-route). Force-hide every
+         direct-child .tab-content that lacks .active, and force the
+         one with .active to render. This wins over inline styles
+         set by anywhere-else via !important and is scoped to our
+         host so nothing else on the page is affected. */
+      '#moduleViewContent > .tab-content:not(.active){display:none !important;}',
+      '#moduleViewContent > .tab-content.active{display:block !important;}'
+    ].join('');
     document.head.appendChild(style);
   })();
 
