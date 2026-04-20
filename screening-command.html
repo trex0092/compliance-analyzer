@@ -457,6 +457,33 @@
       }
       .card:hover .card-cta-arrow { transform: translateX(4px); }
 
+      /* Re-skin injected main-app module content to the Screening Command
+         purple palette. Scoped to #moduleViewContent only. */
+      #moduleViewContent {
+        --gold: var(--azure);
+        --gold-light: var(--azure-bright);
+        --gold-dim: rgba(168, 85, 247, 0.14);
+        --gold-dark: #6b21a8;
+        --amber: var(--azure);
+        --amber-dim: rgba(168, 85, 247, 0.14);
+        --orange: var(--azure);
+        --orange-bright: var(--azure-bright);
+        --yellow: var(--sky);
+        --yellow-bright: var(--sky);
+        --green: #10b981;
+        --red: #f43f5e;
+        --border: var(--border);
+        --border-strong: var(--border-strong);
+        --surface: rgba(168, 85, 247, 0.05);
+        --surface2: rgba(168, 85, 247, 0.1);
+        --text: var(--mist);
+        --ivory: var(--mist);
+        --bg: var(--midnight);
+        --bg-primary: var(--midnight);
+        --bg-secondary: var(--navy);
+        --bg-card: var(--surface-2);
+      }
+
       .module-view {
         display: none;
         margin-top: 1.5rem;

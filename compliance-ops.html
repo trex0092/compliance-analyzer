@@ -471,6 +471,34 @@
         overflow: hidden;
       }
       .module-view.is-open { display: block; }
+
+      /* Re-skin injected main-app module content to the Compliance Ops
+         pink/red palette. Scoped to #moduleViewContent so the landing
+         chrome is unaffected. */
+      #moduleViewContent {
+        --gold: var(--pink);
+        --gold-light: var(--pink-bright);
+        --gold-dim: rgba(236, 72, 153, 0.14);
+        --gold-dark: #9d174d;
+        --amber: var(--pink);
+        --amber-dim: rgba(236, 72, 153, 0.14);
+        --orange: var(--pink);
+        --orange-bright: var(--pink-bright);
+        --yellow: var(--red-bright);
+        --yellow-bright: var(--red-bright);
+        --red: var(--red);
+        --red-dim: rgba(239, 68, 68, 0.14);
+        --border: var(--border);
+        --border-strong: var(--border-strong);
+        --surface: rgba(236, 72, 153, 0.05);
+        --surface2: rgba(236, 72, 153, 0.1);
+        --text: var(--mist);
+        --ivory: var(--mist);
+        --bg: var(--midnight);
+        --bg-primary: var(--midnight);
+        --bg-secondary: var(--navy);
+        --bg-card: var(--surface-2);
+      }
       .module-view-head {
         display: flex;
         align-items: center;

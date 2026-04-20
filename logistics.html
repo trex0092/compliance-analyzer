@@ -686,6 +686,33 @@
         z-index: 1;
       }
       .module-view.is-open { display: block; }
+
+      /* Re-skin injected main-app module content to the Logistics
+         green palette. Scoped to #moduleViewContent only. */
+      #moduleViewContent {
+        --gold: var(--green);
+        --gold-light: var(--green-bright);
+        --gold-dim: var(--green-dim);
+        --gold-dark: #14532d;
+        --amber: var(--green);
+        --amber-dim: var(--green-dim);
+        --orange: var(--green);
+        --orange-bright: var(--green-bright);
+        --yellow: var(--green-bright);
+        --yellow-bright: var(--green-bright);
+        --green: var(--green);
+        --border: var(--border);
+        --border-strong: var(--border-strong);
+        --surface: rgba(34, 197, 94, 0.05);
+        --surface2: rgba(34, 197, 94, 0.1);
+        --text: var(--mist);
+        --ivory: var(--mist);
+        --bg: var(--midnight);
+        --bg-primary: var(--midnight);
+        --bg-secondary: var(--navy);
+        --bg-card: var(--surface-2);
+      }
+
       .module-view-head {
         display: flex;
         align-items: center;

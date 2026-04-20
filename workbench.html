@@ -410,6 +410,35 @@
         -webkit-backdrop-filter: blur(18px);
         overflow: hidden;
       }
+
+      /* Re-skin the injected main-app module content to the Workbench
+         palette. CSS custom properties cascade, so setting these on
+         #moduleViewContent overrides the main-app's :root defaults for
+         every descendant of the host without mutating the landing's own
+         chrome. Use !important-free specificity only; #id beats :root. */
+      #moduleViewContent {
+        --gold: var(--orange);
+        --gold-light: var(--orange-bright);
+        --gold-dim: var(--orange-dim);
+        --gold-dark: #c2410c;
+        --amber: var(--orange);
+        --amber-dim: var(--orange-dim);
+        --orange: var(--orange);
+        --orange-bright: var(--orange-bright);
+        --yellow: var(--yellow);
+        --yellow-bright: var(--yellow-bright);
+        --green: var(--green);
+        --border: var(--border);
+        --border-strong: var(--border-strong);
+        --surface: rgba(251, 146, 60, 0.05);
+        --surface2: rgba(251, 146, 60, 0.1);
+        --text: var(--mist);
+        --ivory: var(--mist);
+        --bg: var(--midnight);
+        --bg-primary: var(--midnight);
+        --bg-secondary: var(--navy);
+        --bg-card: var(--surface-2);
+      }
       .module-view.is-open { display: block; }
       .module-view-head {
         display: flex;
