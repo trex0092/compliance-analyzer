@@ -73,17 +73,30 @@
     </style>
   </head>
   <body>
-    <form class="card" id="loginForm" autocomplete="off">
+    <!--
+      SECURITY NOTE: this is a <div>, not a <form>. An earlier
+      version used <form> without method="post" + action, which
+      caused the browser to default-submit via GET whenever the JS
+      submit handler failed to attach (observed 2026-04-20 — the
+      password leaked into location.search). A non-form container
+      makes it structurally impossible for the browser to serialize
+      credentials into the URL; every submission is driven by the
+      JS click handler below which POSTs JSON to /api/hawkeye-login.
+      Enter-to-submit is wired manually on each input.
+      Regulatory: FDL No.(10)/2025 Art.24 (no credential in logs);
+      CLAUDE.md Seguridad §5 (no plaintext password on the wire).
+    -->
+    <div class="card" id="loginForm" role="form" aria-label="MLRO sign-in">
       <h1>HAWKEYE STERLING V2</h1>
       <p class="sub">MLRO sign-in — one password, every surface unlocks for the session.</p>
       <label for="u">Name</label>
-      <input type="text" id="u" name="name" autocomplete="username" placeholder="Name" required maxlength="120" />
+      <input type="text" id="u" autocomplete="username" value="Luisa" required maxlength="120" />
       <label for="p">Password</label>
-      <input type="password" id="p" name="password" autocomplete="current-password" placeholder="Password" required maxlength="1024" />
-      <button type="submit" id="btn">Sign in</button>
+      <input type="password" id="p" autocomplete="current-password" placeholder="Password" required maxlength="1024" />
+      <button type="button" id="btn">Sign in</button>
       <div class="err" id="err" role="status" aria-live="polite"></div>
       <div class="foot">1-year session · FDL Art.24 audit retention · 5 attempts / 15 min / IP</div>
-    </form>
+    </div>
     <script>
       (function () {
         var JWT_KEY = 'hawkeye.session.jwt';
@@ -114,7 +127,6 @@
           return;
         }
 
-        var form = document.getElementById('loginForm');
         var uEl = document.getElementById('u');
         var pEl = document.getElementById('p');
         var btn = document.getElementById('btn');
@@ -122,9 +134,14 @@
 
         var savedName = get(NAME_KEY);
         if (savedName) uEl.value = savedName;
+        // If the name field is pre-populated (default "Luisa" or a saved
+        // name), focus the password box so the MLRO goes straight to
+        // typing the password.
+        if (uEl.value) {
+          try { pEl.focus(); } catch (_) {}
+        }
 
-        form.addEventListener('submit', function (ev) {
-          ev.preventDefault();
+        function doSignIn() {
           err.textContent = '';
           btn.disabled = true;
           btn.textContent = 'Signing in…';
@@ -164,7 +181,21 @@
               pEl.focus();
             }
           });
-        });
+        }
+
+        btn.addEventListener('click', doSignIn);
+        // Enter key on either input triggers sign-in. We bind keydown on
+        // the inputs directly (not a form submit event) so the browser
+        // cannot fall back to a default GET submission that serializes
+        // the password into the URL.
+        function onKey(ev) {
+          if (ev.key === 'Enter' || ev.keyCode === 13) {
+            ev.preventDefault();
+            doSignIn();
+          }
+        }
+        uEl.addEventListener('keydown', onKey);
+        pEl.addEventListener('keydown', onKey);
       })();
     </script>
   </body>
