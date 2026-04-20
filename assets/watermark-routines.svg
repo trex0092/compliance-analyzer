@@ -1,73 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520" fill="none" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
-  <!-- Glyph variant for /routines (azure). Head engraved with geometric tribal/glyph patterns. -->
-  <path d="M 176 70 C 120 80 84 138 80 208 C 76 268 94 320 118 356 L 130 400 L 140 456 L 188 476 L 248 470 L 284 444 C 308 422 318 388 322 352 L 332 298 C 344 240 342 176 312 132 C 284 90 234 66 196 68 C 188 68 182 68 176 70 Z" fill="#000" fill-opacity="0.15"/>
-  <path d="M 176 70 C 120 80 84 138 80 208 C 76 268 94 320 118 356 L 130 400 L 140 456" stroke-width="2.8"/>
-  <path d="M 196 68 C 234 66 284 90 312 132 C 342 176 344 240 332 298 L 322 352 C 318 388 308 422 284 444" stroke-width="2.8"/>
-  <!-- Horizontal glyph bands -->
-  <path d="M 96 168 L 310 160" stroke-width="1.6"/>
-  <path d="M 96 180 L 310 176" stroke-width="1.6"/>
-  <!-- Glyph strip 1 -->
-  <path d="M 120 186 L 128 194 L 136 186 L 144 194 L 152 186"/>
-  <path d="M 168 186 L 168 198 L 184 198 L 184 186"/>
-  <path d="M 200 198 L 208 186 L 216 198"/>
-  <path d="M 236 186 L 236 198 M 244 186 L 252 198 M 252 186 L 244 198"/>
-  <path d="M 272 186 L 286 186 L 286 198 L 272 198 Z"/>
-  <!-- Band 2 -->
-  <path d="M 88 240 L 320 236" stroke-width="1.6"/>
-  <path d="M 88 252 L 320 250" stroke-width="1.6"/>
-  <!-- Glyph strip 2 -->
-  <circle cx="120" cy="268" r="5"/>
-  <path d="M 140 262 L 148 272 L 140 278 L 148 284"/>
-  <path d="M 170 262 L 186 284 M 186 262 L 170 284"/>
-  <path d="M 206 262 L 206 284 L 222 284"/>
-  <path d="M 240 262 L 256 262 L 256 284 L 240 284 Z"/>
-  <path d="M 274 262 L 290 272 L 274 282"/>
-  <path d="M 302 262 L 302 284 M 294 272 L 310 272"/>
-  <!-- Band 3 -->
-  <path d="M 96 318 L 314 312" stroke-width="1.6"/>
-  <path d="M 96 330 L 314 326" stroke-width="1.6"/>
-  <!-- Glyph strip 3 -->
-  <path d="M 124 338 L 140 358 L 156 338"/>
-  <path d="M 176 338 L 176 358 L 192 358 L 192 338"/>
-  <circle cx="216" cy="348" r="6"/>
-  <path d="M 242 338 L 242 358 M 250 338 L 258 358 M 258 338 L 250 358"/>
-  <path d="M 276 338 L 290 348 L 276 358 Z"/>
-  <!-- Face profile -->
-  <path d="M 78 214 C 72 224 72 234 80 240" stroke-width="2.4"/>
-  <circle cx="104" cy="224" r="3" fill="#000"/>
-  <path d="M 84 250 C 76 258 78 268 90 272"/>
-  <path d="M 92 286 C 102 294 118 292 124 286"/>
-  <path d="M 102 306 C 116 318 134 316 142 308"/>
-  <!-- Central forehead glyph -->
-  <path d="M 168 100 L 180 90 L 192 100 L 202 90 L 216 100 L 228 90 L 242 100"/>
-  <path d="M 184 112 L 196 122 L 208 112 L 220 122 L 232 112"/>
-  <circle cx="200" cy="138" r="5"/>
-  <circle cx="200" cy="138" r="2" fill="#000"/>
-  <!-- Ear disc -->
-  <circle cx="254" cy="290" r="38"/>
-  <circle cx="254" cy="290" r="22"/>
-  <circle cx="254" cy="290" r="8" fill="#000"/>
-  <!-- Ear concentric glyphs -->
-  <path d="M 254 266 L 258 270 L 254 274 L 250 270 Z"/>
-  <path d="M 254 306 L 258 310 L 254 314 L 250 310 Z"/>
-  <path d="M 230 290 L 234 294 L 230 298 L 226 294 Z"/>
-  <path d="M 278 290 L 282 294 L 278 298 L 274 294 Z"/>
-  <!-- Jaw -->
-  <path d="M 142 316 C 150 352 152 390 144 430"/>
-  <!-- Neck glyph stripes -->
-  <path d="M 144 462 L 294 456"/>
-  <path d="M 150 478 L 290 472"/>
-  <path d="M 158 494 L 284 488"/>
-  <path d="M 168 470 L 168 506 M 200 476 L 200 510 M 232 476 L 232 510 M 264 472 L 264 506"/>
-  <!-- Radiating glyph rays from crown -->
-  <path d="M 220 78 L 300 46" stroke-width="1.4" stroke-dasharray="2 4" opacity="0.7"/>
-  <path d="M 248 82 L 340 80" stroke-width="1.4" stroke-dasharray="2 4" opacity="0.7"/>
-  <path d="M 272 100 L 360 140" stroke-width="1.4" stroke-dasharray="2 4" opacity="0.7"/>
-  <path d="M 292 138 L 374 196" stroke-width="1.4" stroke-dasharray="2 4" opacity="0.65"/>
-  <path d="M 306 186 L 374 256" stroke-width="1.4" stroke-dasharray="2 4" opacity="0.6"/>
-  <!-- Glyph tips -->
-  <path d="M 300 46 L 306 40 L 312 46 L 306 52 Z" fill="#000"/>
-  <path d="M 340 80 L 346 74 L 352 80 L 346 86 Z" fill="#000"/>
-  <path d="M 360 140 L 366 134 L 372 140 L 366 146 Z" fill="#000"/>
-  <path d="M 374 196 L 380 190 L 386 196 L 380 202 Z" fill="#000"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 640" aria-hidden="true">
+  <!-- Sleek DJ/headphones cyborg profile — Routines. Smooth curves, prominent ear disc. -->
+  <g fill="#000">
+    <!-- Head + jaw -->
+    <path d="M 238 64
+             C 172 68 124 120 108 188
+             C 92 258 100 326 128 382
+             L 142 428
+             L 152 476
+             L 190 498
+             L 244 504
+             L 296 494
+             L 340 470
+             L 366 430
+             C 382 396 388 356 386 316
+             L 392 258
+             C 394 198 382 142 350 104
+             C 320 76 282 64 250 64 Z"/>
+    <!-- Chin + neck (long, sleek) -->
+    <path d="M 186 496
+             L 178 540
+             L 168 578
+             L 154 618
+             L 366 618
+             L 346 574
+             L 322 536
+             L 296 506 Z"/>
+    <!-- Headphone band arch -->
+    <path d="M 168 108
+             Q 246 40 344 108
+             L 344 130
+             Q 246 66 168 130 Z"/>
+    <!-- Headphone ear cup (right) -->
+    <circle cx="356" cy="306" r="46"/>
+    <!-- Headphone ear cup (left, partial) -->
+    <circle cx="108" cy="306" r="18"/>
+  </g>
+  <!-- Ear cup detail -->
+  <g>
+    <circle cx="356" cy="306" r="30" fill="#ffffff" fill-opacity="0.28"/>
+    <circle cx="356" cy="306" r="14" fill="#000"/>
+    <circle cx="356" cy="306" r="6" fill="#ffffff" fill-opacity="0.8"/>
+  </g>
+  <!-- Eye -->
+  <g>
+    <ellipse cx="232" cy="258" rx="18" ry="7" fill="#ffffff" fill-opacity="0.45"/>
+    <circle cx="232" cy="258" r="4.5" fill="#000"/>
+  </g>
+  <!-- Brow -->
+  <path d="M 198 232 L 276 226" stroke="#ffffff" stroke-opacity="0.35" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <!-- Lip suggestion -->
+  <path d="M 202 348 Q 226 356 252 350" stroke="#ffffff" stroke-opacity="0.3" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Panel seams -->
+  <g stroke="#ffffff" stroke-width="2.5" fill="none" stroke-opacity="0.2" stroke-linecap="round">
+    <path d="M 120 200 L 200 188"/>
+    <path d="M 114 296 L 196 292"/>
+    <path d="M 132 388 L 220 390"/>
+  </g>
+  <!-- Collar -->
+  <g stroke="#ffffff" stroke-width="2" fill="none" stroke-opacity="0.22">
+    <path d="M 170 570 L 344 570"/>
+    <path d="M 160 592 L 358 592"/>
+  </g>
 </svg>

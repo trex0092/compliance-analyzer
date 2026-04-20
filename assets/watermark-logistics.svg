@@ -1,51 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520" fill="none" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
-  <!-- Bio-mech variant for /logistics (green). Head with organic vine / leaf motifs and circuit tendrils. -->
-  <path d="M 174 70 C 120 80 84 138 80 208 C 76 268 94 320 118 356 L 130 400 L 140 456 L 188 476 L 248 470 L 284 444 C 308 422 318 388 322 352 L 332 298 C 344 240 342 176 312 132 C 284 90 234 66 196 68 C 188 68 180 68 174 70 Z" fill="#000" fill-opacity="0.15"/>
-  <path d="M 174 70 C 120 80 84 138 80 208 C 76 268 94 320 118 356 L 130 400 L 140 456" stroke-width="2.8"/>
-  <path d="M 196 68 C 234 66 284 90 312 132 C 342 176 344 240 332 298 L 322 352 C 318 388 308 422 284 444" stroke-width="2.8"/>
-  <!-- Panel seams -->
-  <path d="M 98 180 C 174 150 256 154 312 186"/>
-  <path d="M 86 226 C 176 206 260 210 324 232"/>
-  <path d="M 88 274 C 180 262 258 264 322 284"/>
-  <!-- Face profile -->
-  <path d="M 78 210 C 72 220 72 232 80 238" stroke-width="2.4"/>
-  <circle cx="104" cy="220" r="3" fill="#000"/>
-  <path d="M 84 248 C 76 258 78 268 90 272"/>
-  <path d="M 92 284 C 102 292 118 290 124 284"/>
-  <path d="M 102 304 C 116 316 134 314 142 306"/>
-  <!-- Jaw -->
-  <path d="M 142 314 C 150 348 152 386 144 424"/>
-  <!-- Ear disc -->
-  <circle cx="250" cy="290" r="38"/>
-  <circle cx="250" cy="290" r="22"/>
-  <circle cx="250" cy="290" r="8" fill="#000"/>
-  <!-- Main vine stem along temple -->
-  <path d="M 204 78 C 240 96 264 130 280 170 C 292 208 288 248 278 282 C 266 320 240 348 212 362" stroke-width="2" opacity="0.85"/>
-  <!-- Vine branches -->
-  <path d="M 224 108 C 244 104 260 114 262 132" stroke-width="1.8" opacity="0.8"/>
-  <path d="M 236 148 C 258 144 276 156 278 176" stroke-width="1.8" opacity="0.8"/>
-  <path d="M 264 204 C 284 208 300 226 298 248" stroke-width="1.8" opacity="0.8"/>
-  <path d="M 270 260 C 292 264 306 282 302 304" stroke-width="1.8" opacity="0.75"/>
-  <!-- Leaves (teardrop shapes) -->
-  <path d="M 262 132 C 276 124 294 130 296 144 C 294 156 278 156 272 150 C 268 144 264 138 262 132 Z" stroke-width="1.6"/>
-  <path d="M 278 176 C 294 168 314 176 314 192 C 310 204 294 202 286 194 C 282 188 280 182 278 176 Z" stroke-width="1.6"/>
-  <path d="M 298 248 C 318 244 336 254 334 268 C 328 280 310 276 302 268 C 298 262 298 254 298 248 Z" stroke-width="1.6"/>
-  <path d="M 302 304 C 322 302 338 314 334 328 C 326 338 308 332 302 324 C 300 316 300 310 302 304 Z" stroke-width="1.6"/>
-  <!-- Vine tendrils from crown (curly) -->
-  <path d="M 220 78 C 260 60 296 68 320 98 C 338 126 338 164 318 192" stroke-width="1.8" stroke-dasharray="5 3" opacity="0.6"/>
-  <path d="M 246 80 C 288 84 326 118 336 158" stroke-width="1.8" stroke-dasharray="5 3" opacity="0.55"/>
-  <path d="M 266 102 C 320 130 354 178 348 232" stroke-width="1.8" stroke-dasharray="5 3" opacity="0.5"/>
-  <!-- Crown leaves -->
-  <path d="M 200 80 C 216 60 238 56 250 72 C 248 86 230 92 218 86 C 210 84 204 82 200 80 Z" stroke-width="1.6"/>
-  <path d="M 240 80 C 258 62 282 60 294 78 C 290 92 272 96 260 90 Z" stroke-width="1.6"/>
-  <!-- Neck roots -->
-  <path d="M 144 462 L 196 482 L 258 478 L 290 456"/>
-  <path d="M 170 470 L 170 504"/>
-  <path d="M 206 478 L 208 510"/>
-  <path d="M 244 474 L 244 506"/>
-  <!-- Seed dots -->
-  <circle cx="284" cy="140" r="2" fill="#000"/>
-  <circle cx="300" cy="186" r="2" fill="#000"/>
-  <circle cx="314" cy="232" r="2" fill="#000"/>
-  <circle cx="320" cy="280" r="2" fill="#000"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 640" aria-hidden="true">
+  <!-- Astronaut-helmet cyborg — Logistics. Rounded helmet, visor, armored shoulder -->
+  <g fill="#000">
+    <!-- Helmet dome -->
+    <path d="M 234 56
+             C 144 60 88 130 86 226
+             C 84 298 110 358 148 400
+             L 160 448
+             L 172 490
+             L 218 504
+             L 282 500
+             L 336 484
+             L 378 452
+             L 398 402
+             C 412 346 410 282 392 224
+             C 370 152 322 92 260 62
+             C 252 58 244 56 234 56 Z"/>
+    <!-- Shoulder pauldron (armored, right side) -->
+    <path d="M 168 494
+             L 156 540
+             L 142 580
+             L 130 620
+             L 420 620
+             L 398 572
+             L 372 530
+             L 342 502
+             L 304 492
+             L 258 498 Z"/>
+    <!-- Antenna nub -->
+    <rect x="206" y="40" width="14" height="24" rx="4"/>
+    <circle cx="213" cy="32" r="7"/>
+  </g>
+  <!-- Visor band (tinted light) -->
+  <g>
+    <path d="M 138 238
+             Q 244 210 366 232
+             L 362 290
+             Q 244 314 138 292 Z" fill="#ffffff" fill-opacity="0.36"/>
+    <path d="M 150 254 Q 242 234 354 256" stroke="#000" stroke-width="3" fill="none" stroke-opacity="0.6"/>
+  </g>
+  <!-- Helmet panel seams -->
+  <g stroke="#ffffff" stroke-width="3" fill="none" stroke-opacity="0.25" stroke-linecap="round">
+    <path d="M 100 170 Q 240 120 380 170"/>
+    <path d="M 110 330 Q 246 360 378 332"/>
+    <path d="M 160 410 Q 246 424 350 408"/>
+  </g>
+  <!-- Helmet vent louvers -->
+  <g fill="#ffffff" fill-opacity="0.2">
+    <rect x="330" y="350" width="38" height="4" rx="2"/>
+    <rect x="330" y="362" width="38" height="4" rx="2"/>
+    <rect x="330" y="374" width="38" height="4" rx="2"/>
+  </g>
+  <!-- Chest circuit detail -->
+  <g stroke="#ffffff" stroke-width="2.5" fill="none" stroke-opacity="0.22" stroke-linecap="round">
+    <path d="M 180 560 L 240 560 L 250 580 L 330 580"/>
+    <circle cx="340" cy="580" r="5" fill="#ffffff" fill-opacity="0.35"/>
+  </g>
 </svg>

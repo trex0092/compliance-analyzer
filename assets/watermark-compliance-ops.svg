@@ -1,45 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520" fill="none" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
-  <!-- Neon-ribbon variant for /compliance-ops (rose / pink). Smooth flowing curves. -->
-  <path d="M 176 68 C 120 78 82 138 78 210 C 74 272 92 322 118 360 L 130 406 L 140 458 L 190 478 L 250 470 L 286 446 C 310 424 320 388 324 352 L 334 296 C 346 236 344 172 312 130 C 280 86 232 64 196 68 C 188 68 182 68 176 68 Z" fill="#000" fill-opacity="0.15"/>
-  <path d="M 176 68 C 120 78 82 138 78 210 C 74 272 92 322 118 360 L 130 406 L 140 458" stroke-width="2.8"/>
-  <path d="M 196 68 C 232 64 280 86 312 130 C 344 172 346 236 334 296 L 324 352 C 320 388 310 424 286 446" stroke-width="2.8"/>
-  <!-- Flowing neon traces (ribbon loops) -->
-  <path d="M 80 220 C 160 170 260 200 334 160" stroke-width="2.4" opacity="0.9"/>
-  <path d="M 84 258 C 170 230 260 250 334 224" stroke-width="2.2" opacity="0.85"/>
-  <path d="M 92 294 C 176 286 258 292 326 272" stroke-width="2.2" opacity="0.8"/>
-  <path d="M 108 330 C 180 328 250 336 312 326" stroke-width="2" opacity="0.75"/>
-  <!-- Spiral curls around crown (heart / ribbon feel) -->
-  <path d="M 196 78 C 226 56 262 58 272 90 C 276 108 262 122 246 118" stroke-width="2.2"/>
-  <path d="M 222 88 C 244 74 266 82 268 100" stroke-width="2"/>
-  <!-- Face profile (left) -->
-  <path d="M 78 204 C 72 214 72 226 80 232" stroke-width="2.4"/>
-  <circle cx="104" cy="216" r="3.2" fill="#000"/>
-  <path d="M 88 240 C 78 248 78 260 90 264"/>
-  <path d="M 90 278 C 102 286 120 282 126 274"/>
-  <path d="M 102 296 C 112 306 130 306 142 298"/>
-  <!-- Jaw curve -->
-  <path d="M 142 306 C 150 340 152 380 144 420"/>
-  <!-- Ear loop -->
-  <ellipse cx="252" cy="290" rx="38" ry="44"/>
-  <ellipse cx="252" cy="290" rx="22" ry="28"/>
-  <circle cx="252" cy="290" r="6" fill="#000"/>
-  <!-- Trailing neon ribbons from crown -->
-  <path d="M 232 74 C 290 50 344 80 346 140" stroke-width="2" stroke-dasharray="6 4" opacity="0.75"/>
-  <path d="M 250 86 C 320 92 364 144 358 208" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>
-  <path d="M 274 118 C 340 144 372 200 362 260" stroke-width="2" stroke-dasharray="6 4" opacity="0.65"/>
-  <path d="M 290 176 C 348 208 368 260 348 308" stroke-width="2" stroke-dasharray="6 4" opacity="0.6"/>
-  <!-- Heart-shaped node on temple -->
-  <path d="M 160 124 C 156 116 146 116 144 126 C 142 116 132 116 128 124 C 128 136 144 148 144 148 C 144 148 160 136 160 124 Z" stroke-width="1.6"/>
-  <!-- Sparkle accents -->
-  <path d="M 308 160 L 314 154 M 314 160 L 308 154" stroke-width="1.6"/>
-  <path d="M 328 220 L 336 214 M 336 220 L 328 214" stroke-width="1.6"/>
-  <path d="M 340 280 L 348 274 M 348 280 L 340 274" stroke-width="1.6"/>
-  <!-- Neck ribbon -->
-  <path d="M 146 462 C 200 478 262 474 294 452" stroke-width="2.4"/>
-  <path d="M 162 474 C 208 486 260 484 288 468"/>
-  <path d="M 178 488 C 210 496 252 494 274 484"/>
-  <!-- Data nodes -->
-  <circle cx="346" cy="140" r="2.6" fill="#000"/>
-  <circle cx="358" cy="208" r="2.6" fill="#000"/>
-  <circle cx="362" cy="260" r="2.6" fill="#000"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 640" aria-hidden="true">
+  <!-- Female cyborg profile with flowing cable-hair — Compliance Ops -->
+  <g fill="#000">
+    <!-- Flowing cable hair mass behind head -->
+    <path d="M 264 44
+             C 176 48 104 118 90 210
+             C 78 292 98 370 140 436
+             C 168 478 182 528 164 578
+             L 138 626
+             L 282 626
+             L 266 574
+             C 256 532 280 498 318 468
+             C 364 430 396 378 402 314
+             C 410 236 392 156 340 104
+             C 312 76 288 52 264 44 Z"/>
+    <!-- Face profile (strong jaw/cheekbone) -->
+    <path d="M 222 142
+             C 184 162 162 212 164 264
+             C 166 310 182 352 202 384
+             L 210 420
+             L 216 458
+             L 254 472
+             L 294 462
+             L 322 432
+             C 342 400 350 354 344 304
+             L 338 250
+             C 330 206 312 166 278 148
+             C 260 138 238 138 222 142 Z"/>
+    <!-- Neck + shoulder suggestion -->
+    <path d="M 216 472
+             L 212 512
+             L 200 558
+             L 180 600
+             L 348 600
+             L 332 560
+             L 310 524
+             L 288 492 Z"/>
+  </g>
+  <!-- Eye, lip, jaw highlights (cutouts via white fill — subtle on tinted bg) -->
+  <g fill="#ffffff" fill-opacity="0.42">
+    <ellipse cx="250" cy="272" rx="14" ry="6"/>
+    <circle cx="250" cy="272" r="3" fill="#000"/>
+  </g>
+  <g fill="#ffffff" fill-opacity="0.22">
+    <path d="M 224 358 Q 250 364 276 358 L 276 368 Q 250 376 224 368 Z"/>
+    <path d="M 214 306 Q 250 324 282 308 L 282 348 Q 250 364 212 348 Z"/>
+  </g>
+  <!-- Brow line -->
+  <path d="M 218 252 L 282 248" stroke="#ffffff" stroke-opacity="0.35" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <!-- Cable hair flow seams -->
+  <g stroke="#ffffff" stroke-width="2.4" fill="none" stroke-opacity="0.22" stroke-linecap="round">
+    <path d="M 108 216 Q 154 196 200 202"/>
+    <path d="M 100 268 Q 150 260 200 264"/>
+    <path d="M 102 320 Q 152 322 200 324"/>
+    <path d="M 110 372 Q 156 380 198 380"/>
+    <path d="M 128 434 Q 170 444 204 442"/>
+  </g>
 </svg>

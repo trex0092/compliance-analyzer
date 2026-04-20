@@ -1,47 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520" fill="none" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
-  <!-- Chrome / industrial variant for /workbench (azure navy). Sharp paneled head. -->
-  <path d="M 174 68 C 120 78 84 134 80 206 C 76 266 94 318 118 356 L 130 400 L 138 452 L 186 470 L 248 464 L 284 440 C 306 418 316 384 320 348 L 332 296 C 344 238 342 176 312 132 C 284 90 234 66 198 68 C 188 68 180 68 174 68 Z" fill="#000" fill-opacity="0.16"/>
-  <path d="M 174 68 C 120 78 84 134 80 206 C 76 266 94 318 118 356 L 130 400 L 138 452" stroke-width="2.8"/>
-  <path d="M 198 68 C 234 66 284 90 312 132 C 342 176 344 238 332 296 L 320 348 C 316 384 306 418 284 440" stroke-width="2.8"/>
-  <!-- Angular plate seams -->
-  <path d="M 96 170 L 180 130 L 256 138 L 312 168"/>
-  <path d="M 86 210 L 178 190 L 262 194 L 324 222"/>
-  <path d="M 84 252 L 176 238 L 268 240 L 330 260"/>
-  <path d="M 92 294 L 180 286 L 262 288 L 322 304"/>
-  <path d="M 108 336 L 186 332 L 256 336 L 308 346"/>
-  <!-- Visor / HUD line across brow -->
-  <path d="M 78 200 L 150 196 L 226 200 L 304 208" stroke-width="2.4"/>
-  <circle cx="104" cy="212" r="3.2" fill="#000"/>
-  <!-- Nose + lip hints -->
-  <path d="M 78 226 L 72 244 L 82 258"/>
-  <path d="M 88 272 L 118 274"/>
-  <path d="M 96 294 L 128 292"/>
-  <!-- Jaw seam -->
-  <path d="M 130 314 L 142 350 L 146 390 L 140 440"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 640" aria-hidden="true">
+  <!-- Chrome cyborg profile — Workbench. Solid silhouette facing right. -->
+  <g fill="#000">
+    <!-- Head + jaw -->
+    <path d="M 232 70
+             C 168 74 118 120 102 184
+             C 88 242 94 304 118 358
+             L 136 406
+             L 146 464
+             L 170 488
+             L 216 500
+             L 270 494
+             L 322 470
+             L 360 430
+             C 378 400 388 360 388 320
+             L 396 258
+             C 402 198 388 138 350 104
+             C 320 80 278 68 244 70 Z"/>
+    <!-- Neck + collar -->
+    <path d="M 178 498
+             L 174 540
+             L 168 578
+             L 152 612
+             L 378 612
+             L 360 578
+             L 338 548
+             L 320 520
+             L 298 510 Z"/>
+    <!-- Crown accent panel -->
+    <path d="M 244 72 L 308 94 L 336 80 L 306 70 L 272 64 Z"/>
+  </g>
+  <!-- Visor / cutout detail painted in white (same alpha, so subtle outline on tinted bg) -->
+  <g fill="#ffffff" fill-opacity="0.28">
+    <rect x="160" y="232" width="210" height="22" rx="6"/>
+    <circle cx="208" cy="244" r="5" fill="#000"/>
+    <circle cx="276" cy="244" r="3" fill="#000"/>
+  </g>
+  <!-- Panel seams -->
+  <g stroke="#ffffff" stroke-width="3" fill="none" stroke-opacity="0.22" stroke-linecap="round">
+    <path d="M 148 190 L 370 182"/>
+    <path d="M 142 290 L 382 284"/>
+    <path d="M 152 356 L 372 350"/>
+    <path d="M 186 410 L 348 406"/>
+  </g>
   <!-- Ear disc -->
-  <circle cx="252" cy="290" r="40"/>
-  <circle cx="252" cy="290" r="24"/>
-  <circle cx="252" cy="290" r="8" fill="#000"/>
-  <path d="M 252 250 L 284 260 L 286 292 L 270 316" stroke-width="2.6"/>
-  <!-- Crown triangles -->
-  <path d="M 172 72 L 200 98 L 232 88 L 256 72"/>
-  <path d="M 152 82 L 172 64 L 206 60 L 232 70"/>
-  <!-- Circuit bus lines on neck -->
-  <path d="M 146 456 L 200 474 L 258 472 L 290 452"/>
-  <path d="M 166 470 L 170 500"/>
-  <path d="M 208 478 L 208 506"/>
-  <path d="M 248 472 L 246 500"/>
-  <!-- LED dots -->
-  <circle cx="200" cy="138" r="2" fill="#000"/>
-  <circle cx="256" cy="142" r="2" fill="#000"/>
-  <circle cx="236" cy="196" r="2" fill="#000"/>
-  <circle cx="220" cy="240" r="2" fill="#000"/>
-  <circle cx="290" cy="272" r="2" fill="#000"/>
-  <!-- Straight filament strands (rigid, no curls) -->
-  <path d="M 230 72 L 298 46 L 346 66" stroke-width="1.6" stroke-dasharray="3 5" opacity="0.7"/>
-  <path d="M 252 82 L 320 82 L 360 114" stroke-width="1.6" stroke-dasharray="3 5" opacity="0.7"/>
-  <path d="M 272 106 L 346 132 L 372 180" stroke-width="1.6" stroke-dasharray="3 5" opacity="0.65"/>
-  <circle cx="346" cy="66" r="2.6" fill="#000"/>
-  <circle cx="360" cy="114" r="2.6" fill="#000"/>
-  <circle cx="372" cy="180" r="2.6" fill="#000"/>
+  <g fill="#000">
+    <circle cx="338" cy="310" r="34"/>
+  </g>
+  <circle cx="338" cy="310" r="18" fill="#ffffff" fill-opacity="0.35"/>
+  <circle cx="338" cy="310" r="7" fill="#000"/>
 </svg>
