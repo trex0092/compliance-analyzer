@@ -176,13 +176,66 @@
           border-color 0.3s ease,
           box-shadow 0.3s ease;
       }
-      body {
+      html {
         background: var(--bg);
+      }
+      body {
+        background: transparent;
         color: var(--text);
         font-family: 'Montserrat', sans-serif;
         font-weight: 300;
         min-height: 100vh;
         -webkit-font-smoothing: antialiased;
+        position: relative;
+        isolation: isolate;
+      }
+      /* Premium wallpaper — fixed full-viewport cyborg portrait layered
+         behind all content with a radial vignette + linear wash for
+         readability. Coexists with .hi-side-wm silhouettes (z-index: 0)
+         and is auto-hidden when the page is embedded in an iframe via
+         the html.embedded body::before/::after rule further down. */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -2;
+        background:
+          url('assets/wallpaper-cyborg.jpg?v=1') center center / cover no-repeat;
+        opacity: 0.32;
+        filter: saturate(1.08) contrast(1.02);
+        animation: wallpaperDrift 48s ease-in-out infinite alternate;
+        pointer-events: none;
+        will-change: transform;
+      }
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background:
+          radial-gradient(
+            ellipse 85% 75% at 50% 42%,
+            transparent 0%,
+            rgba(2, 11, 24, 0.35) 55%,
+            rgba(2, 11, 24, 0.88) 100%
+          ),
+          linear-gradient(
+            180deg,
+            rgba(2, 11, 24, 0.45) 0%,
+            rgba(2, 11, 24, 0.18) 45%,
+            rgba(2, 11, 24, 0.65) 100%
+          );
+        pointer-events: none;
+      }
+      @keyframes wallpaperDrift {
+        from { transform: scale(1.04) translate3d(-0.4%, -0.4%, 0); }
+        to   { transform: scale(1.08) translate3d(0.4%, 0.4%, 0); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        body::before { animation: none !important; }
+      }
+      @media (max-width: 768px) {
+        body::before { opacity: 0.22; }
       }
       .app {
         max-width: 1440px;
