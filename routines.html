@@ -797,13 +797,25 @@
         { id: 'adverse-media-hot-sweep', title: 'Adverse Media Hot Sweep', schedule: '0 */6 * * *', cadence: 'continuous', desc: 'Production run of runAdverseMediaHotIngest — four times per day across all 13K+ vetted media sources with FDL Art.29 no-tipping-off guard on every query.', reg: 'FATF Rec 10 · FDL Art.29', store: 'am-hot-audit' },
         { id: 'subject-resolution-review', title: 'Subject Resolution Review', schedule: '30 5 * * *', cadence: 'daily', desc: 'Daily digest of pending "pin as subject" decisions so the MLRO resolves candidate identity before the next watchlist refresh (FATF Rec 10 positive identification).', reg: 'FATF Rec 10', store: 'subject-resolution-audit' },
 
-        // ───────── ESG (2) ─────────
+        // ───────── ESG (8) ─────────
         { id: 'cahra-supplier-review', title: 'CAHRA Supplier Review', schedule: '0 4 * * 2', cadence: 'weekly', desc: 'Tuesday LBMA RGG v9 Step 2 CAHRA sweep across all DPMS supplier relationships; triggers Step 3-5 enhanced DD on any supplier sourcing from a conflict-affected region.', reg: 'LBMA RGG v9 Step 2 · UAE MoE RSG', store: 'cahra-audit' },
         { id: 'modern-slavery-indicator-sweep', title: 'Modern Slavery Indicator Sweep', schedule: '0 4 * * 4', cadence: 'weekly', desc: 'Thursday UK MSA 2015 + UNGPs forced / child-labour indicator sweep across supplier adverse media and supplier SAQ responses.', reg: 'UK Modern Slavery Act 2015 · UNGPs', store: 'modern-slavery-audit' },
+        { id: 'asm-compliance-audit', title: 'ASM Compliance Audit', schedule: '0 4 * * 3', cadence: 'weekly', desc: 'Wednesday Artisanal & Small-scale Mining supplier audit against LBMA RGG Step 4 — legitimate ASM, safe working conditions, no child labour, environmental compliance, formalisation path.', reg: 'LBMA RGG v9 Step 4 · OECD DD Annex II · UAE MoE RSG', store: 'asm-audit' },
+        { id: 'mercury-minamata-sweep', title: 'Mercury / Minamata Sweep', schedule: '0 4 * * 5', cadence: 'weekly', desc: 'Friday Minamata Convention compliance sweep — mercury use in gold processing, amalgamation hotspots, phase-out plan tracking. Flags any supplier in non-compliance with UAE MoE RSG mercury prohibition.', reg: 'Minamata Convention · UAE MoE RSG · UNEP Global Mercury Assessment', store: 'mercury-audit' },
+        { id: 'child-labour-ilo182-sweep', title: 'Child Labour (ILO C-182) Sweep', schedule: '30 4 * * 2', cadence: 'weekly', desc: 'Tuesday ILO Convention 182 worst-forms-of-child-labour indicator sweep — mine-site child labour, hazardous work, trafficking-linked operations. Integrates supplier SAQ responses with public NGO reporting.', reg: 'ILO Convention 182 · UNCRC · UAE MoE RSG Annex B', store: 'child-labour-audit' },
+        { id: 'carbon-scope-supply-chain', title: 'Carbon Scope 1-2-3 Rollup', schedule: '0 4 * * 1', cadence: 'weekly', desc: 'Monday Scope 1 / 2 / 3 emissions rollup across the DPMS supply chain — refining energy, logistics, embedded mine-site emissions. Feeds UAE Net-Zero 2050 reporting and LBMA v4 responsible sourcing update.', reg: 'UAE Net-Zero 2050 · GHG Protocol · LBMA RGG v4 update', store: 'carbon-audit' },
+        { id: 'water-stewardship-cahra', title: 'Water Stewardship (CAHRA)', schedule: '30 4 * * 5', cadence: 'weekly', desc: 'Friday water-risk scan in CAHRA + water-stressed jurisdictions — CDP Water responses, tailings-dam incidents, community water disputes. Triggers Step 3-5 enhanced DD on any supplier with a confirmed water-rights conflict.', reg: 'CDP Water · UNGPs · OECD DD Guidance Annex II', store: 'water-audit' },
+        { id: 'grievance-mechanism-monitor', title: 'Grievance Mechanism Monitor', schedule: '45 5 * * *', cadence: 'daily', desc: 'Daily UNGPs Principle 31 remedy-mechanism effectiveness monitor — grievance-intake latency, resolution time, complainant satisfaction, recurrence. Required for LBMA RGG Step 3 supplier-level due diligence.', reg: 'UNGPs Principle 31 · LBMA RGG v9 Step 3 · OECD DD Annex II', store: 'grievance-audit' },
 
-        // ───────── Supply Chain (2) ─────────
+        // ───────── Supply Chain (8) ─────────
         { id: 'refiner-accreditation-check', title: 'Refiner Accreditation Check', schedule: '30 4 * * *', cadence: 'daily', desc: 'Daily verification of Dubai Good Delivery (DGD) + LBMA Good Delivery accreditation status for every refiner counterparty; queues Asana review on any delisting or suspension.', reg: 'LBMA RGG v9 · DGD Standard', store: 'refiner-accred-audit' },
-        { id: 'dual-use-export-sweep', title: 'Dual-Use Export Sweep', schedule: '30 5 * * *', cadence: 'daily', desc: 'Cabinet Res 156/2025 + Wassenaar + UAE Strategic Trade Control scan of outbound flows; flags dual-use / strategic-goods tariff codes and sensitive end-use signals.', reg: 'Cabinet Res 156/2025 · UAE STC', store: 'dual-use-audit' }
+        { id: 'dual-use-export-sweep', title: 'Dual-Use Export Sweep', schedule: '30 5 * * *', cadence: 'daily', desc: 'Cabinet Res 156/2025 + Wassenaar + UAE Strategic Trade Control scan of outbound flows; flags dual-use / strategic-goods tariff codes and sensitive end-use signals.', reg: 'Cabinet Res 156/2025 · UAE STC', store: 'dual-use-audit' },
+        { id: 'chain-of-custody-verify', title: 'Chain-of-Custody Verify', schedule: '0 8 * * *', cadence: 'daily', desc: 'Daily LBMA RGG Step 3 full chain-of-custody verification for every bullion bar inbound — mine → transport → refiner → vault. Flags any bar where the custody trail is broken, backdated, or missing a segment signature.', reg: 'LBMA RGG v9 Step 3 · OECD DD Guidance · UAE MoE RSG', store: 'coc-audit' },
+        { id: 'bullion-assay-drift', title: 'Bullion Assay Drift', schedule: '30 8 * * *', cadence: 'daily', desc: 'Daily assay-fineness drift detection — cross-checks assayed fineness against declared fineness per bar and per shipment. Flags drift >0.5% and triggers re-assay + counterparty notification (no tipping off on sanctions-linked drift).', reg: 'LBMA Good Delivery · DGD Assay Standard · FDL Art.29', store: 'assay-drift-audit' },
+        { id: 'customs-declaration-recon', title: 'Customs Declaration Reconciliation', schedule: '30 7 * * *', cadence: 'daily', desc: 'Daily reconciliation of Emirates Customs declarations against internal trade records, warehouse receipts, and settlement ledgers. Flags declaration-vs-actual mismatch, HS-code anomaly, and under/over-invoicing (TBML precursor).', reg: 'UAE Customs Law · FATF TBML 2020 · Cabinet Res 134/2025 Art.16', store: 'customs-recon-audit' },
+        { id: 'supplier-saq-rollover', title: 'Supplier SAQ Rollover', schedule: '0 7 * * 1', cadence: 'weekly', desc: 'Monday annual Self-Assessment Questionnaire refresh cycle — tracks supplier SAQ expiry, issues renewal requests at T-60 days, escalates at T-14. Mandatory for LBMA RGG Step 3 annual supplier DD refresh.', reg: 'LBMA RGG v9 Step 3 · RJC COP · UAE MoE RSG', store: 'saq-rollover-audit' },
+        { id: 'lbma-audit-countdown', title: 'LBMA Audit Countdown', schedule: '0 9 * * *', cadence: 'daily', desc: 'Daily 12-month LBMA / DGD external audit deadline tracker — counts down days-to-audit, posts readiness dashboard, auto-runs /moe-readiness + /audit-pack at T-30.', reg: 'LBMA RGG v9 Step 5 · DGD Annual Audit', store: 'lbma-audit-countdown' },
+        { id: 'recycled-vs-mined-origin', title: 'Recycled vs Mined Origin Audit', schedule: '0 5 * * 4', cadence: 'weekly', desc: 'Thursday LBMA RGG origin-classification audit — verifies the declared recycled / mined / grandfathered classification per bar against chain-of-custody documents. Flags mis-declared recycled gold (sanctions-evasion red flag).', reg: 'LBMA RGG v9 · UAE MoE RSG Framework · OFAC Russia gold sanctions', store: 'origin-audit' }
       ];
 
       const cadenceLabel = {
@@ -838,12 +850,24 @@
           '0 6 * * *': '06:00 UTC daily',
           '30 6 * * *': '06:30 UTC daily',
           '0 7 * * *': '07:00 UTC daily',
+          '30 7 * * *': '07:30 UTC daily',
+          '0 8 * * *': '08:00 UTC daily',
+          '30 8 * * *': '08:30 UTC daily',
+          '0 9 * * *': '09:00 UTC daily',
+          '45 5 * * *': '05:45 UTC daily',
           '0 4 * * 1-5': '04:00 UTC weekdays',
           '0 5 * * 1': 'Mon 05:00 UTC',
           '0 6 * * 1': 'Mon 06:00 UTC',
+          '0 7 * * 1': 'Mon 07:00 UTC',
           '0 3 * * 3': 'Wed 03:00 UTC',
+          '0 4 * * 1': 'Mon 04:00 UTC',
           '0 4 * * 2': 'Tue 04:00 UTC',
-          '0 4 * * 4': 'Thu 04:00 UTC'
+          '30 4 * * 2': 'Tue 04:30 UTC',
+          '0 4 * * 3': 'Wed 04:00 UTC',
+          '0 4 * * 4': 'Thu 04:00 UTC',
+          '0 4 * * 5': 'Fri 04:00 UTC',
+          '30 4 * * 5': 'Fri 04:30 UTC',
+          '0 5 * * 4': 'Thu 05:00 UTC'
         };
         return map[cron] || cron;
       }
