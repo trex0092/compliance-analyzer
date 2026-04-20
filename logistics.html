@@ -9,7 +9,6 @@
     <script>(function(){var s=(location.pathname||'/').split('/').filter(Boolean);var L=['logistics','workbench','compliance-ops','routines','screening-command'];if(s.length>=2&&L.indexOf(s[0].replace(/\.html$/,''))!==-1){document.documentElement.classList.add('module-view-active');}})();</script>
     <style id="moduleViewActiveStylesInline">
       html.module-view-active .topbar,
-      html.module-view-active .page-nav,
       html.module-view-active .hero,
       html.module-view-active .summary,
       html.module-view-active .hero-summary,
@@ -177,41 +176,6 @@
         color: var(--mist);
         border-color: var(--azure-bright);
         box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
-      }
-
-      /* Page-specific navigation — rendered dynamically by page-nav.js */
-      .page-nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin: -0.5rem 0 2rem;
-        padding: 0;
-      }
-      .page-nav[hidden] { display: none; }
-      .page-nav-link {
-        font-family: 'DM Mono', monospace;
-        font-size: 10px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        padding: 8px 14px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: rgba(14, 56, 36, 0.45);
-        color: var(--ice);
-        text-decoration: none;
-        backdrop-filter: blur(10px);
-        transition: all 0.2s ease;
-      }
-      .page-nav-link:hover {
-        color: var(--mist);
-        border-color: rgba(134, 239, 172, 0.55);
-        background: rgba(34, 197, 94, 0.12);
-      }
-      .page-nav-link.is-active {
-        color: #86efac;
-        border-color: rgba(134, 239, 172, 0.7);
-        background: rgba(34, 197, 94, 0.18);
-        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
       }
 
       /* Hero — 2-column grid: copy left, 2×2 status-tile aside right */
@@ -978,8 +942,6 @@
         <a href="index.html" class="back-link">&larr; Main App</a>
       </header>
 
-      <nav id="pageNav" class="page-nav" aria-label="Logistics sections"></nav>
-
       <section class="hero">
         <div>
           <div class="hero-eyebrow">Shipments Control Tower</div>
@@ -1201,7 +1163,6 @@
         });
       })();
     </script>
-    <script src="page-nav.js?v=1"></script>
     <script src="logistics-modules.js?v=1"></script>
     <script src="landing-module-viewer.js?v=15"></script>
     <script src="module-enhancements.js?v=1"></script>

@@ -9,7 +9,6 @@
     <script>(function(){var s=(location.pathname||'/').split('/').filter(Boolean);var L=['logistics','workbench','compliance-ops','routines','screening-command'];if(s.length>=2&&L.indexOf(s[0].replace(/\.html$/,''))!==-1){document.documentElement.classList.add('module-view-active');}})();</script>
     <style id="moduleViewActiveStylesInline">
       html.module-view-active .topbar,
-      html.module-view-active .page-nav,
       html.module-view-active .hero,
       html.module-view-active .summary,
       html.module-view-active .hero-summary,
@@ -157,41 +156,6 @@
         transition: all 0.25s ease;
       }
       .back-link:hover { color: var(--mist); border-color: var(--azure-bright); box-shadow: 0 0 0 4px rgba(47, 125, 255, 0.12); }
-
-      /* Page-specific navigation — rendered dynamically by page-nav.js */
-      .page-nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin: -1.5rem 0 2.5rem;
-        padding: 0;
-      }
-      .page-nav[hidden] { display: none; }
-      .page-nav-link {
-        font-family: 'DM Mono', monospace;
-        font-size: 10px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        padding: 8px 14px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: rgba(14, 31, 56, 0.45);
-        color: var(--ice);
-        text-decoration: none;
-        backdrop-filter: blur(10px);
-        transition: all 0.2s ease;
-      }
-      .page-nav-link:hover {
-        color: var(--mist);
-        border-color: var(--azure-bright);
-        background: rgba(47, 125, 255, 0.12);
-      }
-      .page-nav-link.is-active {
-        color: var(--orange-bright);
-        border-color: var(--orange-border);
-        background: var(--orange-dim);
-        box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.1);
-      }
 
       /* Hero */
       .hero {
@@ -764,8 +728,6 @@
         <a href="index.html" class="back-link">&larr; Main App</a>
       </header>
 
-      <nav id="pageNav" class="page-nav" aria-label="Workbench sections"></nav>
-
       <section class="hero">
         <div>
           <div class="hero-eyebrow">MLRO Workbench</div>
@@ -931,7 +893,6 @@
       <span class="footer-text">© 2026 Hawkeye Sterling</span>
       <span class="footer-text">Confidential · Audit-ready</span>
     </footer>
-    <script src="page-nav.js?v=1"></script>
     <script src="workbench-modules.js?v=1"></script>
     <script src="landing-module-viewer.js?v=15"></script>
     <script src="module-enhancements.js?v=1"></script>

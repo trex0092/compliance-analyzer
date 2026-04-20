@@ -165,10 +165,10 @@
     '#tab-onboarding': 'onboarding',
     '#approvals': 'approvals',
     '#tab-approvals': 'approvals',
-    // Added for page-specific landing navigation (workbench / logistics /
-    // compliance-ops page-nav pills). Each hash maps to an existing
-    // `tab-<id>` block in index.html so switchTab() will activate it when
-    // the iframe loads with the corresponding deep-link hash.
+    // Landing-page surface deep-links (workbench / logistics / compliance-ops).
+    // Each hash maps to an existing `tab-<id>` block in index.html so
+    // switchTab() will activate it when the iframe loads with the
+    // corresponding deep-link hash.
     '#iarreport': 'iarreport',
     '#tab-iarreport': 'iarreport',
     '#riskassessment': 'riskassessment',
