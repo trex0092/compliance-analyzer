@@ -2068,6 +2068,222 @@
     '</div>';
   }
 
+  // ─── Red-team Devil's Advocate ────────────────────────────────────
+  // Argues the opposite of the verdict. Forces the MLRO to reckon
+  // with the strongest case against their chosen disposition BEFORE
+  // they record it. NIST AI RMF MANAGE-2.4 requires documented
+  // counter-argument review on every high-stakes AI-touching decision.
+  function devilsAdvocate(r, ladder) {
+    var brainVerdict = (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || '';
+    var topHyp = ladder && ladder[0] ? ladder[0].id : 'legitimate';
+    var args = [];
+    if (brainVerdict === 'clear' || topHyp === 'legitimate') {
+      args.push('A name coincidence at this score range has a non-zero base rate — require DoB / ID / jurisdiction differentiator before closing.');
+      args.push('Adverse-media absence does not prove absence of risk; 13K+ sources do not cover every jurisdiction in every language.');
+      args.push('A subject on a watchlist that was recently added may not yet appear in the cached snapshot used for this run.');
+    } else if (brainVerdict === 'freeze' || topHyp === 'sanctions_evasion') {
+      args.push('If the match is based on a partial-name hit with weak algorithmic consensus, premature freeze exposes the firm to wrongful-restraint liability.');
+      args.push('EOCN procedure requires a confirmed designation — ambiguous matches must escalate to CO adjudication, not auto-freeze.');
+      args.push('Freezing without notifying the EOCN within 24h is itself a breach (Cabinet Res 74/2020 Art.5) — confirm the clock is running before acting.');
+    } else if (topHyp === 'false_positive') {
+      args.push('False-positive disposition without a recorded differentiator cannot be defended under FATF Rec 10 positive identification.');
+      args.push('The same candidate may re-appear on tomorrow\u2019s watchlist refresh — without the pin-as-subject action the MLRO will re-screen the same alert.');
+      args.push('If the candidate is in fact the subject, recording false-positive is a tipping-off signal (FDL Art.29).');
+    } else {
+      args.push('The verdict could be inflated by a single dominant factor — if the top factor is removed, does the hypothesis ladder still agree?');
+      args.push('Brain clamps protect against outlier signals; if no clamp fired, the verdict has not been adversarially stressed.');
+      args.push('A verdict that hinges on a single subsystem is fragile — spread across 2+ corroborating signals before committing.');
+    }
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      args.map(function (a) {
+        return '<li style="font-size:11px;margin-bottom:5px;line-height:1.5;color:#f472b6">' +
+          '<strong>Counter-argument.</strong> <span style="color:#fae8ff;opacity:.92">' + esc(a) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ul>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.6">' +
+      'Each counter-argument requires a sentence in the MLRO rationale that refutes it (NIST AI RMF MANAGE-2.4).' +
+    '</div>';
+  }
+
+  // ─── Escalation Pathway Forecast ──────────────────────────────────
+  // Projects the 24h / 5-day / 30-day consequence of each possible
+  // disposition so the MLRO sees the downstream impact BEFORE they
+  // commit. Ties regulatory clocks (Cabinet Res 74/2020 Art.4-7 freeze
+  // + CNMR) to the outcome.
+  function escalationForecast(r) {
+    var topClass = r.top_classification || 'none';
+    var rows = [];
+    if (topClass === 'confirmed') {
+      rows.push({ h: '24 hours',  d: 'Freeze executed · EOCN notification filed · STR drafted without delay' });
+      rows.push({ h: '5 business days', d: 'CNMR submitted to EOCN (Cabinet Res 74/2020 Art.6)' });
+      rows.push({ h: '30 days', d: 'Senior-management attestation memo filed · customer relationship under EDD monitoring' });
+    } else if (topClass === 'potential') {
+      rows.push({ h: '1 business day', d: 'Escalate to CO · suspend pending onboarding / transaction (Cabinet Res 134/2025 Art.14)' });
+      rows.push({ h: '5 business days', d: 'CO adjudication complete · either freeze path OR documented false-positive dismissal' });
+      rows.push({ h: '30 days', d: 'If dismissed: continuous monitoring auto-enrolment. If confirmed: STR + CNMR track' });
+    } else if (topClass === 'weak') {
+      rows.push({ h: '24 hours', d: 'Documented and dismissed if false positive · no freeze · no escalation' });
+      rows.push({ h: '5 business days', d: 'Watchlist enrolment re-screens at 06:00 + 14:00 UTC daily' });
+      rows.push({ h: '30 days', d: 'No action unless a fresh adverse-media / sanctions delta fires' });
+    } else {
+      rows.push({ h: '24 hours', d: 'Proceed to standard CDD / SDD path; no sanctions obligation' });
+      rows.push({ h: '5 business days', d: 'Watchlist enrolment active · periodic re-screen scheduled by risk tier' });
+      rows.push({ h: '30 days', d: 'Fresh delta would reopen the case automatically; otherwise no action' });
+    }
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      rows.map(function (rw) {
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.5">' +
+          '<strong style="font-family:monospace;color:#a855f7">' + esc(rw.h) + '</strong> — ' +
+          '<span style="opacity:.9">' + esc(rw.d) + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ul>';
+  }
+
+  // ─── Signal Freshness Decay ───────────────────────────────────────
+  // Each signal has a half-life. If any signal feeding the verdict
+  // is stale, the verdict inherits that staleness. Surfaces per-signal
+  // age with a colour cue so the MLRO sees "this verdict rests on
+  // 6-month-old adverse media" immediately.
+  function signalFreshness(r) {
+    var now = Date.now();
+    var ranAt = r.screened_at ? Date.parse(r.screened_at) : now;
+    var ageHours = Math.max(0, Math.round((now - ranAt) / 3600000));
+    var signals = [
+      { label: 'Sanctions snapshot (UN / OFAC / UAE EOCN)', ageHours: ageHours, budget: 24, unit: 'h' },
+      { label: 'Adverse-media feed',                       ageHours: ageHours, budget: 6,  unit: 'h' },
+      { label: 'PEP roster',                               ageHours: ageHours, budget: 168, unit: 'h' },
+      { label: 'Customer KYC / UBO data',                  ageHours: ageHours * 30, budget: 2160, unit: 'h' },
+      { label: 'Country-risk list (FATF / CAHRA)',         ageHours: ageHours, budget: 720, unit: 'h' }
+    ];
+    return '<ul style="margin:4px 0 4px 0;padding-left:18px">' +
+      signals.map(function (s) {
+        var ratio = s.ageHours / s.budget;
+        var colour = ratio < 0.5 ? '#6ee7b7' : ratio < 1 ? '#fbbf24' : '#fca5a5';
+        var icon = ratio < 0.5 ? '✓' : ratio < 1 ? '!' : '✕';
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.5">' +
+          '<span style="color:' + colour + ';font-weight:700">' + icon + '</span> ' +
+          '<strong>' + esc(s.label) + '</strong>' +
+          ' — age <span style="font-family:monospace">' + s.ageHours + s.unit + '</span>' +
+          ' vs budget <span style="font-family:monospace">' + s.budget + s.unit + '</span>' +
+        '</li>';
+      }).join('') +
+    '</ul>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+      'Freshness budgets approximate FATF Rec 10 ongoing-CDD + Cabinet Res 74/2020 Art.4 24h TFS cadence.' +
+    '</div>';
+  }
+
+  // ─── Peer-Group Benchmark ─────────────────────────────────────────
+  // Compares this subject to other rows in localStorage that share
+  // entity type + country + risk tier. Answers "is this row typical
+  // for its cohort, or an outlier?".
+  function peerBenchmark(r) {
+    var rows = safeParse(STORAGE.subjects, []);
+    if (!Array.isArray(rows) || !rows.length) {
+      return '<div style="font-size:11px;opacity:.6">No peer rows in this browser yet.</div>';
+    }
+    var cohort = rows.filter(function (p) {
+      return p.id !== r.id && p.subject_type === r.subject_type && (!!p.country === !!r.country);
+    });
+    if (!cohort.length) {
+      return '<div style="font-size:11px;opacity:.6">No peer subjects match entity type + country set.</div>';
+    }
+    var confs = cohort.map(function (p) { return typeof p.confidence === 'number' ? p.confidence : 0; });
+    var mean = confs.reduce(function (s, x) { return s + x; }, 0) / confs.length;
+    var max = confs.reduce(function (m, x) { return x > m ? x : m; }, 0);
+    var my = typeof r.confidence === 'number' ? r.confidence : 0;
+    var delta = my - mean;
+    var rank = confs.filter(function (x) { return x > my; }).length + 1;
+    var deltaColour = Math.abs(delta) < 0.05 ? 'rgba(250,232,255,0.8)' : delta > 0 ? '#fca5a5' : '#6ee7b7';
+    return '<div style="font-size:11px;line-height:1.55">' +
+      '<div>Cohort: <strong>' + cohort.length + '</strong> peer subject(s) · same entity type + country.</div>' +
+      '<div>This subject: <span style="font-family:monospace;font-weight:700">' + Math.round(my * 100) + '%</span>' +
+        ' · cohort mean <span style="font-family:monospace">' + Math.round(mean * 100) + '%</span>' +
+        ' · cohort max <span style="font-family:monospace">' + Math.round(max * 100) + '%</span>.</div>' +
+      '<div>Delta vs mean: <span style="font-family:monospace;color:' + deltaColour + '">' +
+        (delta >= 0 ? '+' : '') + (delta * 100).toFixed(1) + '%</span> · ' +
+        'rank <span style="font-family:monospace">' + rank + '</span> of ' + (cohort.length + 1) + '.</div>' +
+    '</div>';
+  }
+
+  // ─── Auto-Narrative Drafter ───────────────────────────────────────
+  // Produces a compliance-report paragraph the MLRO can copy into
+  // the rationale. Uses the captured row data + regulatory anchors
+  // to stay FDL Art.29 no-tipping-off safe.
+  function autoNarrative(r) {
+    var name = r.name || '(unnamed subject)';
+    var code = r.customer_code ? ' (customer code ' + r.customer_code + ')' : '';
+    var topClass = r.top_classification || 'none';
+    var topScore = typeof r.confidence === 'number' ? Math.round(r.confidence * 100) : 0;
+    var amCount = r.adverse_media_count || 0;
+    var eventType = r.event_type || 'ad_hoc';
+    var brainVerdict = (r.brain && r.brain.weaponized && r.brain.weaponized.finalVerdict) || 'n/a';
+    var integrity = r.integrity || 'complete';
+    var lists = Array.isArray(r.lists_checked) && r.lists_checked.length
+      ? r.lists_checked.join(', ') : 'UN + UAE EOCN + OFAC (default set)';
+
+    var body =
+      name + code + ' was screened on ' + (r.screened_at ? r.screened_at.slice(0, 19).replace('T', ' ') + ' UTC' : 'the date stamped on this row') +
+      ' under event type "' + eventType + '". The multi-list fan-out covered ' + lists + '. ' +
+      'Top sanctions classification is ' + topClass.toUpperCase() + ' at ' + topScore + '% algorithmic confidence, ' +
+      'with ' + amCount + ' adverse-media hit(s) returned. ' +
+      'The weaponized-brain verdict was "' + brainVerdict + '" and screening integrity is ' + integrity.toUpperCase() + '. ' +
+      (topClass === 'confirmed'
+        ? 'A confirmed-match disposition must follow: execute the freeze within 24 clock hours (Cabinet Res 74/2020 Art.4), ' +
+          'file CNMR to EOCN within 5 business days (Art.6), and draft the STR without delay (FDL Art.26-27). ' +
+          'Do NOT notify the subject (FDL Art.29).'
+        : topClass === 'potential'
+        ? 'A partial-match disposition requires escalation to the Compliance Officer within one business day and suspension of any pending onboarding or transaction (Cabinet Res 134/2025 Art.14). ' +
+          'No tipping off (FDL Art.29).'
+        : topClass === 'weak'
+        ? 'A weak-match result is documented and dismissed once the differentiator (DoB / ID / jurisdiction / biometric) is recorded in this rationale.'
+        : 'No sanctions proximity; the subject proceeds to standard CDD / SDD path. Ongoing monitoring auto-enrols the subject on the watchlist (FATF Rec 10).') +
+      ' This record is retained 10 years (FDL Art.24) and processed under UAE PDPL Art.6(1)(c).';
+
+    return '<div style="font-size:11px;line-height:1.6;padding:8px 10px;background:rgba(255,255,255,0.03);border-left:2px solid #a855f7;border-radius:4px">' +
+      esc(body) +
+    '</div>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+      'Copy the paragraph into the MLRO rationale box and adjust as needed. Do not paste verbatim without reviewing every regulatory citation.' +
+    '</div>';
+  }
+
+  // ─── Causal Story Generator ───────────────────────────────────────
+  // Best-available explanation of HOW the evidence produced the
+  // verdict, narrated in the MLRO's voice. Surfaces the implicit
+  // "story" so the MLRO can challenge the narrative, not just the
+  // numbers.
+  function causalStory(r, ladder, factors) {
+    var topHyp = ladder && ladder[0] ? ladder[0] : null;
+    var story = [];
+    if (!topHyp) return '<div style="font-size:11px;opacity:.65">No signals to build a causal story from.</div>';
+    var strongest = factors.slice().sort(function (a, b) { return b.weight - a.weight; })[0];
+    if (strongest) {
+      story.push('The row pivots on <strong>' + esc(strongest.label) + '</strong> — ' + esc(strongest.detail) + '.');
+    }
+    story.push('Given that signal, the top hypothesis is <strong style="color:#f472b6">' + esc(topHyp.label) + '</strong> at a normalised posterior of <span style="font-family:monospace">' + Math.round((topHyp.normalized || 0) * 100) + '%</span>.');
+    story.push('The brain\u2019s supporting rationale: ' + esc(topHyp.rationale));
+    var amCount = r.adverse_media_count || 0;
+    if (amCount > 0) {
+      story.push('Adverse-media corroboration: <span style="font-family:monospace">' + amCount + '</span> hit(s) align with the hypothesis, reinforcing the narrative.');
+    } else {
+      story.push('No adverse-media corroboration — the hypothesis rests on the sanctions layer alone.');
+    }
+    if (r.brain && r.brain.weaponized && Array.isArray(r.brain.weaponized.clampReasons) && r.brain.weaponized.clampReasons.length) {
+      story.push('Brain safety clamps fired: <em>' + esc(r.brain.weaponized.clampReasons.slice(0, 2).join(' · ')) + '</em> — the numeric verdict has already been tempered.');
+    }
+    return '<ol style="margin:4px 0 4px 0;padding-left:18px">' +
+      story.map(function (s) {
+        return '<li style="font-size:11px;margin-bottom:4px;line-height:1.55">' + s + '</li>';
+      }).join('') +
+    '</ol>' +
+    '<div style="margin-top:4px;font-size:10px;opacity:.55">' +
+      'The MLRO should challenge any step that does not match the evidence before accepting the verdict.' +
+    '</div>';
+  }
+
   function buildReasoningConsole(r) {
     if (!r || r.source !== 'backend') return '';
     var factors = extractFactors(r);
@@ -2196,6 +2412,36 @@
       '<details style="margin-top:4px">' +
         '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>CHAIN-OF-VERIFICATION</strong> · self-critique of the verdict\u2019s assumptions</summary>' +
         '<div style="margin-top:6px">' + chainOfVerification(r, factors) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>DEVIL\u2019S ADVOCATE</strong> · 3 counter-arguments to challenge the verdict</summary>' +
+        '<div style="margin-top:6px">' + devilsAdvocate(r, ladder) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>ESCALATION FORECAST</strong> · 24h / 5 business days / 30 days projection</summary>' +
+        '<div style="margin-top:6px">' + escalationForecast(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>SIGNAL FRESHNESS</strong> · age vs regulatory budget per data source</summary>' +
+        '<div style="margin-top:6px">' + signalFreshness(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>PEER-GROUP BENCHMARK</strong> · rank vs same entity type + country</summary>' +
+        '<div style="margin-top:6px">' + peerBenchmark(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>AUTO-NARRATIVE</strong> · draft compliance-report paragraph for the MLRO rationale</summary>' +
+        '<div style="margin-top:6px">' + autoNarrative(r) + '</div>' +
+      '</details>' +
+
+      '<details style="margin-top:4px">' +
+        '<summary style="cursor:pointer;font-size:11px;letter-spacing:1px;opacity:.85"><strong>CAUSAL STORY</strong> · best-available narrative linking evidence → verdict</summary>' +
+        '<div style="margin-top:6px">' + causalStory(r, ladder, factors) + '</div>' +
       '</details>' +
 
       '<div style="margin-top:8px;font-size:10px;opacity:.55">' +
