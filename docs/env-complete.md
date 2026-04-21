@@ -1,51 +1,55 @@
-# Complete Environment Setup — From Scratch
+# Environment Setup — The Locked 67
 
-**For:** the MLRO setting up Hawkeye Sterling V2 + Asana integration from zero.
-**Time:** 10 minutes.
-**What you'll have at the end:** all 43 environment variables set in Netlify, a local `.env` file, and a one-command smoke test that verifies every integration.
+**For:** the MLRO deploying Hawkeye Sterling V2.
+**Locked:** 2026-04-21. These 67 variables are the canonical set — nothing more.
+**Time:** 10 minutes from scratch.
 
 ---
 
-## Step 1 — Generate the 3 secrets you need
+## Step 1 — Generate 6 secrets
 
-Run these 3 commands in your local terminal. Copy each output — you'll paste them into Netlify and your local `.env`.
+Run these commands once. Copy each output, label them A-F.
 
 ```bash
-# Secret A — JWT signing key (for MLRO login tokens)
-openssl rand -hex 32
-
-# Secret B — Audit HMAC key (for audit-pack tamper-evidence, FDL Art.24)
-openssl rand -hex 32
-
-# Secret C — Bcrypt pepper (extra hash layer for MLRO passwords)
-openssl rand -hex 32
+openssl rand -hex 32   # A → HAWKEYE_JWT_SECRET (+ JWT_SIGNING_SECRET, same value)
+openssl rand -hex 32   # B → HAWKEYE_AUDIT_HMAC_KEY
+openssl rand -hex 32   # C → BCRYPT_PEPPER (+ HAWKEYE_CROSS_TENANT_SALT, same value)
+openssl rand -hex 32   # D → ASANA_WEBHOOK_SECRET
+openssl rand -hex 32   # E → HAWKEYE_REGULATOR_MASTER_KEY
+openssl rand -hex 32   # F → SANCTIONS_UPLOAD_TOKEN (+ HAWKEYE_BRAIN_TOKEN, same value)
 ```
 
-Each prints a 64-char hex string. Label them A / B / C so you don't mix them up.
-
-If you don't have `openssl`, use: https://generate-random.org/encryption-key-generator → pick "64 hex" → Generate → copy.
+No openssl? Use https://generate-random.org/encryption-key-generator → 64 hex → Generate.
 
 ---
 
-## Step 2 — Get your Asana PAT
+## Step 2 — Get tokens + IDs
 
-1. Go to https://app.asana.com/0/my-apps
-2. Scroll to **Personal Access Tokens** → **+ Create new token**
-3. Name it `hawkeye-sterling-v2`
-4. Copy the token (starts with `1/`) — Asana only shows it once.
+| Source | Value |
+|---|---|
+| **Asana PAT** | app.asana.com/0/my-apps → + Create new token → copy (starts with `1/`) |
+| **Asana Team GID** | Open HAWKEYE STERLING V2 team → URL `app.asana.com/0/<team-gid>/overview` |
+| **Anthropic key** | console.anthropic.com → API keys → Create |
+| **Tavily key** | tavily.com (free tier) |
+| **SerpAPI key** | serpapi.com (free tier) |
+| **Brave Search key** | api.search.brave.com (free tier) |
+| **TOTP secret** | totp.app/generator → 32 base32 chars |
+| **bcrypt hash** | https://bcrypt-generator.com (hash your MLRO password) |
 
 ---
 
-## Step 3 — Create `.env` in the repo root
+## Step 3 — Create `.env` — the exact 67 vars
 
-Copy this whole block into a file named `.env` at the repo root (NOT `.env.example`). Replace the `<…>` placeholders with your actual values.
+Paste this block into `.env` in the repo root. Replace `<…>` placeholders. GIDs are pre-filled with real values.
 
 ```bash
-# ─── Asana — PAT + workspace + 19 projects ────────────────────────────────
-ASANA_ACCESS_TOKEN=<your PAT from Step 2, starts with 1/>
+# ─── LLM + Asana core ────────────────────────────────────────────────────
+ANTHROPIC_API_KEY=<your Anthropic API key>
+ASANA_ACCESS_TOKEN=<your Asana PAT, starts with 1/>
 ASANA_WORKSPACE_GID=1213645083721316
+ASANA_TEAM_GID=<HAWKEYE STERLING V2 team GID>
 
-# 19-project catalog (locked 2026-04-21) — values below are the real GIDs
+# ─── 19-project catalog (+ 2 aliases) ────────────────────────────────────
 ASANA_SCREENINGS_PROJECT_GID=1214148660020527
 ASANA_CENTRAL_MLRO_PROJECT_GID=1214148631086118
 ASANA_AUDIT_LOG_PROJECT_GID=1214148643197211
@@ -67,142 +71,184 @@ ASANA_ESG_LBMA_PROJECT_GID=1214148855758874
 ASANA_EXPORT_CONTROL_PROJECT_GID=1214148895117190
 ASANA_INSPECTOR_PROJECT_GID=1214148894992036
 ASANA_GRIEVANCES_PROJECT_GID=1214148895117145
+ASANA_RECONCILE_LIVE_READS_ENABLED=true
+ASANA_INSPECTOR_TEAM_GID=
 
-# ─── Secrets from Step 1 ──────────────────────────────────────────────────
-HAWKEYE_JWT_SECRET=<Secret A (64 hex)>
-JWT_SIGNING_SECRET=<Secret A again (same value — the code checks either)>
-HAWKEYE_AUDIT_HMAC_KEY=<Secret B (64 hex)>
-BCRYPT_PEPPER=<Secret C (64 hex)>
+# ─── Optional Asana knobs ───────────────────────────────────────────────
+ASANA_SECTION_SCREENINGS_NAME=
+ASANA_WEBHOOK_SECRET=<Secret D (64 hex)>
 
-# ─── LLM provider ─────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY=<your Anthropic API key from console.anthropic.com>
-
-# ─── MLRO login / brain auth ──────────────────────────────────────────────
-HAWKEYE_JWT_TTL_SEC=28800
-HAWKEYE_BRAIN_TOKEN=<any random 32+ char hex string — your session token>
-HAWKEYE_BRAIN_PASSWORD_HASH=<leave empty for now — set when you enable the login wizard>
-HAWKEYE_APPROVER_KEYS=<comma-separated approver user IDs, e.g. luisa.fernanda,deputy.mlro>
-HAWKEYE_ALERT_EMAIL=<email for CO alerts — e.g. mlro@yourcompany.ae>
-HAWKEYE_LOGIN_RATE_LIMIT_DISABLED=false
-
-# ─── CORS / origin policy ─────────────────────────────────────────────────
-HAWKEYE_ALLOWED_ORIGIN=https://hawkeye-sterling-v2.netlify.app
+# ─── URLs / CORS ────────────────────────────────────────────────────────
 PUBLIC_BASE_URL=https://hawkeye-sterling-v2.netlify.app
+HAWKEYE_ALLOWED_ORIGIN=https://hawkeye-sterling-v2.netlify.app
+HAWKEYE_BRAIN_URL=
 
-# ─── Cron tenant routing ──────────────────────────────────────────────────
-HAWKEYE_CLAMP_CRON_TENANTS=tenant-a
-HAWKEYE_DELTA_SCREEN_TENANTS=tenant-a
-HAWKEYE_CROSS_TENANT_SALT=<Secret C again — same value as BCRYPT_PEPPER>
+# ─── Secrets ────────────────────────────────────────────────────────────
+HAWKEYE_JWT_SECRET=<Secret A>
+JWT_SIGNING_SECRET=<Secret A — same value>
+HAWKEYE_JWT_TTL_SEC=28800
+BCRYPT_PEPPER=<Secret C>
+HAWKEYE_CROSS_TENANT_SALT=<Secret C — same value>
+HAWKEYE_AUDIT_HMAC_KEY=<Secret B>
+HAWKEYE_BRAIN_TOKEN=<Secret F>
+HAWKEYE_BRAIN_PASSWORD_HASH=<bcrypt hash of MLRO password>
+HAWKEYE_APPROVER_KEYS=luisa.fernanda,deputy.mlro
+HAWKEYE_ALERT_EMAIL=<mlro@yourcompany.ae>
+HAWKEYE_LOGIN_RATE_LIMIT_DISABLED=false
+SANCTIONS_UPLOAD_TOKEN=<Secret F — same value>
+SETUP_MFA_TOTP_SECRET=<32 base32 chars>
 
-# ─── Brain + telemetry ────────────────────────────────────────────────────
+# ─── Reporting entity (required for goAML XML) ──────────────────────────
+REPORTING_ENTITY_NAME=<your DPMS legal name>
+REPORTING_ENTITY_LICENCE=<your MoE licence number>
+
+# ─── Brain / telemetry ──────────────────────────────────────────────────
 BRAIN_RATE_LIMIT_PER_15MIN=150
 BRAIN_TELEMETRY_ENABLED=true
-ASANA_RECONCILE_LIVE_READS_ENABLED=true
 
-# ─── Optional / upload tokens ─────────────────────────────────────────────
-SANCTIONS_UPLOAD_TOKEN=<Secret from openssl rand -hex 32 if you use the manual EOCN upload>
-SETUP_MFA_TOTP_SECRET=<32-char base32 string — generate at https://totp.app/generator>
+# ─── Cron routing ───────────────────────────────────────────────────────
+HAWKEYE_CLAMP_CRON_TENANTS=tenant-a
+HAWKEYE_DELTA_SCREEN_TENANTS=tenant-a
+
+# ─── Production flags ───────────────────────────────────────────────────
+SCHEDULED_SCREENING_DRY_RUN=false
+SCHEDULED_SCREENING_OFFLINE=false
+REGULATORY_WATCH_OFFLINE=false
+CONTINUOUS_MONITOR_DISPATCH_ASANA=true
+LOG_LEVEL=info
+
+# ─── Adverse-media search (3 providers for redundancy) ──────────────────
+TAVILY_API_KEY=<tavily.com>
+SERPAPI_KEY=<serpapi.com>
+BRAVE_SEARCH_API_KEY=<api.search.brave.com>
+
+# ─── Regulator portal ───────────────────────────────────────────────────
+HAWKEYE_REGULATOR_MASTER_KEY=<Secret E>
+HAWKEYE_REGULATOR_CODE_TTL_MINUTES=60
+HAWKEYE_INSPECTOR_KEYS=
+
+# ─── Solo-MLRO mode ─────────────────────────────────────────────────────
+HAWKEYE_SOLO_MLRO_MODE=false
+HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS=4
+
+# ─── Sanctions proxy (optional) ─────────────────────────────────────────
+HAWKEYE_SANCTIONS_PROXY_URL=
+
+# ─── Status page (optional) ─────────────────────────────────────────────
+CACHET_API_TOKEN=
+CACHET_BASE_URL=
 ```
 
-Make sure `.env` is **git-ignored** (it is by default in this repo — check `.gitignore`).
+Ensure `.env` is in `.gitignore`.
 
 ---
 
-## Step 4 — Paste the same values into Netlify
+## Step 4 — Paste into Netlify
 
-1. Go to **Netlify Dashboard → Site `hawkeye-sterling-v2` → Site configuration → Environment variables**.
-2. Click **"Import from a .env file"** (top-right button) — saves you 40 separate clicks.
-3. Paste the `.env` contents.
-4. Click **Import** → **Save**.
-
-Every variable now exists in both places (local `.env` for the smoke test, Netlify for production).
+Site config → Environment variables → **"Import from a .env file"** → paste the whole block → Import → Save.
 
 ---
 
-## Step 5 — Run the all-in-one smoke test
-
-From the repo root:
+## Step 5 — Run the smoke test
 
 ```bash
 set -a && . ./.env && set +a
 npx tsx scripts/smoke-test-all.ts
 ```
 
-Expected output in under 30 seconds:
-
-```
-── ENV VALIDATION ──
-  ✅ 41 required env vars present
-  ✅ 19 distinct Asana project GIDs (+ 2 aliases pointing at correct project)
-  ✅ 3 secrets are 64-char hex
-  ✅ ANTHROPIC_API_KEY format valid
-
-── ASANA — GIDs resolve ──
-  ✅ Screenings         → Screening — Sanctions & Adverse Media
-  ✅ Central MLRO       → Central MLRO — Daily Digest
-  ... (20 rows total)
-
-── ASANA — task-create endpoint ──
-  ✅ source=workbench    → created + deleted test task
-  ✅ source=logistics    → created + deleted test task
-  ✅ source=compliance-ops → created + deleted test task
-  ✅ source=routines     → created + deleted test task
-  ✅ source=screening    → created + deleted test task
-
-── ANTHROPIC — API reachable ──
-  ✅ Claude Sonnet 4.6 responds (roundtrip 1.2s)
-  ✅ Advisor beta header accepted
-
-── SUMMARY ──
-  ✅ 50 checks passed, 0 failed.
-  Ready to merge PR #428.
-```
-
-If any row is ❌, the script prints the exact env var to fix and the error Asana returned.
+Expect all 67 vars present, 21 Asana GIDs resolve, 5 task-endpoint posts succeed, Anthropic roundtrip OK.
 
 ---
 
-## Step 6 — Bootstrap the Asana projects (one-time)
-
-Only after smoke test passes 100%:
+## Step 6 — Bootstrap Asana (one-time)
 
 ```bash
-# Create workspace custom fields (once per workspace)
 npx tsx scripts/asana-cf-bootstrap.ts --apply
-
-# Create canonical sections in every project
-npx tsx scripts/asana-modules-bootstrap.ts --no-webhooks --apply
-
-# Subscribe webhooks so Asana syncs back to the tool
-npx tsx scripts/asana-modules-bootstrap.ts --no-sections --apply
+npx tsx scripts/asana-modules-bootstrap.ts --apply
 ```
 
-Each is idempotent — re-running is safe.
+---
+
+## Step 7 — Merge PR #428
+
+Netlify auto-deploys. Test the 3 flows: screen → DRAFT STR → SEND TO ASANA.
 
 ---
 
-## Step 7 — Merge PR #428 + verify live
+## The locked 67 — complete list
 
-1. Merge PR #428 on GitHub.
-2. Netlify auto-deploys.
-3. Open `https://hawkeye-sterling-v2.netlify.app` → watermark should render on every page.
-4. Sign in → go to `/screening-command` → run a screening → click **SEND TO ASANA** → task should appear in the **Screening** Asana project.
-5. Click **DRAFT STR** → narrative should stream without the HTTP 400.
-6. Click **Four-Eyes — approve** → task should appear in **Four-Eyes Approvals** Asana project.
+| # | Variable |
+|---|---|
+| 1 | ANTHROPIC_API_KEY |
+| 2 | ASANA_ACCESS_TOKEN |
+| 3 | ASANA_WORKSPACE_GID |
+| 4 | ASANA_SCREENINGS_PROJECT_GID |
+| 5 | ASANA_CENTRAL_MLRO_PROJECT_GID |
+| 6 | ASANA_AUDIT_LOG_PROJECT_GID |
+| 7 | ASANA_FOUR_EYES_PROJECT_GID |
+| 8 | ASANA_STR_PROJECT_GID |
+| 9 | ASANA_INCIDENTS_PROJECT_GID |
+| 10 | ASANA_CDD_PROJECT_GID |
+| 11 | ASANA_KYC_CDD_TRACKER_PROJECT_GID |
+| 12 | ASANA_TM_PROJECT_GID |
+| 13 | ASANA_COMPLIANCE_TASKS_PROJECT_GID |
+| 14 | ASANA_SHIPMENTS_PROJECT_GID |
+| 15 | ASANA_EMPLOYEES_PROJECT_GID |
+| 16 | ASANA_TRAINING_PROJECT_GID |
+| 17 | ASANA_GOVERNANCE_PROJECT_GID |
+| 18 | ASANA_AI_GOVERNANCE_PROJECT_GID |
+| 19 | ASANA_ROUTINES_PROJECT_GID |
+| 20 | ASANA_WORKBENCH_PROJECT_GID |
+| 21 | ASANA_ESG_LBMA_PROJECT_GID |
+| 22 | ASANA_EXPORT_CONTROL_PROJECT_GID |
+| 23 | ASANA_INSPECTOR_PROJECT_GID |
+| 24 | ASANA_GRIEVANCES_PROJECT_GID |
+| 25 | ASANA_RECONCILE_LIVE_READS_ENABLED |
+| 26 | PUBLIC_BASE_URL |
+| 27 | HAWKEYE_ALLOWED_ORIGIN |
+| 28 | HAWKEYE_JWT_SECRET |
+| 29 | JWT_SIGNING_SECRET |
+| 30 | HAWKEYE_JWT_TTL_SEC |
+| 31 | BCRYPT_PEPPER |
+| 32 | HAWKEYE_CROSS_TENANT_SALT |
+| 33 | HAWKEYE_BRAIN_TOKEN |
+| 34 | HAWKEYE_BRAIN_PASSWORD_HASH |
+| 35 | HAWKEYE_APPROVER_KEYS |
+| 36 | HAWKEYE_ALERT_EMAIL |
+| 37 | HAWKEYE_CLAMP_CRON_TENANTS |
+| 38 | HAWKEYE_DELTA_SCREEN_TENANTS |
+| 39 | HAWKEYE_LOGIN_RATE_LIMIT_DISABLED |
+| 40 | SANCTIONS_UPLOAD_TOKEN |
+| 41 | SETUP_MFA_TOTP_SECRET |
+| 42 | BRAIN_RATE_LIMIT_PER_15MIN |
+| 43 | BRAIN_TELEMETRY_ENABLED |
+| 44 | HAWKEYE_AUDIT_HMAC_KEY |
+| 45 | ASANA_WEBHOOK_SECRET |
+| 46 | REPORTING_ENTITY_NAME |
+| 47 | REPORTING_ENTITY_LICENCE |
+| 48 | ASANA_TEAM_GID |
+| 49 | SCHEDULED_SCREENING_DRY_RUN |
+| 50 | SCHEDULED_SCREENING_OFFLINE |
+| 51 | REGULATORY_WATCH_OFFLINE |
+| 52 | CONTINUOUS_MONITOR_DISPATCH_ASANA |
+| 53 | TAVILY_API_KEY |
+| 54 | SERPAPI_KEY |
+| 55 | BRAVE_SEARCH_API_KEY |
+| 56 | HAWKEYE_REGULATOR_MASTER_KEY |
+| 57 | HAWKEYE_REGULATOR_CODE_TTL_MINUTES |
+| 58 | HAWKEYE_INSPECTOR_KEYS |
+| 59 | HAWKEYE_SOLO_MLRO_MODE |
+| 60 | HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS |
+| 61 | HAWKEYE_SANCTIONS_PROXY_URL |
+| 62 | ASANA_SECTION_SCREENINGS_NAME |
+| 63 | LOG_LEVEL |
+| 64 | ASANA_INSPECTOR_TEAM_GID |
+| 65 | CACHET_API_TOKEN |
+| 66 | CACHET_BASE_URL |
+| 67 | HAWKEYE_BRAIN_URL |
 
 ---
-
-## Troubleshooting quick map
-
-| Symptom | Cause | Fix |
-|---|---|---|
-| `HTTP 401` on any API call | `HAWKEYE_BRAIN_TOKEN` missing or wrong | Set it in both `.env` and Netlify. |
-| `HTTP 429` on screening | Rate limit hit | `BRAIN_RATE_LIMIT_PER_15MIN=300` (or higher). |
-| `HTTP 503 ASANA_*_PROJECT_GID not configured` | Env var missing in Netlify | Check the variable name exactly; redeploy. |
-| Watermark not visible | Browser cached the old 0.07-opacity CSS | Hard-refresh (Ctrl+Shift+R). |
-| Smoke test `fetch failed` | Your local machine is offline | Check internet, try again. |
-| Asana returns `403 Forbidden` | PAT revoked, or project in a different team | Regenerate PAT; verify `ASANA_WORKSPACE_GID`. |
 
 ## Regulatory basis
 
-FDL No.(10)/2025 Art.20-21 (CO visibility), Art.24 (10-year retention), Art.29 (tipping-off) · Cabinet Res 74/2020 Art.4-7 · Cabinet Res 134/2025 Art.19 · Fed Decree-Law 32/2021.
+FDL No.(10)/2025 Art.20-21 (CO visibility), Art.24 (10-year retention), Art.26-27 (STR filing), Art.29 (tipping-off) · Cabinet Res 74/2020 Art.4-7 · Cabinet Res 134/2025 Art.19.
