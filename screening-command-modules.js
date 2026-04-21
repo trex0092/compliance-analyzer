@@ -4355,7 +4355,10 @@
 
     // Draft STR — streams a goAML-ready STR narrative into a panel
     // below the row. Only offered when CDD tier is EDD / FREEZE or
-    // adverse-media classification is CONFIRMED.
+    // adverse-media classification is CONFIRMED. On stream complete,
+    // appends a "Download goAML XML" button that wraps the narrative
+    // in a goAML-conforming envelope passing validateSTR() and
+    // offers it as a file download for MLRO review before submission.
     host.querySelectorAll('[data-action="sc-sub-str-draft"]').forEach(function (btn) {
       btn.onclick = function () {
         var id = btn.getAttribute('data-id');
@@ -4372,7 +4375,36 @@
         streamBrainReasonInto(panel, {
           question: STR_DRAFT_QUESTION,
           caseContext: serializeComplianceReportForAsana(row)
-        }, t);
+        }, t, {
+          onDone: function (fullNarrative) {
+            // Add a "Download goAML XML" button that builds the
+            // envelope client-side and triggers a file download.
+            var actionsHost = panel.querySelector('[data-role="stream-meta"]');
+            if (!actionsHost) return;
+            var dl = document.createElement('button');
+            dl.className = 'mv-btn mv-btn-sm';
+            dl.style.cssText = 'background:linear-gradient(90deg,#7f1d1d,#dc2626);color:#fff;font-weight:700;margin-top:8px';
+            dl.textContent = 'Download goAML XML (DRAFT)';
+            dl.addEventListener('click', function () {
+              var xml = buildGoAmlStrXml(row, fullNarrative);
+              var blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              var fname = 'STR-DRAFT-' + (row.name || 'subject').replace(/[^A-Za-z0-9]+/g, '-').slice(0, 40) +
+                '-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.xml';
+              a.href = url;
+              a.download = fname;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+              dl.textContent = 'Downloaded ✓ (review before submission)';
+              dl.disabled = true;
+            });
+            actionsHost.appendChild(document.createElement('br'));
+            actionsHost.appendChild(dl);
+          }
+        });
       };
     });
 
@@ -4636,6 +4668,105 @@
     var cc = r.country ? ' (' + r.country + ')' : '';
     var label = prefix + ' ' + nm + cc;
     return label.length > 508 ? label.slice(0, 508) + '...' : label;
+  }
+
+  // ─── goAML STR XML export ───────────────────────────────────────────
+  // Wraps the Draft STR narrative in a minimal goAML-conforming STR
+  // envelope that passes src/utils/goamlValidator.ts validateSTR().
+  // Required elements per the UAE FIU schema: reportHeader (with
+  // RPT-YYYY-XXX id), reportingEntity, suspiciousSubject,
+  // groundsForSuspicion, transactionDetails, reportFooter.
+  //
+  // The narrative text produced by the Draft-STR LLM pass is inserted
+  // verbatim into <groundsForSuspicion>, escaped for XML safety. The
+  // MLRO reviews + edits before actual submission — this endpoint
+  // produces a draft XML, never auto-files.
+  //
+  // No auto-submission. FDL Art.29 no-tipping-off is already baked
+  // into the LLM prompt; the generated XML carries no reference to
+  // "we filed" or "reported to FIU".
+  function xmlEscape(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function isoDateForGoaml(d) {
+    d = d || new Date();
+    return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate());
+  }
+  function buildGoAmlStrXml(row, narrativeText) {
+    if (!row) return '';
+    var cr = row.compliance_report || {};
+    var now = new Date();
+    var reportId = 'RPT-' + now.getUTCFullYear() + '-' +
+      (row.id || 'ROW').replace(/[^A-Za-z0-9]/g, '').slice(0, 12) +
+      now.getTime().toString(36).toUpperCase().slice(-6);
+    var subjectName  = xmlEscape(row.name || 'UNKNOWN SUBJECT');
+    var subjectType  = row.subject_type === 'entity' ? 'LEGAL_ENTITY' : 'INDIVIDUAL';
+    var country      = xmlEscape((row.country || '').toUpperCase());
+    var dob          = xmlEscape(row.dob || '');
+    var idNumber     = xmlEscape(row.passport || '');
+    var reportingEntityName = 'HAWKEYE STERLING MLRO (UAE DPMS)';
+    var narrative    = xmlEscape(narrativeText || '(no narrative provided)');
+    var typologyLabel = '';
+    if (cr.typologies && cr.typologies[0] && cr.typologies[0].label) {
+      typologyLabel = cr.typologies[0].label;
+    }
+    var riskLevel    = xmlEscape((cr.risk_level || 'high').toUpperCase());
+    var cddTier      = xmlEscape((cr.cdd_recommendation && cr.cdd_recommendation.tier) || 'EDD');
+    var basisList    = Array.isArray(cr.regulatory_basis)
+      ? cr.regulatory_basis.map(function (c) { return '<citation>' + xmlEscape(c) + '</citation>'; }).join('')
+      : '';
+    var posteriorPct = (cr.bayesian_posterior && cr.bayesian_posterior.posterior_mean_pct != null)
+      ? String(cr.bayesian_posterior.posterior_mean_pct) : '';
+    var postCi       = (cr.bayesian_posterior && cr.bayesian_posterior.ci_low_pct != null)
+      ? cr.bayesian_posterior.ci_low_pct + '-' + cr.bayesian_posterior.ci_high_pct : '';
+
+    return [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<report xmlns="http://goaml.unodc.org/goaml/schema/v4" reportType="STR">',
+      '  <reportHeader>',
+      '    <reportId>' + reportId + '</reportId>',
+      '    <reportGeneratedAt>' + now.toISOString() + '</reportGeneratedAt>',
+      '    <reportGeneratedDate>' + isoDateForGoaml(now) + '</reportGeneratedDate>',
+      '    <reportStatus>DRAFT</reportStatus>',
+      '  </reportHeader>',
+      '  <reportingEntity>',
+      '    <entityName>' + xmlEscape(reportingEntityName) + '</entityName>',
+      '    <sector>DPMS</sector>',
+      '    <regulatoryBasis>FDL No.(10)/2025 Art.20 · Cabinet Res 134/2025 Art.14</regulatoryBasis>',
+      '  </reportingEntity>',
+      '  <suspiciousSubject>',
+      '    <name>' + subjectName + '</name>',
+      '    <subjectType>' + subjectType + '</subjectType>',
+      (country ? '    <country>' + country + '</country>' : ''),
+      (dob     ? '    <dateOfBirth>' + dob + '</dateOfBirth>' : ''),
+      (idNumber? '    <identification type="PASSPORT">' + idNumber + '</identification>' : ''),
+      '    <riskRating>' + riskLevel + '</riskRating>',
+      '    <cddTier>' + cddTier + '</cddTier>',
+      '  </suspiciousSubject>',
+      '  <groundsForSuspicion>',
+      '    <typology>' + xmlEscape(typologyLabel || 'Unclassified predicate offence') + '</typology>',
+      (posteriorPct ? '    <bayesianPosteriorPct>' + posteriorPct + '</bayesianPosteriorPct>' : ''),
+      (postCi       ? '    <credibleInterval90Pct>' + postCi + '</credibleInterval90Pct>' : ''),
+      '    <narrative><![CDATA[' + (narrativeText || '(no narrative provided)').replace(/\]\]>/g, ']]]]><![CDATA[>') + ']]></narrative>',
+      '  </groundsForSuspicion>',
+      '  <transactionDetails>',
+      '    <status>TO_BE_COMPLETED_BY_MLRO</status>',
+      '    <note>Transaction line-items require MLRO input before submission. Populate from transactionMonitor store before final XML export.</note>',
+      '  </transactionDetails>',
+      (basisList ? '  <regulatoryBasis>' + basisList + '</regulatoryBasis>' : ''),
+      '  <reportFooter>',
+      '    <generatedBy>compliance-analyzer (hawkeye-sterling)</generatedBy>',
+      '    <generationMethod>Sonnet executor + Opus advisor · structured output</generationMethod>',
+      '    <tippingOffGuard>FDL Art.29 — no subject notification; no party outside MLRO + FIU to be informed of this report.</tippingOffGuard>',
+      '  </reportFooter>',
+      '</report>'
+    ].filter(Boolean).join('\n');
   }
 
   // ─── Red-Team + STR Draft prompts ───────────────────────────────────
