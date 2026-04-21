@@ -1220,6 +1220,50 @@
     catch (_) { return fallback; }
   }
   function safeSave(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (_) {} }
+
+  // ─── Four-Eyes approval helpers ─────────────────────────────────────
+  // Returns a best-effort session identifier for the current MLRO.
+  // Pulled from the JWT `sub` / `jti` / `name` claim so "second
+  // approver" enforcement can distinguish two sessions even when the
+  // HMAC userId isn't available client-side. Falls back to a stable
+  // browser fingerprint if no session token is present (dev / demo).
+  function currentMlroId() {
+    try {
+      var tok = localStorage.getItem('hawkeye.session.jwt') ||
+        localStorage.getItem('hawkeye.watchlist.adminToken') || '';
+      if (tok && tok.split('.').length === 3) {
+        var payload = JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return String(payload.sub || payload.jti || payload.name || 'mlro-anon');
+      }
+      if (tok) return 'mlro-bearer:' + tok.slice(0, 12);
+    } catch (_) {}
+    // Stable per-browser fallback — good enough to separate two
+    // Chrome profiles or one browser + one incognito window.
+    try {
+      var fp = localStorage.getItem('hawkeye.mlro.fingerprint');
+      if (!fp) {
+        fp = 'fp-' + Math.random().toString(36).slice(2, 10) + '-' + Date.now().toString(36);
+        localStorage.setItem('hawkeye.mlro.fingerprint', fp);
+      }
+      return fp;
+    } catch (_) { return 'mlro-anon'; }
+  }
+
+  // Four-eyes required when:
+  //   - CDD tier is EDD or FREEZE (Cabinet Res 134/2025 Art.14 EDD),
+  //     AND disposition is Confirm or Escalate (closing actions with
+  //     regulatory consequences); OR
+  //   - Sanctions hit count > 0 on any Confirm disposition (freeze
+  //     triggers under Cabinet Res 74/2020 Art.4-7).
+  function requiresFourEyes(row, dispositionId) {
+    if (dispositionId !== 'positive' && dispositionId !== 'escalated') return false;
+    var cr = row && row.compliance_report;
+    if (!cr) return false;
+    var tier = cr.cdd_recommendation && cr.cdd_recommendation.tier;
+    if (tier === 'EDD' || tier === 'FREEZE') return true;
+    if ((cr.sanctions_hit_count || 0) > 0) return true;
+    return false;
+  }
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -3744,8 +3788,46 @@
               ? '<div class="mv-list-meta" style="opacity:.55">Source: live backend · ' + esc(r.run_id || 'run') + '</div>'
               : '<div class="mv-list-meta" style="opacity:.55">Source: local simulation (sign in for live screening)</div>';
 
-            // MLRO disposition action row. Hidden for already-closed dispositions.
+            // Four-eyes pending-approval banner. Shown when a closing
+            // disposition was proposed but the second-MLRO sign-off
+            // hasn't happened yet. Cabinet Res 134/2025 Art.14.
+            var fourEyesBanner = '';
+            if (r.disposition === 'pending_approval') {
+              var me = currentMlroId();
+              var amRequester = me === r.approval_required_by;
+              var proposed = String(r.pending_disposition || '').toUpperCase();
+              var reqAt = r.approval_required_at ? new Date(r.approval_required_at).toLocaleString() : '';
+              fourEyesBanner =
+                '<div style="margin-top:8px;padding:10px 12px;border-left:3px solid #eab308;background:rgba(234,179,8,0.08);border-radius:6px">' +
+                  '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;background:#eab308;color:#1a0a20">' +
+                      'FOUR-EYES · AWAITING APPROVAL' +
+                    '</span>' +
+                    '<strong style="font-size:12px">Proposed: ' + esc(proposed) + '</strong>' +
+                    '<span style="opacity:.75;font-size:11px">by MLRO ' + esc(r.approval_required_by || 'unknown') +
+                      (reqAt ? ' · ' + esc(reqAt) : '') + '</span>' +
+                    (r.approval_asana_url
+                      ? '<a href="' + esc(r.approval_asana_url) + '" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#fdba74;text-decoration:underline">Asana task</a>'
+                      : '') +
+                  '</div>' +
+                  (amRequester
+                    ? '<div style="margin-top:6px;font-size:11px;opacity:.8">Awaiting a second MLRO — you cannot approve your own proposal (Cabinet Res 134/2025 Art.14).</div>'
+                    : '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' +
+                        '<button class="mv-btn mv-btn-sm mv-btn-ok" data-action="sc-sub-approve" data-id="' + esc(r.id) + '" data-v="approve">Approve (' + esc(proposed) + ')</button>' +
+                        '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-approve" data-id="' + esc(r.id) + '" data-v="reject">Reject — reopen</button>' +
+                      '</div>') +
+                '</div>';
+            }
+
+            // MLRO disposition action row. Hidden for already-closed dispositions
+            // and for rows currently pending second-MLRO approval.
             var canAct = r.disposition === 'pending' || r.disposition === 'positive' || r.disposition === 'partial';
+            if (r.disposition === 'pending_approval') canAct = false;
+            // Four-eyes indicator — appended to Confirm/Escalate labels
+            // when the disposition would trigger the approval gate.
+            var confirmTriggersFE = canAct && requiresFourEyes(r, 'positive');
+            var escalateTriggersFE = canAct && requiresFourEyes(r, 'escalated');
+            var feChip = ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:rgba(234,179,8,0.2);color:#fde68a;font-weight:700;letter-spacing:.4px">4-EYES</span>';
             // Brain-to-Asana button — only shown when we have a
             // compliance_report to serialise (i.e. a known hit). The
             // button emits a sc-sub-to-asana action that the handler
@@ -3787,10 +3869,10 @@
             var actionHtml = (canAct || hasCr)
               ? '<div class="mv-form-actions" style="margin-top:8px;gap:6px;flex-wrap:wrap">' +
                   (canAct
-                    ? '<button class="mv-btn mv-btn-sm mv-btn-ok" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="positive">Confirm match</button>' +
+                    ? '<button class="mv-btn mv-btn-sm mv-btn-ok" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="positive">Confirm match' + (confirmTriggersFE ? feChip : '') + '</button>' +
                       '<button class="mv-btn mv-btn-sm" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="partial">Partial — investigate</button>' +
                       '<button class="mv-btn mv-btn-sm" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="false_positive">False positive</button>' +
-                      '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="escalated">Escalate</button>'
+                      '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="escalated">Escalate' + (escalateTriggersFE ? feChip : '') + '</button>'
                     : '') +
                   redTeamBtnHtml +
                   strBtnHtml +
@@ -3843,6 +3925,7 @@
                 '</div>' +
               '</div>' +
               actionHtml +
+              fourEyesBanner +
             '</li>';
           }).join('') + '</ul>'
         : emptyState('&#128269;', 'No subjects screened yet. Run a screening above.')
@@ -4006,12 +4089,92 @@
         var idx = -1;
         for (var i = 0; i < rows.length; i++) { if (rows[i].id === id) { idx = i; break; } }
         if (idx < 0) return;
-        rows[idx].disposition = d;
-        rows[idx].disposed_at = new Date().toISOString();
+        var row = rows[idx];
+        // Four-eyes gate — Cabinet Res 134/2025 Art.14 + Cabinet Res
+        // 74/2020 Art.4-7. High-risk closing actions park in
+        // pending_approval until a second MLRO signs off.
+        if (requiresFourEyes(row, d)) {
+          row.disposition = 'pending_approval';
+          row.pending_disposition = d;
+          row.approval_required_by = currentMlroId();
+          row.approval_required_at = new Date().toISOString();
+          // Best-effort — create an Asana approval task so the second
+          // MLRO receives it in their queue. Non-blocking; failure
+          // does NOT stop the four-eyes gate from being enforced.
+          try {
+            var tok = '';
+            try { tok = localStorage.getItem('hawkeye.session.jwt') || localStorage.getItem('hawkeye.watchlist.adminToken') || ''; } catch (_) {}
+            if (tok) {
+              fetch('/api/asana/task', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+                body: JSON.stringify({
+                  name: '[Four-Eyes · ' + String(d).toUpperCase() + '] Approval needed — ' + (row.name || 'subject'),
+                  notes: 'Four-eyes approval required for this disposition.\n\n' +
+                    'Requested by MLRO: ' + row.approval_required_by + '\n' +
+                    'Proposed disposition: ' + String(d).toUpperCase() + '\n' +
+                    'CDD tier: ' + ((row.compliance_report && row.compliance_report.cdd_recommendation && row.compliance_report.cdd_recommendation.tier) || 'n/a') + '\n' +
+                    'Sanctions hit count: ' + ((row.compliance_report && row.compliance_report.sanctions_hit_count) || 0) + '\n\n' +
+                    '=== COMPLIANCE REPORT ===\n\n' +
+                    serializeComplianceReportForAsana(row),
+                  surface: 'compliance-ops',
+                  category: 'four_eyes_approval',
+                  citation: 'Cabinet Res 134/2025 Art.14',
+                  entity: (row.name || '') + (row.country ? ' · ' + row.country : '')
+                })
+              }).then(function (res) {
+                return res.ok ? res.json() : null;
+              }).then(function (json) {
+                if (json && (json.url || json.permalink_url)) {
+                  row.approval_asana_url = json.url || json.permalink_url;
+                  safeSave(STORAGE.subjects, rows);
+                  renderSubjectScreening(host);
+                }
+              }).catch(function () { /* best-effort */ });
+            }
+          } catch (_) { /* best-effort */ }
+        } else {
+          row.disposition = d;
+          row.disposed_at = new Date().toISOString();
+          try { recordLesson(row, d); } catch (_) { /* best-effort */ }
+        }
         safeSave(STORAGE.subjects, rows);
-        // Capture lesson — feeds the Learned Patterns block on
-        // future similar cases (FATF Rec 10.12 institutional memory).
-        try { recordLesson(rows[idx], d); } catch (_) { /* best-effort */ }
+        renderSubjectScreening(host);
+      };
+    });
+
+    // Four-Eyes approval — the second MLRO clicks Approve/Reject on
+    // a row in pending_approval. Enforced: the approver must NOT be
+    // the same session/identifier that originally proposed the
+    // disposition (Cabinet Res 134/2025 Art.14 two-approver rule).
+    host.querySelectorAll('[data-action="sc-sub-approve"]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-id');
+        var verdict = btn.getAttribute('data-v'); // 'approve' | 'reject'
+        var idx = -1;
+        for (var i = 0; i < rows.length; i++) { if (rows[i].id === id) { idx = i; break; } }
+        if (idx < 0) return;
+        var row = rows[idx];
+        if (row.disposition !== 'pending_approval') { renderSubjectScreening(host); return; }
+        var me = currentMlroId();
+        if (me === row.approval_required_by) {
+          alert('Four-eyes rule: the MLRO who proposed this disposition cannot self-approve (Cabinet Res 134/2025 Art.14). Sign in as a second MLRO.');
+          return;
+        }
+        if (verdict === 'approve') {
+          row.disposition = row.pending_disposition || 'positive';
+          row.disposed_at = new Date().toISOString();
+          row.approved_by = me;
+          row.approved_at = row.disposed_at;
+          try { recordLesson(row, row.disposition); } catch (_) {}
+        } else {
+          row.disposition = 'pending';
+          row.rejected_by = me;
+          row.rejected_at = new Date().toISOString();
+          row.approval_rejection_reason = 'Four-eyes reviewer rejected the proposed disposition.';
+        }
+        delete row.pending_disposition;
+        safeSave(STORAGE.subjects, rows);
         renderSubjectScreening(host);
       };
     });
