@@ -316,3 +316,46 @@ describe('Supply Chain Risk Points', () => {
     );
   });
 });
+
+// PR-2 — LSEG World-Check One parity for entity types. Vessel intentionally
+// absent here; when the goAML mapping decision is made, add it to the
+// canonical list and extend these tests.
+describe('Screening entity types (PR-2)', () => {
+  it('canonical list is exactly [individual, organisation, unspecified]', async () => {
+    const { ENTITY_TYPES_SUPPORTED } = await import('../src/domain/constants');
+    expect([...ENTITY_TYPES_SUPPORTED]).toEqual(['individual', 'organisation', 'unspecified']);
+  });
+
+  it('normaliseEntityType passes canonical values through', async () => {
+    const { normaliseEntityType } = await import('../src/domain/constants');
+    expect(normaliseEntityType('individual')).toBe('individual');
+    expect(normaliseEntityType('organisation')).toBe('organisation');
+    expect(normaliseEntityType('unspecified')).toBe('unspecified');
+  });
+
+  it('normaliseEntityType maps legacy server-side "legal_entity" to "organisation"', async () => {
+    const { normaliseEntityType } = await import('../src/domain/constants');
+    expect(normaliseEntityType('legal_entity')).toBe('organisation');
+  });
+
+  it('normaliseEntityType maps legacy TFS dropdown values', async () => {
+    const { normaliseEntityType } = await import('../src/domain/constants');
+    expect(normaliseEntityType('Individual')).toBe('individual');
+    expect(normaliseEntityType('Company')).toBe('organisation');
+  });
+
+  it('normaliseEntityType accepts US spelling and canonicalises', async () => {
+    const { normaliseEntityType } = await import('../src/domain/constants');
+    expect(normaliseEntityType('organization')).toBe('organisation');
+    expect(normaliseEntityType('ORGANIZATION')).toBe('organisation');
+  });
+
+  it('normaliseEntityType returns null for unknown values (no silent coercion)', async () => {
+    const { normaliseEntityType } = await import('../src/domain/constants');
+    expect(normaliseEntityType('robot')).toBeNull();
+    expect(normaliseEntityType('')).toBeNull();
+    expect(normaliseEntityType(undefined)).toBeNull();
+    expect(normaliseEntityType(null)).toBeNull();
+    expect(normaliseEntityType(42)).toBeNull();
+  });
+});

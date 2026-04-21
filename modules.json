@@ -1,0 +1,265 @@
+{
+  "site": "hawkeye-sterling-v2.netlify.app",
+  "generated_at": "2026-04-21",
+  "source": "extracted from landing pages in the compliance-analyzer repository (index.html, workbench.html, compliance-ops.html, logistics.html, screening-command.html)",
+  "landings": [
+    {
+      "landing": "screening-command",
+      "path": "/screening-command",
+      "section_label": "Operational Surfaces",
+      "module_count": 4,
+      "modules": [
+        {
+          "number": "01",
+          "category": "Screening",
+          "title": "Subject Screening",
+          "slug": "subject-screening",
+          "route": "screening",
+          "href": "/screening-command/subject-screening",
+          "icon": "🔍",
+          "description": "Multi-modal fuzzy matching (Jaro-Winkler + Levenshtein + Soundex + Double Metaphone + token-set) against UN, EOCN, OFAC, EU, UK and adverse-media. Four-eyes MLRO disposition on every partial / confirmed match.",
+          "stats": [
+            {"value": "6+", "label": "Lists screened"},
+            {"value": "24h", "label": "EOCN freeze"}
+          ],
+          "regulatory_basis": ["FDL No.10/2025 Art.20-21", "Cabinet Res 74/2020 Art.4-7"]
+        },
+        {
+          "number": "02",
+          "category": "Monitor",
+          "title": "Transaction Monitor",
+          "slug": "transaction-monitor",
+          "route": "transaction-monitor",
+          "href": "/screening-command/transaction-monitor",
+          "icon": "💸",
+          "description": "Rule-based + behavioural engine: structuring near AED 55K, velocity spikes, third-party payers, offshore routing, round-number + price-gaming patterns. Critical alerts auto-open an Asana case.",
+          "stats": [
+            {"value": "AED 55K", "label": "DPMS CTR"},
+            {"value": "AED 60K", "label": "Cross-border"}
+          ],
+          "regulatory_basis": ["MoE Circular 08/AML/2021", "Cabinet Res 134/2025 Art.16"]
+        },
+        {
+          "number": "03",
+          "category": "Reports",
+          "title": "STR Case Management",
+          "slug": "str-cases",
+          "route": "str",
+          "href": "/screening-command/str-cases",
+          "icon": "🚨",
+          "description": "STR / SAR / AIF / PEPR / HRCR / FTFR case files with red-flag taxonomy, suspicion narrative, goAML reference, and four-eyes approval. File without delay upon suspicion arising. No tipping off.",
+          "stats": [
+            {"value": "goAML", "label": "XML schema"},
+            {"value": "Without delay", "label": "Filing SLA"}
+          ],
+          "regulatory_basis": ["FDL No.10/2025 Art.26-27", "FDL No.10/2025 Art.29"]
+        },
+        {
+          "number": "04",
+          "category": "Monitoring",
+          "title": "Active Watchlist",
+          "slug": "watchlist",
+          "route": "watchlist",
+          "href": "/screening-command/watchlist",
+          "icon": "📡",
+          "description": "Every screened subject auto-enrolled in ongoing monitoring. Two scheduled crons per day (06:00 / 14:00 UTC) re-screen the full watchlist and push delta alerts to Asana. No opt-out under Art.20-21.",
+          "stats": [
+            {"value": "2×/day", "label": "Re-screen"},
+            {"value": "10yr", "label": "Retention"}
+          ],
+          "regulatory_basis": ["FDL No.10/2025 Art.20-21", "FDL No.10/2025 Art.24"]
+        }
+      ]
+    },
+    {
+      "landing": "workbench",
+      "path": "/workbench",
+      "section_label": "Operations Surfaces",
+      "module_count": 3,
+      "modules": [
+        {
+          "number": "01",
+          "category": "Tasks",
+          "title": "Compliance Tasks",
+          "slug": "compliance-tasks",
+          "route": "asana",
+          "href": "/workbench/compliance-tasks",
+          "icon": "📋",
+          "description": "Every MLRO task, assignment, and deadline tracked against the responsible owner. Syncs with Asana and the goAML filing calendar; every status change audit-logged.",
+          "stats": [
+            {"value": "12", "label": "Open"},
+            {"value": "Asana", "label": "Sync"}
+          ],
+          "regulatory_basis": ["FDL No.10/2025 Art.24"]
+        },
+        {
+          "number": "02",
+          "category": "CDD/EDD",
+          "title": "Onboarding",
+          "slug": "onboarding",
+          "route": "onboarding",
+          "href": "/workbench/onboarding",
+          "icon": "👤",
+          "description": "KYC / CDD / EDD wizard for new customers and counterparties. Runs the risk-scoring engine, PEP + sanctions screen, and UBO capture — routes high-risk cases to senior-management approval.",
+          "stats": [
+            {"value": "4", "label": "In review"},
+            {"value": "EDD", "label": "Senior mgmt"}
+          ],
+          "regulatory_basis": ["Cabinet Res 134/2025 Art.7-10", "Cabinet Res 134/2025 Art.14", "Cabinet Decision 109/2023"]
+        },
+        {
+          "number": "03",
+          "category": "Four-Eyes",
+          "title": "Approvals",
+          "slug": "approvals",
+          "route": "approvals",
+          "href": "/workbench/approvals",
+          "icon": "✅",
+          "description": "Four-eyes approval queue for high-risk decisions — EDD upgrades, freeze confirmations, STR filings. Two independent approvers enforce the separation of duties required by Cabinet Res 134/2025.",
+          "stats": [
+            {"value": "3", "label": "Pending"},
+            {"value": "4-eyes", "label": "SoD"}
+          ],
+          "regulatory_basis": ["Cabinet Res 134/2025 Art.19"]
+        }
+      ]
+    },
+    {
+      "landing": "logistics",
+      "path": "/logistics",
+      "section_label": "Regulated Surfaces",
+      "module_count": 4,
+      "modules": [
+        {
+          "number": "01",
+          "category": "IAR",
+          "title": "Inbound Advice",
+          "slug": "inbound-advice",
+          "route": "shipments",
+          "href": "/logistics/inbound-advice",
+          "icon": "🚚",
+          "description": "Every incoming shipment recorded against supplier, invoice, assay, and Dubai Customs / Brinks paperwork. Primary control for supply-chain traceability.",
+          "stats": [
+            {"value": "10yr", "label": "Retention"},
+            {"value": "Auto", "label": "Assay log"}
+          ],
+          "regulatory_basis": ["LBMA RGG v9", "UAE MoE RSG Framework", "FDL No.10/2025 Art.24"]
+        },
+        {
+          "number": "02",
+          "category": "In-Transit",
+          "title": "Tracking",
+          "slug": "tracking",
+          "route": "tracking",
+          "href": "/logistics/tracking",
+          "icon": "✈️",
+          "description": "Live in-transit status, ETA, carrier, and custody handovers for every shipment on the move. Flags any deviation from the declared routing.",
+          "stats": [
+            {"value": "Live", "label": "Custody"},
+            {"value": "GPS", "label": "Deviation"}
+          ],
+          "regulatory_basis": ["LBMA RGG v9 (chain of custody)", "Dubai Good Delivery"]
+        },
+        {
+          "number": "03",
+          "category": "Counterparty",
+          "title": "Approved Accounts",
+          "slug": "approved-accounts",
+          "route": "approvedaccounts",
+          "href": "/logistics/approved-accounts",
+          "icon": "✅",
+          "description": "Pre-vetted suppliers, refiners, and vault counterparties cleared through CDD, sanctions screening, and UBO verification. Gates every inbound, in-transit, and local movement to an approved list.",
+          "stats": [
+            {"value": "CDD", "label": "Vetted"},
+            {"value": "UBO", "label": ">25% register"}
+          ],
+          "regulatory_basis": ["Cabinet Res 134/2025 Art.7-10", "Cabinet Decision 109/2023"]
+        },
+        {
+          "number": "04",
+          "category": "Local",
+          "title": "Local Shipments",
+          "slug": "local-shipments",
+          "route": "localshipments",
+          "href": "/logistics/local-shipments",
+          "icon": "📦",
+          "description": "Intra-UAE and counter-to-counter transfers — same-day movements between branches, refiners, and vault counterparties. Ties into the DPMS CTR threshold (AED 55,000).",
+          "stats": [
+            {"value": "AED 55K", "label": "CTR trigger"},
+            {"value": "goAML", "label": "Auto-file"}
+          ],
+          "regulatory_basis": ["MoE Circular 08/AML/2021"]
+        }
+      ]
+    },
+    {
+      "landing": "compliance-ops",
+      "path": "/compliance-ops",
+      "section_label": "Operational Surfaces",
+      "module_count": 4,
+      "modules": [
+        {
+          "number": "01",
+          "category": "Training",
+          "title": "Training",
+          "slug": "training",
+          "route": "training",
+          "href": "/compliance-ops/training",
+          "icon": "🎓",
+          "description": "AML/CFT + sanctions + PEP screening curriculum. Attendance logged per employee with quiz scores and certificate expiry tracking. MoE Circular 08/AML/2021 §9.",
+          "stats": [
+            {"value": "Annual", "label": "Cadence"},
+            {"value": "100%", "label": "Coverage target"}
+          ],
+          "regulatory_basis": ["MoE Circular 08/AML/2021 §9"]
+        },
+        {
+          "number": "02",
+          "category": "Employees",
+          "title": "Employees",
+          "slug": "employees",
+          "route": "employees",
+          "href": "/compliance-ops/employees",
+          "icon": "👥",
+          "description": "Employee registry with role, MLRO flag, KYC status, and training assignment. Feeds four-eyes approval pool and separation-of-duties checks per Cabinet Res 134/2025 Art.19.",
+          "stats": [
+            {"value": "RBAC", "label": "Access control"},
+            {"value": "4-Eyes", "label": "Approver pool"}
+          ],
+          "regulatory_basis": ["Cabinet Res 134/2025 Art.19"]
+        },
+        {
+          "number": "03",
+          "category": "Incidents",
+          "title": "Incidents",
+          "slug": "incidents",
+          "route": "incidents",
+          "href": "/compliance-ops/incidents",
+          "icon": "🚨",
+          "description": "Incident case files — sanctions matches, suspected tipping off, breach triage, and root-cause log. Wired to the 24h EOCN + 5-business-day CNMR countdowns per Cabinet Res 74/2020 Art.4-7.",
+          "stats": [
+            {"value": "24h", "label": "EOCN freeze"},
+            {"value": "5bd", "label": "CNMR deadline"}
+          ],
+          "regulatory_basis": ["Cabinet Res 74/2020 Art.4-7", "FDL No.10/2025 Art.29"]
+        },
+        {
+          "number": "04",
+          "category": "Reports",
+          "title": "Reports",
+          "slug": "reports",
+          "route": "reports",
+          "href": "/compliance-ops/reports",
+          "icon": "📊",
+          "description": "Regulator-ready reports — goAML STR/SAR/CTR/DPMSR/CNMR XML, quarterly DPMS rollups, audit packs, and ad-hoc MLRO digests. FDL No.(10)/2025 Art.20 + Art.24.",
+          "stats": [
+            {"value": "goAML", "label": "XML schema"},
+            {"value": "10yr", "label": "Retention"}
+          ],
+          "regulatory_basis": ["FDL No.10/2025 Art.20", "FDL No.10/2025 Art.24"]
+        }
+      ]
+    }
+  ],
+  "total_modules": 15
+}

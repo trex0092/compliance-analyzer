@@ -4272,7 +4272,15 @@
                     'Sanctions hit count: ' + ((row.compliance_report && row.compliance_report.sanctions_hit_count) || 0) + '\n\n' +
                     '=== COMPLIANCE REPORT ===\n\n' +
                     serializeComplianceReportForAsana(row),
-                  surface: 'compliance-ops',
+                  // Backend reads `source`, not `surface` (same root
+                  // cause as the SEND TO ASANA HTTP 400 fixed in
+                  // commit 8fc864c). Four-Eyes approval tasks route
+                  // to the dedicated Four-Eyes Approvals project
+                  // (#4 in the 19-project catalog) via the
+                  // 'workbench' source — the new 'screening' source
+                  // points at Screening Command which is the wrong
+                  // board for a cross-module approval queue.
+                  source: 'workbench',
                   category: 'four_eyes_approval',
                   citation: 'Cabinet Res 134/2025 Art.14',
                   entity: (row.name || '') + (row.country ? ' · ' + row.country : '')
@@ -4285,7 +4293,14 @@
                   safeSave(STORAGE.subjects, rows);
                   renderSubjectScreening(host);
                 }
-              }).catch(function () { /* best-effort */ });
+              }).catch(function (err) {
+                try {
+                  console.warn(
+                    '[four-eyes-approval] Asana task creation failed:',
+                    err && err.message
+                  );
+                } catch (_) { /* ignore console failure */ }
+              });
             }
           } catch (_) { /* best-effort */ }
         } else {
@@ -4622,9 +4637,17 @@
           : cddTier === 'EDD' ? 'compliance_edd'
           : 'compliance_screening';
         var payload = {
+          // Backend validator reads `source`, not `surface` — the
+          // prior `surface: 'compliance-ops'` shape produced HTTP 400
+          // ("source must be one of ...") because o.source was
+          // undefined. Switched to the dedicated 'screening' source
+          // added to asana-task-create.mts on 2026-04-21 so tasks
+          // route to the flagship Screening Command board (#1 in the
+          // 19-project catalog, ASANA_SCREENINGS_PROJECT_GID) instead
+          // of being mis-filed under compliance-ops.
+          source: 'screening',
           name: composeAsanaTaskName(row),
           notes: serializeComplianceReportForAsana(row),
-          surface: 'compliance-ops',
           category: category,
           citation: citation ? String(citation).slice(0, 254) : undefined,
           entity: entity.slice(0, 254)

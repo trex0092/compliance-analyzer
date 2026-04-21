@@ -1843,6 +1843,41 @@
         errEl.textContent = 'Clipboard unavailable — select the text manually.';
       }
     });
+    // Client-side scope guard — reject obviously out-of-scope prompts
+    // before they hit the /api/brain-reason endpoint. The server-side
+    // system prompt has a SCOPE GATE too (defence in depth). This
+    // client check saves the 25s round trip + avoids the frustrating
+    // "the advisor answered a non-compliance question" loop the MLRO
+    // reported on 2026-04-21 (the "someone shut at me" typo case that
+    // produced a full emergency-response reply).
+    //
+    // Heuristic: the question is OUT OF SCOPE if it does NOT mention
+    // any compliance-domain keyword AND the case context is empty.
+    // Short enough to never nag a legitimate shorthand like "draft
+    // STR for case 123" because "STR" is in the keyword list.
+    var COMPLIANCE_KEYWORDS = [
+      'aml', 'cft', 'cpf', 'mlro', 'str', 'sar', 'ctr', 'cnmr', 'dpmsr', 'pmr',
+      'cdd', 'sdd', 'edd', 'kyc', 'ubo', 'pep', 'goaml', 'ofac', 'sanction',
+      'freeze', 'eocn', 'tfs', 'fatf', 'lbma', 'rgg', 'cahra', 'dpms',
+      'customer', 'counterparty', 'subject', 'transaction', 'threshold',
+      'screening', 'match', 'adverse media', 'shell company', 'layering',
+      'structuring', 'tbml', 'trade-based', 'proliferation',
+      'article', 'cabinet res', 'fdl', 'fiu', 'moe', 'cbuae',
+      'regulation', 'inspection', 'audit', 'compliance', 'four-eyes',
+      'four eyes', 'bayesian', 'risk score', 'onboarding',
+      'aed ', 'aed55', 'aed 55', 'aed 60', 'aed 25',
+      'verdict', 'escalate', 'confirm match', 'false positive',
+      'workflow', 'routine', 'cron', 'narrative', 'filing', 'deadline',
+      'hawkeye', 'sterling', 'tenant',
+    ];
+    function isLikelyCompliance(q, c) {
+      var hay = ((q || '') + ' ' + (c || '')).toLowerCase();
+      for (var i = 0; i < COMPLIANCE_KEYWORDS.length; i++) {
+        if (hay.indexOf(COMPLIANCE_KEYWORDS[i]) !== -1) return true;
+      }
+      return false;
+    }
+
     runBtn.addEventListener('click', function () {
       var q = (mount.querySelector('#drQuestion').value || '').trim();
       var c = (mount.querySelector('#drContext').value || '').trim();
@@ -1855,10 +1890,20 @@
         errEl.textContent = 'Enter a compliance question.';
         return;
       }
-      // Pre-flight guard: the server caps the composed `question` field
-      // (modePrefix + user text) at 4000 chars. Warn before submit rather
-      // than letting the fetch fail with HTTP 400. Worst reasoning-mode
-      // prefix today is ~1030 chars (see REASONING_MODES).
+      // Scope gate first — refuse non-compliance questions before we
+      // spend any tokens. Matches the FDL Art.20-21 intent: this tool
+      // is the MLRO's reasoning aid, not a general-purpose assistant.
+      if (!isLikelyCompliance(q, c)) {
+        errEl.textContent =
+          'OUT OF SCOPE: this tool only answers UAE AML/CFT/CPF compliance questions. ' +
+          'Pick a preset below, or rephrase with a compliance subject ' +
+          '(customer / counterparty / transaction / STR / sanctions match / CDD / UBO).';
+        return;
+      }
+      // Pre-flight length guard — the server caps the composed `question`
+      // field (modePrefix + user text) at 4000 chars. Warn before submit
+      // rather than letting the fetch fail with HTTP 400. Worst
+      // reasoning-mode prefix today is ~1030 chars (see REASONING_MODES).
       var MAX_COMPOSED_QUESTION = 4000;
       var composedLen = modePrefix.length + q.length;
       if (composedLen > MAX_COMPOSED_QUESTION) {

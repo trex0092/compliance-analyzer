@@ -79,10 +79,101 @@ describe('screening-save — validateInput', () => {
     expect(r.ok).toBe(false);
   });
 
-  it('accepts legal_entity', () => {
+  // PR-2: legacy "legal_entity" is accepted and normalised to the new
+  // canonical "organisation" value. See src/domain/constants.ts →
+  // ENTITY_TYPE_LEGACY_ALIASES for the full alias table.
+  it('accepts legacy legal_entity and normalises to organisation', () => {
     const r = validateInput({ ...baseInput(), entityType: 'legal_entity' });
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.input.entityType).toBe('legal_entity');
+    if (r.ok) expect(r.input.entityType).toBe('organisation');
+  });
+
+  it('accepts canonical organisation', () => {
+    const r = validateInput({ ...baseInput(), entityType: 'organisation' });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.input.entityType).toBe('organisation');
+  });
+
+  it('accepts canonical unspecified', () => {
+    const r = validateInput({ ...baseInput(), entityType: 'unspecified' });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.input.entityType).toBe('unspecified');
+  });
+
+  it('accepts legacy TFS dropdown values (Individual / Company) and normalises', () => {
+    const ind = validateInput({ ...baseInput(), entityType: 'Individual' });
+    expect(ind.ok).toBe(true);
+    if (ind.ok) expect(ind.input.entityType).toBe('individual');
+
+    const org = validateInput({ ...baseInput(), entityType: 'Company' });
+    expect(org.ok).toBe(true);
+    if (org.ok) expect(org.input.entityType).toBe('organisation');
+  });
+
+  it('accepts US-spelling "organization" and normalises to organisation', () => {
+    const r = validateInput({ ...baseInput(), entityType: 'organization' });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.input.entityType).toBe('organisation');
+  });
+
+  // PR-2: new optional LSEG World-Check One parity fields round-trip.
+  it('round-trips the new PR-2 optional fields', () => {
+    const r = validateInput({
+      ...baseInput(),
+      altNames: [' Jane A. Doe ', 'J. Doe', ''],
+      pob: 'Abu Dhabi, AE',
+      countryLocation: 'AE',
+      caseId: 'CASE-2026-0412',
+      group: 'Project Falcon',
+      identifications: [
+        { type: 'passport', number: 'P12345678', issuer: 'AE' },
+        { type: 'emirates_id', number: '784-1980-1234567-0' },
+      ],
+      checkTypes: { worldCheck: true, passport: false, adverseMediaDeep: true },
+      ongoingScreening: true,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.input.altNames).toEqual(['Jane A. Doe', 'J. Doe']);
+      expect(r.input.pob).toBe('Abu Dhabi, AE');
+      expect(r.input.countryLocation).toBe('AE');
+      expect(r.input.caseId).toBe('CASE-2026-0412');
+      expect(r.input.group).toBe('Project Falcon');
+      expect(r.input.identifications).toEqual([
+        { type: 'passport', number: 'P12345678', issuer: 'AE' },
+        { type: 'emirates_id', number: '784-1980-1234567-0', issuer: undefined },
+      ]);
+      expect(r.input.checkTypes).toEqual({
+        worldCheck: true,
+        passport: false,
+        adverseMediaDeep: true,
+      });
+      expect(r.input.ongoingScreening).toBe(true);
+    }
+  });
+
+  it('rejects identifications with an unsupported type', () => {
+    const r = validateInput({
+      ...baseInput(),
+      identifications: [{ type: 'astrological_chart', number: 'ABC' }],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('identifications.type');
+  });
+
+  it('rejects identifications with no number', () => {
+    const r = validateInput({
+      ...baseInput(),
+      identifications: [{ type: 'passport', number: '   ' }],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('identifications.number');
+  });
+
+  it('rejects ongoingScreening that is not a boolean', () => {
+    const r = validateInput({ ...baseInput(), ongoingScreening: 'yes' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('ongoingScreening');
   });
 
   // ---- DoB ----

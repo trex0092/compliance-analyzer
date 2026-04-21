@@ -28,6 +28,40 @@
 [functions]
   directory = "netlify/functions"
 
+# Public env-var diagnostic endpoint. Returns BOOLEAN presence only
+# (never values) for every required env var so the MLRO can verify in
+# one browser request which Netlify configuration survived the last
+# redeploy. Introduced because scheduled crons silently skip with
+# { ok:true, skipped:"X missing" } — easy to miss in function logs.
+# Regulatory basis: FDL No.(10)/2025 Art.20-21, Art.24.
+[[redirects]]
+  from = "/api/env-check"
+  to = "/.netlify/functions/env-check"
+  status = 200
+  force = true
+
+# Ongoing-Screening status banner endpoint (PR-3). Read-only GET that
+# powers the in-app banner on the screening command page. Rate-limited
+# to 30 req/IP/min. Never returns subject identities — FDL No.(10)/2025
+# Art.29 (no tipping off). Regulatory basis: FDL Art.20-21 (CO
+# situational awareness), Art.24 (audit trail).
+[[redirects]]
+  from = "/api/ongoing-screening-status"
+  to = "/.netlify/functions/ongoing-screening-status"
+  status = 200
+  force = true
+
+# Ongoing-Screening opt-in endpoint (PR-3 follow-up). POST-only, Bearer-auth,
+# rate-limited to 60 writes/IP/min. Maintains the canonical opt-in store read
+# by /api/ongoing-screening-status so the banner count is cross-device
+# consistent. Never stores hit details — only subject name + entity type +
+# last-seen timestamp (FDL Art.29 minimum-data principle).
+[[redirects]]
+  from = "/api/ongoing-screening-optin"
+  to = "/.netlify/functions/ongoing-screening-optin"
+  status = 200
+  force = true
+
 # Preserve the stable `/api/continuous-monitor` URL now that the
 # scheduled function can no longer declare a custom `path` (Netlify
 # forbids combining `path:` + `schedule:` — see
