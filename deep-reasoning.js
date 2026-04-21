@@ -185,58 +185,136 @@
       }
       runBtn.disabled = true;
       runBtn.textContent = 'Analyzing…';
+
+      // Render scaffold — the streaming reader appends text into the
+      // inner container as frames arrive so the MLRO sees progress
+      // instead of a blank screen during the 10-30s reasoning window.
+      resultWrap.innerHTML = [
+        '<div class="dr-result" id="drResult">',
+        '  <div class="dr-stream" id="drStream"></div>',
+        '</div>',
+        '<div class="dr-meta" id="drMeta">',
+        '  <span>Streaming…</span>',
+        '</div>',
+      ].join('\n');
+      var streamEl = mount.querySelector('#drStream');
+      var metaEl = mount.querySelector('#drMeta');
+      var resultEl = mount.querySelector('#drResult');
+      var fullText = '';
+      var advisorCallCount = 0;
+      var usage = {};
+
+      function renderSoFar() {
+        // Re-render the accumulated text on every chunk. renderModelText
+        // already escapes the input, so this is safe even mid-stream.
+        streamEl.innerHTML = renderModelText(fullText);
+      }
+      function renderMeta(extra) {
+        var bits = [];
+        bits.push('Advisor calls: <b>' + advisorCallCount + '</b>');
+        bits.push('Executor tokens: <b>' + (usage.executorInputTokens || 0) + ' in / ' + (usage.executorOutputTokens || 0) + ' out</b>');
+        bits.push('Advisor tokens: <b>' + (usage.advisorInputTokens || 0) + ' in / ' + (usage.advisorOutputTokens || 0) + ' out</b>');
+        if (extra) bits.push(extra);
+        metaEl.innerHTML = bits.map(function (b) { return '<span>' + b + '</span>'; }).join('');
+      }
+
+      // Client-side 60s ceiling — fails cleanly if the endpoint
+      // inexplicably stalls instead of hanging the UI indefinitely.
+      var ac = ('AbortController' in window) ? new AbortController() : null;
+      var clientTimer = setTimeout(function () {
+        try { ac && ac.abort(); } catch (_) {}
+      }, 60_000);
+
       fetch('/api/brain-reason', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + t,
+          Accept: 'text/event-stream',
         },
         body: JSON.stringify({ question: q, caseContext: c || undefined }),
+        signal: ac ? ac.signal : undefined,
       })
         .then(function (res) {
-          return res.text().then(function (text) {
-            var json = null;
-            try {
-              json = text ? JSON.parse(text) : null;
-            } catch (_) {}
-            if (!res.ok) {
-              var msg =
-                (json && json.error) ||
-                'Deep reasoning failed (HTTP ' + res.status + ')' +
-                  (text ? ' — ' + text.slice(0, 160) : '');
-              throw new Error(msg);
-            }
-            return json || {};
-          });
-        })
-        .then(function (r) {
-          if (!r || typeof r.text !== 'string') {
-            throw new Error('Empty response from /api/brain-reason.');
+          if (!res.ok) {
+            return res.text().then(function (text) {
+              var msg;
+              try { var j = JSON.parse(text); msg = j.error || text.slice(0, 200); }
+              catch (_) { msg = text.slice(0, 200) || ('HTTP ' + res.status); }
+              throw new Error('Deep reasoning failed (HTTP ' + res.status + '): ' + msg);
+            });
           }
-          var meta = r.usage || {};
-          resultWrap.innerHTML = [
-            '<div class="dr-result">',
-            renderModelText(r.text),
-            '</div>',
-            '<div class="dr-meta">',
-            '  <span>Advisor calls: <b>' + (r.advisorCallCount || 0) + '</b></span>',
-            '  <span>Executor tokens: <b>' +
-              (meta.executorInputTokens || 0) +
-              ' in / ' +
-              (meta.executorOutputTokens || 0) +
-              ' out</b></span>',
-            '  <span>Advisor tokens: <b>' +
-              (meta.advisorInputTokens || 0) +
-              ' in / ' +
-              (meta.advisorOutputTokens || 0) +
-              ' out</b></span>',
-            '</div>',
-          ].join('\n');
-        })
-        .catch(function (e) {
-          errEl.textContent = (e && e.message) || 'Network error.';
+          if (!res.body || !res.body.getReader) {
+            throw new Error('Browser does not support streaming responses.');
+          }
+          var reader = res.body.getReader();
+          var decoder = new TextDecoder();
+          var buffer = '';
+
+          function handleFrame(frame) {
+            var eventName = '';
+            var dataStr = '';
+            var lines = frame.split('\n');
+            for (var i = 0; i < lines.length; i++) {
+              var line = lines[i];
+              if (line.indexOf('event:') === 0) eventName = line.slice(6).trim();
+              else if (line.indexOf('data:') === 0) dataStr += line.slice(5).trim();
+            }
+            if (!dataStr) return;
+            var data;
+            try { data = JSON.parse(dataStr); } catch (_) { return; }
+            if (eventName === 'delta' && typeof data.text === 'string') {
+              fullText += data.text;
+              renderSoFar();
+            } else if (eventName === 'advisor') {
+              advisorCallCount = data.advisorCallCount || advisorCallCount;
+              renderMeta('Streaming…');
+            } else if (eventName === 'usage') {
+              usage = data || {};
+              renderMeta('Streaming…');
+            } else if (eventName === 'wall_clock') {
+              errEl.textContent = data.error || 'Deep reasoning hit the 24s budget. Partial reply above.';
+            } else if (eventName === 'error') {
+              errEl.textContent = data.error || 'Upstream reasoning error.';
+            } else if (eventName === 'done') {
+              advisorCallCount = data.advisorCallCount || advisorCallCount;
+              renderMeta('Done · ' + new Date(data.generatedAtIso || Date.now()).toLocaleTimeString());
+            }
+          }
+
+          function pump() {
+            return reader.read().then(function (chunk) {
+              if (chunk.done) {
+                // Flush any trailing partial frame.
+                if (buffer.trim()) handleFrame(buffer);
+                return;
+              }
+              buffer += decoder.decode(chunk.value, { stream: true });
+              var sep;
+              while ((sep = buffer.indexOf('\n\n')) !== -1) {
+                var frame = buffer.slice(0, sep);
+                buffer = buffer.slice(sep + 2);
+                if (frame.trim()) handleFrame(frame);
+              }
+              return pump();
+            });
+          }
+          return pump();
         })
         .then(function () {
+          if (!fullText) {
+            errEl.textContent = errEl.textContent || 'No reasoning text received.';
+          }
+        })
+        .catch(function (e) {
+          if (e && e.name === 'AbortError') {
+            errEl.textContent = 'Deep reasoning aborted after 60s (client timeout).';
+          } else {
+            errEl.textContent = (e && e.message) || 'Network error.';
+          }
+        })
+        .then(function () {
+          clearTimeout(clientTimer);
           runBtn.disabled = false;
           runBtn.textContent = 'Analyze';
         });
