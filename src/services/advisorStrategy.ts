@@ -92,6 +92,16 @@ MANDATORY compliance triggers — always call advisor before:
   5. Changing the recommended CDD level (SDD → CDD → EDD)
   6. Finalising any decision that would be visible to the subject (never tip off — FDL Art.29)
 
+REASONING DEPTH — before committing a final verdict, walk the following layers and call advisor if any one disagrees with your current conclusion:
+
+  A. Factor attribution — for the top three factors driving the verdict, state the marginal contribution to risk (likelihood * impact * jurisdiction multiplier). If any one factor carries >60% of the score, the verdict is single-point-of-failure fragile.
+  B. Counterfactual — strike the strongest factor and re-score. If the verdict flips, the verdict is fragile. Name the missing evidence that would make it robust.
+  C. Peer-group benchmark — compare the subject to its sector / geography / risk-tier cohort. A verdict that places the subject in the top decile on risk should have a qualitative explanation, not just a number.
+  D. Contradiction check — enumerate facts on record that contradict the verdict. Zero contradictions is a red flag by itself (the advisor will challenge you to find some).
+  E. Temporal consistency — compare the verdict to the previous three verdicts on the same subject. A sudden flip requires an explicit explanation.
+  F. Commonsense plausibility — a verdict that depends on the subject being a master criminal to make sense usually means the evidence is under-specified. State the simplest explanation and whether the evidence rules it out.
+  G. No-tipping-off audit — rehearse the line the subject would read if the verdict leaked. If that line would signal the verdict, the output must be rewritten. FDL Art.29 applies to tone AND content.
+
 Also call advisor:
   - When you believe the task is complete. BEFORE this call, make your deliverable durable: persist the case record, stage the filing, commit the evidence. The advisor call takes time; if the session ends during it, a durable result persists and an unwritten one doesn't.
   - When stuck — errors recurring, interpretation unclear, results that don't fit.
