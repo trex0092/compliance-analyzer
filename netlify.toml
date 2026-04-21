@@ -40,6 +40,17 @@
   status = 200
   force = true
 
+# Ongoing-Screening status banner endpoint (PR-3). Read-only GET that
+# powers the in-app banner on the screening command page. Rate-limited
+# to 30 req/IP/min. Never returns subject identities — FDL No.(10)/2025
+# Art.29 (no tipping off). Regulatory basis: FDL Art.20-21 (CO
+# situational awareness), Art.24 (audit trail).
+[[redirects]]
+  from = "/api/ongoing-screening-status"
+  to = "/.netlify/functions/ongoing-screening-status"
+  status = 200
+  force = true
+
 # Preserve the stable `/api/continuous-monitor` URL now that the
 # scheduled function can no longer declare a custom `path` (Netlify
 # forbids combining `path:` + `schedule:` — see
