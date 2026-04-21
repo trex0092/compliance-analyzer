@@ -6,10 +6,35 @@
  *     // Subject identity
  *     subjectName: string,
  *     subjectId?: string,            // echoed back from /api/screening/run
- *     entityType: "individual" | "legal_entity",
+ *     entityType: "individual" | "organisation" | "unspecified",
+ *                                    // legacy values ("legal_entity",
+ *                                    // "Individual", "Company") are accepted
+ *                                    // and normalised on write.
  *     dob?: string,                  // dd/mm/yyyy
  *     country?: string,
  *     idNumber?: string,
+ *
+ *     // ── LSEG World-Check One parity — all optional (PR-2) ──
+ *     altNames?: string[],           // up to 20 alternate names / aliases
+ *     pob?: string,                  // place of birth
+ *     countryLocation?: string,      // residence / operating country
+ *     caseId?: string,               // customer-case reference
+ *     group?: string,                // workflow / portfolio grouping
+ *     identifications?: Array<{
+ *       type: "passport" | "national_id" | "emirates_id"
+ *           | "trade_licence" | "driver_licence" | "tax_id"
+ *           | "lei" | "other",
+ *       number: string,
+ *       issuer?: string,             // issuing country / authority
+ *     }>,
+ *     checkTypes?: {
+ *       worldCheck: boolean,
+ *       passport: boolean,
+ *       adverseMediaDeep: boolean,
+ *     },
+ *     ongoingScreening?: boolean,    // opts subject into the daily
+ *                                    // ongoing-screening cron (FATF Rec 10,
+ *                                    // FDL Art.20-21 — ongoing CDD).
  *
  *     // Event classification
  *     eventType: "new_customer_onboarding" | "periodic_review"
@@ -77,6 +102,11 @@ import {
   type ResolvedIdentity,
   type SerialisedWatchlist,
 } from '../../src/services/screeningWatchlist';
+import {
+  ENTITY_TYPES_SUPPORTED,
+  normaliseEntityType,
+  type EntityTypeSupported,
+} from '../../src/domain/constants';
 
 const EVENTS_STORE = 'screening-events';
 const WATCHLIST_STORE = 'screening-watchlist';
@@ -105,7 +135,9 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 // Types
 // ---------------------------------------------------------------------------
 
-const ENTITY_TYPES = ['individual', 'legal_entity'] as const;
+// Canonical entity-type list lives in src/domain/constants.ts; the
+// legacy two-value enum (`individual | legal_entity`) is accepted via
+// ENTITY_TYPE_LEGACY_ALIASES so pre-PR saves continue to round-trip.
 const EVENT_TYPES = [
   'new_customer_onboarding',
   'periodic_review',
@@ -123,9 +155,32 @@ const OUTCOMES = [
   'confirmed_match',
 ] as const;
 const RISK_TIERS = ['high', 'medium', 'low'] as const;
+const ID_TYPES_SUPPORTED = [
+  'passport',
+  'national_id',
+  'emirates_id',
+  'trade_licence',
+  'driver_licence',
+  'tax_id',
+  'lei',
+  'other',
+] as const;
 
-type EntityType = (typeof ENTITY_TYPES)[number];
+type EntityType = EntityTypeSupported;
 type EventType = (typeof EVENT_TYPES)[number];
+type IdType = (typeof ID_TYPES_SUPPORTED)[number];
+
+export interface IdentificationRecord {
+  type: IdType;
+  number: string;
+  issuer?: string;
+}
+
+export interface CheckTypeFlags {
+  worldCheck: boolean;
+  passport: boolean;
+  adverseMediaDeep: boolean;
+}
 type Classification = (typeof CLASSIFICATIONS)[number];
 type Outcome = (typeof OUTCOMES)[number];
 type RiskTier = (typeof RISK_TIERS)[number];
@@ -138,6 +193,15 @@ export interface ScreeningEvent {
   dob?: string;
   country?: string;
   idNumber?: string;
+  // LSEG World-Check One parity — all optional, introduced in PR-2.
+  altNames?: string[];
+  pob?: string;
+  countryLocation?: string;
+  caseId?: string;
+  group?: string;
+  identifications?: IdentificationRecord[];
+  checkTypes?: CheckTypeFlags;
+  ongoingScreening?: boolean;
   eventType: EventType;
   listsScreened: string[];
   overallTopScore: number;
@@ -192,8 +256,15 @@ function validateInput(
     return { ok: false, error: 'subjectId must be a string up to 128 chars' };
   }
 
-  if (!ENTITY_TYPES.includes(o.entityType as EntityType)) {
-    return { ok: false, error: 'entityType must be "individual" | "legal_entity"' };
+  const normalisedEntityType = normaliseEntityType(o.entityType);
+  if (normalisedEntityType === null) {
+    return {
+      ok: false,
+      error:
+        'entityType must be one of: ' +
+        ENTITY_TYPES_SUPPORTED.join(' | ') +
+        ' (legacy values "individual" / "legal_entity" / "Individual" / "Company" are accepted and normalised)',
+    };
   }
 
   let dob: string | undefined;
@@ -213,6 +284,103 @@ function validateInput(
   }
   if (o.idNumber !== undefined && (typeof o.idNumber !== 'string' || o.idNumber.length > 64)) {
     return { ok: false, error: 'idNumber must be a string up to 64 chars' };
+  }
+
+  // ── PR-2 LSEG World-Check One parity — all optional, defensively validated.
+  let altNames: string[] | undefined;
+  if (o.altNames !== undefined) {
+    if (!Array.isArray(o.altNames)) return { ok: false, error: 'altNames must be an array' };
+    if (o.altNames.length > 20) return { ok: false, error: 'altNames has max 20 entries' };
+    const cleaned: string[] = [];
+    for (const n of o.altNames) {
+      if (typeof n !== 'string') return { ok: false, error: 'altNames entries must be strings' };
+      const trimmed = n.trim();
+      if (trimmed.length === 0) continue;
+      if (trimmed.length > 200) return { ok: false, error: 'altNames entry too long (max 200)' };
+      cleaned.push(trimmed);
+    }
+    altNames = cleaned.length > 0 ? cleaned : undefined;
+  }
+
+  if (o.pob !== undefined && (typeof o.pob !== 'string' || o.pob.length > 128)) {
+    return { ok: false, error: 'pob must be a string up to 128 chars' };
+  }
+  if (
+    o.countryLocation !== undefined &&
+    (typeof o.countryLocation !== 'string' || o.countryLocation.length > 64)
+  ) {
+    return { ok: false, error: 'countryLocation must be a string up to 64 chars' };
+  }
+  if (o.caseId !== undefined && (typeof o.caseId !== 'string' || o.caseId.length > 64)) {
+    return { ok: false, error: 'caseId must be a string up to 64 chars' };
+  }
+  if (o.group !== undefined && (typeof o.group !== 'string' || o.group.length > 128)) {
+    return { ok: false, error: 'group must be a string up to 128 chars' };
+  }
+
+  let identifications: IdentificationRecord[] | undefined;
+  if (o.identifications !== undefined) {
+    if (!Array.isArray(o.identifications)) {
+      return { ok: false, error: 'identifications must be an array' };
+    }
+    if (o.identifications.length > 10) {
+      return { ok: false, error: 'identifications has max 10 entries' };
+    }
+    const parsed: IdentificationRecord[] = [];
+    for (const raw of o.identifications) {
+      if (!raw || typeof raw !== 'object') {
+        return { ok: false, error: 'identifications entries must be objects' };
+      }
+      const rec = raw as Record<string, unknown>;
+      if (!ID_TYPES_SUPPORTED.includes(rec.type as IdType)) {
+        return {
+          ok: false,
+          error: 'identifications.type must be one of: ' + ID_TYPES_SUPPORTED.join(', '),
+        };
+      }
+      if (typeof rec.number !== 'string' || rec.number.trim().length === 0) {
+        return { ok: false, error: 'identifications.number is required' };
+      }
+      if (rec.number.length > 64) {
+        return { ok: false, error: 'identifications.number too long (max 64)' };
+      }
+      if (
+        rec.issuer !== undefined &&
+        (typeof rec.issuer !== 'string' || rec.issuer.length > 64)
+      ) {
+        return { ok: false, error: 'identifications.issuer must be a string up to 64 chars' };
+      }
+      parsed.push({
+        type: rec.type as IdType,
+        number: rec.number.trim(),
+        issuer:
+          typeof rec.issuer === 'string' && rec.issuer.trim().length > 0
+            ? rec.issuer.trim()
+            : undefined,
+      });
+    }
+    identifications = parsed.length > 0 ? parsed : undefined;
+  }
+
+  let checkTypes: CheckTypeFlags | undefined;
+  if (o.checkTypes !== undefined) {
+    if (!o.checkTypes || typeof o.checkTypes !== 'object' || Array.isArray(o.checkTypes)) {
+      return { ok: false, error: 'checkTypes must be an object' };
+    }
+    const ct = o.checkTypes as Record<string, unknown>;
+    checkTypes = {
+      worldCheck: ct.worldCheck === true,
+      passport: ct.passport === true,
+      adverseMediaDeep: ct.adverseMediaDeep === true,
+    };
+  }
+
+  let ongoingScreening: boolean | undefined;
+  if (o.ongoingScreening !== undefined) {
+    if (typeof o.ongoingScreening !== 'boolean') {
+      return { ok: false, error: 'ongoingScreening must be a boolean' };
+    }
+    ongoingScreening = o.ongoingScreening;
   }
 
   if (!EVENT_TYPES.includes(o.eventType as EventType)) {
@@ -364,10 +532,19 @@ function validateInput(
     input: {
       subjectName: o.subjectName.trim(),
       subjectId: typeof o.subjectId === 'string' ? o.subjectId.trim() : '',
-      entityType: o.entityType as EntityType,
+      entityType: normalisedEntityType,
       dob,
       country: typeof o.country === 'string' ? o.country.trim() : undefined,
       idNumber: typeof o.idNumber === 'string' ? o.idNumber.trim() : undefined,
+      altNames,
+      pob: typeof o.pob === 'string' ? o.pob.trim() : undefined,
+      countryLocation:
+        typeof o.countryLocation === 'string' ? o.countryLocation.trim() : undefined,
+      caseId: typeof o.caseId === 'string' ? o.caseId.trim() : undefined,
+      group: typeof o.group === 'string' ? o.group.trim() : undefined,
+      identifications,
+      checkTypes,
+      ongoingScreening,
       eventType: o.eventType as EventType,
       listsScreened: (o.listsScreened as string[]).map((l) => l.trim()),
       overallTopScore: o.overallTopScore,
