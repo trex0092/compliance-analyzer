@@ -269,16 +269,23 @@ export default async (req: Request, context: Context): Promise<Response> => {
       ? `[${surface.prefix}:${input.priority.toUpperCase()}] ${input.name}`
       : `[${surface.prefix}] ${input.name}`;
 
-  const tags = ['mlro-surface', input.source];
-  if (input.category) tags.push(input.category);
-  if (input.priority) tags.push(input.priority);
-
+  // Tags intentionally omitted. Asana's API requires numeric tag GIDs
+  // for each entry; we were previously passing string names
+  // ('mlro-surface', 'screening', 'compliance_edd', etc.) which Asana
+  // rejects with a 400 "Not a recognized ID" error. The same categorical
+  // info reaches the MLRO two other ways: (1) the surface prefix +
+  // priority embedded in the task title, and (2) the structured block
+  // in buildTaskNotes() which already includes source/category/priority
+  // as searchable text. Restoring real tags would require provisioning
+  // them in each Asana workspace and piping their GIDs through env
+  // vars — avoid that path until we actually need tag-based Asana
+  // views, because we JUST reduced env vars to fit the AWS Lambda
+  // 4 KB limit on the functions bundle.
   const result = await createAsanaTask({
     name: title,
     notes: buildTaskNotes(input, surface.projectName),
     projects: [projectGid],
     due_on: input.dueOn,
-    tags,
   });
 
   if (!result.ok) {
