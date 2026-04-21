@@ -9,7 +9,7 @@
  *
  * POST /api/asana/task
  *   body = {
- *     source: 'workbench' | 'logistics' | 'compliance-ops' | 'routines',
+ *     source: 'workbench' | 'logistics' | 'compliance-ops' | 'routines' | 'screening',
  *     name: string,              // task title (max 512 chars)
  *     notes: string,              // task body (max 16 KiB)
  *     category?: string,          // free-form tag, max 64 chars
@@ -53,7 +53,7 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   });
 }
 
-type Surface = 'workbench' | 'logistics' | 'compliance-ops' | 'routines';
+type Surface = 'workbench' | 'logistics' | 'compliance-ops' | 'routines' | 'screening';
 
 const SURFACE_CONFIG: Record<
   Surface,
@@ -79,10 +79,27 @@ const SURFACE_CONFIG: Record<
     projectName: 'Routines — Daily / Weekly / Monthly',
     prefix: 'RTN',
   },
+  // Added 2026-04-21 so the Screening Command "SEND TO ASANA" button
+  // has a dedicated target. Previously the client shoehorned these
+  // tasks into 'compliance-ops' (wrong project) via the wrong payload
+  // key ('surface' instead of 'source'), producing HTTP 400. Now they
+  // route cleanly to #1 in the 19-project catalog — the flagship
+  // Screening & Adverse Media board.
+  screening: {
+    envVar: 'ASANA_SCREENINGS_PROJECT_GID',
+    projectName: 'Screening — Sanctions & Adverse Media',
+    prefix: 'SCR',
+  },
 };
 
 function isSurface(v: unknown): v is Surface {
-  return v === 'workbench' || v === 'logistics' || v === 'compliance-ops' || v === 'routines';
+  return (
+    v === 'workbench' ||
+    v === 'logistics' ||
+    v === 'compliance-ops' ||
+    v === 'routines' ||
+    v === 'screening'
+  );
 }
 
 function isPriority(v: unknown): v is 'low' | 'medium' | 'high' | 'critical' {
@@ -110,7 +127,7 @@ function validateInput(raw: unknown): { ok: true; input: TaskInput } | { ok: fal
   if (!isSurface(o.source)) {
     return {
       ok: false,
-      error: 'source must be one of: workbench, logistics, compliance-ops, routines',
+      error: 'source must be one of: workbench, logistics, compliance-ops, routines, screening',
     };
   }
   if (typeof o.name !== 'string' || o.name.trim().length === 0 || o.name.length > 512) {

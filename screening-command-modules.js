@@ -4622,9 +4622,17 @@
           : cddTier === 'EDD' ? 'compliance_edd'
           : 'compliance_screening';
         var payload = {
+          // Backend validator reads `source`, not `surface` — the
+          // prior `surface: 'compliance-ops'` shape produced HTTP 400
+          // ("source must be one of ...") because o.source was
+          // undefined. Switched to the dedicated 'screening' source
+          // added to asana-task-create.mts on 2026-04-21 so tasks
+          // route to the flagship Screening Command board (#1 in the
+          // 19-project catalog, ASANA_SCREENINGS_PROJECT_GID) instead
+          // of being mis-filed under compliance-ops.
+          source: 'screening',
           name: composeAsanaTaskName(row),
           notes: serializeComplianceReportForAsana(row),
-          surface: 'compliance-ops',
           category: category,
           citation: citation ? String(citation).slice(0, 254) : undefined,
           entity: entity.slice(0, 254)
