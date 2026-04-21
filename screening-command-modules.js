@@ -4190,6 +4190,39 @@
           row.rejected_at = new Date().toISOString();
           row.approval_rejection_reason = 'Four-eyes reviewer rejected the proposed disposition.';
         }
+        // Server-side audit persistence — Netlify Blob with 10-year
+        // retention (FDL Art.24). Best-effort: a failure does not
+        // rollback the client-side state, but surfaces in the console
+        // so operators can reconcile. Server re-validates the
+        // requester !== approver invariant.
+        try {
+          var audToken = '';
+          try { audToken = localStorage.getItem('hawkeye.session.jwt') || localStorage.getItem('hawkeye.watchlist.adminToken') || ''; } catch (_) {}
+          if (audToken) {
+            fetch('/api/four-eyes-audit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + audToken },
+              body: JSON.stringify({
+                rowId: row.id,
+                subjectName: row.name || '',
+                country: row.country || '',
+                proposedDisposition: row.pending_disposition || (verdict === 'approve' ? row.disposition : 'positive'),
+                requesterId: row.approval_required_by || '',
+                requestedAt: row.approval_required_at || '',
+                approverId: me,
+                event: verdict === 'approve' ? 'approve' : 'reject',
+                eventAt: new Date().toISOString(),
+                rejectionReason: verdict === 'reject' ? (row.approval_rejection_reason || '') : undefined,
+                cddTier: (row.compliance_report && row.compliance_report.cdd_recommendation && row.compliance_report.cdd_recommendation.tier) || undefined,
+                sanctionsHitCount: (row.compliance_report && row.compliance_report.sanctions_hit_count) || 0,
+                riskLevel: (row.compliance_report && row.compliance_report.risk_level) || undefined,
+                asanaUrl: row.approval_asana_url || undefined
+              })
+            }).catch(function (err) {
+              try { console.warn('[four-eyes] audit write failed:', err && err.message); } catch (_) {}
+            });
+          }
+        } catch (_) { /* best-effort */ }
         delete row.pending_disposition;
         safeSave(STORAGE.subjects, rows);
         renderSubjectScreening(host);

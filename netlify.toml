@@ -64,6 +64,17 @@
   status = 200
   force = true
 
+# Four-Eyes approval audit log. Every approve / reject event on a
+# pending-approval screening row is persisted to a Netlify Blob
+# store for 10-year retention (FDL No.(10)/2025 Art.24).
+# Cabinet Res 134/2025 Art.14 two-approver rule is server-enforced
+# before the record is written.
+[[redirects]]
+  from = "/api/four-eyes-audit"
+  to = "/.netlify/functions/four-eyes-audit"
+  status = 200
+  force = true
+
 # MLRO sign-in JWT endpoint. The function itself declares
 # `config.path = "/api/hawkeye-login"` in auth-login.mts, but on some
 # Netlify deploys the config.path registration does not surface the
