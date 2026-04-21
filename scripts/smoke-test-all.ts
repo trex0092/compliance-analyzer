@@ -138,27 +138,109 @@ async function asanaDelete(path: string, token: string): Promise<void> {
 // ─── Phase 1 ──────────────────────────────────────────────────────────────
 async function phase1EnvValidation(): Promise<void> {
   console.log('\n── PHASE 1: ENV VALIDATION ──');
+  // The locked 67 — canonical Netlify env set for Hawkeye Sterling V2
+  // (MLRO locked 2026-04-21). Nothing more, nothing less.
   const required = [
+    'ANTHROPIC_API_KEY',
     'ASANA_ACCESS_TOKEN',
     'ASANA_WORKSPACE_GID',
-    'ANTHROPIC_API_KEY',
-    'HAWKEYE_JWT_SECRET',
-    'HAWKEYE_AUDIT_HMAC_KEY',
-    'BCRYPT_PEPPER',
+    'ASANA_SCREENINGS_PROJECT_GID',
+    'ASANA_CENTRAL_MLRO_PROJECT_GID',
+    'ASANA_AUDIT_LOG_PROJECT_GID',
+    'ASANA_FOUR_EYES_PROJECT_GID',
+    'ASANA_STR_PROJECT_GID',
+    'ASANA_INCIDENTS_PROJECT_GID',
+    'ASANA_CDD_PROJECT_GID',
+    'ASANA_KYC_CDD_TRACKER_PROJECT_GID',
+    'ASANA_TM_PROJECT_GID',
+    'ASANA_COMPLIANCE_TASKS_PROJECT_GID',
+    'ASANA_SHIPMENTS_PROJECT_GID',
+    'ASANA_EMPLOYEES_PROJECT_GID',
+    'ASANA_TRAINING_PROJECT_GID',
+    'ASANA_GOVERNANCE_PROJECT_GID',
+    'ASANA_AI_GOVERNANCE_PROJECT_GID',
+    'ASANA_ROUTINES_PROJECT_GID',
+    'ASANA_WORKBENCH_PROJECT_GID',
+    'ASANA_ESG_LBMA_PROJECT_GID',
+    'ASANA_EXPORT_CONTROL_PROJECT_GID',
+    'ASANA_INSPECTOR_PROJECT_GID',
+    'ASANA_GRIEVANCES_PROJECT_GID',
+    'ASANA_RECONCILE_LIVE_READS_ENABLED',
     'PUBLIC_BASE_URL',
     'HAWKEYE_ALLOWED_ORIGIN',
+    'HAWKEYE_JWT_SECRET',
+    'JWT_SIGNING_SECRET',
+    'HAWKEYE_JWT_TTL_SEC',
+    'BCRYPT_PEPPER',
+    'HAWKEYE_CROSS_TENANT_SALT',
     'HAWKEYE_BRAIN_TOKEN',
-    ...ASANA_SLOTS.map((s) => s.envVar),
+    'HAWKEYE_BRAIN_PASSWORD_HASH',
+    'HAWKEYE_APPROVER_KEYS',
+    'HAWKEYE_ALERT_EMAIL',
+    'HAWKEYE_CLAMP_CRON_TENANTS',
+    'HAWKEYE_DELTA_SCREEN_TENANTS',
+    'HAWKEYE_LOGIN_RATE_LIMIT_DISABLED',
+    'SANCTIONS_UPLOAD_TOKEN',
+    'SETUP_MFA_TOTP_SECRET',
+    'BRAIN_RATE_LIMIT_PER_15MIN',
+    'BRAIN_TELEMETRY_ENABLED',
+    'HAWKEYE_AUDIT_HMAC_KEY',
+    'ASANA_WEBHOOK_SECRET',
+    'REPORTING_ENTITY_NAME',
+    'REPORTING_ENTITY_LICENCE',
+    'ASANA_TEAM_GID',
+    'SCHEDULED_SCREENING_DRY_RUN',
+    'SCHEDULED_SCREENING_OFFLINE',
+    'REGULATORY_WATCH_OFFLINE',
+    'CONTINUOUS_MONITOR_DISPATCH_ASANA',
+    'TAVILY_API_KEY',
+    'SERPAPI_KEY',
+    'BRAVE_SEARCH_API_KEY',
+    'HAWKEYE_REGULATOR_MASTER_KEY',
+    'HAWKEYE_REGULATOR_CODE_TTL_MINUTES',
+    'HAWKEYE_INSPECTOR_KEYS',
+    'HAWKEYE_SOLO_MLRO_MODE',
+    'HAWKEYE_SOLO_MLRO_COOLDOWN_HOURS',
+    'HAWKEYE_SANCTIONS_PROXY_URL',
+    'ASANA_SECTION_SCREENINGS_NAME',
+    'LOG_LEVEL',
+    'ASANA_INSPECTOR_TEAM_GID',
+    'CACHET_API_TOKEN',
+    'CACHET_BASE_URL',
+    'HAWKEYE_BRAIN_URL',
   ];
-  const missing = required.filter((v) => !env(v));
+  // The 14 env vars that are ALLOWED to be blank (optional features).
+  // Everything else must be populated or the gate fails.
+  const optionalBlankOk = new Set([
+    'HAWKEYE_INSPECTOR_KEYS',
+    'HAWKEYE_SANCTIONS_PROXY_URL',
+    'ASANA_SECTION_SCREENINGS_NAME',
+    'ASANA_INSPECTOR_TEAM_GID',
+    'CACHET_API_TOKEN',
+    'CACHET_BASE_URL',
+    'HAWKEYE_BRAIN_URL',
+  ]);
+  const missing = required.filter(
+    (v) => !env(v) && !optionalBlankOk.has(v),
+  );
   record(
-    `${required.length - missing.length}/${required.length} required vars present`,
+    `${required.length - missing.length}/${required.length} of the locked 67 vars present (7 may be blank)`,
     missing.length === 0,
     missing.length > 0 ? `MISSING: ${missing.join(', ')}` : undefined,
   );
 
   // Hex-secret format checks
-  for (const secret of ['HAWKEYE_JWT_SECRET', 'HAWKEYE_AUDIT_HMAC_KEY', 'BCRYPT_PEPPER']) {
+  for (const secret of [
+    'HAWKEYE_JWT_SECRET',
+    'JWT_SIGNING_SECRET',
+    'HAWKEYE_AUDIT_HMAC_KEY',
+    'BCRYPT_PEPPER',
+    'HAWKEYE_CROSS_TENANT_SALT',
+    'ASANA_WEBHOOK_SECRET',
+    'HAWKEYE_REGULATOR_MASTER_KEY',
+    'HAWKEYE_BRAIN_TOKEN',
+    'SANCTIONS_UPLOAD_TOKEN',
+  ]) {
     const v = env(secret);
     if (!v) continue;
     record(
@@ -178,7 +260,7 @@ async function phase1EnvValidation(): Promise<void> {
     );
   }
 
-  // Alias consistency (KYC = CDD, AI_GOVERNANCE = GOVERNANCE)
+  // Alias consistency (KYC = CDD, AI_GOVERNANCE = GOVERNANCE, JWT pair)
   const cdd = env('ASANA_CDD_PROJECT_GID');
   const kyc = env('ASANA_KYC_CDD_TRACKER_PROJECT_GID');
   record(
@@ -189,13 +271,33 @@ async function phase1EnvValidation(): Promise<void> {
 
   const gov = env('ASANA_GOVERNANCE_PROJECT_GID');
   const aiGov = env('ASANA_AI_GOVERNANCE_PROJECT_GID');
-  if (aiGov !== undefined) {
-    record(
-      'ASANA_AI_GOVERNANCE_PROJECT_GID = ASANA_GOVERNANCE_PROJECT_GID',
-      gov === aiGov,
-      gov !== aiGov ? `GOV=${gov} vs AI_GOV=${aiGov}` : undefined,
-    );
-  }
+  record(
+    'ASANA_AI_GOVERNANCE_PROJECT_GID = ASANA_GOVERNANCE_PROJECT_GID',
+    gov === aiGov,
+    gov !== aiGov ? `GOV=${gov} vs AI_GOV=${aiGov}` : undefined,
+  );
+
+  const jwtA = env('HAWKEYE_JWT_SECRET');
+  const jwtB = env('JWT_SIGNING_SECRET');
+  record(
+    'HAWKEYE_JWT_SECRET = JWT_SIGNING_SECRET',
+    jwtA === jwtB,
+    jwtA !== jwtB ? 'the two JWT secrets must be identical' : undefined,
+  );
+
+  // Production-flag sanity checks
+  const dryRun = env('SCHEDULED_SCREENING_DRY_RUN');
+  record(
+    'SCHEDULED_SCREENING_DRY_RUN = false (production)',
+    dryRun === 'false',
+    dryRun !== 'false' ? `got "${dryRun}" — crons will not write` : undefined,
+  );
+  const regWatch = env('REGULATORY_WATCH_OFFLINE');
+  record(
+    'REGULATORY_WATCH_OFFLINE = false (production)',
+    regWatch === 'false',
+    regWatch !== 'false' ? `got "${regWatch}" — regulatory drift will not fetch` : undefined,
+  );
 }
 
 // ─── Phase 2 ──────────────────────────────────────────────────────────────
