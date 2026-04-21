@@ -105,3 +105,95 @@ describe('prettyEntityType — empty / unknown', () => {
     expect(prettyEntityType('robot')).toBe('Robot');
   });
 });
+
+// ---------------------------------------------------------------------------
+// computeTfs2SubjectFingerprint — cross-device opt-in dedup key
+// ---------------------------------------------------------------------------
+//
+// Regulatory basis: FDL No.(10)/2025 Art.20-21 (the MLRO must see an
+// accurate cross-device count; a per-browser ID would inflate the count
+// and make the banner meaningless).
+
+type Fingerprint = (record: unknown) => string;
+let computeFingerprint: Fingerprint;
+
+describe('computeTfs2SubjectFingerprint', () => {
+  beforeAll(() => {
+    // Extract the real helper from compliance-suite.js so any drift in the
+    // FNV-1a implementation breaks these tests immediately. The function is
+    // declared inside an IIFE but also exposed as global.
+    // computeTfs2SubjectFingerprint, so we pluck it via the same sandboxed-
+    // Function pattern used by the prettyEntityType extractor above.
+    const path = join(__dirname, '..', 'compliance-suite.js');
+    const src = readFileSync(path, 'utf8');
+    const start = src.indexOf('function computeTfs2SubjectFingerprint');
+    expect(start).toBeGreaterThan(-1);
+    let depth = 0;
+    let inString: string | null = null;
+    let i = src.indexOf('{', start);
+    let end = -1;
+    for (; i < src.length; i++) {
+      const c = src[i];
+      if (inString) {
+        if (c === '\\') { i++; continue; }
+        if (c === inString) inString = null;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') { inString = c; continue; }
+      if (c === '{') depth++;
+      else if (c === '}') {
+        depth--;
+        if (depth === 0) { end = i + 1; break; }
+      }
+    }
+    expect(end).toBeGreaterThan(start);
+    const helperSrc = src.slice(start, end);
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const runner = new Function(helperSrc + '\nreturn computeTfs2SubjectFingerprint;');
+    computeFingerprint = runner() as Fingerprint;
+    expect(typeof computeFingerprint).toBe('function');
+  });
+
+  it('is deterministic for the same input', () => {
+    const rec = { screenedName: 'Jane Doe', dob: '15/01/1980', idNumber: 'P12345' };
+    expect(computeFingerprint(rec)).toBe(computeFingerprint(rec));
+  });
+
+  it('same subject on two devices → same fingerprint', () => {
+    const a = { screenedName: '  Jane  Doe  ', dob: '15/01/1980', idNumber: 'p12345' };
+    const b = { screenedName: 'Jane Doe',     dob: '15/01/1980', idNumber: 'P12345' };
+    expect(computeFingerprint(a)).toBe(computeFingerprint(b));
+  });
+
+  it('different DOB → different fingerprints even with same name', () => {
+    const a = { screenedName: 'Jane Doe', dob: '15/01/1980', idNumber: '' };
+    const b = { screenedName: 'Jane Doe', dob: '16/01/1980', idNumber: '' };
+    expect(computeFingerprint(a)).not.toBe(computeFingerprint(b));
+  });
+
+  it('different idNumber → different fingerprints even with same name', () => {
+    const a = { screenedName: 'Jane Doe', dob: '', idNumber: 'P12345' };
+    const b = { screenedName: 'Jane Doe', dob: '', idNumber: 'P67890' };
+    expect(computeFingerprint(a)).not.toBe(computeFingerprint(b));
+  });
+
+  it('returns empty string when no identifying data at all', () => {
+    expect(computeFingerprint({})).toBe('');
+    expect(computeFingerprint({ screenedName: '   ' })).toBe('');
+    expect(computeFingerprint(null)).toBe('');
+  });
+
+  it('is Unicode-safe (Arabic name)', () => {
+    const rec = { screenedName: 'محمد الراشد', dob: '01/01/1970', idNumber: '' };
+    const fp = computeFingerprint(rec);
+    expect(fp).toMatch(/^tfs2:[0-9a-f]{8}$/);
+    // Same input → same hash
+    expect(computeFingerprint({ ...rec })).toBe(fp);
+  });
+
+  it('starts with the tfs2: namespace', () => {
+    const fp = computeFingerprint({ screenedName: 'Test Subject' });
+    expect(fp.startsWith('tfs2:')).toBe(true);
+    expect(fp.length).toBe('tfs2:'.length + 8);
+  });
+});

@@ -3585,13 +3585,42 @@ window.prettyEntityType = function (raw) {
       );
     } catch (_e) { return ''; }
   }
+  // Deterministic fingerprint for cross-device opt-in de-duplication.
+  // Uses FNV-1a over normalised (name|dob|idNumber) so:
+  //   - the SAME subject saved on two MLRO devices → same key → count=1
+  //   - DIFFERENT subjects with the same name but distinct DOB/ID →
+  //     different keys (disambiguates)
+  // Non-cryptographic by design — the output is a dedup key, not a secret.
+  // Unicode-safe via charCodeAt (covers Arabic / CJK characters for UAE
+  // clientele).
+  function computeTfs2SubjectFingerprint(record) {
+    if (!record) return '';
+    const name = String(record.screenedName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const dob = String(record.dob || '').trim();
+    const idNumber = String(record.idNumber || '').trim().toLowerCase();
+    const parts = name + '|' + dob + '|' + idNumber;
+    if (!name && !dob && !idNumber) return '';
+    let h = 2166136261 >>> 0;                   // FNV offset basis
+    for (let i = 0; i < parts.length; i++) {
+      h ^= parts.charCodeAt(i);
+      h = Math.imul(h, 16777619);                // FNV prime
+    }
+    return 'tfs2:' + (h >>> 0).toString(16).padStart(8, '0');
+  }
+  global.computeTfs2SubjectFingerprint = computeTfs2SubjectFingerprint;
+
   async function syncTfs2OptInToBackend(record) {
     if (!record || !record.screenedName) return;
     const token = readHawkeyeBearerToken();
     if (!token) return; // Unauthenticated → local-only. User-visible no-op.
+    // Cross-device stable key. Falls back to undefined (server canonicalises
+    // by name) when we cannot build a fingerprint — e.g. a record with no
+    // name, no DOB and no ID, which should never reach here because save
+    // requires a name.
+    const fingerprint = computeTfs2SubjectFingerprint(record);
     const body = {
       subjectName: String(record.screenedName || '').slice(0, 200),
-      subjectId: record.id ? String(record.id).slice(0, 128) : undefined,
+      subjectId: fingerprint || undefined,
       entityType: record.entityType || 'individual',
       ongoingScreening: !!record.ongoingScreening,
     };
@@ -4282,12 +4311,37 @@ window.prettyEntityType = function (raw) {
       ],
       mandatoryListsScreened: uaeChecked && unChecked,
     };
+    // Capture the prior state BEFORE overwriting so we can opt-out a stale
+    // fingerprint when the identifying fields (name / DOB / idNumber) change
+    // during an edit. Without this the old server entry would be orphaned
+    // and the cross-device count would over-report by one.
+    const priorRecord = editIdx >= 0 ? events[editIdx] : null;
     if (editIdx>=0) { events[editIdx]=record; } else { events.unshift(record); }
     save(SK2.TFS2, events);
     // PR-3 fix #1 — propagate the opt-in flag to the server so the status
     // banner sees the same count across devices. Non-blocking.
     if (typeof syncTfs2OptInToBackend === 'function') {
-      try { syncTfs2OptInToBackend(record); } catch (_e) { /* local-only fallback */ }
+      try {
+        // Opt-out a stale fingerprint first, only when it actually changed
+        // AND the prior record was on ongoing screening. Identical
+        // fingerprints need no opt-out — the new POST is an idempotent
+        // upsert in that case.
+        if (priorRecord && priorRecord.ongoingScreening === true) {
+          const priorFp = computeTfs2SubjectFingerprint(priorRecord);
+          const nextFp  = computeTfs2SubjectFingerprint(record);
+          if (priorFp && nextFp && priorFp !== nextFp) {
+            syncTfs2OptInToBackend({
+              id: priorRecord.id,
+              screenedName: priorRecord.screenedName,
+              dob: priorRecord.dob,
+              idNumber: priorRecord.idNumber,
+              entityType: priorRecord.entityType,
+              ongoingScreening: false,
+            });
+          }
+        }
+        syncTfs2OptInToBackend(record);
+      } catch (_e) { /* local-only fallback */ }
     }
     document.getElementById('tfs2Modal').classList.remove('open');
     if (outcome==='Confirmed Match') toast('🔴 CONFIRMED MATCH saved — ensure freeze, FFR, and CNMR obligations are met within deadlines','error');
@@ -4384,12 +4438,16 @@ window.prettyEntityType = function (raw) {
     events.splice(idx,1);
     save(SK2.TFS2, events);
     // PR-3 fix #1 — if the deleted record was on ongoing screening, opt it out
-    // on the server so the aggregate count stays accurate.
+    // on the server so the aggregate count stays accurate. The sync path
+    // derives a deterministic fingerprint from name|dob|idNumber so the
+    // DELETE hits the SAME canonical key the opt-in POST created.
     if (removed && removed.ongoingScreening === true && typeof syncTfs2OptInToBackend === 'function') {
       try {
         syncTfs2OptInToBackend({
           id: removed.id,
           screenedName: removed.screenedName,
+          dob: removed.dob,
+          idNumber: removed.idNumber,
           entityType: removed.entityType,
           ongoingScreening: false,
         });
