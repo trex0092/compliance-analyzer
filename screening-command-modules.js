@@ -4996,13 +4996,16 @@
   // model has every block of evidence without extra prompt engineering.
 
   var RED_TEAM_QUESTION =
-    'Act as a DEVIL\'S ADVOCATE compliance reviewer. A primary verdict has been issued on the subject described in the case context. Your job is to construct the strongest possible counter-argument AGAINST that verdict — NOT to repeat or rationalise it.\n\n' +
-    'Deliver exactly four sections, in this order:\n\n' +
-    '1. WEAKEST EVIDENCE. Name the single weakest piece of evidence supporting the primary verdict and explain why it is weak (source tier, coverage gap, inferential leap, stale signal, etc.).\n\n' +
-    '2. EXCULPATORY HYPOTHESES. Propose at least two plausible false-positive or exculpatory hypotheses with concrete supporting considerations (e.g. name collision, alias confusion, time-barred proceeding, resolved regulatory action).\n\n' +
-    '3. MISSED SAFE HARBOURS. List any regulatory exemption, safe harbour, de minimis threshold, or mitigating factor the primary verdict may have missed — cite the article / resolution / circular.\n\n' +
-    '4. DECISIVE EVIDENCE REQUEST. Name the single piece of evidence that, if obtained, would most decisively move the verdict in either direction, and explain how to obtain it.\n\n' +
-    'Close with one short paragraph honestly assessing which argument (primary verdict or your counter-argument) is stronger on the current evidence, and your confidence (as 0-100%) in that meta-assessment. Do not tip off the subject (FDL Art.29).';
+    'Act as a DEVIL\'S ADVOCATE compliance reviewer running a TWO-PASS DIALECTIC. Your goal is not a single counter-argument but a disciplined adversarial exchange that the MLRO can weigh.\n\n' +
+    'PASS 1 — THE CHALLENGE. Construct the strongest possible counter-argument AGAINST the primary verdict. Four sections:\n' +
+    '  1.1 WEAKEST EVIDENCE: the single weakest piece supporting the primary verdict + why (source tier, coverage gap, inferential leap, stale signal).\n' +
+    '  1.2 EXCULPATORY HYPOTHESES: at least two plausible false-positive / exculpatory hypotheses with concrete supporting considerations (name collision, alias confusion, time-barred proceeding, resolved regulatory action).\n' +
+    '  1.3 MISSED SAFE HARBOURS: any regulatory exemption, safe harbour, de minimis threshold, or mitigating factor the primary verdict may have missed — cite article / resolution / circular.\n' +
+    '  1.4 DECISIVE EVIDENCE REQUEST: the single piece of evidence that, if obtained, would most decisively move the verdict in either direction, and how to obtain it.\n\n' +
+    'PASS 2 — THE REBUTTAL. Now critique your own PASS 1 as if you were defending the primary verdict. Two short sections:\n' +
+    '  2.1 WEAKEST CHALLENGE: which of the four PASS 1 points is weakest, and why it does NOT actually undermine the primary verdict?\n' +
+    '  2.2 BEST SURVIVING OBJECTION: of the four, which objection SURVIVES the rebuttal — i.e. which remains a legitimate concern the MLRO should act on?\n\n' +
+    'CONVERGENCE. Close with one short paragraph: on the current evidence, which side is stronger — primary verdict or the best surviving objection from your rebuttal? State your meta-confidence as a 0-100% integer. Do not tip off the subject (FDL Art.29).';
 
   var STR_DRAFT_QUESTION =
     'Draft an STR narrative for the UAE FIU on the subject and case below, ready for MLRO review and goAML submission. Follow FDL No.(10)/2025 Art.26-27 drafting standards.\n\n' +
@@ -5862,7 +5865,22 @@
       ? currentRow.compliance_report.typologies.map(function (t) { return t.id; })
       : [];
     var out = [];
-    function score(cats, country, type, typologies) {
+    // Recency weighting — newer matches are more informative than
+    // old ones for FATF Rec 10.12 pattern recognition. Half-life of
+    // 180 days: a match 6 months old gets ~50% weight, 1 year gets
+    // ~25%, anything older tails to near-zero. Scored as a multiplier
+    // on the overlap score.
+    function recencyMultiplier(tsRaw) {
+      if (!tsRaw) return 0.5; // register entries (no ts) get neutral weight
+      var t = typeof tsRaw === 'string' ? new Date(tsRaw).getTime() : tsRaw;
+      if (!isFinite(t) || t <= 0) return 0.5;
+      var ageDays = (Date.now() - t) / (24 * 60 * 60 * 1000);
+      if (ageDays < 0) ageDays = 0;
+      var halfLifeDays = 180;
+      var mult = Math.pow(0.5, ageDays / halfLifeDays);
+      return Math.max(0.1, Math.min(1.0, mult));
+    }
+    function score(cats, country, type, typologies, tsRaw) {
       var s = 0;
       var overlapCats = currentCats.filter(function (c) { return cats.indexOf(c) >= 0; });
       s += overlapCats.length * 3;
@@ -5870,7 +5888,11 @@
       if (type && type === currentType) s += 2;
       var overlapT = typologies.filter(function (t) { return currentTypologies.indexOf(t) >= 0; });
       s += overlapT.length * 3;
-      return { score: s, overlapCats: overlapCats, overlapTypologies: overlapT };
+      // Apply recency decay — rounded to 1 decimal so downstream
+      // sort remains stable and visible to the MLRO.
+      var mult = recencyMultiplier(tsRaw);
+      var weighted = Math.round(s * mult * 10) / 10;
+      return { score: weighted, raw_score: s, recency_mult: Math.round(mult * 100) / 100, overlapCats: overlapCats, overlapTypologies: overlapT };
     }
     // 1. Workbench history (excluding self).
     (workbenchRows || []).forEach(function (r) {
@@ -5879,7 +5901,7 @@
       var typs = r.compliance_report && Array.isArray(r.compliance_report.typologies)
         ? r.compliance_report.typologies.map(function (t) { return t.id; })
         : [];
-      var sc = score(cats, String(r.country || ''), r.subject_type || '', typs);
+      var sc = score(cats, String(r.country || ''), r.subject_type || '', typs, r.screened_at);
       if (sc.score >= 4) {
         out.push({
           source: 'workbench',
@@ -5907,7 +5929,7 @@
         return normalizeName(n) === normalizeName(currentRow.name || '');
       })) return; // skip self-match from register
       var cats = entry.categories || [];
-      var sc = score(cats, String(entry.country || ''), entry.entityType || '', []);
+      var sc = score(cats, String(entry.country || ''), entry.entityType || '', [], null);
       if (sc.score >= 4) {
         out.push({
           source: 'register',
