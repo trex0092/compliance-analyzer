@@ -43,6 +43,12 @@
  *                              explanation)
  */
 
+// Regulatory thresholds from the single source of truth. The router's
+// "high-value" predicate is anchored to the DPMS-CTR bright line so
+// that a future regulator-driven change to the threshold flows through
+// constants.ts and lands here without a second edit.
+import { DPMS_CASH_THRESHOLD_AED } from '../domain/constants';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -202,7 +208,7 @@ export const DEFAULT_ROUTING_RULES: readonly RoutingRule[] = [
     subsystem: 'crossCaseCorrelator',
     reason: 'Fires for high-value (≥AED 55K) or high-risk cases',
     predicate: (s) =>
-      s.txValue30dAED >= 55_000 || s.sanctionsMatchScore >= 0.5 || s.hasAdverseMedia,
+      s.txValue30dAED >= DPMS_CASH_THRESHOLD_AED || s.sanctionsMatchScore >= 0.5 || s.hasAdverseMedia,
     regulatory: 'FDL Art.20-22',
   },
   {
@@ -235,7 +241,7 @@ export const DEFAULT_ROUTING_RULES: readonly RoutingRule[] = [
   {
     subsystem: 'uncertaintyInterval',
     reason: 'Fires on verdicts that require a confidence envelope',
-    predicate: (s) => s.txValue30dAED >= 55_000 || s.sanctionsMatchScore >= 0.3,
+    predicate: (s) => s.txValue30dAED >= DPMS_CASH_THRESHOLD_AED || s.sanctionsMatchScore >= 0.3,
     regulatory: 'EU AI Act Art.15',
   },
   {

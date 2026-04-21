@@ -54,6 +54,11 @@
  *   - Sector pack covers the top-5 DPMS flags, not every scenario.
  */
 
+// Regulatory thresholds must come from the single source of truth
+// (CLAUDE.md §"Constants Architecture"). Hardcoding the DPMS-CTR limit
+// here would silently miss any regulator-driven change to the value.
+import { DPMS_CASH_THRESHOLD_AED } from '../domain/constants';
+
 // ---------------------------------------------------------------------------
 // 1. Transaction Rule Engine (declarative DSL + backtester)
 // ---------------------------------------------------------------------------
@@ -451,7 +456,7 @@ export function runDpmsSectorPack(input: {
   const flags: DpmsFlag[] = [];
   for (const tx of input.transactions) {
     // DPMS-CTR: cash sale at or above AED 55K.
-    if (tx.isCash && tx.amountAed >= 55_000) {
+    if (tx.isCash && tx.amountAed >= DPMS_CASH_THRESHOLD_AED) {
       flags.push({
         ruleId: 'DPMS-CTR',
         transactionId: tx.id,

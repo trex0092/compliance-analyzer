@@ -139,12 +139,13 @@ describe("analyseBehaviouralVelocity — off-hours", () => {
 
 describe("analyseBehaviouralVelocity — weekend", () => {
   it("detects high weekend concentration", () => {
-    // 2026-04-17 is a Friday; 2026-04-18 is a Saturday.
+    // UAE government weekend since 1 Jan 2022 = Sat + Sun.
+    // 2026-04-18 is a Saturday; 2026-04-19 is a Sunday (in Asia/Dubai).
     const cases: CaseSnapshot[] = [
-      snap({ caseId: "f1", openedAt: "2026-04-17T12:00:00.000Z" }),
-      snap({ caseId: "f2", openedAt: "2026-04-17T14:00:00.000Z" }),
-      snap({ caseId: "f3", openedAt: "2026-04-18T10:00:00.000Z" }),
-      snap({ caseId: "f4", openedAt: "2026-04-18T11:00:00.000Z" }),
+      snap({ caseId: "s1", openedAt: "2026-04-18T10:00:00.000Z" }),
+      snap({ caseId: "s2", openedAt: "2026-04-18T14:00:00.000Z" }),
+      snap({ caseId: "u1", openedAt: "2026-04-19T10:00:00.000Z" }),
+      snap({ caseId: "u2", openedAt: "2026-04-19T11:00:00.000Z" }),
     ];
     const r = analyseBehaviouralVelocity("t1", cases, {
       burstThresholdHours: 0.5, // disable burst so weekend dominates

@@ -81,7 +81,9 @@ function asiaDubaiDayOfWeek(iso: string): number | null {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return null;
   const shifted = new Date(t + 4 * 3_600_000);
-  // 0 = Sunday, 5 = Friday, 6 = Saturday. UAE weekend = Fri + Sat.
+  // 0 = Sunday, 6 = Saturday. UAE government-standard weekend is
+  // Sat + Sun (effective 1 Jan 2022). See src/utils/businessDays.ts
+  // for the authoritative implementation.
   return shifted.getUTCDay();
 }
 
@@ -187,7 +189,7 @@ function computeWeekend(cases: readonly CaseSnapshot[]): VelocitySignal {
     const d = asiaDubaiDayOfWeek(c.openedAt);
     if (d === null) continue;
     counted += 1;
-    if (d === 5 || d === 6) weekend += 1; // Fri or Sat (UAE weekend)
+    if (d === 6 || d === 0) weekend += 1; // Sat or Sun (UAE weekend since 1 Jan 2022)
   }
   if (counted === 0) {
     return {

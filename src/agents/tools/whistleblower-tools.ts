@@ -168,7 +168,9 @@ function addBusinessDays(date: Date, days: number): Date {
   while (added < days) {
     result.setDate(result.getDate() + 1);
     const day = result.getDay();
-    // UAE work week: Mon-Fri (Sat/Sun weekend)
+    // UAE government-standard calendar since 1 Jan 2022: Sat (6) + Sun
+    // (0) are the weekend; Mon-Fri are business days. Matches the
+    // authoritative implementation in src/utils/businessDays.ts.
     if (day !== 0 && day !== 6) added++;
   }
   return result;

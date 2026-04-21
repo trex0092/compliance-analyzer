@@ -36,6 +36,7 @@ import type { ComplianceCase } from '../domain/cases';
 import type { CustomerProfile } from '../domain/customers';
 import type { Verdict } from './asanaCustomFields';
 import { evaluatePolicy, type Policy, type Facts, parsePolicy } from './policyDsl';
+import { UBO_OWNERSHIP_THRESHOLD_PCT } from '../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,7 +95,11 @@ export function buildPolicyFacts(input: Omit<PolicyBridgeInput, 'policy'>): Fact
     source_of_wealth_status: customer?.sourceOfWealthStatus ?? null,
     ubo_count:
       customer?.beneficialOwners?.filter(
-        (b) => typeof b.ownershipPercent === 'number' && b.ownershipPercent >= 25
+        (b) =>
+          typeof b.ownershipPercent === 'number' &&
+          // ownershipPercent is 0-100; constant is 0-1 decimal.
+          // Cabinet Decision 109/2023 beneficial-ownership threshold.
+          b.ownershipPercent >= UBO_OWNERSHIP_THRESHOLD_PCT * 100
       ).length ?? 0,
   };
 }
