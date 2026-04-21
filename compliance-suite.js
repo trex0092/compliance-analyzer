@@ -3173,6 +3173,32 @@ window.csFormatDateInput = function (el) {
 
     el.innerHTML = `
     <div class="card" style="margin-bottom:1.2rem">
+      <!-- PR-3 Ongoing-Screening status banner. Populated by
+           wireTfs2OngoingScreeningBanner() after each render; hidden
+           until it has something meaningful to show (subjects on
+           re-screen OR a recorded last-run). -->
+      <div id="tfs2-ongoing-banner" data-role="ongoing-screening-banner" hidden
+        style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:4px;padding:10px 14px;margin-bottom:1rem;font-size:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span aria-hidden="true" style="width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block"></span>
+          <span>
+            <strong data-field="subjectCount">0</strong>
+            <span style="color:var(--muted)">subjects on daily re-screen ·</span>
+            next run
+            <strong data-field="nextRun">—</strong>
+            <span style="color:var(--muted)">· 08:00 UTC daily</span>
+          </span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;color:var(--muted)" data-slot="last-run">
+          <span data-field="lastRunText">Awaiting first run</span>
+          <a data-field="asanaLink" href="#" target="_blank" rel="noopener"
+             style="color:var(--azure,#a855f7);text-decoration:none" hidden>Open Asana report →</a>
+          <button type="button" data-action="suite2DismissOngoingBanner"
+            aria-label="Dismiss banner for this session"
+            style="background:transparent;border:0;color:var(--muted);font-size:14px;cursor:pointer;padding:0 4px">×</button>
+        </div>
+      </div>
+
       <div class="top-bar">
         <span class="sec-title">TFS Workflow — Full 4-Outcome Process</span>
         <span style="font-size:11px;color:var(--muted)">Cabinet Decision No.(74) of 2020 | EOCN Executive Office TFS Guidance</span>
@@ -3234,19 +3260,83 @@ window.csFormatDateInput = function (el) {
         <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;font-family:'Montserrat',sans-serif">Cabinet Decision No.(74) of 2020 | EOCN TFS Guidance | Mandatory: UAE Local Terrorist List + UNSC Consolidated List</div>
         <input type="hidden" id="tfs2-edit-idx" value="-1">
 
-        <div class="row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          <div><span class="lbl">Name Screened *</span><input id="tfs2-name" placeholder="Full legal name of individual or entity"/></div>
-          <div><span class="lbl">Entity Type *</span>
-            <select id="tfs2-entity-type"><option value="Individual">Individual</option><option value="Company">Company</option></select>
+        <!-- Entity-type tabs (PR-2) — LSEG World-Check One parity.
+             Vessel intentionally deferred pending goAML mapping decision. -->
+        <div><span class="lbl">Entity Type *</span>
+          <div id="tfs2-entity-tabs" role="tablist" aria-label="Entity type" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px">
+            <button type="button" role="tab" data-action="suite2SelectEntityType" data-arg="individual"
+              id="tfs2-tab-individual" aria-selected="true"
+              style="background:var(--surface2);border:2px solid var(--border);color:var(--text);font-size:12px;padding:10px 6px;border-radius:3px;cursor:pointer">
+              👤 Individual
+            </button>
+            <button type="button" role="tab" data-action="suite2SelectEntityType" data-arg="organisation"
+              id="tfs2-tab-organisation" aria-selected="false"
+              style="background:var(--surface2);border:2px solid var(--border);color:var(--text);font-size:12px;padding:10px 6px;border-radius:3px;cursor:pointer">
+              🏢 Organisation
+            </button>
+            <button type="button" role="tab" data-action="suite2SelectEntityType" data-arg="unspecified"
+              id="tfs2-tab-unspecified" aria-selected="false"
+              style="background:var(--surface2);border:2px solid var(--border);color:var(--text);font-size:12px;padding:10px 6px;border-radius:3px;cursor:pointer">
+              ❔ Unspecified
+            </button>
           </div>
-          <div><span class="lbl">Date of Birth / Registration</span><input type="text" id="tfs2-dob" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
+          <input type="hidden" id="tfs2-entity-type" value="individual"/>
+        </div>
+
+        <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+          <div><span class="lbl" id="tfs2-name-label">Name Screened *</span><input id="tfs2-name" placeholder="Full legal name of individual or entity"/></div>
+          <div><span class="lbl" id="tfs2-dob-label">Date of Birth / Registration</span><input type="text" id="tfs2-dob" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
+        </div>
+        <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><span class="lbl">Alternate names / aliases</span><input id="tfs2-altnames" placeholder="Comma-separated. Up to 20."/></div>
+          <div><span class="lbl" id="tfs2-pob-label">Place of birth</span><input id="tfs2-pob" placeholder="City, country"/></div>
         </div>
         <div class="row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
           <div><span class="lbl">Screening Event Type *</span>
             <select id="tfs2-event"><option>New Customer Onboarding</option><option>Periodic Rescreening</option><option>List Update Trigger</option><option>Transaction Pre-Approval</option><option>Supplier/Refinery Onboarding</option><option>UBO Screening</option><option>Ad Hoc Review</option></select>
           </div>
-          <div><span class="lbl">Country</span><input id="tfs2-country" placeholder="e.g. UAE, Iran, Russia"/></div>
-          <div><span class="lbl">ID / Register No.</span><input id="tfs2-idnumber" placeholder="Passport, EID, Trade License"/></div>
+          <div><span class="lbl">Country (nationality / incorporation)</span><input id="tfs2-country" placeholder="e.g. UAE, Iran, Russia"/></div>
+          <div><span class="lbl">Country location (residence / operation)</span><input id="tfs2-country-location" placeholder="Where the subject lives / operates"/></div>
+        </div>
+        <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><span class="lbl">Case ID</span><input id="tfs2-case-id" placeholder="CASE-YYYY-NNNN"/></div>
+          <div><span class="lbl">Group / portfolio</span><input id="tfs2-group" placeholder="e.g. Project Falcon — counterparties"/></div>
+        </div>
+
+        <!-- Identifications — multi-entry (PR-2 LSEG WC-One parity). Render
+             one editable row; add more via the + button. Serialised to the
+             identifications[] array on save. ID / Register No. below is
+             the legacy single-value field; it is still accepted by the
+             backend and mirrored into the first identifications row on
+             submit when that row is blank. -->
+        <div style="margin-top:10px">
+          <span class="lbl">Identification (multi-entry)</span>
+          <div id="tfs2-ids" style="display:flex;flex-direction:column;gap:6px;margin-top:4px"></div>
+          <button type="button" data-action="suite2AddIdentificationRow"
+            style="margin-top:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px 10px;border-radius:3px;cursor:pointer">
+            + Add another ID
+          </button>
+        </div>
+
+        <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+          <div><span class="lbl">ID / Register No. (legacy — first ID row)</span><input id="tfs2-idnumber" placeholder="Passport, EID, Trade License"/></div>
+          <div>
+            <span class="lbl">Ongoing Screening</span>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:6px;cursor:pointer;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:3px">
+              <input type="checkbox" id="tfs2-ongoing-screening" style="width:auto"/>
+              <span>Re-screen daily at 08:00 UTC · FATF Rec 10 · FDL Art.20-21</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Check types (PR-2) — which screening engines to run for this subject -->
+        <div style="margin-top:10px">
+          <span class="lbl">Check Types</span>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--surface2);padding:10px;border-radius:3px;border:1px solid var(--border);margin-top:4px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-check-worldcheck" style="width:auto" checked/> World-Check</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-check-passport" style="width:auto"/> Passport verification</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="checkbox" id="tfs2-check-adverse-deep" style="width:auto"/> Adverse-Media Deep Scan</label>
+          </div>
         </div>
         <div><span class="lbl">Lists Screened (tick all that apply)</span>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface2);padding:10px;border-radius:3px;border:1px solid var(--border);margin-top:4px">
@@ -3409,12 +3499,308 @@ window.csFormatDateInput = function (el) {
   };
 
   global.renderTFS2 = renderTFS2;
+
+  // ── Ongoing-Screening status banner (PR-3) ────────────────────────────
+  // Populates #tfs2-ongoing-banner after each render. Does NOT show subject
+  // names, IDs, or hit details — FDL Art.29 (no tipping off). Only aggregate
+  // metadata: count, next-run countdown, and a link to the Asana routines
+  // board where the MLRO can read the per-subject detail.
+  const TFS2_BANNER_DISMISS_KEY = 'hawkeye.ongoingBannerDismissed.session';
+  let tfs2BannerTimer = null;
+
+  function isTfs2BannerDismissedThisSession() {
+    try { return sessionStorage.getItem(TFS2_BANNER_DISMISS_KEY) === '1'; }
+    catch (_e) { return false; }
+  }
+  function dismissTfs2BannerForSession() {
+    try { sessionStorage.setItem(TFS2_BANNER_DISMISS_KEY, '1'); } catch (_e) { /* ignore */ }
+  }
+  global.suite2DismissOngoingBanner = function() {
+    dismissTfs2BannerForSession();
+    const banner = document.getElementById('tfs2-ongoing-banner');
+    if (banner) banner.hidden = true;
+    if (tfs2BannerTimer) { clearInterval(tfs2BannerTimer); tfs2BannerTimer = null; }
+  };
+
+  function countTfs2OngoingSubjects() {
+    try {
+      const events = load(SK2.TFS2) || [];
+      if (!Array.isArray(events)) return 0;
+      // Dedupe by subject name so one person with multiple events counts once.
+      const names = new Set();
+      events.forEach(function(e) {
+        if (e && e.ongoingScreening === true) {
+          const key = (e.screenedName || '').trim().toLowerCase();
+          if (key) names.add(key);
+        }
+      });
+      return names.size;
+    } catch (_e) { return 0; }
+  }
+
+  function formatTfs2Countdown(toIso) {
+    if (!toIso) return '—';
+    const ms = new Date(toIso).getTime() - Date.now();
+    if (!isFinite(ms) || ms <= 0) return 'imminent';
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    if (h >= 1) return h + 'h ' + String(m).padStart(2, '0') + 'm';
+    const s = Math.floor((ms % 60000) / 1000);
+    return m + 'm ' + String(s).padStart(2, '0') + 's';
+  }
+
+  function formatTfs2LastRun(lastRun) {
+    if (!lastRun || !lastRun.ranAt) return 'Awaiting first run';
+    let when = lastRun.ranAt;
+    try {
+      const d = new Date(lastRun.ranAt);
+      if (!isNaN(d.getTime())) when = d.toUTCString().replace('GMT', 'UTC');
+    } catch (_e) { /* fall through */ }
+    const note = lastRun.note && typeof lastRun.note === 'string' ? ' · ' + lastRun.note : '';
+    return 'Last run ' + when + note;
+  }
+
+  function applyTfs2BannerPayload(payload) {
+    const banner = document.getElementById('tfs2-ongoing-banner');
+    if (!banner) return;
+    if (isTfs2BannerDismissedThisSession()) { banner.hidden = true; return; }
+
+    const subjectCount = countTfs2OngoingSubjects();
+    const lastRun = payload && payload.lastRun ? payload.lastRun : null;
+    const nextRunAt = payload && payload.nextRunAt ? payload.nextRunAt : null;
+    const asanaUrl = payload && payload.routinesProjectUrl ? payload.routinesProjectUrl : null;
+
+    // Nothing meaningful to show yet — keep it hidden so an empty-state
+    // banner does not create visual noise on fresh installs.
+    if (subjectCount === 0 && !lastRun) { banner.hidden = true; return; }
+
+    const subjectEl  = banner.querySelector('[data-field="subjectCount"]');
+    const nextRunEl  = banner.querySelector('[data-field="nextRun"]');
+    const lastTextEl = banner.querySelector('[data-field="lastRunText"]');
+    const asanaEl    = banner.querySelector('[data-field="asanaLink"]');
+    if (subjectEl)  subjectEl.textContent  = String(subjectCount);
+    if (nextRunEl)  nextRunEl.textContent  = 'in ' + formatTfs2Countdown(nextRunAt);
+    if (lastTextEl) lastTextEl.textContent = formatTfs2LastRun(lastRun);
+    if (asanaEl) {
+      if (asanaUrl) { asanaEl.setAttribute('href', asanaUrl); asanaEl.hidden = false; }
+      else          { asanaEl.removeAttribute('href');         asanaEl.hidden = true; }
+    }
+
+    banner.hidden = false;
+
+    // Tick the countdown once per minute until the banner is re-rendered
+    // or dismissed. Cleared on dismiss + on the next render.
+    if (tfs2BannerTimer) { clearInterval(tfs2BannerTimer); tfs2BannerTimer = null; }
+    if (nextRunAt) {
+      tfs2BannerTimer = setInterval(function() {
+        if (nextRunEl) nextRunEl.textContent = 'in ' + formatTfs2Countdown(nextRunAt);
+      }, 60000);
+    }
+  }
+
+  async function wireTfs2OngoingScreeningBanner() {
+    const banner = document.getElementById('tfs2-ongoing-banner');
+    if (!banner) return;
+    if (isTfs2BannerDismissedThisSession()) { banner.hidden = true; return; }
+    // Paint the local-only state first so the count appears instantly even
+    // if the endpoint is slow. Backend data fills in on arrival.
+    applyTfs2BannerPayload({ lastRun: null, nextRunAt: null, routinesProjectUrl: null });
+    try {
+      const res = await fetch('/api/ongoing-screening-status', {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) return;
+      const payload = await res.json().catch(function(){ return null; });
+      if (payload && payload.ok) applyTfs2BannerPayload(payload);
+    } catch (_e) {
+      // Network failure — leave the local-only paint in place. The MLRO
+      // still sees the subject count and the "08:00 UTC daily" schedule.
+    }
+  }
+  global.wireTfs2OngoingScreeningBanner = wireTfs2OngoingScreeningBanner;
+
+  // ── Entity-type tabs (PR-2) ───────────────────────────────────────────
+  // Valid canonical values for the tabs. Vessel intentionally omitted until
+  // the goAML mapping decision is made (CLAUDE.md Regulatory Domain Knowledge).
+  const TFS2_ENTITY_TYPES = ['individual','organisation','unspecified'];
+  // Legacy values that might live on older saved screening events. Mirrored
+  // by src/domain/constants.ts > ENTITY_TYPE_LEGACY_ALIASES — keep in sync.
+  const TFS2_ENTITY_TYPE_ALIASES = {
+    'Individual': 'individual',
+    'Company': 'organisation',
+    'legal_entity': 'organisation',
+    'organization': 'organisation',
+    'INDIVIDUAL': 'individual',
+    'ORGANISATION': 'organisation',
+    'ORGANIZATION': 'organisation',
+    'UNSPECIFIED': 'unspecified',
+  };
+  function normaliseTfs2EntityType(raw) {
+    if (typeof raw !== 'string') return 'individual';
+    const trimmed = raw.trim();
+    if (!trimmed) return 'individual';
+    if (TFS2_ENTITY_TYPES.indexOf(trimmed) !== -1) return trimmed;
+    if (Object.prototype.hasOwnProperty.call(TFS2_ENTITY_TYPE_ALIASES, trimmed)) {
+      return TFS2_ENTITY_TYPE_ALIASES[trimmed];
+    }
+    return 'individual';
+  }
+  function applyTfs2EntityTypeUi(value) {
+    const canonical = normaliseTfs2EntityType(value);
+    const hidden = document.getElementById('tfs2-entity-type');
+    if (hidden) hidden.value = canonical;
+    TFS2_ENTITY_TYPES.forEach(function(t) {
+      const btn = document.getElementById('tfs2-tab-'+t);
+      if (!btn) return;
+      const selected = t === canonical;
+      btn.setAttribute('aria-selected', selected ? 'true' : 'false');
+      btn.style.background = selected ? 'var(--gold, #f5a623)22' : 'var(--surface2)';
+      btn.style.borderColor = selected ? 'var(--gold, #f5a623)' : 'var(--border)';
+    });
+    // Label swap — same inputs, different prompts per entity type.
+    const nameLbl = document.getElementById('tfs2-name-label');
+    const dobLbl  = document.getElementById('tfs2-dob-label');
+    const pobLbl  = document.getElementById('tfs2-pob-label');
+    if (canonical === 'organisation') {
+      if (nameLbl) nameLbl.textContent = 'Legal / trading name *';
+      if (dobLbl)  dobLbl.textContent  = 'Registration / incorporation date';
+      if (pobLbl)  pobLbl.textContent  = 'Place of incorporation';
+    } else if (canonical === 'unspecified') {
+      if (nameLbl) nameLbl.textContent = 'Raw name / subject text *';
+      if (dobLbl)  dobLbl.textContent  = 'Date of birth / registration (if known)';
+      if (pobLbl)  pobLbl.textContent  = 'Place of birth (if known)';
+    } else {
+      if (nameLbl) nameLbl.textContent = 'Full name *';
+      if (dobLbl)  dobLbl.textContent  = 'Date of birth';
+      if (pobLbl)  pobLbl.textContent  = 'Place of birth';
+    }
+    // Ongoing-screening is only meaningful when we have a stable target.
+    const ongoing = document.getElementById('tfs2-ongoing-screening');
+    if (ongoing) {
+      if (canonical === 'unspecified') {
+        ongoing.checked = false;
+        ongoing.disabled = true;
+        ongoing.title = 'Ongoing screening requires a stable subject identity.';
+      } else {
+        ongoing.disabled = false;
+        ongoing.removeAttribute('title');
+      }
+    }
+  }
+  global.suite2SelectEntityType = function(value) {
+    applyTfs2EntityTypeUi(value);
+  };
+
+  // ── Identification multi-entry rows (PR-2) ────────────────────────────
+  const TFS2_ID_TYPES = [
+    { v: 'passport',      l: 'Passport' },
+    { v: 'national_id',   l: 'National ID' },
+    { v: 'emirates_id',   l: 'Emirates ID' },
+    { v: 'trade_licence', l: 'Trade Licence' },
+    { v: 'driver_licence',l: 'Driver Licence' },
+    { v: 'tax_id',        l: 'Tax ID' },
+    { v: 'lei',           l: 'LEI' },
+    { v: 'other',         l: 'Other' },
+  ];
+  function buildTfs2IdRow(record) {
+    const rec = record || { type: 'passport', number: '', issuer: '' };
+    const wrap = document.createElement('div');
+    wrap.className = 'tfs2-id-row';
+    wrap.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:center';
+    const sel = document.createElement('select');
+    sel.className = 'tfs2-id-type';
+    TFS2_ID_TYPES.forEach(function(o){
+      const opt = document.createElement('option');
+      opt.value = o.v;
+      opt.textContent = o.l;
+      if (o.v === rec.type) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    const num = document.createElement('input');
+    num.className = 'tfs2-id-number';
+    num.placeholder = 'ID / reference number';
+    num.maxLength = 64;
+    num.value = rec.number || '';
+    const iss = document.createElement('input');
+    iss.className = 'tfs2-id-issuer';
+    iss.placeholder = 'Issuing country / authority';
+    iss.maxLength = 64;
+    iss.value = rec.issuer || '';
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.textContent = '✕';
+    rm.title = 'Remove this ID';
+    rm.style.cssText = 'background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px 10px;border-radius:3px;cursor:pointer';
+    rm.addEventListener('click', function() {
+      if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+    });
+    wrap.appendChild(sel);
+    wrap.appendChild(num);
+    wrap.appendChild(iss);
+    wrap.appendChild(rm);
+    return wrap;
+  }
+  global.suite2AddIdentificationRow = function(record) {
+    const host = document.getElementById('tfs2-ids');
+    if (!host) return;
+    host.appendChild(buildTfs2IdRow(record));
+  };
+  function clearTfs2IdRows() {
+    const host = document.getElementById('tfs2-ids');
+    if (host) host.innerHTML = '';
+  }
+  function readTfs2Identifications() {
+    const rows = document.querySelectorAll('#tfs2-ids .tfs2-id-row');
+    const out = [];
+    rows.forEach(function(row) {
+      const t = row.querySelector('.tfs2-id-type');
+      const n = row.querySelector('.tfs2-id-number');
+      const i = row.querySelector('.tfs2-id-issuer');
+      const number = n && typeof n.value === 'string' ? n.value.trim() : '';
+      if (!number) return;
+      out.push({
+        type: t ? t.value : 'other',
+        number: number,
+        issuer: i && typeof i.value === 'string' && i.value.trim() ? i.value.trim() : undefined,
+      });
+    });
+    return out;
+  }
+  function readTfs2CheckTypes() {
+    return {
+      worldCheck:       !!(document.getElementById('tfs2-check-worldcheck')?.checked),
+      passport:         !!(document.getElementById('tfs2-check-passport')?.checked),
+      adverseMediaDeep: !!(document.getElementById('tfs2-check-adverse-deep')?.checked),
+    };
+  }
+  function parseTfs2AltNames(raw) {
+    if (!raw || typeof raw !== 'string') return [];
+    return raw
+      .split(/[,;\n]/)
+      .map(function(s){ return s.trim(); })
+      .filter(function(s){ return s.length > 0 && s.length <= 200; })
+      .slice(0, 20);
+  }
+
   global.suite2OpenTFSForm = function() {
     document.getElementById('tfs2-edit-idx').value = '-1';
     ['tfs2-name','tfs2-reviewer','tfs2-notes','tfs2-fp-evidence','tfs2-pnmr-ref','tfs2-ffr-ref','tfs2-cnmr-ref'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['tfs2-altnames','tfs2-pob','tfs2-country-location','tfs2-case-id','tfs2-group'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     ['tfs2-fp-basis','tfs2-tx-suspended','tfs2-pnmr-status','tfs2-frozen','tfs2-ffr','tfs2-cnmr-status','tfs2-supervisor','tfs2-mlro','tfs2-mgmt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     ['tfs2-list-uae','tfs2-list-un'].forEach(id=>{const e=document.getElementById(id);if(e)e.checked=true;});
     ['tfs2-list-ofac','tfs2-list-eu','tfs2-list-uk','tfs2-list-interpol','tfs2-list-adverse','tfs2-list-pep'].forEach(id=>{const e=document.getElementById(id);if(e)e.checked=true;});
+    // Check types: default World-Check on, deep scans off.
+    const wc = document.getElementById('tfs2-check-worldcheck'); if (wc) wc.checked = true;
+    const pp = document.getElementById('tfs2-check-passport');   if (pp) pp.checked = false;
+    const am = document.getElementById('tfs2-check-adverse-deep'); if (am) am.checked = false;
+    // Ongoing screening: off by default — explicit opt-in only.
+    const os = document.getElementById('tfs2-ongoing-screening'); if (os) { os.checked = false; os.disabled = false; }
+    // Identifications: seed with one empty row.
+    clearTfs2IdRows();
+    global.suite2AddIdentificationRow();
+    // Default entity type.
+    applyTfs2EntityTypeUi('individual');
     document.getElementById('tfs2-date').value = today();
     document.getElementById('tfs2-outcome').value = '';
     document.getElementById('tfs2-freeze-dt').value = '';
@@ -3432,10 +3818,38 @@ window.csFormatDateInput = function (el) {
     suite2OpenTFSForm();
     document.getElementById('tfs2-edit-idx').value = idx;
     document.getElementById('tfs2-name').value = e.screenedName||'';
-    if (document.getElementById('tfs2-entity-type')) document.getElementById('tfs2-entity-type').value = e.entityType||'Individual';
+    // Restore entity-type tab state via the normalising helper so legacy
+    // "Individual" / "Company" / "legal_entity" values snap to the canonical
+    // individual / organisation set.
+    applyTfs2EntityTypeUi(e.entityType || 'individual');
     if (document.getElementById('tfs2-dob')) document.getElementById('tfs2-dob').value = e.dob||'';
     if (document.getElementById('tfs2-country')) document.getElementById('tfs2-country').value = e.country||'';
     if (document.getElementById('tfs2-idnumber')) document.getElementById('tfs2-idnumber').value = e.idNumber||'';
+    // PR-2 new fields — all optional, backfill empties for legacy records.
+    const altEl    = document.getElementById('tfs2-altnames');
+    const pobEl    = document.getElementById('tfs2-pob');
+    const clocEl   = document.getElementById('tfs2-country-location');
+    const caseEl   = document.getElementById('tfs2-case-id');
+    const groupEl  = document.getElementById('tfs2-group');
+    if (altEl)   altEl.value   = Array.isArray(e.altNames) ? e.altNames.join(', ') : (e.altNames || '');
+    if (pobEl)   pobEl.value   = e.pob || '';
+    if (clocEl)  clocEl.value  = e.countryLocation || '';
+    if (caseEl)  caseEl.value  = e.caseId || '';
+    if (groupEl) groupEl.value = e.group || '';
+    // Identifications — rebuild from the record, or seed with a single row.
+    clearTfs2IdRows();
+    if (Array.isArray(e.identifications) && e.identifications.length > 0) {
+      e.identifications.forEach(function(rec){ global.suite2AddIdentificationRow(rec); });
+    } else {
+      global.suite2AddIdentificationRow();
+    }
+    // Check types — default World-Check on when the record lacks them.
+    const ct = (e.checkTypes && typeof e.checkTypes === 'object') ? e.checkTypes : { worldCheck: true, passport: false, adverseMediaDeep: false };
+    const wc = document.getElementById('tfs2-check-worldcheck');   if (wc) wc.checked = !!ct.worldCheck;
+    const pp = document.getElementById('tfs2-check-passport');     if (pp) pp.checked = !!ct.passport;
+    const amd = document.getElementById('tfs2-check-adverse-deep'); if (amd) amd.checked = !!ct.adverseMediaDeep;
+    // Ongoing screening — preserve prior opt-in.
+    const os = document.getElementById('tfs2-ongoing-screening'); if (os) os.checked = !!e.ongoingScreening;
     document.getElementById('tfs2-event').value = e.eventType||'';
     document.getElementById('tfs2-date').value = e.screeningDate||today();
     document.getElementById('tfs2-reviewer').value = e.reviewedBy||'';
@@ -3452,7 +3866,7 @@ window.csFormatDateInput = function (el) {
 
   global.suite2RunScreening = async function() {
     var name = document.getElementById('tfs2-name')?.value?.trim();
-    var entityType = document.getElementById('tfs2-entity-type')?.value || 'Individual';
+    var entityType = normaliseTfs2EntityType(document.getElementById('tfs2-entity-type')?.value);
     var country = document.getElementById('tfs2-country')?.value?.trim() || '';
     var idNumber = document.getElementById('tfs2-idnumber')?.value?.trim() || '';
     if (!name) { toast('Enter the name to screen', 'error'); return; }
@@ -3633,10 +4047,22 @@ window.csFormatDateInput = function (el) {
     const record = {
       id: editIdx>=0 ? events[editIdx].id : `TFS2-${Date.now()}`,
       screenedName: name,
-      entityType: document.getElementById('tfs2-entity-type')?.value || 'Individual',
+      // Canonical PR-2 entity type — always one of individual / organisation /
+      // unspecified (legacy "Individual" / "Company" normalised at read).
+      entityType: normaliseTfs2EntityType(document.getElementById('tfs2-entity-type')?.value),
       dob: document.getElementById('tfs2-dob')?.value || '',
       country: document.getElementById('tfs2-country')?.value?.trim() || '',
       idNumber: document.getElementById('tfs2-idnumber')?.value?.trim() || '',
+      // PR-2 LSEG World-Check One parity fields. All optional — trimmed,
+      // capped, and omitted-as-blank preserved so legacy records round-trip.
+      altNames: parseTfs2AltNames(document.getElementById('tfs2-altnames')?.value || ''),
+      pob: document.getElementById('tfs2-pob')?.value?.trim() || '',
+      countryLocation: document.getElementById('tfs2-country-location')?.value?.trim() || '',
+      caseId: document.getElementById('tfs2-case-id')?.value?.trim() || '',
+      group: document.getElementById('tfs2-group')?.value?.trim() || '',
+      identifications: readTfs2Identifications(),
+      checkTypes: readTfs2CheckTypes(),
+      ongoingScreening: !!(document.getElementById('tfs2-ongoing-screening')?.checked),
       eventType: document.getElementById('tfs2-event').value,
       listsScreened: lists.join(' | '),
       screeningDate: document.getElementById('tfs2-date').value,
@@ -4541,6 +4967,11 @@ window.csFormatDateInput = function (el) {
     global.renderTFS2 = function() {
       origRenderTFS2();
       setTimeout(patchTFS2Render, 100);
+      // PR-3 — populate the ongoing-screening status banner after each
+      // render. Non-blocking: failures degrade to a local-only paint.
+      if (typeof global.wireTfs2OngoingScreeningBanner === 'function') {
+        setTimeout(global.wireTfs2OngoingScreeningBanner, 120);
+      }
     };
   }
 

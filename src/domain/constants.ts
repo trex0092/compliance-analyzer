@@ -371,9 +371,66 @@ export const PF_ANNUAL_TRAINING_HOURS = 4;
  */
 export const PF_RISK_ASSESSMENT_MAX_AGE_DAYS = 400;
 
+// ─── Screening entity types ─────────────────────────────────────────────────
+
+/**
+ * Canonical entity types for the screening command. Expanded from the
+ * historical two-value set (`individual` / `legal_entity`) to match
+ * LSEG World-Check One's subject taxonomy. Vessel intentionally
+ * deferred — the goAML natural-person / legal-entity schema has no
+ * vessel node and rushing a mapping would mask the decision.
+ *
+ * Regulatory basis:
+ *   FDL No.10/2025 Art.20-21 (screening situational awareness)
+ *   FDL No.10/2025 Art.24    (10-yr retention of screening records)
+ *   FATF Rec 10              (ongoing CDD — subject classification)
+ */
+export const ENTITY_TYPES_SUPPORTED = ['individual', 'organisation', 'unspecified'] as const;
+export type EntityTypeSupported = (typeof ENTITY_TYPES_SUPPORTED)[number];
+
+/**
+ * Legacy aliases — values written by older screens or earlier API
+ * contracts that must still round-trip after the upgrade. Kept as a
+ * separate map (rather than inlined in the supported list) so the
+ * canonical UI always writes the new value and the alias table is
+ * read-only compatibility surface.
+ */
+export const ENTITY_TYPE_LEGACY_ALIASES: Readonly<Record<string, EntityTypeSupported>> = {
+  // Old server-side contract (netlify/functions/screening-save.mts pre-PR)
+  legal_entity: 'organisation',
+  // Old TFS modal dropdown values (compliance-suite.js pre-PR)
+  Individual: 'individual',
+  Company: 'organisation',
+  // Belt-and-braces: case-insensitive canonical forms
+  INDIVIDUAL: 'individual',
+  ORGANISATION: 'organisation',
+  ORGANIZATION: 'organisation',
+  organization: 'organisation',
+  UNSPECIFIED: 'unspecified',
+};
+
+/**
+ * Normalise any incoming entityType value to the canonical form.
+ * Returns `null` when the value is not recognised — callers MUST
+ * reject on null rather than coerce silently (FDL Art.20-21: the
+ * MLRO must see unknown inputs, not a coerced guess).
+ */
+export function normaliseEntityType(raw: unknown): EntityTypeSupported | null {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return null;
+  if ((ENTITY_TYPES_SUPPORTED as readonly string[]).includes(trimmed)) {
+    return trimmed as EntityTypeSupported;
+  }
+  if (Object.prototype.hasOwnProperty.call(ENTITY_TYPE_LEGACY_ALIASES, trimmed)) {
+    return ENTITY_TYPE_LEGACY_ALIASES[trimmed]!;
+  }
+  return null;
+}
+
 // ─── Version ────────────────────────────────────────────────────────────────
 
 /** Last regulatory update date — update when any constant changes */
-export const REGULATORY_CONSTANTS_VERSION = '2026-04-15';
+export const REGULATORY_CONSTANTS_VERSION = '2026-04-21';
 export const REGULATORY_CONSTANTS_NOTES =
-  'Updated: record retention 5yr→10yr (MoE DPMS Guidance), STR filing to "without delay" (FIU), asset freeze to immediate (EOCN TFS Guidance July 2025), Cabinet Res 156/2025 PF deep-dive constants (review cadence, escalation score, strategic-goods declaration deadline, pause-and-report duration, designation lists, end-use red flags, annual training hours). FDL No.10/2025, Cabinet Res 134/2025, 74/2020, 156/2025, 71/2024, 109/2023.';
+  'Updated: record retention 5yr→10yr (MoE DPMS Guidance), STR filing to "without delay" (FIU), asset freeze to immediate (EOCN TFS Guidance July 2025), Cabinet Res 156/2025 PF deep-dive constants (review cadence, escalation score, strategic-goods declaration deadline, pause-and-report duration, designation lists, end-use red flags, annual training hours). 2026-04-21: added ENTITY_TYPES_SUPPORTED (individual / organisation / unspecified) + legacy alias map for the screening command upgrade — LSEG WC-One parity, vessel deferred pending goAML mapping. FDL No.10/2025, Cabinet Res 134/2025, 74/2020, 156/2025, 71/2024, 109/2023.';
