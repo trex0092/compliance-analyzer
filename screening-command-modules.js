@@ -6254,10 +6254,19 @@
     if (!row) return null;
     var txs = safeParse(STORAGE.transactions, []);
     if (!Array.isArray(txs) || !txs.length) return null;
-    var myName = normalizeName(row.name || '');
+    var myName = row.name || '';
     if (!myName) return null;
+    // Fuzzy match — delegate to nameMatches() (Jaro-Winkler + Soundex +
+    // Metaphone + token-set at ≥0.80 threshold). Catches
+    // "Istanbul Gold" ↔ "Istanbul Gold Refinery" / alias drift that
+    // the old normalizeName-equality check missed. Still cheap: runs
+    // in-memory against the localStorage tx feed.
     var matches = txs.filter(function (t) {
-      return normalizeName(t.counterparty || '') === myName;
+      var cp = t.counterparty || '';
+      if (!cp) return false;
+      // Short-circuit the exact-normalised case first for perf.
+      if (normalizeName(cp) === normalizeName(myName)) return true;
+      return nameMatches(myName, cp);
     });
     if (!matches.length) return null;
     var alerts = matches.filter(function (t) { return t.alert; });
