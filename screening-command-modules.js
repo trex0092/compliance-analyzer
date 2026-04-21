@@ -42,90 +42,105 @@
     {
       id: 'uae_eocn',
       label: 'UAE Local Terrorist List (EOCN / Executive Office)',
+      short_label: 'UAE EOCN',
       citation: 'Cabinet Res 74/2020 Art.4-7 · FDL No.(10)/2025 Art.35 · MANDATORY',
       detail: 'UAE domestic terror-designation list maintained by the Executive Office for CTFEF. Confirmed match triggers a 24-hour freeze and 5-business-day CNMR.'
     },
     {
       id: 'un_unsc',
       label: 'UN Consolidated Sanctions List (UNSC)',
+      short_label: 'UN UNSC',
       citation: 'UNSCR 1267 / 1988 / 2231 · FATF Rec 6-7 · MANDATORY',
       detail: 'All Security Council sanctions regimes (ISIL-Da\'esh / Al-Qaida, Taliban, DPRK, Iran, Libya, Somalia, Yemen, etc.). Legally mandatory under UN Charter Art.25.'
     },
     {
       id: 'ofac_sdn',
       label: 'OFAC Specially Designated Nationals List (SDN + Non-SDN)',
+      short_label: 'OFAC SDN',
       citation: 'US Treasury OFAC · 31 CFR 501 · Secondary-sanctions risk for USD clearing',
       detail: 'SDN + Consolidated Non-SDN lists (SSI, NS-PLC, FSE, 13599). Key risk for USD-denominated flows and USD correspondent relationships.'
     },
     {
       id: 'uk_ofsi',
       label: 'UK HMT / OFSI Consolidated Financial Sanctions List',
+      short_label: 'UK HMT/OFSI',
       citation: 'UK Sanctions and Anti-Money Laundering Act 2018 · SAMLA',
       detail: 'Post-Brexit UK-autonomous financial sanctions regime. Relevant for GBP-denominated flows and UK-nexus trade.'
     },
     {
       id: 'eu_csfl',
       label: 'EU Consolidated Financial Sanctions List',
+      short_label: 'EU CSFL',
       citation: 'Council Regulation (EC) No 2580/2001 · EU Restrictive Measures',
       detail: 'EU autonomous sanctions covering all 27 Member States. Critical for EUR flows, goods transiting EU, and EU-banked counterparties.'
     },
     {
       id: 'interpol',
       label: 'INTERPOL Red / Blue / Yellow Notices',
+      short_label: 'INTERPOL Notices',
       citation: 'INTERPOL Constitution Art.3 · Rules on the Processing of Data',
       detail: 'Wanted-persons notices for arrest and extradition, plus locate-and-identify (Blue) and missing-person (Yellow). Manual verification — not all Red Notices meet sanctions-equivalent threshold.'
     },
     {
       id: 'ch_seco',
       label: 'Swiss SECO Sanctions List (SESAM)',
+      short_label: 'Swiss SECO',
       citation: 'Swiss Embargo Act (EmbA) · SECO State Secretariat for Economic Affairs',
       detail: 'Swiss autonomous sanctions, closely tracks EU designations plus Swiss-specific entries (mercenaries, conflict diamonds). Relevant for CHF clearing and Swiss banking nexus.'
     },
     {
       id: 'ca_osfi',
       label: 'Canada OSFI / Justice consolidated list',
+      short_label: 'Canada OSFI',
       citation: 'Special Economic Measures Act (SEMA) · Justice for Victims of Corrupt Foreign Officials Act',
       detail: 'Canadian autonomous sanctions (Russia, Iran, DPRK, Myanmar, Venezuela, Belarus, Magnitsky-style designations). Relevant for CAD flows and Canadian-nexus trade.'
     },
     {
       id: 'au_dfat',
       label: 'Australia DFAT Consolidated List',
+      short_label: 'Australia DFAT',
       citation: 'Charter of the United Nations Act 1945 · Autonomous Sanctions Act 2011',
       detail: 'Australian autonomous sanctions covering DPRK, Iran, Libya, Myanmar, Russia, Syria, Zimbabwe, PEPs, and thematic (cyber, WMD, human rights). Relevant for AUD flows.'
     },
     {
       id: 'jp_mof',
       label: 'Japan MoF / METI sanctions list',
+      short_label: 'Japan MoF/METI',
       citation: 'Foreign Exchange and Foreign Trade Act (FEFTA) · METI notifications',
       detail: 'Japanese financial + trade sanctions. DPRK, Iran, Russia, Myanmar, Libya. Relevant for JPY flows and Japan-nexus trade.'
     },
     {
       id: 'sg_mas',
       label: 'Singapore MAS Targeted Financial Sanctions',
+      short_label: 'Singapore MAS',
       citation: 'Terrorism (Suppression of Financing) Act · MAS Notice 626',
       detail: 'Singapore TFS regime implementing UN designations plus domestic terror-financing designations. Relevant for SGD flows and Singapore-banked counterparties.'
     },
     {
       id: 'hk_hkma',
       label: 'Hong Kong HKMA / UNSR (Cap.537) lists',
+      short_label: 'Hong Kong HKMA',
       citation: 'United Nations Sanctions Ordinance (Cap.537) · AMLO',
       detail: 'Hong Kong implements UN designations via UNSO subsidiary legislation. HKD clearing exposure and HK-nexus corporate-service providers.'
     },
     {
       id: 'wb_debar',
       label: 'World Bank + MDB Cross-Debarment List',
+      short_label: 'World Bank + MDB',
       citation: 'World Bank Sanctions System · Agreement for Mutual Enforcement of Debarment Decisions',
       detail: 'Cross-debarred firms and individuals across World Bank, ADB, AfDB, EBRD, IDB. Fraud / corruption / collusive / coercive / obstructive procurement violations.'
     },
     {
       id: 'il_mod',
       label: 'Israel Defence Establishment sanctions',
+      short_label: 'Israel MoD',
       citation: 'Israeli Counter-Terrorism Law 5776-2016 · Defense Export Control Order',
       detail: 'Israel domestic terror-designation + defence-export blacklist. Relevant for ILS flows and dual-use export-control screening.'
     },
     {
       id: 'bilateral_overlays',
       label: 'Bilateral / thematic overlays (Magnitsky, cyber, narco)',
+      short_label: 'Magnitsky/Cyber/Narco',
       citation: 'UK Global Human Rights · EU Global Human Rights · OFAC 13818 / 13757 / 14024 · Canada SEMA Russia',
       detail: 'Thematic sanctions cutting across jurisdictions: human rights (Magnitsky), cyber (EO 13757, 14144), narcotics trafficking (Kingpin Act), cyber-enabled election interference. Layered on top of country regimes.'
     }
@@ -3519,8 +3534,19 @@
         adverse_media_classification: amCls,
         adverse_media_confidence: amConf,
         sanctions_status: explicitSanctionsHits.length === 0
-          ? 'NEGATIVE across all ' + sanctionsLists.length + ' selected sanctions / watchlists'
-          : 'HIT on ' + explicitSanctionsHits.length + ' sanctions list(s): ' + explicitSanctionsHits.join(', '),
+          ? 'NEGATIVE. Subject is not on any of the ' + sanctionsLists.length + ' selected sanctions / watchlists'
+          : 'POSITIVE. Subject appears on ' + explicitSanctionsHits.length + ' of ' + sanctionsLists.length + ' sanctions list(s): ' + explicitSanctionsHits.join(', '),
+        sanctions_summary: explicitSanctionsHits.length === 0 ? 'NEGATIVE' : 'POSITIVE',
+        sanctions_hit_count: explicitSanctionsHits.length,
+        sanctions_lists_checked: sanctionsLists.length,
+        sanctions_detail: sanctionsLists.map(function (listId) {
+          var item = SANCTIONS_LISTS.filter(function (l) { return l.id === listId; })[0];
+          return {
+            id: listId,
+            short_label: item && item.short_label ? item.short_label : (item ? item.label : listId),
+            verdict: explicitSanctionsHits.indexOf(listId) >= 0 ? 'POSITIVE' : 'NEGATIVE'
+          };
+        }),
         risk_level: knownHit.entry.risk_level || 'high',
         recommendation: knownHit.entry.recommendation || '',
         regulatory_basis: Array.isArray(knownHit.entry.regulatory_basis) ? knownHit.entry.regulatory_basis.slice() : []
