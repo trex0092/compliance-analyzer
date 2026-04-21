@@ -2843,14 +2843,68 @@
                 'ADVERSE MEDIA — ' + cr.adverse_media_classification.toUpperCase() +
                 ' (' + Math.round((cr.adverse_media_confidence || 0) * 100) + '%). ' +
                 'SANCTIONS & WATCHLISTS — ' + esc(cr.sanctions_status) + '.';
+              // Sanctions status pill — sits next to the RISK pill so the
+              // MLRO can see at a glance whether the subject is clean on the
+              // sanctions dimension (separate from adverse-media risk).
+              var sanctionsHitCount = typeof cr.sanctions_hit_count === 'number'
+                ? cr.sanctions_hit_count : 0;
+              var sanctionsListsChecked = typeof cr.sanctions_lists_checked === 'number'
+                ? cr.sanctions_lists_checked
+                : (Array.isArray(cr.sanctions_detail) ? cr.sanctions_detail.length : 0);
+              var sanctionsBadgeColor = sanctionsHitCount > 0
+                ? 'background:#dc2626;color:#fff'
+                : 'background:#166534;color:#fff';
+              var sanctionsSummary = cr.sanctions_summary
+                || (sanctionsHitCount > 0 ? 'POSITIVE' : 'NEGATIVE');
+              // Per-list sanctions breakdown — enumerates every screened list
+              // with its verdict, marking MANDATORY lists (UAE EOCN, UN UNSC)
+              // so the MoE/LBMA audit reviewer can instantly confirm the
+              // regulatory minimum was hit. FDL Art.20-21 + MoE Circular
+              // 08/AML/2021 require the audit record to be specific, not
+              // summarised.
+              var sanctionsDetailLine = '';
+              if (Array.isArray(cr.sanctions_detail) && cr.sanctions_detail.length) {
+                var negCount = 0;
+                var posCount = 0;
+                cr.sanctions_detail.forEach(function (d) {
+                  if (d.verdict === 'POSITIVE') posCount += 1;
+                  else negCount += 1;
+                });
+                var chips = cr.sanctions_detail.map(function (d) {
+                  var isPos = d.verdict === 'POSITIVE';
+                  var verdictStyle = isPos
+                    ? 'color:#dc2626;font-weight:700'
+                    : 'color:#166534;font-weight:600';
+                  var labelStyle = isPos
+                    ? 'font-weight:600'
+                    : 'opacity:.85';
+                  var mandatoryMark = d.mandatory
+                    ? ' <span style="font-size:9px;letter-spacing:.5px;padding:1px 4px;border-radius:3px;background:rgba(234,88,12,0.18);color:#ea580c;font-weight:700">MANDATORY</span>'
+                    : '';
+                  return '<span style="' + labelStyle + '">' + esc(d.short_label) + '</span>' +
+                    mandatoryMark +
+                    ': <span style="' + verdictStyle + '">' + esc(d.verdict) + '</span>';
+                }).join(' · ');
+                sanctionsDetailLine =
+                  '<div style="margin-bottom:6px;font-size:11px;line-height:1.6">' +
+                    '<strong>Sanctions detail</strong> ' +
+                    '<span style="opacity:.7">(' + sanctionsListsChecked + ' lists screened · ' +
+                      posCount + ' positive · ' + negCount + ' negative)</span>.' +
+                    ' ' + chips + '.' +
+                  '</div>';
+              }
               complianceReportLine = '<div class="mv-list-meta" style="margin-top:10px;padding:12px;border-left:3px solid #ea580c;background:rgba(234,88,12,0.06);border-radius:6px">' +
-                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
                   '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;' + riskBadgeColor + '">' +
                     'RISK · ' + esc(String(cr.risk_level).toUpperCase()) +
+                  '</span>' +
+                  '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;' + sanctionsBadgeColor + '">' +
+                    'SANCTIONS · ' + esc(sanctionsSummary) + ' · ' + sanctionsHitCount + '/' + sanctionsListsChecked +
                   '</span>' +
                   '<strong style="font-size:13px">Compliance Report</strong>' +
                 '</div>' +
                 '<div style="margin-bottom:6px;font-size:12px"><strong>Finding.</strong> ' + findingHeadline + '</div>' +
+                sanctionsDetailLine +
                 (cr.recommendation
                   ? '<div style="margin-bottom:6px;font-size:12px;line-height:1.55"><strong>Recommendation.</strong> ' + esc(cr.recommendation) + '</div>'
                   : '') +
@@ -3541,9 +3595,11 @@
         sanctions_lists_checked: sanctionsLists.length,
         sanctions_detail: sanctionsLists.map(function (listId) {
           var item = SANCTIONS_LISTS.filter(function (l) { return l.id === listId; })[0];
+          var citation = item && item.citation ? item.citation : '';
           return {
             id: listId,
             short_label: item && item.short_label ? item.short_label : (item ? item.label : listId),
+            mandatory: /\bMANDATORY\b/.test(citation),
             verdict: explicitSanctionsHits.indexOf(listId) >= 0 ? 'POSITIVE' : 'NEGATIVE'
           };
         }),
