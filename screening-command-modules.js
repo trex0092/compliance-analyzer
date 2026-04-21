@@ -3361,9 +3361,89 @@
                   '</div>';
               }
 
+              // Contradiction / plausibility engine — surfaces declared-vs-
+              // observed mismatches and out-of-range figures. FATF Rec 10
+              // "reasonable grounds" + Cabinet Res 134/2025 Art.14 EDD.
+              var contradictionBlock = '';
+              if (Array.isArray(cr.contradictions) && cr.contradictions.length) {
+                var cItems = cr.contradictions.map(function (c) {
+                  var sevColor = c.severity === 'high' ? '#dc2626'
+                    : c.severity === 'medium' ? '#ea580c' : '#d97706';
+                  return '<li style="margin-bottom:4px">' +
+                    '<span style="color:' + sevColor + ';font-weight:700">[' + esc(String(c.severity).toUpperCase()) + ']</span> ' +
+                    '<strong>' + esc(c.label) + '</strong>' +
+                    '<br><span style="opacity:.85;font-size:11px">Observed: ' + esc(c.observed) +
+                    ' · Baseline: ' + esc(c.baseline) +
+                    (c.ratio && c.ratio !== '—' ? ' · Deviation: ' + esc(c.ratio) : '') +
+                    '</span><br><span style="opacity:.8;font-size:11px">↳ ' + esc(c.note) + '</span>' +
+                    (c.citation ? ' <span style="opacity:.55;font-size:10px">[' + esc(c.citation) + ']</span>' : '') +
+                    '</li>';
+                }).join('');
+                contradictionBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6;padding:8px;border-left:3px solid #dc2626;background:rgba(220,38,38,0.05);border-radius:6px">' +
+                    '<strong>Contradictions &amp; Plausibility Checks.</strong> ' +
+                    '<span style="opacity:.75">' + cr.contradictions.length + ' anomal(y/ies) detected.</span>' +
+                    '<ul style="margin:6px 0 0 0;padding-left:18px;list-style:none">' + cItems + '</ul>' +
+                  '</div>';
+              }
+
+              // Hypothesis ranker — forces the MLRO to look at the top
+              // alternate explanations before closing the disposition.
+              var hypothesisBlock = '';
+              if (Array.isArray(cr.hypotheses) && cr.hypotheses.length) {
+                var hItems = cr.hypotheses.map(function (h, idx) {
+                  var probColor = h.probability >= 40 ? '#dc2626'
+                    : h.probability >= 20 ? '#ea580c' : '#4b5563';
+                  var supportsHtml = (h.supports || []).map(function (s) {
+                    return '<li style="opacity:.8">+ ' + esc(s) + '</li>';
+                  }).join('');
+                  var contrasHtml = (h.contras || []).map(function (s) {
+                    return '<li style="opacity:.7;color:#86efac">− ' + esc(s) + '</li>';
+                  }).join('');
+                  return '<li style="margin-bottom:6px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px">' +
+                    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+                      '<span style="font-weight:700;color:' + probColor + '">H' + (idx + 1) + ' · ' + h.probability + '%</span>' +
+                      '<strong>' + esc(h.label) + '</strong>' +
+                      '<span style="opacity:.6;font-size:10px">[' + esc(h.typology) + ']</span>' +
+                    '</div>' +
+                    (supportsHtml || contrasHtml ? '<ul style="margin:4px 0 0 0;padding-left:18px;list-style:none;font-size:11px">' + supportsHtml + contrasHtml + '</ul>' : '') +
+                    '<div style="margin-top:3px;font-size:11px;opacity:.85">↳ ' + esc(h.implication) + '</div>' +
+                    '</li>';
+                }).join('');
+                hypothesisBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.55">' +
+                    '<strong>Competing Hypotheses.</strong> ' +
+                    '<span style="opacity:.75">Top ' + cr.hypotheses.length + ' ranked by evidence overlap.</span>' +
+                    '<ol style="margin:4px 0 0 0;padding-left:0;list-style:none">' + hItems + '</ol>' +
+                  '</div>';
+              }
+
               // Historical Case Similarity — computed at render-time
               // against the full workbench (rows) + register.
               var similarCases = findSimilarCases(r, rows);
+              // Temporal Trajectory — prior screenings of the same
+              // subject in the workbench. Rendered only if priors exist.
+              var trajectory = computeTemporalTrajectory(r, rows);
+              var trajectoryBlock = '';
+              if (trajectory && trajectory.prior_count > 0) {
+                var dirColor =
+                  trajectory.direction === 'rising' ? '#dc2626' :
+                  trajectory.direction === 'falling' ? '#166534' :
+                  trajectory.direction === 'stable' ? '#d97706' : '#4b5563';
+                var dirLabel = String(trajectory.direction).toUpperCase().replace(/-/g, ' ');
+                var notes = (trajectory.notes || []).map(esc).join(' · ');
+                trajectoryBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Temporal Trajectory.</strong> ' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;background:' + dirColor + ';color:#fff">' +
+                      dirLabel +
+                    '</span> ' +
+                    trajectory.prior_count + ' prior screening(s) of this subject.' +
+                    (notes ? ' <span style="opacity:.85">' + notes + '</span>' : '') +
+                    (trajectory.latest_prior_ts ? ' <span style="opacity:.6;font-size:10px">(latest prior: ' + esc(new Date(trajectory.latest_prior_ts).toLocaleString()) + ')</span>' : '') +
+                    ' <span style="opacity:.55;font-size:10px">[' + esc(trajectory.citation) + ']</span>' +
+                  '</div>';
+              }
               var similarBlock = '';
               if (similarCases.length) {
                 var items = similarCases.map(function (sim) {
@@ -3417,6 +3497,8 @@
                 calibrationBlock +
                 evidenceBlock +
                 escalationBlock +
+                contradictionBlock +
+                hypothesisBlock +
                 reasoningBlock +
                 attributionBlock +
                 cddBlock +
@@ -3425,6 +3507,7 @@
                 gapsBlock +
                 connectedBlock +
                 similarBlock +
+                trajectoryBlock +
                 (cr.recommendation
                   ? '<div style="margin-bottom:6px;font-size:12px;line-height:1.55"><strong>Recommendation.</strong> ' + esc(cr.recommendation) + '</div>'
                   : '') +
@@ -4105,6 +4188,26 @@
         push('  ' + (idx + 1) + '. ' + s.stage + ' (' + s.days + ' days) — ' + s.indicator);
       });
       if (ep.pathway.citation) push('  [' + ep.pathway.citation + ']');
+      push('');
+    }
+    if (Array.isArray(cr.contradictions) && cr.contradictions.length) {
+      push('CONTRADICTIONS & PLAUSIBILITY CHECKS: ' + cr.contradictions.length + ' anomal(y/ies)');
+      cr.contradictions.forEach(function (c) {
+        push('  [' + String(c.severity).toUpperCase() + '] ' + c.label);
+        push('    Observed: ' + c.observed + ' · Baseline: ' + c.baseline +
+          (c.ratio && c.ratio !== '—' ? ' · Deviation: ' + c.ratio : ''));
+        push('    ↳ ' + c.note + (c.citation ? '  [' + c.citation + ']' : ''));
+      });
+      push('');
+    }
+    if (Array.isArray(cr.hypotheses) && cr.hypotheses.length) {
+      push('COMPETING HYPOTHESES (ranked by evidence overlap)');
+      cr.hypotheses.forEach(function (h, idx) {
+        push('  H' + (idx + 1) + ' · ' + h.probability + '% · ' + h.label + ' [' + h.typology + ']');
+        (h.supports || []).forEach(function (s) { push('    + ' + s); });
+        (h.contras || []).forEach(function (s) { push('    - ' + s); });
+        push('    ↳ ' + h.implication);
+      });
       push('');
     }
     if (Array.isArray(cr.reasoning_chain) && cr.reasoning_chain.length) {
@@ -5136,6 +5239,295 @@
     return out.slice(0, 5);
   }
 
+  // ─── Plausibility baselines — real-world DPMS / AML yardsticks ─────
+  // Used by detectContradictions() to flag declared-vs-observed
+  // mismatches and out-of-range figures in the adverse-media narrative.
+  // Sources: LBMA Market Norms, MoE Circular 08/AML/2021 DPMS sector
+  // benchmarks, UAE MoE RSG Framework, Cabinet Res 134/2025 Art.16
+  // (thresholds). Rounded to "compliance-grade" numeric bands so
+  // baseline drift doesn't trigger false contradictions.
+  var PLAUSIBILITY_BASELINES = {
+    gold_shipment_aed:                  { low:     2000000, typical:    8000000, high:    20000000, citation: 'LBMA Market Norms · DGD bar standard' },
+    retail_dpms_turnover_aed_annual:    { low:      100000, typical:    1500000, high:    10000000, citation: 'MoE Circular 08/AML/2021 DPMS benchmark' },
+    wholesale_gold_trader_aed_annual:   { low:    10000000, typical:   80000000, high:   500000000, citation: 'LBMA wholesale trader norm' },
+    individual_monthly_cash_deposit_aed:{ low:           0, typical:      20000, high:      200000, citation: 'UAE retail banking profile' },
+    cash_ctr_threshold_aed:             { threshold:  55000,                                         citation: 'MoE Circular 08/AML/2021 · FDL Art.2' },
+    cross_border_bni_threshold_aed:     { threshold:  60000,                                         citation: 'Cabinet Res 134/2025 Art.16' },
+    ubo_materiality_pct:                { threshold:     25,                                         citation: 'Cabinet Decision 109/2023' }
+  };
+
+  // ─── Contradiction + plausibility engine ───────────────────────────
+  // Scans the adverse-media summary for AED amounts and flags each
+  // against the plausibility baselines for the subject's entity type
+  // + typology. Also surfaces internal inconsistencies (declared vs
+  // observed) where the register makes both visible.
+  function detectContradictions(ctx) {
+    var out = [];
+    var narrative = String(ctx.summary || '');
+    if (!narrative) return out;
+    // Extract AED amounts with common forms: "AED 12M", "AED 50 million",
+    // "~$12M", "$1.2bn", "1,200,000 AED". Result in AED millions.
+    var rxAmount = /(?:aed|usd|\$|us\$)\s*~?\s*([\d.,]+)\s*(million|bn|billion|k|thousand|m)?\b/ig;
+    var amounts = [];
+    var m;
+    while ((m = rxAmount.exec(narrative)) !== null && amounts.length < 8) {
+      var val = parseFloat(String(m[1]).replace(/,/g, ''));
+      if (!isFinite(val) || val <= 0) continue;
+      var unit = (m[2] || '').toLowerCase();
+      var multiplier = unit.indexOf('b') === 0 ? 1e9
+        : unit.indexOf('m') === 0 ? 1e6
+        : unit.indexOf('k') === 0 || unit.indexOf('thousand') === 0 ? 1e3
+        : 1;
+      amounts.push({ raw: m[0], value: val * multiplier });
+    }
+
+    var typologyIds = Array.isArray(ctx.typologies)
+      ? ctx.typologies.map(function (t) { return t.id; }) : [];
+    var dpmsTypology = typologyIds.some(function (id) {
+      return ['dpms_layering', 'trade_fraud', 'shell_company'].indexOf(id) >= 0;
+    });
+    var entityType = ctx.entity_type || 'individual';
+
+    // Check 1 — AED amounts wildly out of baseline range for DPMS/gold
+    // typologies. Individual > AED 1M mentioned = wholesale-grade flow
+    // on a retail subject = contradiction.
+    if (dpmsTypology && amounts.length) {
+      var peak = amounts.reduce(function (m0, a) { return a.value > m0 ? a.value : m0; }, 0);
+      var shp = PLAUSIBILITY_BASELINES.gold_shipment_aed;
+      if (peak > shp.high * 2) {
+        out.push({
+          severity: 'high',
+          label: 'Shipment / transaction value anomalously high',
+          observed: 'AED ' + (peak / 1e6).toFixed(1) + 'M',
+          baseline: 'AED ' + (shp.low / 1e6).toFixed(1) + '–' + (shp.high / 1e6).toFixed(1) + 'M typical gold shipment',
+          ratio: (peak / shp.typical).toFixed(1) + '×',
+          citation: shp.citation,
+          note: 'Value is ' + Math.round(peak / shp.typical) + '× the typical DPMS shipment baseline — verify invoice legitimacy + mine-of-origin.'
+        });
+      }
+    }
+
+    // Check 2 — individual subject with wholesale-grade amounts mentioned
+    // in the narrative. Cross-check entity_type vs observed magnitudes.
+    if (entityType === 'individual' && amounts.length) {
+      var peakI = amounts.reduce(function (m1, a) { return a.value > m1 ? a.value : m1; }, 0);
+      var retail = PLAUSIBILITY_BASELINES.retail_dpms_turnover_aed_annual;
+      if (peakI > retail.high * 2) {
+        out.push({
+          severity: 'medium',
+          label: 'Individual with wholesale-scale amounts in the narrative',
+          observed: 'AED ' + (peakI / 1e6).toFixed(1) + 'M',
+          baseline: 'Retail DPMS individual typical range up to AED ' + (retail.high / 1e6).toFixed(1) + 'M/year',
+          ratio: (peakI / retail.typical).toFixed(1) + '×',
+          citation: retail.citation,
+          note: 'Request detailed SOF/SOW to justify wholesale-grade flows on an individual profile (Cabinet Res 134/2025 Art.14).'
+        });
+      }
+    }
+
+    // Check 3 — CTR threshold breach mentioned without filing reference.
+    if (amounts.some(function (a) { return a.value >= PLAUSIBILITY_BASELINES.cash_ctr_threshold_aed.threshold; })
+        && !/CTR|DPMSR|goAML/i.test(narrative)) {
+      out.push({
+        severity: 'medium',
+        label: 'Cash/CTR threshold breach not accompanied by filing reference',
+        observed: 'Amount ≥ AED 55K mentioned',
+        baseline: 'MoE Circular 08/AML/2021 requires CTR via goAML for DPMS cash ≥ AED 55K',
+        ratio: '—',
+        citation: PLAUSIBILITY_BASELINES.cash_ctr_threshold_aed.citation,
+        note: 'Confirm whether a DPMSR / CTR was filed and retained for 10 years (FDL Art.24).'
+      });
+    }
+
+    // Check 4 — adverse-media CONFIRMED classification but single-source
+    // only. FATF Rec 10 "reasonable grounds" expects ≥2 independent
+    // sources for a CONFIRMED-tier finding.
+    if (ctx.classification === 'confirmed' && (ctx.source_count || 0) < 2) {
+      out.push({
+        severity: 'medium',
+        label: 'CONFIRMED classification on single-source evidence',
+        observed: (ctx.source_count || 0) + ' named source(s) on file',
+        baseline: '≥ 2 independent sources required for CONFIRMED tier',
+        ratio: '—',
+        citation: 'FATF Rec 10 evidence standard',
+        note: 'Downgrade to POTENTIAL or obtain corroboration before closing disposition.'
+      });
+    }
+
+    // Check 5 — jurisdiction nexus contradiction (subject country vs
+    // narrative jurisdictions). If subject is UAE-resident but narrative
+    // concerns third-country activity with no UAE nexus, flag.
+    var subjCountry = String(ctx.subject_country || '').toLowerCase();
+    var narrativeLower = narrative.toLowerCase();
+    if (subjCountry === 'uae' && !/uae|dubai|abu dhabi|emirates/.test(narrativeLower) &&
+        /turkey|türkiye|russia|iran|syria|north korea/.test(narrativeLower)) {
+      out.push({
+        severity: 'low',
+        label: 'Subject declared UAE-resident; adverse-media concerns third country',
+        observed: 'UAE residency declaration',
+        baseline: 'Adverse-media narrative anchored outside UAE',
+        ratio: '—',
+        citation: 'FATF Rec 10 · Cabinet Res 134/2025 Art.14',
+        note: 'Verify the UAE nexus (trade flows, counterparty exposure, UBO chain) before applying UAE CDD rules.'
+      });
+    }
+
+    return out;
+  }
+
+  // ─── Hypothesis Ranker ─────────────────────────────────────────────
+  // Generates 3-5 competing hypotheses for the case and scores each
+  // by signal overlap. Forces the MLRO to consider alternatives to
+  // the primary verdict before closing the disposition. The scoring
+  // is deliberately interpretable (count of supporting/contradicting
+  // signals) rather than a black-box probability — audit-ready.
+  var HYPOTHESIS_LIBRARY = {
+    // Each entry = hypotheses that compete when a typology has fired.
+    // Signals are regex-matched against the narrative + categories;
+    // contras reduce the hypothesis score.
+    trade_fraud: [
+      { id: 'export_subsidy_fraud', label: 'Export-subsidy / trade fraud', signals: /(export-?subsidy|vat\s+fraud|fake\s+(?:invoice|export)|customs\s+fraud|misdeclar)/i, contras: /(customs\s+verified|audit\s+trail\s+complete)/i, implication: 'EDD; file STR if UAE nexus; LBMA RGG v9 Step 3-5 on counterparties.' },
+      { id: 'legitimate_trade',     label: 'Legitimate arm\'s-length trade', signals: /(regulated\s+exchange|audit\s+trail|LBMA\s+certif|accredited|hallmark)/i, contras: /(criminal\s+probe|arrest|indictment|fraud|fake)/i, implication: 'Standard CDD; document source-of-wealth; monitor.' },
+      { id: 'sanctions_proxy',      label: 'Sanctions evasion via third country', signals: /(russia|iran|belarus|north\s+korea|dprk|syria|third-?country|re-?export|front\s+company|shell)/i, contras: /(no\s+sanctions|not\s+designated)/i, implication: 'FREEZE + CNMR + EOCN if confirmed; FDL Art.29 no tipping-off.' },
+      { id: 'name_collision',       label: 'Name collision / false positive', signals: /(common\s+name|homonym|same\s+name)/i, contras: /(exact\s+id|biometric|passport|emirates\s+id)/i, implication: 'Verify full identifiers (passport, DOB, EID) before any action.' }
+    ],
+    dpms_layering: [
+      { id: 'structuring_under_ctr', label: 'Structuring under AED 55K threshold', signals: /\b(4[0-9]\s*,?\s*\d{3}|50\s*,?\s*000|51|52|53|54)\b.*(cash|deposit)|structur|smurf/i, contras: /(single\s+transaction|one-off)/i, implication: 'File STR without delay (FDL Art.26-27); classify as CDD-failure.' },
+      { id: 'tbml_mirror_invoice',  label: 'Trade-based ML via mirror-invoicing', signals: /(under-?invoic|over-?invoic|phantom\s+ship|mirror\s+invoic)/i, contras: /(customs\s+verified|invoice\s+matched)/i, implication: 'EDD; obtain shipping documentation, invoice reconciliation, mine-of-origin.' },
+      { id: 'shell_front_flow',     label: 'Shell-company front-flow', signals: /(shell|front\s+company|nominee|opaque\s+(?:ownership|UBO))/i, contras: /(disclosed\s+UBO|transparent\s+ownership)/i, implication: 'UBO re-verification within 15 working days; Cabinet Decision 109/2023.' }
+    ],
+    sanctions_evasion: [
+      { id: 'third_country_relay',  label: 'Third-country relay', signals: /(relay|transship|re-?export|indirect)/i, contras: /()/i, implication: 'FREEZE if confirmed; CNMR + EOCN notify within 24h/5bd.' },
+      { id: 'ais_flag_hop',         label: 'AIS / flag-hopping vessel', signals: /(ais\s+(?:off|manipul)|flag-?hop|dark\s+fleet)/i, contras: /()/i, implication: 'Report to OFAC advisory; maritime counterparty screening.' }
+    ],
+    investment_fraud: [
+      { id: 'ponzi_mlm',            label: 'Ponzi / MLM / pyramid', signals: /(ponzi|pyramid|mlm|returns?\s+(?:guaranteed|too\s+good))/i, contras: /(sec-?registered|licensed)/i, implication: 'EDD; suspend onboarding; STR if victim funds traceable.' }
+    ],
+    bribery_public: [
+      { id: 'grand_corruption',     label: 'Grand corruption / kleptocracy', signals: /(kleptocrat|embezzle|state\s+asset|grand\s+corruption|panama|pandora)/i, contras: /(cleared|exonerated|dismissed)/i, implication: 'EDD + Board approval; FATF Rec 12 PEP controls.' },
+      { id: 'routine_bribe',        label: 'Routine commercial bribery', signals: /(kickback|facilitation|commercial\s+brib)/i, contras: /()/i, implication: 'EDD; anti-bribery programme verification.' }
+    ]
+  };
+
+  function rankHypotheses(ctx) {
+    if (!Array.isArray(ctx.typologies) || !ctx.typologies.length) return [];
+    var narrative = String(ctx.summary || '') + ' ' + String(ctx.recommendation || '');
+    var categoriesBlob = (ctx.categories || []).join(' ');
+    var candidates = [];
+    ctx.typologies.forEach(function (t) {
+      var lib = HYPOTHESIS_LIBRARY[t.id];
+      if (!Array.isArray(lib)) return;
+      lib.forEach(function (h) {
+        var supports = [];
+        var contras = [];
+        var sigMatch = narrative.match(h.signals);
+        if (sigMatch) supports.push('narrative: "' + sigMatch[0] + '"');
+        if (h.contras) {
+          var contraMatch = narrative.match(h.contras);
+          if (contraMatch) contras.push('narrative: "' + contraMatch[0] + '"');
+        }
+        // Category overlap as extra supporting signal.
+        if (/criminal|fraud/.test(categoriesBlob) && /fraud|corruption|money/.test(h.id)) supports.push('category signal: fraud/ML');
+        // Sanctions hit adds support to sanctions-proxy hypotheses.
+        if (ctx.sanctions_hit_count > 0 && /sanctions|proxy|relay|ais/.test(h.id)) supports.push('sanctions list hit');
+        if (!supports.length && !contras.length) return;
+        var score = supports.length - contras.length * 2;
+        if (score <= 0) return;
+        candidates.push({
+          id: h.id,
+          label: h.label,
+          score: score,
+          supports: supports,
+          contras: contras,
+          implication: h.implication,
+          typology: t.id
+        });
+      });
+    });
+    // Always add a "name-collision / false-positive" option so the
+    // MLRO is prompted to verify identifiers before closing.
+    candidates.push({
+      id: 'identifier_verification',
+      label: 'Identifier verification pending',
+      score: 1,
+      supports: ['default safety hypothesis — identifiers not yet confirmed'],
+      contras: [],
+      implication: 'Verify passport + DOB + Emirates ID before any action; confirm no name-collision.',
+      typology: 'safety_default'
+    });
+    candidates.sort(function (a, b) { return b.score - a.score; });
+    // Convert raw score to a probability estimate (soft weighting —
+    // not a real Bayesian posterior, but audit-interpretable).
+    var total = candidates.reduce(function (s, c) { return s + c.score; }, 0) || 1;
+    return candidates.slice(0, 5).map(function (c) {
+      return Object.assign({}, c, { probability: Math.round((c.score / total) * 100) });
+    });
+  }
+
+  // ─── Temporal Trajectory ───────────────────────────────────────────
+  // Detects prior screenings of the same subject (by normalised name +
+  // country + entity type) in the workbench history and surfaces the
+  // delta: confidence change, category widening, CDD-tier drift, risk
+  // direction. Lets the MLRO see "this is the third time in 6 weeks"
+  // before closing the disposition.
+  function computeTemporalTrajectory(currentRow, workbenchRows) {
+    if (!currentRow) return null;
+    var myName = normalizeName(currentRow.name || '');
+    var myCountry = String(currentRow.country || '').trim().toLowerCase();
+    var myType = currentRow.subject_type || '';
+    if (!myName) return null;
+    var priors = [];
+    (workbenchRows || []).forEach(function (r) {
+      if (!r || r.id === currentRow.id) return;
+      if (normalizeName(r.name || '') !== myName) return;
+      if (String(r.country || '').trim().toLowerCase() !== myCountry) return;
+      if ((r.subject_type || '') !== myType) return;
+      priors.push(r);
+    });
+    if (!priors.length) return null;
+    // Sort ascending by screened_at so deltas read left-to-right.
+    priors.sort(function (a, b) { return String(a.screened_at).localeCompare(String(b.screened_at)); });
+    var latestPrior = priors[priors.length - 1];
+    var pConf = typeof latestPrior.confidence === 'number' ? Math.round(latestPrior.confidence * 100) : null;
+    var cConf = typeof currentRow.confidence === 'number' ? Math.round(currentRow.confidence * 100) : null;
+    var deltaConf = (cConf != null && pConf != null) ? cConf - pConf : null;
+    var priorCats = Array.isArray(latestPrior.adverse_media_hits) ? latestPrior.adverse_media_hits.length : 0;
+    var currentCats = Array.isArray(currentRow.adverse_media_hits) ? currentRow.adverse_media_hits.length : 0;
+    var deltaCats = currentCats - priorCats;
+    var priorTier = latestPrior.compliance_report && latestPrior.compliance_report.cdd_recommendation
+      ? latestPrior.compliance_report.cdd_recommendation.tier : null;
+    var currentTier = currentRow.compliance_report && currentRow.compliance_report.cdd_recommendation
+      ? currentRow.compliance_report.cdd_recommendation.tier : null;
+    var tierOrder = { SDD: 0, CDD: 1, EDD: 2, FREEZE: 3 };
+    var tierDirection = (priorTier && currentTier && tierOrder[currentTier] != null && tierOrder[priorTier] != null)
+      ? (tierOrder[currentTier] > tierOrder[priorTier] ? 'escalated'
+        : tierOrder[currentTier] < tierOrder[priorTier] ? 'de-escalated' : 'stable')
+      : null;
+    var direction = deltaConf == null ? 'insufficient-data'
+      : deltaConf >= 10 ? 'rising'
+      : deltaConf <= -10 ? 'falling'
+      : 'stable';
+    var notes = [];
+    if (deltaConf != null) notes.push('Confidence ' + (deltaConf >= 0 ? '+' : '') + deltaConf + ' pts');
+    if (deltaCats) notes.push('Categories ' + (deltaCats >= 0 ? '+' : '') + deltaCats);
+    if (tierDirection && tierDirection !== 'stable') {
+      notes.push('CDD tier ' + tierDirection + ': ' + priorTier + ' → ' + currentTier);
+    }
+    return {
+      prior_count: priors.length,
+      direction: direction,
+      delta_confidence_pct: deltaConf,
+      delta_categories: deltaCats,
+      tier_direction: tierDirection,
+      prior_tier: priorTier,
+      current_tier: currentTier,
+      earliest_ts: priors[0].screened_at || '',
+      latest_prior_ts: latestPrior.screened_at || '',
+      notes: notes,
+      citation: 'FATF Rec 10 — ongoing CDD · FDL No.(10)/2025 Art.20-21'
+    };
+  }
+
   // ─── Screening row builders ─────────────────────────────────────────
   function buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens, pepDimensions) {
     var perList = [];
@@ -5565,6 +5957,21 @@
         source: knownHit.entry.source || '',
         summary: knownHit.entry.summary || ''
       });
+      var contradictions = detectContradictions({
+        summary: knownHit.entry.summary || '',
+        classification: amCls,
+        source_count: sourceCount,
+        entity_type: entityType,
+        subject_country: body.country || '',
+        typologies: typologies
+      });
+      var hypotheses = rankHypotheses({
+        summary: knownHit.entry.summary || '',
+        recommendation: knownHit.entry.recommendation || '',
+        categories: adverseHits,
+        typologies: typologies,
+        sanctions_hit_count: explicitSanctionsHits.length
+      });
 
       // Typology narrative (short paragraph)
       var typologyNarrative = '';
@@ -5602,6 +6009,8 @@
         confidence_calibration: calibration,
         escalation_pathway: escalationPathway,
         evidence_grade: evidenceGrade,
+        contradictions: contradictions,
+        hypotheses: hypotheses,
         source_count: sourceCount,
         risk_level: knownHit.entry.risk_level || 'high',
         recommendation: knownHit.entry.recommendation || '',
