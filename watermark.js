@@ -10,8 +10,6 @@
 .hspw-texture{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden}
 .hspw-texture-inner{position:absolute;inset:-80%;width:260%;height:260%;transform:rotate(-28deg);display:flex;flex-wrap:wrap;align-content:flex-start}
 .hspw-texture-inner span{flex:0 0 300px;height:60px;display:flex;align-items:center;font-size:9px;letter-spacing:7px;text-transform:uppercase;color:#FF2D78;opacity:0.032;white-space:nowrap;user-select:none;font-family:'DM Mono','Fira Mono','Courier New',monospace}
-.hspw-robot{position:fixed;bottom:-70px;right:-55px;z-index:3;pointer-events:none;width:400px;opacity:0.18;filter:drop-shadow(0 0 40px rgba(255,45,120,0.95)) drop-shadow(0 0 14px rgba(255,45,120,0.7))}
-.hspw-robot svg{display:block;width:100%;height:auto;fill:#FF2D78}
 .hspw-wordmark{position:fixed;top:18px;right:26px;z-index:5;pointer-events:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;user-select:none;font-family:'DM Mono','Fira Mono','Courier New',monospace}
 .hspw-wordmark-primary{font-size:8px;letter-spacing:9px;text-transform:uppercase;color:#FF2D78;opacity:0.55}
 .hspw-wordmark-sub{font-size:7px;letter-spacing:5px;text-transform:uppercase;color:#FF2D78;opacity:0.35}
@@ -122,7 +120,8 @@
       el('hspw-scanlines'),
       el('hspw-glow'),
       tex,
-      el('hspw-robot', SVG),
+      // Robot/cyborg silhouette removed — see git log for rationale.
+      // Kept SVG intentionally unused so the file diff is minimal.
       el('hspw-wordmark',
         '<div class="hspw-wordmark-primary">Hawkeye Sterling</div>' +
         '<div class="hspw-wordmark-sub">Compliance AI · Est. 2025</div>'),
@@ -130,6 +129,7 @@
       el('hspw-edge-bottom'),
       el('hspw-pip')
     ].forEach(function(n){ document.body.appendChild(n); });
+    void SVG;
   }
 
   if (document.readyState === 'loading') {
