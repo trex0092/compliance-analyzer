@@ -12,8 +12,9 @@ import { describe, it, expect } from 'vitest';
 // @ts-expect-error — .mts file has no type declarations at test time
 import { __test__ } from '../netlify/functions/ongoing-screening-status.mts';
 
-const { computeNextRunAt } = __test__ as {
+const { computeNextRunAt, countSubjectsInEnvelope } = __test__ as {
   computeNextRunAt: (now: Date) => string;
+  countSubjectsInEnvelope: (raw: unknown) => number | null;
 };
 
 describe('ongoing-screening-status — computeNextRunAt', () => {
@@ -56,5 +57,36 @@ describe('ongoing-screening-status — computeNextRunAt', () => {
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     // And it must parse back to a valid Date.
     expect(Number.isNaN(new Date(result).getTime())).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// countSubjectsInEnvelope — covers the opt-in store defensive decoder.
+// ---------------------------------------------------------------------------
+
+describe('ongoing-screening-status — countSubjectsInEnvelope', () => {
+  it('returns null on null / undefined / primitive / array payloads', () => {
+    expect(countSubjectsInEnvelope(null)).toBeNull();
+    expect(countSubjectsInEnvelope(undefined)).toBeNull();
+    expect(countSubjectsInEnvelope('')).toBeNull();
+    expect(countSubjectsInEnvelope(42)).toBeNull();
+    expect(countSubjectsInEnvelope([])).toBeNull();
+    expect(countSubjectsInEnvelope([{ subjects: {} }])).toBeNull();
+  });
+
+  it('returns 0 when subjects is absent or not a plain object', () => {
+    expect(countSubjectsInEnvelope({})).toBe(0);
+    expect(countSubjectsInEnvelope({ version: 1 })).toBe(0);
+    expect(countSubjectsInEnvelope({ subjects: null })).toBe(0);
+    expect(countSubjectsInEnvelope({ subjects: 'nope' })).toBe(0);
+    expect(countSubjectsInEnvelope({ subjects: [] })).toBe(0);
+  });
+
+  it('counts the keys of the subjects map', () => {
+    expect(countSubjectsInEnvelope({ subjects: {} })).toBe(0);
+    expect(countSubjectsInEnvelope({ subjects: { a: {}, b: {} } })).toBe(2);
+    const big: Record<string, unknown> = {};
+    for (let i = 0; i < 50; i++) big['k' + i] = {};
+    expect(countSubjectsInEnvelope({ subjects: big })).toBe(50);
   });
 });

@@ -3571,8 +3571,14 @@ window.prettyEntityType = function (raw) {
   // local count as a fallback). FDL Art.29-safe: only subject name +
   // entity type + flag are sent, never hit details.
   function readHawkeyeBearerToken() {
+    // Prefer the new canonical JWT key; fall back to the legacy mirror
+    // that auth-gate.js still writes for backward compatibility, then
+    // the older brain-token key for the backend-to-backend hex bearer
+    // case (setup wizard, orchestrator). Returns '' when no session —
+    // caller treats empty as "unauthenticated, local-only mode".
     try {
       return (
+        localStorage.getItem('hawkeye.session.jwt') ||
         localStorage.getItem('hawkeye.watchlist.adminToken') ||
         localStorage.getItem('hawkeye.brain.token') ||
         ''

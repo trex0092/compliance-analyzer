@@ -145,10 +145,8 @@ interface OptInEnvelope {
 async function readOptInCount(): Promise<number | null> {
   try {
     const store = getStore(OPT_IN_STORE);
-    const payload = (await store.get(OPT_IN_KEY, { type: 'json' })) as OptInEnvelope | null;
-    if (!payload || typeof payload !== 'object') return null;
-    if (!payload.subjects || typeof payload.subjects !== 'object') return 0;
-    return Object.keys(payload.subjects).length;
+    const payload = (await store.get(OPT_IN_KEY, { type: 'json' })) as unknown;
+    return countSubjectsInEnvelope(payload);
   } catch {
     return null;
   }
@@ -233,6 +231,17 @@ export const config: Config = {
 // Test harness
 // ---------------------------------------------------------------------------
 
+// Pure, synchronous view of the opt-in count logic so it can be
+// unit-tested without spinning up Netlify Blobs in tests. The runtime
+// path (readOptInCount) composes store.get with this function.
+export function countSubjectsInEnvelope(payload: unknown): number | null {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const env = payload as OptInEnvelope;
+  if (!env.subjects || typeof env.subjects !== 'object' || Array.isArray(env.subjects)) return 0;
+  return Object.keys(env.subjects).length;
+}
+
 export const __test__ = {
   computeNextRunAt,
+  countSubjectsInEnvelope,
 };

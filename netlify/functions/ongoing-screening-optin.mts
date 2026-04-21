@@ -202,12 +202,19 @@ async function writeWithCas(body: ValidatedBody): Promise<{ ok: boolean; count?:
       await store.setJSON(STORE_KEY, next, etag ? { onlyIfMatch: etag } : undefined);
       return { ok: true, count: Object.keys(next.subjects).length };
     } catch (err) {
-      // Retry on CAS miss; bail on any other error after logging nothing
-      // sensitive back to the caller.
+      // CAS-miss → refetch + retry. Any other error → bail immediately with
+      // a generic message so the caller never sees stack traces or storage
+      // internals (opaque-error principle).
       const msg = err instanceof Error ? err.message : '';
-      if (!/412|precondition/i.test(msg) && attempt === MAX_CAS_ATTEMPTS - 1) {
+      const isCasMiss = /412|precondition/i.test(msg);
+      if (!isCasMiss) {
         return { ok: false, error: 'store write failed' };
       }
+      // CAS miss on the final attempt — give up cleanly.
+      if (attempt === MAX_CAS_ATTEMPTS - 1) {
+        return { ok: false, error: 'CAS contention exceeded max attempts' };
+      }
+      // Otherwise fall through to the next iteration of the for-loop.
     }
   }
   return { ok: false, error: 'CAS contention exceeded max attempts' };
