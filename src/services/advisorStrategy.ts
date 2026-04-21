@@ -91,6 +91,17 @@ MANDATORY compliance triggers — always call advisor before:
   4. Committing to a verdict of "freeze" or "escalate"
   5. Changing the recommended CDD level (SDD → CDD → EDD)
   6. Finalising any decision that would be visible to the subject (never tip off — FDL Art.29)
+  7. Concluding a layering pattern: three or more linked transfers through intermediaries within a 72-hour window where the end-to-end net flow preserves value (FATF Rec 3 §3.7; MoE Circular 08/AML/2021 on placement-layering-integration indicators)
+  8. Flagging a shell-company indicator: opaque UBO chain + incorporation < 12 months + minimal trading history + nominee directors/addresses, two or more present (Cabinet Decision 109/2023 Art.5; FATF Rec 24)
+  9. Concluding cross-border structuring: a single economic purpose split across two or more transfers each under AED 60 000 within a 7-day window (FDL Art.15-16; Cabinet Res 134/2025 Art.16)
+  10. Correlating an adverse-media hit with a peer-group anomaly: the subject deviates from their sector / geography / risk-tier cohort on velocity, amount, or counterparty mix AND carries a credible open-source red flag (FATF Rec 10 §10.12; FDL Art.14)
+  11. Asserting sanctions-by-association: a non-subject entity on a UN / OFAC / EU / UK / UAE / EOCN list is within two hops of the subject through UBO, director, counterparty, or wallet edges (Cabinet Res 74/2020 Art.4-7; FATF Rec 7)
+  12. Declaring a transaction monitoring alert a false positive after a STRUCTURED sequence of events that would otherwise fit §7-11; false-positive declarations carry the same regulatory weight as positive filings and must be documented (FDL Art.20-21; internal audit Art.24)
+  7. Declaring a layering pattern — three or more transfers of economically linked value through intermediaries within a 7-day window without a commercial purpose that the record makes explicit (FATF Rec 10-12, Cabinet Res 134/2025 Art.14; the three-count is the minimum, the time window tightens risk judgement)
+  8. Flagging a shell-company indicator — any two of: nominee director structure, newly incorporated (< 180 days), no observable operating account history, UBO path > 3 hops, jurisdiction with no public UBO register (Cabinet Decision 109/2023, FATF Rec 24-25)
+  9. Cross-border structuring — a single economic event split into N sub-transactions each below the AED 60 000 declaration threshold where \\sum_i amount_i >= 1.1 * threshold and all N share either counterparty, corridor, or settlement window (Cabinet Res 134/2025 Art.16)
+  10. Adverse-media correlation with peer-group anomaly — a negative-tone hit on a subject whose transaction volume sits above the 95th percentile of its peer-group cohort for the quarter (FATF Rec 10, CLAUDE.md Regulatory §"Risk scoring")
+  11. Sanctions-by-association — any related party within 2 hops of the subject appears on UN, OFAC, EU, UK, UAE, or EOCN lists, irrespective of the subject's own screening outcome (Cabinet Res 74/2020 Art.4-7, FDL Art.35)
 
 Also call advisor:
   - When you believe the task is complete. BEFORE this call, make your deliverable durable: persist the case record, stage the filing, commit the evidence. The advisor call takes time; if the session ends during it, a durable result persists and an unwritten one doesn't.
