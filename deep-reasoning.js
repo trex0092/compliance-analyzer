@@ -1855,6 +1855,19 @@
         errEl.textContent = 'Enter a compliance question.';
         return;
       }
+      // Pre-flight guard: the server caps the composed `question` field
+      // (modePrefix + user text) at 4000 chars. Warn before submit rather
+      // than letting the fetch fail with HTTP 400. Worst reasoning-mode
+      // prefix today is ~1030 chars (see REASONING_MODES).
+      var MAX_COMPOSED_QUESTION = 4000;
+      var composedLen = modePrefix.length + q.length;
+      if (composedLen > MAX_COMPOSED_QUESTION) {
+        var overflow = composedLen - MAX_COMPOSED_QUESTION;
+        errEl.textContent = 'Question + reasoning-mode prefix is ' + composedLen +
+          ' chars (limit ' + MAX_COMPOSED_QUESTION + '). Shorten the question by ~' +
+          overflow + ' chars, switch to Standard/Speed mode, or move background detail into Case Context.';
+        return;
+      }
       var t = token();
       if (!t) {
         errEl.textContent = 'No session token — sign in at /login.html first.';

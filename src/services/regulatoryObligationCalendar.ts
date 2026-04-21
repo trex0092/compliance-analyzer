@@ -229,7 +229,13 @@ function addBusinessDays(fromDate: Date, days: number): Date {
   while (added < days) {
     result.setDate(result.getDate() + 1);
     const dow = result.getDay();
-    if (dow !== 5 && dow !== 6) added++; // UAE: Fri/Sat off
+    // UAE government standard weekend: Saturday (6) + Sunday (0),
+    // effective 1 Jan 2022. Previously Fri/Sat. Matches the
+    // authoritative implementation in src/utils/businessDays.ts.
+    // CLAUDE.md §"Regulatory Domain Knowledge" — deadlines under
+    // FDL No.(10)/2025 Art.24 + Cabinet Res 134/2025 must use UAE
+    // business days, not calendar days.
+    if (dow !== 6 && dow !== 0) added++;
   }
   return result;
 }

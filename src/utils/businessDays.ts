@@ -1,12 +1,18 @@
 /**
  * UAE Business Day Calculator
  *
- * UAE weekend: Friday & Saturday (changed from Fri-Sat to Sat-Sun in 2022,
- * but private sector still varies — this uses Sat-Sun as government standard).
- * Includes UAE public holidays.
+ * UAE weekend: Saturday & Sunday (government standard since 1 Jan 2022;
+ * prior to 2022 it was Friday & Saturday). Private-sector practice still
+ * varies in places, but every regulatory deadline in this codebase is
+ * computed against the government standard. Includes UAE public holidays.
  *
  * CRITICAL: Filing deadlines (STR, CTR, CNMR) are measured in BUSINESS days
- * per FDL No.10/2025. Using calendar days is a regulatory violation risk.
+ * per FDL No.(10)/2025. Using calendar days is a regulatory violation risk.
+ *
+ * This is the SINGLE SOURCE OF TRUTH for business-day math. Any service
+ * that needs to add business days MUST import from here rather than
+ * reimplementing the weekend + holiday logic locally — see CLAUDE.md
+ * §"Regulatory Domain Knowledge".
  */
 
 /** UAE public holidays — update annually. Covers 2026-2027. */

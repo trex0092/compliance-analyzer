@@ -22,7 +22,7 @@
  *
  * Security + budget design:
  *   - Authenticated, rate-limited (10/min/IP).
- *   - Input caps: question ≤ 2000, caseContext ≤ 24000.
+ *   - Input caps: question ≤ 4000 (mode prefix + user text), caseContext ≤ 24000.
  *   - Advisor uses capped at 3 (down from 4) and executor max_tokens
  *     capped at 1536 (down from 2048) to bound worst-case latency.
  *   - AbortController cancels the upstream fetch if the client hangs up.
@@ -43,7 +43,14 @@ import {
 const RL_MAX = 10;
 const RL_WINDOW_MS = 60 * 1000;
 
-const MAX_QUESTION_LEN = 2000;
+// Widened from 2000 → 4000 on 2026-04-21 so the browser can prepend a
+// reasoning-mode prefix (up to ~1030 chars today — see REASONING_MODES
+// in deep-reasoning.js) to the user's own question (up to 2000 chars
+// per the textarea maxlength) without tripping the pre-flight cap.
+// The composed payload sent by the browser is `modePrefix + question`
+// in a single `question` field, which previously silently overflowed
+// when the MLRO chose an aggressive mode and wrote a long question.
+const MAX_QUESTION_LEN = 4000;
 // 24000 chars ≈ ~6000 tokens — bounded enough to prevent abuse yet
 // large enough for the full serializeComplianceReportForAsana output
 // used by the Screening Command surface (Devil's Advocate, Draft STR,
