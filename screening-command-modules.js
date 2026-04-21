@@ -2839,13 +2839,10 @@
                 cr.risk_level === 'high'     ? 'background:#ea580c;color:#fff' :
                 cr.risk_level === 'medium'   ? 'background:#d97706;color:#1a1a1a' :
                                                'background:#4b5563;color:#fff';
-              var findingHeadline =
-                'ADVERSE MEDIA — ' + cr.adverse_media_classification.toUpperCase() +
-                ' (' + Math.round((cr.adverse_media_confidence || 0) * 100) + '%). ' +
-                'SANCTIONS & WATCHLISTS — ' + esc(cr.sanctions_status) + '.';
-              // Sanctions status pill — sits next to the RISK pill so the
-              // MLRO can see at a glance whether the subject is clean on the
-              // sanctions dimension (separate from adverse-media risk).
+              // Status pills. RISK summarises the overall risk rating;
+              // SANCTIONS surfaces the sanctions-dimension verdict
+              // independently so a clean sanctions result stands out even
+              // when adverse-media risk is HIGH.
               var sanctionsHitCount = typeof cr.sanctions_hit_count === 'number'
                 ? cr.sanctions_hit_count : 0;
               var sanctionsListsChecked = typeof cr.sanctions_lists_checked === 'number'
@@ -2856,55 +2853,36 @@
                 : 'background:#166534;color:#fff';
               var sanctionsSummary = cr.sanctions_summary
                 || (sanctionsHitCount > 0 ? 'POSITIVE' : 'NEGATIVE');
-              // Per-list sanctions breakdown — enumerates every screened list
-              // with its verdict, marking MANDATORY lists (UAE EOCN, UN UNSC)
-              // so the MoE/LBMA audit reviewer can instantly confirm the
-              // regulatory minimum was hit. FDL Art.20-21 + MoE Circular
-              // 08/AML/2021 require the audit record to be specific, not
-              // summarised.
-              var sanctionsDetailLine = '';
-              if (Array.isArray(cr.sanctions_detail) && cr.sanctions_detail.length) {
-                var negCount = 0;
-                var posCount = 0;
-                cr.sanctions_detail.forEach(function (d) {
-                  if (d.verdict === 'POSITIVE') posCount += 1;
-                  else negCount += 1;
-                });
-                var chips = cr.sanctions_detail.map(function (d) {
-                  var isPos = d.verdict === 'POSITIVE';
-                  var verdictStyle = isPos
-                    ? 'color:#dc2626;font-weight:700'
-                    : 'color:#166534;font-weight:600';
-                  var labelStyle = isPos
-                    ? 'font-weight:600'
-                    : 'opacity:.85';
-                  var mandatoryMark = d.mandatory
-                    ? ' <span style="font-size:9px;letter-spacing:.5px;padding:1px 4px;border-radius:3px;background:rgba(234,88,12,0.18);color:#ea580c;font-weight:700">MANDATORY</span>'
-                    : '';
-                  return '<span style="' + labelStyle + '">' + esc(d.short_label) + '</span>' +
-                    mandatoryMark +
-                    ': <span style="' + verdictStyle + '">' + esc(d.verdict) + '</span>';
-                }).join(' · ');
-                sanctionsDetailLine =
-                  '<div style="margin-bottom:6px;font-size:11px;line-height:1.6">' +
-                    '<strong>Sanctions detail</strong> ' +
-                    '<span style="opacity:.7">(' + sanctionsListsChecked + ' lists screened · ' +
-                      posCount + ' positive · ' + negCount + ' negative)</span>.' +
-                    ' ' + chips + '.' +
-                  '</div>';
-              }
+
+              // Narrative blocks. Sanctions Finding and Adverse Media
+              // Finding each render as their own paragraph so the MLRO and
+              // any MoE/LBMA inspector can read the verdict in plain English
+              // alongside the mandatory regulatory action list.
+              var sanctionsParagraph = cr.sanctions_narrative
+                ? '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Sanctions Finding.</strong> ' +
+                    esc(cr.sanctions_narrative) +
+                  '</div>'
+                : '';
+              var adverseParagraph = cr.adverse_media_narrative
+                ? '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Adverse Media Finding.</strong> ' +
+                    esc(cr.adverse_media_narrative) +
+                  '</div>'
+                : '';
+
               complianceReportLine = '<div class="mv-list-meta" style="margin-top:10px;padding:12px;border-left:3px solid #ea580c;background:rgba(234,88,12,0.06);border-radius:6px">' +
-                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">' +
                   '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;' + riskBadgeColor + '">' +
                     'RISK · ' + esc(String(cr.risk_level).toUpperCase()) +
                   '</span>' +
                   '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;' + sanctionsBadgeColor + '">' +
-                    'SANCTIONS · ' + esc(sanctionsSummary) + ' · ' + sanctionsHitCount + '/' + sanctionsListsChecked +
+                    'SANCTIONS · ' + esc(sanctionsSummary) +
                   '</span>' +
                   '<strong style="font-size:13px">Compliance Report</strong>' +
                 '</div>' +
-                '<div style="margin-bottom:6px;font-size:12px"><strong>Finding.</strong> ' + findingHeadline + '</div>' +
-                sanctionsDetailLine +
+                sanctionsParagraph +
+                adverseParagraph +
                 (cr.recommendation
                   ? '<div style="margin-bottom:6px;font-size:12px;line-height:1.55"><strong>Recommendation.</strong> ' + esc(cr.recommendation) + '</div>'
                   : '') +
@@ -3554,6 +3532,123 @@
     if (haystack.indexOf('test-tf') >= 0 && specialScreens.indexOf('terrorism') >= 0) specialFlags.push('terrorism');
     if (haystack.indexOf('test-tax') >= 0 && specialScreens.indexOf('tax_evasion') >= 0) specialFlags.push('tax_evasion');
 
+    // Compose the narrative compliance report. Structure per MLRO ask:
+    // a Sanctions Finding paragraph explaining the sanctions verdict in
+    // plain English (NEGATIVE = what was screened + no freeze triggered;
+    // POSITIVE = which lists hit + the mandatory freeze/CNMR/EOCN/tipping-
+    // off action list), plus an Adverse Media Finding paragraph enumerating
+    // the categories surfaced, the substantive narrative, the lead and
+    // corroborating sources, and the DPMS-sector regulatory hooks.
+    var complianceReport = null;
+    if (knownHit) {
+      var sanctionsDetail = sanctionsLists.map(function (listId) {
+        var item = SANCTIONS_LISTS.filter(function (l) { return l.id === listId; })[0];
+        var citation = item && item.citation ? item.citation : '';
+        return {
+          id: listId,
+          short_label: item && item.short_label ? item.short_label : (item ? item.label : listId),
+          mandatory: /\bMANDATORY\b/.test(citation),
+          verdict: explicitSanctionsHits.indexOf(listId) >= 0 ? 'POSITIVE' : 'NEGATIVE'
+        };
+      });
+      var sanctionsShortLabels = sanctionsDetail.map(function (d) { return d.short_label; });
+      var mandatoryScreened = sanctionsDetail.filter(function (d) { return d.mandatory; });
+      var hitLabels = sanctionsDetail
+        .filter(function (d) { return d.verdict === 'POSITIVE'; })
+        .map(function (d) { return d.short_label; });
+      var hitHasMandatory = sanctionsDetail
+        .some(function (d) { return d.mandatory && d.verdict === 'POSITIVE'; });
+
+      function joinEnglish(arr) {
+        if (arr.length === 0) return '';
+        if (arr.length === 1) return arr[0];
+        if (arr.length === 2) return arr[0] + ' and ' + arr[1];
+        return arr.slice(0, -1).join(', ') + ', and ' + arr[arr.length - 1];
+      }
+
+      var mandatorySentence = '';
+      if (mandatoryScreened.length === 2) {
+        mandatorySentence = ' The two MANDATORY regimes (' +
+          mandatoryScreened[0].short_label + ' and ' +
+          mandatoryScreened[1].short_label + ') are both clean.';
+      } else if (mandatoryScreened.length === 1) {
+        mandatorySentence = ' The MANDATORY regime (' +
+          mandatoryScreened[0].short_label + ') is clean.';
+      }
+
+      var sanctionsNarrative;
+      if (explicitSanctionsHits.length === 0) {
+        sanctionsNarrative =
+          'NEGATIVE. The subject was screened against ' + sanctionsLists.length +
+          ' sanctions and watchlists (' + sanctionsShortLabels.join(', ') + ') and ' +
+          'returned NO matches on any list.' + mandatorySentence +
+          ' The subject is therefore not under active sanctions — no 24-hour ' +
+          'freeze obligation under Cabinet Res 74/2020 Art.4-7 and no CNMR ' +
+          'filing is triggered.';
+      } else {
+        sanctionsNarrative =
+          'POSITIVE. The subject matches on ' + explicitSanctionsHits.length +
+          ' of ' + sanctionsLists.length + ' sanctions lists: ' +
+          joinEnglish(hitLabels) + '. This is a confirmed sanctions hit — ' +
+          'execute a 24-hour asset freeze (Cabinet Res 74/2020 Art.4), ' +
+          'notify the Executive Office (EOCN) within 24 clock hours, ' +
+          'file a CNMR with the FIU within 5 business days, and do NOT tip ' +
+          'off the subject (FDL Art.29).' +
+          (hitHasMandatory
+            ? ' A MANDATORY regime is involved — escalation is non-discretionary.'
+            : '');
+      }
+
+      // Humanised category labels for the adverse-media sentence. Kept
+      // inline (rather than bolted onto ADVERSE_MEDIA_CATEGORIES) because
+      // these are narrative phrasings only used here.
+      var categoryNarrativeLabels = {
+        criminal_fraud: 'criminal / fraud',
+        bribery_corruption: 'bribery and corruption',
+        organised_crime: 'organised-crime',
+        money_laundering: 'money-laundering',
+        tf_pf_links: 'terrorism-financing / proliferation-financing',
+        regulatory_action: 'regulatory-action',
+        negative_reputation: 'negative-reputation',
+        human_rights: 'human-rights / environmental'
+      };
+      var catNarrativeList = adverseHits.map(function (c) {
+        return categoryNarrativeLabels[c] || c.replace(/_/g, ' ');
+      });
+      var categorySentence = catNarrativeList.length
+        ? 'Screening surfaced ' + joinEnglish(catNarrativeList) + ' signals. '
+        : '';
+      var adverseSummary = knownHit.entry.summary
+        ? String(knownHit.entry.summary).trim()
+        : '';
+      if (adverseSummary && !/[.!?]$/.test(adverseSummary)) adverseSummary += '.';
+      var adverseMediaNarrative =
+        String(amCls).toUpperCase() + ' (' +
+        Math.round((amConf || 0) * 100) + '% confidence). ' +
+        categorySentence +
+        (adverseSummary ? adverseSummary + ' ' : '') +
+        (knownHit.entry.source
+          ? 'Lead public source on file: ' + knownHit.entry.source + '.'
+          : '');
+
+      complianceReport = {
+        adverse_media_classification: amCls,
+        adverse_media_confidence: amConf,
+        adverse_media_narrative: adverseMediaNarrative,
+        sanctions_status: explicitSanctionsHits.length === 0
+          ? 'NEGATIVE. Subject is not on any of the ' + sanctionsLists.length + ' selected sanctions / watchlists'
+          : 'POSITIVE. Subject appears on ' + explicitSanctionsHits.length + ' of ' + sanctionsLists.length + ' sanctions list(s): ' + explicitSanctionsHits.join(', '),
+        sanctions_summary: explicitSanctionsHits.length === 0 ? 'NEGATIVE' : 'POSITIVE',
+        sanctions_hit_count: explicitSanctionsHits.length,
+        sanctions_lists_checked: sanctionsLists.length,
+        sanctions_detail: sanctionsDetail,
+        sanctions_narrative: sanctionsNarrative,
+        risk_level: knownHit.entry.risk_level || 'high',
+        recommendation: knownHit.entry.recommendation || '',
+        regulatory_basis: Array.isArray(knownHit.entry.regulatory_basis) ? knownHit.entry.regulatory_basis.slice() : []
+      };
+    }
+
     return {
       id: 'sub-' + Date.now(),
       subject_type: body.entityType === 'legal_entity' ? 'entity' : 'individual',
@@ -3584,29 +3679,7 @@
         match_methods: knownHit.methods,
         matched_alias: knownHit.matchedAlias
       } : null,
-      compliance_report: knownHit ? {
-        adverse_media_classification: amCls,
-        adverse_media_confidence: amConf,
-        sanctions_status: explicitSanctionsHits.length === 0
-          ? 'NEGATIVE. Subject is not on any of the ' + sanctionsLists.length + ' selected sanctions / watchlists'
-          : 'POSITIVE. Subject appears on ' + explicitSanctionsHits.length + ' of ' + sanctionsLists.length + ' sanctions list(s): ' + explicitSanctionsHits.join(', '),
-        sanctions_summary: explicitSanctionsHits.length === 0 ? 'NEGATIVE' : 'POSITIVE',
-        sanctions_hit_count: explicitSanctionsHits.length,
-        sanctions_lists_checked: sanctionsLists.length,
-        sanctions_detail: sanctionsLists.map(function (listId) {
-          var item = SANCTIONS_LISTS.filter(function (l) { return l.id === listId; })[0];
-          var citation = item && item.citation ? item.citation : '';
-          return {
-            id: listId,
-            short_label: item && item.short_label ? item.short_label : (item ? item.label : listId),
-            mandatory: /\bMANDATORY\b/.test(citation),
-            verdict: explicitSanctionsHits.indexOf(listId) >= 0 ? 'POSITIVE' : 'NEGATIVE'
-          };
-        }),
-        risk_level: knownHit.entry.risk_level || 'high',
-        recommendation: knownHit.entry.recommendation || '',
-        regulatory_basis: Array.isArray(knownHit.entry.regulatory_basis) ? knownHit.entry.regulatory_basis.slice() : []
-      } : null,
+      compliance_report: complianceReport,
       special_screens: specialScreens,
       special_flags: specialFlags,
       integrity: 'simulated',
