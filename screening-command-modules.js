@@ -3418,6 +3418,72 @@
                   '</div>';
               }
 
+              // Bayesian Posterior block — probabilistic risk summary
+              // with 90% credible interval + per-signal LLR contribution.
+              var bayesianBlock = '';
+              if (cr.bayesian_posterior) {
+                var bp = cr.bayesian_posterior;
+                var pColor = bp.posterior_mean_pct >= 70 ? '#dc2626'
+                  : bp.posterior_mean_pct >= 40 ? '#ea580c'
+                  : bp.posterior_mean_pct >= 15 ? '#d97706' : '#166534';
+                var weights = (bp.evidence_weights || []).map(function (w) {
+                  var sign = w.llr >= 0 ? '+' : '';
+                  return '<li style="margin-bottom:1px;font-size:11px">' +
+                    '<span style="color:' + (w.llr >= 0 ? '#fca5a5' : '#86efac') + ';font-weight:700;min-width:50px;display:inline-block">LLR ' + sign + w.llr.toFixed(2) + '</span> ' +
+                    esc(w.label) + (w.note ? ' <span style="opacity:.7">(' + esc(w.note) + ')</span>' : '') +
+                    '</li>';
+                }).join('');
+                bayesianBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.55">' +
+                    '<strong>Bayesian Posterior.</strong> ' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;background:' + pColor + ';color:#fff">' +
+                      bp.posterior_mean_pct + '% · ' + esc(bp.interpretation).toUpperCase() +
+                    '</span>' +
+                    ' <span style="opacity:.85;font-size:11px">90% CI [' + bp.ci_low_pct + '%, ' + bp.ci_high_pct + '%]</span>' +
+                    ' <span style="opacity:.6;font-size:10px">prior ' + bp.prior_pct + '% · σ ' + bp.posterior_sigma.toFixed(2) + '</span>' +
+                    '<details style="margin-top:4px"><summary style="font-size:11px;opacity:.8;cursor:pointer">Evidence weights (' + (bp.evidence_weights || []).length + ')</summary>' +
+                      '<ul style="margin:4px 0 0 0;padding-left:18px;list-style:none">' + weights + '</ul>' +
+                    '</details>' +
+                    ' <span style="opacity:.55;font-size:10px">[' + esc(bp.citation) + ']</span>' +
+                  '</div>';
+              }
+
+              // Learned Patterns — aggregated statistics from prior
+              // MLRO dispositions on similar cases. Surfaces false-
+              // positive rate + discriminator signal + top 3 prior
+              // matches so the MLRO sees institutional memory before
+              // closing this disposition.
+              var lessons = findRelevantLessons(r);
+              var lessonsBlock = '';
+              if (lessons && lessons.total_matches > 0) {
+                var byD = lessons.by_disposition || {};
+                var dispBits = [];
+                if (byD.positive)       dispBits.push('<span style="color:#fca5a5">' + byD.positive + ' confirmed</span>');
+                if (byD.escalated)      dispBits.push('<span style="color:#fdba74">' + byD.escalated + ' escalated</span>');
+                if (byD.partial)        dispBits.push('<span style="color:#d8b4fe">' + byD.partial + ' partial</span>');
+                if (byD.false_positive) dispBits.push('<span style="color:#86efac">' + byD.false_positive + ' false-positive</span>');
+                var topRows = (lessons.top_matches || []).map(function (m) {
+                  return '<li style="margin-bottom:2px;font-size:11px">' +
+                    esc(m.subject_name || '—') +
+                    ' · <span style="font-weight:700">' + esc(String(m.disposition || '').toUpperCase()) + '</span>' +
+                    (m.cdd_tier ? ' · ' + esc(m.cdd_tier) : '') +
+                    (m.confidence_pct != null ? ' · ' + m.confidence_pct + '%' : '') +
+                    (m.ts ? ' <span style="opacity:.55">(' + esc(new Date(m.ts).toLocaleDateString()) + ')</span>' : '') +
+                    '</li>';
+                }).join('');
+                lessonsBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6;padding:8px;border-left:3px solid #d8b4fe;background:rgba(168,85,247,0.05);border-radius:6px">' +
+                    '<strong>Learned Patterns.</strong> ' +
+                    lessons.total_matches + ' similar prior disposition(s): ' + dispBits.join(' · ') + '.' +
+                    ' Confirm rate: <strong>' + lessons.confirm_rate_pct + '%</strong>' +
+                    (lessons.discriminator_category
+                      ? ' · <span style="opacity:.85">Discriminator: <strong>' + esc(lessons.discriminator_category) + '</strong> (present in positives, absent in most false-positives)</span>'
+                      : '') +
+                    (topRows ? '<ul style="margin:4px 0 0 0;padding-left:18px;list-style:none">' + topRows + '</ul>' : '') +
+                    ' <span style="opacity:.55;font-size:10px">[' + esc(lessons.citation) + ']</span>' +
+                  '</div>';
+              }
+
               // Historical Case Similarity — computed at render-time
               // against the full workbench (rows) + register.
               var similarCases = findSimilarCases(r, rows);
@@ -3499,6 +3565,7 @@
                 escalationBlock +
                 contradictionBlock +
                 hypothesisBlock +
+                bayesianBlock +
                 reasoningBlock +
                 attributionBlock +
                 cddBlock +
@@ -3508,6 +3575,7 @@
                 connectedBlock +
                 similarBlock +
                 trajectoryBlock +
+                lessonsBlock +
                 (cr.recommendation
                   ? '<div style="margin-bottom:6px;font-size:12px;line-height:1.55"><strong>Recommendation.</strong> ' + esc(cr.recommendation) + '</div>'
                   : '') +
@@ -3941,6 +4009,9 @@
         rows[idx].disposition = d;
         rows[idx].disposed_at = new Date().toISOString();
         safeSave(STORAGE.subjects, rows);
+        // Capture lesson — feeds the Learned Patterns block on
+        // future similar cases (FATF Rec 10.12 institutional memory).
+        try { recordLesson(rows[idx], d); } catch (_) { /* best-effort */ }
         renderSubjectScreening(host);
       };
     });
@@ -4208,6 +4279,17 @@
         (h.contras || []).forEach(function (s) { push('    - ' + s); });
         push('    ↳ ' + h.implication);
       });
+      push('');
+    }
+    if (cr.bayesian_posterior) {
+      var bp = cr.bayesian_posterior;
+      push('BAYESIAN POSTERIOR: ' + bp.posterior_mean_pct + '% (' + String(bp.interpretation).toUpperCase() + ')');
+      push('  90% CI: [' + bp.ci_low_pct + '%, ' + bp.ci_high_pct + '%] · prior ' + bp.prior_pct + '% · σ ' + bp.posterior_sigma.toFixed(2));
+      (bp.evidence_weights || []).forEach(function (w) {
+        var sign = w.llr >= 0 ? '+' : '';
+        push('  LLR ' + sign + w.llr.toFixed(2) + ' · ' + w.label + (w.note ? ' (' + w.note + ')' : ''));
+      });
+      if (bp.citation) push('  [' + bp.citation + ']');
       push('');
     }
     if (Array.isArray(cr.reasoning_chain) && cr.reasoning_chain.length) {
@@ -5528,6 +5610,274 @@
     };
   }
 
+  // ─── Bayesian posterior engine — log-odds / credible interval ──────
+  // Replaces the flat-additive computeScoreAttribution math with a
+  // probabilistic posterior. Each signal contributes a log-likelihood
+  // ratio (LLR) with a seeded mean + uncertainty; LLRs sum in log-odds
+  // space, we apply the logistic to recover P(high-risk | evidence),
+  // and we propagate variance to emit a 90% credible interval.
+  //
+  // LLR priors are seeded from AUSTRAC + FATF typology rates + UAE
+  // MoE DPMS-sector frequency data (approximate; documented as
+  // "compliance-grade bands" not precise empiricals). Refinement is a
+  // single-map edit when better data arrives.
+  //
+  // Math:
+  //   logit(prior) + Σ LLR_i  →  posterior logit
+  //   P = σ(posterior logit)
+  //   CI = σ(posterior logit ± 1.645·sqrt(Σ σ_i²))  [90%]
+  var BAYESIAN_PRIORS = {
+    // Base-rate P(high-risk | random screen) for different contexts.
+    // Higher priors for DPMS/CAHRA/sanctions-adjacent flows.
+    default:             0.04,
+    dpms_hub:            0.06,
+    dpms_source:         0.08,
+    cahra_source:        0.18,
+    sanctions_adjacent:  0.25
+  };
+  // LLR entries: { llr_mean, sigma } — mean shift in log-odds,
+  // uncertainty band for CI propagation. Sign: positive ⇒ increases
+  // risk, negative ⇒ decreases.
+  var LIKELIHOOD_RATIOS = {
+    sanctions_mandatory_hit:       { llr_mean: 3.0,  sigma: 0.5,  label: 'Mandatory regime sanctions hit' },
+    sanctions_other_hit:           { llr_mean: 2.0,  sigma: 0.5,  label: 'Non-mandatory sanctions hit' },
+    adverse_media_confirmed:       { llr_mean: 2.5,  sigma: 0.6,  label: 'Confirmed adverse-media match' },
+    adverse_media_potential:       { llr_mean: 1.3,  sigma: 0.5,  label: 'Potential adverse-media match' },
+    adverse_media_weak:            { llr_mean: 0.4,  sigma: 0.4,  label: 'Weak adverse-media signal' },
+    category_tf_pf:                { llr_mean: 1.8,  sigma: 0.5,  label: 'TF / PF category' },
+    category_predicate_offence:    { llr_mean: 1.0,  sigma: 0.4,  label: 'Predicate-offence category (fraud/ML/corruption/OC)' },
+    category_secondary:            { llr_mean: 0.3,  sigma: 0.3,  label: 'Secondary category (reputation/human rights)' },
+    jurisdiction_sanctions:        { llr_mean: 1.8,  sigma: 0.5,  label: 'Comprehensive / sectoral sanctions jurisdiction' },
+    jurisdiction_fatf_black:       { llr_mean: 1.5,  sigma: 0.5,  label: 'FATF black-list jurisdiction' },
+    jurisdiction_fatf_grey:        { llr_mean: 0.7,  sigma: 0.4,  label: 'FATF grey-list jurisdiction' },
+    jurisdiction_cahra:            { llr_mean: 0.9,  sigma: 0.4,  label: 'CAHRA (conflict-affected / high-risk area)' },
+    jurisdiction_secrecy:          { llr_mean: 0.5,  sigma: 0.3,  label: 'Financial-secrecy jurisdiction' },
+    pep_self:                      { llr_mean: 1.2,  sigma: 0.5,  label: 'PEP (self)' },
+    pep_family:                    { llr_mean: 0.6,  sigma: 0.3,  label: 'PEP family / close associate' },
+    typology_match:                { llr_mean: 0.5,  sigma: 0.3,  label: 'Typology pattern match' },
+    contradiction_high:            { llr_mean: 0.8,  sigma: 0.3,  label: 'High-severity contradiction flagged' },
+    corroboration_multi_source:    { llr_mean: 0.5,  sigma: 0.3,  label: 'Multi-source corroboration (≥2 independent)' },
+    single_source_downweight:      { llr_mean: -0.6, sigma: 0.3,  label: 'Single-source downweight' },
+    evidence_grade_a_or_b:         { llr_mean: 0.4,  sigma: 0.3,  label: 'Evidence grade A or B' },
+    evidence_grade_d_or_e:         { llr_mean: -0.5, sigma: 0.3,  label: 'Evidence grade D or E' }
+  };
+
+  function logistic(x) { return 1 / (1 + Math.exp(-x)); }
+  function logit(p) {
+    var e = 1e-6;
+    var bounded = Math.max(e, Math.min(1 - e, p));
+    return Math.log(bounded / (1 - bounded));
+  }
+
+  function computeBayesianPosterior(ctx) {
+    // Pick a prior based on jurisdiction flags.
+    var jf = (ctx.jurisdiction && ctx.jurisdiction.flags) || [];
+    var priorKey = 'default';
+    if (jf.indexOf('comprehensive_sanctions') >= 0 || jf.indexOf('sectoral_sanctions') >= 0 || jf.indexOf('fatf_black') >= 0) {
+      priorKey = 'sanctions_adjacent';
+    } else if (jf.indexOf('cahra') >= 0 && jf.indexOf('dpms_source') >= 0) {
+      priorKey = 'cahra_source';
+    } else if (jf.indexOf('dpms_source') >= 0) {
+      priorKey = 'dpms_source';
+    } else if (jf.indexOf('dpms_hub') >= 0) {
+      priorKey = 'dpms_hub';
+    }
+    var prior = BAYESIAN_PRIORS[priorKey];
+    var posteriorLogit = logit(prior);
+    var varianceSum = 0;
+    var evidenceWeights = [];
+    function apply(key, note) {
+      var lr = LIKELIHOOD_RATIOS[key];
+      if (!lr) return;
+      posteriorLogit += lr.llr_mean;
+      varianceSum += lr.sigma * lr.sigma;
+      evidenceWeights.push({ key: key, label: lr.label, llr: lr.llr_mean, note: note || '' });
+    }
+
+    // Sanctions
+    (ctx.sanctions_detail || []).forEach(function (d) {
+      if (d.verdict !== 'POSITIVE') return;
+      if (d.mandatory) apply('sanctions_mandatory_hit', d.short_label);
+      else             apply('sanctions_other_hit', d.short_label);
+    });
+    // Adverse media
+    var amConf = typeof ctx.adverse_media_confidence === 'number' ? ctx.adverse_media_confidence : 0;
+    if (amConf >= 0.85)      apply('adverse_media_confirmed', Math.round(amConf * 100) + '%');
+    else if (amConf >= 0.5)  apply('adverse_media_potential', Math.round(amConf * 100) + '%');
+    else if (amConf > 0)     apply('adverse_media_weak',      Math.round(amConf * 100) + '%');
+    // Categories
+    var cats = ctx.adverse_hits || [];
+    if (cats.indexOf('tf_pf_links') >= 0) apply('category_tf_pf');
+    if (cats.some(function (c) { return ['criminal_fraud', 'money_laundering', 'bribery_corruption', 'organised_crime'].indexOf(c) >= 0; })) {
+      apply('category_predicate_offence', cats.filter(function (c) {
+        return ['criminal_fraud', 'money_laundering', 'bribery_corruption', 'organised_crime'].indexOf(c) >= 0;
+      }).join('+'));
+    }
+    if (cats.some(function (c) { return ['negative_reputation', 'human_rights'].indexOf(c) >= 0; })) {
+      apply('category_secondary');
+    }
+    // Jurisdiction
+    if (jf.indexOf('comprehensive_sanctions') >= 0 || jf.indexOf('sectoral_sanctions') >= 0) apply('jurisdiction_sanctions', ctx.jurisdiction && ctx.jurisdiction.name);
+    if (jf.indexOf('fatf_black') >= 0) apply('jurisdiction_fatf_black', ctx.jurisdiction && ctx.jurisdiction.name);
+    if (jf.indexOf('fatf_grey') >= 0)  apply('jurisdiction_fatf_grey',  ctx.jurisdiction && ctx.jurisdiction.name);
+    if (jf.indexOf('cahra') >= 0)      apply('jurisdiction_cahra',      ctx.jurisdiction && ctx.jurisdiction.name);
+    if (jf.indexOf('secrecy') >= 0)    apply('jurisdiction_secrecy',    ctx.jurisdiction && ctx.jurisdiction.name);
+    // PEP
+    if (ctx.pep_self)   apply('pep_self');
+    if (ctx.pep_family) apply('pep_family');
+    // Typologies (capped contribution to avoid double-counting with categories)
+    var tCount = Array.isArray(ctx.typologies) ? Math.min(3, ctx.typologies.length) : 0;
+    for (var i = 0; i < tCount; i++) apply('typology_match', ctx.typologies[i].label);
+    // Contradictions (high severity only — mediums/lows already baked into sibling signals)
+    var highContradictions = (ctx.contradictions || []).filter(function (c) { return c.severity === 'high'; });
+    for (var j = 0; j < highContradictions.length; j++) apply('contradiction_high', highContradictions[j].label);
+    // Corroboration vs single-source
+    if ((ctx.source_count || 0) >= 2) apply('corroboration_multi_source', ctx.source_count + ' sources');
+    else if ((ctx.source_count || 0) === 1) apply('single_source_downweight');
+    // Evidence grade
+    if (ctx.evidence_grade && ['A', 'B'].indexOf(ctx.evidence_grade.grade) >= 0) apply('evidence_grade_a_or_b', 'grade ' + ctx.evidence_grade.grade);
+    else if (ctx.evidence_grade && ['D', 'E'].indexOf(ctx.evidence_grade.grade) >= 0) apply('evidence_grade_d_or_e', 'grade ' + ctx.evidence_grade.grade);
+
+    var sigma = Math.sqrt(varianceSum);
+    var pMean = logistic(posteriorLogit);
+    var pLow  = logistic(posteriorLogit - 1.645 * sigma);
+    var pHigh = logistic(posteriorLogit + 1.645 * sigma);
+    return {
+      prior_key: priorKey,
+      prior_pct: Math.round(prior * 100),
+      posterior_logit: posteriorLogit,
+      posterior_sigma: sigma,
+      posterior_mean_pct: Math.round(pMean * 100),
+      ci_low_pct: Math.round(pLow * 100),
+      ci_high_pct: Math.round(pHigh * 100),
+      evidence_weights: evidenceWeights,
+      interpretation: pMean >= 0.7 ? 'high-risk posterior'
+        : pMean >= 0.4 ? 'elevated posterior'
+        : pMean >= 0.15 ? 'moderate posterior'
+        : 'low posterior',
+      citation: 'FATF Rec 10 · Cabinet Res 134/2025 Art.14 · Bayesian log-odds update'
+    };
+  }
+
+  // ─── Lesson store — localStorage pattern memory ────────────────────
+  // When an MLRO closes a disposition (confirm / partial / false-
+  // positive / escalated), we capture the row's signal bundle +
+  // outcome. Over time this builds a per-MLRO pattern library that
+  // surfaces on similar future cases as "Learned Patterns": N prior
+  // cases with this profile → M confirmed, K false-positive, etc.
+  // Stored client-side in localStorage to stay within the Netlify
+  // serverless budget; audit-grade storage (FDL Art.24 10-year
+  // retention) still lives server-side in the screening-run audit log.
+  var LESSONS_STORAGE_KEY = 'hawkeye.screening.lessons.v1';
+  var LESSONS_MAX = 200;
+
+  function loadLessons() {
+    try {
+      var raw = localStorage.getItem(LESSONS_STORAGE_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (_) { return []; }
+  }
+  function saveLessonStore(list) {
+    try { localStorage.setItem(LESSONS_STORAGE_KEY, JSON.stringify(list.slice(-LESSONS_MAX))); } catch (_) {}
+  }
+  function recordLesson(row, disposition) {
+    if (!row || !disposition) return;
+    var cr = row.compliance_report || {};
+    var lesson = {
+      ts: Date.now(),
+      subject_name: row.name || '',
+      country: String(row.country || '').toLowerCase(),
+      entity_type: row.subject_type || '',
+      adverse_hits: Array.isArray(row.adverse_media_hits) ? row.adverse_media_hits.slice() : [],
+      typology_ids: Array.isArray(cr.typologies) ? cr.typologies.map(function (t) { return t.id; }) : [],
+      cdd_tier: (cr.cdd_recommendation && cr.cdd_recommendation.tier) || '',
+      disposition: disposition,
+      classification: cr.adverse_media_classification || row.top_classification || '',
+      confidence_pct: typeof row.confidence === 'number' ? Math.round(row.confidence * 100) : null,
+      risk_level: cr.risk_level || '',
+      posterior_mean_pct: (cr.bayesian_posterior && cr.bayesian_posterior.posterior_mean_pct) || null,
+      contradiction_count: Array.isArray(cr.contradictions) ? cr.contradictions.length : 0,
+      jurisdiction_flags: (cr.jurisdiction && Array.isArray(cr.jurisdiction.flags)) ? cr.jurisdiction.flags.slice() : []
+    };
+    var list = loadLessons();
+    list.push(lesson);
+    saveLessonStore(list);
+  }
+
+  function findRelevantLessons(row) {
+    var cr = row.compliance_report || {};
+    if (!row || !cr) return null;
+    var myCountry = String(row.country || '').toLowerCase();
+    var myType = row.subject_type || '';
+    var myCats = Array.isArray(row.adverse_media_hits) ? row.adverse_media_hits : [];
+    var myTypologies = Array.isArray(cr.typologies) ? cr.typologies.map(function (t) { return t.id; }) : [];
+    var lessons = loadLessons();
+    if (!lessons.length) return null;
+    var relevant = lessons.filter(function (l) {
+      var score = 0;
+      if (l.country === myCountry) score += 2;
+      if (l.entity_type === myType) score += 1;
+      var catOverlap = (l.adverse_hits || []).filter(function (c) { return myCats.indexOf(c) >= 0; }).length;
+      score += catOverlap * 2;
+      var tOverlap = (l.typology_ids || []).filter(function (t) { return myTypologies.indexOf(t) >= 0; }).length;
+      score += tOverlap * 3;
+      l._score = score;
+      return score >= 4;
+    }).sort(function (a, b) { return b._score - a._score; });
+    if (!relevant.length) return null;
+    // Aggregate statistics across relevant lessons.
+    var byDisposition = { positive: 0, partial: 0, false_positive: 0, escalated: 0, other: 0 };
+    relevant.forEach(function (l) {
+      if (byDisposition[l.disposition] != null) byDisposition[l.disposition] += 1;
+      else byDisposition.other += 1;
+    });
+    var totalMatches = relevant.length;
+    // Compute a weighted "confirm rate" to compare with current
+    // posterior — MLRO can see if the model is mis-calibrated.
+    var confirmCount = byDisposition.positive + byDisposition.escalated;
+    var confirmRate = totalMatches > 0 ? confirmCount / totalMatches : 0;
+    // Discriminator detection — find the signal most predictive of
+    // "positive" vs "false_positive" within the relevant subset.
+    var positiveLessons = relevant.filter(function (l) { return l.disposition === 'positive' || l.disposition === 'escalated'; });
+    var fpLessons = relevant.filter(function (l) { return l.disposition === 'false_positive'; });
+    var discriminator = '';
+    if (positiveLessons.length >= 1 && fpLessons.length >= 1) {
+      // Find a category present in positives but absent in all FPs.
+      var posCats = positiveLessons.reduce(function (acc, l) {
+        (l.adverse_hits || []).forEach(function (c) { acc[c] = (acc[c] || 0) + 1; });
+        return acc;
+      }, {});
+      var fpCats = fpLessons.reduce(function (acc, l) {
+        (l.adverse_hits || []).forEach(function (c) { acc[c] = (acc[c] || 0) + 1; });
+        return acc;
+      }, {});
+      var keys = Object.keys(posCats);
+      for (var i = 0; i < keys.length; i++) {
+        if ((posCats[keys[i]] / positiveLessons.length) > 0.6 && ((fpCats[keys[i]] || 0) / fpLessons.length) < 0.3) {
+          discriminator = keys[i];
+          break;
+        }
+      }
+    }
+    return {
+      total_matches: totalMatches,
+      by_disposition: byDisposition,
+      confirm_rate_pct: Math.round(confirmRate * 100),
+      discriminator_category: discriminator,
+      top_matches: relevant.slice(0, 3).map(function (l) {
+        return {
+          ts: l.ts,
+          disposition: l.disposition,
+          subject_name: l.subject_name,
+          confidence_pct: l.confidence_pct,
+          cdd_tier: l.cdd_tier
+        };
+      }),
+      citation: 'FATF Rec 10.12 · Pattern-recognition / institutional memory'
+    };
+  }
+
   // ─── Screening row builders ─────────────────────────────────────────
   function buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens, pepDimensions) {
     var perList = [];
@@ -5972,6 +6322,18 @@
         typologies: typologies,
         sanctions_hit_count: explicitSanctionsHits.length
       });
+      var bayesianPosterior = computeBayesianPosterior({
+        sanctions_detail: sanctionsDetail,
+        adverse_media_confidence: amConf,
+        adverse_hits: adverseHits,
+        jurisdiction: jurisdiction,
+        pep_self: pepFlags.indexOf('pep_self') >= 0,
+        pep_family: pepFlags.some(function (p) { return p !== 'pep_self'; }),
+        typologies: typologies,
+        contradictions: contradictions,
+        source_count: sourceCount,
+        evidence_grade: evidenceGrade
+      });
 
       // Typology narrative (short paragraph)
       var typologyNarrative = '';
@@ -6011,6 +6373,7 @@
         evidence_grade: evidenceGrade,
         contradictions: contradictions,
         hypotheses: hypotheses,
+        bayesian_posterior: bayesianPosterior,
         source_count: sourceCount,
         risk_level: knownHit.entry.risk_level || 'high',
         recommendation: knownHit.entry.recommendation || '',
