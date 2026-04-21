@@ -5056,6 +5056,39 @@
   // kept separate so the screening card can render the streaming reply
   // inline next to the compliance report without round-tripping through
   // the Deep Reasoning card.
+  // Client-side caps must match the server's MAX_CONTEXT_LEN /
+  // MAX_QUESTION_LEN in netlify/functions/brain-reason.mts so a
+  // compliance report that overflows gets a visible truncation
+  // warning instead of a hard HTTP 400. FDL Art.20-21 (CO must get
+  // an actionable verdict, not a 400) + Cabinet Res 134/2025 Art.19.
+  var BRAIN_MAX_QUESTION_LEN = 2000;
+  var BRAIN_MAX_CONTEXT_LEN = 24000;
+  function clientTruncateBrainPayload(payload) {
+    var out = Object.assign({}, payload || {});
+    var notes = [];
+    if (typeof out.question === 'string' && out.question.length > BRAIN_MAX_QUESTION_LEN) {
+      var keepQ = BRAIN_MAX_QUESTION_LEN - 80;
+      out.question = out.question.slice(0, keepQ)
+        + '\n\n[… question truncated client-side at ' + BRAIN_MAX_QUESTION_LEN + ' chars …]';
+      notes.push('question');
+    }
+    if (typeof out.caseContext === 'string' && out.caseContext.length > BRAIN_MAX_CONTEXT_LEN) {
+      var originalLen = out.caseContext.length;
+      // Keep the start (subject + key identifiers) AND the end
+      // (hits + narrative) — middle is usually the least decisive
+      // cluster of raw transaction rows.
+      var halfBudget = Math.floor((BRAIN_MAX_CONTEXT_LEN - 140) / 2);
+      out.caseContext =
+        out.caseContext.slice(0, halfBudget)
+        + '\n\n[… case context truncated client-side — original was '
+        + originalLen + ' chars, cap is ' + BRAIN_MAX_CONTEXT_LEN
+        + ' chars. Middle section omitted to preserve subject header + hits …]\n\n'
+        + out.caseContext.slice(out.caseContext.length - halfBudget);
+      notes.push('caseContext (' + originalLen + '→' + out.caseContext.length + ')');
+    }
+    return { payload: out, truncatedFields: notes };
+  }
+
   function streamBrainReasonInto(panel, payload, token, opts) {
     opts = opts || {};
     var full = '';
@@ -5069,11 +5102,20 @@
       statusEl.textContent = msg;
       statusEl.style.color = tone === 'err' ? '#fca5a5' : tone === 'ok' ? '#86efac' : '';
     }
-    setStatus('Streaming…');
+    // Defense-in-depth: truncate before send if over cap so the
+    // MLRO always gets a draft instead of a 400. The narrative will
+    // include a visible truncation notice so the CO can re-run with
+    // a split context if the middle section matters.
+    var prepped = clientTruncateBrainPayload(payload);
+    if (prepped.truncatedFields.length > 0) {
+      setStatus('Streaming… (truncated: ' + prepped.truncatedFields.join(', ') + ')');
+    } else {
+      setStatus('Streaming…');
+    }
     fetch('/api/brain-reason', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(prepped.payload),
       signal: abort.signal
     }).then(function (res) {
       if (!res.ok || !res.body) {

@@ -22,7 +22,7 @@
  *
  * Security + budget design:
  *   - Authenticated, rate-limited (10/min/IP).
- *   - Input caps: question ≤ 2000, caseContext ≤ 8000.
+ *   - Input caps: question ≤ 2000, caseContext ≤ 24000.
  *   - Advisor uses capped at 3 (down from 4) and executor max_tokens
  *     capped at 1536 (down from 2048) to bound worst-case latency.
  *   - AbortController cancels the upstream fetch if the client hangs up.
@@ -44,7 +44,16 @@ const RL_MAX = 10;
 const RL_WINDOW_MS = 60 * 1000;
 
 const MAX_QUESTION_LEN = 2000;
-const MAX_CONTEXT_LEN = 8000;
+// Raised from 8_000 → 24_000 on 2026-04-21. The "Draft STR" flow
+// passes the full serialised compliance report as caseContext
+// (subject profile + transactions + hits + narratives + citations
+// across 20 blocks). Real-world MLRO cases routinely exceed 10 KB
+// — the old 8 KB cap was failing every STR draft on confirmed
+// matches and that is the scenario the regulator most needs to
+// succeed at. 24 KB ≈ 6 k tokens on Claude Sonnet, safely inside
+// the 200 K context window and inside the 25 s wall-clock budget
+// per our per-request streaming profile.
+const MAX_CONTEXT_LEN = 24_000;
 const MAX_ADVISOR_USES = 3;
 const MAX_EXECUTOR_TOKENS = 1536;
 
