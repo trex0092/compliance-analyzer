@@ -383,6 +383,253 @@
     { id: 'environmental_harm',  label: 'Environmental harm / illegal mining',         citation: 'OECD DD Guidance · Basel Convention', group: 'ESG' }
   ];
 
+  // ─── Country-risk table — per-country flags keyed by ISO-2 ──────────
+  // Drives the Jurisdiction Context paragraph in the compliance report.
+  // Flags:
+  //   fatf_black:               FATF Call-for-Action (Cabinet Res 134/2025 Art.14 counter-measures)
+  //   fatf_grey:                FATF Increased Monitoring
+  //   fatf_recent_delist:       Exited grey list within ~18 months — residual scrutiny
+  //   comprehensive_sanctions:  OFAC / UK / EU full-regime (absolute prohibition)
+  //   sectoral_sanctions:       OFAC / UK / EU sectoral (partial regime)
+  //   cahra:                    LBMA RGG v9 / OECD DD Guidance Conflict-Affected & High-Risk Area
+  //   secrecy:                  Tax-haven / financial-secrecy jurisdiction
+  //   dpms_role:                'source' | 'hub' | 'transit' (gold-corridor position)
+  //   notes:                    one-line DPMS / AML context
+  //
+  // Sources of truth (2026-04): FATF Plenary Outcomes (Oct 2024),
+  // OFAC SDN + sectoral programs, EU FATF-equivalent list, LBMA RGG v9
+  // CAHRA annex, EU non-cooperative tax list, Tax Justice Network FSI.
+  var COUNTRY_RISK_TABLE = {
+    // FATF black list — DPRK, Iran, Myanmar
+    IR: { aliases: ['iran', 'islamic republic of iran'], fatf_black: true, comprehensive_sanctions: true, dpms_role: null, notes: 'Iran — FATF black + OFAC comprehensive + EU full sanctions. Absolute-prohibition territory for UAE-nexus DPMS activity; any engagement requires licensing.' },
+    KP: { aliases: ['dprk', 'north korea', 'democratic people\'s republic of korea'], fatf_black: true, comprehensive_sanctions: true, dpms_role: null, notes: 'DPRK — FATF black + UNSCR 1718/2270/2397 + OFAC NK-SSR comprehensive. WMD-proliferation-financing jurisdiction (Cabinet Res 156/2025).' },
+    MM: { aliases: ['myanmar', 'burma'], fatf_black: true, cahra: true, dpms_role: 'source', notes: 'Myanmar — FATF black + CAHRA (junta-controlled jade/gold mining). Forced-labour indicators (LBMA RGG v9 Step 3 mandatory EDD).' },
+
+    // Comprehensive-sanctions jurisdictions (beyond FATF black)
+    SY: { aliases: ['syria', 'syrian arab republic'], comprehensive_sanctions: true, cahra: true, dpms_role: null, notes: 'Syria — OFAC comprehensive + EU full sanctions + CAHRA. Absolute-prohibition territory except for licensed humanitarian channels.' },
+    CU: { aliases: ['cuba'], comprehensive_sanctions: true, dpms_role: null, notes: 'Cuba — OFAC comprehensive (31 CFR 515). US-nexus prohibitions cascade through USD clearing.' },
+
+    // Sectoral / partial sanctions
+    RU: { aliases: ['russia', 'russian federation'], sectoral_sanctions: true, cahra: true, fatf_grey: false, dpms_role: 'source', notes: 'Russia — OFAC/UK/EU sectoral + Directive 1A–4 + G7 gold-import ban + EU gold-origin ban. High sanctions-evasion risk via third-country refineries.' },
+    BY: { aliases: ['belarus'], sectoral_sanctions: true, dpms_role: null, notes: 'Belarus — OFAC/UK/EU sectoral + potash/oil/banking restrictions. Russia-nexus secondary-sanctions exposure.' },
+    VE: { aliases: ['venezuela', 'bolivarian republic of venezuela'], sectoral_sanctions: true, fatf_grey: true, cahra: true, dpms_role: 'source', notes: 'Venezuela — OFAC sectoral + FATF grey + CAHRA (Orinoco illegal gold mining). Gold-laundering corridor to third-country refineries.' },
+    IQ: { aliases: ['iraq'], cahra: true, dpms_role: 'source', notes: 'Iraq — CAHRA. Iran-nexus sanctions-circumvention risk.' },
+    LY: { aliases: ['libya', 'state of libya'], cahra: true, dpms_role: 'transit', notes: 'Libya — UN sanctions (1970) + CAHRA. Cash-intensive and oil-smuggling exposure.' },
+    PS: { aliases: ['palestine', 'palestinian territory', 'state of palestine'], cahra: true, dpms_role: null, notes: 'Palestine — CAHRA. Counter-terrorism-financing scrutiny.' },
+
+    // FATF grey list (current as of FATF Plenary Feb 2025)
+    DZ: { aliases: ['algeria'], fatf_grey: true, dpms_role: null, notes: 'Algeria — FATF grey list (Oct 2024). Strategic AML/CFT deficiencies.' },
+    AO: { aliases: ['angola'], fatf_grey: true, cahra: true, dpms_role: 'source', notes: 'Angola — FATF grey + diamond-sector CAHRA.' },
+    BG: { aliases: ['bulgaria'], fatf_grey: true, dpms_role: null, notes: 'Bulgaria — FATF grey (first EU member listed). MONEYVAL follow-up.' },
+    BF: { aliases: ['burkina faso'], fatf_grey: true, cahra: true, dpms_role: 'source', notes: 'Burkina Faso — FATF grey + CAHRA. ASM gold exports with terror-financing concerns (JNIM/ISGS).' },
+    CM: { aliases: ['cameroon'], fatf_grey: true, cahra: true, dpms_role: 'source', notes: 'Cameroon — FATF grey + CAHRA.' },
+    CI: { aliases: ['ivory coast', 'côte d\'ivoire', 'cote d\'ivoire'], fatf_grey: true, dpms_role: null, notes: 'Côte d\'Ivoire — FATF grey.' },
+    HR: { aliases: ['croatia'], fatf_grey: true, dpms_role: null, notes: 'Croatia — FATF grey.' },
+    CD: { aliases: ['dr congo', 'democratic republic of congo', 'congo democratic'], fatf_grey: true, cahra: true, dpms_role: 'source', notes: 'DRC — FATF grey + CAHRA. Prime ASM gold/3TG CAHRA (LBMA RGG v9 mandatory EDD).' },
+    HT: { aliases: ['haiti'], fatf_grey: true, dpms_role: null, notes: 'Haiti — FATF grey. Gang-controlled territories (UNSC 2653).' },
+    KE: { aliases: ['kenya'], fatf_grey: true, dpms_role: 'transit', notes: 'Kenya — FATF grey. East-Africa gold transit exposure.' },
+    LA: { aliases: ['laos', 'lao pdr'], fatf_grey: true, dpms_role: null, notes: 'Laos — FATF grey.' },
+    LB: { aliases: ['lebanon'], fatf_grey: true, dpms_role: null, notes: 'Lebanon — FATF grey. Hezbollah TF concerns.' },
+    ML: { aliases: ['mali'], fatf_grey: true, cahra: true, dpms_role: 'source', notes: 'Mali — FATF grey + CAHRA. ASM gold with JNIM/ISGS TF exposure.' },
+    MC: { aliases: ['monaco'], fatf_grey: true, secrecy: true, dpms_role: null, notes: 'Monaco — FATF grey + financial-secrecy jurisdiction.' },
+    MZ: { aliases: ['mozambique'], fatf_grey: true, dpms_role: null, notes: 'Mozambique — FATF grey.' },
+    NA: { aliases: ['namibia'], fatf_grey: true, dpms_role: 'source', notes: 'Namibia — FATF grey. Diamond/uranium export exposure.' },
+    NP: { aliases: ['nepal'], fatf_grey: true, dpms_role: null, notes: 'Nepal — FATF grey.' },
+    NG: { aliases: ['nigeria'], fatf_grey: true, dpms_role: null, notes: 'Nigeria — FATF grey.' },
+    PH: { aliases: ['philippines'], fatf_grey: true, dpms_role: null, notes: 'Philippines — FATF grey.' },
+    SN: { aliases: ['senegal'], fatf_grey: true, dpms_role: null, notes: 'Senegal — FATF grey.' },
+    ZA: { aliases: ['south africa'], fatf_grey: true, dpms_role: 'source', notes: 'South Africa — FATF grey. Major gold-mining jurisdiction.' },
+    SS: { aliases: ['south sudan'], fatf_grey: true, cahra: true, dpms_role: 'source', notes: 'South Sudan — FATF grey + CAHRA.' },
+    TZ: { aliases: ['tanzania', 'united republic of tanzania'], fatf_grey: true, dpms_role: 'source', notes: 'Tanzania — FATF grey. Gold-mining jurisdiction.' },
+    VN: { aliases: ['vietnam', 'viet nam'], fatf_grey: true, dpms_role: null, notes: 'Vietnam — FATF grey.' },
+    YE: { aliases: ['yemen'], fatf_grey: true, cahra: true, dpms_role: null, notes: 'Yemen — FATF grey + CAHRA. UN sanctions (2140) on Houthi-linked entities.' },
+
+    // Recent FATF grey-list exits (residual scrutiny for ~18 months)
+    TR: { aliases: ['turkey', 'türkiye', 'turkiye'], fatf_recent_delist: true, dpms_role: 'hub', notes: 'Türkiye — exited FATF grey list (Oct 2024); residual heightened scrutiny. Major gold-refinery hub (Istanbul Gold Exchange) with LBMA RGG v9 Step 3 exposure.' },
+    AE: { aliases: ['uae', 'united arab emirates', 'emirates'], fatf_recent_delist: true, dpms_role: 'hub', notes: 'UAE — exited FATF grey list (Feb 2024). Home jurisdiction. DPMS-sector sovereign hub under MoE Circular 08/AML/2021.' },
+
+    // CAHRA (non-grey / non-sanctioned)
+    AF: { aliases: ['afghanistan'], cahra: true, dpms_role: null, notes: 'Afghanistan — CAHRA + Taliban-administered territory. Counter-TF scrutiny (UNSCR 1988).' },
+    BI: { aliases: ['burundi'], cahra: true, dpms_role: null, notes: 'Burundi — CAHRA.' },
+    CF: { aliases: ['central african republic', 'car'], cahra: true, dpms_role: 'source', notes: 'CAR — CAHRA. ASM gold with armed-group exposure.' },
+    TD: { aliases: ['chad'], cahra: true, dpms_role: null, notes: 'Chad — CAHRA.' },
+    CO: { aliases: ['colombia'], cahra: true, dpms_role: 'source', notes: 'Colombia — CAHRA (narco-linked ASM). Significant gold-laundering typology.' },
+    ET: { aliases: ['ethiopia'], cahra: true, dpms_role: null, notes: 'Ethiopia — CAHRA (Tigray region).' },
+    IL: { aliases: ['israel'], cahra: true, dpms_role: null, notes: 'Israel — partial CAHRA (Gaza/West Bank regions per OECD DD Guidance).' },
+    NE: { aliases: ['niger'], cahra: true, dpms_role: null, notes: 'Niger — CAHRA (post-coup instability + Sahel armed groups).' },
+    PK: { aliases: ['pakistan'], cahra: true, dpms_role: null, notes: 'Pakistan — partial CAHRA (tribal areas).' },
+    SO: { aliases: ['somalia'], cahra: true, dpms_role: null, notes: 'Somalia — CAHRA. Al-Shabaab TF.' },
+    SD: { aliases: ['sudan'], cahra: true, dpms_role: 'source', notes: 'Sudan — CAHRA. RSF/SAF gold-mining-funded conflict (post-2023).' },
+    UA: { aliases: ['ukraine'], cahra: true, dpms_role: null, notes: 'Ukraine — CAHRA (active conflict; Crimea + DNR/LNR regions under comprehensive sanctions).' },
+
+    // Tax-haven / financial-secrecy (non-grey/non-CAHRA)
+    AD: { aliases: ['andorra'], secrecy: true, dpms_role: null, notes: 'Andorra — financial-secrecy jurisdiction.' },
+    AI: { aliases: ['anguilla'], secrecy: true, dpms_role: null, notes: 'Anguilla — EU non-cooperative tax jurisdiction.' },
+    AG: { aliases: ['antigua', 'antigua and barbuda'], secrecy: true, dpms_role: null, notes: 'Antigua & Barbuda — CBI/secrecy jurisdiction.' },
+    BS: { aliases: ['bahamas'], secrecy: true, dpms_role: null, notes: 'Bahamas — historic financial-secrecy; tax-transparency concerns.' },
+    BH: { aliases: ['bahrain'], dpms_role: 'transit', notes: 'Bahrain — GCC neighbour. Gold-transit corridor.' },
+    BB: { aliases: ['barbados'], secrecy: true, dpms_role: null, notes: 'Barbados — EU non-cooperative tax jurisdiction.' },
+    BZ: { aliases: ['belize'], secrecy: true, dpms_role: null, notes: 'Belize — historic offshore jurisdiction.' },
+    BM: { aliases: ['bermuda'], secrecy: true, dpms_role: null, notes: 'Bermuda — classic offshore financial centre.' },
+    VG: { aliases: ['bvi', 'british virgin islands'], secrecy: true, dpms_role: null, notes: 'BVI — prime shell-company / beneficial-ownership-opacity jurisdiction.' },
+    KY: { aliases: ['cayman islands', 'cayman'], secrecy: true, dpms_role: null, notes: 'Cayman Islands — EU non-cooperative tax jurisdiction (historic).' },
+    LI: { aliases: ['liechtenstein'], secrecy: true, dpms_role: null, notes: 'Liechtenstein — financial-secrecy + foundations.' },
+    PA: { aliases: ['panama'], secrecy: true, dpms_role: null, notes: 'Panama — Panama Papers / Pandora Papers exposure.' },
+    SC: { aliases: ['seychelles'], secrecy: true, dpms_role: null, notes: 'Seychelles — offshore incorporation jurisdiction.' },
+    VU: { aliases: ['vanuatu'], secrecy: true, dpms_role: null, notes: 'Vanuatu — CBI/secrecy jurisdiction.' },
+
+    // DPMS hubs (clean — but still context-relevant)
+    CH: { aliases: ['switzerland'], dpms_role: 'hub', notes: 'Switzerland — major gold-refining hub (Metalor, Valcambi, PAMP, Argor-Heraeus). LBMA GDL certification.' },
+    SG: { aliases: ['singapore'], dpms_role: 'hub', notes: 'Singapore — Asian gold hub. MAS Notice 626.' },
+    HK: { aliases: ['hong kong', 'hong kong sar'], dpms_role: 'hub', notes: 'Hong Kong — major gold-trading hub. UNSR Cap.537.' },
+    IN: { aliases: ['india'], dpms_role: 'hub', notes: 'India — world\'s largest gold-consumption market. BIS hallmarking regime.' },
+    CN: { aliases: ['china'], dpms_role: 'hub', notes: 'China — world\'s largest gold-producing country + major hub.' },
+    GB: { aliases: ['united kingdom', 'uk', 'britain', 'great britain'], dpms_role: 'hub', notes: 'UK — LBMA home; London gold bullion market.' },
+    US: { aliases: ['united states', 'usa', 'us', 'america', 'united states of america'], dpms_role: 'hub', notes: 'USA — NYMEX/COMEX + major gold market. OFAC enforcement nexus.' },
+
+    // Gold source countries (clean — but supply-chain context)
+    GH: { aliases: ['ghana'], dpms_role: 'source', notes: 'Ghana — Africa\'s largest gold producer. ASM transparency concerns.' },
+    PE: { aliases: ['peru'], dpms_role: 'source', notes: 'Peru — major gold source. Illegal ASM (Madre de Dios) concerns.' },
+    AU: { aliases: ['australia'], dpms_role: 'source', notes: 'Australia — top-tier gold source. Perth Mint LBMA GDL.' },
+    KZ: { aliases: ['kazakhstan'], dpms_role: 'source', notes: 'Kazakhstan — gold source. Russia-nexus secondary-sanctions risk.' },
+    UZ: { aliases: ['uzbekistan'], dpms_role: 'source', notes: 'Uzbekistan — gold source.' },
+    PG: { aliases: ['papua new guinea', 'png'], dpms_role: 'source', notes: 'Papua New Guinea — gold source. ASM human-rights concerns.' }
+  };
+
+  // ─── Typology matcher — trigger predicates for automatic tagging ────
+  // Each entry attaches one or more RISK_TYPOLOGIES ids and declares the
+  // conditions under which the typology should fire for a given subject.
+  // Matcher returns the typologies where the subject bundle satisfies at
+  // least `minTriggers` distinct predicates; the score is the count of
+  // matched predicates. FATF Rec 3 + FATF Rec 10 ongoing-CDD obligation
+  // requires typology-aware screening, not just list-lookup.
+  var TYPOLOGY_MATCHERS = [
+    {
+      id: 'trade_fraud',
+      triggers: {
+        categories: ['criminal_fraud', 'regulatory_action'],
+        keywords: /(export-?subsidy|vat\s+fraud|customs\s+fraud|fake\s+(?:export|invoice)|under-?invoic|over-?invoic|misdeclar|tbml|trade-?based)/i
+      },
+      minTriggers: 2
+    },
+    {
+      id: 'dpms_layering',
+      triggers: {
+        dpms_role: ['hub', 'source', 'transit'],
+        categories: ['money_laundering', 'criminal_fraud'],
+        keywords: /(gold[-\s](?:refin|export|traffic|smuggl)|refinery|bullion|precious\s+metal|dpms)/i
+      },
+      minTriggers: 2
+    },
+    {
+      id: 'tbml',
+      triggers: {
+        categories: ['money_laundering'],
+        keywords: /(trade-?based|mis-?invoic|phantom\s+ship|round-?trip|layer(?:ing|ed)|shell\s+(?:company|corp))/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'shell_company',
+      triggers: {
+        entity_type: 'legal_entity',
+        categories: ['money_laundering'],
+        keywords: /(shell\s+(?:company|corp|entity)|front\s+company|nominee|opaque\s+ownership|beneficial\s+owner(?:ship)?)/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'sanctions_evasion',
+      triggers: {
+        country_flags: ['comprehensive_sanctions', 'sectoral_sanctions'],
+        keywords: /(sanction|embargo|evad|circumvent|third-?country|re-?export|dual[-\s]use)/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'kleptocracy',
+      triggers: {
+        categories: ['bribery_corruption'],
+        pep: true,
+        keywords: /(kleptocrat|embezzle|state\s+asset|grand\s+corruption|illicit\s+enrichment|panama\s+papers|pandora\s+papers)/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'bribery_public',
+      triggers: {
+        categories: ['bribery_corruption'],
+        keywords: /(bribe|kickback|public\s+official|fcpa|anti-?corruption)/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'narco_trafficking',
+      triggers: {
+        categories: ['organised_crime'],
+        keywords: /(narco|cartel|drug\s+trafficking|cocaine|heroin|kingpin|opioid)/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'human_trafficking',
+      triggers: {
+        categories: ['organised_crime', 'human_rights'],
+        keywords: /(human\s+trafficking|modern\s+slavery|forced\s+labour|child\s+labour|sex\s+trafficking)/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'npo_abuse',
+      triggers: {
+        categories: ['tf_pf_links'],
+        keywords: /(charity|npo|non-?profit|ngo\s+diversion|humanitarian\s+front)/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'wmd_procurement',
+      triggers: {
+        categories: ['tf_pf_links'],
+        keywords: /(wmd|proliferation|dual-?use|strategic\s+goods|nuclear|chemical\s+weapon|ballistic)/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'forced_labour',
+      triggers: {
+        categories: ['human_rights'],
+        country_flags: ['cahra'],
+        keywords: /(forced\s+labour|child\s+labour|slavery|debt\s+bondage|asm\s+(?:abuse|exploit))/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'vasp_mixing',
+      triggers: {
+        categories: ['money_laundering'],
+        keywords: /(mixer|tumbler|tornado\s+cash|privacy\s+coin|vasp|virtual\s+asset|crypto(?:currency)?\s+(?:launder|mix))/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'sts_transfer',
+      triggers: {
+        country_flags: ['comprehensive_sanctions'],
+        keywords: /(ship-?to-?ship|sts\s+transfer|dark\s+fleet|ais\s+(?:off|manipul)|flag-?hop)/i
+      },
+      minTriggers: 1
+    },
+    {
+      id: 'investment_fraud',
+      triggers: {
+        categories: ['criminal_fraud'],
+        keywords: /(ponzi|pyramid|mlm|rug\s+pull|investment\s+fraud|securities\s+fraud)/i
+      },
+      minTriggers: 1
+    }
+  ];
+
   // ─── Screening capabilities banner — what powers this surface ─────────
   // Declares the ML / NLP / matching / coverage capabilities of the
   // screening pipeline so the MLRO has a full view of the model stack
@@ -2871,6 +3118,198 @@
                   '</div>'
                 : '';
 
+              // Jurisdiction Context paragraph. Rendered only when the
+              // country-risk table returned flags or a narrative.
+              var jurisdictionParagraph = '';
+              if (cr.jurisdiction && cr.jurisdiction.narrative) {
+                var jRisk = cr.jurisdiction.risk_level || 'standard';
+                var jBadge =
+                  jRisk === 'critical' ? 'background:#7f1d1d;color:#fff' :
+                  jRisk === 'high'     ? 'background:#dc2626;color:#fff' :
+                  jRisk === 'elevated' ? 'background:#ea580c;color:#fff' :
+                  jRisk === 'medium'   ? 'background:#d97706;color:#1a1a1a' :
+                                         'background:#166534;color:#fff';
+                var flagChips = Array.isArray(cr.jurisdiction.flags) && cr.jurisdiction.flags.length
+                  ? ' <span style="opacity:.7;font-size:10px">[' + cr.jurisdiction.flags.map(esc).join(' · ') + ']</span>'
+                  : '';
+                jurisdictionParagraph =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Jurisdiction Context.</strong> ' +
+                    '<span style="padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.5px;margin-right:6px;' + jBadge + '">' +
+                      esc(String(jRisk).toUpperCase()) +
+                    '</span>' +
+                    esc(cr.jurisdiction.narrative.replace(/^Jurisdiction Context\.\s*/, '')) +
+                    flagChips +
+                  '</div>';
+              }
+
+              // Typology Match paragraph.
+              var typologyParagraph = cr.typology_narrative
+                ? '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Typology Match.</strong> ' +
+                    esc(cr.typology_narrative.replace(/^Typology Match\.\s*/, '')) +
+                  '</div>'
+                : '';
+
+              // Reasoning Chain (multi-step evidence → inference → action).
+              var reasoningBlock = '';
+              if (Array.isArray(cr.reasoning_chain) && cr.reasoning_chain.length) {
+                var steps = cr.reasoning_chain.map(function (s) {
+                  return '<li style="margin-bottom:4px">' +
+                    '<strong>' + esc(s.label) + '.</strong> ' +
+                    '<span style="opacity:.9">Evidence:</span> ' + esc(s.evidence) + ' ' +
+                    '<span style="opacity:.9">→ Inference:</span> ' + esc(s.inference) +
+                    (s.citation ? ' <span style="opacity:.6;font-size:10px">[' + esc(s.citation) + ']</span>' : '') +
+                    '</li>';
+                }).join('');
+                reasoningBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Reasoning Chain.</strong>' +
+                    '<ol style="margin:4px 0 0 0;padding-left:18px">' + steps + '</ol>' +
+                  '</div>';
+              }
+
+              // Score Attribution breakdown.
+              var attributionBlock = '';
+              if (cr.score_attribution && Array.isArray(cr.score_attribution.factors) && cr.score_attribution.factors.length) {
+                var total = cr.score_attribution.total || 0;
+                var totalColor = total >= 70 ? '#dc2626' : total >= 40 ? '#ea580c' : total >= 20 ? '#d97706' : '#166534';
+                var factorRows = cr.score_attribution.factors.map(function (f) {
+                  return '<li style="margin-bottom:2px">' +
+                    '<strong style="min-width:40px;display:inline-block;color:' + totalColor + '">+' + f.points + '</strong> ' +
+                    esc(f.factor) +
+                    (f.note ? ' <span style="opacity:.7">— ' + esc(f.note) + '</span>' : '') +
+                    '</li>';
+                }).join('');
+                attributionBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Risk Factor Attribution.</strong> ' +
+                    '<span style="padding:1px 8px;border-radius:3px;font-weight:700;background:' + totalColor + ';color:#fff;font-size:11px">' +
+                      'TOTAL ' + total + ' / 100' +
+                    '</span>' +
+                    '<ul style="margin:4px 0 0 0;padding-left:18px;list-style:none">' + factorRows + '</ul>' +
+                  '</div>';
+              }
+
+              // Confidence calibration block.
+              var calibrationBlock = '';
+              if (cr.confidence_calibration) {
+                var cal = cr.confidence_calibration;
+                var adjBits = (cal.adjustments || []).map(function (a) {
+                  var sign = a.delta >= 0 ? '+' : '';
+                  return esc(a.label) + ' <strong>' + sign + a.delta + '</strong>';
+                }).join(' · ');
+                calibrationBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Confidence Calibration.</strong> ' +
+                    'Raw ' + cal.raw_confidence_pct + '% → Calibrated <strong>' + cal.calibrated_pct + '%</strong> (' + esc(cal.band) + ').' +
+                    (adjBits ? ' <span style="opacity:.8">Adjustments: ' + adjBits + '.</span>' : '') +
+                  '</div>';
+              }
+
+              // CDD tier recommendation.
+              var cddBlock = '';
+              if (cr.cdd_recommendation) {
+                var cdd = cr.cdd_recommendation;
+                var tierColor =
+                  cdd.tier === 'FREEZE' ? 'background:#7f1d1d;color:#fff' :
+                  cdd.tier === 'EDD'    ? 'background:#dc2626;color:#fff' :
+                  cdd.tier === 'CDD'    ? 'background:#d97706;color:#1a1a1a' :
+                                          'background:#166534;color:#fff';
+                var reasonsList = (cdd.reasons || []).map(function (r) {
+                  return '<li style="margin-bottom:2px">' + esc(r) + '</li>';
+                }).join('');
+                cddBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>CDD Tier Recommendation.</strong> ' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.5px;' + tierColor + '">' +
+                      esc(cdd.tier) +
+                    '</span>' +
+                    ' <span style="opacity:.8">review: ' + esc(cdd.review_cycle) + '</span>' +
+                    (reasonsList ? '<ul style="margin:4px 0 0 0;padding-left:18px">' + reasonsList + '</ul>' : '') +
+                  '</div>';
+              }
+
+              // Red-flag checklist (show only triggered flags — the rest
+              // are in the data payload for /audit-pack exports).
+              var redFlagBlock = '';
+              if (Array.isArray(cr.red_flags) && cr.red_flags.length) {
+                var triggered = cr.red_flags.filter(function (f) { return f.triggered; });
+                var notTriggered = cr.red_flags.filter(function (f) { return !f.triggered; });
+                if (triggered.length) {
+                  var items = triggered.map(function (f) {
+                    return '<li style="margin-bottom:2px">' +
+                      '<strong style="color:#dc2626">✕</strong> ' + esc(f.label) +
+                      ' <span style="opacity:.8">— ' + esc(f.rationale) + '</span>' +
+                      (f.citation ? ' <span style="opacity:.55;font-size:10px">[' + esc(f.citation) + ']</span>' : '') +
+                      '</li>';
+                  }).join('');
+                  redFlagBlock =
+                    '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                      '<strong>AML Red Flags Triggered</strong> ' +
+                      '<span style="opacity:.7">(' + triggered.length + ' / ' + cr.red_flags.length + ' checks).</span>' +
+                      '<ul style="margin:4px 0 0 0;padding-left:18px;list-style:none">' + items + '</ul>' +
+                    '</div>';
+                } else {
+                  redFlagBlock =
+                    '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                      '<strong>AML Red Flags.</strong> None triggered (0 / ' + cr.red_flags.length + ' checks).' +
+                    '</div>';
+                }
+              }
+
+              // Counterfactuals — what factors would flip the verdict.
+              var counterfactualBlock = '';
+              if (Array.isArray(cr.counterfactuals) && cr.counterfactuals.length) {
+                var cfItems = cr.counterfactuals.map(function (c) {
+                  var flipTag = c.flips_verdict
+                    ? ' <span style="background:#dc2626;color:#fff;padding:1px 5px;border-radius:3px;font-size:10px;font-weight:700">FLIPS VERDICT</span>'
+                    : '';
+                  return '<li style="margin-bottom:2px">Remove <strong>' + esc(c.remove) + '</strong> → ' +
+                    c.delta_points + ' pts · new total ' + c.new_total + '/100' + flipTag +
+                    ' <span style="opacity:.7">— ' + esc(c.note) + '</span>' +
+                    '</li>';
+                }).join('');
+                counterfactualBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Counterfactual Analysis.</strong>' +
+                    '<ul style="margin:4px 0 0 0;padding-left:18px">' + cfItems + '</ul>' +
+                  '</div>';
+              }
+
+              // Evidence gaps.
+              var gapsBlock = '';
+              if (Array.isArray(cr.evidence_gaps) && cr.evidence_gaps.length) {
+                var gapItems = cr.evidence_gaps.map(function (g) {
+                  return '<li style="margin-bottom:2px">' +
+                    '<strong>' + esc(g.gap) + '.</strong> ' + esc(g.request) +
+                    (g.citation ? ' <span style="opacity:.55;font-size:10px">[' + esc(g.citation) + ']</span>' : '') +
+                    '</li>';
+                }).join('');
+                gapsBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Evidence Gaps & Requests.</strong>' +
+                    '<ul style="margin:4px 0 0 0;padding-left:18px">' + gapItems + '</ul>' +
+                  '</div>';
+              }
+
+              // Connected Parties suggested for re-screen.
+              var connectedBlock = '';
+              if (Array.isArray(cr.connected_parties) && cr.connected_parties.length) {
+                var parties = cr.connected_parties.map(function (p) {
+                  return '<li style="margin-bottom:2px">' +
+                    '<strong>' + esc(p.name) + '</strong>' +
+                    (p.abbrev ? ' <span style="opacity:.7">(' + esc(p.abbrev) + ')</span>' : '') +
+                    ' <span style="opacity:.75">— ' + esc(p.action) + '</span>' +
+                    '</li>';
+                }).join('');
+                connectedBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Connected Parties (re-screen queue).</strong>' +
+                    '<ul style="margin:4px 0 0 0;padding-left:18px">' + parties + '</ul>' +
+                  '</div>';
+              }
+
               complianceReportLine = '<div class="mv-list-meta" style="margin-top:10px;padding:12px;border-left:3px solid #ea580c;background:rgba(234,88,12,0.06);border-radius:6px">' +
                 '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">' +
                   '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;' + riskBadgeColor + '">' +
@@ -2883,6 +3322,16 @@
                 '</div>' +
                 sanctionsParagraph +
                 adverseParagraph +
+                jurisdictionParagraph +
+                typologyParagraph +
+                calibrationBlock +
+                reasoningBlock +
+                attributionBlock +
+                cddBlock +
+                redFlagBlock +
+                counterfactualBlock +
+                gapsBlock +
+                connectedBlock +
                 (cr.recommendation
                   ? '<div style="margin-bottom:6px;font-size:12px;line-height:1.55"><strong>Recommendation.</strong> ' + esc(cr.recommendation) + '</div>'
                   : '') +
@@ -3274,6 +3723,615 @@
     });
   }
 
+  // ─── Screening intelligence engine ──────────────────────────────────
+  // Five-layer reasoning pass that sits on top of the simulation-path
+  // row and feeds the narrative compliance report:
+  //   1. lookupJurisdiction()     — per-country risk overlay
+  //   2. matchTypologies()        — trigger-predicate pattern matcher
+  //   3. extractConnectedParties()— entity extraction from the register
+  //   4. computeScoreAttribution()— additive factor breakdown (0-100)
+  //   5. buildReasoningChain()    — evidence → inference → action steps
+  //
+  // Each layer is pure (no side effects), returns a structured object
+  // consumable by the UI renderer, and has its regulatory citation
+  // baked into the output so the MoE/LBMA audit pack can trace every
+  // inference back to a law, Cabinet Resolution, or FATF Recommendation.
+
+  function normalizeCountryKey(str) {
+    if (!str) return null;
+    var s = String(str).trim().toLowerCase();
+    if (!s) return null;
+    // ISO-2 direct match (case-insensitive)
+    if (s.length === 2 && /^[a-z]{2}$/.test(s)) {
+      var up = s.toUpperCase();
+      if (COUNTRY_RISK_TABLE[up]) return up;
+    }
+    // Alias match
+    var keys = Object.keys(COUNTRY_RISK_TABLE);
+    for (var i = 0; i < keys.length; i++) {
+      var row = COUNTRY_RISK_TABLE[keys[i]];
+      if (Array.isArray(row.aliases)) {
+        for (var j = 0; j < row.aliases.length; j++) {
+          if (row.aliases[j] === s) return keys[i];
+        }
+      }
+    }
+    return null;
+  }
+
+  function lookupJurisdiction(countryStr) {
+    var iso = normalizeCountryKey(countryStr);
+    if (!iso) {
+      return {
+        iso: null,
+        name: countryStr || '',
+        flags: [],
+        risk_level: 'unassessed',
+        narrative: countryStr
+          ? 'Jurisdiction Context. ' + countryStr + ' is not present in the local country-risk table. Apply standard CDD with a conservative jurisdiction uplift pending manual assessment (Cabinet Res 134/2025 Art.14).'
+          : ''
+      };
+    }
+    var row = COUNTRY_RISK_TABLE[iso];
+    var flags = [];
+    if (row.fatf_black) flags.push('fatf_black');
+    if (row.fatf_grey) flags.push('fatf_grey');
+    if (row.fatf_recent_delist) flags.push('fatf_recent_delist');
+    if (row.comprehensive_sanctions) flags.push('comprehensive_sanctions');
+    if (row.sectoral_sanctions) flags.push('sectoral_sanctions');
+    if (row.cahra) flags.push('cahra');
+    if (row.secrecy) flags.push('secrecy');
+    if (row.dpms_role) flags.push('dpms_' + row.dpms_role);
+
+    var riskLevel;
+    if (row.fatf_black || row.comprehensive_sanctions) riskLevel = 'critical';
+    else if (row.sectoral_sanctions || row.fatf_grey) riskLevel = 'high';
+    else if (row.cahra || row.fatf_recent_delist) riskLevel = 'elevated';
+    else if (row.secrecy) riskLevel = 'medium';
+    else riskLevel = 'standard';
+
+    var labelFromAlias = row.aliases && row.aliases[0]
+      ? row.aliases[0].replace(/\b\w/g, function (c) { return c.toUpperCase(); })
+      : iso;
+
+    var parts = [];
+    parts.push(row.notes || (labelFromAlias + ' — jurisdiction context.'));
+    // CDD-level uplift sentence
+    if (row.fatf_black || row.comprehensive_sanctions) {
+      parts.push('CDD uplift: EDD mandatory under Cabinet Res 134/2025 Art.14 + counter-measures per FATF black-list obligations; any engagement requires MLRO + senior-management sign-off and CO situational-awareness logging (FDL Art.20-21).');
+    } else if (row.sectoral_sanctions) {
+      parts.push('CDD uplift: EDD required; sectoral-sanctions screening mandatory on USD/EUR/GBP clearing paths (OFAC/EU/UK programs).');
+    } else if (row.fatf_grey) {
+      parts.push('CDD uplift: EDD required under Cabinet Res 134/2025 Art.14; risk-based heightened scrutiny on source-of-wealth / source-of-funds.');
+    } else if (row.fatf_recent_delist) {
+      parts.push('CDD uplift: residual heightened scrutiny for ~18 months post-delisting; MoE Circular 08/AML/2021 DPMS due-diligence still applies where DPMS-relevant.');
+    } else if (row.cahra && row.dpms_role === 'source') {
+      parts.push('CDD uplift: LBMA RGG v9 Step 3-5 mandatory enhanced DD on any DPMS sourcing from this CAHRA; OECD DD Guidance applies.');
+    } else if (row.cahra) {
+      parts.push('CDD uplift: CAHRA context — supply-chain DD (LBMA RGG v9 Step 2-3) where DPMS nexus exists.');
+    } else if (row.secrecy) {
+      parts.push('CDD uplift: beneficial-ownership transparency scrutiny; UBO re-verification within 15 working days of any ownership change (Cabinet Decision 109/2023).');
+    } else {
+      parts.push('CDD uplift: none at the jurisdiction layer; rely on subject-specific risk factors.');
+    }
+    return {
+      iso: iso,
+      name: labelFromAlias,
+      flags: flags,
+      risk_level: riskLevel,
+      narrative: 'Jurisdiction Context. ' + parts.join(' ')
+    };
+  }
+
+  function matchTypologies(ctx) {
+    var out = [];
+    var haystackText = [
+      ctx.summary || '',
+      ctx.recommendation || ''
+    ].join(' ').toLowerCase();
+    for (var i = 0; i < TYPOLOGY_MATCHERS.length; i++) {
+      var m = TYPOLOGY_MATCHERS[i];
+      var score = 0;
+      var triggers = [];
+      if (m.triggers.categories && Array.isArray(ctx.categories)) {
+        var catHit = m.triggers.categories.filter(function (c) { return ctx.categories.indexOf(c) >= 0; });
+        if (catHit.length) { score += catHit.length; triggers.push('categories: ' + catHit.join('+')); }
+      }
+      if (m.triggers.keywords && haystackText) {
+        var kwMatch = haystackText.match(m.triggers.keywords);
+        if (kwMatch) { score += 1; triggers.push('keyword: "' + kwMatch[0] + '"'); }
+      }
+      if (m.triggers.dpms_role && ctx.jurisdiction && ctx.jurisdiction.flags) {
+        var dpmsMatch = m.triggers.dpms_role.some(function (r) {
+          return ctx.jurisdiction.flags.indexOf('dpms_' + r) >= 0;
+        });
+        if (dpmsMatch) { score += 1; triggers.push('DPMS corridor'); }
+      }
+      if (m.triggers.country_flags && ctx.jurisdiction && ctx.jurisdiction.flags) {
+        var flagMatch = m.triggers.country_flags.filter(function (f) {
+          return ctx.jurisdiction.flags.indexOf(f) >= 0;
+        });
+        if (flagMatch.length) { score += flagMatch.length; triggers.push('jurisdiction: ' + flagMatch.join('+')); }
+      }
+      if (m.triggers.entity_type && ctx.entity_type === m.triggers.entity_type) {
+        score += 1; triggers.push('entity_type: ' + m.triggers.entity_type);
+      }
+      if (m.triggers.pep && ctx.pep_flagged) {
+        score += 1; triggers.push('PEP');
+      }
+      if (score >= (m.minTriggers || 1)) {
+        var meta = RISK_TYPOLOGIES.filter(function (t) { return t.id === m.id; })[0] || {};
+        out.push({
+          id: m.id,
+          label: meta.label || m.id,
+          citation: meta.citation || '',
+          group: meta.group || '',
+          score: score,
+          matched_triggers: triggers
+        });
+      }
+    }
+    out.sort(function (a, b) { return b.score - a.score; });
+    return out.slice(0, 4);
+  }
+
+  function extractConnectedParties(summary) {
+    if (!summary) return [];
+    var text = String(summary);
+    var seen = {};
+    var out = [];
+    // 1. Proper-noun entity spans of 2+ capitalised words (Istanbul Gold Refinery, Hurriyet Daily News).
+    //    Kept conservative to avoid false positives on sentence starts.
+    var rxEntity = /\b([A-Z][A-Za-z&]+(?:\s+[A-Z][A-Za-z&]+){1,5})(?:\s*\(([A-Z]{2,6})\))?/g;
+    var m;
+    while ((m = rxEntity.exec(text)) !== null) {
+      var candidate = m[1].trim();
+      if (/^(The|And|But|For|With|From|This|That|Turkey|October|January|February|March|April|May|June|July|August|September|November|December|Oct|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Nov|Dec|Art|Note)$/.test(candidate.split(' ')[0])) continue;
+      if (candidate.length < 6) continue;
+      var key = candidate.toLowerCase();
+      if (seen[key]) continue;
+      seen[key] = true;
+      out.push({
+        name: candidate,
+        abbrev: m[2] || null,
+        source: 'register-summary',
+        action: 'Re-screen as connected party (FATF Rec 10 ongoing CDD + Cabinet Decision 109/2023 UBO chain).'
+      });
+      if (out.length >= 6) break;
+    }
+    // 2. Numeric cohort extraction ("23 arrests", "21-22 individuals").
+    var rxCohort = /(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:arrests?|detainees?|co-?detainees?|individuals?|suspects?|defendants?|accused)/ig;
+    var c;
+    while ((c = rxCohort.exec(text)) !== null) {
+      out.push({
+        name: c[0].trim(),
+        abbrev: null,
+        source: 'register-summary',
+        action: 'Request the full cohort list from the investigating authority and re-screen each named individual (FDL Art.20-21 CO situational awareness).'
+      });
+      break;
+    }
+    return out.slice(0, 6);
+  }
+
+  function computeScoreAttribution(ctx) {
+    var factors = [];
+    function push(factor, points, note) {
+      if (points > 0) factors.push({ factor: factor, points: points, note: note || '' });
+    }
+
+    // Sanctions
+    var mandatoryHits = 0;
+    var otherHits = 0;
+    (ctx.sanctions_detail || []).forEach(function (d) {
+      if (d.verdict !== 'POSITIVE') return;
+      if (d.mandatory) mandatoryHits += 1;
+      else otherHits += 1;
+    });
+    if (mandatoryHits) push('Sanctions hit (MANDATORY regime)', mandatoryHits * 35,
+      mandatoryHits + ' MANDATORY list hit(s) — non-discretionary freeze + CNMR (Cabinet Res 74/2020 Art.4-7).');
+    if (otherHits) push('Sanctions hit (non-mandatory list)', otherHits * 20,
+      otherHits + ' non-mandatory sanctions list hit(s) — freeze and CNMR applicable.');
+
+    // Adverse media
+    var amConf = typeof ctx.adverse_media_confidence === 'number' ? ctx.adverse_media_confidence : 0;
+    var amPct = Math.round(amConf * 100);
+    if (amConf >= 0.85) {
+      push('Adverse media (CONFIRMED)', 30, 'Confirmed adverse-media match at ' + amPct + '% confidence.');
+    } else if (amConf >= 0.5) {
+      push('Adverse media (POTENTIAL)', 18, 'Potential adverse-media match at ' + amPct + '% confidence.');
+    } else if (amConf > 0) {
+      push('Adverse media (WEAK signal)', 5, 'Weak adverse-media signal at ' + amPct + '% confidence.');
+    }
+
+    // Category severity
+    var criticalCats = ['tf_pf_links'];
+    var highCats = ['criminal_fraud', 'money_laundering', 'bribery_corruption', 'organised_crime'];
+    var midCats = ['regulatory_action', 'human_rights'];
+    (ctx.adverse_hits || []).forEach(function (cat) {
+      if (criticalCats.indexOf(cat) >= 0) push('Category: ' + cat, 14, 'Critical category — TF/PF (Cabinet Res 74/2020 + Cabinet Res 156/2025).');
+      else if (highCats.indexOf(cat) >= 0) push('Category: ' + cat, 9, 'High-severity predicate offence (FATF Rec 3).');
+      else if (midCats.indexOf(cat) >= 0) push('Category: ' + cat, 5, 'Secondary severity.');
+      else push('Category: ' + cat, 3, '');
+    });
+
+    // Jurisdiction
+    var j = ctx.jurisdiction || { flags: [] };
+    if (j.flags.indexOf('comprehensive_sanctions') >= 0) push('Jurisdiction: comprehensive sanctions', 25, j.name + ' — OFAC/EU full-regime.');
+    if (j.flags.indexOf('fatf_black') >= 0) push('Jurisdiction: FATF black', 20, j.name + ' — FATF counter-measures (Cabinet Res 134/2025 Art.14).');
+    if (j.flags.indexOf('sectoral_sanctions') >= 0) push('Jurisdiction: sectoral sanctions', 15, j.name + ' — sectoral regime.');
+    if (j.flags.indexOf('fatf_grey') >= 0) push('Jurisdiction: FATF grey', 12, j.name + ' — strategic AML/CFT deficiencies.');
+    if (j.flags.indexOf('cahra') >= 0) push('Jurisdiction: CAHRA', 10, j.name + ' — LBMA RGG v9 Step 3.');
+    if (j.flags.indexOf('fatf_recent_delist') >= 0) push('Jurisdiction: recent FATF delist', 6, j.name + ' — residual scrutiny.');
+    if (j.flags.indexOf('secrecy') >= 0) push('Jurisdiction: financial-secrecy', 5, j.name + ' — UBO opacity.');
+    if (j.flags.indexOf('dpms_source') >= 0) push('Jurisdiction: DPMS source', 6, j.name + ' — gold-source country.');
+    else if (j.flags.indexOf('dpms_hub') >= 0) push('Jurisdiction: DPMS hub', 4, j.name + ' — gold-refining hub.');
+    else if (j.flags.indexOf('dpms_transit') >= 0) push('Jurisdiction: DPMS transit', 4, j.name + ' — gold-transit corridor.');
+
+    // PEP
+    if (ctx.pep_self) push('PEP (self)', 15, 'Subject is a PEP (FATF Rec 12).');
+    if (ctx.pep_family) push('PEP (family / associate)', 8, 'Subject is a close associate or family member of a PEP (Wolfsberg PEP FAQs).');
+
+    // Special flags
+    if (ctx.special_flags) {
+      if (ctx.special_flags.indexOf('proliferation') >= 0) push('Special screen: proliferation financing', 20, 'Cabinet Res 156/2025 PF indicator.');
+      if (ctx.special_flags.indexOf('terrorism') >= 0) push('Special screen: terrorism financing', 20, 'Cabinet Res 74/2020 TF indicator.');
+      if (ctx.special_flags.indexOf('tax_evasion') >= 0) push('Special screen: tax evasion', 10, 'Predicate offence (FDL Art.2).');
+    }
+
+    // Typology bonus (caps at +8 to avoid double-counting with categories)
+    if (Array.isArray(ctx.typologies) && ctx.typologies.length) {
+      push('Typology pattern match', Math.min(8, ctx.typologies.length * 3),
+        'Matched typologies: ' + ctx.typologies.map(function (t) { return t.id; }).join(', ') + '.');
+    }
+
+    factors.sort(function (a, b) { return b.points - a.points; });
+    var total = factors.reduce(function (s, f) { return s + f.points; }, 0);
+    if (total > 100) total = 100;
+    return { total: total, factors: factors };
+  }
+
+  function buildReasoningChain(ctx) {
+    var steps = [];
+    // Step 1 — sanctions determination
+    if (ctx.sanctions_hit_count === 0) {
+      steps.push({
+        step: 1,
+        label: 'Sanctions determination',
+        evidence: 'Screened against ' + (ctx.sanctions_lists_checked || 0) + ' lists; 0 matches including both MANDATORY regimes.',
+        inference: 'No sanctions-driven freeze obligation.',
+        citation: 'Cabinet Res 74/2020 Art.4-7'
+      });
+    } else {
+      steps.push({
+        step: 1,
+        label: 'Sanctions determination',
+        evidence: ctx.sanctions_hit_count + ' of ' + ctx.sanctions_lists_checked + ' lists matched.',
+        inference: '24-hour freeze + EOCN notification + 5-business-day CNMR required; FDL Art.29 no-tipping-off applies.',
+        citation: 'Cabinet Res 74/2020 Art.4-7 + FDL Art.29'
+      });
+    }
+    // Step 2 — adverse-media determination
+    if (ctx.adverse_media_confidence > 0) {
+      var amLevel = ctx.adverse_media_confidence >= 0.85 ? 'CONFIRMED' :
+                    ctx.adverse_media_confidence >= 0.5  ? 'POTENTIAL' : 'WEAK';
+      steps.push({
+        step: 2,
+        label: 'Adverse-media determination',
+        evidence: amLevel + ' match @ ' + Math.round(ctx.adverse_media_confidence * 100) + '% across ' +
+                  (ctx.adverse_hits ? ctx.adverse_hits.length : 0) + ' categor(y/ies)' +
+                  (ctx.source_count ? ' with ' + ctx.source_count + ' independent source(s)' : '') + '.',
+        inference: amLevel === 'CONFIRMED'
+          ? 'EDD mandatory; prepare STR/SAR filing if UAE-nexus identified.'
+          : amLevel === 'POTENTIAL'
+            ? 'EDD required; corroborate signal, collect SOW/SOF, re-screen connected parties.'
+            : 'Log for monitoring; re-assess on signal escalation.',
+        citation: 'FDL No.(10)/2025 Art.14, Art.26-27 · FATF Rec 10'
+      });
+    }
+    // Step 3 — jurisdiction uplift
+    if (ctx.jurisdiction && ctx.jurisdiction.flags && ctx.jurisdiction.flags.length) {
+      steps.push({
+        step: steps.length + 1,
+        label: 'Jurisdiction uplift',
+        evidence: ctx.jurisdiction.name + ' flags: ' + ctx.jurisdiction.flags.join(', ') + ' (risk ' + ctx.jurisdiction.risk_level + ').',
+        inference: ctx.jurisdiction.risk_level === 'critical'
+          ? 'Absolute-prohibition territory; any engagement requires licensing + board sign-off.'
+          : ctx.jurisdiction.risk_level === 'high'
+            ? 'EDD required; sectoral-sanctions + SOW verification.'
+            : ctx.jurisdiction.risk_level === 'elevated'
+              ? 'Residual uplift; supply-chain DD where DPMS-nexus.'
+              : 'Jurisdiction-layer uplift applied to overall risk score.',
+        citation: 'Cabinet Res 134/2025 Art.14 · LBMA RGG v9 Step 3'
+      });
+    }
+    // Step 4 — typology match
+    if (Array.isArray(ctx.typologies) && ctx.typologies.length) {
+      var top = ctx.typologies[0];
+      steps.push({
+        step: steps.length + 1,
+        label: 'Typology pattern match',
+        evidence: ctx.typologies.map(function (t) { return t.label + ' (' + t.matched_triggers.join('; ') + ')'; }).join(' · '),
+        inference: 'Top typology — ' + top.label + '. Apply the typology-specific red-flag checklist and collect corresponding evidence.',
+        citation: top.citation || 'FATF typology reference'
+      });
+    }
+    // Step 5 — connected parties
+    if (Array.isArray(ctx.connected_parties) && ctx.connected_parties.length) {
+      steps.push({
+        step: steps.length + 1,
+        label: 'Connected-party surfacing',
+        evidence: 'Extracted ' + ctx.connected_parties.length + ' connected-party candidate(s) from register narrative.',
+        inference: 'Queue each for re-screen and UBO-chain review before any onboarding / re-engagement decision.',
+        citation: 'FATF Rec 10 · Cabinet Decision 109/2023'
+      });
+    }
+    // Step 6 — final verdict
+    steps.push({
+      step: steps.length + 1,
+      label: 'Final disposition',
+      evidence: 'Risk factor attribution total: ' + (ctx.attribution_total || 0) + '/100.',
+      inference: ctx.sanctions_hit_count > 0
+        ? 'FREEZE + CNMR + EOCN notify + no-tip-off.'
+        : ctx.attribution_total >= 50 || ctx.adverse_media_confidence >= 0.85
+          ? 'EDD with senior-management sign-off; STR/SAR filing if UAE-nexus.'
+          : ctx.attribution_total >= 25 || ctx.adverse_media_confidence >= 0.5
+            ? 'EDD; document rationale and monitor.'
+            : 'Standard CDD with log-and-monitor.',
+      citation: 'FDL No.(10)/2025 Art.14, Art.20-21, Art.24, Art.26-27'
+    });
+    return steps;
+  }
+
+  function computeCounterfactuals(ctx) {
+    // What factors would flip the disposition if removed? Reports the
+    // deltas so the MLRO can see which single piece of evidence is
+    // load-bearing. Matches the counterfactual-reasoning pattern from
+    // pgmpy-style causal inference (CLAUDE.md vendored reference).
+    var out = [];
+    var base = ctx.attribution_total || 0;
+    var factors = (ctx.score_attribution && ctx.score_attribution.factors) || [];
+    if (!factors.length) return out;
+    factors.slice(0, 5).forEach(function (f) {
+      var after = base - f.points;
+      if (after < 0) after = 0;
+      var flipsVerdict = (base >= 50 && after < 50) ||
+                         (base >= 25 && after < 25) ||
+                         (base < 25 && after < 10);
+      out.push({
+        remove: f.factor,
+        delta_points: -f.points,
+        new_total: after,
+        flips_verdict: flipsVerdict,
+        note: flipsVerdict
+          ? 'Load-bearing — removing this factor changes the CDD-tier recommendation.'
+          : 'Supporting — removing this factor reduces the score but keeps the verdict.'
+      });
+    });
+    return out;
+  }
+
+  function buildRedFlagChecklist(ctx) {
+    // Enumerated AML/CFT/CPF red flags with pass/fail per subject.
+    // Structured so the MLRO can treat it as an audit-ready checkbox
+    // list (FATF Rec 10 + Cabinet Res 134/2025 Art.14 EDD triggers).
+    var flags = [];
+    function add(label, triggered, rationale, citation) {
+      flags.push({ label: label, triggered: !!triggered, rationale: rationale || '', citation: citation || '' });
+    }
+    var j = ctx.jurisdiction || { flags: [] };
+    var jf = j.flags || [];
+    add('Sanctions designation',
+      ctx.sanctions_hit_count > 0,
+      ctx.sanctions_hit_count > 0
+        ? 'Subject hits ' + ctx.sanctions_hit_count + ' sanctions list(s).'
+        : 'No sanctions match.',
+      'Cabinet Res 74/2020 Art.4-7');
+    add('High-risk jurisdiction (FATF black / comprehensive sanctions)',
+      jf.indexOf('fatf_black') >= 0 || jf.indexOf('comprehensive_sanctions') >= 0,
+      'Jurisdiction: ' + j.name + '.',
+      'Cabinet Res 134/2025 Art.14');
+    add('Grey-list / sectoral-sanctions jurisdiction',
+      jf.indexOf('fatf_grey') >= 0 || jf.indexOf('sectoral_sanctions') >= 0,
+      'Jurisdiction: ' + j.name + '.',
+      'FATF Plenary outputs');
+    add('Conflict-Affected & High-Risk Area (CAHRA)',
+      jf.indexOf('cahra') >= 0,
+      'CAHRA exposure — LBMA RGG v9 Step 3.',
+      'LBMA RGG v9 · OECD DD Guidance');
+    add('Financial-secrecy jurisdiction',
+      jf.indexOf('secrecy') >= 0,
+      'UBO opacity concerns.',
+      'Cabinet Decision 109/2023');
+    add('DPMS corridor exposure',
+      jf.indexOf('dpms_source') >= 0 || jf.indexOf('dpms_hub') >= 0 || jf.indexOf('dpms_transit') >= 0,
+      'Gold-corridor role: ' + jf.filter(function (x) { return x.indexOf('dpms_') === 0; }).join(', ') + '.',
+      'MoE Circular 08/AML/2021 · LBMA RGG v9');
+    add('Adverse media — confirmed',
+      ctx.adverse_media_confidence >= 0.85,
+      'Confirmed adverse-media match.',
+      'FDL Art.14 · FATF Rec 10');
+    add('Adverse media — potential',
+      ctx.adverse_media_confidence >= 0.5 && ctx.adverse_media_confidence < 0.85,
+      'Potential adverse-media match.',
+      'FDL Art.14');
+    add('Predicate offence category (fraud / ML / corruption / OC)',
+      (ctx.adverse_hits || []).some(function (c) {
+        return ['criminal_fraud', 'money_laundering', 'bribery_corruption', 'organised_crime'].indexOf(c) >= 0;
+      }),
+      'Predicate-offence adverse-media signal.',
+      'FATF Rec 3');
+    add('TF / PF category signal',
+      (ctx.adverse_hits || []).indexOf('tf_pf_links') >= 0 ||
+        (ctx.special_flags || []).indexOf('proliferation') >= 0 ||
+        (ctx.special_flags || []).indexOf('terrorism') >= 0,
+      'Terrorist-financing / proliferation-financing indicator.',
+      'Cabinet Res 74/2020 · Cabinet Res 156/2025');
+    add('PEP exposure',
+      !!ctx.pep_self || !!ctx.pep_family,
+      ctx.pep_self ? 'Subject is a PEP.' : 'PEP associate / family.',
+      'FATF Rec 12');
+    add('Typology pattern match (≥1)',
+      Array.isArray(ctx.typologies) && ctx.typologies.length > 0,
+      (ctx.typologies || []).map(function (t) { return t.label; }).join(' · '),
+      'FATF typology catalog');
+    add('Multi-source corroboration (≥2 independent sources)',
+      (ctx.source_count || 0) >= 2,
+      (ctx.source_count || 0) + ' independent source(s) on file.',
+      'FATF Rec 10 evidence standard');
+    add('Connected-party exposure',
+      Array.isArray(ctx.connected_parties) && ctx.connected_parties.length > 0,
+      (ctx.connected_parties || []).length + ' connected-party candidate(s) extracted.',
+      'FATF Rec 10 · Cabinet Decision 109/2023');
+    return flags;
+  }
+
+  function recommendCddTier(ctx) {
+    // SDD / CDD / EDD tier with rationale. Mirrors the decision tree in
+    // CLAUDE.md ("When a new customer is onboarded") — score < 6 SDD,
+    // 6-15 CDD, >=16 EDD, with PEP and sanctions overrides.
+    var reasons = [];
+    var forceTier = null;
+    if (ctx.sanctions_hit_count > 0) {
+      forceTier = 'FREEZE';
+      reasons.push('Sanctions hit — 24h freeze + CNMR + no-tip-off (Cabinet Res 74/2020 Art.4-7 + FDL Art.29).');
+    }
+    if (!forceTier && (ctx.pep_self || ctx.pep_family)) {
+      forceTier = 'EDD';
+      reasons.push('PEP — Board approval + EDD mandatory (FATF Rec 12, Cabinet Res 134/2025 Art.14).');
+    }
+    var jf = (ctx.jurisdiction && ctx.jurisdiction.flags) || [];
+    if (!forceTier && (jf.indexOf('fatf_black') >= 0 || jf.indexOf('comprehensive_sanctions') >= 0)) {
+      forceTier = 'EDD';
+      reasons.push(ctx.jurisdiction.name + ' — ' + (jf.indexOf('comprehensive_sanctions') >= 0 ? 'comprehensive-sanctions' : 'FATF black') + ' jurisdiction requires EDD with senior-management sign-off.');
+    }
+    if (!forceTier && ctx.adverse_media_confidence >= 0.85) {
+      forceTier = 'EDD';
+      reasons.push('Confirmed adverse-media match at ' + Math.round(ctx.adverse_media_confidence * 100) + '%.');
+    }
+    var total = ctx.attribution_total || 0;
+    var tier = forceTier;
+    if (!tier) {
+      if (total >= 30 || ctx.adverse_media_confidence >= 0.5 || jf.indexOf('fatf_grey') >= 0 || jf.indexOf('cahra') >= 0) {
+        tier = 'EDD';
+        reasons.push('Factor attribution total ' + total + '/100 or elevated-risk feature present.');
+      } else if (total >= 10) {
+        tier = 'CDD';
+        reasons.push('Factor attribution ' + total + '/100 — standard CDD with ongoing monitoring.');
+      } else {
+        tier = 'SDD';
+        reasons.push('Low risk across all dimensions — SDD (FATF Rec 10 risk-based approach).');
+      }
+    }
+    var reviewCycle;
+    switch (tier) {
+      case 'FREEZE': reviewCycle = 'immediate — daily case review until resolved'; break;
+      case 'EDD':    reviewCycle = '3-month periodic review cycle'; break;
+      case 'CDD':    reviewCycle = '6-month periodic review cycle'; break;
+      case 'SDD':    reviewCycle = '12-month periodic review cycle'; break;
+      default:       reviewCycle = 'as-needed';
+    }
+    return {
+      tier: tier,
+      reasons: reasons,
+      review_cycle: reviewCycle,
+      citation: 'FATF Rec 10 · Cabinet Res 134/2025 Art.14 · FDL No.(10)/2025 Art.14'
+    };
+  }
+
+  function identifyEvidenceGaps(ctx) {
+    // What's missing from the evidence record that would change the
+    // verdict or reduce uncertainty. Each gap maps to a concrete
+    // request / investigative step the MLRO can action.
+    var gaps = [];
+    if ((ctx.source_count || 0) < 2) {
+      gaps.push({
+        gap: 'Single-source adverse media',
+        request: 'Corroborate with at least one additional tier-1 or tier-2 independent source (Reuters, AP, Bloomberg, FT, national press of record).',
+        citation: 'FATF Rec 10 evidence standard'
+      });
+    }
+    if (!ctx.has_sow_sof) {
+      gaps.push({
+        gap: 'Source-of-Wealth / Source-of-Funds not on file',
+        request: 'Collect SOW/SOF documentation covering the last 10 years (FDL Art.24 retention).',
+        citation: 'Cabinet Res 134/2025 Art.14 · FDL Art.24'
+      });
+    }
+    if (!ctx.has_ubo) {
+      gaps.push({
+        gap: 'UBO chain not traced',
+        request: 'Obtain beneficial-ownership register at ≥25% threshold; re-verify within 15 working days of any change.',
+        citation: 'Cabinet Decision 109/2023'
+      });
+    }
+    if (Array.isArray(ctx.connected_parties) && ctx.connected_parties.length) {
+      gaps.push({
+        gap: 'Connected parties not re-screened',
+        request: 'Queue all ' + ctx.connected_parties.length + ' connected-party candidate(s) for independent screening.',
+        citation: 'FATF Rec 10 · Cabinet Decision 109/2023'
+      });
+    }
+    if (ctx.adverse_media_confidence >= 0.5 && ctx.adverse_media_confidence < 0.85) {
+      gaps.push({
+        gap: 'Adverse-media classification is POTENTIAL, not CONFIRMED',
+        request: 'Pursue additional corroboration — court-record search, independent-press cross-check, and primary-source (investigating authority) confirmation.',
+        citation: 'FATF Rec 10 · FDL Art.14'
+      });
+    }
+    var jf = (ctx.jurisdiction && ctx.jurisdiction.flags) || [];
+    if (jf.indexOf('dpms_source') >= 0 || jf.indexOf('cahra') >= 0) {
+      gaps.push({
+        gap: 'DPMS supply-chain traceability incomplete',
+        request: 'Collect LBMA RGG v9 Step 2-3 evidence: mine-of-origin declarations, refiner attestations, chain-of-custody records.',
+        citation: 'LBMA RGG v9 · UAE MoE RSG Framework'
+      });
+    }
+    return gaps;
+  }
+
+  function calibrateConfidence(ctx) {
+    // Adjusts the raw adverse-media confidence against two modifiers:
+    //   source_tier_bonus: +0 to +10 pts for multi-source corroboration
+    //   coverage_discount: subtract when categories are thin or only a
+    //   single list was screened. Returns a calibrated posterior and the
+    //   adjustment breakdown so the MLRO sees the math, not a black box.
+    var raw = typeof ctx.adverse_media_confidence === 'number' ? ctx.adverse_media_confidence : 0;
+    var pct = Math.round(raw * 100);
+    var adjustments = [];
+    var calibrated = pct;
+    var sc = ctx.source_count || 0;
+    if (sc >= 3) { calibrated += 6; adjustments.push({ label: '3+ independent sources', delta: +6 }); }
+    else if (sc === 2) { calibrated += 3; adjustments.push({ label: '2 independent sources', delta: +3 }); }
+    else if (sc === 1) { calibrated -= 5; adjustments.push({ label: 'Single-source only', delta: -5 }); }
+    if (Array.isArray(ctx.adverse_hits) && ctx.adverse_hits.length >= 3) {
+      calibrated += 4;
+      adjustments.push({ label: '3+ category signals', delta: +4 });
+    } else if (Array.isArray(ctx.adverse_hits) && ctx.adverse_hits.length === 0 && raw > 0) {
+      calibrated -= 8;
+      adjustments.push({ label: 'No category signal captured', delta: -8 });
+    }
+    if (Array.isArray(ctx.typologies) && ctx.typologies.length >= 2) {
+      calibrated += 4;
+      adjustments.push({ label: 'Multiple typology matches', delta: +4 });
+    }
+    if (ctx.sanctions_lists_checked < 10) {
+      calibrated -= 4;
+      adjustments.push({ label: 'Partial sanctions coverage (<10 lists)', delta: -4 });
+    }
+    if (calibrated < 0) calibrated = 0;
+    if (calibrated > 100) calibrated = 100;
+    var band = calibrated >= 85 ? 'CONFIRMED' :
+               calibrated >= 50 ? 'POTENTIAL' :
+               calibrated > 0   ? 'WEAK' : 'NONE';
+    return {
+      raw_confidence_pct: pct,
+      calibrated_pct: calibrated,
+      band: band,
+      adjustments: adjustments
+    };
+  }
+
   // ─── Screening row builders ─────────────────────────────────────────
   function buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens, pepDimensions) {
     var perList = [];
@@ -3631,6 +4689,85 @@
           ? 'Lead public source on file: ' + knownHit.entry.source + '.'
           : '');
 
+      // ── Intelligence layer — jurisdiction, typology, connected parties,
+      // score attribution, reasoning chain. Fed the full subject bundle
+      // so each layer can compose its output from the same ground truth.
+      var jurisdictionSrc = body.country || knownHit.entry.country || '';
+      var jurisdiction = lookupJurisdiction(jurisdictionSrc);
+      var entityType = body.entityType === 'legal_entity' ? 'legal_entity' : 'individual';
+      var pepFlagged = pepFlags.length > 0;
+      var typologyCtx = {
+        summary: knownHit.entry.summary || '',
+        recommendation: knownHit.entry.recommendation || '',
+        categories: adverseHits,
+        jurisdiction: jurisdiction,
+        entity_type: entityType,
+        pep_flagged: pepFlagged
+      };
+      var typologies = matchTypologies(typologyCtx);
+      var connectedParties = extractConnectedParties(knownHit.entry.summary);
+      // Source count — a rough corroboration signal from the register
+      // citation (semicolon / middot / comma separated sources).
+      var sourceBlob = String(knownHit.entry.source || '');
+      var sourceCount = sourceBlob
+        ? sourceBlob.split(/[·;]|\s+and\s+/i).filter(function (s) { return s.trim().length > 3; }).length
+        : 0;
+      var attributionCtx = {
+        sanctions_detail: sanctionsDetail,
+        adverse_media_confidence: amConf,
+        adverse_hits: adverseHits,
+        jurisdiction: jurisdiction,
+        pep_self: pepFlags.indexOf('pep_self') >= 0,
+        pep_family: pepFlags.some(function (p) { return p !== 'pep_self'; }),
+        special_flags: specialFlags,
+        typologies: typologies
+      };
+      var scoreAttribution = computeScoreAttribution(attributionCtx);
+      var reasoningChain = buildReasoningChain({
+        sanctions_hit_count: explicitSanctionsHits.length,
+        sanctions_lists_checked: sanctionsLists.length,
+        adverse_media_confidence: amConf,
+        adverse_hits: adverseHits,
+        source_count: sourceCount,
+        jurisdiction: jurisdiction,
+        typologies: typologies,
+        connected_parties: connectedParties,
+        attribution_total: scoreAttribution.total
+      });
+      var deepCtx = {
+        sanctions_hit_count: explicitSanctionsHits.length,
+        sanctions_lists_checked: sanctionsLists.length,
+        adverse_media_confidence: amConf,
+        adverse_hits: adverseHits,
+        source_count: sourceCount,
+        jurisdiction: jurisdiction,
+        typologies: typologies,
+        connected_parties: connectedParties,
+        pep_self: pepFlags.indexOf('pep_self') >= 0,
+        pep_family: pepFlags.some(function (p) { return p !== 'pep_self'; }),
+        special_flags: specialFlags,
+        attribution_total: scoreAttribution.total,
+        score_attribution: scoreAttribution,
+        has_sow_sof: false,
+        has_ubo: false
+      };
+      var counterfactuals = computeCounterfactuals(deepCtx);
+      var redFlags = buildRedFlagChecklist(deepCtx);
+      var cddRecommendation = recommendCddTier(deepCtx);
+      var evidenceGaps = identifyEvidenceGaps(deepCtx);
+      var calibration = calibrateConfidence(deepCtx);
+
+      // Typology narrative (short paragraph)
+      var typologyNarrative = '';
+      if (typologies.length) {
+        var topT = typologies[0];
+        var rest = typologies.slice(1).map(function (t) { return t.label; });
+        typologyNarrative = 'Typology Match. ' +
+          'Top pattern: ' + topT.label + ' (' + topT.citation + ').' +
+          ' Triggers: ' + topT.matched_triggers.join(' · ') + '.' +
+          (rest.length ? ' Secondary: ' + rest.join('; ') + '.' : '');
+      }
+
       complianceReport = {
         adverse_media_classification: amCls,
         adverse_media_confidence: amConf,
@@ -3643,6 +4780,18 @@
         sanctions_lists_checked: sanctionsLists.length,
         sanctions_detail: sanctionsDetail,
         sanctions_narrative: sanctionsNarrative,
+        jurisdiction: jurisdiction,
+        typologies: typologies,
+        typology_narrative: typologyNarrative,
+        connected_parties: connectedParties,
+        score_attribution: scoreAttribution,
+        reasoning_chain: reasoningChain,
+        counterfactuals: counterfactuals,
+        red_flags: redFlags,
+        cdd_recommendation: cddRecommendation,
+        evidence_gaps: evidenceGaps,
+        confidence_calibration: calibration,
+        source_count: sourceCount,
         risk_level: knownHit.entry.risk_level || 'high',
         recommendation: knownHit.entry.recommendation || '',
         regulatory_basis: Array.isArray(knownHit.entry.regulatory_basis) ? knownHit.entry.regulatory_basis.slice() : []
