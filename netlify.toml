@@ -51,6 +51,17 @@
   status = 200
   force = true
 
+# Ongoing-Screening opt-in endpoint (PR-3 follow-up). POST-only, Bearer-auth,
+# rate-limited to 60 writes/IP/min. Maintains the canonical opt-in store read
+# by /api/ongoing-screening-status so the banner count is cross-device
+# consistent. Never stores hit details — only subject name + entity type +
+# last-seen timestamp (FDL Art.29 minimum-data principle).
+[[redirects]]
+  from = "/api/ongoing-screening-optin"
+  to = "/.netlify/functions/ongoing-screening-optin"
+  status = 200
+  force = true
+
 # Preserve the stable `/api/continuous-monitor` URL now that the
 # scheduled function can no longer declare a custom `path` (Netlify
 # forbids combining `path:` + `schedule:` — see

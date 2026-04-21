@@ -8,6 +8,8 @@
  *       timestamp: "2026-04-21T...",
  *       schedule: "0 8 * * *",
  *       nextRunAt: "2026-04-22T08:00:00.000Z",
+ *       subjectCount: number | null,     // null iff the opt-in store
+ *                                        // is unavailable or empty
  *       lastRun: null | {
  *         ranAt: "2026-04-21T08:00:00.123Z",
  *         routineId: "ongoing-screening-daily",
@@ -58,6 +60,8 @@ import { checkRateLimit } from './middleware/rate-limit.mts';
 import { resolveAsanaProjectGid } from '../../src/services/asanaModuleProjects';
 
 const AUDIT_STORE = 'ongoing-screening-audit';
+const OPT_IN_STORE = 'ongoing-screening-opt-ins';
+const OPT_IN_KEY = 'current';
 const ROUTINE_ID = 'ongoing-screening-daily';
 // Mirrored from ongoing-screening-daily-cron.mts `schedule` field. Keep in sync.
 const SCHEDULE_CRON = '0 8 * * *';
@@ -133,6 +137,23 @@ async function listAuditKeys(store: ReturnType<typeof getStore>): Promise<string
   return out;
 }
 
+interface OptInEnvelope {
+  version?: number;
+  subjects?: Record<string, unknown>;
+}
+
+async function readOptInCount(): Promise<number | null> {
+  try {
+    const store = getStore(OPT_IN_STORE);
+    const payload = (await store.get(OPT_IN_KEY, { type: 'json' })) as OptInEnvelope | null;
+    if (!payload || typeof payload !== 'object') return null;
+    if (!payload.subjects || typeof payload.subjects !== 'object') return 0;
+    return Object.keys(payload.subjects).length;
+  } catch {
+    return null;
+  }
+}
+
 async function findLatestRun(): Promise<LastRun | null> {
   let store: ReturnType<typeof getStore>;
   try {
@@ -183,7 +204,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
   if (rl) return rl;
 
   const now = new Date();
-  const lastRun = await findLatestRun();
+  const [lastRun, subjectCount] = await Promise.all([findLatestRun(), readOptInCount()]);
   const routinesProjectGid = resolveAsanaProjectGid('routines');
   const routinesProjectUrl = routinesProjectGid
     ? `https://app.asana.com/0/${routinesProjectGid}`
@@ -195,6 +216,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
       timestamp: now.toISOString(),
       schedule: SCHEDULE_CRON,
       nextRunAt: computeNextRunAt(now),
+      subjectCount,
       lastRun,
       routinesProjectGid,
       routinesProjectUrl,

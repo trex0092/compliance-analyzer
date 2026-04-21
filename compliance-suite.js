@@ -22,6 +22,33 @@ window.csFormatDateInput = function (el) {
   el.value = v;
 };
 
+// Display helper — pretty-print canonical entity types for MLRO-facing UI
+// and Asana sync output. Maps both the new canonical values
+// ('individual' / 'organisation' / 'unspecified') and the legacy strings
+// ('Individual' / 'Company' / 'legal_entity') to a single display form so
+// the screen never shows raw lowercase tokens to auditors.
+window.prettyEntityType = function (raw) {
+  if (raw === null || raw === undefined) return '—';
+  const s = String(raw).trim();
+  if (!s) return '—';
+  const canonical = s.toLowerCase().replace(/\s+/g, '_');
+  switch (canonical) {
+    case 'individual':
+      return 'Individual';
+    case 'organisation':
+    case 'organization':
+    case 'legal_entity':
+    case 'company':
+      return 'Organisation';
+    case 'unspecified':
+      return 'Unspecified';
+    default:
+      // Unknown value — pass through with a sentence-case tidy so the
+      // MLRO sees the original token but not a lower-case leak.
+      return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+};
+
 (function (global) {
   'use strict';
 
@@ -2528,7 +2555,7 @@ window.csFormatDateInput = function (el) {
           const st = a.status || 'Pending';
           const col = st==='Approved'||st==='Completed' ? 'var(--green)' : st==='Rejected' ? 'var(--red)' : 'var(--amber)';
           const name = a.customerName||a.entityName||'—';
-          const type = a.customerType||a.entityType||'—';
+          const type = window.prettyEntityType(a.customerType||a.entityType);
           const risk = a.riskRating||'—';
           const date = a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-GB') : '—';
           return '<div style="padding:10px 14px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px">'
@@ -2785,7 +2812,7 @@ window.csFormatDateInput = function (el) {
       const title = `[MGMT-APPROVAL] ${a.customerName||a.entityName||'Unknown'} — ${a.status||'Pending'}`;
       const notes = [
         `Customer: ${a.customerName||a.entityName||'—'}`,
-        `Type: ${a.customerType||a.entityType||'—'}`,
+        `Type: ${window.prettyEntityType(a.customerType||a.entityType)}`,
         `Risk Rating: ${a.riskRating||'—'}`,
         `Status: ${a.status||'Pending'}`,
         `Reviewed By: ${a.reviewedBy||a.approvedBy||'—'}`,
@@ -3288,7 +3315,11 @@ window.csFormatDateInput = function (el) {
           <div><span class="lbl" id="tfs2-dob-label">Date of Birth / Registration</span><input type="text" id="tfs2-dob" placeholder="dd/mm/yyyy" oninput="csFormatDateInput(this)" maxlength="10"/></div>
         </div>
         <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><span class="lbl">Alternate names / aliases</span><input id="tfs2-altnames" placeholder="Comma-separated. Up to 20."/></div>
+          <div>
+            <span class="lbl">Alternate names / aliases</span>
+            <input id="tfs2-altnames" placeholder="Comma-separated. Up to 20." oninput="if(typeof updateTfs2AltNamesWarning==='function')updateTfs2AltNamesWarning()"/>
+            <div id="tfs2-altnames-warn" hidden style="color:var(--amber,#f5a623);font-size:11px;margin-top:4px"></div>
+          </div>
           <div><span class="lbl" id="tfs2-pob-label">Place of birth</span><input id="tfs2-pob" placeholder="City, country"/></div>
         </div>
         <div class="row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
@@ -3506,7 +3537,12 @@ window.csFormatDateInput = function (el) {
   // metadata: count, next-run countdown, and a link to the Asana routines
   // board where the MLRO can read the per-subject detail.
   const TFS2_BANNER_DISMISS_KEY = 'hawkeye.ongoingBannerDismissed.session';
-  let tfs2BannerTimer = null;
+  const TFS2_BANNER_REFRESH_MS = 300000;      // Regular refresh — 5 min
+  const TFS2_BANNER_COUNTDOWN_MS = 60000;     // Countdown tick — 1 min
+  const TFS2_BANNER_RETRY_BACKOFF_MS = [2000, 4000, 8000, 16000]; // then give up
+  let tfs2BannerCountdownTimer = null;
+  let tfs2BannerRefreshTimer = null;
+  let tfs2BannerRetryTimer = null;
 
   function isTfs2BannerDismissedThisSession() {
     try { return sessionStorage.getItem(TFS2_BANNER_DISMISS_KEY) === '1'; }
@@ -3515,12 +3551,64 @@ window.csFormatDateInput = function (el) {
   function dismissTfs2BannerForSession() {
     try { sessionStorage.setItem(TFS2_BANNER_DISMISS_KEY, '1'); } catch (_e) { /* ignore */ }
   }
+  function clearTfs2BannerTimers() {
+    if (tfs2BannerCountdownTimer) { clearInterval(tfs2BannerCountdownTimer); tfs2BannerCountdownTimer = null; }
+    if (tfs2BannerRefreshTimer)   { clearInterval(tfs2BannerRefreshTimer);   tfs2BannerRefreshTimer   = null; }
+    if (tfs2BannerRetryTimer)     { clearTimeout(tfs2BannerRetryTimer);      tfs2BannerRetryTimer     = null; }
+  }
   global.suite2DismissOngoingBanner = function() {
     dismissTfs2BannerForSession();
     const banner = document.getElementById('tfs2-ongoing-banner');
     if (banner) banner.hidden = true;
-    if (tfs2BannerTimer) { clearInterval(tfs2BannerTimer); tfs2BannerTimer = null; }
+    clearTfs2BannerTimers();
   };
+
+  // PR-3 fix #1 — server-side opt-in sync. The live TFS2 form saves records
+  // to localStorage; this helper propagates the ongoing-screening flag to
+  // the backend opt-in store so the /api/ongoing-screening-status count
+  // is consistent across devices. Non-blocking: failures are logged to the
+  // console and do not abort the local save (the banner still shows the
+  // local count as a fallback). FDL Art.29-safe: only subject name +
+  // entity type + flag are sent, never hit details.
+  function readHawkeyeBearerToken() {
+    try {
+      return (
+        localStorage.getItem('hawkeye.watchlist.adminToken') ||
+        localStorage.getItem('hawkeye.brain.token') ||
+        ''
+      );
+    } catch (_e) { return ''; }
+  }
+  async function syncTfs2OptInToBackend(record) {
+    if (!record || !record.screenedName) return;
+    const token = readHawkeyeBearerToken();
+    if (!token) return; // Unauthenticated → local-only. User-visible no-op.
+    const body = {
+      subjectName: String(record.screenedName || '').slice(0, 200),
+      subjectId: record.id ? String(record.id).slice(0, 128) : undefined,
+      entityType: record.entityType || 'individual',
+      ongoingScreening: !!record.ongoingScreening,
+    };
+    try {
+      await fetch('/api/ongoing-screening-optin', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      // Nudge the banner to re-read the authoritative count right away
+      // rather than waiting for the 5-minute refresh tick.
+      if (typeof global.wireTfs2OngoingScreeningBanner === 'function') {
+        setTimeout(global.wireTfs2OngoingScreeningBanner, 250);
+      }
+    } catch (_e) {
+      // Swallowed — banner falls back to the local count.
+    }
+  }
+  global.syncTfs2OptInToBackend = syncTfs2OptInToBackend;
 
   function countTfs2OngoingSubjects() {
     try {
@@ -3565,7 +3653,13 @@ window.csFormatDateInput = function (el) {
     if (!banner) return;
     if (isTfs2BannerDismissedThisSession()) { banner.hidden = true; return; }
 
-    const subjectCount = countTfs2OngoingSubjects();
+    // Prefer the server-side aggregate when available so the count is
+    // consistent across devices for the same MLRO team. Fall back to the
+    // local TFS2 record count when the endpoint couldn't respond — it still
+    // accurately reflects what the current browser has opted in.
+    const serverCount = payload && typeof payload.subjectCount === 'number' ? payload.subjectCount : null;
+    const localCount = countTfs2OngoingSubjects();
+    const subjectCount = serverCount !== null ? serverCount : localCount;
     const lastRun = payload && payload.lastRun ? payload.lastRun : null;
     const nextRunAt = payload && payload.nextRunAt ? payload.nextRunAt : null;
     const asanaUrl = payload && payload.routinesProjectUrl ? payload.routinesProjectUrl : null;
@@ -3589,34 +3683,69 @@ window.csFormatDateInput = function (el) {
     banner.hidden = false;
 
     // Tick the countdown once per minute until the banner is re-rendered
-    // or dismissed. Cleared on dismiss + on the next render.
-    if (tfs2BannerTimer) { clearInterval(tfs2BannerTimer); tfs2BannerTimer = null; }
+    // or dismissed. Cleared on dismiss + on the next render. Separate from
+    // the 5-minute refresh timer so a network-slow refresh never delays
+    // the visible countdown.
+    if (tfs2BannerCountdownTimer) { clearInterval(tfs2BannerCountdownTimer); tfs2BannerCountdownTimer = null; }
     if (nextRunAt) {
-      tfs2BannerTimer = setInterval(function() {
+      tfs2BannerCountdownTimer = setInterval(function() {
         if (nextRunEl) nextRunEl.textContent = 'in ' + formatTfs2Countdown(nextRunAt);
-      }, 60000);
+      }, TFS2_BANNER_COUNTDOWN_MS);
     }
   }
 
-  async function wireTfs2OngoingScreeningBanner() {
-    const banner = document.getElementById('tfs2-ongoing-banner');
-    if (!banner) return;
-    if (isTfs2BannerDismissedThisSession()) { banner.hidden = true; return; }
-    // Paint the local-only state first so the count appears instantly even
-    // if the endpoint is slow. Backend data fills in on arrival.
-    applyTfs2BannerPayload({ lastRun: null, nextRunAt: null, routinesProjectUrl: null });
+  async function fetchTfs2Status() {
     try {
       const res = await fetch('/api/ongoing-screening-status', {
         method: 'GET',
         headers: { Accept: 'application/json' },
       });
-      if (!res.ok) return;
+      if (!res.ok) return { ok: false, status: res.status };
       const payload = await res.json().catch(function(){ return null; });
-      if (payload && payload.ok) applyTfs2BannerPayload(payload);
+      if (payload && payload.ok) return { ok: true, payload: payload };
+      return { ok: false, status: 0 };
     } catch (_e) {
-      // Network failure — leave the local-only paint in place. The MLRO
-      // still sees the subject count and the "08:00 UTC daily" schedule.
+      return { ok: false, status: 0 };
     }
+  }
+  async function refreshTfs2Banner(attempt) {
+    if (isTfs2BannerDismissedThisSession()) return;
+    const result = await fetchTfs2Status();
+    if (result.ok) {
+      applyTfs2BannerPayload(result.payload);
+      // Schedule the next regular refresh. Clears any pending retry.
+      if (tfs2BannerRetryTimer) { clearTimeout(tfs2BannerRetryTimer); tfs2BannerRetryTimer = null; }
+      if (tfs2BannerRefreshTimer) { clearInterval(tfs2BannerRefreshTimer); tfs2BannerRefreshTimer = null; }
+      tfs2BannerRefreshTimer = setInterval(function(){ refreshTfs2Banner(0); }, TFS2_BANNER_REFRESH_MS);
+      return;
+    }
+    // Failure path — exponential backoff up to four attempts, then give up
+    // and rely on the next 5-minute scheduled refresh. The banner keeps the
+    // local-only paint so the MLRO still sees the subject count.
+    const nextAttempt = typeof attempt === 'number' ? attempt : 0;
+    if (nextAttempt < TFS2_BANNER_RETRY_BACKOFF_MS.length) {
+      const delay = TFS2_BANNER_RETRY_BACKOFF_MS[nextAttempt];
+      if (tfs2BannerRetryTimer) clearTimeout(tfs2BannerRetryTimer);
+      tfs2BannerRetryTimer = setTimeout(function(){ refreshTfs2Banner(nextAttempt + 1); }, delay);
+    } else {
+      // Out of retries — fall back to the 5-minute scheduled refresh so the
+      // banner recovers automatically once the endpoint comes back.
+      if (!tfs2BannerRefreshTimer) {
+        tfs2BannerRefreshTimer = setInterval(function(){ refreshTfs2Banner(0); }, TFS2_BANNER_REFRESH_MS);
+      }
+    }
+  }
+  async function wireTfs2OngoingScreeningBanner() {
+    const banner = document.getElementById('tfs2-ongoing-banner');
+    if (!banner) return;
+    if (isTfs2BannerDismissedThisSession()) { banner.hidden = true; clearTfs2BannerTimers(); return; }
+    // Clear any timers left over from a previous render before starting
+    // fresh ones so duplicate intervals don't accumulate each re-render.
+    clearTfs2BannerTimers();
+    // Paint the local-only state first so the count appears instantly even
+    // if the endpoint is slow. Backend data fills in on arrival.
+    applyTfs2BannerPayload({ lastRun: null, nextRunAt: null, routinesProjectUrl: null });
+    refreshTfs2Banner(0);
   }
   global.wireTfs2OngoingScreeningBanner = wireTfs2OngoingScreeningBanner;
 
@@ -3774,19 +3903,58 @@ window.csFormatDateInput = function (el) {
       adverseMediaDeep: !!(document.getElementById('tfs2-check-adverse-deep')?.checked),
     };
   }
+  // PR-2 altNames parser — returns at most 20 names per the backend cap in
+  // netlify/functions/screening-save.mts. Truncation is user-visible: the
+  // UI surfaces #tfs2-altnames-warn inline and any submit-time toast so the
+  // MLRO can never silently lose a subject alias (FDL Art.20-21 — the CO
+  // must see that an input exceeded the cap, not discover it during audit).
   function parseTfs2AltNames(raw) {
-    if (!raw || typeof raw !== 'string') return [];
-    return raw
+    const result = parseTfs2AltNamesDetailed(raw);
+    return result.names;
+  }
+  function parseTfs2AltNamesDetailed(raw) {
+    if (!raw || typeof raw !== 'string') return { names: [], total: 0, overflow: false, oversizedCount: 0 };
+    const tokens = raw
       .split(/[,;\n]/)
       .map(function(s){ return s.trim(); })
-      .filter(function(s){ return s.length > 0 && s.length <= 200; })
-      .slice(0, 20);
+      .filter(function(s){ return s.length > 0; });
+    const oversized = tokens.filter(function(s){ return s.length > 200; }).length;
+    const valid = tokens.filter(function(s){ return s.length <= 200; });
+    const names = valid.slice(0, 20);
+    return {
+      names: names,
+      total: tokens.length,
+      overflow: valid.length > 20,
+      oversizedCount: oversized,
+    };
   }
+  function updateTfs2AltNamesWarning() {
+    const input = document.getElementById('tfs2-altnames');
+    const warn  = document.getElementById('tfs2-altnames-warn');
+    if (!input || !warn) return;
+    const parsed = parseTfs2AltNamesDetailed(input.value);
+    const parts = [];
+    if (parsed.overflow) {
+      parts.push('Only the first 20 names will be kept (you provided ' + parsed.total + ').');
+    }
+    if (parsed.oversizedCount > 0) {
+      parts.push(parsed.oversizedCount + ' name(s) exceed the 200-char limit and will be dropped.');
+    }
+    if (parts.length > 0) {
+      warn.textContent = '⚠ ' + parts.join(' ');
+      warn.hidden = false;
+    } else {
+      warn.textContent = '';
+      warn.hidden = true;
+    }
+  }
+  global.updateTfs2AltNamesWarning = updateTfs2AltNamesWarning;
 
   global.suite2OpenTFSForm = function() {
     document.getElementById('tfs2-edit-idx').value = '-1';
     ['tfs2-name','tfs2-reviewer','tfs2-notes','tfs2-fp-evidence','tfs2-pnmr-ref','tfs2-ffr-ref','tfs2-cnmr-ref'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     ['tfs2-altnames','tfs2-pob','tfs2-country-location','tfs2-case-id','tfs2-group'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    const _altWarn = document.getElementById('tfs2-altnames-warn'); if (_altWarn) { _altWarn.textContent=''; _altWarn.hidden = true; }
     ['tfs2-fp-basis','tfs2-tx-suspended','tfs2-pnmr-status','tfs2-frozen','tfs2-ffr','tfs2-cnmr-status','tfs2-supervisor','tfs2-mlro','tfs2-mgmt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     ['tfs2-list-uae','tfs2-list-un'].forEach(id=>{const e=document.getElementById(id);if(e)e.checked=true;});
     ['tfs2-list-ofac','tfs2-list-eu','tfs2-list-uk','tfs2-list-interpol','tfs2-list-adverse','tfs2-list-pep'].forEach(id=>{const e=document.getElementById(id);if(e)e.checked=true;});
@@ -4055,7 +4223,17 @@ window.csFormatDateInput = function (el) {
       idNumber: document.getElementById('tfs2-idnumber')?.value?.trim() || '',
       // PR-2 LSEG World-Check One parity fields. All optional — trimmed,
       // capped, and omitted-as-blank preserved so legacy records round-trip.
-      altNames: parseTfs2AltNames(document.getElementById('tfs2-altnames')?.value || ''),
+      altNames: (function() {
+        const raw = document.getElementById('tfs2-altnames')?.value || '';
+        const parsed = parseTfs2AltNamesDetailed(raw);
+        if (parsed.overflow && typeof toast === 'function') {
+          toast('Only the first 20 alternate names were saved (you provided ' + parsed.total + ').', 'warning', 6000);
+        }
+        if (parsed.oversizedCount > 0 && typeof toast === 'function') {
+          toast(parsed.oversizedCount + ' alternate name(s) exceeded the 200-char limit and were dropped.', 'warning', 6000);
+        }
+        return parsed.names;
+      })(),
       pob: document.getElementById('tfs2-pob')?.value?.trim() || '',
       countryLocation: document.getElementById('tfs2-country-location')?.value?.trim() || '',
       caseId: document.getElementById('tfs2-case-id')?.value?.trim() || '',
@@ -4100,6 +4278,11 @@ window.csFormatDateInput = function (el) {
     };
     if (editIdx>=0) { events[editIdx]=record; } else { events.unshift(record); }
     save(SK2.TFS2, events);
+    // PR-3 fix #1 — propagate the opt-in flag to the server so the status
+    // banner sees the same count across devices. Non-blocking.
+    if (typeof syncTfs2OptInToBackend === 'function') {
+      try { syncTfs2OptInToBackend(record); } catch (_e) { /* local-only fallback */ }
+    }
     document.getElementById('tfs2Modal').classList.remove('open');
     if (outcome==='Confirmed Match') toast('🔴 CONFIRMED MATCH saved — ensure freeze, FFR, and CNMR obligations are met within deadlines','error');
     else if (outcome==='Partial Match') toast('🟡 PARTIAL MATCH saved — PNMR must be filed within 5 business days','info');
@@ -4158,7 +4341,7 @@ window.csFormatDateInput = function (el) {
           return '\n\n' + lines.join('\n');
         }
         var syncNotes = 'TFS Screening Event: ' + record.id
-          + '\nEntity: ' + name + ' (' + (record.entityType||'') + ')'
+          + '\nEntity: ' + name + ' (' + window.prettyEntityType(record.entityType) + ')'
           + (record.country ? '\nCountry: ' + record.country : '')
           + (record.idNumber ? '\nID: ' + record.idNumber : '')
           + '\nEvent Type: ' + record.eventType
@@ -4191,8 +4374,21 @@ window.csFormatDateInput = function (el) {
   global.suite2DeleteTFS = function(idx) {
     if (!confirm('Delete this TFS screening event?')) return;
     const events = load(SK2.TFS2)||[];
+    const removed = events[idx];
     events.splice(idx,1);
     save(SK2.TFS2, events);
+    // PR-3 fix #1 — if the deleted record was on ongoing screening, opt it out
+    // on the server so the aggregate count stays accurate.
+    if (removed && removed.ongoingScreening === true && typeof syncTfs2OptInToBackend === 'function') {
+      try {
+        syncTfs2OptInToBackend({
+          id: removed.id,
+          screenedName: removed.screenedName,
+          entityType: removed.entityType,
+          ongoingScreening: false,
+        });
+      } catch (_e) { /* local-only fallback */ }
+    }
     renderTFS2();
   };
 
