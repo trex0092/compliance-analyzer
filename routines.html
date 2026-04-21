@@ -1885,24 +1885,73 @@
 
       // "Open in Asana" header link — resolved via /api/asana/config on
       // first sign-in. Needs the HAWKEYE_BRAIN_TOKEN stored in
-      // localStorage by the Screening Command sign-in flow. If no token
-      // or the env var is unset, the link stays hidden.
+      // localStorage by the Screening Command sign-in flow.
+      //
+      // BUG fix 2026-04-21: the inline IIFE previously ran synchronously
+      // during parse, which is BEFORE <script src="asana-client-bridge.js">
+      // loads, so window.__hawkeyeAsana was always undefined and the
+      // pendingEl stuck at "…" forever. The MLRO reported the empty
+      // panel repeatedly. Wrapped in a load-ordered chain that:
+      //   1. Waits for asana-client-bridge.js to register __hawkeyeAsana
+      //   2. Retries up to 50 times at 100ms (5s total)
+      //   3. Shows the project NAME (not just a link), so the summary-
+      //      panel cell in the hero is informative instead of a link
+      //      nobody sees
+      //   4. Fails visibly with an actionable message, not "…"
       (function wireAsanaLink() {
         const linkEl = document.getElementById('routinesAsanaLink');
         const pendingEl = document.getElementById('routinesAsanaLinkPending');
-        if (!linkEl || !window.__hawkeyeAsana) {
-          if (pendingEl) pendingEl.textContent = 'sign in required';
-          return;
-        }
-        window.__hawkeyeAsana.getProjectUrl('routines').then(function (url) {
-          if (url) {
-            linkEl.setAttribute('href', url);
-            linkEl.hidden = false;
-            if (pendingEl) pendingEl.hidden = true;
-          } else if (pendingEl) {
-            pendingEl.textContent = 'not configured';
+        if (!linkEl || !pendingEl) return;
+
+        let attempts = 0;
+        const MAX_ATTEMPTS = 50;
+        const RETRY_MS = 100;
+
+        function waitForBridge() {
+          if (window.__hawkeyeAsana && typeof window.__hawkeyeAsana.getConfig === 'function') {
+            resolveAsana();
+            return;
           }
-        });
+          if (attempts++ < MAX_ATTEMPTS) {
+            setTimeout(waitForBridge, RETRY_MS);
+            return;
+          }
+          pendingEl.textContent = 'asana bridge not loaded — refresh the page';
+        }
+
+        function resolveAsana() {
+          const token = window.__hawkeyeAsana.getToken && window.__hawkeyeAsana.getToken();
+          if (!token) {
+            pendingEl.textContent = 'sign in at /login.html first';
+            return;
+          }
+          window.__hawkeyeAsana.getConfig().then(function (cfg) {
+            if (!cfg || !cfg.ok) {
+              pendingEl.textContent = cfg && cfg.error ? String(cfg.error).slice(0, 60) : 'config unreachable';
+              return;
+            }
+            const gid = cfg.projects && cfg.projects.routines;
+            if (!gid) {
+              pendingEl.textContent = 'ASANA_ROUTINES_PROJECT_GID not set in Netlify';
+              return;
+            }
+            const url = 'https://app.asana.com/0/' + encodeURIComponent(gid);
+            linkEl.setAttribute('href', url);
+            linkEl.textContent = 'Routines — Scheduled ↗';
+            linkEl.hidden = false;
+            pendingEl.hidden = true;
+          }).catch(function (err) {
+            pendingEl.textContent = (err && err.message ? err.message : 'resolve failed').slice(0, 60);
+          });
+        }
+
+        // Kick off after the full DOM + external scripts load so
+        // asana-client-bridge.js has definitely registered __hawkeyeAsana.
+        if (document.readyState === 'complete') {
+          waitForBridge();
+        } else {
+          window.addEventListener('load', waitForBridge, { once: true });
+        }
       })();
     </script>
     <script src="asana-client-bridge.js?v=1"></script>
