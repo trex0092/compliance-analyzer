@@ -3841,6 +3841,22 @@
                   'Send to Asana' +
                 '</button>'
               : '';
+            // UBO / Network graph — renders the connected-parties +
+            // similar-cases network as an inline SVG. Button only
+            // shown when there is something to graph.
+            var hasGraphData = hasCr && (
+              (Array.isArray(r.compliance_report.connected_parties) && r.compliance_report.connected_parties.length) ||
+              // similar_cases computed at render-time, so approximate
+              // availability by presence of typologies / country.
+              r.country
+            );
+            var graphBtnHtml = hasGraphData
+              ? '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-ubo-graph" data-id="' + esc(r.id) + '" ' +
+                  'title="Show the UBO / connected-parties / similar-cases network graph" ' +
+                  'style="border:1px solid rgba(136,181,255,0.45);color:#c3dafe">' +
+                  'Network graph' +
+                '</button>'
+              : '';
             // Devil's Advocate — counter-argument pass against the primary
             // verdict. Available on any compliance-report row (even clean
             // low-risk matches benefit from the sanity-check).
@@ -3874,6 +3890,7 @@
                       '<button class="mv-btn mv-btn-sm" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="false_positive">False positive</button>' +
                       '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="escalated">Escalate' + (escalateTriggersFE ? feChip : '') + '</button>'
                     : '') +
+                  graphBtnHtml +
                   redTeamBtnHtml +
                   strBtnHtml +
                   asanaBtnHtml +
@@ -4231,6 +4248,54 @@
     function bearerToken() {
       try { return localStorage.getItem('hawkeye.session.jwt') || localStorage.getItem('hawkeye.watchlist.adminToken') || ''; } catch (_) { return ''; }
     }
+
+    // UBO / Network graph — builds the SVG and mounts it in the
+    // reasoning panel. Clicking any node pre-fills the subject name
+    // input + country + opens the new-screening form so the MLRO
+    // can walk the graph one step at a time.
+    host.querySelectorAll('[data-action="sc-sub-ubo-graph"]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-id');
+        var row = null;
+        for (var i = 0; i < rows.length; i++) { if (rows[i].id === id) { row = rows[i]; break; } }
+        if (!row) return;
+        var panel = host.querySelector('[data-reasoning-panel="' + id + '"]');
+        if (!panel) return;
+        var similar = findSimilarCases(row, rows);
+        var svgHtml = buildUboGraphSvg(row, similar, { width: 640, height: 400 });
+        panel.style.display = 'block';
+        panel.innerHTML =
+          '<div style="padding:12px;border-left:3px solid rgba(136,181,255,0.4);background:rgba(136,181,255,0.04);border-radius:6px">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">' +
+              '<div>' +
+                '<strong style="font-size:13px">UBO / Connected-Parties Network</strong>' +
+                '<div style="font-size:11px;opacity:.7;margin-top:2px">Subject · parties (inner ring) · similar cases (outer ring). Cabinet Decision 109/2023 · FATF Rec 10.</div>' +
+              '</div>' +
+              '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-graph-close>Close</button>' +
+            '</div>' +
+            svgHtml +
+          '</div>';
+        panel.querySelector('[data-graph-close]').addEventListener('click', function () {
+          panel.innerHTML = '';
+          panel.style.display = 'none';
+        });
+        Array.prototype.forEach.call(panel.querySelectorAll('[data-ubo-target]'), function (node) {
+          node.addEventListener('click', function () {
+            var target = node.getAttribute('data-ubo-target');
+            var country = node.getAttribute('data-ubo-country');
+            if (!target) return;
+            // Open the new-screening form and pre-fill name + country.
+            var form = host.querySelector('#sc-subject-form');
+            if (form && form.style.display === 'none') form.style.display = '';
+            var nameInput = form && form.querySelector('input[name="subjectName"]');
+            var countryInput = form && form.querySelector('input[name="country"]');
+            if (nameInput) nameInput.value = target;
+            if (countryInput && country) countryInput.value = country;
+            if (nameInput) { nameInput.focus(); nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+          });
+        });
+      };
+    });
 
     // Devil's Advocate — streams an Opus-assisted counter-argument
     // pass into a panel below the row. The executor sees the full
@@ -5771,6 +5836,135 @@
       notes: notes,
       citation: 'FATF Rec 10 — ongoing CDD · FDL No.(10)/2025 Art.20-21'
     };
+  }
+
+  // ─── UBO / Network Graph (vanilla SVG) ─────────────────────────────
+  // xyflow-equivalent radial network visualisation. The browser SPA
+  // has no React bundler (netlify.toml: publish = '.'), so we render
+  // a lightweight inline SVG instead — same information density, no
+  // new dependencies, no build step. Nodes + edges are derived from
+  // connected_parties + similar_cases; the subject sits at the
+  // centre, connected parties ring at r=110, similar cases ring at
+  // r=180. Clicking any non-subject node pre-fills the screening
+  // form with the clicked subject's name so the MLRO can walk the
+  // network one query at a time (FATF Rec 10 ongoing CDD +
+  // Cabinet Decision 109/2023 UBO chain).
+  function buildUboGraphSvg(row, similarCases, opts) {
+    opts = opts || {};
+    var width = opts.width || 640;
+    var height = opts.height || 400;
+    var cx = width / 2;
+    var cy = height / 2;
+    var cr = row && row.compliance_report;
+    var parties = (cr && Array.isArray(cr.connected_parties)) ? cr.connected_parties : [];
+    var similar = Array.isArray(similarCases) ? similarCases : [];
+    if (!parties.length && !similar.length) {
+      return '<div style="padding:16px;text-align:center;opacity:.65;font-size:12px">' +
+        'No connected parties or similar cases extracted — nothing to graph yet.</div>';
+    }
+
+    // Subject node colours mirror the RISK pill.
+    var subjectRiskColor =
+      (cr && cr.risk_level === 'critical') ? '#7f1d1d' :
+      (cr && cr.risk_level === 'high')     ? '#dc2626' :
+      (cr && cr.risk_level === 'medium')   ? '#d97706' : '#4b5563';
+
+    // Lay out parties in the inner ring (r=110) and similar cases
+    // in the outer ring (r=180). Angles distributed evenly so the
+    // graph is readable without collision detection.
+    function ring(items, radius, startAngle) {
+      if (!items.length) return [];
+      var angleStep = (2 * Math.PI) / Math.max(items.length, 4);
+      return items.map(function (it, i) {
+        var a = startAngle + i * angleStep;
+        return Object.assign({}, it, {
+          _x: cx + Math.cos(a) * radius,
+          _y: cy + Math.sin(a) * radius
+        });
+      });
+    }
+    var partyNodes  = ring(parties.slice(0, 6), 110, -Math.PI / 2);
+    var similarNodes = ring(similar.slice(0, 6), 180,  Math.PI / 2 - 0.2);
+
+    var svg = [];
+    svg.push('<svg viewBox="0 0 ' + width + ' ' + height + '" ' +
+      'style="width:100%;height:' + height + 'px;display:block" ' +
+      'xmlns="http://www.w3.org/2000/svg" role="img" aria-label="UBO and connected-parties network graph">');
+    // Defs — marker + subtle glow
+    svg.push('<defs>' +
+      '<radialGradient id="ubo-glow" cx="50%" cy="50%" r="50%">' +
+        '<stop offset="0%" stop-color="rgba(234,88,12,0.3)"/>' +
+        '<stop offset="100%" stop-color="rgba(234,88,12,0)"/>' +
+      '</radialGradient>' +
+      '<marker id="ubo-arrow" viewBox="0 0 10 10" refX="10" refY="5" ' +
+        'markerWidth="6" markerHeight="6" orient="auto-start-reverse">' +
+        '<path d="M0,0 L10,5 L0,10 Z" fill="rgba(255,255,255,0.35)"/>' +
+      '</marker>' +
+    '</defs>');
+    // Background glow behind the subject
+    svg.push('<circle cx="' + cx + '" cy="' + cy + '" r="100" fill="url(#ubo-glow)"/>');
+
+    // Draw edges first so nodes render on top.
+    partyNodes.forEach(function (n) {
+      svg.push('<line x1="' + cx + '" y1="' + cy + '" x2="' + n._x.toFixed(1) + '" y2="' + n._y.toFixed(1) +
+        '" stroke="rgba(136,181,255,0.4)" stroke-width="1.5" marker-end="url(#ubo-arrow)"/>');
+    });
+    similarNodes.forEach(function (n) {
+      svg.push('<line x1="' + cx + '" y1="' + cy + '" x2="' + n._x.toFixed(1) + '" y2="' + n._y.toFixed(1) +
+        '" stroke="rgba(168,85,247,0.3)" stroke-width="1" stroke-dasharray="4 3"/>');
+    });
+
+    // Subject (centre) — pill-shaped node with name + risk colour.
+    var subjectLabel = (row && row.name) ? String(row.name).slice(0, 28) : 'subject';
+    svg.push('<g>' +
+      '<rect x="' + (cx - 75) + '" y="' + (cy - 18) + '" width="150" height="36" rx="10" ' +
+        'fill="' + subjectRiskColor + '" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>' +
+      '<text x="' + cx + '" y="' + (cy + 5) + '" text-anchor="middle" ' +
+        'fill="#fff" font-size="12" font-weight="700" ' +
+        'style="font-family:inherit">' + esc(subjectLabel) + '</text>' +
+    '</g>');
+
+    // Connected-party nodes (inner ring — blue).
+    partyNodes.forEach(function (n) {
+      var label = (n.name || '').slice(0, 22);
+      svg.push('<g data-ubo-target="' + esc(n.name || '') + '" data-ubo-country="' + esc(row.country || '') + '" style="cursor:pointer">' +
+        '<rect x="' + (n._x - 70) + '" y="' + (n._y - 14) + '" width="140" height="28" rx="8" ' +
+          'fill="rgba(136,181,255,0.18)" stroke="rgba(136,181,255,0.55)" stroke-width="1"/>' +
+        '<text x="' + n._x + '" y="' + (n._y + 4) + '" text-anchor="middle" ' +
+          'fill="#c3dafe" font-size="11" style="font-family:inherit">' + esc(label) + '</text>' +
+        (n.abbrev ? '<text x="' + n._x + '" y="' + (n._y + 14) + '" text-anchor="middle" ' +
+          'fill="#88b5ff" font-size="9" opacity="0.75" style="font-family:inherit">(' + esc(n.abbrev) + ')</text>' : '') +
+      '</g>');
+    });
+
+    // Similar-case nodes (outer ring — purple).
+    similarNodes.forEach(function (n) {
+      var label = (n.name || '').slice(0, 22);
+      var badge = (n.classification ? String(n.classification).slice(0, 10).toUpperCase() : '') +
+        (n.confidence != null ? ' ' + n.confidence + '%' : '');
+      svg.push('<g data-ubo-target="' + esc(n.name || '') + '" data-ubo-country="' + esc(n.country || '') + '" style="cursor:pointer">' +
+        '<rect x="' + (n._x - 60) + '" y="' + (n._y - 14) + '" width="120" height="28" rx="8" ' +
+          'fill="rgba(168,85,247,0.14)" stroke="rgba(168,85,247,0.4)" stroke-width="1"/>' +
+        '<text x="' + n._x + '" y="' + (n._y + 4) + '" text-anchor="middle" ' +
+          'fill="#d8b4fe" font-size="10" style="font-family:inherit">' + esc(label) + '</text>' +
+        (badge ? '<text x="' + n._x + '" y="' + (n._y + 14) + '" text-anchor="middle" ' +
+          'fill="#c4b5fd" font-size="8" opacity="0.75" style="font-family:inherit">' + esc(badge) + '</text>' : '') +
+      '</g>');
+    });
+
+    // Legend
+    svg.push('<g transform="translate(10,' + (height - 42) + ')" style="font-family:inherit">' +
+      '<rect x="0" y="0" width="14" height="10" rx="2" fill="' + subjectRiskColor + '"/>' +
+      '<text x="20" y="9" fill="#ece8ff" font-size="10">Subject (centre)</text>' +
+      '<rect x="120" y="0" width="14" height="10" rx="2" fill="rgba(136,181,255,0.5)"/>' +
+      '<text x="140" y="9" fill="#c3dafe" font-size="10">Connected party</text>' +
+      '<rect x="260" y="0" width="14" height="10" rx="2" fill="rgba(168,85,247,0.4)"/>' +
+      '<text x="280" y="9" fill="#d8b4fe" font-size="10">Similar case</text>' +
+      '<text x="0" y="28" fill="#ece8ff" opacity="0.65" font-size="10">' +
+        'Click any node to pre-fill a new screening query.</text>' +
+    '</g>');
+    svg.push('</svg>');
+    return svg.join('');
   }
 
   // ─── Bayesian posterior engine — log-odds / credible interval ──────
