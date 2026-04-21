@@ -141,10 +141,31 @@ export default async (req: Request, context: Context): Promise<Response> => {
       ? `CASE CONTEXT:\n${caseContext.trim()}\n\nQUESTION:\n${question.trim()}`
       : question.trim();
 
+  // Short lookup questions (empty case context, question under 400
+  // chars) cap the advisor at 1 sub-inference instead of
+  // MAX_ADVISOR_USES. Opus advisor round-trips run ~5-10s each; three
+  // of them on a cold start routinely blow past STREAM_WALL_CLOCK_MS
+  // before the executor emits any text, producing an empty timeout
+  // reply (observed on the "PEP onboarding" and "OFAC SDN hit"
+  // presets with no pasted context).
+  //
+  // One advisor call still honours the six mandatory escalation
+  // triggers in COMPLIANCE_ADVISOR_SYSTEM_PROMPT (PEP, sanctions
+  // match, threshold edge cases, STR narratives, freeze/escalate
+  // verdicts, CDD level changes) — the cap only prevents multi-round
+  // iteration that lookup-style questions don't need. FDL No.10/2025
+  // Art.20-21 (CO reasoning trail) is satisfied by the single advisor
+  // exchange; multi-advisor is an optimisation for complex case
+  // synthesis, not a baseline regulatory requirement.
+  const caseContextIsEmpty =
+    typeof caseContext !== 'string' || caseContext.trim().length === 0;
+  const isShortLookup = caseContextIsEmpty && question.trim().length < 400;
+  const advisorUsesForThisRequest = isShortLookup ? 1 : MAX_ADVISOR_USES;
+
   const aiProxyBody = buildAdvisorRequest({
     userMessage,
     maxTokens: MAX_EXECUTOR_TOKENS,
-    maxAdvisorUses: MAX_ADVISOR_USES,
+    maxAdvisorUses: advisorUsesForThisRequest,
     additionalSystemPrompt: STRUCTURED_OUTPUT_GUIDANCE,
     stream: true,
   });
@@ -318,6 +339,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
         const jti = auth.jwt?.jti;
         console.info(
           `[brain-reason] ok userId=${auth.userId} jti=${jti ?? 'n/a'}` +
+            ` advisorCap=${advisorUsesForThisRequest}` +
             ` advisorCalls=${advisorCallCount}` +
             ` executorIn=${executorInputTokens} executorOut=${executorOutputTokens}` +
             ` advisorIn=${advisorInputTokens} advisorOut=${advisorOutputTokens}` +

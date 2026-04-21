@@ -839,7 +839,17 @@
               usage = data || {};
               renderMeta('Streaming…');
             } else if (eventName === 'wall_clock') {
-              errEl.textContent = data.error || 'Deep reasoning hit the 25s budget. Partial reply above — try a shorter question, the Speed mode, or split into two calls.';
+              // If no delta arrived before the wall-clock ceiling
+              // fired, the server's "Partial reply above" phrasing is
+              // misleading — there is no partial to read. Surface a
+              // distinct message so the MLRO knows to shorten the
+              // prompt instead of hunting for an answer in an empty
+              // result area.
+              if (fullText && fullText.trim().length > 0) {
+                errEl.textContent = data.error || 'Deep reasoning hit the 25s budget. Partial reply above — try a shorter question, the Speed mode, or split into two calls.';
+              } else {
+                errEl.textContent = 'Deep reasoning timed out before producing any text. Try a shorter question, the Speed mode, or move background detail into the Case Context field.';
+              }
             } else if (eventName === 'error') {
               errEl.textContent = data.error || 'Upstream reasoning error.';
             } else if (eventName === 'done') {
