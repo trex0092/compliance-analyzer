@@ -1978,28 +1978,6 @@ function setMetalsUiState(xau, xag, state, sourceLabel) {
   }
 }
 
-function parseReutersMetals(html) {
-  if (!html) return null;
-  const cleaned = String(html).replace(/\s+/g, ' ');
-  const xauMatch = cleaned.match(/XAU[^0-9]{0,20}([0-9]{3,5}(?:\.[0-9]+)?)/i) || cleaned.match(/Gold[^0-9]{0,30}([0-9]{3,5}(?:\.[0-9]+)?)/i);
-  const xagMatch = cleaned.match(/XAG[^0-9]{0,20}([0-9]{1,4}(?:\.[0-9]+)?)/i) || cleaned.match(/Silver[^0-9]{0,30}([0-9]{1,4}(?:\.[0-9]+)?)/i);
-  const xau = xauMatch ? Number(xauMatch[1]) : NaN;
-  const xag = xagMatch ? Number(xagMatch[1]) : NaN;
-  if (!Number.isFinite(xau) || !Number.isFinite(xag)) return null;
-  return { xau, xag, source: 'Reuters (proxy parse)' };
-}
-
-async function fetchReutersMetals() {
-  const reutersUrl = 'https://www.reuters.com/markets/commodities/';
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(reutersUrl)}&t=${Date.now()}`;
-  const r = await fetch(proxyUrl, { cache: 'no-store' });
-  if (!r.ok) throw new Error('Reuters source unavailable');
-  const html = await r.text();
-  const parsed = parseReutersMetals(html);
-  if (!parsed) throw new Error('Reuters parse failed');
-  return parsed;
-}
-
 async function fetchFallbackMetals() {
   const r = await fetch(`https://api.metals.live/v1/spot?t=${Date.now()}`, { cache: 'no-store' });
   if (!r.ok) throw new Error('Fallback source unavailable');
@@ -2078,26 +2056,12 @@ async function fetchMetalsViaProxy() {
   return { xau, xag, source: 'proxy' };
 }
 
-async function fetchMetalsAllOrigins() {
-  const apiUrl = 'https://api.metals.live/v1/spot';
-  const r = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}&t=${Date.now()}`, { cache: 'no-store' });
-  if (!r.ok) throw new Error('AllOrigins metals unavailable');
-  const data = await r.json();
-  const rows = Array.isArray(data) ? data : [];
-  const xauRow = rows.find(v => typeof v === 'object' && v && Object.prototype.hasOwnProperty.call(v, 'gold'));
-  const xagRow = rows.find(v => typeof v === 'object' && v && Object.prototype.hasOwnProperty.call(v, 'silver'));
-  const xau = Number(xauRow?.gold);
-  const xag = Number(xagRow?.silver);
-  if (!Number.isFinite(xau) || !Number.isFinite(xag)) throw new Error('AllOrigins metals parse failed');
-  return { xau, xag, source: 'metals.live (cors proxy)' };
-}
-
 async function refreshMetalsPrices(showToast) {
   if (metalsFetchInFlight) return;
   metalsFetchInFlight = true;
   const src = document.getElementById('metalsSource');
   if (src) src.textContent = 'Source: Updating...';
-  const sources = [fetchMetalsViaProxy, fetchMetalsAllOrigins, fetchGoldPriceOrg, fetchGoldApiMetals, fetchFallbackMetals, fetchMetalPriceApi, fetchForexRateApi, fetchReutersMetals];
+  const sources = [fetchMetalsViaProxy, fetchGoldPriceOrg, fetchGoldApiMetals, fetchFallbackMetals, fetchMetalPriceApi, fetchForexRateApi];
   let quote = null;
   for (const fn of sources) {
     try { quote = await fn(); break; } catch (e) { /* try next */ }
