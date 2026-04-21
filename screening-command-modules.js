@@ -4265,6 +4265,38 @@
           row.disposition = d;
           row.disposed_at = new Date().toISOString();
           try { recordLesson(row, d); } catch (_) { /* best-effort */ }
+          // Server-side disposition audit — FDL Art.24 10-yr retention.
+          // Best-effort: UI state remains authoritative on failure.
+          try {
+            var dTok = '';
+            try { dTok = localStorage.getItem('hawkeye.session.jwt') || localStorage.getItem('hawkeye.watchlist.adminToken') || ''; } catch (_) {}
+            if (dTok) {
+              var dcr = row.compliance_report || {};
+              fetch('/api/disposition-audit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + dTok },
+                body: JSON.stringify({
+                  rowId: row.id,
+                  subjectName: row.name || '',
+                  country: row.country || '',
+                  disposition: d,
+                  mlroId: currentMlroId(),
+                  disposedAt: row.disposed_at,
+                  cddTier: (dcr.cdd_recommendation && dcr.cdd_recommendation.tier) || undefined,
+                  riskLevel: dcr.risk_level || undefined,
+                  sanctionsHitCount: dcr.sanctions_hit_count || 0,
+                  adverseMediaClass: dcr.adverse_media_classification || undefined,
+                  confidencePct: typeof row.confidence === 'number' ? Math.round(row.confidence * 100) : null,
+                  posteriorMeanPct: (dcr.bayesian_posterior && dcr.bayesian_posterior.posterior_mean_pct) || null,
+                  entityType: row.subject_type || undefined,
+                  typologyIds: Array.isArray(dcr.typologies) ? dcr.typologies.map(function (t) { return t.id; }) : [],
+                  categories: Array.isArray(row.adverse_media_hits) ? row.adverse_media_hits : []
+                })
+              }).catch(function (err) {
+                try { console.warn('[disposition-audit] write failed:', err && err.message); } catch (_) {}
+              });
+            }
+          } catch (_) { /* best-effort */ }
         }
         safeSave(STORAGE.subjects, rows);
         renderSubjectScreening(host);
@@ -4498,6 +4530,19 @@
             dl.textContent = 'Download goAML XML (DRAFT)';
             dl.addEventListener('click', function () {
               var xml = buildGoAmlStrXml(row, fullNarrative);
+              // Pre-flight validation — mirror src/utils/goamlValidator.ts
+              // checks so the MLRO sees issues BEFORE the file downloads.
+              var v = validateGoAmlStrClient(xml);
+              if (!v.valid && v.errors.length) {
+                var errList = v.errors.slice(0, 6).map(function (e) {
+                  return '  • [' + e.field + '] ' + e.message + (e.regulatory ? ' [' + e.regulatory + ']' : '');
+                }).join('\n');
+                var proceed = confirm(
+                  'goAML validator flagged ' + v.errors.length + ' error(s):\n\n' + errList +
+                  '\n\nDownload anyway? (The draft will need correction before submission.)'
+                );
+                if (!proceed) return;
+              }
               var blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
               var url = URL.createObjectURL(blob);
               var a = document.createElement('a');
@@ -4509,7 +4554,9 @@
               a.click();
               document.body.removeChild(a);
               setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-              dl.textContent = 'Downloaded ✓ (review before submission)';
+              var warnNote = v.warnings && v.warnings.length
+                ? ' · ' + v.warnings.length + ' warning(s)' : '';
+              dl.textContent = 'Downloaded ✓' + warnNote + ' (review before submission)';
               dl.disabled = true;
             });
             actionsHost.appendChild(document.createElement('br'));
@@ -4809,6 +4856,68 @@
     d = d || new Date();
     return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate());
   }
+  // Client-side mirror of src/utils/goamlValidator.ts validateSTR().
+  // The full validator is server-side TypeScript and can't import
+  // into the vanilla SPA, so we port the five critical invariants
+  // inline: required elements, RPT ID format, date format,
+  // tipping-off guard, and minimum suspicious-subject detail.
+  // Every check cites the same regulatory basis as the server
+  // validator so error messages surface identically.
+  function validateGoAmlStrClient(xml) {
+    var errors = [];
+    var warnings = [];
+    function err(field, message, reg) { errors.push({ field: field, message: message, regulatory: reg }); }
+    function warn(field, message)     { warnings.push({ field: field, message: message }); }
+    if (!xml || typeof xml !== 'string') {
+      err('xml', 'Empty or non-string XML.', 'FIU goAML Schema');
+      return { valid: false, errors: errors, warnings: warnings };
+    }
+    var required = [
+      { tag: 'reportHeader',        reg: 'FIU goAML Schema' },
+      { tag: 'reportingEntity',     reg: 'FDL Art.20' },
+      { tag: 'suspiciousSubject',   reg: 'FDL Art.26' },
+      { tag: 'groundsForSuspicion', reg: 'FDL Art.26' },
+      { tag: 'transactionDetails',  reg: 'FDL Art.26' },
+      { tag: 'reportFooter',        reg: 'FIU goAML Schema' }
+    ];
+    required.forEach(function (r) {
+      if (xml.indexOf('<' + r.tag) < 0) {
+        err(r.tag, 'Missing required element: <' + r.tag + '>', r.reg);
+      }
+    });
+    if (!/RPT-\d+-[a-zA-Z0-9]+/.test(xml)) {
+      err('reportId', 'Report ID must follow RPT-[timestamp]-[random] format.', 'FIU goAML Schema');
+    }
+    // Date format YYYY-MM-DD on any element whose name contains "date"
+    var dateMatches = xml.match(/<[^>]*[Dd]ate[^>]*>[^<]+<\//g) || [];
+    dateMatches.forEach(function (mStr) {
+      var val = mStr.replace(/<[^>]+>/g, '').replace(/<\/$/, '');
+      if (val && !/^\d{4}-\d{2}-\d{2}/.test(val)) {
+        err('date', 'Invalid date format: "' + val + '". Must be YYYY-MM-DD.', 'FIU goAML Schema');
+      }
+    });
+    // Tipping-off — FDL Art.29 hard invariant. Never mention that we
+    // filed / reported / notified the FIU in the report body.
+    if (/\b(we filed|reported to (?:fiu|eocn|the authority)|notified (?:the )?subject|disclosed to subject)\b/i.test(xml)) {
+      err('tippingOff', 'XML contains tipping-off language — remove before submission.', 'FDL Art.29');
+    }
+    // Minimum subject detail
+    if (!/<name>[^<]{2,}<\/name>/.test(xml)) {
+      err('suspiciousSubject.name', 'Subject name is missing or too short.', 'FDL Art.26');
+    }
+    // Transaction details completeness — the current draft template
+    // surfaces a TO_BE_COMPLETED_BY_MLRO placeholder; warn but do
+    // not fail so the MLRO can download the draft for completion.
+    if (/TO_BE_COMPLETED_BY_MLRO/.test(xml)) {
+      warn('transactionDetails', 'Transaction line-items are placeholder. Populate from transaction monitor before actual submission.');
+    }
+    return {
+      valid: errors.length === 0,
+      errors: errors,
+      warnings: warnings
+    };
+  }
+
   function buildGoAmlStrXml(row, narrativeText) {
     if (!row) return '';
     var cr = row.compliance_report || {};

@@ -75,6 +75,24 @@
   status = 200
   force = true
 
+# Four-Eyes audit admin read-path for inspection + audit pack.
+# Scoped read endpoint over the Blob store. FDL Art.24 · Cabinet
+# Res 134/2025 Art.14.
+[[redirects]]
+  from = "/api/four-eyes-audit-read"
+  to = "/.netlify/functions/four-eyes-audit-read"
+  status = 200
+  force = true
+
+# General disposition audit — every Confirm / Partial / False-
+# positive / Escalate on a screening row is persisted with 10-
+# year retention per FDL No.(10)/2025 Art.24.
+[[redirects]]
+  from = "/api/disposition-audit"
+  to = "/.netlify/functions/disposition-audit"
+  status = 200
+  force = true
+
 # MLRO sign-in JWT endpoint. The function itself declares
 # `config.path = "/api/hawkeye-login"` in auth-login.mts, but on some
 # Netlify deploys the config.path registration does not surface the
