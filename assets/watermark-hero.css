@@ -1,0 +1,54 @@
+/**
+ * Hawkeye Sterling V2 — hero watermark.
+ *
+ * Subtle fixed-position background behind all SPA content. The image
+ * (assets/hero_final_v2.png, 5.75 MB source — MLRO directed "do not
+ * reduce the quality, it must be perfect", 2026-04-21) renders at
+ * low opacity so it never obscures compliance data.
+ *
+ * Design constraints:
+ *   - Must not interfere with click targets (pointer-events: none)
+ *   - Must not appear in printed reports (@media print -> hide)
+ *   - Must stay behind every tab-content panel (z-index: -1)
+ *   - Full-resolution asset is served once per browser session and
+ *     then HTTP-cached, so the 5.75 MB cost is a one-time hit per
+ *     MLRO per device (Netlify sets long cache headers on assets/*).
+ *
+ * Regulatory basis: FDL No.(10)/2025 Art.20-21 — branding surfaces
+ * must never reduce the CO's ability to read compliance decisions.
+ */
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url('./hero_final_v2.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.07;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Higher contrast on the login overlay — the watermark should still
+   be visible behind the card but must not wash out the input field
+   focus rings. */
+#hawkeyeLoginOverlay ~ body::before,
+body.hawkeye-gated-hide::before {
+  opacity: 0.04;
+}
+
+/* Hide in print — ink + archive clarity. */
+@media print {
+  body::before {
+    display: none !important;
+  }
+}
+
+/* Respect reduced-motion / prefers-reduced-transparency preferences. */
+@media (prefers-reduced-transparency: reduce) {
+  body::before {
+    opacity: 0.03;
+  }
+}
