@@ -24,6 +24,7 @@
 
 import type { ComplianceCase } from '../domain/cases';
 import type { CustomerProfile } from '../domain/customers';
+import { DPMS_CASH_THRESHOLD_AED } from '../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,9 +80,9 @@ export function validateGoamlPayload(payload: GoamlPayload): GoamlValidationResu
     if (total === 0) {
       errors.push('CTR requires at least one transaction with a non-zero amount');
     }
-    if (total < 55_000) {
+    if (total < DPMS_CASH_THRESHOLD_AED) {
       warnings.push(
-        `CTR total is AED ${total.toLocaleString()} — below the 55,000 DPMS threshold (MoE Circular 08/AML/2021)`
+        `CTR total is AED ${total.toLocaleString()} — below the ${DPMS_CASH_THRESHOLD_AED.toLocaleString()} DPMS threshold (MoE Circular 08/AML/2021)`
       );
     }
   }

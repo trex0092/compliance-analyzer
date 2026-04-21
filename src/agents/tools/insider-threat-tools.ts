@@ -145,7 +145,7 @@ function isAfterHours(timestamp: string): boolean {
 
 function isWeekend(timestamp: string): boolean {
   const day = new Date(timestamp).getDay();
-  return day === 0 || day === 6; // Friday/Saturday are UAE weekend, but using Sat/Sun for simplicity
+  return day === 0 || day === 6; // Sat (6) + Sun (0) — UAE government weekend since 1 Jan 2022
 }
 
 // ---------------------------------------------------------------------------

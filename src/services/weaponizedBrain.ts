@@ -47,6 +47,11 @@
 
 import { runMegaBrain, type MegaBrainRequest, type MegaBrainResponse } from './megaBrain';
 import type { Verdict } from './teacherStudent';
+// Regulatory constants — every threshold must come from the single source
+// of truth per CLAUDE.md §"Constants Architecture". Hardcoding drives drift
+// between constants.ts (and its test) and the control code that enforces
+// them, which is exactly the anti-pattern the CO tests are guarding.
+import { UBO_OWNERSHIP_THRESHOLD_PCT } from '../domain/constants';
 
 // ---------------------------------------------------------------------------
 // Advisor escalation — optional plug-in hook.
@@ -1611,7 +1616,11 @@ export async function runWeaponizedBrain(
         );
       } else if (
         uboResult.summary.hasUndisclosedPortion &&
-        uboResult.summary.undisclosedPercentage > 25
+        // undisclosedPercentage is reported in 0-100 units; the constant is
+        // the 0-1 decimal form (0.25 = 25%). Multiply the constant by 100
+        // to compare in the same units — keeps constants.ts canonical.
+        // Cabinet Decision 109/2023 beneficial-ownership threshold.
+        uboResult.summary.undisclosedPercentage > UBO_OWNERSHIP_THRESHOLD_PCT * 100
       ) {
         const next = escalateTo(finalVerdict, 'escalate');
         if (next !== finalVerdict) {

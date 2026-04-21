@@ -44,6 +44,17 @@
  * and extensions from Phase 13/14. They do not replace those layers.
  */
 
+// Regulatory thresholds must come from the single source of truth
+// (CLAUDE.md §"Constants Architecture"). The threshold table below is
+// a routing map — it tells this module which constant to apply to
+// which weapon kind — but every numeric value it carries has to be
+// kept in lockstep with constants.ts by IMPORTING rather than DUPLICATING.
+import {
+  DPMS_CASH_THRESHOLD_AED,
+  CROSS_BORDER_CASH_THRESHOLD_AED,
+  UBO_OWNERSHIP_THRESHOLD_PCT,
+} from '../domain/constants';
+
 // ---------------------------------------------------------------------------
 // Shared primitive types (kept local — no external coupling beyond Verdict).
 // ---------------------------------------------------------------------------
@@ -295,12 +306,16 @@ export interface ThresholdCheckResult {
   narrative: string;
 }
 
-// Canonical AED thresholds per CLAUDE.md §8. Do NOT edit without updating
-// constants.ts + constants.test.ts + REGULATORY_CONSTANTS_VERSION.
+// Canonical AED thresholds sourced from src/domain/constants.ts — the
+// single source of truth. Any regulator-driven change flows through the
+// constants bump + REGULATORY_CONSTANTS_VERSION bump, and is picked up
+// here automatically without a second edit site to remember.
+// UBO value is stored in percent (0-100) for this router; the canonical
+// constant is in decimal (0-1), so it is scaled ×100 on read.
 const THRESHOLD_AED_BY_KIND: Record<Exclude<UaeThresholdKind, 'custom'>, number> = {
-  'DPMS-CTR': 55_000,
-  'cross-border-cash': 60_000,
-  'UBO-ownership-pct': 25, // percent, not AED — handled specially below
+  'DPMS-CTR': DPMS_CASH_THRESHOLD_AED,
+  'cross-border-cash': CROSS_BORDER_CASH_THRESHOLD_AED,
+  'UBO-ownership-pct': UBO_OWNERSHIP_THRESHOLD_PCT * 100, // percent — handled specially below
 };
 
 const THRESHOLD_CITATION: Record<UaeThresholdKind, string> = {
