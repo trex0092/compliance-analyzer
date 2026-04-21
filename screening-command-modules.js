@@ -3007,6 +3007,30 @@
         '</details>',
       '</form>',
 
+      // Calibration panel — compares the Bayesian posterior bands
+      // assigned by the model against the observed confirm rates
+      // from the MLRO's own dispositions (stored in the lesson
+      // library). Collapsed by default; surfaces drift at a glance.
+      (function () {
+        var cal = computeLessonCalibration();
+        if (!cal || !cal.total_lessons) return '';
+        var rows = cal.bands.map(function (b) {
+          var cell = b.total ? b.confirmed + ' / ' + b.total + ' confirmed · ' + b.confirm_rate_pct + '%' : '—';
+          var tone = b.total && b.confirm_rate_pct != null
+            ? (b.id === 'high' && b.confirm_rate_pct < 50 ? 'color:#fdba74' :
+               b.id === 'low'  && b.confirm_rate_pct > 30 ? 'color:#fdba74' :
+               b.id === 'high' && b.confirm_rate_pct >= 70 ? 'color:#86efac' :
+               'opacity:.85')
+            : 'opacity:.55';
+          return '<tr><td style="padding:3px 8px">Posterior <strong>' + b.min + '–' + (b.max - 1) + '%</strong></td>' +
+            '<td style="padding:3px 8px;' + tone + '">' + esc(cell) + '</td></tr>';
+        }).join('');
+        return '<details style="margin-top:16px;padding:10px 14px;background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.2);border-radius:8px">' +
+          '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#d8b4fe">Model Calibration — Bayesian posterior vs observed dispositions <span style="opacity:.7;font-weight:400">(' + cal.total_lessons + ' prior disposition' + (cal.total_lessons === 1 ? '' : 's') + ')</span></summary>' +
+          '<table style="margin-top:6px;font-size:12px;border-collapse:collapse"><tbody>' + rows + '</tbody></table>' +
+          '<div style="margin-top:4px;font-size:10px;opacity:.6">[' + esc(cal.citation) + ']</div>' +
+        '</details>';
+      })(),
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px">' +
         '<h3 class="mv-subhead" style="margin:0">Recent subjects</h3>' +
         (rows.length
@@ -6324,6 +6348,42 @@
     var list = loadLessons();
     list.push(lesson);
     saveLessonStore(list);
+  }
+
+  // Calibration study — compares the Bayesian posterior band each
+  // confirmed case was assigned against the observed dispositions
+  // across the lesson store. Lets the MLRO see whether the model
+  // over- or under-estimates risk (e.g. "posterior ≥70% said
+  // high-risk, but only 40% of those closed as positive — LLR tuning
+  // needed"). Rendered by a dedicated admin panel we don't yet
+  // expose in the UI; the helper is standalone so the data is
+  // available to any surface that wants it (FATF Rec 10.12 +
+  // CLAUDE.md "feedback loop on calibration").
+  function computeLessonCalibration() {
+    var lessons = loadLessons();
+    if (!lessons.length) return null;
+    var bands = [
+      { id: 'low',       min: 0,  max: 15, total: 0, confirmed: 0 },
+      { id: 'moderate',  min: 15, max: 40, total: 0, confirmed: 0 },
+      { id: 'elevated',  min: 40, max: 70, total: 0, confirmed: 0 },
+      { id: 'high',      min: 70, max: 101,total: 0, confirmed: 0 }
+    ];
+    lessons.forEach(function (l) {
+      if (typeof l.posterior_mean_pct !== 'number') return;
+      var band = bands.filter(function (b) { return l.posterior_mean_pct >= b.min && l.posterior_mean_pct < b.max; })[0];
+      if (!band) return;
+      band.total += 1;
+      if (l.disposition === 'positive' || l.disposition === 'escalated') band.confirmed += 1;
+    });
+    return {
+      total_lessons: lessons.length,
+      bands: bands.map(function (b) {
+        return Object.assign({}, b, {
+          confirm_rate_pct: b.total ? Math.round((b.confirmed / b.total) * 100) : null
+        });
+      }),
+      citation: 'FATF Rec 10.12 — model-calibration feedback loop'
+    };
   }
 
   function findRelevantLessons(row) {
