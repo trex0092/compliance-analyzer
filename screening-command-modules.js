@@ -6428,7 +6428,13 @@
       if (ts.critical_count >= 2) apply('transaction_critical_pattern', ts.critical_count + ' critical alerts — pattern risk');
     }
 
-    var sigma = Math.sqrt(varianceSum);
+    // Apply a minimum-uncertainty floor (σ ≥ 0.1) so the 90% CI never
+    // collapses to a single point when zero LLRs fire. A point-estimate
+    // posterior is mathematically correct but visually misleading —
+    // the MLRO should always see *some* band indicating model
+    // uncertainty. 0.1 on the log-odds scale translates to roughly
+    // ±2.5 percentage points near the middle of the probability range.
+    var sigma = Math.max(0.1, Math.sqrt(varianceSum));
     var pMean = logistic(posteriorLogit);
     var pLow  = logistic(posteriorLogit - 1.645 * sigma);
     var pHigh = logistic(posteriorLogit + 1.645 * sigma);
@@ -6459,7 +6465,7 @@
   // serverless budget; audit-grade storage (FDL Art.24 10-year
   // retention) still lives server-side in the screening-run audit log.
   var LESSONS_STORAGE_KEY = 'hawkeye.screening.lessons.v1';
-  var LESSONS_MAX = 200;
+  var LESSONS_MAX = 500;
 
   function loadLessons() {
     try {

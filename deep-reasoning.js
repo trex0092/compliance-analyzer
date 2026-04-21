@@ -229,6 +229,31 @@
       }
       if (dls.length) out.deadlines = dls.join('; ');
     }
+    // Secondary fallback for red-flags: scan for "flag" / "red flag"
+    // headings followed by a bulleted / dashed list. Catches the case
+    // where the model writes prose-style red-flag enumerations instead
+    // of the labelled "RED FLAGS:" block.
+    if (!out.redFlags) {
+      var rfRx = /\bred[-\s]?flags?\b[:.\s]*\n?((?:\s*[-*·]\s*[^\n]+\n?){1,8})/i;
+      var rfMatch = text.match(rfRx);
+      if (rfMatch && rfMatch[1]) {
+        var flags = rfMatch[1].split(/\n/)
+          .map(function (l) { return l.replace(/^\s*[-*·]\s*/, '').trim(); })
+          .filter(function (l) { return l.length > 0; });
+        if (flags.length) out.redFlags = flags.join(', ');
+      }
+    }
+    // Secondary fallback for gaps: look for "missing" / "need to obtain"
+    // / "SOF/SOW" patterns in prose.
+    if (!out.gaps) {
+      var gapRx = /\b(?:missing|need to obtain|request|collect|pending)\s+([^.;\n]{10,120})/ig;
+      var gaps = [];
+      var gm;
+      while ((gm = gapRx.exec(text)) !== null && gaps.length < 4) {
+        gaps.push(gm[1].trim().replace(/\s+/g, ' '));
+      }
+      if (gaps.length) out.gaps = gaps.join('; ');
+    }
     return out;
   }
 
