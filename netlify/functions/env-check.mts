@@ -43,7 +43,7 @@
  * state legible).
  */
 
-import type { Config } from '@netlify/functions';
+import type { Config, Context } from '@netlify/functions';
 import { checkRateLimit } from './middleware/rate-limit.mts';
 
 const CORS_HEADERS = {
@@ -120,7 +120,7 @@ function checkGroup(group: VarGroup): {
   return { configured, missing };
 }
 
-export default async (req: Request, context: { ip?: string }): Promise<Response> => {
+export default async (req: Request, context: Context): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
