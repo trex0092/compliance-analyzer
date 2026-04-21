@@ -3310,6 +3310,96 @@
                   '</div>';
               }
 
+              // Evidence Quality grade — source-tier math + independence
+              // + recency + primary/secondary rating per FATF Rec 10.
+              var evidenceBlock = '';
+              if (cr.evidence_grade && cr.evidence_grade.grade) {
+                var eg = cr.evidence_grade;
+                var gradeTone =
+                  eg.grade === 'A' ? 'background:#166534;color:#fff' :
+                  eg.grade === 'B' ? 'background:#15803d;color:#fff' :
+                  eg.grade === 'C' ? 'background:#d97706;color:#1a1a1a' :
+                  eg.grade === 'D' ? 'background:#ea580c;color:#fff' :
+                                     'background:#dc2626;color:#fff';
+                var bd = eg.breakdown || {};
+                var tc = bd.source_tiers || {};
+                var breakdownBits = [
+                  'source tiers ' + (tc.tier1 || 0) + '/' + (tc.tier2 || 0) + '/' + (tc.tier3 || 0) + (tc.unknown ? ' (+' + tc.unknown + ' unknown)' : ''),
+                  'independence +' + (bd.independence || 0),
+                  'recency +' + (bd.recency || 0),
+                  'primary +' + (bd.primary || 0)
+                ];
+                evidenceBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Evidence Quality.</strong> ' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;' + gradeTone + '">' +
+                      'GRADE ' + esc(eg.grade) + ' · ' + (eg.total || 0) + ' pts' +
+                    '</span>' +
+                    ' <span style="opacity:.8">' + breakdownBits.join(' · ') + '</span>' +
+                    ' <span style="opacity:.55;font-size:10px">[FATF Rec 10 evidence standard]</span>' +
+                  '</div>';
+              }
+
+              // Escalation Pathway Forecast — 30 / 90 / 180-day
+              // trajectory from the typology-driven catalog.
+              var escalationBlock = '';
+              if (cr.escalation_pathway && cr.escalation_pathway.pathway) {
+                var ep = cr.escalation_pathway;
+                var stages = (ep.pathway.stages || []).map(function (s) {
+                  return '<li style="margin-bottom:2px">' +
+                    '<strong>' + esc(s.stage) + '</strong> ' +
+                    '<span style="opacity:.7">(' + esc(s.days) + ' days)</span> ' +
+                    '<span style="opacity:.85">— ' + esc(s.indicator) + '</span>' +
+                    '</li>';
+                }).join('');
+                escalationBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Escalation Pathway Forecast.</strong> ' +
+                    esc(ep.pathway.label) + ' — ' + esc(ep.ignition) +
+                    '<ol style="margin:4px 0 0 0;padding-left:18px">' + stages + '</ol>' +
+                    (ep.pathway.citation ? '<div style="font-size:10px;opacity:.55;margin-top:4px">[' + esc(ep.pathway.citation) + ']</div>' : '') +
+                  '</div>';
+              }
+
+              // Historical Case Similarity — computed at render-time
+              // against the full workbench (rows) + register.
+              var similarCases = findSimilarCases(r, rows);
+              var similarBlock = '';
+              if (similarCases.length) {
+                var items = similarCases.map(function (sim) {
+                  var srcTag = sim.source === 'register'
+                    ? '<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(168,85,247,0.2);color:#d8b4fe">register</span>'
+                    : '<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(136,181,255,0.18);color:#c3dafe">workbench</span>';
+                  var clsTag = sim.classification
+                    ? ' · <span style="opacity:.85">' + esc(String(sim.classification).toUpperCase()) + '</span>'
+                    : '';
+                  var confTag = sim.confidence != null ? ' · ' + sim.confidence + '%' : '';
+                  var overlapBits = [];
+                  if (sim.overlap && sim.overlap.country)     overlapBits.push('same country');
+                  if (sim.overlap && sim.overlap.entity_type) overlapBits.push('same entity type');
+                  if (sim.overlap && Array.isArray(sim.overlap.categories) && sim.overlap.categories.length) {
+                    overlapBits.push('categories: ' + sim.overlap.categories.join('+'));
+                  }
+                  if (sim.overlap && Array.isArray(sim.overlap.typologies) && sim.overlap.typologies.length) {
+                    overlapBits.push('typologies: ' + sim.overlap.typologies.join('+'));
+                  }
+                  return '<li style="margin-bottom:3px">' +
+                    srcTag + ' <strong>' + esc(sim.name) + '</strong>' +
+                    (sim.country ? ' <span style="opacity:.7">(' + esc(sim.country) + ')</span>' : '') +
+                    clsTag + confTag +
+                    ' <span style="opacity:.6;font-size:11px">· score ' + sim.score + '</span>' +
+                    (overlapBits.length ? '<br><span style="opacity:.7;font-size:11px;padding-left:8px">↳ ' + esc(overlapBits.join(' · ')) + '</span>' : '') +
+                    '</li>';
+                }).join('');
+                similarBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6">' +
+                    '<strong>Historical Similarity.</strong> ' +
+                    similarCases.length + ' prior case(s) match this pattern' +
+                    ' <span style="opacity:.55;font-size:10px">[FATF Rec 10.12 pattern recognition]</span>' +
+                    '<ul style="margin:4px 0 0 0;padding-left:4px;list-style:none">' + items + '</ul>' +
+                  '</div>';
+              }
+
               complianceReportLine = '<div class="mv-list-meta" style="margin-top:10px;padding:12px;border-left:3px solid #ea580c;background:rgba(234,88,12,0.06);border-radius:6px">' +
                 '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">' +
                   '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;' + riskBadgeColor + '">' +
@@ -3325,6 +3415,8 @@
                 jurisdictionParagraph +
                 typologyParagraph +
                 calibrationBlock +
+                evidenceBlock +
+                escalationBlock +
                 reasoningBlock +
                 attributionBlock +
                 cddBlock +
@@ -3332,6 +3424,7 @@
                 counterfactualBlock +
                 gapsBlock +
                 connectedBlock +
+                similarBlock +
                 (cr.recommendation
                   ? '<div style="margin-bottom:6px;font-size:12px;line-height:1.55"><strong>Recommendation.</strong> ' + esc(cr.recommendation) + '</div>'
                   : '') +
@@ -3991,6 +4084,27 @@
           push('  ' + (a.delta >= 0 ? '+' : '') + a.delta + ' · ' + a.label);
         });
       }
+      push('');
+    }
+    if (cr.evidence_grade && cr.evidence_grade.grade) {
+      var eg = cr.evidence_grade;
+      var bd = eg.breakdown || {};
+      var tc = bd.source_tiers || {};
+      push('EVIDENCE QUALITY: GRADE ' + eg.grade + ' (' + (eg.total || 0) + ' pts)');
+      push('  Source tiers T1/T2/T3: ' + (tc.tier1 || 0) + '/' + (tc.tier2 || 0) + '/' + (tc.tier3 || 0) +
+        (tc.unknown ? ' (+' + tc.unknown + ' unknown)' : ''));
+      push('  Independence +' + (bd.independence || 0) + ' · Recency +' + (bd.recency || 0) +
+        ' · Primary +' + (bd.primary || 0));
+      push('');
+    }
+    if (cr.escalation_pathway && cr.escalation_pathway.pathway) {
+      var ep = cr.escalation_pathway;
+      push('ESCALATION PATHWAY FORECAST');
+      push(ep.pathway.label + ' — ' + ep.ignition);
+      (ep.pathway.stages || []).forEach(function (s, idx) {
+        push('  ' + (idx + 1) + '. ' + s.stage + ' (' + s.days + ' days) — ' + s.indicator);
+      });
+      if (ep.pathway.citation) push('  [' + ep.pathway.citation + ']');
       push('');
     }
     if (Array.isArray(cr.reasoning_chain) && cr.reasoning_chain.length) {
@@ -4798,6 +4912,230 @@
     };
   }
 
+  // ─── Typology-driven escalation pathway catalog ─────────────────────
+  // Projects the likely 30 / 90 / 180-day trajectory for a hit so the
+  // MLRO knows what to watch for and when to re-screen. Each pathway
+  // declares stages + typical time-to-stage + the indicator that
+  // advances the case. FATF Rec 3 predicate-offence framework guides
+  // the criminal pathways; Cabinet Res 74/2020 guides the sanctions
+  // pathway; Cabinet Res 71/2024 guides the regulatory penalty pathway.
+  var ESCALATION_PATHWAYS = {
+    criminal_investigation: {
+      label: 'Criminal investigation pathway',
+      citation: 'FATF Rec 3 · FDL No.(10)/2025 Art.2',
+      stages: [
+        { stage: 'Investigation / detention',      days: '0-30',    indicator: 'Arrest warrants, public prosecutor filings, media confirmation.' },
+        { stage: 'Indictment / charges filed',     days: '30-180',  indicator: 'Formal indictment or prosecutor charging document.' },
+        { stage: 'Trial',                          days: '180-720', indicator: 'Trial commencement; court hearings scheduled.' },
+        { stage: 'Conviction or acquittal',        days: '360-900', indicator: 'First-instance judgment; appeal window opens.' },
+        { stage: 'Appeal / settlement',            days: '720-1800',indicator: 'Appellate proceedings or plea agreement.' }
+      ]
+    },
+    sanctions_designation: {
+      label: 'Sanctions designation pathway',
+      citation: 'Cabinet Res 74/2020 Art.4-7 · OFAC / UK / EU listing procedures',
+      stages: [
+        { stage: 'Provisional / interim listing',  days: '0-7',     indicator: 'Interim freeze, temporary listing notice.' },
+        { stage: 'Final listing / designation',    days: '7-30',    indicator: 'Formal Gazette publication, SDN entry.' },
+        { stage: 'Asset freeze in effect',         days: '30+',     indicator: 'Frozen-asset reporting by FIs; CNMR filings.' },
+        { stage: 'Delisting petition (if any)',    days: '180-720', indicator: 'Due-process challenge filed with designating authority.' },
+        { stage: 'Secondary-sanctions exposure',   days: 'ongoing', indicator: 'Third-country cascade; USD-clearing impact on counterparties.' }
+      ]
+    },
+    regulatory_action: {
+      label: 'Regulatory enforcement pathway',
+      citation: 'Cabinet Res 71/2024 · MoE supervisory powers · FDL Art.2',
+      stages: [
+        { stage: 'Investigation / show-cause',     days: '0-180',   indicator: 'Regulator opens formal probe; document request issued.' },
+        { stage: 'Administrative penalty',         days: '180-360', indicator: 'Fine (AED 10K–100M), licence suspension, or consent decree.' },
+        { stage: 'Appeal / administrative review', days: '360-540', indicator: 'Regulator review board or administrative court.' },
+        { stage: 'Final order',                    days: '540-720', indicator: 'Enforceable order; licence outcome finalised.' }
+      ]
+    },
+    sanctions_freeze: {
+      label: 'Confirmed sanctions — mandatory action pathway',
+      citation: 'Cabinet Res 74/2020 Art.4-7 · FDL No.(10)/2025 Art.29',
+      stages: [
+        { stage: 'Asset freeze execution',         days: '0 (24h)', indicator: 'Freeze applied on all accounts / goods / securities; EOCN notified.' },
+        { stage: 'CNMR filing',                    days: '≤5 bd',   indicator: 'CNMR XML submitted to EOCN within 5 business days.' },
+        { stage: 'Ongoing freeze monitoring',      days: 'ongoing', indicator: 'No release without delisting confirmation; no tipping-off (Art.29).' },
+        { stage: 'Delisting check cycle',          days: 'quarterly',indicator: 'UN / OFAC / EU / UK list refresh; re-screen for status change.' }
+      ]
+    }
+  };
+
+  function projectEscalationPathway(ctx) {
+    if (!ctx) return null;
+    var cats = Array.isArray(ctx.adverse_hits) ? ctx.adverse_hits : [];
+    // Sanctions hit → mandatory-action pathway.
+    if (ctx.sanctions_hit_count > 0) {
+      return { id: 'sanctions_freeze', ignition: 'Confirmed sanctions match.', pathway: ESCALATION_PATHWAYS.sanctions_freeze };
+    }
+    // Sanctions-listing trajectory for subjects in sanctions-adjacent
+    // jurisdictions with TF/PF signals (pre-designation watch).
+    var jf = (ctx.jurisdiction && ctx.jurisdiction.flags) || [];
+    if (cats.indexOf('tf_pf_links') >= 0 &&
+        (jf.indexOf('comprehensive_sanctions') >= 0 || jf.indexOf('sectoral_sanctions') >= 0)) {
+      return { id: 'sanctions_designation', ignition: 'TF/PF signal in sanctions-adjacent jurisdiction.', pathway: ESCALATION_PATHWAYS.sanctions_designation };
+    }
+    // Regulatory action pathway.
+    if (cats.indexOf('regulatory_action') >= 0) {
+      return { id: 'regulatory_action', ignition: 'Regulatory-action adverse-media signal.', pathway: ESCALATION_PATHWAYS.regulatory_action };
+    }
+    // Default criminal-investigation pathway for predicate-offence signals.
+    if (cats.some(function (c) { return ['criminal_fraud', 'bribery_corruption', 'organised_crime', 'money_laundering'].indexOf(c) >= 0; })) {
+      return { id: 'criminal_investigation', ignition: 'Predicate-offence adverse-media signal.', pathway: ESCALATION_PATHWAYS.criminal_investigation };
+    }
+    return null;
+  }
+
+  // ─── Source-tier catalog + evidence quality grading ─────────────────
+  // Rates the evidence supporting an adverse-media finding against
+  // FATF Rec 10 "reasonable grounds" standards: tier of source
+  // (primary court record > wire service > national press > secondary
+  // > social / blog / rumour), independence / corroboration,
+  // recency, and primary-vs-secondary nature. Returns an A-E grade
+  // plus the component scores so the MLRO sees the math, not a
+  // black-box rating.
+  var SOURCE_TIER_MAP = {
+    1: /\b(reuters|bloomberg|associated press|\bap\b|agence france-presse|\bafp\b|financial times|\bft\b|wall street journal|\bwsj\b|court record|official gazette|moe circular|cbuae|sca|vara|ofac|fatf public statement)\b/i,
+    2: /\b(bbc|cnn|the guardian|new york times|washington post|hurriyet daily news|turkish minute|the national|khaleej times|gulf news|al arabiya|nikkei|south china morning post|deutsche welle|le monde)\b/i,
+    3: /\b(blog|reddit|twitter|\bx\.com\b|facebook|telegram|rumour|anonymous source)\b/i
+  };
+
+  function gradeEvidence(ctx) {
+    var sourceBlob = String(ctx.source || '').toLowerCase();
+    var parts = sourceBlob.split(/[·;]|\s+and\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    var tierCounts = { tier1: 0, tier2: 0, tier3: 0, unknown: 0 };
+    parts.forEach(function (p) {
+      if (SOURCE_TIER_MAP[1].test(p))      tierCounts.tier1 += 1;
+      else if (SOURCE_TIER_MAP[2].test(p)) tierCounts.tier2 += 1;
+      else if (SOURCE_TIER_MAP[3].test(p)) tierCounts.tier3 += 1;
+      else                                 tierCounts.unknown += 1;
+    });
+    var sc = tierCounts.tier1 + tierCounts.tier2 + tierCounts.tier3 + tierCounts.unknown;
+    // Source-tier score — tier-1 worth 3, tier-2 worth 2, tier-3 worth 1.
+    var tierScore = tierCounts.tier1 * 3 + tierCounts.tier2 * 2 + tierCounts.tier3;
+    // Independence — count of distinct sources up to cap.
+    var independenceScore = Math.min(sc, 4); // 0-4
+    // Recency — if summary mentions a date within the last 12 months, +2; 12-36 months +1; older 0.
+    var recencyScore = 0;
+    var yearMatch = String(ctx.summary || '').match(/\b(20\d{2})\b/);
+    if (yearMatch) {
+      var year = parseInt(yearMatch[1], 10);
+      var nowYear = new Date().getFullYear();
+      var age = nowYear - year;
+      if (age <= 1) recencyScore = 2;
+      else if (age <= 3) recencyScore = 1;
+    }
+    // Primary-vs-secondary — court record / official gazette / regulator release detected = +2.
+    var primaryScore = /\b(court record|official gazette|moe circular|cbuae|sca|vara|ofac|fatf|regulator|indictment|arrest warrant)\b/i.test(String(ctx.summary || '') + ' ' + sourceBlob) ? 2 : 0;
+    var total = tierScore + independenceScore + recencyScore + primaryScore;
+    // Grade A (≥10), B (7-9), C (4-6), D (2-3), E (0-1).
+    var grade =
+      total >= 10 ? 'A' :
+      total >= 7  ? 'B' :
+      total >= 4  ? 'C' :
+      total >= 2  ? 'D' : 'E';
+    return {
+      grade: grade,
+      total: total,
+      breakdown: {
+        source_tiers: tierCounts,
+        source_tier_score: tierScore,
+        independence: independenceScore,
+        recency: recencyScore,
+        primary: primaryScore
+      }
+    };
+  }
+
+  // ─── Historical case similarity ─────────────────────────────────────
+  // Cross-references the current row against the MLRO's workbench
+  // history AND the KNOWN_ADVERSE_MEDIA register. Uses a simple
+  // signal-overlap score (country + entity type + categories +
+  // typology), capped at top-5. Informs "we've seen this before"
+  // pattern-recognition which FATF Rec 10.12 explicitly expects.
+  function findSimilarCases(currentRow, workbenchRows) {
+    if (!currentRow) return [];
+    var currentCats = Array.isArray(currentRow.adverse_media_hits) ? currentRow.adverse_media_hits : [];
+    var currentCountry = String(currentRow.country || '').trim().toLowerCase();
+    var currentType = currentRow.subject_type || '';
+    var currentTypologies = currentRow.compliance_report && Array.isArray(currentRow.compliance_report.typologies)
+      ? currentRow.compliance_report.typologies.map(function (t) { return t.id; })
+      : [];
+    var out = [];
+    function score(cats, country, type, typologies) {
+      var s = 0;
+      var overlapCats = currentCats.filter(function (c) { return cats.indexOf(c) >= 0; });
+      s += overlapCats.length * 3;
+      if (country && country.toLowerCase() === currentCountry) s += 4;
+      if (type && type === currentType) s += 2;
+      var overlapT = typologies.filter(function (t) { return currentTypologies.indexOf(t) >= 0; });
+      s += overlapT.length * 3;
+      return { score: s, overlapCats: overlapCats, overlapTypologies: overlapT };
+    }
+    // 1. Workbench history (excluding self).
+    (workbenchRows || []).forEach(function (r) {
+      if (!r || r.id === currentRow.id) return;
+      var cats = Array.isArray(r.adverse_media_hits) ? r.adverse_media_hits : [];
+      var typs = r.compliance_report && Array.isArray(r.compliance_report.typologies)
+        ? r.compliance_report.typologies.map(function (t) { return t.id; })
+        : [];
+      var sc = score(cats, String(r.country || ''), r.subject_type || '', typs);
+      if (sc.score >= 4) {
+        out.push({
+          source: 'workbench',
+          id: r.id,
+          name: r.name,
+          country: r.country || '',
+          subject_type: r.subject_type || '',
+          classification: (r.compliance_report && r.compliance_report.adverse_media_classification) ||
+            r.top_classification || '',
+          confidence: typeof r.confidence === 'number' ? Math.round(r.confidence * 100) : null,
+          screened_at: r.screened_at || '',
+          score: sc.score,
+          overlap: {
+            categories: sc.overlapCats,
+            typologies: sc.overlapTypologies,
+            country: String(r.country || '').toLowerCase() === currentCountry,
+            entity_type: r.subject_type === currentType
+          }
+        });
+      }
+    });
+    // 2. Register entries (seeded KNOWN_ADVERSE_MEDIA).
+    KNOWN_ADVERSE_MEDIA.forEach(function (entry) {
+      if (entry.names && entry.names.some(function (n) {
+        return normalizeName(n) === normalizeName(currentRow.name || '');
+      })) return; // skip self-match from register
+      var cats = entry.categories || [];
+      var sc = score(cats, String(entry.country || ''), entry.entityType || '', []);
+      if (sc.score >= 4) {
+        out.push({
+          source: 'register',
+          id: (entry.names && entry.names[0]) || '',
+          name: (entry.names && entry.names[0]) || '',
+          country: entry.country || '',
+          subject_type: entry.entityType === 'legal_entity' ? 'entity' : 'individual',
+          classification: entry.classification || '',
+          confidence: typeof entry.confidence === 'number' ? Math.round(entry.confidence * 100) : null,
+          screened_at: '',
+          score: sc.score,
+          overlap: {
+            categories: sc.overlapCats,
+            typologies: [],
+            country: String(entry.country || '').toLowerCase() === currentCountry,
+            entity_type: entry.entityType === currentType || (entry.entityType === 'legal_entity' && currentType === 'entity')
+          },
+          summary: entry.summary || ''
+        });
+      }
+    });
+    out.sort(function (a, b) { return b.score - a.score; });
+    return out.slice(0, 5);
+  }
+
   // ─── Screening row builders ─────────────────────────────────────────
   function buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens, pepDimensions) {
     var perList = [];
@@ -5222,6 +5560,11 @@
       var cddRecommendation = recommendCddTier(deepCtx);
       var evidenceGaps = identifyEvidenceGaps(deepCtx);
       var calibration = calibrateConfidence(deepCtx);
+      var escalationPathway = projectEscalationPathway(deepCtx);
+      var evidenceGrade = gradeEvidence({
+        source: knownHit.entry.source || '',
+        summary: knownHit.entry.summary || ''
+      });
 
       // Typology narrative (short paragraph)
       var typologyNarrative = '';
@@ -5257,6 +5600,8 @@
         cdd_recommendation: cddRecommendation,
         evidence_gaps: evidenceGaps,
         confidence_calibration: calibration,
+        escalation_pathway: escalationPathway,
+        evidence_grade: evidenceGrade,
         source_count: sourceCount,
         risk_level: knownHit.entry.risk_level || 'high',
         recommendation: knownHit.entry.recommendation || '',
