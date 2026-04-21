@@ -962,6 +962,72 @@
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+
+  // ---------------------------------------------------------------
+  // Shared form-widget builders (extracted from renderSubjectScreening
+  // to keep the outer function focused on layout rather than widget
+  // markup). These helpers only depend on esc() from this scope; no
+  // closure state, so they are safe to reuse across render calls.
+  // Regulatory basis: FDL No.10/2025 Art.20-21 (MLRO situational
+  // awareness depends on stable form payloads — behaviour-preserving
+  // refactor; the generated HTML is byte-identical).
+  // ---------------------------------------------------------------
+
+  function widgetCheckboxGroup(fieldName, items) {
+    return items.map(function (it) {
+      return '<label class="mv-check" style="align-items:flex-start;line-height:1.45">' +
+        '<input type="checkbox" name="' + fieldName + '" value="' + esc(it.id) + '" checked>' +
+        '<span>' +
+          '<strong>' + esc(it.label) + '</strong>' +
+          (it.citation ? '<br><em style="opacity:.65;font-size:11px;font-style:normal">' + esc(it.citation) + '</em>' : '') +
+          (it.detail ? '<br><span style="opacity:.75;font-size:12px">' + esc(it.detail) + '</span>' : '') +
+        '</span>' +
+      '</label>';
+    }).join('');
+  }
+
+  // Hidden-input group — keeps the server payload shape identical
+  // while the visual section is folded away. Used for the two
+  // categories the Risk Typologies tree already covers topic-for-
+  // topic (adverse-media predicates, specialised TF/PF/tax checks)
+  // so the MLRO never sees the same concept twice on screen.
+  function widgetHiddenGroup(fieldName, items) {
+    return items.map(function (it) {
+      return '<input type="hidden" name="' + fieldName + '" value="' + esc(it.id) + '">';
+    }).join('');
+  }
+
+  // Compact typology checklist — 40+ topics rendered with group
+  // headers (ML / TF / PF / FRAUD / CORRUPTION / OC / SANCTIONS /
+  // COUNTRY / ESG). Kept dense so the MLRO can scan + toggle
+  // quickly without the list dominating the form.
+  function widgetTypologyGroup(items) {
+    var groups = {};
+    var groupOrder = [];
+    items.forEach(function (it) {
+      if (!groups[it.group]) { groups[it.group] = []; groupOrder.push(it.group); }
+      groups[it.group].push(it);
+    });
+    var groupLabels = {
+      ML: 'Money laundering', TF: 'Terrorist financing', PF: 'Proliferation',
+      FRAUD: 'Fraud', CORRUPTION: 'Bribery & corruption',
+      OC: 'Organised crime', SANCTIONS: 'Sanctions evasion',
+      ESG: 'ESG / human rights'
+    };
+    return groupOrder.map(function (g) {
+      return '<div class="mv-field" style="grid-column: 1 / -1">' +
+        '<div class="mv-field-label" style="margin-top:4px;opacity:.8">' + esc(groupLabels[g] || g) + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+          groups[g].map(function (it) {
+            return '<label class="mv-chip" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border,#555);border-radius:12px;font-size:12px;cursor:pointer" title="' + esc(it.citation) + '">' +
+              '<input type="checkbox" name="risk_typologies" value="' + esc(it.id) + '" checked style="margin:0">' +
+              '<span>' + esc(it.label) + '</span>' +
+            '</label>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
   // Allow-list URL sanitiser for href attributes. esc() covers HTML
   // escaping but does NOT filter javascript:, data:, vbscript: and other
   // script-bearing protocols. Only permit http(s), mailto, and relative
@@ -2478,64 +2544,14 @@
       return Array.isArray(r.special_flags) && r.special_flags.length;
     }).length;
 
-    function checkboxGroup(fieldName, items) {
-      return items.map(function (it) {
-        return '<label class="mv-check" style="align-items:flex-start;line-height:1.45">' +
-          '<input type="checkbox" name="' + fieldName + '" value="' + esc(it.id) + '" checked>' +
-          '<span>' +
-            '<strong>' + esc(it.label) + '</strong>' +
-            (it.citation ? '<br><em style="opacity:.65;font-size:11px;font-style:normal">' + esc(it.citation) + '</em>' : '') +
-            (it.detail ? '<br><span style="opacity:.75;font-size:12px">' + esc(it.detail) + '</span>' : '') +
-          '</span>' +
-        '</label>';
-      }).join('');
-    }
-    function specialGroup(items) {
-      return checkboxGroup('special_screens', items);
-    }
-
-    // Hidden-input group — keeps the server payload shape identical while
-    // the visual section is folded away. Used for the two categories the
-    // Risk Typologies tree already covers topic-for-topic (adverse-media
-    // predicates, specialised TF/PF/tax checks) so the MLRO never sees
-    // the same concept twice on screen.
-    function hiddenGroup(fieldName, items) {
-      return items.map(function (it) {
-        return '<input type="hidden" name="' + fieldName + '" value="' + esc(it.id) + '">';
-      }).join('');
-    }
-
-    // Compact typology checklist — 40+ topics rendered with group
-    // headers (ML / TF / PF / FRAUD / CORRUPTION / OC / SANCTIONS /
-    // COUNTRY / ESG). Kept dense so the MLRO can scan + toggle quickly
-    // without the list dominating the form.
-    function typologyGroup(items) {
-      var groups = {};
-      var groupOrder = [];
-      items.forEach(function (it) {
-        if (!groups[it.group]) { groups[it.group] = []; groupOrder.push(it.group); }
-        groups[it.group].push(it);
-      });
-      var groupLabels = {
-        ML: 'Money laundering', TF: 'Terrorist financing', PF: 'Proliferation',
-        FRAUD: 'Fraud', CORRUPTION: 'Bribery & corruption',
-        OC: 'Organised crime', SANCTIONS: 'Sanctions evasion',
-        ESG: 'ESG / human rights'
-      };
-      return groupOrder.map(function (g) {
-        return '<div class="mv-field" style="grid-column: 1 / -1">' +
-          '<div class="mv-field-label" style="margin-top:4px;opacity:.8">' + esc(groupLabels[g] || g) + '</div>' +
-          '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
-            groups[g].map(function (it) {
-              return '<label class="mv-chip" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border,#555);border-radius:12px;font-size:12px;cursor:pointer" title="' + esc(it.citation) + '">' +
-                '<input type="checkbox" name="risk_typologies" value="' + esc(it.id) + '" checked style="margin:0">' +
-                '<span>' + esc(it.label) + '</span>' +
-              '</label>';
-            }).join('') +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
+    // Widget helpers (checkboxGroup / hiddenGroup / typologyGroup)
+    // are hoisted to module scope — see widget*Group functions near
+    // the top of the file. This function keeps thin aliases so every
+    // call site below reads the same way it always has.
+    var checkboxGroup = widgetCheckboxGroup;
+    function specialGroup(items) { return widgetCheckboxGroup('special_screens', items); }
+    var hiddenGroup = widgetHiddenGroup;
+    var typologyGroup = widgetTypologyGroup;
 
     host.innerHTML = [
       head('Subject Screening',
