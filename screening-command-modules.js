@@ -6460,6 +6460,292 @@
   }
 
   // ─── Screening row builders ─────────────────────────────────────────
+  // ─── Backend-path compliance-report composer ────────────────────────
+  // Wires the live /api/screening-run backend output through the same
+  // intelligence helpers used by the simulation path so live screens
+  // get the full 20-block Compliance Report, not just the legacy
+  // per-list badges + brain panel.
+  //
+  // Inputs synthesized from backend data:
+  //   adverseMedia.hits (count)          → amClass / amConf bands
+  //   sanctions.perList (with .hits[])   → explicitSanctionsHits + sanctions_detail
+  //   weaponized.auditNarrative          → summary (fallback: top adverse-media titles)
+  //   adverseMedia.top[]                 → source_count + provider attribution
+  //   body.country / body.entityType     → jurisdiction + entity_type
+  //
+  // Returns null when there is no signal worth reporting (no sanctions
+  // hit + no adverse-media hit) so clean live screens stay minimal.
+  function composeBackendComplianceReport(data, body, sanctionsLists, adverseMedia, pepFlags, specialFlags) {
+    var sData = (data && data.sanctions) || {};
+    var amData = (data && data.adverseMedia) || {};
+    var perList = Array.isArray(sData.perList) ? sData.perList : [];
+    var explicitSanctionsHits = perList
+      .filter(function (l) { return (Array.isArray(l.hits) && l.hits.length > 0) || (typeof l.hitCount === 'number' && l.hitCount > 0); })
+      .map(function (l) {
+        // Map back from the human list label to the SANCTIONS_LISTS id
+        // the UI expects. Falls back to label match if the backend
+        // already returned the id.
+        var match = SANCTIONS_LISTS.filter(function (s) { return s.label === l.list || s.id === l.list; })[0];
+        return match ? match.id : l.list;
+      });
+    var amHits = typeof amData.hits === 'number' ? amData.hits : 0;
+    var topScore = 0;
+    perList.forEach(function (l) {
+      (l.hits || []).forEach(function (h) {
+        var sc = h && h.breakdown && h.breakdown.score ? h.breakdown.score : 0;
+        if (sc > topScore) topScore = sc;
+      });
+    });
+    // If neither dimension has a signal, skip composition entirely —
+    // the MLRO doesn't need a compliance report on a clean live run.
+    if (explicitSanctionsHits.length === 0 && amHits === 0 && topScore < 0.5) return null;
+
+    // Adverse-media classification bands — same thresholds as the
+    // simulation path (confirmed ≥ 0.85, potential ≥ 0.5, weak > 0).
+    var amConf = amHits >= 3 ? 0.88
+      : amHits >= 1 ? (topScore >= 0.85 ? 0.88 : 0.65)
+      : 0;
+    if (topScore > amConf) amConf = topScore;
+    var amCls = amConf >= 0.85 ? 'confirmed'
+      : amConf >= 0.5  ? 'potential'
+      : amConf > 0     ? 'weak' : 'weak';
+
+    // adverse_hits — intersect MLRO-selected categories with
+    // whatever the backend actually returned (if any). Fall back
+    // to the first-N selected when the backend doesn't return
+    // categories, which matches the simulation fallback.
+    var backendCats = Array.isArray(amData.categories) ? amData.categories : null;
+    var adverseHits;
+    if (backendCats && backendCats.length) {
+      adverseHits = backendCats.filter(function (c) { return adverseMedia.indexOf(c) >= 0; });
+      if (!adverseHits.length) adverseHits = backendCats.slice();
+    } else if (amHits > 0) {
+      adverseHits = adverseMedia.slice(0, Math.min(adverseMedia.length, Math.max(1, amHits)));
+    } else {
+      adverseHits = [];
+    }
+
+    // Summary text — compose from the brain's audit narrative if
+    // present (richest), else top adverse-media titles, else a
+    // generic sentence derived from the per-list hits.
+    var topItems = Array.isArray(amData.top) ? amData.top : [];
+    var summary = '';
+    if (data && data.weaponized && data.weaponized.auditNarrative) {
+      summary = String(data.weaponized.auditNarrative);
+    } else if (topItems.length) {
+      summary = topItems.map(function (h) {
+        return [h.title, h.source, h.publishedAt].filter(Boolean).join(' · ');
+      }).join('\n');
+    } else if (explicitSanctionsHits.length) {
+      summary = 'Backend screening returned ' + explicitSanctionsHits.length + ' sanctions list hit(s).';
+    }
+    var sourceBlob = '';
+    if (amData.provider) sourceBlob = String(amData.provider);
+    else if (Array.isArray(amData.providersUsed) && amData.providersUsed.length) sourceBlob = amData.providersUsed.join(' · ');
+    else if (topItems.length) sourceBlob = topItems.map(function (h) { return h.source; }).filter(Boolean).join(' · ');
+    var sourceCount = sourceBlob
+      ? String(sourceBlob).split(/[·;]|\s+and\s+/i).filter(function (s) { return s.trim().length > 3; }).length
+      : (topItems.length || 0);
+
+    // Derive risk level and recommendation from the brain payload.
+    var weaponVerdict = data && data.weaponized && (data.weaponized.finalVerdict || data.weaponized.megaVerdict);
+    var riskLevel = weaponVerdict === 'freeze' ? 'critical'
+      : weaponVerdict === 'escalate' ? 'high'
+      : weaponVerdict === 'review' ? 'medium'
+      : amCls === 'confirmed' ? 'high'
+      : amCls === 'potential' ? 'medium'
+      : 'low';
+    var backendRecommendation = (data && data.weaponized && data.weaponized.advisor && data.weaponized.advisor.text)
+      ? String(data.weaponized.advisor.text).slice(0, 2000)
+      : (explicitSanctionsHits.length
+        ? 'Confirmed sanctions match. Execute 24h freeze (Cabinet Res 74/2020 Art.4), notify EOCN, file CNMR within 5 business days (Art.7). Do NOT tip off (FDL Art.29).'
+        : amCls === 'confirmed'
+        ? 'Confirmed adverse-media match. Trigger EDD; verify identifiers; collect SOW/SOF over 10 years; prepare STR if UAE nexus (FDL Art.26-27).'
+        : amCls === 'potential'
+        ? 'Potential match — run EDD review; corroborate with independent sources; re-screen connected parties; document rationale (FATF Rec 10).'
+        : 'Monitor. Re-screen at standard CDD cadence.');
+    var regulatoryBasis = [
+      'FDL No.(10)/2025 Art.14 (EDD triggers)',
+      'FDL No.(10)/2025 Art.20-21 (CO situational awareness)',
+      'FDL No.(10)/2025 Art.24 (10-year retention)',
+      'FATF Rec 10 (ongoing CDD)',
+      'Cabinet Res 134/2025 Art.14'
+    ];
+    if (explicitSanctionsHits.length) {
+      regulatoryBasis.push('Cabinet Res 74/2020 Art.4-7 (freeze + CNMR)');
+      regulatoryBasis.push('FDL No.(10)/2025 Art.29 (no tipping off)');
+    }
+
+    // Jurisdiction + sanctions_detail
+    var jurisdictionSrc = body.country || '';
+    var jurisdiction = lookupJurisdiction(jurisdictionSrc);
+    var entityType = body.entityType === 'legal_entity' ? 'legal_entity' : 'individual';
+    var sanctionsDetail = sanctionsLists.map(function (listId) {
+      var item = SANCTIONS_LISTS.filter(function (l) { return l.id === listId; })[0];
+      var citation = item && item.citation ? item.citation : '';
+      return {
+        id: listId,
+        short_label: item && item.short_label ? item.short_label : (item ? item.label : listId),
+        mandatory: /\bMANDATORY\b/.test(citation),
+        verdict: explicitSanctionsHits.indexOf(listId) >= 0 ? 'POSITIVE' : 'NEGATIVE'
+      };
+    });
+
+    // Sanctions narrative — same wording as simulation path.
+    var sanctionsShortLabels = sanctionsDetail.map(function (d) { return d.short_label; });
+    var mandatoryScreened = sanctionsDetail.filter(function (d) { return d.mandatory; });
+    var hitLabels = sanctionsDetail
+      .filter(function (d) { return d.verdict === 'POSITIVE'; })
+      .map(function (d) { return d.short_label; });
+    var hitHasMandatory = sanctionsDetail.some(function (d) { return d.mandatory && d.verdict === 'POSITIVE'; });
+    function joinEnglish(arr) {
+      if (!arr.length) return '';
+      if (arr.length === 1) return arr[0];
+      if (arr.length === 2) return arr[0] + ' and ' + arr[1];
+      return arr.slice(0, -1).join(', ') + ', and ' + arr[arr.length - 1];
+    }
+    var mandatorySentence = '';
+    if (mandatoryScreened.length === 2) {
+      mandatorySentence = ' The two MANDATORY regimes (' + mandatoryScreened[0].short_label + ' and ' + mandatoryScreened[1].short_label + ') are both clean.';
+    } else if (mandatoryScreened.length === 1) {
+      mandatorySentence = ' The MANDATORY regime (' + mandatoryScreened[0].short_label + ') is clean.';
+    }
+    var sanctionsNarrative = explicitSanctionsHits.length === 0
+      ? 'NEGATIVE. The subject was screened against ' + sanctionsLists.length +
+        ' sanctions and watchlists (' + sanctionsShortLabels.join(', ') + ') and returned NO matches on any list.' +
+        mandatorySentence + ' The subject is therefore not under active sanctions — no 24-hour freeze obligation under Cabinet Res 74/2020 Art.4-7 and no CNMR filing is triggered.'
+      : 'POSITIVE. The subject matches on ' + explicitSanctionsHits.length + ' of ' + sanctionsLists.length +
+        ' sanctions lists: ' + joinEnglish(hitLabels) + '. This is a confirmed sanctions hit — execute a 24-hour asset freeze (Cabinet Res 74/2020 Art.4), notify the Executive Office (EOCN) within 24 clock hours, file a CNMR with the FIU within 5 business days, and do NOT tip off the subject (FDL Art.29).' +
+        (hitHasMandatory ? ' A MANDATORY regime is involved — escalation is non-discretionary.' : '');
+
+    // Adverse-media narrative — same category humanisation as sim path.
+    var categoryNarrativeLabels = {
+      criminal_fraud: 'criminal / fraud', bribery_corruption: 'bribery and corruption',
+      organised_crime: 'organised-crime', money_laundering: 'money-laundering',
+      tf_pf_links: 'terrorism-financing / proliferation-financing',
+      regulatory_action: 'regulatory-action', negative_reputation: 'negative-reputation',
+      human_rights: 'human-rights / environmental'
+    };
+    var catNarrativeList = adverseHits.map(function (c) { return categoryNarrativeLabels[c] || c.replace(/_/g, ' '); });
+    var categorySentence = catNarrativeList.length
+      ? 'Screening surfaced ' + joinEnglish(catNarrativeList) + ' signals. ' : '';
+    var adverseSummary = summary ? String(summary).trim() : '';
+    if (adverseSummary && !/[.!?]$/.test(adverseSummary)) adverseSummary += '.';
+    var adverseMediaNarrative = amConf > 0
+      ? String(amCls).toUpperCase() + ' (' + Math.round(amConf * 100) + '% confidence). ' +
+        categorySentence +
+        (adverseSummary ? adverseSummary + ' ' : '') +
+        (sourceBlob ? 'Lead public source on file: ' + sourceBlob + '.' : '')
+      : 'NEGATIVE. No adverse-media hits returned by the backend.';
+
+    // Intelligence layer — same helpers as simulation path.
+    var typologyCtx = {
+      summary: summary, recommendation: backendRecommendation,
+      categories: adverseHits, jurisdiction: jurisdiction,
+      entity_type: entityType, pep_flagged: pepFlags.length > 0
+    };
+    var typologies = matchTypologies(typologyCtx);
+    var connectedParties = extractConnectedParties(summary);
+    var escalationPathway = projectEscalationPathway({
+      sanctions_hit_count: explicitSanctionsHits.length, adverse_hits: adverseHits, jurisdiction: jurisdiction
+    });
+    var evidenceGrade = gradeEvidence({ source: sourceBlob, summary: summary });
+    var contradictions = detectContradictions({
+      summary: summary, classification: amCls, source_count: sourceCount,
+      entity_type: entityType, subject_country: body.country || '', typologies: typologies
+    });
+    var hypotheses = rankHypotheses({
+      summary: summary, recommendation: backendRecommendation, categories: adverseHits,
+      typologies: typologies, sanctions_hit_count: explicitSanctionsHits.length
+    });
+    var bayesianPosterior = computeBayesianPosterior({
+      sanctions_detail: sanctionsDetail, adverse_media_confidence: amConf, adverse_hits: adverseHits,
+      jurisdiction: jurisdiction,
+      pep_self: pepFlags.indexOf('pep_self') >= 0,
+      pep_family: pepFlags.some(function (p) { return p !== 'pep_self'; }),
+      typologies: typologies, contradictions: contradictions,
+      source_count: sourceCount, evidence_grade: evidenceGrade
+    });
+
+    var typologyNarrative = '';
+    if (typologies.length) {
+      var topT = typologies[0];
+      var rest = typologies.slice(1).map(function (t) { return t.label; });
+      typologyNarrative = 'Top pattern: ' + topT.label + ' (' + topT.citation + ').' +
+        ' Triggers: ' + topT.matched_triggers.join(' · ') + '.' +
+        (rest.length ? ' Secondary: ' + rest.join('; ') + '.' : '');
+    }
+
+    var attributionCtx = {
+      sanctions_detail: sanctionsDetail, adverse_media_confidence: amConf, adverse_hits: adverseHits,
+      jurisdiction: jurisdiction,
+      pep_self: pepFlags.indexOf('pep_self') >= 0,
+      pep_family: pepFlags.some(function (p) { return p !== 'pep_self'; }),
+      special_flags: specialFlags, typologies: typologies
+    };
+    var scoreAttribution = computeScoreAttribution(attributionCtx);
+    var reasoningChain = buildReasoningChain({
+      sanctions_hit_count: explicitSanctionsHits.length,
+      sanctions_lists_checked: sanctionsLists.length,
+      adverse_media_confidence: amConf, adverse_hits: adverseHits,
+      source_count: sourceCount, jurisdiction: jurisdiction,
+      typologies: typologies, connected_parties: connectedParties,
+      attribution_total: scoreAttribution.total
+    });
+    var deepCtx = {
+      sanctions_hit_count: explicitSanctionsHits.length,
+      sanctions_lists_checked: sanctionsLists.length,
+      adverse_media_confidence: amConf, adverse_hits: adverseHits,
+      source_count: sourceCount, jurisdiction: jurisdiction,
+      typologies: typologies, connected_parties: connectedParties,
+      pep_self: pepFlags.indexOf('pep_self') >= 0,
+      pep_family: pepFlags.some(function (p) { return p !== 'pep_self'; }),
+      special_flags: specialFlags,
+      attribution_total: scoreAttribution.total,
+      score_attribution: scoreAttribution,
+      has_sow_sof: false, has_ubo: false
+    };
+    var counterfactuals = computeCounterfactuals(deepCtx);
+    var redFlags = buildRedFlagChecklist(deepCtx);
+    var cddRecommendation = recommendCddTier(deepCtx);
+    var evidenceGaps = identifyEvidenceGaps(deepCtx);
+    var calibration = calibrateConfidence(deepCtx);
+
+    return {
+      adverse_media_classification: amCls,
+      adverse_media_confidence: amConf,
+      adverse_media_narrative: adverseMediaNarrative,
+      sanctions_status: explicitSanctionsHits.length === 0
+        ? 'NEGATIVE. Subject is not on any of the ' + sanctionsLists.length + ' selected sanctions / watchlists'
+        : 'POSITIVE. Subject appears on ' + explicitSanctionsHits.length + ' of ' + sanctionsLists.length + ' sanctions list(s): ' + explicitSanctionsHits.join(', '),
+      sanctions_summary: explicitSanctionsHits.length === 0 ? 'NEGATIVE' : 'POSITIVE',
+      sanctions_hit_count: explicitSanctionsHits.length,
+      sanctions_lists_checked: sanctionsLists.length,
+      sanctions_detail: sanctionsDetail,
+      sanctions_narrative: sanctionsNarrative,
+      jurisdiction: jurisdiction,
+      typologies: typologies,
+      typology_narrative: typologyNarrative,
+      connected_parties: connectedParties,
+      score_attribution: scoreAttribution,
+      reasoning_chain: reasoningChain,
+      counterfactuals: counterfactuals,
+      red_flags: redFlags,
+      cdd_recommendation: cddRecommendation,
+      evidence_gaps: evidenceGaps,
+      confidence_calibration: calibration,
+      escalation_pathway: escalationPathway,
+      evidence_grade: evidenceGrade,
+      contradictions: contradictions,
+      hypotheses: hypotheses,
+      bayesian_posterior: bayesianPosterior,
+      source_count: sourceCount,
+      risk_level: riskLevel,
+      recommendation: backendRecommendation,
+      regulatory_basis: regulatoryBasis
+    };
+  }
+
   function buildRowFromBackend(body, fd, data, sanctionsLists, adverseMedia, specialScreens, pepDimensions) {
     var perList = [];
     var topScore = 0;
@@ -6607,6 +6893,11 @@
       run_id: (data.runId || data.run_id || '').toString(),
       source: 'backend',
       screened_at: new Date().toISOString(),
+      // Full 20-block Compliance Report composed from live backend
+      // data — same intelligence engine as the simulation path.
+      // Returns null if neither sanctions nor adverse-media signals
+      // warrant a report (clean live screen).
+      compliance_report: composeBackendComplianceReport(data, body, sanctionsLists, adverseMedia, [], []),
       // 19-subsystem weaponized brain + deep-brain reasoning chain
       // captured from screening-run.mts. Rendered as the Brain
       // Intelligence panel per row so the MLRO can see the verdict
