@@ -22,7 +22,7 @@
  *
  * Security + budget design:
  *   - Authenticated, rate-limited (10/min/IP).
- *   - Input caps: question ≤ 2000, caseContext ≤ 8000.
+ *   - Input caps: question ≤ 2000, caseContext ≤ 24000.
  *   - Advisor uses capped at 3 (down from 4) and executor max_tokens
  *     capped at 1536 (down from 2048) to bound worst-case latency.
  *   - AbortController cancels the upstream fetch if the client hangs up.
@@ -44,7 +44,13 @@ const RL_MAX = 10;
 const RL_WINDOW_MS = 60 * 1000;
 
 const MAX_QUESTION_LEN = 2000;
-const MAX_CONTEXT_LEN = 8000;
+// 24000 chars ≈ ~6000 tokens — bounded enough to prevent abuse yet
+// large enough for the full serializeComplianceReportForAsana output
+// used by the Screening Command surface (Devil's Advocate, Draft STR,
+// Network Graph buttons). The earlier 8000-char cap rejected rich
+// compliance reports with HTTP 400 before the executor could see
+// them, breaking Devil's Advocate on any row with >1 finding narrative.
+const MAX_CONTEXT_LEN = 24000;
 const MAX_ADVISOR_USES = 3;
 const MAX_EXECUTOR_TOKENS = 1536;
 

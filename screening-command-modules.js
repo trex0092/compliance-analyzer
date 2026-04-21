@@ -5069,6 +5069,20 @@
       statusEl.textContent = msg;
       statusEl.style.color = tone === 'err' ? '#fca5a5' : tone === 'ok' ? '#86efac' : '';
     }
+    // Defensive truncation: brain-reason.mts caps caseContext at 24_000
+    // chars. The serialised compliance report can grow past that on rows
+    // with many finding narratives + typology + hypotheses + escalation
+    // pathway. Trim to 23_500 with an explicit marker so the MLRO (and
+    // the model) can see the truncation, rather than letting the server
+    // reject the whole request with a raw HTTP 400.
+    if (payload && typeof payload.caseContext === 'string' && payload.caseContext.length > 23500) {
+      payload = Object.assign({}, payload, {
+        caseContext:
+          payload.caseContext.slice(0, 23500) +
+          '\n\n[…truncated from ' + payload.caseContext.length +
+          ' chars — scroll the compliance report above for full detail]'
+      });
+    }
     setStatus('Streaming…');
     fetch('/api/brain-reason', {
       method: 'POST',
