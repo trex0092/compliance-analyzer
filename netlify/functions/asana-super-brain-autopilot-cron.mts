@@ -20,6 +20,10 @@
 
 import type { Config } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
+import {
+  filterUndispatchedCasesBlob,
+  markCaseDispatchedBlob,
+} from '../../src/services/dispatchDedupBlob';
 
 const AUDIT_STORE = 'asana-autopilot-audit';
 const CASES_STORE = 'compliance-cases'; // optional — ops may not have it set up yet
@@ -75,6 +79,25 @@ export default async (): Promise<Response> => {
     return Response.json({ ok: true, dispatched: 0, reason: 'no cases' });
   }
 
+  // Runtime-correct dedup. runSuperBrainBatch's skipAlreadyDispatched
+  // guard is backed by dispatchAuditLog which lives in browser
+  // localStorage — always empty in the Netlify Node runtime, so the
+  // sync guard is a no-op here. Pre-filter with the Blobs-backed
+  // dedup index so overlapping cron runs cannot double-dispatch.
+  // FDL No.10/2025 Art.24 (audit trail integrity).
+  const { remaining: pendingCases, skippedIds: preSkipped } =
+    await filterUndispatchedCasesBlob(cases);
+
+  if (pendingCases.length === 0) {
+    await writeAudit({
+      event: 'autopilot_idle',
+      reason: 'every open case already dispatched in prior run',
+      preSkippedCount: preSkipped.length,
+      at: startedAtIso,
+    });
+    return Response.json({ ok: true, dispatched: 0, preSkipped: preSkipped.length });
+  }
+
   // Defer the real dispatch to a dynamic import so the cron
   // module stays lightweight at cold-start time. The dispatcher
   // talks to Asana via the standard asanaClient path (env vars
@@ -84,10 +107,13 @@ export default async (): Promise<Response> => {
   const items: Array<{ caseId: string; verdict?: string; ok: boolean; error?: string }> = [];
   try {
     const batchModule = await import('../../src/services/superBrainBatchDispatcher');
-    const typedCases = cases as unknown as Parameters<typeof batchModule.runSuperBrainBatch>[0];
+    const typedCases = pendingCases as unknown as Parameters<typeof batchModule.runSuperBrainBatch>[0];
     const summary = await batchModule.runSuperBrainBatch(typedCases, {
       trigger: 'cron',
-      skipAlreadyDispatched: true,
+      // Pre-filter already handled dedup via the Blobs index; the
+      // sync guard is a no-op in Node so leaving it on would only
+      // add cost with zero effect.
+      skipAlreadyDispatched: false,
       consecutiveFailureLimit: 3,
       nowIso: startedAtIso,
     });
@@ -100,6 +126,20 @@ export default async (): Promise<Response> => {
         ok: item.ok,
         error: item.error,
       });
+      if (item.ok && !item.skipped) {
+        // CAS-safe write. On conflict (another run marked first) we
+        // still get ok: true with alreadyMarked: true, which is the
+        // correct outcome.
+        await markCaseDispatchedBlob({
+          caseId: item.caseId,
+          dispatchedAtIso: startedAtIso,
+          verdict: item.verdict,
+          runId: `autopilot-${startedAtIso}`,
+        }).catch(() => {
+          // Best effort — if the dedup store is unreachable we keep
+          // going; the audit entry below still records the dispatch.
+        });
+      }
     }
     await writeAudit({
       event: 'autopilot_batch',
@@ -110,6 +150,7 @@ export default async (): Promise<Response> => {
         failed: summary.failed,
         aborted: summary.aborted,
         durationMs: summary.durationMs,
+        preSkippedFromDedupIndex: preSkipped.length,
       },
       at: startedAtIso,
     });
