@@ -65,8 +65,16 @@ const SURFACE_CONFIG: Record<
     prefix: 'WB',
   },
   logistics: {
-    envVar: 'ASANA_LOGISTICS_PROJECT_GID',
-    projectName: 'Logistics — Shipments',
+    // The legacy ASANA_LOGISTICS_PROJECT_GID slot was retired from
+    // the 19-project catalog on 2026-04-21 (the MLRO confirmed
+    // deletion from Netlify env on the same day). Its successor in
+    // the locked catalog is "Shipments — Tracking" → ASANA_SHIPMENTS_PROJECT_GID.
+    // Mapping the 'logistics' surface here keeps the /logistics
+    // landing page's "Send to Asana" button working after the env
+    // var rename, and avoids the HTTP 503 "LOGISTICS not configured"
+    // failure mode that would otherwise blow up every click.
+    envVar: 'ASANA_SHIPMENTS_PROJECT_GID',
+    projectName: 'Shipments — Tracking',
     prefix: 'LOG',
   },
   'compliance-ops': {
