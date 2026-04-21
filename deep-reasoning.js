@@ -25,6 +25,50 @@
   var HISTORY_KEY = 'hawkeye.deep-reasoning.history.v1';
   var HISTORY_MAX = 10;
 
+  // Reasoning modes — control how the executor is prompted. Each
+  // mode injects a different "thinking frame" as additional user-
+  // facing guidance. The API-side prompt stays the same; the
+  // client composes the user-message prefix so the executor knows
+  // what kind of answer to optimise for.
+  var REASONING_MODES = [
+    {
+      id: 'standard',
+      label: 'Standard',
+      description: 'Balanced depth and speed. Default MLRO mode.',
+      prefix: ''
+    },
+    {
+      id: 'deep',
+      label: 'Deep thinking',
+      description: 'Longer chain-of-thought; multi-step reasoning; slower but more thorough.',
+      prefix: 'THINK DEEPLY. Walk through your reasoning step-by-step before committing to a conclusion. Show the intermediate inferences, not just the final verdict. Consider at least three alternative framings of the question before settling. Err on the side of more context, not less.\n\n'
+    },
+    {
+      id: 'dialectic',
+      label: 'Dialectic (pro + con)',
+      description: 'Generate the strongest case FOR and the strongest case AGAINST, then synthesise.',
+      prefix: 'USE A DIALECTIC STRUCTURE. Your answer has three sections:\n1. THESIS: the strongest case for the primary verdict (+ cited support)\n2. ANTITHESIS: the strongest case against that verdict (+ cited support)\n3. SYNTHESIS: which side is stronger on the current evidence, and your confidence\n\nDo not favour the thesis over the antithesis in section 2. Attack the primary verdict as hard as you would defend it in section 1.\n\n'
+    },
+    {
+      id: 'data',
+      label: 'Data analysis',
+      description: 'Structured statistical/tabular analysis of the case context. Computes ratios, thresholds, distributions where possible.',
+      prefix: 'TREAT THE CASE CONTEXT AS STRUCTURED DATA. Your answer must include:\n1. DATA SUMMARY: every AED amount, count, date, ratio, percentage in the context — tabulated.\n2. THRESHOLD CHECKS: AED 55K CTR · AED 60K cross-border · AED 25% UBO · 24h freeze · 5 business-day CNMR · 10-year retention.\n3. RATIOS: any derived ratios the MLRO should know (deposit/turnover, cash ratio, velocity, etc.).\n4. OUTLIERS: values that deviate >2× from baselines (LBMA gold shipment AED 2-10M · retail DPMS turnover AED 0.1-10M).\n5. VERDICT: based strictly on the numbers.\n\nBe quantitative first, qualitative second.\n\n'
+    },
+    {
+      id: 'speed',
+      label: 'Speed',
+      description: 'Fast structured answer — 100 words max in the prose section, full labelled block below.',
+      prefix: 'BE FAST AND TERSE. The prose section of your answer must be ≤100 words. Cut filler, cut hedging, cut preamble. Emit the full CDD LEVEL / RED FLAGS / CITATIONS / DEADLINES / CONFIDENCE / GAPS / FOLLOW-UP labelled block as usual.\n\n'
+    },
+    {
+      id: 'parallel',
+      label: 'Multi-perspective (3 voices)',
+      description: 'Answer as three concurrent specialists — Regulatory Counsel, Financial Analyst, Forensic Investigator — then converge.',
+      prefix: 'ADOPT THREE SPECIALIST PERSPECTIVES SEQUENTIALLY.\n\n[REGULATORY COUNSEL] — reads the case through the lens of the UAE AML/CFT/CPF framework. Focuses on which article/resolution is in play and what action it mandates.\n\n[FINANCIAL ANALYST] — reads the case through cash-flow / transaction / volume / threshold math. Focuses on detecting structuring, TBML, layering patterns.\n\n[FORENSIC INVESTIGATOR] — reads the case through evidence quality / connected-party / typology lenses. Focuses on what is knowable vs what remains to be obtained.\n\nAfter the three specialist sections, write a [CONVERGENCE] paragraph summarising where they agree + where they disagree + your synthesis.\n\n'
+    }
+  ];
+
   // MLRO question templates — 10 patterns covering the most common
   // compliance decision points. Each loads a ready-crafted question
   // that the MLRO can edit before submitting. Saves the MLRO from
@@ -436,6 +480,10 @@
       return '<button class="dr-chip-btn" type="button" data-dr-scenario="' + p.id + '">' +
         escapeHtml(p.label) + '</button>';
     }).join('');
+    var reasoningModeOptions = REASONING_MODES.map(function (m) {
+      return '<option value="' + m.id + '" title="' + escapeHtml(m.description) + '">' +
+        escapeHtml(m.label) + '</option>';
+    }).join('');
 
     mount.innerHTML = [
       '<div class="dr-card" role="region" aria-label="Deep Reasoning">',
@@ -451,6 +499,9 @@
       '      <select class="dr-select" id="drTemplate" aria-label="Question template">',
       '        <option value="">— Question template —</option>',
       templateOptions,
+      '      </select>',
+      '      <select class="dr-select" id="drReasoningMode" aria-label="Reasoning mode" title="Controls the analytical frame the executor uses">',
+      reasoningModeOptions,
       '      </select>',
       '      <button class="dr-chip-btn dr-chip-btn-ghost" type="button" id="drHistoryToggle">History</button>',
       '      <button class="dr-chip-btn dr-chip-btn-ghost" type="button" id="drClear">Clear</button>',
@@ -607,6 +658,9 @@
     runBtn.addEventListener('click', function () {
       var q = (mount.querySelector('#drQuestion').value || '').trim();
       var c = (mount.querySelector('#drContext').value || '').trim();
+      var modeId = (mount.querySelector('#drReasoningMode') || {}).value || 'standard';
+      var modeDef = REASONING_MODES.filter(function (m) { return m.id === modeId; })[0] || REASONING_MODES[0];
+      var modePrefix = modeDef.prefix || '';
       errEl.textContent = '';
       resultWrap.innerHTML = '';
       if (!q) {
@@ -667,7 +721,7 @@
           Authorization: 'Bearer ' + t,
           Accept: 'text/event-stream',
         },
-        body: JSON.stringify({ question: q, caseContext: c || undefined }),
+        body: JSON.stringify({ question: modePrefix + q, caseContext: c || undefined }),
         signal: ac ? ac.signal : undefined,
       })
         .then(function (res) {
