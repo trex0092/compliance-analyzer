@@ -3502,12 +3502,29 @@
 
             // MLRO disposition action row. Hidden for already-closed dispositions.
             var canAct = r.disposition === 'pending' || r.disposition === 'positive' || r.disposition === 'partial';
-            var actionHtml = canAct
+            // Brain-to-Asana button — only shown when we have a
+            // compliance_report to serialise (i.e. a known hit). The
+            // button emits a sc-sub-to-asana action that the handler
+            // below catches; it does NOT auto-fire on render so the
+            // MLRO keeps manual control over what lands in Asana.
+            var hasCr = !!r.compliance_report;
+            var asanaBtnHtml = hasCr
+              ? '<button class="mv-btn mv-btn-sm" data-action="sc-sub-to-asana" data-id="' + esc(r.id) + '" ' +
+                  'title="Push the full compliance report to Asana as a new compliance-ops task" ' +
+                  'style="background:linear-gradient(90deg,#ff8bd1,#ffd6a8);color:#1a0a20;font-weight:700">' +
+                  'Send to Asana' +
+                '</button>'
+              : '';
+            var actionHtml = (canAct || hasCr)
               ? '<div class="mv-form-actions" style="margin-top:8px;gap:6px;flex-wrap:wrap">' +
-                  '<button class="mv-btn mv-btn-sm mv-btn-ok" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="positive">Confirm match</button>' +
-                  '<button class="mv-btn mv-btn-sm" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="partial">Partial — investigate</button>' +
-                  '<button class="mv-btn mv-btn-sm" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="false_positive">False positive</button>' +
-                  '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="escalated">Escalate</button>' +
+                  (canAct
+                    ? '<button class="mv-btn mv-btn-sm mv-btn-ok" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="positive">Confirm match</button>' +
+                      '<button class="mv-btn mv-btn-sm" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="partial">Partial — investigate</button>' +
+                      '<button class="mv-btn mv-btn-sm" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="false_positive">False positive</button>' +
+                      '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="escalated">Escalate</button>'
+                    : '') +
+                  asanaBtnHtml +
+                  '<span class="mv-list-meta" data-dr-asana-status="' + esc(r.id) + '" style="align-self:center;margin-left:4px;font-size:11px;opacity:.7"></span>' +
                 '</div>'
               : '';
 
@@ -3721,6 +3738,215 @@
         renderSubjectScreening(host);
       };
     });
+
+    // Brain-to-Asana — posts the serialised compliance report to the
+    // existing /api/asana/task endpoint. The endpoint is authenticated,
+    // rate-limited, and writes to the compliance-ops Asana project via
+    // asanaClient.ts. Audit-trail-aware: MoE/LBMA can reconstruct who
+    // pushed what when from the Asana side (FDL Art.24 retention).
+    host.querySelectorAll('[data-action="sc-sub-to-asana"]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-id');
+        var row = null;
+        for (var i = 0; i < rows.length; i++) { if (rows[i].id === id) { row = rows[i]; break; } }
+        if (!row) return;
+        var status = host.querySelector('[data-dr-asana-status="' + id + '"]');
+        var setStatus = function (msg, tone) {
+          if (!status) return;
+          status.textContent = msg;
+          status.style.color = tone === 'err' ? '#fca5a5' : tone === 'ok' ? '#86efac' : '';
+        };
+        var token = '';
+        try { token = localStorage.getItem('hawkeye.session.jwt') || localStorage.getItem('hawkeye.watchlist.adminToken') || ''; } catch (_) {}
+        if (!token) { setStatus('Sign in at /login.html first.', 'err'); return; }
+        var cr = row.compliance_report || {};
+        var cddTier = (cr.cdd_recommendation && cr.cdd_recommendation.tier) || '';
+        var citation = Array.isArray(cr.regulatory_basis) && cr.regulatory_basis.length
+          ? cr.regulatory_basis[0] : '';
+        var entity = row.name + (row.country ? ' · ' + row.country : '');
+        var category = cddTier === 'FREEZE' ? 'sanctions_freeze'
+          : cddTier === 'EDD' ? 'compliance_edd'
+          : 'compliance_screening';
+        var payload = {
+          name: composeAsanaTaskName(row),
+          notes: serializeComplianceReportForAsana(row),
+          surface: 'compliance-ops',
+          category: category,
+          citation: citation ? String(citation).slice(0, 254) : undefined,
+          entity: entity.slice(0, 254)
+        };
+        btn.disabled = true;
+        var originalLabel = btn.textContent;
+        btn.textContent = 'Sending…';
+        setStatus('Posting to Asana…', '');
+        fetch('/api/asana/task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify(payload)
+        }).then(function (res) {
+          return res.json().catch(function () { return null; }).then(function (json) {
+            return { res: res, json: json };
+          });
+        }).then(function (r) {
+          if (!r.res.ok) {
+            var detail = (r.json && r.json.error) || ('HTTP ' + r.res.status);
+            throw new Error(detail);
+          }
+          var url = r.json && (r.json.url || r.json.permalink_url || r.json.task_url);
+          setStatus(url ? 'Pushed — open task' : 'Pushed ✓', 'ok');
+          if (url && status) {
+            status.innerHTML = 'Pushed — <a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" style="color:#86efac;text-decoration:underline">open task</a>';
+          }
+        }).catch(function (err) {
+          setStatus('Asana push failed: ' + (err && err.message ? err.message : 'unknown'), 'err');
+        }).then(function () {
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+        });
+      };
+    });
+  }
+
+  // ─── Brain-to-Asana serialiser ─────────────────────────────────────
+  // Composes the 13-block compliance report into a plain-text Asana
+  // task body. The endpoint /api/asana/task accepts up to 16 KB of
+  // notes — well above the typical serialised report size. Output is
+  // audit-ready: every block is labelled, every citation is preserved,
+  // and the generated-at timestamp + integrity flag are captured so
+  // the MoE / LBMA inspector can reconstruct the state of the
+  // screening engine at the moment the task was dispatched
+  // (FDL No.(10)/2025 Art.24 — 10-year retention).
+  function serializeComplianceReportForAsana(r) {
+    if (!r || !r.compliance_report) return '';
+    var cr = r.compliance_report;
+    var L = [];
+    function push(s) { L.push(s); }
+    var cddTier = (cr.cdd_recommendation && cr.cdd_recommendation.tier) || '—';
+    var risk = (cr.risk_level || 'high').toUpperCase();
+    var sanct = cr.sanctions_summary || (cr.sanctions_hit_count > 0 ? 'POSITIVE' : 'NEGATIVE');
+    push('[ Risk: ' + risk + ' · Sanctions: ' + sanct + ' · CDD: ' + cddTier + ' ]');
+    push('Subject: ' + (r.name || '') + ' (' + (r.subject_type || 'subject') +
+      (r.country ? ', ' + r.country : '') + ')');
+    if (r.customer_code) push('Customer code: ' + r.customer_code);
+    if (r.event_type) push('Event: ' + r.event_type);
+    push('');
+    if (cr.sanctions_narrative) {
+      push('SANCTIONS FINDING');
+      push(cr.sanctions_narrative);
+      push('');
+    }
+    if (cr.adverse_media_narrative) {
+      push('ADVERSE MEDIA FINDING');
+      push(cr.adverse_media_narrative);
+      push('');
+    }
+    if (cr.jurisdiction && cr.jurisdiction.narrative) {
+      push('JURISDICTION CONTEXT (' + (cr.jurisdiction.risk_level || 'standard').toUpperCase() + ')');
+      push(cr.jurisdiction.narrative);
+      if (Array.isArray(cr.jurisdiction.flags) && cr.jurisdiction.flags.length) {
+        push('Flags: ' + cr.jurisdiction.flags.join(', '));
+      }
+      push('');
+    }
+    if (cr.typology_narrative) {
+      push('TYPOLOGY MATCH');
+      push(cr.typology_narrative);
+      push('');
+    }
+    if (cr.confidence_calibration) {
+      var cal = cr.confidence_calibration;
+      push('CONFIDENCE CALIBRATION');
+      push('Raw ' + cal.raw_confidence_pct + '% → Calibrated ' + cal.calibrated_pct + '% (' + cal.band + ')');
+      if (Array.isArray(cal.adjustments) && cal.adjustments.length) {
+        cal.adjustments.forEach(function (a) {
+          push('  ' + (a.delta >= 0 ? '+' : '') + a.delta + ' · ' + a.label);
+        });
+      }
+      push('');
+    }
+    if (Array.isArray(cr.reasoning_chain) && cr.reasoning_chain.length) {
+      push('REASONING CHAIN');
+      cr.reasoning_chain.forEach(function (s) {
+        push('  ' + s.step + '. ' + s.label);
+        push('     Evidence: ' + s.evidence);
+        push('     Inference: ' + s.inference);
+        if (s.citation) push('     [' + s.citation + ']');
+      });
+      push('');
+    }
+    if (cr.score_attribution && Array.isArray(cr.score_attribution.factors) && cr.score_attribution.factors.length) {
+      push('RISK FACTOR ATTRIBUTION: ' + (cr.score_attribution.total || 0) + ' / 100');
+      cr.score_attribution.factors.forEach(function (f) {
+        push('  +' + f.points + '  ' + f.factor + (f.note ? ' — ' + f.note : ''));
+      });
+      push('');
+    }
+    if (cr.cdd_recommendation) {
+      var cdd = cr.cdd_recommendation;
+      push('CDD TIER: ' + cdd.tier);
+      push('Review cycle: ' + cdd.review_cycle);
+      if (Array.isArray(cdd.reasons) && cdd.reasons.length) {
+        push('Rationale:');
+        cdd.reasons.forEach(function (reason) { push('  - ' + reason); });
+      }
+      if (cdd.citation) push('[' + cdd.citation + ']');
+      push('');
+    }
+    if (Array.isArray(cr.red_flags) && cr.red_flags.length) {
+      var triggered = cr.red_flags.filter(function (f) { return f.triggered; });
+      push('RED FLAGS TRIGGERED: ' + triggered.length + ' / ' + cr.red_flags.length);
+      triggered.forEach(function (f) {
+        push('  ✕ ' + f.label + ' — ' + f.rationale + (f.citation ? '  [' + f.citation + ']' : ''));
+      });
+      push('');
+    }
+    if (Array.isArray(cr.counterfactuals) && cr.counterfactuals.length) {
+      push('COUNTERFACTUAL ANALYSIS');
+      cr.counterfactuals.forEach(function (c) {
+        push('  Remove "' + c.remove + '" → ' + c.delta_points + ' pts · new total ' + c.new_total + '/100' +
+          (c.flips_verdict ? ' [FLIPS VERDICT]' : '') + ' — ' + c.note);
+      });
+      push('');
+    }
+    if (Array.isArray(cr.evidence_gaps) && cr.evidence_gaps.length) {
+      push('EVIDENCE GAPS & REQUESTS');
+      cr.evidence_gaps.forEach(function (g) {
+        push('  - ' + g.gap + ': ' + g.request + (g.citation ? '  [' + g.citation + ']' : ''));
+      });
+      push('');
+    }
+    if (Array.isArray(cr.connected_parties) && cr.connected_parties.length) {
+      push('CONNECTED PARTIES (re-screen queue)');
+      cr.connected_parties.forEach(function (p) {
+        push('  - ' + p.name + (p.abbrev ? ' (' + p.abbrev + ')' : '') + ': ' + p.action);
+      });
+      push('');
+    }
+    if (cr.recommendation) {
+      push('RECOMMENDATION');
+      push(cr.recommendation);
+      push('');
+    }
+    if (Array.isArray(cr.regulatory_basis) && cr.regulatory_basis.length) {
+      push('REGULATORY BASIS');
+      push(cr.regulatory_basis.join(' · '));
+      push('');
+    }
+    push('---');
+    push('Generated: ' + (r.screened_at || new Date().toISOString()));
+    push('Source: ' + (r.source || 'simulation') + ' · integrity: ' + (r.integrity || 'simulated'));
+    return L.join('\n');
+  }
+
+  function composeAsanaTaskName(r) {
+    var cr = r.compliance_report || {};
+    var cddTier = (cr.cdd_recommendation && cr.cdd_recommendation.tier) || '';
+    var risk = (cr.risk_level || 'high').toUpperCase();
+    var prefix = '[Screening · ' + risk + (cddTier ? ' · ' + cddTier : '') + ']';
+    var nm = r.name || 'subject';
+    var cc = r.country ? ' (' + r.country + ')' : '';
+    var label = prefix + ' ' + nm + cc;
+    return label.length > 508 ? label.slice(0, 508) + '...' : label;
   }
 
   // ─── Screening intelligence engine ──────────────────────────────────

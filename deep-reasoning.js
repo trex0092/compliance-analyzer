@@ -196,6 +196,39 @@
     grab('confidence', /^\s*CONFIDENCE:\s*(.+)$/im);
     grab('gaps',       /^\s*GAPS:\s*(.+)$/im);
     grab('followUp',   /^\s*FOLLOW-?UP:\s*(.+)$/im);
+    // Fallback — if the model didn't emit the labelled block (or
+    // emitted it incompletely), regex-scrape the prose for the same
+    // signals. Only fills fields that the labelled grab missed, so a
+    // compliant reply is never downgraded.
+    if (!out.cddLevel) {
+      var cddMatch = text.match(/\b(FREEZE|EDD|CDD|SDD)\b/);
+      if (cddMatch) out.cddLevel = cddMatch[1];
+    }
+    if (!out.confidence) {
+      var confMatch = text.match(/\bconfidence[:\s]+(?:is\s+|approximately\s+|around\s+|~)?(\d{1,3})\s*%/i);
+      if (confMatch) out.confidence = confMatch[1] + '%';
+    }
+    if (!out.citations) {
+      var citRx = /(FDL\s+(?:No\.?\s*\(?\d+\)?\/\d+\s+)?Art\.?\s*\d+(?:-\d+)?|Cabinet\s+Res(?:olution)?\.?\s*\d+\/\d+(?:\s+Art\.?\s*\d+(?:-\d+)?)?|Cabinet\s+Decision\s+\d+\/\d+|FATF\s+Rec(?:ommendation)?\.?\s*\d+(?:-\d+)?|LBMA\s+RGG\s+v?\d+(?:\s+Step\s+\d+(?:-\d+)?)?|MoE\s+Circular\s+\d+\/[A-Z]+\/\d+|UNSCR?\s+\d+(?:\/\d+)?)/gi;
+      var seen = {};
+      var cits = [];
+      var cm;
+      while ((cm = citRx.exec(text)) !== null && cits.length < 8) {
+        var norm = cm[1].replace(/\s+/g, ' ');
+        var key = norm.toLowerCase();
+        if (!seen[key]) { seen[key] = true; cits.push(norm); }
+      }
+      if (cits.length) out.citations = cits.join(', ');
+    }
+    if (!out.deadlines) {
+      var dlRx = /\b(\d+\s*(?:business\s+days?|working\s+days?|clock\s+hours?|hours?|days?))\b[^.;]{0,60}?(STR|SAR|CTR|DPMSR|CNMR|EOCN|freeze|filing|review|re-verif\w*)/gi;
+      var dls = [];
+      var dm;
+      while ((dm = dlRx.exec(text)) !== null && dls.length < 5) {
+        dls.push(dm[2] + ': ' + dm[1].replace(/\s+/g, ' '));
+      }
+      if (dls.length) out.deadlines = dls.join('; ');
+    }
     return out;
   }
 
