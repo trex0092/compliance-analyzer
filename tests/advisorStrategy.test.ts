@@ -64,6 +64,17 @@ describe('advisorStrategy — spec constants', () => {
     expect(COMPLIANCE_ADVISOR_SYSTEM_PROMPT).toContain('CDD level');
     expect(COMPLIANCE_ADVISOR_SYSTEM_PROMPT).toContain('never tip off');
     expect(COMPLIANCE_ADVISOR_SYSTEM_PROMPT).toContain('under 100 words');
+    // Extended triggers (#7 layering, #8 shell-company, #9 cross-
+    // border structuring, #10 adverse-media peer anomaly, #11
+    // sanctions-by-association, #12 structured false-positive).
+    // FDL Art.20-21, Cabinet Res 74/2020, Cabinet Res 134/2025
+    // Art.14-16, Cabinet Decision 109/2023, FATF Rec 3/7/10/24.
+    expect(COMPLIANCE_ADVISOR_SYSTEM_PROMPT).toContain('layering pattern');
+    expect(COMPLIANCE_ADVISOR_SYSTEM_PROMPT).toContain('shell-company indicator');
+    expect(COMPLIANCE_ADVISOR_SYSTEM_PROMPT).toContain('cross-border structuring');
+    expect(COMPLIANCE_ADVISOR_SYSTEM_PROMPT).toContain('peer-group anomaly');
+    expect(COMPLIANCE_ADVISOR_SYSTEM_PROMPT).toContain('sanctions-by-association');
+    expect(COMPLIANCE_ADVISOR_SYSTEM_PROMPT).toContain('false positive');
   });
 });
 
