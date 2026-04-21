@@ -131,6 +131,11 @@ const MAX_CAS_ATTEMPTS = 5;
  * /api/sanctions-ingest-cron still does the authoritative refresh.
  */
 const SANCTIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+// BUG #5 fix (2026-04-21): shorter TTL when the snapshot contains any
+// list-level error so transient upstream failures don't poison the
+// warm instance for the full 6h. Used only when mandatory lists are
+// clean but a soft list (OFAC / EU / UK_OFSI) errored.
+const SANCTIONS_CACHE_TTL_ERROR_MS = 15 * 60 * 1000;
 /**
  * Per-stage timeout budgets. Netlify sync functions die at ~10s, so the
  * whole pipeline MUST finish inside that ceiling. Budgeting is coarse
@@ -655,6 +660,11 @@ interface ListSnapshot {
 }
 
 let listCache: ListSnapshot | null = null;
+// BUG #5 fix (2026-04-21): when the cached snapshot contains any
+// list-level error, this flag flips so the TTL check uses the shorter
+// SANCTIONS_CACHE_TTL_ERROR_MS (15 min) instead of the full 6h — the
+// warm instance retries soon after a transient upstream failure.
+let listCacheShortTtl = false;
 let uaeSeedAttemptedAt = 0;
 let uaeSeedSucceeded = false;
 
@@ -889,8 +899,11 @@ async function raceHydrate(): Promise<void> {
 }
 
 async function loadAllLists(): Promise<ListSnapshot> {
-  if (listCache && Date.now() - listCache.fetchedAt < SANCTIONS_CACHE_TTL_MS) {
-    return listCache;
+  if (listCache) {
+    const ttl = listCacheShortTtl ? SANCTIONS_CACHE_TTL_ERROR_MS : SANCTIONS_CACHE_TTL_MS;
+    if (Date.now() - listCache.fetchedAt < ttl) {
+      return listCache;
+    }
   }
   // Per-list accumulator. Every list writes its result here as it
   // resolves, and the function ALWAYS returns the current state of
@@ -908,6 +921,26 @@ async function loadAllLists(): Promise<ListSnapshot> {
   type ListEntry = ListSnapshot['lists'][number];
   type LiveListName = Exclude<ListEntry['name'], 'UAE_EOCN'>;
   const listResults = new Map<ListEntry['name'], ListEntry>();
+  // BUG #4 note (2026-04-21): CLAUDE.md calls out SIX regulatory
+  // bodies to screen — "UN, OFAC, EU, UK, UAE, EOCN". In the UAE's
+  // current regulatory architecture those last two are a SINGLE
+  // upstream list: the Local Terrorist List / Targeted Financial
+  // Sanctions list is maintained by the Executive Office for CTFEF
+  // (EOCN) on behalf of MoE (Cabinet Res 74/2020 Art.3-7). Splitting
+  // it into two fetches would duplicate requests against the same
+  // upstream source — regulatorily redundant.
+  //
+  // The UI exposes INTERPOL as a distinct sixth selectable list (see
+  // screening-command-modules.js SANCTIONS_LISTS). INTERPOL Red/Blue
+  // Notices are queried via the post-fan-out enrichment at line
+  // ~1190 rather than through the core LIST_NAMES fan-out, because
+  // the INTERPOL feed has manual-verification semantics distinct from
+  // the automated TFS lists and can't use the same confidence-scoring
+  // pipeline without operator review.
+  //
+  // If the MLRO directive changes (e.g. UAE spins up a domestic list
+  // independent of EOCN), add 'UAE' as a 6th entry alongside
+  // 'UAE_EOCN' and wire a fetcher. Today they are one list.
   const LIST_NAMES: readonly ListEntry['name'][] = [
     'UN',
     'OFAC',
@@ -989,24 +1022,49 @@ async function loadAllLists(): Promise<ListSnapshot> {
   // Kick off hydrate + 5 list fetches (each with its own blob fallback)
   // in parallel. Each writes to listResults as it completes, so partial
   // results are always visible in the accumulator regardless of which
-  // race wins below. Errors are swallowed — raceListFetch already
-  // converts throws into per-list error diagnostics, and any unexpected
-  // throw from the fallback shouldn't abort sibling lists.
+  // race wins below.
+  //
+  // BUG #2 fix (2026-04-21): every fanout branch previously used
+  // `.catch(() => {})` which silently swallowed any unexpected throw
+  // from runListWithFallback's blob-fallback path (lines 976-986).
+  // Under a cold-start race where loadBlobSnapshot synchronously
+  // throws, listResults kept the INITIAL raceListFetch error (usually
+  // a timeout) and the real root cause never surfaced. Replaced with
+  // a per-list error recorder that appends "fanout panic: <msg>" to
+  // the diagnostic so the MLRO sees WHAT went wrong in the blob
+  // fallback even when the primary fetch timed out first.
+  //
+  // FDL Art.20-21 (CO reasoning trail) + Cabinet Res 74/2020 Art.4
+  // (per-list evidence) both forbid hiding a list failure from the
+  // CO — a silent swallow is a compliance smell even when
+  // raceListFetch already recorded a simpler reason.
+  const recordFanoutPanic = (name: ListEntry['name']) => (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    const existing = listResults.get(name);
+    const priorError = existing?.error ? `${existing.error}; ` : '';
+    listResults.set(name, {
+      name,
+      entries: existing?.entries ?? [],
+      error: `${priorError}fanout panic: ${msg.slice(0, 200)}`,
+    });
+  };
   const fanout = Promise.all([
     raceHydrate(),
     runListWithFallback('UN', (signal, timeoutMs) =>
       fetchUNSanctionsList(proxy, { signal, timeoutMs })
-    ).catch(() => {}),
+    ).catch(recordFanoutPanic('UN')),
     runListWithFallback('OFAC', (signal, timeoutMs) =>
       fetchOFACSanctionsList(proxy, { signal, timeoutMs })
-    ).catch(() => {}),
+    ).catch(recordFanoutPanic('OFAC')),
     runListWithFallback('EU', (signal, timeoutMs) =>
       fetchEUSanctionsList(proxy, { signal, timeoutMs })
-    ).catch(() => {}),
+    ).catch(recordFanoutPanic('EU')),
     runListWithFallback('UK_OFSI', (signal, timeoutMs) =>
       fetchUKSanctionsList(proxy, { signal, timeoutMs })
-    ).catch(() => {}),
-    runListWithFallback('UAE_EOCN', () => fetchUAESanctionsList()).catch(() => {}),
+    ).catch(recordFanoutPanic('UK_OFSI')),
+    runListWithFallback('UAE_EOCN', () => fetchUAESanctionsList()).catch(
+      recordFanoutPanic('UAE_EOCN'),
+    ),
   ]);
   let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<'deadline'>((resolve) => {
@@ -1088,10 +1146,21 @@ async function loadAllLists(): Promise<ListSnapshot> {
   const mandatoryClean = snapshot.lists
     .filter((l) => MANDATORY_FOR_CACHE.has(l.name))
     .every((l) => !l.error);
+  // BUG #5 fix (2026-04-21): non-mandatory lists (OFAC / EU / UK_OFSI)
+  // were previously pinned into the 6h cache even when they errored,
+  // so a transient upstream failure (e.g. OFAC SDN 5xx for 30 seconds)
+  // poisoned the warm instance for hours. Track a shorter cache
+  // lifetime when any list errored: full 6h TTL only when every list
+  // is clean; otherwise 15 min so errored lists are retried soon.
+  // Still never cache when the mandatory set is dirty (pre-existing
+  // guarantee — UN/UAE coverage must be fresh).
+  const anyError = snapshot.lists.some((l) => !!l.error);
   if (mandatoryClean) {
     listCache = snapshot;
+    listCacheShortTtl = anyError;
   } else {
     listCache = null;
+    listCacheShortTtl = false;
   }
   return snapshot;
 }
@@ -2313,9 +2382,27 @@ export default async (req: Request, context: Context): Promise<Response> => {
         projectName: 'Screening Command — Sanctions',
       };
 
+  // BUG #3 fix (2026-04-21): surface a top-level fourEyesRequired flag
+  // so downstream Asana dispatchers don't have to traverse deepBrain +
+  // weaponized to detect a confirmed freeze. CLAUDE.md §10 requires two
+  // independent approvers on every high-risk decision; Cabinet Res
+  // 74/2020 Art.4-7 mandates the 24h freeze action irrespective. The
+  // freeze fires per the regulator — this flag gates the RELEASE path
+  // and surfaces the case in [HS] Four-Eyes Approvals (#4 in the
+  // 19-project catalog).
+  const topLevelFourEyesRequired =
+    overallTopClassification === 'confirmed' ||
+    overallTopClassification === 'potential' ||
+    deepBrain?.requiresFourEyes === true ||
+    weaponized?.requiresHumanReview === true ||
+    (typeof weaponized?.finalVerdict === 'string' &&
+      (weaponized.finalVerdict === 'freeze' ||
+        weaponized.finalVerdict === 'escalate'));
+
   return jsonResponse({
     ok: true,
     ranAt,
+    fourEyesRequired: topLevelFourEyesRequired,
     subject: {
       id: subjectId,
       name: input.subjectName,

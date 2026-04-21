@@ -58,13 +58,22 @@ export type ModuleKey =
   | 'governance_and_retention'
   | 'audit_inspection'
   | 'mlro_digest'
-  | 'employees_and_training'
+  // Split on 2026-04-21: employees_and_training → employees + training.
+  | 'employees_and_training' // DEPRECATED alias — resolver prefers employees/training below
+  | 'employees'
+  | 'training'
   | 'onboarding_workbench'
   | 'compliance_tasks'
   | 'four_eyes_queue'
   | 'shipments_logistics'
   | 'counterparties_accounts'
-  | 'incidents_whistleblower';
+  // Split on 2026-04-21: incidents_whistleblower → ffr_incidents + grievances.
+  | 'incidents_whistleblower' // DEPRECATED alias — resolver prefers ffr_incidents below
+  | 'ffr_incidents'
+  | 'grievances'
+  // Added 2026-04-21 to round out the 19-project catalog.
+  | 'routines'
+  | 'mlro_workbench';
 
 export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
   {
@@ -267,25 +276,56 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
     regulatoryBasis: 'Cabinet Res 134/2025 Art.19 · FDL No.10/2025 Art.20-21',
     owner: 'MLRO',
   },
+  // DEPRECATED 2026-04-21 — kept so legacy callers don't break, but
+  // ASANA_EMPLOYEES_TRAINING_PROJECT_GID is left empty in .env.example.
+  // New code should resolve 'employees' or 'training' below.
   {
     key: 'employees_and_training',
     envVar: 'ASANA_EMPLOYEES_TRAINING_PROJECT_GID',
-    name: 'Employees, Access & Training',
+    name: 'Employees, Access & Training (deprecated — use employees + training)',
     description:
-      'MLRO + Deputy appointment audit, role changes, RACI updates, access-rights matrix, DOJ / board notifications. Annual AML/CFT/CPF training per employee, role-specific training, quiz completion, refresher cycle, external regulatory webinar attendance.',
+      'DEPRECATED combined board. Resolver now falls through to employees + training split projects.',
+    sections: ['Archived'],
+    regulatoryBasis: 'Cabinet Res 134/2025 Art.11, 18 · FDL No.10/2025 Art.20-22 · FATF Rec 18',
+    owner: 'MLRO',
+  },
+  {
+    key: 'employees',
+    envVar: 'ASANA_EMPLOYEES_PROJECT_GID',
+    name: 'Employees',
+    description:
+      'Staff records, MLRO + Deputy appointment audit, role changes, RACI updates, access-rights matrix, DOJ / board notifications, certification expiry.',
     sections: [
       'MLRO + Deputy Appointments',
       'Role Changes',
       'RACI Updates',
       'Access Rights Matrix',
       'DOJ / Board Notifications',
+      'Certification — Active',
+      'Certification — Expiring',
+      'Certification — Expired',
+      'Archived',
+    ],
+    regulatoryBasis: 'Cabinet Res 134/2025 Art.11, 18 · FDL No.10/2025 Art.20-22 · FATF Rec 18',
+    owner: 'MLRO',
+  },
+  {
+    key: 'training',
+    envVar: 'ASANA_TRAINING_PROJECT_GID',
+    name: 'Training',
+    description:
+      'Annual AML/CFT/CPF training per employee, role-specific training, quiz completion, refresher cycle, external regulatory webinar attendance, attestation records.',
+    sections: [
       'Annual AML/CFT/CPF Training',
       'Role-specific Training',
       'Quiz Completion',
       'Refresher Cycle',
       'External Webinar Attendance',
+      'Attestations Signed',
+      'Overdue',
+      'Archived',
     ],
-    regulatoryBasis: 'Cabinet Res 134/2025 Art.11, 18 · FDL No.10/2025 Art.20-22 · FATF Rec 18',
+    regulatoryBasis: 'Cabinet Res 134/2025 Art.11, 18 · FDL No.10/2025 Art.22 · FATF Rec 18',
     owner: 'MLRO',
   },
   {
@@ -377,24 +417,101 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'FATF Rec 10, 13 · CBUAE Correspondent Banking Standard · Cabinet Res 134/2025 Art.14',
     owner: 'Compliance Officer',
   },
+  // DEPRECATED 2026-04-21 — preserved so legacy callers compile. The
+  // MLRO split this board into 'ffr_incidents' (sanctions-driven asset
+  // freezes) and 'grievances' (whistleblower + operational incidents)
+  // because the regulatory regimes are distinct (Cabinet Res 74/2020
+  // vs Fed Decree-Law 32/2021). Resolver falls through to ffr_incidents.
   {
     key: 'incidents_whistleblower',
     envVar: 'ASANA_INCIDENTS_PROJECT_GID',
-    name: 'Incidents & Whistleblower',
+    name: 'Incidents & Whistleblower (deprecated — use ffr_incidents + grievances)',
     description:
-      'AML breaches, cybersecurity events, physical-security incidents, PDPL data breaches, anonymous + named whistleblower channel, root-cause + remediation tracking.',
+      'DEPRECATED combined board. New code should target ffr_incidents (freezes) or grievances (whistleblower / customer complaints) directly.',
+    sections: ['Archived'],
+    regulatoryBasis:
+      'FDL No.10/2025 Art.21, 29 · Cabinet Res 71/2024 · Fed Decree-Law 32/2021',
+    owner: 'MLRO',
+  },
+  {
+    key: 'ffr_incidents',
+    envVar: 'ASANA_INCIDENTS_PROJECT_GID',
+    name: 'FFR — Incidents & Asset Freezes',
+    description:
+      'Confirmed sanctions matches, asset-freeze execution, 24h EOCN notification, 5-business-day CNMR filing, post-freeze release workflow. Regulator-driven freeze regime.',
     sections: [
-      'New Incident — Triage',
+      'New Match — Triage',
+      'Under Review — CO',
+      'Awaiting Four-Eyes',
+      'Freeze Executed',
+      'EOCN 24h Notification Filed',
+      'CNMR 5BD Filing Prepared',
+      'CNMR Filed',
+      'Release — Pending EOCN',
+      'Closed',
+    ],
+    regulatoryBasis:
+      'Cabinet Res 74/2020 Art.4-7 · FDL No.10/2025 Art.35 · FATF Rec 6-7',
+    owner: 'MLRO',
+  },
+  {
+    key: 'grievances',
+    envVar: 'ASANA_GRIEVANCES_PROJECT_GID',
+    name: 'Incidents & Grievances',
+    description:
+      'Operational incidents (non-sanctions), anonymous + named whistleblower channel, customer complaints, cybersecurity events, PDPL data breaches, root-cause + remediation tracking. Confidentiality strictly protected — FDL Art.29 tipping-off guard applies.',
+    sections: [
+      'New Report — Triage',
       'Active Investigation',
       'Whistleblower — Anonymous',
       'Whistleblower — Named',
+      'Customer Complaint',
       'Root-Cause Analysis',
       'Remediation In Progress',
       'Regulator Notification Filed',
       'Closed — With Lessons',
     ],
     regulatoryBasis:
-      'FDL No.10/2025 Art.21, 29 · Cabinet Res 71/2024 · UAE PDPL Art.25 · ISO/IEC 27001 Annex A.16 · UAE Whistleblower Protection frameworks',
+      'FDL No.10/2025 Art.21, 29 · Fed Decree-Law 32/2021 · UAE PDPL Art.25 · ISO/IEC 27001 Annex A.16',
+    owner: 'MLRO',
+  },
+  {
+    key: 'routines',
+    envVar: 'ASANA_ROUTINES_PROJECT_GID',
+    name: 'Routines — Scheduled',
+    description:
+      'The 33 scheduled cron functions and their dry-run / apply-mode output. Machine-driven board (distinct from Compliance Ops which is human-driven). Every cron invocation emits a task with run id, duration, status, side effects, and audit-chain pointer.',
+    sections: [
+      'Today — Scheduled',
+      'Running',
+      'Succeeded',
+      'Failed',
+      'Retrying',
+      'Skipped — Deduped',
+      'Dry-Run Only',
+      'Archived',
+    ],
+    regulatoryBasis:
+      'FDL No.10/2025 Art.20-21, 24 · Cabinet Res 134/2025 Art.19',
+    owner: 'MLRO',
+  },
+  {
+    key: 'mlro_workbench',
+    envVar: 'ASANA_WORKBENCH_PROJECT_GID',
+    name: 'MLRO Workbench',
+    description:
+      'Cross-module MLRO action surface. Manual interventions, overrides, break-glass decisions, ad-hoc investigations, executive escalations. Anything that does not fit cleanly into a per-domain board lands here.',
+    sections: [
+      'Inbox',
+      'Active',
+      'Awaiting Four-Eyes',
+      'Awaiting Senior Management',
+      'Break-Glass Override',
+      'Closed',
+      'Archived',
+    ],
+    regulatoryBasis:
+      'FDL No.10/2025 Art.20-21 · Cabinet Res 134/2025 Art.19',
     owner: 'MLRO',
   },
 ]);
@@ -412,25 +529,48 @@ function readEnv(name: string): string | undefined {
   return undefined;
 }
 
+// Deprecated key → preferred successor keys. When a legacy caller
+// resolves a deprecated key and its env var is empty, we fall through
+// to the first successor that has a GID set. Keeps old callers working
+// after the MLRO split on 2026-04-21 without forcing a site-wide rename.
+const DEPRECATED_KEY_FALLBACKS: Partial<Record<ModuleKey, readonly ModuleKey[]>> = {
+  employees_and_training: ['employees', 'training'],
+  incidents_whistleblower: ['ffr_incidents', 'grievances'],
+};
+
 export function getModuleProjectGid(key: ModuleKey): string | undefined {
   const spec = MODULE_PROJECTS.find((p) => p.key === key);
   if (!spec) return undefined;
-  return readEnv(spec.envVar);
+  const direct = readEnv(spec.envVar);
+  if (direct) return direct;
+  const fallbacks = DEPRECATED_KEY_FALLBACKS[key];
+  if (!fallbacks) return undefined;
+  for (const fallbackKey of fallbacks) {
+    const fallbackSpec = MODULE_PROJECTS.find((p) => p.key === fallbackKey);
+    if (!fallbackSpec) continue;
+    const value = readEnv(fallbackSpec.envVar);
+    if (value) return value;
+  }
+  return undefined;
 }
 
 /**
  * Resolve the Asana project GID for a given module with a safe
  * fallback to ASANA_SCREENINGS_PROJECT_GID. Every Netlify function
- * that writes to Asana should call this so the 16-project catalog
+ * that writes to Asana should call this so the 19-project catalog
  * is the single source of truth and the screening board absorbs
- * anything that lands before the MLRO bootstraps the new boards.
+ * anything that lands before the MLRO populates every board.
  *
  * This avoids the "project GID not found" class of errors the old
  * layout produced when ASANA_WORKBENCH_PROJECT_GID / LOGISTICS /
  * ROUTINES were never populated.
+ *
+ * The hardcoded fallback GID '1213759768596515' that shipped before
+ * 2026-04-21 was removed — that GID did not exist in the canonical
+ * workspace (1213645083721316) and silently mis-routed events.
  */
 export function resolveAsanaProjectGid(key: ModuleKey): string {
-  return getModuleProjectGid(key) || readEnv('ASANA_SCREENINGS_PROJECT_GID') || '1213759768596515';
+  return getModuleProjectGid(key) || readEnv('ASANA_SCREENINGS_PROJECT_GID') || '';
 }
 
 export function getAllModuleEnvVars(): readonly string[] {

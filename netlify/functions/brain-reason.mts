@@ -54,11 +54,18 @@ const MAX_EXECUTOR_TOKENS = 1536;
 // through ai-proxy.
 const STREAM_KEEPALIVE_MS = 4_000;
 
-// Graceful close 2s before Netlify's 26s sync-function hard kill.
+// Graceful close 1s before Netlify's 26s sync-function hard kill.
 // Without this the socket gets torn and the browser surfaces
 // "Stream idle timeout - partial response received" — the exact
 // failure mode documented in docs/claude-code-stream-timeout.md.
-const STREAM_WALL_CLOCK_MS = 24_000;
+//
+// Widened from 24_000 → 25_000 on 2026-04-21 to give the advisor
+// escalation (Opus sub-inference) an extra second to complete the
+// multi-step reasoning chain. The 1s margin (vs the prior 2s) is
+// still safely above Netlify's observed 26s hard kill even after
+// accounting for the outbound HTTP latency to api.anthropic.com,
+// which empirically lands inside 200-400ms.
+const STREAM_WALL_CLOCK_MS = 25_000;
 
 // Extra system-prompt guidance that steers the executor toward
 // structured output cues the browser parses (CDD LEVEL, RED FLAGS,
@@ -188,7 +195,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
       const remainingMs = Math.max(1_000, STREAM_WALL_CLOCK_MS - (Date.now() - functionStartedAt));
       const wallClockTimer = setTimeout(() => {
         safeSend('wall_clock', {
-          error: 'Deep reasoning exceeded the 24s per-request budget. Partial reply above; re-ask with a tighter question or split the case context.',
+          error: 'Deep reasoning exceeded the 25s per-request budget. Partial reply above — the reasoning chain did not close in time. To get a full answer: (a) shorten the case context (paste only the rows that matter), (b) pick a simpler reasoning mode (Speed instead of Multi-perspective), or (c) split your question into two smaller ones and combine the results in the History tab.',
           elapsedMs: Date.now() - functionStartedAt,
         });
         try { abort.abort(); } catch { /* noop */ }

@@ -123,6 +123,83 @@
       id: 'edd_sow',
       label: 'EDD — source-of-wealth requirements',
       question: 'Scope the source-of-wealth and source-of-funds evidence required for EDD on the subject below. Consider the 10-year retention rule (FDL Art.24), jurisdiction-of-origin risk, and documentary corroboration standards.'
+    },
+    // ── 15 additional templates added 2026-04-21 covering LBMA, PF,
+    //    VASP/crypto, TBML, NPO, governance, training, and more. ──
+    {
+      id: 'lbma_rgg',
+      label: 'LBMA RGG v9 — responsible gold review',
+      question: 'Assess the case below against the LBMA Responsible Gold Guidance v9 five-step framework (policy → risk assessment → CAHRA due diligence → audit → reporting). Identify which step raises concern, cite the relevant OECD DDG annex, and score residual risk (low/medium/high).'
+    },
+    {
+      id: 'cross_border_60k',
+      label: 'Cross-border cash AED 60K declaration',
+      question: 'Does the movement below breach the Cabinet Res 134/2025 Art.16 AED 60,000 cross-border cash / BNI declaration threshold? If yes, list the declaration filing obligations, the border-point reporting path, the goAML CNMR requirement, and the 10-year retention implication (FDL Art.24).'
+    },
+    {
+      id: 'correspondent_risk',
+      label: 'Correspondent banking risk',
+      question: 'Assess the correspondent-banking relationship below against Wolfsberg Correspondent Banking Principles and CBUAE Correspondent Banking Standard. Focus on shell-bank exposure, Know-Your-Correspondent-Customer depth, nested-account risk, and jurisdiction risk. Recommend relationship disposition (maintain / enhanced monitoring / exit).'
+    },
+    {
+      id: 'vasp_crypto',
+      label: 'VASP / crypto flow review',
+      question: 'Review the virtual-asset flow below against FATF Rec 15 and VARA Rulebook. Identify any mixer / tumbler / privacy-coin use, sanctioned-wallet exposure (OFAC SDN list), and Travel-Rule data completeness. Flag any structural evasion typology.'
+    },
+    {
+      id: 'tbml_pattern',
+      label: 'Trade-based ML pattern review',
+      question: 'Assess the trade transactions below against FATF TBML typologies (over-invoicing, under-invoicing, multiple invoicing, phantom shipments, mis-described goods, fictitious trade). Cite at least three FATF TBML red flags present, and score money-laundering probability (low / medium / high).'
+    },
+    {
+      id: 'shell_company',
+      label: 'Shell company indicators',
+      question: 'Analyse the entity below for shell-company indicators: residency-only address, no employees, nominee directors / UBO, opaque ownership chain, secrecy-jurisdiction formation, dormant commercial activity, cross-linked to other shell entities. Cite FATF Guidance on Transparency and Beneficial Ownership and score (not-a-shell / possibly / likely / confirmed).'
+    },
+    {
+      id: 'npo_risk',
+      label: 'NPO / charity sector risk',
+      question: 'Assess the NPO / charity below per FATF Rec 8, UAE Cabinet Res 156/2025 (CPF), and MoE supervision of charitable entities. Identify TF-misuse indicators (unusual beneficiaries, conflict-zone operations, opaque funding, politically-exposed trustees). Recommend supervisory action.'
+    },
+    {
+      id: 'multi_regime_sanctions',
+      label: 'Complex multi-regime sanctions review',
+      question: 'The case below implicates multiple sanctions regimes simultaneously (possibly UN + OFAC + EU + UK + UAE). Map each regime\'s applicability, identify the strictest restriction, resolve conflicts-of-law, and cite the governing regulatory basis for the freeze / non-freeze decision.'
+    },
+    {
+      id: 'ai_governance',
+      label: 'AI governance self-audit',
+      question: 'Audit the AI-assisted decision below against EU AI Act Art.14 (human oversight), NIST AI RMF (govern / map / measure / manage), ISO/IEC 42001 AI management-system clauses, and UAE AI Ethics Principles. Flag any black-box reasoning without human-in-the-loop, any auto-action without four-eyes, any training-data bias risk, and any explainability gap.'
+    },
+    {
+      id: 'adverse_media_triage',
+      label: 'Adverse-media hit triage',
+      question: 'Triage the adverse-media hit(s) below. For each hit: (1) classify category (criminal / corruption / sanctions-linked / regulatory / reputational), (2) assess source credibility (tier-1 regulator / tier-2 major press / tier-3 blog / tier-4 anonymous), (3) confirm subject identity match (strong / weak / false-positive), (4) recommend action (no-action / enhanced monitoring / EDD uplift / file STR).'
+    },
+    {
+      id: 'grievance_whistleblower',
+      label: 'Grievance / whistleblower triage',
+      question: 'Triage the report below per Fed Decree-Law 32/2021 (whistleblower protection) and FDL Art.29 (tipping-off / confidentiality). Classify as: operational incident / HR grievance / customer complaint / anonymous whistleblower / named whistleblower. Recommend the investigation path, confidentiality controls, and whether regulator notification is required.'
+    },
+    {
+      id: 'mlro_appointment',
+      label: 'MLRO / Deputy appointment compliance',
+      question: 'Verify the appointment below against Cabinet Res 134/2025 Art.11 (MLRO qualifications), Cabinet Res 134/2025 Art.18 (CO change notification — 14 calendar days), and FDL Art.20-21 (CO duty of care). Check: qualifications / independence / authority / resource adequacy / board attestation / regulator notification lodged.'
+    },
+    {
+      id: 'training_compliance',
+      label: 'Annual training compliance check',
+      question: 'Review the staff training record below against Cabinet Res 134/2025 Art.11 (annual AML/CFT/CPF training) and FATF Rec 18 (internal policies and training). For each staff member: check training completion, role-specific content coverage, refresher cadence, attestation evidence. Flag anyone overdue or missing.'
+    },
+    {
+      id: 'four_eyes_rationale',
+      label: 'Four-eyes approval reasoning',
+      question: 'You are the SECOND approver on the decision below. The first approver has signed off. Review their reasoning independently — do NOT defer to their verdict. Challenge the key assumptions, stress-test the regulatory citation, and either confirm the approval with your own rationale or escalate with a specific objection.'
+    },
+    {
+      id: 'pf_dual_use',
+      label: 'Proliferation financing / dual-use goods',
+      question: 'Screen the transaction below under Cabinet Res 156/2025 (PF + dual-use controls) and UNSCR 1540. Identify any strategic-goods export, any dual-use controlled item, any WMD-nexus end-user, any catch-all concern, and any sanctioned proliferation actor. Recommend licensing / blocking / reporting action.'
     }
   ];
 
@@ -519,7 +596,7 @@
       '    <div class="dr-actions">',
       '      <button class="dr-btn" id="drRun" type="button">Analyze</button>',
       '      <button class="dr-chip-btn dr-chip-btn-ghost" type="button" id="drCopy" style="display:none">Copy reply</button>',
-      '      <span class="dr-hint">Rate-limited 10/min per IP. Streaming · 24s budget.</span>',
+      '      <span class="dr-hint">Rate-limited 10/min per IP. Streaming · 25s budget.</span>',
       '    </div>',
       '    <div class="dr-err" id="drErr" role="status" aria-live="polite"></div>',
       '    <div id="drResultWrap"></div>',
@@ -762,7 +839,7 @@
               usage = data || {};
               renderMeta('Streaming…');
             } else if (eventName === 'wall_clock') {
-              errEl.textContent = data.error || 'Deep reasoning hit the 24s budget. Partial reply above.';
+              errEl.textContent = data.error || 'Deep reasoning hit the 25s budget. Partial reply above — try a shorter question, the Speed mode, or split into two calls.';
             } else if (eventName === 'error') {
               errEl.textContent = data.error || 'Upstream reasoning error.';
             } else if (eventName === 'done') {

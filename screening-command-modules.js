@@ -4090,9 +4090,36 @@
           eu_csfl:  'EU',
           interpol: 'INTERPOL'
         };
-        var backendLists = sanctionsLists
-          .map(function (id) { return LIST_ID_TO_BACKEND[id]; })
-          .filter(Boolean);
+        var backendLists = [];
+        var pendingIntegrationLists = [];
+        for (var li = 0; li < sanctionsLists.length; li++) {
+          var rawId = sanctionsLists[li];
+          var mapped = LIST_ID_TO_BACKEND[rawId];
+          if (mapped) {
+            backendLists.push(mapped);
+          } else {
+            pendingIntegrationLists.push(rawId);
+          }
+        }
+        // Surface dropped selections to the MLRO — silently forwarding
+        // a subset of the selected lists would violate FDL Art.20-21
+        // (CO duty of care) and Cabinet Res 74/2020 Art.4 (every
+        // mandatory list must be checked). If the MLRO ticked a list
+        // we cannot screen, the result card must mark it visibly as
+        // "INTEGRATION PENDING — not screened" rather than pretend
+        // it was covered.
+        if (pendingIntegrationLists.length > 0) {
+          try {
+            if (window.console && typeof window.console.warn === 'function') {
+              window.console.warn(
+                '[screening] '
+                + pendingIntegrationLists.length
+                + ' list(s) selected have no backend integration and will be marked "integration pending" on the card: '
+                + pendingIntegrationLists.join(', ')
+              );
+            }
+          } catch (_e) { /* best-effort logging */ }
+        }
 
         var subjectTypeForm = fd.get('subject_type') || 'individual';
         // Customer code is required — it anchors the audit trail across
