@@ -3515,6 +3515,31 @@
                   'Send to Asana' +
                 '</button>'
               : '';
+            // Devil's Advocate — counter-argument pass against the primary
+            // verdict. Available on any compliance-report row (even clean
+            // low-risk matches benefit from the sanity-check).
+            var redTeamBtnHtml = hasCr
+              ? '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-red-team" data-id="' + esc(r.id) + '" ' +
+                  'title="Run a Devil\'s Advocate counter-argument pass against this verdict" ' +
+                  'style="border:1px solid rgba(168,85,247,0.45);color:#d8b4fe">' +
+                  'Devil\'s Advocate' +
+                '</button>'
+              : '';
+            // Draft STR — only surfaced when the CDD tier is EDD or FREEZE,
+            // or when adverse-media classification is CONFIRMED (the
+            // cases where an STR is realistically on the table).
+            var shouldOfferStr = hasCr && (
+              (r.compliance_report.cdd_recommendation &&
+                ['EDD', 'FREEZE'].indexOf(r.compliance_report.cdd_recommendation.tier) >= 0) ||
+              r.compliance_report.adverse_media_classification === 'confirmed'
+            );
+            var strBtnHtml = shouldOfferStr
+              ? '<button class="mv-btn mv-btn-sm" data-action="sc-sub-str-draft" data-id="' + esc(r.id) + '" ' +
+                  'title="Draft a goAML-ready STR narrative from this compliance report" ' +
+                  'style="background:linear-gradient(90deg,#7f1d1d,#dc2626);color:#fff;font-weight:700">' +
+                  'Draft STR' +
+                '</button>'
+              : '';
             var actionHtml = (canAct || hasCr)
               ? '<div class="mv-form-actions" style="margin-top:8px;gap:6px;flex-wrap:wrap">' +
                   (canAct
@@ -3523,9 +3548,14 @@
                       '<button class="mv-btn mv-btn-sm" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="false_positive">False positive</button>' +
                       '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-action="sc-sub-dispose" data-id="' + esc(r.id) + '" data-d="escalated">Escalate</button>'
                     : '') +
+                  redTeamBtnHtml +
+                  strBtnHtml +
                   asanaBtnHtml +
                   '<span class="mv-list-meta" data-dr-asana-status="' + esc(r.id) + '" style="align-self:center;margin-left:4px;font-size:11px;opacity:.7"></span>' +
-                '</div>'
+                '</div>' +
+                (hasCr
+                  ? '<div data-reasoning-panel="' + esc(r.id) + '" style="display:none;margin-top:10px"></div>'
+                  : '')
               : '';
 
             // Delete button — removes the screening row from localStorage.
@@ -3739,6 +3769,105 @@
       };
     });
 
+    // Shared helper — creates or reuses the reasoning panel below a
+    // screening row and mounts a streaming block with a header, body,
+    // and status line. Each panel can host Red-Team or STR output;
+    // consecutive clicks on the same row swap the content rather than
+    // stacking, so the card doesn't grow unbounded.
+    function mountReasoningPanel(id, heading, subhead, tone) {
+      var panel = host.querySelector('[data-reasoning-panel="' + id + '"]');
+      if (!panel) return null;
+      var borderColor = tone === 'devil' ? 'rgba(168,85,247,0.4)'
+        : tone === 'str'   ? 'rgba(220,38,38,0.45)'
+        : 'rgba(255,139,209,0.3)';
+      var bg = tone === 'devil' ? 'rgba(168,85,247,0.05)'
+        : tone === 'str'   ? 'rgba(220,38,38,0.05)'
+        : 'rgba(255,139,209,0.04)';
+      panel.style.display = 'block';
+      panel.innerHTML =
+        '<div style="padding:12px;border-left:3px solid ' + borderColor + ';background:' + bg + ';border-radius:6px">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">' +
+            '<div>' +
+              '<strong style="font-size:13px">' + esc(heading) + '</strong>' +
+              '<div style="font-size:11px;opacity:.7;margin-top:2px">' + esc(subhead) + '</div>' +
+            '</div>' +
+            '<div style="display:flex;gap:6px">' +
+              '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-reasoning-copy>Copy</button>' +
+              '<button class="mv-btn mv-btn-sm mv-btn-ghost" data-reasoning-close>Close</button>' +
+            '</div>' +
+          '</div>' +
+          '<div data-role="stream-status" style="font-size:11px;opacity:.8;margin-bottom:6px"></div>' +
+          '<pre data-role="stream-text" style="white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.55;margin:0;padding:10px;background:rgba(0,0,0,0.15);border-radius:6px;max-height:400px;overflow:auto"></pre>' +
+          '<div data-role="stream-meta" style="margin-top:6px;font-size:11px;opacity:.7"></div>' +
+        '</div>';
+      panel.querySelector('[data-reasoning-close]').addEventListener('click', function () {
+        panel.innerHTML = '';
+        panel.style.display = 'none';
+      });
+      panel.querySelector('[data-reasoning-copy]').addEventListener('click', function () {
+        var txt = (panel.querySelector('[data-role="stream-text"]') || {}).textContent || '';
+        if (!txt) return;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt);
+            var b = panel.querySelector('[data-reasoning-copy]');
+            if (b) { var orig = b.textContent; b.textContent = 'Copied'; setTimeout(function () { b.textContent = orig; }, 1200); }
+          }
+        } catch (_) { /* clipboard unavailable */ }
+      });
+      return panel;
+    }
+
+    function bearerToken() {
+      try { return localStorage.getItem('hawkeye.session.jwt') || localStorage.getItem('hawkeye.watchlist.adminToken') || ''; } catch (_) { return ''; }
+    }
+
+    // Devil's Advocate — streams an Opus-assisted counter-argument
+    // pass into a panel below the row. The executor sees the full
+    // serialised compliance report as caseContext.
+    host.querySelectorAll('[data-action="sc-sub-red-team"]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-id');
+        var row = null;
+        for (var i = 0; i < rows.length; i++) { if (rows[i].id === id) { row = rows[i]; break; } }
+        if (!row) return;
+        var t = bearerToken();
+        if (!t) { alert('Sign in at /login.html first.'); return; }
+        var panel = mountReasoningPanel(id,
+          'Devil\'s Advocate — counter-argument pass',
+          'Opus advisor · weakest evidence · exculpatory hypotheses · missed safe harbours · decisive evidence request',
+          'devil');
+        if (!panel) return;
+        streamBrainReasonInto(panel, {
+          question: RED_TEAM_QUESTION,
+          caseContext: serializeComplianceReportForAsana(row)
+        }, t);
+      };
+    });
+
+    // Draft STR — streams a goAML-ready STR narrative into a panel
+    // below the row. Only offered when CDD tier is EDD / FREEZE or
+    // adverse-media classification is CONFIRMED.
+    host.querySelectorAll('[data-action="sc-sub-str-draft"]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute('data-id');
+        var row = null;
+        for (var i = 0; i < rows.length; i++) { if (rows[i].id === id) { row = rows[i]; break; } }
+        if (!row) return;
+        var t = bearerToken();
+        if (!t) { alert('Sign in at /login.html first.'); return; }
+        var panel = mountReasoningPanel(id,
+          'STR Draft — UAE FIU / goAML',
+          'Sonnet executor · FDL Art.26-27 structure · FDL Art.29 tipping-off guard · MLRO review required',
+          'str');
+        if (!panel) return;
+        streamBrainReasonInto(panel, {
+          question: STR_DRAFT_QUESTION,
+          caseContext: serializeComplianceReportForAsana(row)
+        }, t);
+      };
+    });
+
     // Brain-to-Asana — posts the serialised compliance report to the
     // existing /api/asana/task endpoint. The endpoint is authenticated,
     // rate-limited, and writes to the compliance-ops Asana project via
@@ -3947,6 +4076,117 @@
     var cc = r.country ? ' (' + r.country + ')' : '';
     var label = prefix + ' ' + nm + cc;
     return label.length > 508 ? label.slice(0, 508) + '...' : label;
+  }
+
+  // ─── Red-Team + STR Draft prompts ───────────────────────────────────
+  // Two specialised user-message templates dispatched to /api/brain-reason
+  // (Sonnet executor + Opus advisor + SSE streaming + 24s wall-clock).
+  // Both use the full serialized compliance report as caseContext so the
+  // model has every block of evidence without extra prompt engineering.
+
+  var RED_TEAM_QUESTION =
+    'Act as a DEVIL\'S ADVOCATE compliance reviewer. A primary verdict has been issued on the subject described in the case context. Your job is to construct the strongest possible counter-argument AGAINST that verdict — NOT to repeat or rationalise it.\n\n' +
+    'Deliver exactly four sections, in this order:\n\n' +
+    '1. WEAKEST EVIDENCE. Name the single weakest piece of evidence supporting the primary verdict and explain why it is weak (source tier, coverage gap, inferential leap, stale signal, etc.).\n\n' +
+    '2. EXCULPATORY HYPOTHESES. Propose at least two plausible false-positive or exculpatory hypotheses with concrete supporting considerations (e.g. name collision, alias confusion, time-barred proceeding, resolved regulatory action).\n\n' +
+    '3. MISSED SAFE HARBOURS. List any regulatory exemption, safe harbour, de minimis threshold, or mitigating factor the primary verdict may have missed — cite the article / resolution / circular.\n\n' +
+    '4. DECISIVE EVIDENCE REQUEST. Name the single piece of evidence that, if obtained, would most decisively move the verdict in either direction, and explain how to obtain it.\n\n' +
+    'Close with one short paragraph honestly assessing which argument (primary verdict or your counter-argument) is stronger on the current evidence, and your confidence (as 0-100%) in that meta-assessment. Do not tip off the subject (FDL Art.29).';
+
+  var STR_DRAFT_QUESTION =
+    'Draft an STR narrative for the UAE FIU on the subject and case below, ready for MLRO review and goAML submission. Follow FDL No.(10)/2025 Art.26-27 drafting standards.\n\n' +
+    'Structure the narrative under these labelled headings, in this order:\n\n' +
+    'WHO — subject name, identifiers, role, known relationships, PEP status if any.\n' +
+    'WHAT — the suspicious activity: amounts, channels, counterparties, dates, patterns, predicate-offence nexus.\n' +
+    'WHEN — the date range covered by the suspicion, including first observation and most recent event.\n' +
+    'WHERE — jurisdictions involved, correspondent banks, delivery / shipment routes, UAE nexus.\n' +
+    'WHY — the reasonable grounds for suspicion: what makes the activity unusual, which red flags triggered, why standard CDD is insufficient.\n' +
+    'HOW — the typology and mechanism with FATF / Cabinet Res / MoE citations.\n\n' +
+    'Then close with the following labelled lines (one per line):\n' +
+    'TYPOLOGY: <one-line FATF or LBMA typology match>\n' +
+    'PREDICATE OFFENCE: <article / law with citation>\n' +
+    'FILING DEADLINE: <date + business-day rationale; STR/SAR = without delay per FDL Art.26-27>\n' +
+    'TIPPING-OFF GUARD: FDL Art.29 — no notification to the subject; no disclosure that the STR has been filed.\n' +
+    'goAML REPORT TYPE: <STR / SAR / CTR / DPMSR / CNMR>\n\n' +
+    'Style: tight, factual, 400-600 words, cite every claim, no speculation beyond what the case context supports. Output is for the UAE FIU; not for the subject, counsel, or any other audience.';
+
+  // Inline streaming reader — parses /api/brain-reason SSE events into
+  // a target DOM panel. Simplified copy of the reader in deep-reasoning.js;
+  // kept separate so the screening card can render the streaming reply
+  // inline next to the compliance report without round-tripping through
+  // the Deep Reasoning card.
+  function streamBrainReasonInto(panel, payload, token, opts) {
+    opts = opts || {};
+    var full = '';
+    var textEl = panel.querySelector('[data-role="stream-text"]');
+    var statusEl = panel.querySelector('[data-role="stream-status"]');
+    var metaEl = panel.querySelector('[data-role="stream-meta"]');
+    var abort = new AbortController();
+    var ctrl = { abort: function () { try { abort.abort(); } catch (_) {} } };
+    function setStatus(msg, tone) {
+      if (!statusEl) return;
+      statusEl.textContent = msg;
+      statusEl.style.color = tone === 'err' ? '#fca5a5' : tone === 'ok' ? '#86efac' : '';
+    }
+    setStatus('Streaming…');
+    fetch('/api/brain-reason', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(payload),
+      signal: abort.signal
+    }).then(function (res) {
+      if (!res.ok || !res.body) {
+        return res.text().then(function (t) { throw new Error('HTTP ' + res.status + (t ? ' — ' + t.slice(0, 200) : '')); });
+      }
+      var reader = res.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      var advisorCount = 0;
+      function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) return;
+          buf += decoder.decode(r.value, { stream: true });
+          var sep;
+          while ((sep = buf.indexOf('\n\n')) !== -1) {
+            var frame = buf.slice(0, sep);
+            buf = buf.slice(sep + 2);
+            if (!frame.trim()) continue;
+            var evName = '';
+            var dataStr = '';
+            frame.split('\n').forEach(function (ln) {
+              if (ln.indexOf('event:') === 0) evName = ln.slice(6).trim();
+              else if (ln.indexOf('data:') === 0) dataStr += ln.slice(5).trim();
+            });
+            if (!dataStr) continue;
+            var parsed;
+            try { parsed = JSON.parse(dataStr); } catch (_) { continue; }
+            if (evName === 'delta' && typeof parsed.text === 'string') {
+              full += parsed.text;
+              if (textEl) textEl.textContent = full;
+            } else if (evName === 'advisor') {
+              advisorCount = parsed.advisorCallCount || advisorCount;
+              if (metaEl) metaEl.textContent = 'Advisor calls: ' + advisorCount;
+            } else if (evName === 'wall_clock') {
+              setStatus('Truncated — 24s budget exceeded.', 'err');
+            } else if (evName === 'error') {
+              throw new Error(parsed.error || 'upstream error');
+            } else if (evName === 'done') {
+              setStatus('Done · ' + new Date(parsed.generatedAtIso || Date.now()).toLocaleTimeString(), 'ok');
+              if (opts.onDone) opts.onDone(full);
+            }
+          }
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(function (err) {
+      if (abort.signal.aborted) {
+        setStatus('Cancelled', 'err');
+      } else {
+        setStatus('Failed: ' + (err && err.message ? err.message : 'unknown'), 'err');
+      }
+    });
+    return ctrl;
   }
 
   // ─── Screening intelligence engine ──────────────────────────────────
