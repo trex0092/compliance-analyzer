@@ -2,7 +2,6 @@
  * Disposition Audit — server-side persistence of every MLRO disposition
  *
  * POST /api/disposition-audit    (see netlify.toml)
- * GET  /api/disposition-audit-read?from=&to=&subject=&disposition=
  *
  * Companion to /api/four-eyes-audit but broader — every close on a
  * screening row (Confirm / Partial / False-positive / Escalate)
@@ -11,6 +10,13 @@
  * The client-side state (localStorage) remains the authoritative
  * source for the MLRO UI; this endpoint is the audit-grade mirror
  * that an MoE inspector can query.
+ *
+ * Follow-up — GET /api/disposition-audit-read is NOT yet implemented
+ * (PR #428 follow-up). The matching read path would mirror
+ * four-eyes-audit-read.mts's from/to/subject/disposition query
+ * semantics. Until then an MoE inspection must rely on the
+ * four-eyes-audit-read endpoint + manual Netlify Blobs export for
+ * this store. Tracked in docs/asana-workflow-spec.md follow-ups.
  */
 
 import type { Config, Context } from '@netlify/functions';
@@ -31,7 +37,11 @@ function str(v: unknown, max = 256): string | null {
   return v;
 }
 function optStr(v: unknown, max = 256): string | undefined {
-  if (typeof v !== 'string' || v.length > max) return undefined;
+  // Reject empty strings too (BUG #1 fix, 2026-04-21) — persisting
+  // "" as a meaningful disposition attribute creates a data-quality
+  // gap in the 10-year audit record (FDL No.(10)/2025 Art.24). The
+  // required `str()` above already enforces this; optStr must match.
+  if (typeof v !== 'string' || v.length === 0 || v.length > max) return undefined;
   return v;
 }
 
