@@ -429,8 +429,7 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
     description:
       'DEPRECATED combined board. New code should target ffr_incidents (freezes) or grievances (whistleblower / customer complaints) directly.',
     sections: ['Archived'],
-    regulatoryBasis:
-      'FDL No.10/2025 Art.21, 29 · Cabinet Res 71/2024 · Fed Decree-Law 32/2021',
+    regulatoryBasis: 'FDL No.10/2025 Art.21, 29 · Cabinet Res 71/2024 · Fed Decree-Law 32/2021',
     owner: 'MLRO',
   },
   {
@@ -450,8 +449,7 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'Release — Pending EOCN',
       'Closed',
     ],
-    regulatoryBasis:
-      'Cabinet Res 74/2020 Art.4-7 · FDL No.10/2025 Art.35 · FATF Rec 6-7',
+    regulatoryBasis: 'Cabinet Res 74/2020 Art.4-7 · FDL No.10/2025 Art.35 · FATF Rec 6-7',
     owner: 'MLRO',
   },
   {
@@ -491,8 +489,7 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'Dry-Run Only',
       'Archived',
     ],
-    regulatoryBasis:
-      'FDL No.10/2025 Art.20-21, 24 · Cabinet Res 134/2025 Art.19',
+    regulatoryBasis: 'FDL No.10/2025 Art.20-21, 24 · Cabinet Res 134/2025 Art.19',
     owner: 'MLRO',
   },
   {
@@ -510,8 +507,7 @@ export const MODULE_PROJECTS: readonly ModuleProjectSpec[] = Object.freeze([
       'Closed',
       'Archived',
     ],
-    regulatoryBasis:
-      'FDL No.10/2025 Art.20-21 · Cabinet Res 134/2025 Art.19',
+    regulatoryBasis: 'FDL No.10/2025 Art.20-21 · Cabinet Res 134/2025 Art.19',
     owner: 'MLRO',
   },
 ]);
