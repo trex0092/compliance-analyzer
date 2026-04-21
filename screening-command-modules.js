@@ -3552,6 +3552,92 @@
                   '</div>';
               }
 
+              // Transaction Signals — match this subject against the
+              // transaction monitor feed (STORAGE.transactions) by
+              // counterparty name. Rendered only when at least one
+              // transaction matches. FATF Rec 20-21 ongoing monitoring.
+              var txSignals = findTransactionSignals(r);
+              var txSignalsBlock = '';
+              if (txSignals) {
+                var critColor = txSignals.critical_count >= 2 ? '#dc2626'
+                  : txSignals.critical_count === 1 ? '#ea580c'
+                  : txSignals.alert_count >= 1 ? '#d97706' : '#166534';
+                var alertChips = txSignals.alert_types.slice(0, 5).map(function (a) {
+                  return '<span class="dr-chip dr-chip-warn" style="background:rgba(220,38,38,0.16);border:1px solid rgba(220,38,38,0.35);color:#fca5a5;padding:2px 8px;border-radius:999px;font-size:11px;margin-right:4px">' + esc(a) + '</span>';
+                }).join('');
+                var critExamples = (txSignals.top_critical_examples || []).map(function (t) {
+                  return '<li style="margin-bottom:2px;font-size:11px">' +
+                    'AED ' + esc((t.amount || 0).toLocaleString()) +
+                    (t.occurred_on ? ' · ' + esc(t.occurred_on) : '') +
+                    ' · <span style="color:#fca5a5">' + esc(t.alert || '') + '</span>' +
+                    '</li>';
+                }).join('');
+                txSignalsBlock =
+                  '<div style="margin-bottom:8px;font-size:12px;line-height:1.6;padding:8px;border-left:3px solid ' + critColor + ';background:rgba(234,88,12,0.04);border-radius:6px">' +
+                    '<strong>Transaction Signals.</strong> ' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;background:' + critColor + ';color:#fff">' +
+                      txSignals.total_count + ' tx · ' + txSignals.alert_count + ' alerts · ' + txSignals.critical_count + ' critical' +
+                    '</span>' +
+                    ' <span style="opacity:.85">Volume AED ' + esc(txSignals.total_aed.toLocaleString()) +
+                    ' · peak AED ' + esc(txSignals.max_aed.toLocaleString()) + '</span>' +
+                    (alertChips ? '<div style="margin-top:4px">' + alertChips + '</div>' : '') +
+                    (critExamples ? '<ul style="margin:4px 0 0 0;padding-left:18px;list-style:none">' + critExamples + '</ul>' : '') +
+                    ' <span style="opacity:.55;font-size:10px">[' + esc(txSignals.citation) + ']</span>' +
+                  '</div>';
+                // If the transaction signals change the risk picture,
+                // recompute the Bayesian posterior with the additional
+                // context so the posterior block displays the adjusted
+                // probability. Non-mutating on row — only updates the
+                // cr reference used by subsequent block renders.
+                if (cr.bayesian_posterior) {
+                  try {
+                    var updatedBayes = computeBayesianPosterior({
+                      sanctions_detail: cr.sanctions_detail || [],
+                      adverse_media_confidence: cr.adverse_media_confidence || 0,
+                      adverse_hits: r.adverse_media_hits || [],
+                      jurisdiction: cr.jurisdiction || { flags: [] },
+                      pep_self: (r.pep_flags || []).indexOf('pep_self') >= 0,
+                      pep_family: (r.pep_flags || []).some(function (p) { return p !== 'pep_self'; }),
+                      typologies: cr.typologies || [],
+                      contradictions: cr.contradictions || [],
+                      source_count: cr.source_count || 0,
+                      evidence_grade: cr.evidence_grade || null,
+                      transaction_signals: txSignals
+                    });
+                    cr.bayesian_posterior = updatedBayes;
+                    // Re-render the bayesianBlock HTML since cr.bayesian_posterior
+                    // changed. Simplest: null the earlier block and
+                    // rebuild with the updated posterior.
+                    if (bayesianBlock) {
+                      var bp2 = updatedBayes;
+                      var pColor2 = bp2.posterior_mean_pct >= 70 ? '#dc2626'
+                        : bp2.posterior_mean_pct >= 40 ? '#ea580c'
+                        : bp2.posterior_mean_pct >= 15 ? '#d97706' : '#166534';
+                      var weights2 = (bp2.evidence_weights || []).map(function (w) {
+                        var sign = w.llr >= 0 ? '+' : '';
+                        return '<li style="margin-bottom:1px;font-size:11px">' +
+                          '<span style="color:' + (w.llr >= 0 ? '#fca5a5' : '#86efac') + ';font-weight:700;min-width:50px;display:inline-block">LLR ' + sign + w.llr.toFixed(2) + '</span> ' +
+                          esc(w.label) + (w.note ? ' <span style="opacity:.7">(' + esc(w.note) + ')</span>' : '') +
+                          '</li>';
+                      }).join('');
+                      bayesianBlock =
+                        '<div style="margin-bottom:8px;font-size:12px;line-height:1.55">' +
+                          '<strong>Bayesian Posterior.</strong> ' +
+                          '<span style="padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;background:' + pColor2 + ';color:#fff">' +
+                            bp2.posterior_mean_pct + '% · ' + esc(bp2.interpretation).toUpperCase() +
+                          '</span>' +
+                          ' <span style="opacity:.85;font-size:11px">90% CI [' + bp2.ci_low_pct + '%, ' + bp2.ci_high_pct + '%]</span>' +
+                          ' <span style="opacity:.6;font-size:10px">prior ' + bp2.prior_pct + '% · σ ' + bp2.posterior_sigma.toFixed(2) + ' · with tx signals</span>' +
+                          '<details style="margin-top:4px"><summary style="font-size:11px;opacity:.8;cursor:pointer">Evidence weights (' + (bp2.evidence_weights || []).length + ')</summary>' +
+                            '<ul style="margin:4px 0 0 0;padding-left:18px;list-style:none">' + weights2 + '</ul>' +
+                          '</details>' +
+                          ' <span style="opacity:.55;font-size:10px">[' + esc(bp2.citation) + ']</span>' +
+                        '</div>';
+                    }
+                  } catch (_) { /* best-effort */ }
+                }
+              }
+
               // Historical Case Similarity — computed at render-time
               // against the full workbench (rows) + register.
               var similarCases = findSimilarCases(r, rows);
@@ -3641,6 +3727,7 @@
                 counterfactualBlock +
                 gapsBlock +
                 connectedBlock +
+                txSignalsBlock +
                 similarBlock +
                 trajectoryBlock +
                 lessonsBlock +
@@ -6155,6 +6242,54 @@
     return svg.join('');
   }
 
+  // ─── Transaction Monitor integration ──────────────────────────────
+  // Matches the current screening row against the STORAGE.transactions
+  // localStorage feed by normalised counterparty name. Returns
+  // aggregate signals (total count, alerts, critical-alert count,
+  // volume, alert-type histogram) that flow into the Bayesian
+  // posterior and into a dedicated Transaction Signals block.
+  // Computed at render-time so the data reflects live transaction
+  // additions without a re-screen (FATF Rec 20-21 ongoing-monitoring).
+  function findTransactionSignals(row) {
+    if (!row) return null;
+    var txs = safeParse(STORAGE.transactions, []);
+    if (!Array.isArray(txs) || !txs.length) return null;
+    var myName = normalizeName(row.name || '');
+    if (!myName) return null;
+    var matches = txs.filter(function (t) {
+      return normalizeName(t.counterparty || '') === myName;
+    });
+    if (!matches.length) return null;
+    var alerts = matches.filter(function (t) { return t.alert; });
+    var critical = matches.filter(function (t) {
+      var a = t.alert || '';
+      return a.indexOf('DPMS CTR') >= 0 || a.indexOf('Cross-border') >= 0;
+    });
+    var totalAmountAed = matches.reduce(function (s, t) { return s + (typeof t.amount === 'number' ? t.amount : 0); }, 0);
+    var maxAmount = matches.reduce(function (m, t) { return Math.max(m, typeof t.amount === 'number' ? t.amount : 0); }, 0);
+    var alertTypes = {};
+    alerts.forEach(function (t) {
+      String(t.alert || '').split(' · ').forEach(function (a) {
+        if (a.trim()) alertTypes[a.trim()] = (alertTypes[a.trim()] || 0) + 1;
+      });
+    });
+    return {
+      total_count: matches.length,
+      alert_count: alerts.length,
+      critical_count: critical.length,
+      total_aed: totalAmountAed,
+      max_aed: maxAmount,
+      alert_types: Object.keys(alertTypes).sort(function (a, b) { return alertTypes[b] - alertTypes[a]; }),
+      top_critical_examples: critical.slice(0, 3).map(function (t) {
+        return {
+          amount: t.amount || 0, counterparty: t.counterparty || '',
+          alert: t.alert || '', occurred_on: t.occurred_on || ''
+        };
+      }),
+      citation: 'MoE Circular 08/AML/2021 · Cabinet Res 134/2025 Art.16 · FATF Rec 20-21 transaction monitoring'
+    };
+  }
+
   // ─── Bayesian posterior engine — log-odds / credible interval ──────
   // Replaces the flat-additive computeScoreAttribution math with a
   // probabilistic posterior. Each signal contributes a log-likelihood
@@ -6204,7 +6339,10 @@
     corroboration_multi_source:    { llr_mean: 0.5,  sigma: 0.3,  label: 'Multi-source corroboration (≥2 independent)' },
     single_source_downweight:      { llr_mean: -0.6, sigma: 0.3,  label: 'Single-source downweight' },
     evidence_grade_a_or_b:         { llr_mean: 0.4,  sigma: 0.3,  label: 'Evidence grade A or B' },
-    evidence_grade_d_or_e:         { llr_mean: -0.5, sigma: 0.3,  label: 'Evidence grade D or E' }
+    evidence_grade_d_or_e:         { llr_mean: -0.5, sigma: 0.3,  label: 'Evidence grade D or E' },
+    transaction_alerts_present:    { llr_mean: 0.9,  sigma: 0.3,  label: 'Transaction monitor flagged counterparty' },
+    transaction_ctr_breach:        { llr_mean: 1.2,  sigma: 0.4,  label: 'CTR / Cross-border threshold breach in transaction history' },
+    transaction_critical_pattern:  { llr_mean: 1.5,  sigma: 0.5,  label: 'Multiple critical transaction alerts (CTR + cross-border + velocity)' }
   };
 
   function logistic(x) { return 1 / (1 + Math.exp(-x)); }
@@ -6282,6 +6420,13 @@
     // Evidence grade
     if (ctx.evidence_grade && ['A', 'B'].indexOf(ctx.evidence_grade.grade) >= 0) apply('evidence_grade_a_or_b', 'grade ' + ctx.evidence_grade.grade);
     else if (ctx.evidence_grade && ['D', 'E'].indexOf(ctx.evidence_grade.grade) >= 0) apply('evidence_grade_d_or_e', 'grade ' + ctx.evidence_grade.grade);
+    // Transaction-monitoring signals
+    if (ctx.transaction_signals) {
+      var ts = ctx.transaction_signals;
+      if (ts.alert_count > 0) apply('transaction_alerts_present', ts.alert_count + ' alerts / ' + ts.total_count + ' tx');
+      if (ts.critical_count > 0) apply('transaction_ctr_breach', ts.critical_count + ' critical alert(s)');
+      if (ts.critical_count >= 2) apply('transaction_critical_pattern', ts.critical_count + ' critical alerts — pattern risk');
+    }
 
     var sigma = Math.sqrt(varianceSum);
     var pMean = logistic(posteriorLogit);
