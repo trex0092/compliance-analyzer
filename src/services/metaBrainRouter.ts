@@ -208,7 +208,9 @@ export const DEFAULT_ROUTING_RULES: readonly RoutingRule[] = [
     subsystem: 'crossCaseCorrelator',
     reason: 'Fires for high-value (≥AED 55K) or high-risk cases',
     predicate: (s) =>
-      s.txValue30dAED >= DPMS_CASH_THRESHOLD_AED || s.sanctionsMatchScore >= 0.5 || s.hasAdverseMedia,
+      s.txValue30dAED >= DPMS_CASH_THRESHOLD_AED ||
+      s.sanctionsMatchScore >= 0.5 ||
+      s.hasAdverseMedia,
     regulatory: 'FDL Art.20-22',
   },
   {
