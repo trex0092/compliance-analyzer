@@ -34,12 +34,12 @@
 
 export type HesitationSource =
   | 'sanctions_potential_match' // confidence 0.5-0.89 on any of UN/OFAC/EU/UK/UAE/EOCN
-  | 'advisor_trigger_fired'      // one of the 6 compliance gates from CLAUDE.md
-  | 'threshold_edge_case'        // within 10% of AED 55K / 60K / 25% UBO
-  | 'cdd_tier_change_uncertain'  // SDD→CDD or CDD→EDD without clear signal
-  | 'str_draft_ambiguous'        // narrative generation uncertainty
-  | 'pep_by_association'         // FATF Rec 12 second-order PEP
-  | 'adverse_media_low_source';  // single unverified source
+  | 'advisor_trigger_fired' // one of the 6 compliance gates from CLAUDE.md
+  | 'threshold_edge_case' // within 10% of AED 55K / 60K / 25% UBO
+  | 'cdd_tier_change_uncertain' // SDD→CDD or CDD→EDD without clear signal
+  | 'str_draft_ambiguous' // narrative generation uncertainty
+  | 'pep_by_association' // FATF Rec 12 second-order PEP
+  | 'adverse_media_low_source'; // single unverified source
 
 export interface HesitationEntry {
   /** Stable event id for dedup across retries. */
@@ -101,14 +101,12 @@ const HIGH_CONFIDENCE = 0.9;
 
 export function isHesitationConfidence(confidence: number): boolean {
   return (
-    Number.isFinite(confidence) &&
-    confidence >= LOW_CONFIDENCE &&
-    confidence < HIGH_CONFIDENCE
+    Number.isFinite(confidence) && confidence >= LOW_CONFIDENCE && confidence < HIGH_CONFIDENCE
   );
 }
 
 export function validateHesitationEntry(
-  entry: HesitationEntry,
+  entry: HesitationEntry
 ): { ok: true } | { ok: false; reason: string } {
   if (!entry.eventId || entry.eventId.length < 8) {
     return { ok: false, reason: 'eventId must be at least 8 characters' };
@@ -120,7 +118,10 @@ export function validateHesitationEntry(
     return { ok: false, reason: 'confidence must be in [0, 1]' };
   }
   if (!/^[a-f0-9]{64}$/i.test(entry.subjectRefHash)) {
-    return { ok: false, reason: 'subjectRefHash must be a SHA-256 hex digest (Art.29 — never raw PII)' };
+    return {
+      ok: false,
+      reason: 'subjectRefHash must be a SHA-256 hex digest (Art.29 — never raw PII)',
+    };
   }
   if (entry.evidenceFor.length > 500) {
     return { ok: false, reason: 'evidenceFor too long (max 500)' };
@@ -152,10 +153,7 @@ export function makeHesitationLog(store: HesitationStore) {
     return all.filter((e) => e.reviewState === 'pending');
   }
 
-  async function markReviewed(
-    eventId: string,
-    update: HesitationReviewUpdate,
-  ): Promise<void> {
+  async function markReviewed(eventId: string, update: HesitationReviewUpdate): Promise<void> {
     if (update.reviewerNotes && update.reviewerNotes.length > 1000) {
       throw new Error('advisorHesitationLog.markReviewed: reviewerNotes too long (max 1000)');
     }
@@ -205,9 +203,7 @@ export function makeHesitationLog(store: HesitationStore) {
       }
     }
     const oldestPendingHours =
-      oldestPendingAt === null
-        ? null
-        : Math.max(0, (Date.now() - oldestPendingAt) / 3_600_000);
+      oldestPendingAt === null ? null : Math.max(0, (Date.now() - oldestPendingAt) / 3_600_000);
     return {
       total: all.length,
       pending,

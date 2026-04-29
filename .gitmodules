@@ -175,3 +175,18 @@
 [submodule "vendor/node-DeepResearch"]
 	path = vendor/node-DeepResearch
 	url = https://github.com/jina-ai/node-DeepResearch.git
+[submodule "vendor/hipaapotamus"]
+	path = vendor/hipaapotamus
+	url = https://github.com/thedotmack/HIPAApotamus.git
+[submodule "vendor/antipattern-czar"]
+	path = vendor/antipattern-czar
+	url = https://github.com/thedotmack/antipattern-czar.git
+[submodule "vendor/sequential-thinking-skill"]
+	path = vendor/sequential-thinking-skill
+	url = https://github.com/thedotmack/sequential-thinking-skill.git
+[submodule "vendor/notch"]
+	path = vendor/notch
+	url = https://github.com/thedotmack/notch.git
+[submodule "vendor/mcp-client-cli"]
+	path = vendor/mcp-client-cli
+	url = https://github.com/thedotmack/mcp-client-cli.git
